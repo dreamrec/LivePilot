@@ -102,3 +102,16 @@ Use `modify_notes` with `note_id` to update existing notes.
 Use `remove_notes_by_id` for surgical deletion.
 Use `transpose_notes` for pitch shifting a region.
 Use `quantize_clip` to snap notes to a grid (grid=1.0 is quarter note).
+
+## Reference Corpus
+
+Deep production knowledge lives in `references/`. Consult these when making creative decisions — they contain specific parameter values, recipes, and patterns. Use them as starting points, not rigid rules.
+
+| File | What's inside | When to consult |
+|------|--------------|-----------------|
+| `references/overview.md` | All 76 tools mapped with params, units, ranges | Quick lookup for any tool |
+| `references/midi-recipes.md` | Drum patterns by genre, chord voicings, scales, hi-hat techniques, humanization, polymetrics | Programming MIDI notes, building beats |
+| `references/sound-design.md` | Stock instruments/effects, parameter recipes for bass/pad/lead/pluck, device chain patterns | Loading and configuring devices |
+| `references/mixing-patterns.md` | Gain staging, parallel compression, sidechain, EQ by instrument, bus processing, stereo width | Setting volumes, panning, adding effects |
+| `references/ableton-workflow-patterns.md` | Session/Arrangement workflow, song structures by genre, follow actions, clip launch modes, export | Organizing sessions, structuring songs |
+| `references/m4l-devices.md` | Browser organization, MIDI effects, rack systems, device loading patterns | Finding and loading devices, using racks |
