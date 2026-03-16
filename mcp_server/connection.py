@@ -3,7 +3,9 @@
 import json
 import os
 import socket
+import time
 import uuid
+from collections import deque
 
 CONNECT_TIMEOUT = 5
 RECV_TIMEOUT = 20
@@ -41,10 +43,13 @@ def _friendly_error(code: str, message: str, command_type: str) -> str:
 class AbletonConnection:
     """TCP client that sends JSON commands to the LivePilot Remote Script."""
 
+    MAX_LOG_ENTRIES = 50
+
     def __init__(self, host: str | None = None, port: int | None = None):
         self.host = host or os.environ.get("LIVE_MCP_HOST", "127.0.0.1")
         self.port = port or int(os.environ.get("LIVE_MCP_PORT", "9878"))
         self._socket: socket.socket | None = None
+        self._command_log: deque[dict] = deque(maxlen=self.MAX_LOG_ENTRIES)
 
     # ------------------------------------------------------------------
     # Connection lifecycle
@@ -124,15 +129,36 @@ class AbletonConnection:
             self.connect()
             response = self._send_raw(command)
 
+        # Log the command and response
+        log_entry = {
+            "command": command_type,
+            "params": params,
+            "timestamp": time.time(),
+            "ok": response.get("ok", True),
+        }
+
         # Handle error responses — Remote Script uses {"ok": false, "error": {"code": ..., "message": ...}}
         if response.get("ok") is False:
             err = response.get("error", {})
             code = err.get("code", "INTERNAL") if isinstance(err, dict) else "INTERNAL"
             message = err.get("message", str(err)) if isinstance(err, dict) else str(err)
+            log_entry["error"] = code
+            self._command_log.append(log_entry)
             friendly = _friendly_error(code, message, command_type)
             raise AbletonConnectionError(friendly)
 
+        self._command_log.append(log_entry)
         return response.get("result", {})
+
+    # ------------------------------------------------------------------
+    # Command log
+    # ------------------------------------------------------------------
+
+    def get_recent_commands(self, limit: int = 20) -> list[dict]:
+        """Return the most recent commands sent to Ableton (newest first)."""
+        entries = list(self._command_log)
+        entries.reverse()
+        return entries[:limit]
 
     # ------------------------------------------------------------------
     # Low-level transport

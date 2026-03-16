@@ -1,6 +1,6 @@
 # LivePilot
 
-AI copilot for Ableton Live 12 — 76 MCP tools for production, sound design, and mixing.
+AI copilot for Ableton Live 12 — 77 MCP tools for production, sound design, and mixing.
 
 Sister project to [TDPilot](https://github.com/your-org/TDPilot) (TouchDesigner) and ComfyPilot (ComfyUI).
 
@@ -59,11 +59,11 @@ Claude Code / AI Client
 └─────────────────────┘
 ```
 
-## 76 Tools Across 9 Domains
+## 77 Tools Across 9 Domains
 
 | Domain | Count | Key Tools |
 |--------|-------|-----------|
-| **Transport** | 10 | get_session_info, set_tempo, play/stop, undo/redo |
+| **Transport** | 11 | get_session_info, set_tempo, play/stop, undo/redo, action log |
 | **Tracks** | 12 | create/delete/duplicate, name, color, mute/solo/arm |
 | **Clips** | 10 | create/delete/duplicate, fire/stop, loop, launch mode |
 | **Notes** | 8 | add/get/remove/modify, transpose, quantize, duplicate |
@@ -105,6 +105,27 @@ npx livepilot --help       # Show all commands
 LivePilot uses a **single-client** TCP connection. Only one MCP client can be connected to Ableton at a time. This is by design — Ableton's Live Object Model is not thread-safe, so serialized access prevents race conditions and data corruption.
 
 If a second client attempts to connect while one is active, it receives an error message and is disconnected. To switch clients, disconnect the current one first.
+
+## Compatibility
+
+| Feature | Live 12 (all) | Suite only | Notes |
+|---------|:-:|:-:|-------|
+| Transport, tracks, clips, scenes | Yes | — | Core API, stable across all 12.x |
+| MIDI notes (add, modify, remove) | Yes | — | Uses Live 12 note API (`get_notes_extended`, `apply_note_modifications`) |
+| Device parameters, toggle, delete | Yes | — | Works with any device on the track |
+| Browser search & load | Yes | — | Results depend on installed content |
+| Mixing (volume, pan, sends, routing) | Yes | — | |
+| Arrangement (cue points, recording) | Yes | — | |
+| Stock instruments (Analog, Operator, Wavetable, Drift, Meld) | — | Yes | Drift and Meld are Suite instruments |
+| Max for Live devices (LFO, Convolution Reverb, DS drums) | — | Yes | Requires Suite or M4L add-on |
+| Simpler / Sampler | Yes | — | Sampler advanced features need Suite |
+| Stock effects (Compressor, Reverb, EQ Eight, etc.) | Yes | — | All editions include audio effects |
+| Hybrid Reverb, Spectral Time/Resonator | — | Yes | Suite-only effects |
+| CC Control MIDI effect | Yes | — | New in Live 12 |
+| Drum Rack, Instrument Rack, Effect Rack | Yes | — | |
+| Third-party VST/AU plugins | Yes | — | Loads via browser if installed |
+
+**Python version:** Ableton Live 12 bundles Python 3.11. The MCP server runs outside Ableton and requires Python 3.10+.
 
 ## Development
 

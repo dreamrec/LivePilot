@@ -55,7 +55,7 @@ def create_clip(ctx: Context, track_index: int, clip_index: int, length: float) 
 
 @mcp.tool()
 def delete_clip(ctx: Context, track_index: int, clip_index: int) -> dict:
-    """Delete a clip from a clip slot."""
+    """Delete a clip from a clip slot. This removes all notes and automation. Use undo to revert."""
     _validate_track_index(track_index)
     _validate_clip_index(clip_index)
     return _get_ableton(ctx).send_command("delete_clip", {

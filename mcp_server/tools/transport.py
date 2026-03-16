@@ -1,6 +1,6 @@
-"""Transport MCP tools — playback, tempo, metronome, loop, undo/redo.
+"""Transport MCP tools — playback, tempo, metronome, loop, undo/redo, action log.
 
-10 tools matching the Remote Script transport domain.
+11 tools matching the Remote Script transport domain.
 """
 
 from fastmcp import Context
@@ -94,3 +94,14 @@ def undo(ctx: Context) -> dict:
 def redo(ctx: Context) -> dict:
     """Redo the last undone action in Ableton."""
     return _get_ableton(ctx).send_command("redo")
+
+
+@mcp.tool()
+def get_recent_actions(ctx: Context, limit: int = 20) -> dict:
+    """Get a log of recent commands sent to Ableton (newest first). Useful for reviewing what was changed."""
+    if limit < 1:
+        limit = 1
+    elif limit > 50:
+        limit = 50
+    entries = _get_ableton(ctx).get_recent_commands(limit)
+    return {"actions": entries, "count": len(entries)}

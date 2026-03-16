@@ -1,4 +1,4 @@
-"""Verify all 76 MCP tools are registered across 9 domains."""
+"""Verify all 77 MCP tools are registered across 9 domains."""
 
 import asyncio
 import sys
@@ -26,6 +26,7 @@ def test_transport_tools_registered():
         "set_session_loop",
         "undo",
         "redo",
+        "get_recent_actions",
     }
     missing = expected - names
     assert not missing, f"Missing transport tools: {missing}"
@@ -164,4 +165,4 @@ def test_arrangement_tools_registered():
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 76, f"Expected 76 tools, got {len(tools)}"
+    assert len(tools) == 77, f"Expected 77 tools, got {len(tools)}"

@@ -120,7 +120,7 @@ def remove_notes(
     from_time: float = 0.0,
     time_span: Optional[float] = None,
 ) -> dict:
-    """Remove all MIDI notes in a pitch/time region."""
+    """Remove all MIDI notes in a pitch/time region. Use undo to revert. Defaults remove ALL notes in the clip."""
     _validate_track_index(track_index)
     _validate_clip_index(clip_index)
     params = {
@@ -139,7 +139,7 @@ def remove_notes(
 
 @mcp.tool()
 def remove_notes_by_id(ctx: Context, track_index: int, clip_index: int, note_ids: list[int]) -> dict:
-    """Remove specific MIDI notes by their IDs."""
+    """Remove specific MIDI notes by their IDs. Use undo to revert."""
     _validate_track_index(track_index)
     _validate_clip_index(clip_index)
     if not note_ids:
