@@ -1,0 +1,113 @@
+"""Mixing MCP tools — volume, pan, sends, routing, master.
+
+8 tools matching the Remote Script mixing domain.
+"""
+
+from fastmcp import Context
+
+from ..server import mcp
+
+
+def _get_ableton(ctx: Context):
+    """Extract AbletonConnection from lifespan context."""
+    return ctx.lifespan_context["ableton"]
+
+
+def _validate_track_index(track_index: int):
+    if track_index < 0:
+        raise ValueError("track_index must be >= 0")
+
+
+@mcp.tool()
+def set_track_volume(ctx: Context, track_index: int, volume: float) -> dict:
+    """Set a track's volume (0.0-1.0)."""
+    _validate_track_index(track_index)
+    if not 0.0 <= volume <= 1.0:
+        raise ValueError("Volume must be between 0.0 and 1.0")
+    return _get_ableton(ctx).send_command("set_track_volume", {
+        "track_index": track_index,
+        "volume": volume,
+    })
+
+
+@mcp.tool()
+def set_track_pan(ctx: Context, track_index: int, pan: float) -> dict:
+    """Set a track's panning (-1.0 left to 1.0 right)."""
+    _validate_track_index(track_index)
+    if not -1.0 <= pan <= 1.0:
+        raise ValueError("Pan must be between -1.0 and 1.0")
+    return _get_ableton(ctx).send_command("set_track_pan", {
+        "track_index": track_index,
+        "pan": pan,
+    })
+
+
+@mcp.tool()
+def set_track_send(
+    ctx: Context, track_index: int, send_index: int, value: float
+) -> dict:
+    """Set a send level on a track (0.0-1.0)."""
+    _validate_track_index(track_index)
+    if send_index < 0:
+        raise ValueError("send_index must be >= 0")
+    if not 0.0 <= value <= 1.0:
+        raise ValueError("Send value must be between 0.0 and 1.0")
+    return _get_ableton(ctx).send_command("set_track_send", {
+        "track_index": track_index,
+        "send_index": send_index,
+        "value": value,
+    })
+
+
+@mcp.tool()
+def get_return_tracks(ctx: Context) -> dict:
+    """Get info about all return tracks: name, volume, panning."""
+    return _get_ableton(ctx).send_command("get_return_tracks")
+
+
+@mcp.tool()
+def get_master_track(ctx: Context) -> dict:
+    """Get master track info: volume, panning, devices."""
+    return _get_ableton(ctx).send_command("get_master_track")
+
+
+@mcp.tool()
+def set_master_volume(ctx: Context, volume: float) -> dict:
+    """Set the master track volume (0.0-1.0)."""
+    if not 0.0 <= volume <= 1.0:
+        raise ValueError("Volume must be between 0.0 and 1.0")
+    return _get_ableton(ctx).send_command("set_master_volume", {"volume": volume})
+
+
+@mcp.tool()
+def get_track_routing(ctx: Context, track_index: int) -> dict:
+    """Get input/output routing info for a track."""
+    _validate_track_index(track_index)
+    return _get_ableton(ctx).send_command("get_track_routing", {
+        "track_index": track_index,
+    })
+
+
+@mcp.tool()
+def set_track_routing(
+    ctx: Context,
+    track_index: int,
+    input_type: str | None = None,
+    input_channel: str | None = None,
+    output_type: str | None = None,
+    output_channel: str | None = None,
+) -> dict:
+    """Set input/output routing for a track by display name."""
+    _validate_track_index(track_index)
+    params = {"track_index": track_index}
+    if input_type is not None:
+        params["input_type"] = input_type
+    if input_channel is not None:
+        params["input_channel"] = input_channel
+    if output_type is not None:
+        params["output_type"] = output_type
+    if output_channel is not None:
+        params["output_channel"] = output_channel
+    if len(params) == 1:
+        raise ValueError("At least one routing parameter must be provided")
+    return _get_ableton(ctx).send_command("set_track_routing", params)
