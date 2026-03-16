@@ -360,3 +360,43 @@ for i, interval in enumerate(intervals):
 - **Chord**: all notes simultaneously (stab)
 
 Rate determines speed: 1/8 = 0.5 beat spacing, 1/16 = 0.25 beat spacing.
+
+## Euclidean Rhythms
+
+Distribute `k` notes as evenly as possible across `n` steps. These are found in music traditions worldwide and create compelling grooves.
+
+| Notation | Steps | Hits | Pattern (x=hit, .=rest) | Association |
+|----------|-------|------|------------------------|-------------|
+| E(3,8) | 8 | 3 | x..x..x. | Cuban tresillo |
+| E(5,8) | 8 | 5 | x.xx.xx. | West African bell |
+| E(7,12) | 12 | 7 | x.xx.x.xx.x. | West African 12/8 |
+| E(5,16) | 16 | 5 | x..x..x..x..x.. | Bossa nova |
+| E(3,16) | 16 | 3 | x.....x.....x... | Sparse, ambient |
+| E(4,12) | 12 | 4 | x..x..x..x.. | Triplet groove |
+| E(7,16) | 16 | 7 | x.x.x.xx.x.x.xx | Complex groove |
+
+To convert to beat times: `step * (clip_length / total_steps)`. For a 4-beat clip with 16 steps, each step = 0.25 beats.
+
+## Live 12 MIDI Tools (Built-in Generators & Transformations)
+
+Live 12 includes powerful built-in MIDI tools accessible via the clip editor. These are relevant context for understanding what users may have already applied to their clips.
+
+### Generators
+- **Rhythm** — Up to 16 steps, density control, split probability (steps divide in half)
+- **Euclidean** — Up to 4 voices, per-voice pitch/velocity, rotation and density sliders
+- **Seed** — Random generator with pitch range, duration range, velocity range, voice count
+- **Shape** — Notes follow drawn shapes with pitch range, rate, tie probability
+- **Stacks** — Chord generator using Tonnetz visualization, scale-aware
+
+### Transformations
+- **Quantize** — Grid + triplet, amount 0-100% (partial quantize)
+- **Arpeggiate** — 18 styles, transposition by scale degrees or semitones
+- **Span** — Legato/tenuto/staccato articulation
+- **Chop** — Divide notes into up to 64 parts with gap patterns
+- **Strum** — Chord timing with low/high strum and tension
+- **Ornament** — Flam and grace notes
+- **Recombine** — Shuffle/mirror/rotate position, pitch, duration, or velocity
+- **Time Warp** — Accelerando/ritardando speed curves
+- **Humanize** — Variation up to 1/4 of grid division
+
+These tools operate on existing clip data — LivePilot's `add_notes`, `modify_notes`, and `quantize_clip` tools complement them for programmatic MIDI manipulation.
