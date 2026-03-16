@@ -1,0 +1,32 @@
+{
+  "name": "livepilot",
+  "version": "1.0.0",
+  "description": "AI copilot for Ableton Live 12 — 76 MCP tools for production, sound design, and mixing",
+  "author": "Pilot Studio",
+  "license": "MIT",
+  "bin": {
+    "livepilot": "./bin/livepilot.js"
+  },
+  "keywords": [
+    "ableton",
+    "live",
+    "mcp",
+    "ai",
+    "music",
+    "production",
+    "midi",
+    "daw"
+  ],
+  "files": [
+    "bin/",
+    "installer/",
+    "remote_script/",
+    "mcp_server/",
+    "plugin/",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
