@@ -159,20 +159,49 @@ Modifies note velocity.
 - Dynamic compression: Compand negative, narrows velocity range
 - Humanize: small Random value (5-15)
 
+### CC Control (Live 12)
+Sends MIDI CC messages based on note input. New in Live 12.
+
+**Key parameters:**
+- `CC Number` — Which CC to send (0-127)
+- `Value` — Fixed CC value or mapped from velocity/pitch
+
+**Use case:** Automate hardware synth parameters from MIDI clips.
+
+**Note:** All pitch-based MIDI effects in Live 12 support a "Use Current Scale" toggle that constrains output to the clip's scale setting.
+
 ## Max for Live Devices (Stock with Suite)
 
 ### M4L Instruments
 - **Drift** — Analog-modeled synth with character and instability
 - **Meld** — MPE-capable dual-engine synth
-- **Granulator II** — Granular synthesis instrument
+- **Granulator III** — Granular synthesis instrument (updated from Granulator II)
+- **Vector Grain** — Vector synthesis + granular engine
+- **FlexGroove** — Groove-based instrument (from Packs)
 
 ### M4L Audio Effects
+- **Align Delay** — Phase-aligned delay for mixing
+- **Color Limiter** — Colorful limiter with character
 - **Convolution Reverb** — Impulse response reverb using real space recordings
 - **Convolution Reverb Pro** — Extended version with EQ and modulation
-- **Hybrid Reverb** — Combines convolution and algorithmic reverb
+- **Envelope Follower** — Generates control signal from audio amplitude
+- **Gated Delay** — Rhythmically gated delay effect
+- **LFO** — Free-running LFO that maps to any parameter
+- **PitchLoop89** — Creative pitch-shifting looper
+- **Shaper** — Custom waveshaping LFO/envelope
 - **Spectral Resonator** — Spectral processing with pitched resonance
 - **Spectral Time** — Spectral delay and freeze effects
-- **PitchLoop89** — Creative pitch-shifting looper
+
+### M4L Drum Synths (Drum Rack compatible)
+- **DS Kick** — Synthesized kick drum
+- **DS Snare** — Synthesized snare
+- **DS Clap** — Synthesized clap
+- **DS HH** — Synthesized hi-hat
+- **DS Cymbal** — Synthesized cymbal
+- **DS Tom** — Synthesized tom
+- **DS FM** — FM-synthesized percussion
+- **DS Clang** — Metallic percussion
+- **DS Sampler** — Sample-based drum voice
 
 ### M4L MIDI Effects
 - **Envelope MIDI** — Custom velocity/CC envelopes
@@ -268,7 +297,7 @@ find_and_load_device(track_index=0, name="Arpeggiator")
 | Distortion | `Saturator`, `Overdrive`, `Erosion`, `Redux`, `Pedal`, `Amp`, `Cabinet` |
 | Modulation | `Chorus-Ensemble`, `Phaser-Flanger`, `Frequency Shifter` |
 | Utility | `Utility`, `Tuner`, `Spectrum` |
-| MIDI FX | `Arpeggiator`, `Chord`, `Note Length`, `Pitch`, `Random`, `Scale`, `Velocity` |
+| MIDI FX | `Arpeggiator`, `Chord`, `Note Length`, `Pitch`, `Random`, `Scale`, `Velocity`, `CC Control` |
 | Racks | `Instrument Rack`, `Audio Effect Rack`, `MIDI Effect Rack` |
 | Drum | `Drum Buss` (audio effect, not Drum Rack) |
 
@@ -278,6 +307,8 @@ For specific presets or when you know the exact browser path:
 load_device_by_uri(track_index=0, uri="...")
 ```
 Get URIs by browsing with `search_browser` or `get_browser_items`.
+
+**Important:** Device URIs are opaque strings — they cannot be constructed manually. You must discover them by walking the browser tree (`get_browser_tree` → `get_browser_items`) or searching (`search_browser`). Each `BrowserItem` has a `uri`, `name`, and `is_loadable` property.
 
 ### `search_browser` — Find Presets
 Search for presets, sounds, and samples:
