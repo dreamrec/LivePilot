@@ -1,12 +1,15 @@
 #!/usr/bin/env node
 "use strict";
 
-const { execFileSync, spawn } = require("child_process");
+const { execFileSync, execSync, spawn } = require("child_process");
+const fs = require("fs");
 const net = require("net");
 const path = require("path");
 
 const ROOT = path.resolve(__dirname, "..");
 const PKG = require(path.join(ROOT, "package.json"));
+const VENV_DIR = path.join(ROOT, ".venv");
+const REQUIREMENTS = path.join(ROOT, "requirements.txt");
 
 // ---------------------------------------------------------------------------
 // Python detection
@@ -19,13 +22,12 @@ function findPython() {
         encoding: "utf-8",
         timeout: 5000,
       }).trim();
-      // e.g. "Python 3.12.1"
       const match = out.match(/Python\s+(\d+)\.(\d+)/);
       if (match) {
         const major = parseInt(match[1], 10);
         const minor = parseInt(match[2], 10);
         if (major === 3 && minor >= 10) {
-          return cmd;
+          return { cmd, version: out };
         }
       }
     } catch {
@@ -33,6 +35,64 @@ function findPython() {
     }
   }
   return null;
+}
+
+/**
+ * Return the path to the Python binary inside the venv.
+ */
+function venvPython() {
+  const isWin = process.platform === "win32";
+  return path.join(VENV_DIR, isWin ? "Scripts" : "bin", isWin ? "python.exe" : "python3");
+}
+
+// ---------------------------------------------------------------------------
+// Virtual environment bootstrap
+// ---------------------------------------------------------------------------
+
+/**
+ * Ensure a local .venv exists with dependencies installed.
+ * Returns the path to the venv Python binary.
+ */
+function ensureVenv(systemPython) {
+  const venvPy = venvPython();
+
+  // Check if venv already exists and has our deps
+  if (fs.existsSync(venvPy)) {
+    try {
+      execFileSync(venvPy, ["-c", "import fastmcp"], {
+        encoding: "utf-8",
+        timeout: 10000,
+        stdio: "pipe",
+      });
+      return venvPy; // venv exists and fastmcp is importable
+    } catch {
+      // venv exists but deps missing — reinstall
+      console.log("LivePilot: reinstalling Python dependencies...");
+      execFileSync(venvPy, ["-m", "pip", "install", "-q", "-r", REQUIREMENTS], {
+        cwd: ROOT,
+        stdio: "inherit",
+        timeout: 120000,
+      });
+      return venvPy;
+    }
+  }
+
+  // Create venv from scratch
+  console.log("LivePilot: setting up Python environment (first run)...");
+  execFileSync(systemPython, ["-m", "venv", VENV_DIR], {
+    cwd: ROOT,
+    stdio: "inherit",
+    timeout: 30000,
+  });
+
+  console.log("LivePilot: installing dependencies...");
+  execFileSync(venvPython(), ["-m", "pip", "install", "-q", "-r", REQUIREMENTS], {
+    cwd: ROOT,
+    stdio: "inherit",
+    timeout: 120000,
+  });
+
+  return venvPython();
 }
 
 // ---------------------------------------------------------------------------
@@ -59,35 +119,140 @@ function checkStatus() {
         try {
           const resp = JSON.parse(buf.split("\n")[0]);
           if (resp.ok === true && resp.result && resp.result.pong) {
-            console.log("LivePilot: connected to Ableton Live on %s:%d", HOST, PORT);
+            console.log("  Ableton Live: connected on %s:%d", HOST, PORT);
           } else {
-            console.log("LivePilot: unexpected response from Ableton:", JSON.stringify(resp));
+            console.log("  Ableton Live: unexpected response:", JSON.stringify(resp));
           }
         } catch {
-          console.log("LivePilot: invalid response from Ableton");
+          console.log("  Ableton Live: invalid response");
         }
         sock.destroy();
-        resolve();
+        resolve(true);
       }
     });
 
     sock.on("timeout", () => {
-      console.log("LivePilot: connection timed out — is Ableton Live running with LivePilot Remote Script?");
+      console.log("  Ableton Live: connection timed out");
       sock.destroy();
-      resolve();
+      resolve(false);
     });
 
     sock.on("error", (err) => {
       if (err.code === "ECONNREFUSED") {
-        console.log("LivePilot: connection refused on %s:%d — Ableton Live is not running or Remote Script is not loaded.", HOST, PORT);
+        console.log("  Ableton Live: not running (connection refused on %s:%d)", HOST, PORT);
       } else {
-        console.log("LivePilot: connection error —", err.message);
+        console.log("  Ableton Live: %s", err.message);
       }
-      resolve();
+      resolve(false);
     });
 
     sock.connect(PORT, HOST);
   });
+}
+
+// ---------------------------------------------------------------------------
+// Doctor — comprehensive diagnostic
+// ---------------------------------------------------------------------------
+
+async function doctor() {
+  console.log("LivePilot Doctor v%s", PKG.version);
+  console.log("─".repeat(50));
+
+  let ok = true;
+
+  // 1. Python
+  const pyInfo = findPython();
+  if (pyInfo) {
+    console.log("  Python: %s (%s)", pyInfo.version, pyInfo.cmd);
+  } else {
+    console.log("  Python: NOT FOUND (need >= 3.10)");
+    console.log("    Fix: install Python 3.10+ and add to PATH");
+    ok = false;
+  }
+
+  // 2. Virtual environment
+  const venvPy = venvPython();
+  if (fs.existsSync(venvPy)) {
+    console.log("  Venv: %s", VENV_DIR);
+  } else {
+    console.log("  Venv: not created yet (run 'npx livepilot' to bootstrap)");
+  }
+
+  // 3. fastmcp import
+  if (fs.existsSync(venvPy)) {
+    try {
+      const ver = execFileSync(venvPy, ["-c", "import fastmcp; print(fastmcp.__version__)"], {
+        encoding: "utf-8",
+        timeout: 10000,
+        stdio: "pipe",
+      }).trim();
+      console.log("  fastmcp: v%s", ver);
+    } catch {
+      console.log("  fastmcp: NOT INSTALLED in venv");
+      console.log("    Fix: run 'npx livepilot' to auto-install dependencies");
+      ok = false;
+    }
+  }
+
+  // 4. MCP server module
+  const serverInit = path.join(ROOT, "mcp_server", "__init__.py");
+  if (fs.existsSync(serverInit)) {
+    console.log("  MCP server: found at %s", path.join(ROOT, "mcp_server"));
+  } else {
+    console.log("  MCP server: MISSING (mcp_server/ directory not found)");
+    ok = false;
+  }
+
+  // 5. Remote Script
+  const remoteInit = path.join(ROOT, "remote_script", "LivePilot", "__init__.py");
+  if (fs.existsSync(remoteInit)) {
+    console.log("  Remote Script: found at %s", path.join(ROOT, "remote_script", "LivePilot"));
+  } else {
+    console.log("  Remote Script: MISSING");
+    ok = false;
+  }
+
+  // 6. Remote Script installed in Ableton?
+  try {
+    const { findAbletonPaths } = require(path.join(ROOT, "installer", "paths.js"));
+    const candidates = findAbletonPaths();
+    let installed = false;
+    for (const c of candidates) {
+      const dest = path.join(c.path, "LivePilot", "__init__.py");
+      if (fs.existsSync(dest)) {
+        console.log("  Ableton install: %s", path.join(c.path, "LivePilot"));
+        installed = true;
+        break;
+      }
+    }
+    if (!installed) {
+      console.log("  Ableton install: NOT INSTALLED");
+      console.log("    Fix: run 'npx livepilot --install' to copy Remote Script");
+    }
+  } catch {
+    console.log("  Ableton install: could not check (installer module error)");
+  }
+
+  // 7. Environment overrides
+  if (process.env.LIVE_MCP_HOST || process.env.LIVE_MCP_PORT) {
+    console.log("  Env overrides: HOST=%s PORT=%s",
+      process.env.LIVE_MCP_HOST || "(default 127.0.0.1)",
+      process.env.LIVE_MCP_PORT || "(default 9878)");
+  }
+
+  // 8. TCP connection to Ableton
+  console.log("");
+  console.log("Connection test:");
+  await checkStatus();
+
+  // Summary
+  console.log("");
+  console.log("─".repeat(50));
+  if (ok) {
+    console.log("All checks passed.");
+  } else {
+    console.log("Some checks failed — see Fix suggestions above.");
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -101,6 +266,27 @@ async function main() {
   // --version / -v
   if (flag === "--version" || flag === "-v") {
     console.log("livepilot v%s", PKG.version);
+    return;
+  }
+
+  // --help / -h
+  if (flag === "--help" || flag === "-h") {
+    console.log("livepilot v%s — AI copilot for Ableton Live 12", PKG.version);
+    console.log("");
+    console.log("Usage: npx livepilot [command]");
+    console.log("");
+    console.log("Commands:");
+    console.log("  (none)        Start the MCP server");
+    console.log("  --install     Install Remote Script into Ableton Live");
+    console.log("  --uninstall   Remove Remote Script from Ableton Live");
+    console.log("  --status      Check if Ableton Live is reachable");
+    console.log("  --doctor      Run diagnostics (Python, deps, connection)");
+    console.log("  --version     Show version");
+    console.log("  --help        Show this help");
+    console.log("");
+    console.log("Environment:");
+    console.log("  LIVE_MCP_HOST   Remote Script host (default: 127.0.0.1)");
+    console.log("  LIVE_MCP_PORT   Remote Script port (default: 9878)");
     return;
   }
 
@@ -124,21 +310,46 @@ async function main() {
     return;
   }
 
+  // --doctor
+  if (flag === "--doctor") {
+    await doctor();
+    return;
+  }
+
   // Default: start MCP server
-  const python = findPython();
-  if (!python) {
+  const pyInfo = findPython();
+  if (!pyInfo) {
     console.error("Error: Python >= 3.10 is required but was not found.");
+    console.error("");
     console.error("Install Python 3.10+ and ensure 'python3' or 'python' is on your PATH.");
+    console.error("  macOS:   brew install python@3.12");
+    console.error("  Ubuntu:  sudo apt install python3");
+    console.error("  Windows: https://www.python.org/downloads/");
     process.exit(1);
   }
 
-  const child = spawn(python, ["-m", "mcp_server"], {
+  // Bootstrap venv and install deps automatically
+  let pythonBin;
+  try {
+    pythonBin = ensureVenv(pyInfo.cmd);
+  } catch (err) {
+    console.error("Error: failed to set up Python environment.");
+    console.error("  %s", err.message);
+    console.error("");
+    console.error("You can try manually:");
+    console.error("  cd %s", ROOT);
+    console.error("  %s -m venv .venv", pyInfo.cmd);
+    console.error("  .venv/bin/pip install -r requirements.txt");
+    process.exit(1);
+  }
+
+  const child = spawn(pythonBin, ["-m", "mcp_server"], {
     cwd: ROOT,
     stdio: "inherit",
   });
 
   child.on("error", (err) => {
-    console.error("Failed to start MCP server:", err.message);
+    console.error("Failed to start MCP server: %s", err.message);
     process.exit(1);
   });
 

@@ -14,6 +14,30 @@ class AbletonConnectionError(Exception):
     pass
 
 
+# Error messages with user-friendly context
+_ERROR_HINTS = {
+    "INDEX_ERROR": "Check that the track, clip, device, or scene index exists. "
+                   "Use get_session_info to see current indices.",
+    "NOT_FOUND": "The requested item could not be found in the Live session. "
+                 "Verify names and indices with get_session_info or get_track_info.",
+    "INVALID_PARAM": "A parameter value was out of range or the wrong type. "
+                     "Use get_device_parameters to check valid ranges.",
+    "STATE_ERROR": "The operation isn't valid in the current state. "
+                   "For example, you can't add notes to a clip that doesn't exist yet.",
+    "TIMEOUT": "Ableton took too long to respond. This can happen with heavy sessions. "
+               "Try again, or check if Ableton is unresponsive.",
+}
+
+
+def _friendly_error(code: str, message: str, command_type: str) -> str:
+    """Format an error from the Remote Script into a user-friendly message."""
+    hint = _ERROR_HINTS.get(code, "")
+    parts = [f"[{code}] {message}"]
+    if hint:
+        parts.append(hint)
+    return " ".join(parts)
+
+
 class AbletonConnection:
     """TCP client that sends JSON commands to the LivePilot Remote Script."""
 
@@ -34,6 +58,14 @@ class AbletonConnection:
             sock.connect((self.host, self.port))
             sock.settimeout(RECV_TIMEOUT)
             self._socket = sock
+        except ConnectionRefusedError:
+            self._socket = None
+            raise AbletonConnectionError(
+                f"Cannot reach Ableton Live on {self.host}:{self.port}. "
+                "Make sure Ableton Live is running and the LivePilot Remote Script "
+                "is enabled in Preferences > Link, Tempo & MIDI > Control Surface. "
+                "Run 'npx livepilot --doctor' for a full diagnostic."
+            )
         except OSError as exc:
             self._socket = None
             raise AbletonConnectionError(
@@ -97,7 +129,8 @@ class AbletonConnection:
             err = response.get("error", {})
             code = err.get("code", "INTERNAL") if isinstance(err, dict) else "INTERNAL"
             message = err.get("message", str(err)) if isinstance(err, dict) else str(err)
-            raise Exception(f"[{code}] {message}")
+            friendly = _friendly_error(code, message, command_type)
+            raise AbletonConnectionError(friendly)
 
         return response.get("result", {})
 

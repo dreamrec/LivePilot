@@ -1,0 +1,28 @@
+# Python artifacts
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache/
+.venv/
+*.egg-info/
+
+# Development
+tests/
+docs/
+.git/
+.github/
+.gitignore
+.eslintrc*
+.prettierrc*
+CLAUDE.md
+CHANGELOG.md
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

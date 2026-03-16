@@ -49,7 +49,13 @@ WRITE_COMMANDS = frozenset([
 
 
 class LivePilotServer(object):
-    """TCP server that bridges JSON commands to Ableton's main thread."""
+    """TCP server that bridges JSON commands to Ableton's main thread.
+
+    Single-client by design: only one client can be connected at a time.
+    All commands must execute on Ableton's main thread (Live Object Model
+    is not thread-safe), so serialized client access prevents race conditions.
+    Additional connection attempts are rejected with a clear error message.
+    """
 
     def __init__(self, control_surface, host="127.0.0.1", port=9878):
         self._cs = control_surface
@@ -59,6 +65,7 @@ class LivePilotServer(object):
         self._server_socket = None
         self._thread = None
         self._command_queue = queue.Queue()
+        self._client_connected = False
 
     # ── Public API ───────────────────────────────────────────────────────
 
@@ -98,7 +105,7 @@ class LivePilotServer(object):
             self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self._server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self._server_socket.bind((self._host, self._port))
-            self._server_socket.listen(1)
+            self._server_socket.listen(2)
             self._server_socket.settimeout(1.0)
             self._log("Listening on %s:%d" % (self._host, self._port))
         except Exception as exc:
@@ -108,12 +115,36 @@ class LivePilotServer(object):
         while self._running:
             try:
                 client, addr = self._server_socket.accept()
+                if self._client_connected:
+                    # Reject concurrent clients with an explicit message
+                    self._log("Rejected client from %s:%d (another client is connected)" % addr)
+                    try:
+                        reject = json.dumps({
+                            "id": "system",
+                            "ok": False,
+                            "error": {
+                                "code": "STATE_ERROR",
+                                "message": "Another client is already connected. "
+                                           "LivePilot accepts one client at a time. "
+                                           "Disconnect the current client first."
+                            }
+                        }) + "\n"
+                        client.sendall(reject.encode("utf-8"))
+                    except Exception:
+                        pass
+                    try:
+                        client.close()
+                    except Exception:
+                        pass
+                    continue
+                self._client_connected = True
                 self._log("Client connected from %s:%d" % addr)
                 try:
                     self._handle_client(client)
                 except Exception as exc:
                     self._log("Client error: %s" % exc)
                 finally:
+                    self._client_connected = False
                     try:
                         client.close()
                     except Exception:

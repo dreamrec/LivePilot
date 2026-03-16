@@ -17,15 +17,6 @@
     "midi",
     "daw"
   ],
-  "files": [
-    "bin/",
-    "installer/",
-    "remote_script/",
-    "mcp_server/",
-    "plugin/",
-    "README.md",
-    "LICENSE"
-  ],
   "engines": {
     "node": ">=18.0.0"
   }

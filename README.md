@@ -85,7 +85,7 @@ Claude Code / AI Client
 ## Requirements
 
 - **Ableton Live 12** (minimum)
-- **Python 3.10+**
+- **Python 3.10+** (auto-detected; venv created on first run)
 - **Node.js 18+**
 
 ## CLI
@@ -95,8 +95,16 @@ npx livepilot              # Start MCP server (stdio)
 npx livepilot --install    # Install Remote Script
 npx livepilot --uninstall  # Remove Remote Script
 npx livepilot --status     # Check Ableton connection
+npx livepilot --doctor     # Full diagnostic check
 npx livepilot --version    # Version info
+npx livepilot --help       # Show all commands
 ```
+
+## Connection Model
+
+LivePilot uses a **single-client** TCP connection. Only one MCP client can be connected to Ableton at a time. This is by design — Ableton's Live Object Model is not thread-safe, so serialized access prevents race conditions and data corruption.
+
+If a second client attempts to connect while one is active, it receives an error message and is disconnected. To switch clients, disconnect the current one first.
 
 ## Development
 
