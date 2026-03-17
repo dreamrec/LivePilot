@@ -10,11 +10,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/pilotstudio/livepilot"
+    "url": "https://github.com/dreamrec/LivePilot"
   },
-  "homepage": "https://github.com/pilotstudio/livepilot",
+  "homepage": "https://github.com/dreamrec/LivePilot",
   "bugs": {
-    "url": "https://github.com/pilotstudio/livepilot/issues"
+    "url": "https://github.com/dreamrec/LivePilot/issues"
   },
   "keywords": [
     "ableton",
