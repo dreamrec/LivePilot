@@ -134,14 +134,25 @@ def batch_set_parameters(song, params):
 
 @register("toggle_device")
 def toggle_device(song, params):
-    """Enable or disable a device (parameter 0 is always on/off)."""
+    """Enable or disable a device."""
     track_index = int(params["track_index"])
     device_index = int(params["device_index"])
     active = bool(params["active"])
     track = get_track(song, track_index)
     device = get_device(track, device_index)
-    device.parameters[0].value = 1.0 if active else 0.0
-    return {"name": device.name, "is_active": device.parameters[0].value}
+
+    # Find the "Device On" parameter by name (safer than assuming index 0)
+    on_param = None
+    for p in device.parameters:
+        if p.name == "Device On":
+            on_param = p
+            break
+    if on_param is None:
+        # Fallback to parameter 0 for devices that don't use "Device On"
+        on_param = device.parameters[0]
+
+    on_param.value = 1.0 if active else 0.0
+    return {"name": device.name, "is_active": on_param.value > 0.5}
 
 
 @register("delete_device")
@@ -220,6 +231,7 @@ def find_and_load_device(song, params):
         pass
 
     for category in categories:
+        iterations = 0  # Reset per category so each gets a fair search budget
         found = search_children(category)
         if found is not None:
             # Select the target track so the item loads onto it

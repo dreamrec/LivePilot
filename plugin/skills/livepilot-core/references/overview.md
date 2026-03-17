@@ -14,7 +14,7 @@ Claude Code  ──MCP──►  FastMCP Server  ──TCP/9878──►  Remote
 - **Protocol**: JSON over TCP, newline-delimited. Every command gets a response.
 - **Thread safety**: All Live Object Model (LOM) access happens on Ableton's main thread
 
-## The 76 Tools — What Each One Does
+## The 78 Tools — What Each One Does
 
 ### Transport (12) — Playback, tempo, global state, diagnostics
 
@@ -30,6 +30,8 @@ Claude Code  ──MCP──►  FastMCP Server  ──TCP/9878──►  Remote
 | `set_session_loop` | Sets loop region | `loop_start` (beats), `loop_length` (beats) |
 | `undo` | Undoes last action | — |
 | `redo` | Redoes last undone action | — |
+| `get_recent_actions` | Returns log of recent commands sent to Ableton (newest first) | `limit` (1-50, default 20) |
+| `get_session_diagnostics` | Analyzes session for issues: armed tracks, solo leftovers, unnamed tracks, empty clips | — |
 
 ### Tracks (12) — Create, delete, configure tracks
 

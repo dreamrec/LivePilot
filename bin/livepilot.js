@@ -253,6 +253,7 @@ async function doctor() {
   } else {
     console.log("Some checks failed — see Fix suggestions above.");
   }
+  return ok;
 }
 
 // ---------------------------------------------------------------------------
@@ -306,14 +307,14 @@ async function main() {
 
   // --status
   if (flag === "--status") {
-    await checkStatus();
-    return;
+    const reachable = await checkStatus();
+    process.exit(reachable ? 0 : 1);
   }
 
   // --doctor
   if (flag === "--doctor") {
-    await doctor();
-    return;
+    const passed = await doctor();
+    process.exit(passed ? 0 : 1);
   }
 
   // Default: start MCP server

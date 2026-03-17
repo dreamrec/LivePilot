@@ -28,6 +28,8 @@ def get_arrangement_clips(song, params):
 def jump_to_time(song, params):
     """Jump to a specific beat time in the arrangement."""
     beat_time = float(params["beat_time"])
+    if beat_time < 0:
+        raise ValueError("beat_time must be >= 0")
     song.current_song_time = beat_time
     return {"current_song_time": song.current_song_time}
 

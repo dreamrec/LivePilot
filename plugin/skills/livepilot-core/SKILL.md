@@ -109,7 +109,7 @@ Deep production knowledge lives in `references/`. Consult these when making crea
 
 | File | What's inside | When to consult |
 |------|--------------|-----------------|
-| `references/overview.md` | All 76 tools mapped with params, units, ranges | Quick lookup for any tool |
+| `references/overview.md` | All 78 tools mapped with params, units, ranges | Quick lookup for any tool |
 | `references/midi-recipes.md` | Drum patterns by genre, chord voicings, scales, hi-hat techniques, humanization, polymetrics | Programming MIDI notes, building beats |
 | `references/sound-design.md` | Stock instruments/effects, parameter recipes for bass/pad/lead/pluck, device chain patterns | Loading and configuring devices |
 | `references/mixing-patterns.md` | Gain staging, parallel compression, sidechain, EQ by instrument, bus processing, stereo width | Setting volumes, panning, adding effects |

@@ -57,6 +57,7 @@ def get_session_diagnostics(song, params):
     unnamed_tracks = []
     empty_tracks = []  # no clips at all
     no_device_midi_tracks = []  # MIDI tracks with no instruments
+    track_slots = []  # cached clip_slots per track (avoid re-evaluating LOM tuple)
 
     for i, track in enumerate(tracks):
         # Armed check
@@ -75,9 +76,13 @@ def get_session_diagnostics(song, params):
         if _looks_default_name(track.name):
             unnamed_tracks.append({"index": i, "name": track.name})
 
+        # Cache clip_slots once per track
+        slots = list(track.clip_slots)
+        track_slots.append(slots)
+
         # Clip count
         clip_count = 0
-        for slot in track.clip_slots:
+        for slot in slots:
             if slot.has_clip:
                 clip_count += 1
         stats["total_clips"] += clip_count
@@ -145,11 +150,10 @@ def get_session_diagnostics(song, params):
     empty_scenes = []
     for i, scene in enumerate(scenes):
         has_any_clip = False
-        for track in tracks:
-            if i < len(list(track.clip_slots)):
-                if track.clip_slots[i].has_clip:
-                    has_any_clip = True
-                    break
+        for slots in track_slots:
+            if i < len(slots) and slots[i].has_clip:
+                has_any_clip = True
+                break
         if not has_any_clip:
             empty_scenes.append({"index": i, "name": scene.name})
 

@@ -66,7 +66,10 @@ class MockAbletonServer:
 
     def stop(self):
         self._running = False
-        self._sock.close()
+        try:
+            self._sock.close()
+        except OSError:
+            pass
         self._thread.join(timeout=3)
 
 

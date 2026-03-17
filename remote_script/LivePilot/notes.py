@@ -24,13 +24,20 @@ def add_notes(song, params):
     try:
         note_specs = []
         for note in notes:
-            spec = Live.Clip.MidiNoteSpecification(
+            kwargs = dict(
                 pitch=int(note["pitch"]),
                 start_time=float(note["start_time"]),
                 duration=float(note["duration"]),
                 velocity=float(note.get("velocity", 100)),
                 mute=bool(note.get("mute", False)),
             )
+            if "probability" in note:
+                kwargs["probability"] = float(note["probability"])
+            if "velocity_deviation" in note:
+                kwargs["velocity_deviation"] = float(note["velocity_deviation"])
+            if "release_velocity" in note:
+                kwargs["release_velocity"] = float(note["release_velocity"])
+            spec = Live.Clip.MidiNoteSpecification(**kwargs)
             note_specs.append(spec)
         clip.add_new_notes(tuple(note_specs))
     finally:
@@ -53,7 +60,9 @@ def get_notes(song, params):
     from_pitch = int(params.get("from_pitch", 0))
     pitch_span = int(params.get("pitch_span", 128))
     from_time = float(params.get("from_time", 0.0))
-    time_span = float(params.get("time_span", clip.length))
+    # Default to clip length, but use a large span if clip has no length yet
+    default_span = clip.length if clip.length > 0 else 32768.0
+    time_span = float(params.get("time_span", default_span))
 
     raw_notes = clip.get_notes_extended(from_pitch, pitch_span, from_time, time_span)
 
@@ -88,7 +97,8 @@ def remove_notes(song, params):
     from_pitch = int(params.get("from_pitch", 0))
     pitch_span = int(params.get("pitch_span", 128))
     from_time = float(params.get("from_time", 0.0))
-    time_span = float(params.get("time_span", clip.length))
+    default_span = clip.length if clip.length > 0 else 32768.0
+    time_span = float(params.get("time_span", default_span))
 
     clip.remove_notes_extended(from_pitch, pitch_span, from_time, time_span)
 
@@ -156,7 +166,11 @@ def modify_notes(song, params):
             note.probability = float(mod["probability"])
         notes_to_modify.append(note)
 
-    clip.apply_note_modifications(tuple(notes_to_modify))
+    clip.begin_undo_step()
+    try:
+        clip.apply_note_modifications(tuple(notes_to_modify))
+    finally:
+        clip.end_undo_step()
 
     return {
         "track_index": track_index,
@@ -241,7 +255,11 @@ def transpose_notes(song, params):
         notes_to_modify.append(note)
 
     if notes_to_modify:
-        clip.apply_note_modifications(tuple(notes_to_modify))
+        clip.begin_undo_step()
+        try:
+            clip.apply_note_modifications(tuple(notes_to_modify))
+        finally:
+            clip.end_undo_step()
 
     return {
         "track_index": track_index,

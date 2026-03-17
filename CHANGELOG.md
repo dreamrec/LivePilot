@@ -5,10 +5,10 @@
 Initial release.
 
 ### Features
-- **76 MCP tools** across 9 domains: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement
+- **78 MCP tools** across 9 domains: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement
 - **Remote Script** for Ableton Live 12 with thread-safe command queue via `schedule_message`
-- **MCP Server** (FastMCP) with input validation, auto-reconnect, and stale socket detection
-- **CLI** (`npx livepilot`) with `--install`, `--uninstall`, `--status`, `--version`
+- **MCP Server** (FastMCP) with input validation, auto-reconnect, and structured error messages
+- **CLI** (`npx livepilot`) with `--install`, `--uninstall`, `--status`, `--doctor`, `--version`
 - **Claude Code Plugin** with:
   - `livepilot-core` skill — core discipline and workflow guides
   - `livepilot-producer` agent — autonomous production from high-level descriptions

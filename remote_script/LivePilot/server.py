@@ -65,6 +65,7 @@ class LivePilotServer(object):
         self._server_socket = None
         self._thread = None
         self._command_queue = queue.Queue()
+        self._client_lock = threading.Lock()
         self._client_connected = False
 
     # ── Public API ───────────────────────────────────────────────────────
@@ -115,36 +116,38 @@ class LivePilotServer(object):
         while self._running:
             try:
                 client, addr = self._server_socket.accept()
-                if self._client_connected:
-                    # Reject concurrent clients with an explicit message
-                    self._log("Rejected client from %s:%d (another client is connected)" % addr)
-                    try:
-                        reject = json.dumps({
-                            "id": "system",
-                            "ok": False,
-                            "error": {
-                                "code": "STATE_ERROR",
-                                "message": "Another client is already connected. "
-                                           "LivePilot accepts one client at a time. "
-                                           "Disconnect the current client first."
-                            }
-                        }) + "\n"
-                        client.sendall(reject.encode("utf-8"))
-                    except Exception:
-                        pass
-                    try:
-                        client.close()
-                    except Exception:
-                        pass
-                    continue
-                self._client_connected = True
+                with self._client_lock:
+                    if self._client_connected:
+                        # Reject concurrent clients with an explicit message
+                        self._log("Rejected client from %s:%d (another client is connected)" % addr)
+                        try:
+                            reject = json.dumps({
+                                "id": "system",
+                                "ok": False,
+                                "error": {
+                                    "code": "STATE_ERROR",
+                                    "message": "Another client is already connected. "
+                                               "LivePilot accepts one client at a time. "
+                                               "Disconnect the current client first."
+                                }
+                            }) + "\n"
+                            client.sendall(reject.encode("utf-8"))
+                        except Exception:
+                            pass
+                        try:
+                            client.close()
+                        except Exception:
+                            pass
+                        continue
+                    self._client_connected = True
                 self._log("Client connected from %s:%d" % addr)
                 try:
                     self._handle_client(client)
                 except Exception as exc:
                     self._log("Client error: %s" % exc)
                 finally:
-                    self._client_connected = False
+                    with self._client_lock:
+                        self._client_connected = False
                     try:
                         client.close()
                     except Exception:

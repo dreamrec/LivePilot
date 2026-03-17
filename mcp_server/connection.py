@@ -105,16 +105,10 @@ class AbletonConnection:
     def send_command(self, command_type: str, params: dict | None = None) -> dict:
         """Send a command to Ableton and return the result dict.
 
-        Handles stale-socket detection via ping and retries once on
-        socket errors with a fresh connection.
+        Retries once on socket errors with a fresh connection.
         """
         # Ensure we have a connection
         if not self.is_connected():
-            self.connect()
-
-        # Stale detection — if ping fails, reconnect
-        if not self.ping():
-            self.disconnect()
             self.connect()
 
         command: dict = {"type": command_type}
@@ -169,8 +163,9 @@ class AbletonConnection:
         if self._socket is None:
             raise AbletonConnectionError("Not connected to Ableton Live")
 
-        command["id"] = str(uuid.uuid4())[:8]
-        payload = json.dumps(command) + "\n"
+        # Don't mutate the caller's dict
+        envelope = {**command, "id": str(uuid.uuid4())[:8]}
+        payload = json.dumps(envelope) + "\n"
 
         try:
             self._socket.sendall(payload.encode("utf-8"))
@@ -178,29 +173,31 @@ class AbletonConnection:
             self.disconnect()
             raise AbletonConnectionError(f"Failed to send command: {exc}") from exc
 
-        # Read until newline
-        buf = b""
+        # Read until newline, preserving any trailing bytes in _recv_buf
+        buf = getattr(self, "_recv_buf", b"")
         try:
-            while True:
+            while b"\n" not in buf:
                 chunk = self._socket.recv(4096)
                 if not chunk:
+                    self._recv_buf = b""
                     self.disconnect()
                     raise AbletonConnectionError("Connection closed by Ableton")
                 buf += chunk
-                if b"\n" in buf:
-                    break
         except socket.timeout as exc:
+            self._recv_buf = buf
             self.disconnect()
             raise AbletonConnectionError(
                 f"Timeout waiting for response from Ableton ({RECV_TIMEOUT}s)"
             ) from exc
         except OSError as exc:
+            self._recv_buf = b""
             self.disconnect()
             raise AbletonConnectionError(
                 f"Socket error reading response: {exc}"
             ) from exc
 
-        line = buf.split(b"\n", 1)[0]
+        line, remainder = buf.split(b"\n", 1)
+        self._recv_buf = remainder
         try:
             return json.loads(line)
         except json.JSONDecodeError as exc:
