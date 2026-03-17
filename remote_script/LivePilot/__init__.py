@@ -16,6 +16,7 @@ from . import scenes       # noqa: F401  — registers scene handlers
 from . import mixing       # noqa: F401  — registers mixing handlers
 from . import browser      # noqa: F401  — registers browser handlers
 from . import arrangement  # noqa: F401  — registers arrangement handlers
+from . import diagnostics  # noqa: F401  — registers diagnostics handler
 
 
 def create_instance(c_instance):

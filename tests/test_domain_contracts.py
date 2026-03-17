@@ -238,3 +238,39 @@ class TestConnectionContracts:
         log = conn.get_recent_commands(10)
         assert log[0]["command"] == "set_tempo"
         assert log[1]["command"] == "get_session_info"
+
+
+# ── Diagnostics contracts ───────────────────────────────────────────
+
+class TestDiagnosticsContracts:
+    def test_default_name_detection(self):
+        """Test the name detection logic used by diagnostics (duplicated here
+        since remote_script can't be imported outside Ableton)."""
+        _DEFAULT_NAME_PATTERNS = frozenset(["MIDI", "Audio", "Inst", "Return"])
+
+        def _looks_default_name(name):
+            stripped = name.strip()
+            for part in stripped.split("-"):
+                part = part.strip()
+                if part.isdigit():
+                    continue
+                if part in _DEFAULT_NAME_PATTERNS:
+                    return True
+            return False
+
+        assert _looks_default_name("1-MIDI") is True
+        assert _looks_default_name("2-Audio") is True
+        assert _looks_default_name("MIDI") is True
+        assert _looks_default_name("Audio") is True
+        assert _looks_default_name("My Bass") is False
+        assert _looks_default_name("Drums") is False
+        assert _looks_default_name("Lead Synth") is False
+        assert _looks_default_name("3-Return") is True
+
+    def test_diagnostics_tool_registered(self):
+        """get_session_diagnostics must be in the registered tool list."""
+        import asyncio
+        from mcp_server.server import mcp
+        tools = asyncio.run(mcp.list_tools())
+        tool_names = {t.name for t in tools}
+        assert "get_session_diagnostics" in tool_names

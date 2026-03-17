@@ -1,6 +1,6 @@
 # LivePilot Architecture & Tool Reference
 
-LivePilot is an MCP server that controls Ableton Live 12 in real-time through 77 tools across 9 domains. This document maps every tool to what it actually does in Ableton, so you know exactly which tool to reach for.
+LivePilot is an MCP server that controls Ableton Live 12 in real-time through 78 tools across 9 domains. This document maps every tool to what it actually does in Ableton, so you know exactly which tool to reach for.
 
 ## Architecture
 
@@ -16,7 +16,7 @@ Claude Code  ──MCP──►  FastMCP Server  ──TCP/9878──►  Remote
 
 ## The 76 Tools — What Each One Does
 
-### Transport (11) — Playback, tempo, global state
+### Transport (12) — Playback, tempo, global state, diagnostics
 
 | Tool | What it does | Key params |
 |------|-------------|------------|

@@ -1,11 +1,11 @@
 ---
 name: livepilot-core
-description: Core discipline for controlling Ableton Live 12 through LivePilot's 77 MCP tools. Use whenever working with Ableton Live through MCP tools.
+description: Core discipline for controlling Ableton Live 12 through LivePilot's 78 MCP tools. Use whenever working with Ableton Live through MCP tools.
 ---
 
 # LivePilot Core — Ableton Live 12 AI Copilot
 
-LivePilot gives you 77 MCP tools to control Ableton Live 12 in real-time: transport, tracks, clips, MIDI notes, devices, scenes, mixing, browser, and arrangement.
+LivePilot gives you 78 MCP tools to control Ableton Live 12 in real-time: transport, tracks, clips, MIDI notes, devices, scenes, mixing, browser, and arrangement.
 
 ## Golden Rules
 
@@ -19,10 +19,10 @@ LivePilot gives you 77 MCP tools to control Ableton Live 12 in real-time: transp
 8. **Tempo range 20-999 BPM** — validated before sending to Ableton
 9. **Always name your tracks and clips** — organization is part of the creative process
 
-## Tool Domains (77 total)
+## Tool Domains (78 total)
 
-### Transport (11)
-`get_session_info` · `set_tempo` · `set_time_signature` · `start_playback` · `stop_playback` · `continue_playback` · `toggle_metronome` · `set_session_loop` · `undo` · `redo` · `get_recent_actions`
+### Transport (12)
+`get_session_info` · `set_tempo` · `set_time_signature` · `start_playback` · `stop_playback` · `continue_playback` · `toggle_metronome` · `set_session_loop` · `undo` · `redo` · `get_recent_actions` · `get_session_diagnostics`
 
 ### Tracks (12)
 `get_track_info` · `create_midi_track` · `create_audio_track` · `create_return_track` · `delete_track` · `duplicate_track` · `set_track_name` · `set_track_color` · `set_track_mute` · `set_track_solo` · `set_track_arm` · `stop_track_clips`

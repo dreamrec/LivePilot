@@ -15,9 +15,9 @@
 ## Key Rules
 - ALL Live Object Model (LOM) calls must execute on Ableton's main thread via schedule_message queue
 - Live 12 minimum — use modern note API (add_new_notes, get_notes_extended, apply_note_modifications)
-- 77 tools across 9 domains: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement
+- 78 tools across 9 domains: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement
 - JSON over TCP, newline-delimited, port 9878
 - Structured errors with codes: INDEX_ERROR, NOT_FOUND, INVALID_PARAM, STATE_ERROR, TIMEOUT, INTERNAL
 
 ## Tool Count
-Currently 77 tools. If adding/removing tools, update: README.md, package.json description, plugin/plugin.json, plugin/skills/livepilot-core/SKILL.md, CLAUDE.md, tests/test_tools_contract.py
+Currently 78 tools. If adding/removing tools, update: README.md, package.json description, plugin/plugin.json, plugin/skills/livepilot-core/SKILL.md, CLAUDE.md, tests/test_tools_contract.py

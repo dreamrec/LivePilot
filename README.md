@@ -1,6 +1,6 @@
 # LivePilot
 
-AI copilot for Ableton Live 12 — 77 MCP tools for production, sound design, and mixing.
+AI copilot for Ableton Live 12 — 78 MCP tools for production, sound design, and mixing.
 
 Sister project to [TDPilot](https://github.com/your-org/TDPilot) (TouchDesigner) and ComfyPilot (ComfyUI).
 
@@ -59,11 +59,11 @@ Claude Code / AI Client
 └─────────────────────┘
 ```
 
-## 77 Tools Across 9 Domains
+## 78 Tools Across 9 Domains
 
 | Domain | Count | Key Tools |
 |--------|-------|-----------|
-| **Transport** | 11 | get_session_info, set_tempo, play/stop, undo/redo, action log |
+| **Transport** | 12 | get_session_info, set_tempo, play/stop, undo/redo, action log, diagnostics |
 | **Tracks** | 12 | create/delete/duplicate, name, color, mute/solo/arm |
 | **Clips** | 10 | create/delete/duplicate, fire/stop, loop, launch mode |
 | **Notes** | 8 | add/get/remove/modify, transpose, quantize, duplicate |

@@ -1,6 +1,6 @@
-"""Transport MCP tools — playback, tempo, metronome, loop, undo/redo, action log.
+"""Transport MCP tools — playback, tempo, metronome, loop, undo/redo, action log, diagnostics.
 
-11 tools matching the Remote Script transport domain.
+12 tools matching the Remote Script transport domain.
 """
 
 from fastmcp import Context
@@ -105,3 +105,9 @@ def get_recent_actions(ctx: Context, limit: int = 20) -> dict:
         limit = 50
     entries = _get_ableton(ctx).get_recent_commands(limit)
     return {"actions": entries, "count": len(entries)}
+
+
+@mcp.tool()
+def get_session_diagnostics(ctx: Context) -> dict:
+    """Analyze the session for potential issues: armed tracks, solo/mute leftovers, unnamed tracks, empty clips/scenes, MIDI tracks without instruments. Returns issues with severity (warning/info) and stats."""
+    return _get_ableton(ctx).send_command("get_session_diagnostics")
