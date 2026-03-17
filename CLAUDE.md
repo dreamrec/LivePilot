@@ -20,4 +20,4 @@
 - Structured errors with codes: INDEX_ERROR, NOT_FOUND, INVALID_PARAM, STATE_ERROR, TIMEOUT, INTERNAL
 
 ## Tool Count
-Currently 78 tools. If adding/removing tools, update: README.md, package.json description, plugin/plugin.json, plugin/skills/livepilot-core/SKILL.md, CLAUDE.md, tests/test_tools_contract.py
+Currently 78 tools. If adding/removing tools, update: README.md, package.json description, plugin/plugin.json, plugin/skills/livepilot-core/SKILL.md, plugin/skills/livepilot-core/references/overview.md, CLAUDE.md, CHANGELOG.md, tests/test_tools_contract.py

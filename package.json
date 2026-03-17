@@ -4,8 +4,17 @@
   "description": "AI copilot for Ableton Live 12 — 78 MCP tools for production, sound design, and mixing",
   "author": "Pilot Studio",
   "license": "MIT",
+  "type": "commonjs",
   "bin": {
     "livepilot": "./bin/livepilot.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pilotstudio/livepilot"
+  },
+  "homepage": "https://github.com/pilotstudio/livepilot",
+  "bugs": {
+    "url": "https://github.com/pilotstudio/livepilot/issues"
   },
   "keywords": [
     "ableton",
@@ -15,7 +24,9 @@
     "music",
     "production",
     "midi",
-    "daw"
+    "daw",
+    "claude",
+    "copilot"
   ],
   "engines": {
     "node": ">=18.0.0"

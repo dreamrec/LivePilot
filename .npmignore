@@ -15,7 +15,6 @@ docs/
 .eslintrc*
 .prettierrc*
 CLAUDE.md
-CHANGELOG.md
 
 # IDE
 .vscode/
