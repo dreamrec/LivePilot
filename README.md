@@ -2,7 +2,7 @@
 
 AI copilot for Ableton Live 12 — 78 MCP tools for production, sound design, and mixing.
 
-Sister project to [TDPilot](https://github.com/your-org/TDPilot) (TouchDesigner) and ComfyPilot (ComfyUI).
+Control your entire Ableton session from Claude Code. Create tracks, program MIDI, load instruments, tweak parameters, mix levels, navigate arrangements — all through natural language. Built for power users who want to move faster without leaving the keyboard.
 
 ## Quick Start
 
@@ -40,25 +40,6 @@ Add to your MCP client config (`.mcp.json`):
 }
 ```
 
-## Architecture
-
-```
-Claude Code / AI Client
-       │ MCP Protocol (stdio)
-       ▼
-┌─────────────────────┐
-│   MCP Server        │  Python (FastMCP)
-│   mcp_server/       │  Input validation, auto-reconnect
-└────────┬────────────┘
-         │ JSON over TCP (port 9878)
-         ▼
-┌─────────────────────┐
-│   Remote Script     │  Runs inside Ableton's Python
-│   remote_script/    │  Thread-safe command queue
-│   LivePilot/        │  ControlSurface base class
-└─────────────────────┘
-```
-
 ## 78 Tools Across 9 Domains
 
 | Domain | Count | Key Tools |
@@ -82,11 +63,53 @@ Claude Code / AI Client
 | `/mix` | Mixing assistant |
 | `/sounddesign` | Sound design workflow |
 
-## Requirements
+## What It's Good At
 
-- **Ableton Live 12** (minimum)
-- **Python 3.10+** (auto-detected; venv created on first run)
-- **Node.js 18+**
+**Session overview and navigation** — Summarize the set, find important tracks, report clip density, locate empty or duplicate sections. You often lose time understanding your own session state. LivePilot reads the whole session in one call.
+
+**Repetitive build tasks** — Create track templates, duplicate and recolor tracks, load device chains, rename scenes, arm and route tracks. Repetitive actions are high-friction and low-creativity. This is where AI assistance feels immediately valuable.
+
+**MIDI refinement** — Tighten timing, transpose selected notes, duplicate motifs, simplify busy passages, humanize or regularize a phrase. The AI improves your existing intent instead of pretending to invent taste from nothing.
+
+**Session hygiene** — Detect tracks left armed, mute/solo leftovers, empty clips and unused scenes, inconsistent naming, MIDI tracks without instruments. Run `get_session_diagnostics` for a full health check.
+
+## Architecture
+
+```
+Claude Code / AI Client
+       │ MCP Protocol (stdio)
+       ▼
+┌─────────────────────┐
+│   MCP Server        │  Python (FastMCP)
+│   mcp_server/       │  Input validation, auto-reconnect
+└────────┬────────────┘
+         │ JSON over TCP (port 9878)
+         ▼
+┌─────────────────────┐
+│   Remote Script     │  Runs inside Ableton's Python
+│   remote_script/    │  Thread-safe command queue
+│   LivePilot/        │  ControlSurface base class
+└─────────────────────┘
+```
+
+Single-client TCP connection by design — Ableton's Live Object Model is not thread-safe.
+
+## Compatibility
+
+| Feature | Live 12 (all) | Suite only | Notes |
+|---------|:-:|:-:|-------|
+| Transport, tracks, clips, scenes | Yes | — | Core API, stable across all 12.x |
+| MIDI notes (add, modify, remove) | Yes | — | Uses Live 12 note API |
+| Device parameters, toggle, delete | Yes | — | Works with any device |
+| Browser search & load | Yes | — | Results depend on installed content |
+| Mixing (volume, pan, sends, routing) | Yes | — | |
+| Arrangement (cue points, recording) | Yes | — | |
+| Stock instruments (Analog, Operator, Wavetable, Drift, Meld) | — | Yes | Drift and Meld are Suite instruments |
+| Max for Live devices | — | Yes | Requires Suite or M4L add-on |
+| Stock effects (Compressor, Reverb, EQ Eight, etc.) | Yes | — | All editions include audio effects |
+| Third-party VST/AU plugins | Yes | — | Loads via browser if installed |
+
+**Python version:** Ableton Live 12 bundles Python 3.11. The MCP server runs outside Ableton and requires Python 3.10+.
 
 ## CLI
 
@@ -100,41 +123,21 @@ npx livepilot --version    # Version info
 npx livepilot --help       # Show all commands
 ```
 
-## Connection Model
+## Requirements
 
-LivePilot uses a **single-client** TCP connection. Only one MCP client can be connected to Ableton at a time. This is by design — Ableton's Live Object Model is not thread-safe, so serialized access prevents race conditions and data corruption.
-
-If a second client attempts to connect while one is active, it receives an error message and is disconnected. To switch clients, disconnect the current one first.
-
-## Compatibility
-
-| Feature | Live 12 (all) | Suite only | Notes |
-|---------|:-:|:-:|-------|
-| Transport, tracks, clips, scenes | Yes | — | Core API, stable across all 12.x |
-| MIDI notes (add, modify, remove) | Yes | — | Uses Live 12 note API (`get_notes_extended`, `apply_note_modifications`) |
-| Device parameters, toggle, delete | Yes | — | Works with any device on the track |
-| Browser search & load | Yes | — | Results depend on installed content |
-| Mixing (volume, pan, sends, routing) | Yes | — | |
-| Arrangement (cue points, recording) | Yes | — | |
-| Stock instruments (Analog, Operator, Wavetable, Drift, Meld) | — | Yes | Drift and Meld are Suite instruments |
-| Max for Live devices (LFO, Convolution Reverb, DS drums) | — | Yes | Requires Suite or M4L add-on |
-| Simpler / Sampler | Yes | — | Sampler advanced features need Suite |
-| Stock effects (Compressor, Reverb, EQ Eight, etc.) | Yes | — | All editions include audio effects |
-| Hybrid Reverb, Spectral Time/Resonator | — | Yes | Suite-only effects |
-| CC Control MIDI effect | Yes | — | New in Live 12 |
-| Drum Rack, Instrument Rack, Effect Rack | Yes | — | |
-| Third-party VST/AU plugins | Yes | — | Loads via browser if installed |
-
-**Python version:** Ableton Live 12 bundles Python 3.11. The MCP server runs outside Ableton and requires Python 3.10+.
+- **Ableton Live 12** (minimum)
+- **Python 3.10+** (auto-detected; venv created on first run)
+- **Node.js 18+**
 
 ## Development
 
 ```bash
-# Install Python dependencies
-pip install -r requirements.txt
+# Set up Python environment
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
 
 # Run tests
-pytest tests/ -v
+.venv/bin/pytest tests/ -v
 ```
 
 ## License
