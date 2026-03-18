@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+.pytest_cache/
+
+# Node
+node_modules/
+package-lock.json
+
+# Build
+dist/
+build/
+
+# Environment
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Claude Code
+.claude/
+
+# MCP Registry tokens
+.mcpregistry_*
+
+# Playwright artifacts
+.playwright-mcp/
+
+# Ableton project files
+demo Project/
+*.als
+
+# User's personal library data — NEVER upload to GitHub
+# (Native Ableton device atlas files ARE committed — they help all users)
+plugin/skills/livepilot-core/references/device-atlas/synths-m4l.md
+plugin/skills/livepilot-core/references/device-atlas/plugins-synths.md
+plugin/skills/livepilot-core/references/device-atlas/utility-and-workflow.md
+plugin/skills/livepilot-core/references/device-atlas/samples-and-irs.md
+plugin/skills/livepilot-core/references/device-atlas/presets-by-vibe.md
+.mcp.json
+
+# Internal dev docs (keep locally, not on GitHub)
+docs/plans/
+docs/research/
+docs/specs/
+docs/superpowers/
+docs/*.md
+.git-backup-full/
