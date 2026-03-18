@@ -19,33 +19,41 @@ Every command goes through Ableton's official Live Object Model API. No hacks, n
 
 ---
 
-## Train Your Own AI Producer
+## Agent & Technique Memory
 
-LivePilot ships with 104 tools and a deep reference corpus — genre-specific drum patterns, chord voicings, sound design recipes, mixing templates, song structures. Day one, it already knows how music works. But the tools are just the starting point.
+LivePilot is stateless by default — 104 tools, deterministic execution, no hidden context. The agent layer adds **persistent state** on top: a technique memory system that stores production decisions as typed, searchable, replayable data structures with structured metadata.
 
-**The real product is the agent you build on top of them.**
+### How it works
 
-Every producer has a sonic identity — the swing amounts they reach for, the drum kits that feel right, the FX chains they keep coming back to, the way they EQ a vocal bus. Most AI tools ignore all of this. Every session starts blank. LivePilot is different: it has a technique memory system that turns your production decisions into a persistent, searchable stylistic palette the agent learns from over time.
+The memory system stores five technique types: `beat_pattern`, `device_chain`, `mix_template`, `preference`, and `browser_pin`. Each technique consists of three layers:
 
-Here's how you train it:
+| Layer | Contents | Purpose |
+|-------|----------|---------|
+| **Identity** | UUID, name, type, tags, timestamps, rating, replay count | Indexing, filtering, sorting |
+| **Qualities** | Structured analysis — summary, mood, genre tags, rhythm feel, harmonic character, sonic texture, production notes, reference points | Search ranking, agent context at decision time |
+| **Payload** | Raw data — MIDI notes, device params, tempo, kit URIs, send levels | Exact replay or adaptation |
 
-1. **Produce something you like** — a beat, a device chain, a mixing setup, a synth patch
-2. **Tell the agent to save it** — "remember this groove" / "save this reverb chain"
-3. **The agent writes a stylistic analysis** — not just raw MIDI data, but *what makes it work*: the rhythmic feel, the sonic texture, the mood, what it pairs with, what artists it evokes
-4. **Your library grows** — rate and favorite the best techniques, tag them by genre or mood, build categories
-5. **The agent develops taste** — next time you say "make me a beat", it checks your library, reads your tendencies, and creates something new that sounds like you
+When you save a technique, the agent collects raw data from Ableton using existing tools (`get_notes`, `get_device_parameters`, etc.) and writes a structured qualities analysis. The qualities are what make search useful — `memory_recall(query="dark heavy 808")` matches against mood, genre tags, sonic texture, and summary fields, not just names.
 
-This isn't a preset recall system. The agent doesn't copy stored patterns — it understands the *qualities* across your saved techniques (the swing you prefer, the harmonic language you gravitate toward, the density of your arrangements) and uses that understanding to inform new creative decisions.
+### Three operating modes
 
-**Three modes, always under your control:**
+| Mode | Trigger | Behavior |
+|------|---------|----------|
+| **Informed** (default) | Any creative task | Agent calls `memory_recall`, reads top results' qualities, lets them influence decisions (kit selection, parameter ranges, rhythmic density) without copying |
+| **Fresh** | "ignore my history" / "something new" | Agent skips memory entirely — uses only the shipped reference corpus and its own knowledge |
+| **Explicit recall** | "use that boom bap beat" / "load my reverb chain" | Direct retrieval via `memory_get` → `memory_replay` with `adapt=false` (exact) or `adapt=true` (variation) |
 
-- **Informed** (default) — the agent consults your memory and lets it influence creative choices naturally
-- **Fresh** — "ignore my history" / "something completely new" — blank slate, pure musical knowledge, zero influence from saved techniques
-- **Explicit recall** — "use that boom bap beat I saved" — direct retrieval and replay
+The agent consults memory by default but never constrains itself to it. Override is always one sentence away.
 
-The memory is both a drawer and a personality. You put things in, you take things out, and the agent develops taste from what you've collected — but you can always tell it to forget everything and start fresh.
+### Replay architecture
 
-**You're not configuring software. You're building a creative partner that gets better the more you use it.**
+`memory_replay` does not execute Ableton commands directly. It returns a structured plan — an ordered list of tool calls (`search_browser`, `load_browser_item`, `create_clip`, `add_notes`, etc.) that the agent then executes through the existing MCP tools. This keeps the memory system decoupled from the Ableton connection and makes replay logic testable without a running DAW.
+
+### Building the corpus over time
+
+The shipped plugin includes a reference corpus (~2,700 lines): genre-specific drum patterns, chord voicings, sound design recipes, mixing templates, and workflow patterns. This is the baseline — the agent is competent from the first session.
+
+The technique memory extends this with user-specific data. As you save techniques, rate them, and tag them, the library becomes a structured representation of your production preferences. The agent reads across saved qualities at decision time — not to copy stored patterns, but to understand tendencies: swing ranges, kit preferences, harmonic language, arrangement density. New output is always generated; the memory informs the generation.
 
 ---
 
@@ -269,7 +277,7 @@ npx -y github:dreamrec/LivePilot --status
 
 ## Claude Code Plugin
 
-The plugin turns LivePilot from a tool collection into a **production partner that learns your style**.
+The plugin adds a skill, an autonomous agent, and 5 slash commands on top of the MCP tools.
 
 ```bash
 claude plugin add github:dreamrec/LivePilot/plugin
@@ -283,23 +291,17 @@ claude plugin add github:dreamrec/LivePilot/plugin
 | `/beat` | Guided beat creation — genre, tempo, instrumentation |
 | `/mix` | Mixing assistant — levels, panning, sends |
 | `/sounddesign` | Sound design workflow — instruments, effects, presets |
-| `/memory` | Browse, search, and manage your saved technique library |
+| `/memory` | Browse, search, and manage your technique library |
 
-### The Producer Agent
+### Producer Agent
 
-The heart of the plugin. An autonomous agent that builds tracks from high-level descriptions like *"Make me a 126 BPM rominimal track in D minor with hypnotic percussion"*. It handles the full pipeline: planning the arrangement, creating tracks, loading instruments, programming patterns, adding effects, and mixing — with mandatory health checks to make sure every track actually produces sound.
+Autonomous agent that executes multi-step production tasks from high-level descriptions. Handles the full pipeline: session planning, track creation, instrument loading, MIDI programming, effect configuration, and mixing — with mandatory health checks between each stage to verify every track produces audible output.
 
-What makes it different from a generic AI with tools is **what it knows**. The agent ships with a deep reference corpus — genre-specific drum patterns, chord voicings, sound design recipes, mixing templates, song structures — so it doesn't start from zero every time. It knows that a boom bap kick lands on beat 1 and the "and" of 2, that a Drum Rack needs a kit preset (not an empty shell), that a Saturator with Drive at 0 is a pass-through doing nothing.
-
-But the shipped corpus is just the floor. The real value builds over time.
-
-### Technique Memory
-
-8 tools for saving, searching, and replaying production techniques. Every saved technique includes a rich stylistic analysis written by the agent — not just raw data, but *what makes it work* and when to use it. See "Train Your Own AI Producer" above for how this shapes the agent over time.
+The agent ships with a 2,700-line reference corpus covering genre-specific drum patterns, chord voicings, sound design parameter recipes, mixing templates, and song structures. It consults the technique memory by default (see above), and can be overridden to work from a clean slate.
 
 ### Core Skill
 
-The `livepilot-core` skill teaches the AI how to work with Ableton properly: read session state before changing anything, verify after every write, check that instruments actually loaded, never invent device names. It's the difference between an AI that fumbles through the API and one that works like an experienced assistant.
+`livepilot-core` encodes operational discipline for the 104 tools: read state before writing, verify after every mutation, validate instrument loading (empty Drum Racks produce silence), never hallucinate device names (always `search_browser` first), use negative track indices for return tracks. Without it, an LLM with access to the tools will produce silent tracks and load wrong devices.
 
 ---
 
