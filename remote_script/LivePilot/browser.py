@@ -14,8 +14,13 @@ def _get_browser():
 
 
 def _get_categories(browser):
-    """Return a dict of browser category name -> browser item."""
-    return {
+    """Return a dict of browser category name -> browser item.
+
+    Includes all documented Browser properties from the Live Object Model:
+    instruments, audio_effects, midi_effects, sounds, drums, samples,
+    packs, user_library, plugins, max_for_live, clips, current_project.
+    """
+    categories = {
         "instruments": browser.instruments,
         "audio_effects": browser.audio_effects,
         "midi_effects": browser.midi_effects,
@@ -25,6 +30,15 @@ def _get_categories(browser):
         "packs": browser.packs,
         "user_library": browser.user_library,
     }
+    # Additional categories — may not exist on older Live versions
+    for attr in ("plugins", "max_for_live", "clips", "current_project"):
+        try:
+            val = getattr(browser, attr)
+            if val is not None:
+                categories[attr] = val
+        except AttributeError:
+            pass
+    return categories
 
 
 def _navigate_path(browser, path):
@@ -180,11 +194,32 @@ def load_browser_item(song, params):
     track = get_track(song, track_index)
     browser = _get_browser()
 
-    # All categories to search
-    category_attrs = (
-        "user_library", "samples", "instruments", "audio_effects",
-        "midi_effects", "packs", "sounds", "drums",
-    )
+    # Parse category hint from URI (e.g., "query:Drums#..." -> prioritize drums)
+    _category_map = {
+        "drums": "drums", "samples": "samples", "instruments": "instruments",
+        "audiofx": "audio_effects", "audio_effects": "audio_effects",
+        "midifx": "midi_effects", "midi_effects": "midi_effects",
+        "sounds": "sounds", "packs": "packs",
+        "userlibrary": "user_library", "user_library": "user_library",
+        "plugins": "plugins", "max_for_live": "max_for_live",
+    }
+    priority_attr = None
+    if ":" in uri:
+        # Extract category from "query:Drums#..." or "query:UserLibrary#..."
+        after_colon = uri.split(":", 1)[1]
+        cat_hint = after_colon.split("#", 1)[0].lower().replace(" ", "_")
+        priority_attr = _category_map.get(cat_hint)
+
+    # Build category search order — prioritize the category from the URI
+    category_attrs = [
+        "user_library", "plugins", "max_for_live", "samples",
+        "instruments", "audio_effects", "midi_effects", "packs",
+        "sounds", "drums",
+    ]
+    if priority_attr and priority_attr in category_attrs:
+        category_attrs.remove(priority_attr)
+        category_attrs.insert(0, priority_attr)
+
     categories = []
     for attr in category_attrs:
         try:
@@ -193,7 +228,7 @@ def load_browser_item(song, params):
             pass
 
     _iterations = [0]
-    MAX_ITERATIONS = 10000
+    MAX_ITERATIONS = 50000
 
     # ── Strategy 1: match by URI directly ────────────────────────────
     def find_by_uri(parent, target_uri, depth=0):
@@ -234,6 +269,54 @@ def load_browser_item(song, params):
     device_name = uri
     if "#" in uri:
         device_name = uri.split("#", 1)[1]
+    # For Sounds URIs like "Pad:FileId_6343", strip the FileId part
+    # and use the subcategory or the full fragment for matching
+    if "FileId_" in device_name:
+        # URI contains an internal file ID — name-based search won't work.
+        # Try one more URI pass with a much higher iteration limit.
+        _iterations[0] = 0
+        DEEP_MAX = 200000
+        def find_by_uri_deep(parent, target_uri, depth=0):
+            if depth > 12 or _iterations[0] > DEEP_MAX:
+                return None
+            try:
+                children = list(parent.children)
+            except AttributeError:
+                return None
+            for child in children:
+                _iterations[0] += 1
+                if _iterations[0] > DEEP_MAX:
+                    return None
+                try:
+                    if child.uri == target_uri and child.is_loadable:
+                        return child
+                except AttributeError:
+                    pass
+                result = find_by_uri_deep(child, target_uri, depth + 1)
+                if result is not None:
+                    return result
+            return None
+
+        for category in categories:
+            _iterations[0] = 0
+            found = find_by_uri_deep(category, uri)
+            if found is not None:
+                song.view.selected_track = track
+                browser.load_item(found)
+                device_count = len(list(track.devices))
+                return {
+                    "track_index": track_index,
+                    "loaded": True,
+                    "name": found.name,
+                    "device_count": device_count,
+                }
+
+        raise ValueError(
+            "Item '%s' not found in browser (FileId URI — try "
+            "search_browser to find the item, then use find_and_load_device "
+            "with the exact name instead)" % uri
+        )
+
     for sep in (":", "/"):
         if sep in device_name:
             device_name = device_name.rsplit(sep, 1)[1]

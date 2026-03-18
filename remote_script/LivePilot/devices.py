@@ -71,14 +71,24 @@ def set_device_parameter(song, params):
 
     if parameter_name is not None:
         param = None
+        # Try exact match first
         for p in device.parameters:
             if p.name == parameter_name:
                 param = p
                 break
+        # Fallback: case-insensitive match
         if param is None:
+            target_lower = parameter_name.lower()
+            for p in device.parameters:
+                if p.name.lower() == target_lower:
+                    param = p
+                    break
+        if param is None:
+            available = [p.name for p in list(device.parameters)[:20]]
             raise ValueError(
-                "Parameter '%s' not found on device '%s'"
-                % (parameter_name, device.name)
+                "Parameter '%s' not found on device '%s'. "
+                "Available (first 20): %s"
+                % (parameter_name, device.name, ", ".join(available))
             )
     elif parameter_index is not None:
         parameter_index = int(parameter_index)
@@ -123,14 +133,26 @@ def batch_set_parameters(song, params):
             param = dev_params[idx]
         else:
             param = None
+            target = str(name_or_index)
+            # Try exact match first
             for p in dev_params:
-                if p.name == name_or_index:
+                if p.name == target:
                     param = p
                     break
+            # Fallback: case-insensitive match
             if param is None:
+                target_lower = target.lower()
+                for p in dev_params:
+                    if p.name.lower() == target_lower:
+                        param = p
+                        break
+            if param is None:
+                # List similar parameter names for debugging
+                available = [p.name for p in dev_params[:20]]
                 raise ValueError(
-                    "Parameter '%s' not found on device '%s'"
-                    % (name_or_index, device.name)
+                    "Parameter '%s' not found on device '%s'. "
+                    "Available (first 20): %s"
+                    % (name_or_index, device.name, ", ".join(available))
                 )
 
         param.value = value
@@ -187,11 +209,31 @@ def load_device_by_uri(song, params):
     track = get_track(song, track_index)
     browser = _get_browser()
 
-    # All categories to search
-    category_attrs = (
-        "user_library", "samples", "instruments", "audio_effects",
-        "midi_effects", "packs", "sounds", "drums",
-    )
+    # Parse category hint from URI (e.g., "query:Drums#..." -> prioritize drums)
+    _category_map = {
+        "drums": "drums", "samples": "samples", "instruments": "instruments",
+        "audiofx": "audio_effects", "audio_effects": "audio_effects",
+        "midifx": "midi_effects", "midi_effects": "midi_effects",
+        "sounds": "sounds", "packs": "packs",
+        "userlibrary": "user_library", "user_library": "user_library",
+    }
+    priority_attr = None
+    if ":" in uri:
+        # Extract category from "query:Drums#..." or "query:UserLibrary#..."
+        after_colon = uri.split(":", 1)[1]
+        cat_hint = after_colon.split("#", 1)[0].lower().replace(" ", "_")
+        priority_attr = _category_map.get(cat_hint)
+
+    # Build category search order — prioritize the category from the URI
+    category_attrs = [
+        "user_library", "plugins", "max_for_live", "samples",
+        "instruments", "audio_effects", "midi_effects", "packs",
+        "sounds", "drums",
+    ]
+    if priority_attr and priority_attr in category_attrs:
+        category_attrs.remove(priority_attr)
+        category_attrs.insert(0, priority_attr)
+
     categories = []
     for attr in category_attrs:
         try:
@@ -200,7 +242,7 @@ def load_device_by_uri(song, params):
             pass
 
     _iterations = [0]
-    MAX_ITERATIONS = 10000
+    MAX_ITERATIONS = 50000
 
     # ── Strategy 1: match by URI directly ────────────────────────────
     def find_by_uri(parent, target_uri, depth=0):
@@ -235,6 +277,45 @@ def load_device_by_uri(song, params):
     device_name = uri
     if "#" in uri:
         device_name = uri.split("#", 1)[1]
+    # For Sounds URIs like "Pad:FileId_6343", the FileId is an internal
+    # identifier useless for name search — retry URI match with deep limit.
+    if "FileId_" in device_name:
+        _iterations[0] = 0
+        DEEP_MAX = 200000
+        def find_by_uri_deep(parent, target_uri, depth=0):
+            if depth > 12 or _iterations[0] > DEEP_MAX:
+                return None
+            try:
+                children = list(parent.children)
+            except AttributeError:
+                return None
+            for child in children:
+                _iterations[0] += 1
+                if _iterations[0] > DEEP_MAX:
+                    return None
+                try:
+                    if child.uri == target_uri and child.is_loadable:
+                        return child
+                except AttributeError:
+                    pass
+                result = find_by_uri_deep(child, target_uri, depth + 1)
+                if result is not None:
+                    return result
+            return None
+
+        for category in categories:
+            _iterations[0] = 0
+            found = find_by_uri_deep(category, uri)
+            if found is not None:
+                song.view.selected_track = track
+                browser.load_item(found)
+                return {"loaded": found.name, "track_index": track_index}
+
+        raise ValueError(
+            "Item '%s' not found in browser (FileId URI — try "
+            "find_and_load_device with the exact name instead)" % uri
+        )
+
     for sep in (":", "/"):
         if sep in device_name:
             device_name = device_name.rsplit(sep, 1)[1]
@@ -299,7 +380,7 @@ def find_and_load_device(song, params):
     MAX_ITERATIONS = 10000
     iterations = 0
 
-    def search_children(item, depth=0):
+    def search_children(item, exact_only=False, depth=0):
         """Recursively search browser children up to depth 8."""
         nonlocal iterations
         if depth > 8:
@@ -313,19 +394,32 @@ def find_and_load_device(song, params):
             if iterations > MAX_ITERATIONS:
                 return None
             child_lower = child.name.lower()
-            # Exact match or partial match (e.g. "kickster" in "trnr.kickster")
-            if (child_lower == device_name or device_name in child_lower) and child.is_loadable:
-                return child
-            result = search_children(child, depth + 1)
+            # Strip extension for comparison
+            child_base = child_lower
+            for ext in (".amxd", ".adv", ".adg", ".aupreset", ".als"):
+                if child_base.endswith(ext):
+                    child_base = child_base[:-len(ext)]
+                    break
+            if exact_only:
+                # Only accept exact matches (raw device name)
+                if child_base == device_name and child.is_loadable:
+                    return child
+            else:
+                # Accept exact or partial matches
+                if (child_base == device_name or device_name in child_lower) and child.is_loadable:
+                    return child
+            result = search_children(child, exact_only, depth + 1)
             if result is not None:
                 return result
         return None
 
     # Search device categories only — never samples (avoids "Castanet Reverb.aif"
-    # matching before the actual Reverb device). user_library first for M4L.
+    # matching before the actual Reverb device).
+    # plugins + max_for_live included for AU/VST/AUv3 and M4L devices.
     category_attrs = (
         "audio_effects", "instruments", "midi_effects",
-        "user_library", "drums", "sounds", "packs",
+        "plugins", "max_for_live", "user_library",
+        "drums", "sounds", "packs",
     )
     categories = []
     for attr in category_attrs:
@@ -334,9 +428,22 @@ def find_and_load_device(song, params):
         except AttributeError:
             pass
 
+    # Pass 1: exact name match only (finds raw "Operator" before "Hello Operator.adg")
     for category in categories:
         iterations = 0
-        found = search_children(category)
+        found = search_children(category, exact_only=True)
+        if found is not None:
+            song.view.selected_track = track
+            browser.load_item(found)
+            return {
+                "loaded": found.name,
+                "track_index": track_index,
+            }
+
+    # Pass 2: partial name match (for M4L devices like "trnr.Kickster")
+    for category in categories:
+        iterations = 0
+        found = search_children(category, exact_only=False)
         if found is not None:
             song.view.selected_track = track
             browser.load_item(found)

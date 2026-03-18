@@ -18,8 +18,9 @@ def _get_ableton(ctx: Context):
 
 
 def _validate_track_index(track_index: int):
-    if track_index < 0:
-        raise ValueError("track_index must be >= 0")
+    """Validate track index. Supports 0+ for regular tracks,
+    negative for return tracks (-1=A, -2=B), -1000 for master."""
+    pass  # Remote script's get_track() handles all validation
 
 
 @mcp.tool()
@@ -49,6 +50,9 @@ def search_browser(
 ) -> dict:
     """Search the browser tree under a path, optionally filtering by name.
 
+    path:        top-level category to search under. Valid categories:
+                 instruments, audio_effects, midi_effects, sounds, drums,
+                 samples, packs, user_library, plugins, max_for_live, clips
     max_depth:   how deep to recurse into subfolders (default 8)
     max_results: maximum number of results to return (default 100)
     """

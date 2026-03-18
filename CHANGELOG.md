@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.4.3] — 2026-03-18
+
+### Fixes
+- **`find_and_load_device` now finds raw instruments** — two-pass search: exact name match first (finds "Operator" before "Hello Operator.adg"), then partial match for M4L devices (e.g., "Kickster" matches "trnr.Kickster")
+- **Browser now searches plugins and Max for Live categories** — added `browser.plugins` and `browser.max_for_live` to all browser operations. AU/VST/AUv3 plugins (Moog, Drambo, BYOD, etc.) are now discoverable and loadable via `find_and_load_device` and `search_browser("plugins")`
+- **`load_browser_item` handles Sounds FileId URIs** — URIs containing internal FileId references (e.g., `query:Sounds#Pad:FileId_6343`) now trigger a deep URI search instead of failing with "not found"
+- **`load_browser_item` URI category prioritization** — parses category hint from URI (e.g., `query:Drums#...` searches drums first), reducing search time from 10K+ iterations to under 1K for most loads
+- **Iteration limit increased** — `load_browser_item` and `load_device_by_uri` now search up to 50K iterations (was 10K), preventing timeouts on large browser categories
+- **Case-insensitive parameter matching** — `set_device_parameter` and `batch_set_parameters` now try exact match first, then case-insensitive fallback. Error messages list available parameter names for debugging
+- **Track index validation relaxed** — `_validate_track_index` in arrangement, browser, clips, notes, and tracks MCP tools now allows negative indices for return tracks (-1=A, -2=B) and -1000 for master, consistent with the remote script's `get_track()` behavior
+
+### Added
+- `search_browser("plugins")` — browse all installed AU/VST/AUv3 plugins
+- `search_browser("max_for_live")` — browse all M4L devices directly
+- `search_browser("clips")` and `search_browser("current_project")` — additional browser categories
+
 ## [1.4.2] — 2026-03-18
 
 ### Fixes
