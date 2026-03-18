@@ -24,9 +24,11 @@ WRITE_COMMANDS = frozenset([
     "create_midi_track", "create_audio_track", "create_return_track",
     "delete_track", "duplicate_track", "set_track_name", "set_track_color",
     "set_track_mute", "set_track_solo", "set_track_arm", "stop_track_clips",
+    "set_group_fold", "set_track_input_monitoring",
     # clips
     "create_clip", "delete_clip", "duplicate_clip", "fire_clip", "stop_clip",
     "set_clip_name", "set_clip_color", "set_clip_loop", "set_clip_launch",
+    "set_clip_warp_mode",
     # notes
     "add_notes", "remove_notes", "remove_notes_by_id", "modify_notes",
     "duplicate_notes", "transpose_notes", "quantize_clip",
@@ -36,7 +38,7 @@ WRITE_COMMANDS = frozenset([
     "set_chain_volume", "set_simpler_playback_mode",
     # scenes
     "create_scene", "delete_scene", "duplicate_scene", "fire_scene",
-    "set_scene_name",
+    "set_scene_name", "set_scene_color", "set_scene_tempo",
     # mixing
     "set_track_volume", "set_track_pan", "set_track_send",
     "set_master_volume", "set_track_routing",
@@ -44,7 +46,12 @@ WRITE_COMMANDS = frozenset([
     "load_browser_item",
     # arrangement
     "jump_to_time", "jump_to_cue", "capture_midi", "start_recording",
-    "stop_recording", "toggle_cue_point",
+    "stop_recording", "toggle_cue_point", "back_to_arranger",
+    "create_arrangement_clip", "add_arrangement_notes",
+    "remove_arrangement_notes", "remove_arrangement_notes_by_id",
+    "modify_arrangement_notes", "duplicate_arrangement_notes",
+    "transpose_arrangement_notes", "set_arrangement_automation",
+    "set_arrangement_clip_name",
 ])
 
 

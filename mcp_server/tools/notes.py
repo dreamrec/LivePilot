@@ -26,9 +26,9 @@ def _ensure_list(value: Any) -> list:
 
 
 def _validate_track_index(track_index: int):
-    """Validate track index. Supports 0+ for regular tracks,
-    negative for return tracks (-1=A, -2=B), -1000 for master."""
-    pass  # Remote script's get_track() handles all validation
+    """Validate track index. Must be >= 0 for regular tracks."""
+    if track_index < 0:
+        raise ValueError("track_index must be >= 0")
 
 
 def _validate_clip_index(clip_index: int):
