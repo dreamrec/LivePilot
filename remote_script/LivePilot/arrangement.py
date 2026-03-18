@@ -606,7 +606,8 @@ def jump_to_time(song, params):
     if beat_time < 0:
         raise ValueError("beat_time must be >= 0")
     song.current_song_time = beat_time
-    return {"current_song_time": song.current_song_time}
+    # Echo requested value — getter may return stale state before update propagates
+    return {"current_song_time": beat_time}
 
 
 @register("capture_midi")

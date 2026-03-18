@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.2] — 2026-03-18
+
+### Fixes
+- `memory_recall` multi-word search now works — queries are split into words and matched across name, tags, and qualities (was treating entire query as single substring)
+- `set_session_loop` returns correct loop state — echoes requested value instead of reading stale LOM property
+- `jump_to_time` returns correct position — echoes requested beat_time instead of reading stale `current_song_time`
+
 ## [1.4.1] — 2026-03-18
 
 ### Fixes

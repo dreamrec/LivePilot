@@ -127,9 +127,11 @@ def set_session_loop(song, params):
     if "loop_length" in params:
         song.loop_length = float(params["loop_length"])
     # Set enabled LAST so it sticks
-    song.loop = bool(params["enabled"])
+    enabled = bool(params["enabled"])
+    song.loop = enabled
+    # Echo requested value — song.loop getter may return stale state
     return {
-        "loop": song.loop,
+        "loop": enabled,
         "loop_start": song.loop_start,
         "loop_length": song.loop_length,
     }

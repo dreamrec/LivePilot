@@ -124,19 +124,13 @@ class TechniqueStore:
             tag_set = set(tags)
             results = [t for t in results if tag_set & set(t.get("tags", []))]
 
-        # text search
+        # text search — all query words must appear somewhere in the technique
         if query:
-            q = query.lower()
+            words = query.lower().split()
             filtered = []
             for t in results:
-                if q in t["name"].lower():
-                    filtered.append(t)
-                    continue
-                if any(q in tag.lower() for tag in t.get("tags", [])):
-                    filtered.append(t)
-                    continue
-                # search all qualities fields
-                if self._matches_qualities(t.get("qualities", {}), q):
+                searchable = self._searchable_text(t)
+                if all(w in searchable for w in words):
                     filtered.append(t)
             results = filtered
 
@@ -255,15 +249,16 @@ class TechniqueStore:
         raise ValueError(f"NOT_FOUND: technique '{technique_id}' does not exist")
 
     @staticmethod
-    def _matches_qualities(qualities: dict, query: str) -> bool:
-        for v in qualities.values():
-            if isinstance(v, str) and query in v.lower():
-                return True
-            if isinstance(v, list):
-                for item in v:
-                    if isinstance(item, str) and query in item.lower():
-                        return True
-        return False
+    def _searchable_text(t: dict) -> str:
+        """Build a single lowercase string from all searchable fields."""
+        parts = [t.get("name", "")]
+        parts.extend(t.get("tags", []))
+        for v in t.get("qualities", {}).values():
+            if isinstance(v, str):
+                parts.append(v)
+            elif isinstance(v, list):
+                parts.extend(str(item) for item in v)
+        return " ".join(parts).lower()
 
     @staticmethod
     def _multi_sort(results: list[dict]) -> list[dict]:
