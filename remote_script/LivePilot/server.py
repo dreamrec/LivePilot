@@ -1,0 +1,286 @@
+"""
+LivePilot - TCP server with thread-safe command queue.
+
+Runs a background daemon thread that accepts JSON-over-TCP connections.
+Commands are forwarded to Ableton's main thread via schedule_message,
+and responses are returned through per-command Queue objects.
+"""
+
+import socket
+import threading
+import json
+
+import queue
+
+from . import router
+
+# ── Commands that modify Live state (need settle delay) ──────────────────────
+
+WRITE_COMMANDS = frozenset([
+    # transport
+    "set_tempo", "set_time_signature", "start_playback", "stop_playback",
+    "continue_playback", "toggle_metronome", "set_session_loop", "undo", "redo",
+    # tracks
+    "create_midi_track", "create_audio_track", "create_return_track",
+    "delete_track", "duplicate_track", "set_track_name", "set_track_color",
+    "set_track_mute", "set_track_solo", "set_track_arm", "stop_track_clips",
+    # clips
+    "create_clip", "delete_clip", "duplicate_clip", "fire_clip", "stop_clip",
+    "set_clip_name", "set_clip_color", "set_clip_loop", "set_clip_launch",
+    # notes
+    "add_notes", "remove_notes", "remove_notes_by_id", "modify_notes",
+    "duplicate_notes", "transpose_notes", "quantize_clip",
+    # devices
+    "set_device_parameter", "batch_set_parameters", "toggle_device",
+    "delete_device", "load_device_by_uri", "find_and_load_device",
+    "set_chain_volume", "set_simpler_playback_mode",
+    # scenes
+    "create_scene", "delete_scene", "duplicate_scene", "fire_scene",
+    "set_scene_name",
+    # mixing
+    "set_track_volume", "set_track_pan", "set_track_send",
+    "set_master_volume", "set_track_routing",
+    # browser
+    "load_browser_item",
+    # arrangement
+    "jump_to_time", "jump_to_cue", "capture_midi", "start_recording",
+    "stop_recording", "toggle_cue_point",
+])
+
+
+class LivePilotServer(object):
+    """TCP server that bridges JSON commands to Ableton's main thread.
+
+    Single-client by design: only one client can be connected at a time.
+    All commands must execute on Ableton's main thread (Live Object Model
+    is not thread-safe), so serialized client access prevents race conditions.
+    Additional connection attempts are rejected with a clear error message.
+    """
+
+    def __init__(self, control_surface, host="127.0.0.1", port=9878):
+        self._cs = control_surface
+        self._host = host
+        self._port = port
+        self._running = False
+        self._server_socket = None
+        self._thread = None
+        self._command_queue = queue.Queue()
+        self._client_lock = threading.Lock()
+        self._client_connected = False
+
+    # ── Public API ───────────────────────────────────────────────────────
+
+    def start(self):
+        """Start the background listener thread."""
+        self._running = True
+        self._thread = threading.Thread(target=self._server_loop)
+        self._thread.daemon = True
+        self._thread.start()
+        self._log("Server started on %s:%d" % (self._host, self._port))
+
+    def stop(self):
+        """Shutdown the server gracefully."""
+        self._running = False
+        if self._server_socket:
+            try:
+                self._server_socket.close()
+            except OSError:
+                pass
+        if self._thread and self._thread.is_alive():
+            self._thread.join(timeout=3)
+        self._log("Server stopped")
+
+    # ── Logging ──────────────────────────────────────────────────────────
+
+    def _log(self, message):
+        try:
+            self._cs.log_message("[LivePilot] " + str(message))
+        except Exception:
+            pass
+
+    # ── Background thread ────────────────────────────────────────────────
+
+    def _server_loop(self):
+        """Runs in a daemon thread.  Accepts one client at a time."""
+        try:
+            self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self._server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            self._server_socket.bind((self._host, self._port))
+            self._server_socket.listen(2)
+            self._server_socket.settimeout(1.0)
+            self._log("Listening on %s:%d" % (self._host, self._port))
+        except OSError as exc:
+            self._log("Failed to bind: %s" % exc)
+            return
+
+        while self._running:
+            try:
+                client, addr = self._server_socket.accept()
+                with self._client_lock:
+                    if self._client_connected:
+                        # Reject concurrent clients with an explicit message
+                        self._log("Rejected client from %s:%d (another client is connected)" % addr)
+                        try:
+                            reject = json.dumps({
+                                "id": "system",
+                                "ok": False,
+                                "error": {
+                                    "code": "STATE_ERROR",
+                                    "message": "Another client is already connected. "
+                                               "LivePilot accepts one client at a time. "
+                                               "Disconnect the current client first."
+                                }
+                            }) + "\n"
+                            client.sendall(reject.encode("utf-8"))
+                        except OSError:
+                            pass
+                        try:
+                            client.close()
+                        except OSError:
+                            pass
+                        continue
+                    self._client_connected = True
+                self._log("Client connected from %s:%d" % addr)
+                try:
+                    self._handle_client(client)
+                except OSError as exc:
+                    self._log("Client error: %s" % exc)
+                finally:
+                    with self._client_lock:
+                        self._client_connected = False
+                    try:
+                        client.close()
+                    except OSError:
+                        pass
+                    self._log("Client disconnected")
+            except socket.timeout:
+                continue
+            except OSError:
+                if self._running:
+                    self._log("Accept error")
+                break
+
+        try:
+            self._server_socket.close()
+        except OSError:
+            pass
+
+    def _handle_client(self, client):
+        """Read newline-delimited JSON from a connected client."""
+        client.settimeout(1.0)
+        buf = ""
+        while self._running:
+            try:
+                data = client.recv(4096)
+                if not data:
+                    break
+                buf += data.decode("utf-8", errors="replace")
+                while "\n" in buf:
+                    line, buf = buf.split("\n", 1)
+                    line = line.strip()
+                    if line:
+                        self._process_line(client, line)
+            except socket.timeout:
+                continue
+            except OSError as exc:
+                self._log("Recv error: %s" % exc)
+                break
+
+    def _process_line(self, client, line):
+        """Parse one JSON command, queue it for main thread, wait for result."""
+        try:
+            command = json.loads(line)
+        except (ValueError, TypeError) as exc:
+            resp = {
+                "id": "unknown",
+                "ok": False,
+                "error": {"code": "INVALID_PARAM", "message": "Bad JSON: %s" % exc},
+            }
+            self._send(client, resp)
+            return
+
+        request_id = command.get("id", "unknown")
+        cmd_type = command.get("type", "")
+
+        # Determine timeout based on read vs write
+        is_write = cmd_type in WRITE_COMMANDS
+        timeout = 15 if is_write else 10
+
+        # Per-command response queue
+        response_queue = queue.Queue()
+        self._command_queue.put((command, response_queue))
+
+        # Schedule processing on Ableton's main thread
+        try:
+            self._cs.schedule_message(0, self._process_next_command)
+        except AssertionError:
+            # Already on main thread — process directly
+            self._process_next_command()
+
+        # Wait for response from main thread
+        try:
+            resp = response_queue.get(timeout=timeout)
+        except queue.Empty:
+            resp = {
+                "id": request_id,
+                "ok": False,
+                "error": {"code": "TIMEOUT", "message": "Command timed out after %ds" % timeout},
+            }
+
+        self._send(client, resp)
+
+    # ── Main thread execution ────────────────────────────────────────────
+
+    def _process_next_command(self):
+        """Called on Ableton's main thread via schedule_message.
+        Processes one command from the queue."""
+        try:
+            command, response_queue = self._command_queue.get_nowait()
+        except queue.Empty:
+            return
+
+        cmd_type = command.get("type", "")
+        is_write = cmd_type in WRITE_COMMANDS
+
+        try:
+            song = self._cs.song()
+            result = router.dispatch(song, command)
+        except Exception as exc:
+            result = {
+                "id": command.get("id", "unknown"),
+                "ok": False,
+                "error": {"code": "INTERNAL", "message": str(exc)},
+            }
+
+        if is_write:
+            # Schedule response after 100ms settle delay for write operations
+            def send_response():
+                response_queue.put(result)
+                # Drain any remaining queued commands
+                self._drain_queue()
+            try:
+                self._cs.schedule_message(1, send_response)  # ~100ms
+            except AssertionError:
+                send_response()
+        else:
+            response_queue.put(result)
+            # Drain any remaining queued commands
+            self._drain_queue()
+
+    def _drain_queue(self):
+        """Process any remaining commands in the queue."""
+        if not self._command_queue.empty():
+            try:
+                self._cs.schedule_message(0, self._process_next_command)
+            except AssertionError:
+                self._process_next_command()
+
+    # ── Socket I/O ───────────────────────────────────────────────────────
+
+    def _send(self, client, response):
+        """Send a JSON response to the client."""
+        from .utils import serialize_json
+        try:
+            client.sendall(serialize_json(response).encode("utf-8"))
+        except OSError as exc:
+            self._log("Send error: %s" % exc)

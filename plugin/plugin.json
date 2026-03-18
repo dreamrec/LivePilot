@@ -1,0 +1,19 @@
+{
+  "name": "livepilot",
+  "version": "1.4.1",
+  "description": "AI copilot for Ableton Live 12 — 104 MCP tools for music production, sound design, and mixing",
+  "author": "Pilot Studio",
+  "skills": [
+    "skills/livepilot-core"
+  ],
+  "commands": [
+    "commands/session.md",
+    "commands/beat.md",
+    "commands/mix.md",
+    "commands/sounddesign.md",
+    "commands/memory.md"
+  ],
+  "agents": [
+    "agents/livepilot-producer"
+  ]
+}

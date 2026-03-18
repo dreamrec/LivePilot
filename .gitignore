@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+.pytest_cache/
+
+# Node
+node_modules/
+package-lock.json
+
+# Build
+dist/
+build/
+
+# Environment
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Claude Code
+.claude/
+
+# MCP Registry tokens
+.mcpregistry_*
+
+# Playwright artifacts
+.playwright-mcp/
+
+# Ableton project files
+demo Project/
+*.als
+
+# Internal dev docs (keep locally, not on GitHub)
+docs/plans/
+docs/research/
+docs/specs/
+docs/superpowers/
+docs/*.md
+.git-backup-full/

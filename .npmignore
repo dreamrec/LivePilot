@@ -1,0 +1,41 @@
+# Python artifacts
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache/
+.venv/
+*.egg-info/
+
+# Development
+tests/
+docs/
+.git/
+.github/
+.gitignore
+.eslintrc*
+.prettierrc*
+CLAUDE.md
+server.json
+
+# Claude Code
+.claude/
+
+# MCP Registry tokens (sensitive!)
+.mcpregistry_*
+
+# Playwright screenshots/logs
+.playwright-mcp/
+
+# Ableton project files
+demo Project/
+*.als
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

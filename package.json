@@ -1,0 +1,38 @@
+{
+  "name": "livepilot",
+  "version": "1.4.1",
+  "mcpName": "io.github.dreamrec/livepilot",
+  "description": "AI copilot for Ableton Live 12 — 104 MCP tools for music production, sound design, and mixing",
+  "author": "Pilot Studio",
+  "license": "MIT",
+  "type": "commonjs",
+  "bin": {
+    "livepilot": "./bin/livepilot.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dreamrec/LivePilot"
+  },
+  "homepage": "https://github.com/dreamrec/LivePilot",
+  "bugs": {
+    "url": "https://github.com/dreamrec/LivePilot/issues"
+  },
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "ableton",
+    "ableton-live",
+    "music-production",
+    "midi",
+    "daw",
+    "ai",
+    "claude",
+    "sound-design",
+    "mixing",
+    "arrangement"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
