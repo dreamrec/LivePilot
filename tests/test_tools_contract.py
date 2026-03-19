@@ -1,4 +1,4 @@
-"""Verify all 142 MCP tools are registered across 13 domains."""
+"""Verify all 155 MCP tools are registered across 16 domains."""
 
 import asyncio
 import sys
@@ -262,4 +262,41 @@ def test_theory_tools_registered():
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 142, f"Expected 142 tools, got {len(tools)}"
+    assert len(tools) == 155, f"Expected 155 tools, got {len(tools)}"
+
+
+def test_generative_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "generate_euclidean_rhythm",
+        "layer_euclidean_rhythms",
+        "generate_tintinnabuli",
+        "generate_phase_shift",
+        "generate_additive_process",
+    }
+    missing = expected - names
+    assert not missing, f"Missing generative tools: {missing}"
+
+
+def test_harmony_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "navigate_tonnetz",
+        "find_voice_leading_path",
+        "classify_progression",
+        "suggest_chromatic_mediants",
+    }
+    missing = expected - names
+    assert not missing, f"Missing harmony tools: {missing}"
+
+
+def test_midi_io_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "export_clip_midi",
+        "import_midi_to_clip",
+        "analyze_midi_file",
+        "extract_piano_roll",
+    }
+    missing = expected - names
+    assert not missing, f"Missing MIDI I/O tools: {missing}"
