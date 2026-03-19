@@ -1,14 +1,18 @@
 """Analyzer MCP tools — real-time spectral analysis and deep LOM access.
 
-20 tools requiring the LivePilot Analyzer M4L device on the master track.
+22 tools requiring the LivePilot Analyzer M4L device on the master track.
 These tools are optional — all 115 core tools work without the device.
 """
 
 from __future__ import annotations
 
+import os
+
 from fastmcp import Context
 
 from ..server import mcp
+
+CAPTURE_DIR = os.path.expanduser("~/Documents/LivePilot/captures")
 
 
 def _get_spectral(ctx: Context):
@@ -506,3 +510,55 @@ async def get_display_values(
     _require_analyzer(cache)
     bridge = _get_m4l(ctx)
     return await bridge.send_command("get_display_values", track_index, device_index)
+
+
+# ── Phase 3: Audio Capture ─────────────────────────────────────────────
+
+
+@mcp.tool()
+async def capture_audio(
+    ctx: Context,
+    duration_seconds: int = 10,
+    source: str = "master",
+    filename: str = "",
+) -> dict:
+    """Capture audio from Ableton Live to a WAV file on disk.
+
+    Records from the specified source (currently 'master') for the given
+    duration. Files are written to ~/Documents/LivePilot/captures/.
+    If filename is empty, a timestamped name is generated automatically.
+
+    Returns the path to the written file and capture metadata.
+    Requires LivePilot Analyzer on master track.
+    """
+    cache = _get_spectral(ctx)
+    _require_analyzer(cache)
+
+    if duration_seconds < 1 or duration_seconds > 300:
+        raise ValueError("duration_seconds must be between 1 and 300")
+    if source not in ("master",):
+        raise ValueError(f"Unsupported source '{source}'. Valid: 'master'")
+
+    bridge = _get_m4l(ctx)
+    duration_ms = duration_seconds * 1000
+    result = await bridge.send_capture(
+        "capture_audio",
+        duration_ms,
+        filename,
+        timeout=float(duration_seconds + 10),
+    )
+    return result
+
+
+@mcp.tool()
+async def capture_stop(ctx: Context) -> dict:
+    """Stop an in-progress audio capture early.
+
+    Cancels the running buffer~ recording and returns whatever audio has
+    been captured so far. The partial file is still written to disk.
+    Requires LivePilot Analyzer on master track.
+    """
+    cache = _get_spectral(ctx)
+    _require_analyzer(cache)
+    bridge = _get_m4l(ctx)
+    return await bridge.send_command("capture_stop")
