@@ -1,11 +1,13 @@
 # Changelog
 
-## 1.8.2 — FluCoMa Wiring + Analyzer Fix (March 2026)
+## 1.8.3 — FluCoMa Wiring + Analyzer Fix (March 2026)
 
 - Fix: wire 6 FluCoMa DSP objects into LivePilot_Analyzer.maxpat (spectral shape, mel bands, chroma, loudness, onset, novelty)
 - Fix: onset/novelty Python handlers now accept 1 arg (fluid.onsetfeature~/noveltyfeature~ output single float)
-- Fix: rebuild .amxd with FluCoMa objects + binary patch openinpresentation
+- Fix: restore .amxd after binary corruption — .amxd must be rebuilt via Max editor, not programmatic JSON editing
+- Fix: panel z-order in .maxpat — move background panel first in boxes array so multislider renders on top
 - FluCoMa perception tools now fully functional when FluCoMa package is installed
+- Note: after installing, rebuild .amxd from .maxpat via Max editor (see BUILD_GUIDE.md)
 
 ## 1.8.1 — Patch (March 2026)
 
