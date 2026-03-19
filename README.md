@@ -77,12 +77,64 @@ No other Ableton MCP server does this. Others have tools. LivePilot has tools + 
 
 ---
 
+## Automation Intelligence
+
+Most DAW integrations let the AI set a parameter to a value. LivePilot lets the AI write **automation curves** — envelopes that evolve parameters over time inside clips. This is the difference between a static mix and a living one.
+
+### The Curve Engine
+
+16 mathematically precise curve types, organized in 4 categories:
+
+| Category | Curves | What they do |
+|----------|--------|-------------|
+| **Basic Waveforms** | `linear` · `exponential` · `logarithmic` · `s_curve` · `sine` · `sawtooth` · `spike` · `square` · `steps` | The building blocks. Exponential for filter sweeps (perceptually even). Logarithmic for volume fades (matches the ear). Spike for dub throws. Sawtooth for sidechain pumps. |
+| **Organic / Natural** | `perlin` · `brownian` · `spring` | What makes automation feel alive. Perlin noise for drifting textures. Brownian for analog-style parameter wander. Spring for realistic knob movements with overshoot and settle. |
+| **Shape Control** | `bezier` · `easing` | Precision curves for intentional design. Bezier with arbitrary control points. 8 easing types from the animation world: bounce, elastic, back overshoot, ease in/out. |
+| **Algorithmic** | `euclidean` · `stochastic` | Generative intelligence. Euclidean distributes automation events using the Bjorklund algorithm (the same math behind Euclidean rhythms). Stochastic applies Xenakis-inspired controlled randomness within narrowing bounds. |
+
+Every curve generates normalized points (0.0–1.0) that map to any parameter in Ableton — volume, pan, sends, device parameters, anything with an envelope.
+
+### 15 Production Recipes
+
+Named presets for common techniques. One tool call instead of manual point calculation:
+
+| Recipe | Curve | What it does |
+|--------|-------|-------------|
+| `filter_sweep_up` | exponential | LP filter opening over 8-32 bars |
+| `filter_sweep_down` | logarithmic | LP filter closing, mirrors the sweep up |
+| `dub_throw` | spike | Instant send spike for reverb/delay throws |
+| `tape_stop` | exponential | Pitch dropping to zero — steep deceleration |
+| `build_rise` | exponential | Tension build on HP filter + volume + reverb |
+| `sidechain_pump` | sawtooth | Volume ducking per beat — fast duck, slow recovery |
+| `fade_in` / `fade_out` | log / exp | Perceptually smooth volume fades |
+| `tremolo` | sine | Periodic volume oscillation |
+| `auto_pan` | sine | Stereo movement via pan |
+| `stutter` | square | Rapid on/off gating |
+| `breathing` | sine | Subtle filter movement — acoustic instrument feel |
+| `washout` | exponential | Reverb/delay feedback increasing to wash |
+| `vinyl_crackle` | sine | Slow bit reduction for lo-fi character |
+| `stereo_narrow` | exponential | Collapse stereo to mono before drop |
+
+### The Feedback Loop
+
+`analyze_for_automation` reads the spectrum and device chain, then suggests what to automate:
+
+1. **Reads the spectrum** — identifies frequency balance, sub content, dynamic range
+2. **Scans the device chain** — detects filters, reverbs, synths, distortion
+3. **Suggests automation targets** — "Filter detected → automate cutoff for movement", "Heavy sub content → HP filter sweep for builds"
+4. **Recommends recipes** — maps each suggestion to the right named recipe
+
+The AI doesn't just write automation — it knows what to automate based on what it hears.
+
+---
+
 ## What You Can Do
 
 - **Produce** — Create tracks, load instruments from the atlas, program drum patterns, bass lines, chord progressions, and melodies — informed by your saved techniques
 - **Arrange** — Build full song structures in arrangement view with MIDI editing, cue points, automation, and timeline navigation
 - **Design sounds** — Browse Ableton's library, load presets, tweak every device parameter, chain effects, walk nested racks 6 levels deep
 - **Mix with ears** — Set levels, panning, sends, and routing. Read the spectrum, check RMS, detect the key. The analyzer tells the AI what changed, not just what was set
+- **Automate intelligently** — Write clip automation with 16 mathematically precise curve types, apply named recipes (dub throws, filter sweeps, sidechain pumps), get spectral-aware suggestions for what to automate next
 - **Remember and evolve** — Save techniques, build a personal style library, replay past decisions exactly or as variations
 - **Chop samples** — Load audio into Simpler, slice, reverse, crop, warp, and reprogram — all from conversation
 - **Iterate fast** — Transpose, humanize, quantize, duplicate, and reshape patterns through conversation
@@ -244,7 +296,7 @@ npx -y github:dreamrec/LivePilot --status
 
 ---
 
-## 127 Tools Across 11 Domains
+## 135 Tools Across 12 Domains
 
 | Domain | Tools | What you can do |
 |--------|:-----:|-----------------|
@@ -257,6 +309,7 @@ npx -y github:dreamrec/LivePilot --status
 | **Mixing** | 11 | Volume, pan, sends, routing, meters, mix snapshot — return tracks and master fully supported |
 | **Browser** | 4 | Search Ableton's library, browse categories, load presets |
 | **Arrangement** | 19 | Create clips, full MIDI note CRUD, cue points, recording, automation |
+| **Automation** | 8 | Clip envelope CRUD, 16-type curve engine, 15 named recipes, spectral-aware suggestions |
 | **Memory** | 8 | Save, recall, replay, and manage production techniques |
 | **Analyzer** | 20 | Real-time spectral analysis, key detection, sample manipulation, warp markers, device introspection (requires M4L device) |
 
@@ -289,6 +342,9 @@ npx -y github:dreamrec/LivePilot --status
 
 ### Arrangement (19)
 `get_arrangement_clips` · `create_arrangement_clip` · `add_arrangement_notes` · `get_arrangement_notes` · `remove_arrangement_notes` · `remove_arrangement_notes_by_id` · `modify_arrangement_notes` · `duplicate_arrangement_notes` · `transpose_arrangement_notes` · `set_arrangement_clip_name` · `set_arrangement_automation` · `back_to_arranger` · `jump_to_time` · `capture_midi` · `start_recording` · `stop_recording` · `get_cue_points` · `jump_to_cue` · `toggle_cue_point`
+
+### Automation (8)
+`get_clip_automation` · `set_clip_automation` · `clear_clip_automation` · `apply_automation_shape` · `apply_automation_recipe` · `get_automation_recipes` · `generate_automation_curve` · `analyze_for_automation`
 
 ### Memory (8)
 `memory_learn` · `memory_recall` · `memory_get` · `memory_replay` · `memory_list` · `memory_favorite` · `memory_update` · `memory_delete`
@@ -334,7 +390,7 @@ The agent ships with a 2,700-line reference corpus (drum patterns, chord voicing
 
 The LivePilot Analyzer (`LivePilot_Analyzer.amxd`) gives the AI ears. Drop it on the master track and 20 additional tools unlock: 8-band spectral analysis, RMS/peak metering, Krumhansl-Schmuckler key detection, plus deep LOM access for sample manipulation, warp markers, device introspection, and human-readable parameter display values.
 
-All 107 core tools work without it. The analyzer is what turns LivePilot from a remote control into a feedback loop — the AI can set an EQ curve and then read the spectrum to verify the result.
+All 115 core tools work without it. The analyzer is what turns LivePilot from a remote control into a feedback loop — the AI can set an EQ curve and then read the spectrum to verify the result.
 
 ---
 
@@ -346,7 +402,7 @@ There are **15+ MCP servers for Ableton Live** as of March 2026. Here's how the 
 
 | | [LivePilot](https://github.com/dreamrec/LivePilot) | [AbletonMCP](https://github.com/ahujasid/ableton-mcp) | [MCP Extended](https://github.com/uisato/ableton-mcp-extended) | [Ableton Copilot](https://github.com/xiaolaa2/ableton-copilot-mcp) | [AbletonBridge](https://github.com/hidingwill/AbletonBridge) | [Producer Pal](https://github.com/adamjmurray/producer-pal) |
 |---|:-:|:-:|:-:|:-:|:-:|:-:|
-| **Tools** | 127 | ~20 | ~35 | ~45 | 322 | ~25 |
+| **Tools** | 135 | ~20 | ~35 | ~45 | 322 | ~25 |
 | **Device knowledge** | 280+ devices | -- | -- | -- | -- | -- |
 | **Audio analysis** | Spectrum/RMS/key | -- | -- | -- | Metering | -- |
 | **Technique memory** | Persistent | -- | -- | -- | -- | -- |
@@ -363,6 +419,8 @@ There are **15+ MCP servers for Ableton Live** as of March 2026. Here's how the 
 | Session clips | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Arrangement view** | ✅ | — | — | ✅ | ? | ? |
 | **Arrangement automation** | ✅ | — | — | — | ? | — |
+| **Clip automation (envelopes)** | ✅ | — | — | — | — | — |
+| **Automation curve engine** | ✅ | — | — | — | — | — |
 | MIDI notes (add/get) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **MIDI notes (modify/delete by ID)** | ✅ | — | — | ✅ | ? | — |
 | **Per-note probability** | ✅ | — | — | — | — | — |
@@ -401,7 +459,7 @@ Every server on this list gives the AI tools to control Ableton. LivePilot is th
 
 The practical difference: other servers let the AI set a parameter. LivePilot lets the AI choose the right parameter based on what device is loaded (atlas), verify the result by reading the audio output (analyzer), and remember the technique for next time (memory).
 
-AbletonBridge has more raw tools (322 vs 127). Producer Pal has the easiest install (drag a .amxd). The original AbletonMCP has the community (2.3k stars). LivePilot has the deepest integration — tools that execute, knowledge that informs, perception that verifies, and memory that accumulates.
+AbletonBridge has more raw tools (322 vs 135). Producer Pal has the easiest install (drag a .amxd). The original AbletonMCP has the community (2.3k stars). LivePilot has the deepest integration — tools that execute, knowledge that informs, perception that verifies, and memory that accumulates.
 
 ---
 

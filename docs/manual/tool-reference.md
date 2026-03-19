@@ -1484,6 +1484,139 @@ Creates or deletes a cue point at the current playhead position. If there's alre
 
 ---
 
+## Automation
+
+Tools for reading, writing, and generating clip automation envelopes. The automation system combines a 16-type curve engine with 15 named production recipes and spectral-aware analysis to write musically intelligent automation.
+
+The curve engine is pure math — no Ableton dependency. It generates normalized points (0.0–1.0) that map to any parameter: volume, pan, sends, or any device parameter with an envelope. The recipes are named presets for common techniques (dub throws, filter sweeps, sidechain pumps) so you don't have to calculate breakpoints by hand.
+
+### get_clip_automation
+
+Lists all automation envelopes on a session clip. Shows parameter name, type (mixer/send/device), device name, and indices.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | required | Track index |
+| `clip_index` | int | required | Clip slot index |
+
+**When to use:** Before writing automation — see what's already there. After clearing — verify it's clean.
+
+### set_clip_automation
+
+Writes raw automation points to a clip envelope. For manual point placement when you need exact control.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | required | Track index |
+| `clip_index` | int | required | Clip slot index |
+| `parameter_type` | string | required | `"volume"`, `"panning"`, `"send"`, or `"device"` |
+| `points` | list | required | `[{time, value, duration?}]` — time in beats, value 0.0–1.0 |
+| `device_index` | int | null | Required for `"device"` type |
+| `parameter_index` | int | null | Required for `"device"` type |
+| `send_index` | int | null | Required for `"send"` type (0=A, 1=B, ...) |
+
+**When to use:** When you need exact control over automation points. For most cases, prefer `apply_automation_shape` or `apply_automation_recipe`.
+
+### clear_clip_automation
+
+Clears automation envelopes from a clip. Omit `parameter_type` to clear all envelopes; provide it to clear only that parameter.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | required | Track index |
+| `clip_index` | int | required | Clip slot index |
+| `parameter_type` | string | null | If omitted, clears ALL envelopes |
+| `device_index` | int | null | For clearing specific device params |
+| `parameter_index` | int | null | For clearing specific device params |
+| `send_index` | int | null | For clearing specific sends |
+
+**When to use:** "Remove all automation from this clip" or "clear just the panning automation."
+
+### apply_automation_shape
+
+The main automation tool. Generates a curve and writes it to a clip in one call. 16 curve types with full parameter control.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | required | Track index |
+| `clip_index` | int | required | Clip slot index |
+| `parameter_type` | string | required | `"volume"`, `"panning"`, `"send"`, or `"device"` |
+| `curve_type` | string | required | One of 16 types (see Curve Types below) |
+| `duration` | float | 4.0 | Curve length in beats |
+| `density` | int | 16 | Number of automation points |
+| `time_offset` | float | 0.0 | Shift curve forward by N beats |
+| `invert` | bool | false | Flip values (1.0 - value) |
+| + curve-specific params | varies | varies | See Curve Types below |
+
+**Curve types and their key parameters:**
+
+- **linear** / **exponential** / **logarithmic** / **s_curve**: `start`, `end`, `factor` (steepness)
+- **sine**: `center`, `amplitude`, `frequency`, `phase`
+- **sawtooth**: `start`, `end`, `frequency` (resets per duration)
+- **spike**: `peak`, `decay` (higher = faster falloff)
+- **square**: `low`, `high`, `frequency`
+- **steps**: `values` (explicit value list, e.g. `[0.2, 0.5, 0.8, 1.0]`)
+- **perlin**: `center`, `amplitude`, `frequency`, `seed`
+- **brownian**: `start`, `drift`, `volatility`, `seed`
+- **spring**: `start`, `end`, `damping`, `stiffness`
+- **bezier**: `start`, `end`, `control1`, `control2`, `control1_time`, `control2_time`
+- **easing**: `start`, `end`, `easing_type` (ease_in, ease_out, bounce, elastic, back, circular_in, circular_out)
+- **euclidean**: `hits`, `steps`, `high`, `low`
+- **stochastic**: `center`, `amplitude`, `narrowing`, `seed`
+
+**When to use:** "Add a filter sweep to this clip" or "put a sine LFO on the panning" or "write a sidechain pump on the volume."
+
+### apply_automation_recipe
+
+Apply a named production recipe. Same as `apply_automation_shape` but with preset parameters for common techniques.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | required | Track index |
+| `clip_index` | int | required | Clip slot index |
+| `parameter_type` | string | required | Target parameter type |
+| `recipe` | string | required | Recipe name (see list below) |
+| `duration` | float | 4.0 | Duration in beats |
+| `density` | int | 16 | Point count |
+| `time_offset` | float | 0.0 | Shift forward by N beats |
+
+**15 recipes:** `filter_sweep_up`, `filter_sweep_down`, `dub_throw`, `tape_stop`, `build_rise`, `sidechain_pump`, `fade_in`, `fade_out`, `tremolo`, `auto_pan`, `stutter`, `breathing`, `washout`, `vinyl_crackle`, `stereo_narrow`
+
+**When to use:** "Add a dub throw on beat 3" or "fade in the texture over 8 bars."
+
+### get_automation_recipes
+
+Lists all 15 recipes with descriptions, typical durations, target parameters, and underlying curve types.
+
+**When to use:** "What automation recipes are available?" or when choosing the right recipe.
+
+### generate_automation_curve
+
+Generates curve points without writing them. Use this to preview or inspect a curve before committing it.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `curve_type` | string | required | Any of the 16 curve types |
+| + all curve-specific params | varies | varies | Same as `apply_automation_shape` |
+
+Returns: `{curve_type, duration, point_count, points, value_range}`
+
+**When to use:** "Show me what a bounce easing looks like" or when building custom multi-curve automation.
+
+### analyze_for_automation
+
+Reads the track's spectrum and device chain, then suggests automation targets with recommended recipes.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | required | Track to analyze |
+
+Returns: track name, device count, current level, spectrum data, and a list of suggestions with device index, reason, and recommended recipe.
+
+**When to use:** "What should I automate on this track?" or when you want data-driven automation decisions.
+
+---
+
 ## Memory
 
 Tools for saving, searching, and replaying production techniques. The memory system lets you build a persistent library of beats, device chains, mixing setups, and production preferences — each annotated with a rich stylistic analysis the agent writes at save time. See the README's "Train Your Own AI Producer" section for how this shapes the agent over time.

@@ -1,6 +1,6 @@
 # LivePilot Tool Reference
 
-135 MCP tools across 12 domains. Tools marked with [M4L] require the LivePilot Analyzer device on the master track.
+135 MCP tools across 12 domains. Tools marked with [M4L] require the LivePilot Analyzer device on the master track. Tools marked with [M4L*] use M4L data when available but work without it.
 
 ## Transport (12 tools)
 
@@ -145,6 +145,39 @@
 | `remove_arrangement_notes_by_id` | Remove specific notes by ID | `track_index`, `clip_index`, `note_ids` |
 | `modify_arrangement_notes` | Modify notes by ID | `track_index`, `clip_index`, `modifications` |
 | `duplicate_arrangement_notes` | Duplicate notes by ID | `track_index`, `clip_index`, `note_ids` |
+
+## Automation (8 tools)
+
+| Tool | Description | Required Params |
+|------|-------------|-----------------|
+| `get_clip_automation` | List all automation envelopes on a session clip | `track_index`, `clip_index` |
+| `set_clip_automation` | Write automation points to clip envelope | `track_index`, `clip_index`, `parameter_type`, `points` |
+| `clear_clip_automation` | Clear automation envelopes (all or specific) | `track_index`, `clip_index` |
+| `apply_automation_shape` | Generate + apply curve in one call (16 types) | `track_index`, `clip_index`, `parameter_type`, `curve_type` |
+| `apply_automation_recipe` | Apply named recipe (15 presets) | `track_index`, `clip_index`, `parameter_type`, `recipe` |
+| `get_automation_recipes` | List all recipes with descriptions | (none) |
+| `generate_automation_curve` | Preview curve points without writing | `curve_type` |
+| `analyze_for_automation` | Spectral analysis + device-aware suggestions [M4L*] | `track_index` |
+
+### Curve Types
+
+16 types across 4 categories:
+
+- **Basic:** `linear`, `exponential`, `logarithmic`, `s_curve`, `sine`, `sawtooth`, `spike`, `square`, `steps`
+- **Organic:** `perlin`, `brownian`, `spring`
+- **Shape:** `bezier`, `easing` (8 sub-types: ease_in, ease_out, ease_in_out, bounce, elastic, back, circular_in, circular_out)
+- **Algorithmic:** `euclidean`, `stochastic`
+
+### Recipes
+
+`filter_sweep_up` · `filter_sweep_down` · `dub_throw` · `tape_stop` · `build_rise` · `sidechain_pump` · `fade_in` · `fade_out` · `tremolo` · `auto_pan` · `stutter` · `breathing` · `washout` · `vinyl_crackle` · `stereo_narrow`
+
+### Parameter Types
+
+- `"volume"` — track volume fader
+- `"panning"` — track pan
+- `"send"` — send level (requires `send_index`: 0=A, 1=B, ...)
+- `"device"` — device parameter (requires `device_index` + `parameter_index`)
 
 ## Memory (8 tools)
 

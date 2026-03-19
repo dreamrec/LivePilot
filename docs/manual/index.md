@@ -29,6 +29,7 @@ LivePilot gives you **135 tools** organized across 12 domains:
 | [Mixing](mixing.md) | Volume, pan, sends, routing, return tracks, master |
 | [Browser](sound-design.md#browsing-abletons-library) | Search the full Ableton library, load presets by name |
 | [Arrangement](workflows.md#arrangement-workflow) | Timeline editing, MIDI notes in arrangement, cue points, recording |
+| [Automation](tool-reference.md#automation) | Clip envelopes, 16-type curve engine, 15 recipes, spectral suggestions |
 | [Memory](tool-reference.md#memory) | Save, recall, replay, and manage production techniques |
 | [Analyzer](tool-reference.md#analyzer) | Real-time spectral analysis, key detection, sample manipulation, warp markers (requires M4L device) |
 
