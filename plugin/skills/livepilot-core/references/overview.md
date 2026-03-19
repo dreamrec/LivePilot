@@ -244,7 +244,7 @@ This turns "set EQ band 3 to -4 dB" into "cut 400 Hz by 4 dB, then read the spec
 
 **15 recipes:** filter_sweep_up, filter_sweep_down, dub_throw, tape_stop, build_rise, sidechain_pump, fade_in, fade_out, tremolo, auto_pan, stutter, breathing, washout, vinyl_crackle, stereo_narrow
 
-### Theory (7) — Music theory analysis powered by music21 (optional dependency)
+### Theory (7) — Built-in music theory analysis (zero dependencies)
 
 | Tool | What it does | Key params |
 |------|-------------|------------|
@@ -256,7 +256,7 @@ This turns "set EQ band 3 to -4 dB" into "cut 400 Hz by 4 dB, then read the spec
 | `generate_countermelody` | Species counterpoint against a melody | `track_index`, `clip_index`, `species` (1 or 2) |
 | `transpose_smart` | Diatonic or chromatic transposition to a new key | `track_index`, `clip_index`, `target_key`, `mode` (diatonic/chromatic) |
 
-**Requires:** `pip install 'music21>=9.3'` — optional dependency, all other 135 tools work without it.
+**Built-in** — zero external dependencies, works on every LivePilot install.
 
 ## Units & Ranges Quick Reference
 

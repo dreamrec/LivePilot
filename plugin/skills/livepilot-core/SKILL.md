@@ -1,6 +1,6 @@
 ---
 name: livepilot-core
-description: Core discipline for controlling Ableton Live 12 through LivePilot's 142 MCP tools, device atlas (280+ devices), M4L analyzer (spectrum/RMS/key detection), automation intelligence (16 curve types, 15 recipes), music theory analysis (music21), and technique memory. Use whenever working with Ableton Live through MCP tools.
+description: Core discipline for controlling Ableton Live 12 through LivePilot's 142 MCP tools, device atlas (280+ devices), M4L analyzer (spectrum/RMS/key detection), automation intelligence (16 curve types, 15 recipes), music theory analysis, and technique memory. Use whenever working with Ableton Live through MCP tools.
 ---
 
 # LivePilot Core — Ableton Live 12 AI Copilot
@@ -176,7 +176,7 @@ Clip automation CRUD + intelligent curve generation with 15 built-in recipes.
 - Load `references/automation-atlas.md` for curve theory, genre recipes, diagnostic technique, and cross-track spectral mapping
 
 ### Theory (7)
-Music theory analysis powered by music21. Optional dependency — install with `pip install 'music21>=9.3'`.
+Music theory analysis — built-in pure Python engine, zero external dependencies.
 
 **Tools:** `analyze_harmony` · `suggest_next_chord` · `detect_theory_issues` · `identify_scale` · `harmonize_melody` · `generate_countermelody` · `transpose_smart`
 
@@ -184,7 +184,7 @@ Music theory analysis powered by music21. Optional dependency — install with `
 - These tools read MIDI notes directly from session clips — no file export needed
 - Auto-detects key via Krumhansl-Schmuckler if not provided; pass `key` hint for better accuracy
 - `analyze_harmony` and `detect_theory_issues` are analysis-only; `harmonize_melody`, `generate_countermelody`, and `transpose_smart` return note data ready for `add_notes`
-- Use your own musical knowledge alongside these tools — music21 provides data, you provide interpretation
+- Use your own musical knowledge alongside these tools — the engine provides data, you provide interpretation
 - Processing time: 2-5s for generative tools (harmonize, countermelody)
 
 ## Workflow: Building a Beat
