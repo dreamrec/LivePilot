@@ -189,16 +189,18 @@ class SpectralReceiver(asyncio.DatagramProtocol):
         elif address == "/chroma" and len(args) >= 12:
             self.cache.update("chroma", [round(float(a), 4) for a in args[:12]])
 
-        elif address == "/onset" and len(args) >= 2:
+        elif address == "/onset" and len(args) >= 1:
+            strength = round(float(args[0]), 4)
             self.cache.update("onset", {
-                "detected": float(args[0]) > 0.5,
-                "strength": round(float(args[1]), 4),
+                "detected": strength > 0.5,
+                "strength": strength,
             })
 
-        elif address == "/novelty" and len(args) >= 2:
+        elif address == "/novelty" and len(args) >= 1:
+            score = round(float(args[0]), 4)
             self.cache.update("novelty", {
-                "score": round(float(args[0]), 4),
-                "boundary": float(args[1]) > 0.5,
+                "score": score,
+                "boundary": score > 0.5,
             })
 
         elif address == "/loudness" and len(args) >= 2:

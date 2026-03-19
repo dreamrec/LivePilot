@@ -39,6 +39,20 @@
 		"boxes": [
 			{
 				"box": {
+					"id": "obj-panel",
+					"maxclass": "panel",
+					"numinlets": 1,
+					"numoutlets": 0,
+					"patching_rect": [50.0, 790.0, 350.0, 82.0],
+					"presentation": 1,
+					"presentation_rect": [0.0, 0.0, 350.0, 170.0],
+					"bgcolor": [0.12, 0.12, 0.12, 1.0],
+					"bordercolor": [0.2, 0.2, 0.2, 1.0],
+					"border": 1
+				}
+			},
+			{
+				"box": {
 					"id": "obj-1",
 					"maxclass": "newobj",
 					"text": "plugin~",
@@ -445,20 +459,6 @@
 			},
 			{
 				"box": {
-					"id": "obj-panel",
-					"maxclass": "panel",
-					"numinlets": 1,
-					"numoutlets": 0,
-					"patching_rect": [50.0, 790.0, 350.0, 82.0],
-					"presentation": 1,
-					"presentation_rect": [0.0, 0.0, 350.0, 170.0],
-					"bgcolor": [0.12, 0.12, 0.12, 1.0],
-					"bordercolor": [0.2, 0.2, 0.2, 1.0],
-					"border": 1
-				}
-			},
-			{
-				"box": {
 					"id": "obj-multislider",
 					"maxclass": "multislider",
 					"numinlets": 1,
@@ -592,6 +592,138 @@
 					"outlettype": [""],
 					"patching_rect": [810.0, 620.0, 72.0, 22.0]
 				}
+			},
+			{
+				"box": {
+					"id": "obj-fc-spectralshape",
+					"maxclass": "newobj",
+					"text": "fluid.spectralshape~ @fftsettings 2048 512",
+					"numinlets": 1,
+					"numoutlets": 2,
+					"outlettype": ["", ""],
+					"patching_rect": [50.0, 880.0, 260.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-fc-prepend-spectralshape",
+					"maxclass": "newobj",
+					"text": "prepend /spectral_shape",
+					"numinlets": 1,
+					"numoutlets": 1,
+					"outlettype": [""],
+					"patching_rect": [50.0, 920.0, 140.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-fc-melbands",
+					"maxclass": "newobj",
+					"text": "fluid.melbands~ 40 @fftsettings 2048 512",
+					"numinlets": 1,
+					"numoutlets": 2,
+					"outlettype": ["", ""],
+					"patching_rect": [320.0, 880.0, 250.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-fc-prepend-melbands",
+					"maxclass": "newobj",
+					"text": "prepend /mel_bands",
+					"numinlets": 1,
+					"numoutlets": 1,
+					"outlettype": [""],
+					"patching_rect": [320.0, 920.0, 115.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-fc-chroma",
+					"maxclass": "newobj",
+					"text": "fluid.chroma~ @fftsettings 4096 1024",
+					"numinlets": 1,
+					"numoutlets": 2,
+					"outlettype": ["", ""],
+					"patching_rect": [580.0, 880.0, 230.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-fc-prepend-chroma",
+					"maxclass": "newobj",
+					"text": "prepend /chroma",
+					"numinlets": 1,
+					"numoutlets": 1,
+					"outlettype": [""],
+					"patching_rect": [580.0, 920.0, 100.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-fc-loudness",
+					"maxclass": "newobj",
+					"text": "fluid.loudness~ @kweighting 1 @truepeak 1",
+					"numinlets": 1,
+					"numoutlets": 2,
+					"outlettype": ["", ""],
+					"patching_rect": [820.0, 880.0, 260.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-fc-prepend-loudness",
+					"maxclass": "newobj",
+					"text": "prepend /loudness",
+					"numinlets": 1,
+					"numoutlets": 1,
+					"outlettype": [""],
+					"patching_rect": [820.0, 920.0, 108.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-fc-onsetfeature",
+					"maxclass": "newobj",
+					"text": "fluid.onsetfeature~",
+					"numinlets": 1,
+					"numoutlets": 2,
+					"outlettype": ["", ""],
+					"patching_rect": [50.0, 960.0, 120.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-fc-prepend-onset",
+					"maxclass": "newobj",
+					"text": "prepend /onset",
+					"numinlets": 1,
+					"numoutlets": 1,
+					"outlettype": [""],
+					"patching_rect": [50.0, 1000.0, 90.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-fc-noveltyfeature",
+					"maxclass": "newobj",
+					"text": "fluid.noveltyfeature~ @kernelsize 21",
+					"numinlets": 1,
+					"numoutlets": 2,
+					"outlettype": ["", ""],
+					"patching_rect": [320.0, 960.0, 220.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-fc-prepend-novelty",
+					"maxclass": "newobj",
+					"text": "prepend /novelty",
+					"numinlets": 1,
+					"numoutlets": 1,
+					"outlettype": [""],
+					"patching_rect": [320.0, 1000.0, 100.0, 22.0]
+				}
 			}
 		],
 		"lines": [
@@ -665,7 +797,31 @@
 			{"patchline": {"source": ["obj-route-status", 0], "destination": ["obj-set-status", 0]}},
 			{"patchline": {"source": ["obj-set-status", 0], "destination": ["obj-status", 0]}},
 			{"patchline": {"source": ["obj-route-status", 1], "destination": ["obj-set-key", 0]}},
-			{"patchline": {"source": ["obj-set-key", 0], "destination": ["obj-key-display", 0]}}
+			{"patchline": {"source": ["obj-set-key", 0], "destination": ["obj-key-display", 0]}},
+
+			{"patchline": {"source": ["obj-4", 0], "destination": ["obj-fc-spectralshape", 0]}},
+			{"patchline": {"source": ["obj-fc-spectralshape", 0], "destination": ["obj-fc-prepend-spectralshape", 0]}},
+			{"patchline": {"source": ["obj-fc-prepend-spectralshape", 0], "destination": ["obj-udpsend", 0]}},
+
+			{"patchline": {"source": ["obj-4", 0], "destination": ["obj-fc-melbands", 0]}},
+			{"patchline": {"source": ["obj-fc-melbands", 0], "destination": ["obj-fc-prepend-melbands", 0]}},
+			{"patchline": {"source": ["obj-fc-prepend-melbands", 0], "destination": ["obj-udpsend", 0]}},
+
+			{"patchline": {"source": ["obj-4", 0], "destination": ["obj-fc-chroma", 0]}},
+			{"patchline": {"source": ["obj-fc-chroma", 0], "destination": ["obj-fc-prepend-chroma", 0]}},
+			{"patchline": {"source": ["obj-fc-prepend-chroma", 0], "destination": ["obj-udpsend", 0]}},
+
+			{"patchline": {"source": ["obj-4", 0], "destination": ["obj-fc-loudness", 0]}},
+			{"patchline": {"source": ["obj-fc-loudness", 0], "destination": ["obj-fc-prepend-loudness", 0]}},
+			{"patchline": {"source": ["obj-fc-prepend-loudness", 0], "destination": ["obj-udpsend", 0]}},
+
+			{"patchline": {"source": ["obj-4", 0], "destination": ["obj-fc-onsetfeature", 0]}},
+			{"patchline": {"source": ["obj-fc-onsetfeature", 0], "destination": ["obj-fc-prepend-onset", 0]}},
+			{"patchline": {"source": ["obj-fc-prepend-onset", 0], "destination": ["obj-udpsend", 0]}},
+
+			{"patchline": {"source": ["obj-4", 0], "destination": ["obj-fc-noveltyfeature", 0]}},
+			{"patchline": {"source": ["obj-fc-noveltyfeature", 0], "destination": ["obj-fc-prepend-novelty", 0]}},
+			{"patchline": {"source": ["obj-fc-prepend-novelty", 0], "destination": ["obj-udpsend", 0]}}
 		],
 		"dependency_cache": [
 			{

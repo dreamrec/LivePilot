@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.8.2 — FluCoMa Wiring + Analyzer Fix (March 2026)
+
+- Fix: wire 6 FluCoMa DSP objects into LivePilot_Analyzer.maxpat (spectral shape, mel bands, chroma, loudness, onset, novelty)
+- Fix: onset/novelty Python handlers now accept 1 arg (fluid.onsetfeature~/noveltyfeature~ output single float)
+- Fix: rebuild .amxd with FluCoMa objects + binary patch openinpresentation
+- FluCoMa perception tools now fully functional when FluCoMa package is installed
+
 ## 1.8.1 — Patch (March 2026)
 
 - Fix: `parse_key()` now accepts shorthand key notation ("Am", "C#m", "Bbm") in addition to "A minor" / "C# major"
