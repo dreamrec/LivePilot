@@ -70,12 +70,12 @@ function ensureVenv(systemPython, prefixArgs) {
   // Check if venv already exists and has our deps
   if (fs.existsSync(venvPy)) {
     try {
-      execFileSync(venvPy, ["-c", "import fastmcp"], {
+      execFileSync(venvPy, ["-c", "import fastmcp; import midiutil; import pretty_midi"], {
         encoding: "utf-8",
         timeout: 10000,
         stdio: "pipe",
       });
-      return venvPy; // venv exists and fastmcp is importable
+      return venvPy; // venv exists and all deps importable
     } catch {
       // venv exists but deps missing — reinstall
       console.error("LivePilot: reinstalling Python dependencies...");
