@@ -147,7 +147,8 @@ def set_clip_loop(song, params):
     clip_index = int(params["clip_index"])
     clip = get_clip(song, track_index, clip_index)
 
-    clip.looping = bool(params["enabled"])
+    if "enabled" in params:
+        clip.looping = bool(params["enabled"])
     if "start" in params:
         clip.loop_start = float(params["start"])
     if "end" in params:

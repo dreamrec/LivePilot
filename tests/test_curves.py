@@ -119,15 +119,27 @@ class TestBrownianCurve:
 
 class TestSpringCurve:
     def test_overshoot_and_settle(self):
-        """Spring: overshoots target then settles."""
-        points = generate_curve("spring", start=0.0, end=1.0,
-                               damping=0.15, stiffness=8.0,
-                               duration=4.0, density=32)
-        # Should overshoot (some value > end)
+        """Spring: raw curve overshoots target then settles.
+
+        Note: generate_curve() clamps to [0,1], so we test the raw
+        _spring generator directly to verify overshoot physics.
+        """
+        from mcp_server.curves import _spring
+        points = _spring(duration=4.0, density=64, start=0.0, end=1.0,
+                        damping=0.1, stiffness=8.0)
         values = [p["value"] for p in points]
-        assert any(v > 1.0 for v in values) or values[-1] == pytest.approx(1.0, abs=0.1)
+        # Raw spring MUST overshoot with moderate damping
+        assert any(v > 1.0 for v in values), "Spring should overshoot with damping=0.1"
         # Should settle near end value
-        assert values[-1] == pytest.approx(1.0, abs=0.15)
+        assert values[-1] == pytest.approx(1.0, abs=0.1)
+
+    def test_clamped_spring_stays_in_range(self):
+        """Spring through generate_curve is clamped to [0,1]."""
+        points = generate_curve("spring", start=0.0, end=1.0,
+                               damping=0.05, stiffness=8.0,
+                               duration=4.0, density=64)
+        values = [p["value"] for p in points]
+        assert all(0.0 <= v <= 1.0 for v in values)
 
 class TestBezierCurve:
     def test_custom_shape(self):

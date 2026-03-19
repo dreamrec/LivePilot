@@ -18,7 +18,7 @@ async def lifespan(server):
     m4l = M4LBridge(spectral, receiver)
 
     # Start UDP listener for incoming M4L spectral data (port 9880)
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     try:
         transport, _ = await loop.create_datagram_endpoint(
             lambda: receiver,

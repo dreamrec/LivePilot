@@ -2,12 +2,9 @@
 
 
 def test_automation_tool_count():
-    """8 new automation tools should be registered."""
+    """8 automation tools should be registered as module-level functions."""
     from mcp_server.tools import automation
-    import inspect
-    tools = [name for name, obj in inspect.getmembers(automation)
-             if callable(obj) and hasattr(obj, '__wrapped__')]
-    # At minimum these should exist as functions
+
     expected = [
         'get_clip_automation',
         'set_clip_automation',
@@ -20,3 +17,4 @@ def test_automation_tool_count():
     ]
     for name in expected:
         assert hasattr(automation, name), f"Missing tool: {name}"
+        assert callable(getattr(automation, name)), f"Not callable: {name}"

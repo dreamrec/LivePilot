@@ -298,7 +298,7 @@ Solos or unsolos a track.
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `track_index` | int | *(required)* | Track number (0-based) |
-| `soloed` | bool | *(required)* | `true` to solo, `false` to unsolo |
+| `solo` | bool | *(required)* | `true` to solo, `false` to unsolo |
 
 **When to use:** "Solo the vocals" or "unsolo everything." Be careful with solo -- it's easy to forget and wonder why your mix sounds thin.
 

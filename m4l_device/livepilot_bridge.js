@@ -300,6 +300,8 @@ function cmd_walk_rack(args) {
 function walk_device(path, depth) {
     if (depth > 6) return {"error": "max depth reached"};
 
+    // Read all properties from cursor BEFORE recursing — recursion
+    // overwrites both cursors, so we must capture everything first.
     cursor_a.goto(path);
     var result = {
         name: cursor_a.get("name").toString(),
@@ -310,11 +312,15 @@ function walk_device(path, depth) {
         param_count: cursor_a.getcount("parameters")
     };
 
-    if (result.can_have_chains) {
-        var chain_count = cursor_a.getcount("chains");
+    // Capture chain/pad counts BEFORE recursion clobbers cursors
+    var chain_count = result.can_have_chains ? cursor_a.getcount("chains") : 0;
+    var pad_count = result.can_have_drum_pads ? cursor_a.getcount("drum_pads") : 0;
+
+    if (chain_count > 0) {
         result.chains = [];
         for (var c = 0; c < chain_count; c++) {
             var chain_path = path + " chains " + c;
+            // Re-goto cursor_b each iteration (recursion may have moved it)
             cursor_b.goto(chain_path);
             var chain = {
                 index: c,
@@ -329,10 +335,8 @@ function walk_device(path, depth) {
         }
     }
 
-    if (result.can_have_drum_pads) {
-        var pad_count = cursor_a.getcount("drum_pads");
+    if (pad_count > 0) {
         result.drum_pads = [];
-        // Only report populated pads (up to 128, but most are empty)
         for (var p = 0; p < Math.min(pad_count, 128); p++) {
             var pad_path = path + " drum_pads " + p;
             cursor_b.goto(pad_path);
@@ -686,7 +690,7 @@ function cmd_get_simpler_slices(args) {
         "playback_mode_name": ["Classic", "One-Shot", "Slicing"][playback_mode] || "Unknown",
         "sample_rate": sample_rate,
         "sample_length_frames": length,
-        "sample_length_seconds": length / sample_rate,
+        "sample_length_seconds": sample_rate > 0 ? length / sample_rate : 0,
         "slice_count": slices.length,
         "slices": slices
     });

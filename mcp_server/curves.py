@@ -365,11 +365,12 @@ def _brownian(duration: float, density: int, start: float = 0.5,
         points.append({"time": t * duration, "value": value})
         step = drift / density + volatility * _det_random(i, seed)
         value += step
-        # Soft boundary reflection (bounce off 0/1 instead of hard clamp)
-        if value > 1.0:
-            value = 2.0 - value
-        elif value < 0.0:
-            value = -value
+        # Soft boundary reflection (bounce off 0/1 until within range)
+        while value > 1.0 or value < 0.0:
+            if value > 1.0:
+                value = 2.0 - value
+            if value < 0.0:
+                value = -value
     return points
 
 

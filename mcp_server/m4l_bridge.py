@@ -234,7 +234,7 @@ class M4LBridge:
             return {"error": "LivePilot Analyzer not connected. Drop it on the master track."}
 
         # Create a future for the response
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         future = loop.create_future()
         if self.receiver:
             self.receiver.set_response_future(future)

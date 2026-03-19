@@ -1,7 +1,7 @@
 """Analyzer MCP tools — real-time spectral analysis and deep LOM access.
 
 20 tools requiring the LivePilot Analyzer M4L device on the master track.
-These tools are optional — all 107 core tools work without the device.
+These tools are optional — all 115 core tools work without the device.
 """
 
 from __future__ import annotations
