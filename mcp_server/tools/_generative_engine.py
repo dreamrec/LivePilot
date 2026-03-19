@@ -102,3 +102,51 @@ def rotate_pattern(pattern: list[int], rotation: int) -> list[int]:
 def identify_rhythm(pulses: int, steps: int) -> str | None:
     """Return known rhythm name for (pulses, steps), or None."""
     return KNOWN_RHYTHMS.get((pulses, steps))
+
+
+# ---------------------------------------------------------------------------
+# Tintinnabuli (Arvo Pärt)
+# ---------------------------------------------------------------------------
+
+def tintinnabuli_voice(
+    melody_pitches: list[int],
+    triad_pcs: list[int],
+    position: str = "nearest",
+) -> list[int]:
+    """Generate tintinnabuli voice: for each melody pitch, find nearest triad tone.
+
+    Args:
+        melody_pitches: MIDI pitch numbers of the melody.
+        triad_pcs: Pitch classes (0-11) of the triad (e.g. [0,4,7] for C major).
+        position: "above", "below", or "nearest".
+
+    Returns:
+        List of MIDI pitches for the tintinnabuli voice.
+    """
+    result = []
+    for mp in melody_pitches:
+        best = _find_triad_tone(mp, triad_pcs, position)
+        result.append(best)
+    return result
+
+
+def _find_triad_tone(pitch: int, triad_pcs: list[int], position: str) -> int:
+    """Find the nearest triad tone relative to a given pitch."""
+    candidates = []
+    for octave_offset in range(-2, 3):
+        for pc in triad_pcs:
+            candidate = (pitch // 12 + octave_offset) * 12 + pc
+            if 0 <= candidate <= 127:
+                candidates.append(candidate)
+
+    if position == "above":
+        above = [c for c in candidates if c > pitch]
+        return min(above) if above else max(candidates)
+    elif position == "below":
+        below = [c for c in candidates if c < pitch]
+        return max(below) if below else min(candidates)
+    else:  # nearest
+        others = [c for c in candidates if c != pitch]
+        if not others:
+            return pitch
+        return min(others, key=lambda c: abs(c - pitch))
