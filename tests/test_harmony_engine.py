@@ -1,0 +1,82 @@
+"""Unit tests for the neo-Riemannian harmony engine."""
+import sys
+import os
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from mcp_server.tools._harmony_engine import (
+    parse_chord, parallel, leading_tone, relative,
+    apply_transforms, chord_to_str,
+)
+
+
+class TestParseChord:
+    def test_c_major(self):
+        assert parse_chord("C major") == (0, "major")
+
+    def test_f_sharp_minor(self):
+        assert parse_chord("F# minor") == (6, "minor")
+
+    def test_ab_major(self):
+        assert parse_chord("Ab major") == (8, "major")
+
+    def test_bb_minor(self):
+        assert parse_chord("Bb minor") == (10, "minor")
+
+
+class TestPRL:
+    def test_parallel_c_major(self):
+        assert parallel(0, "major") == (0, "minor")
+
+    def test_parallel_c_minor(self):
+        assert parallel(0, "minor") == (0, "major")
+
+    def test_parallel_involution(self):
+        for root in range(12):
+            for q in ("major", "minor"):
+                assert parallel(*parallel(root, q)) == (root, q)
+
+    def test_leading_tone_c_major(self):
+        assert leading_tone(0, "major") == (4, "minor")
+
+    def test_leading_tone_e_minor(self):
+        assert leading_tone(4, "minor") == (0, "major")
+
+    def test_leading_tone_involution(self):
+        for root in range(12):
+            for q in ("major", "minor"):
+                assert leading_tone(*leading_tone(root, q)) == (root, q)
+
+    def test_relative_c_major(self):
+        assert relative(0, "major") == (9, "minor")
+
+    def test_relative_a_minor(self):
+        assert relative(9, "minor") == (0, "major")
+
+    def test_relative_involution(self):
+        for root in range(12):
+            for q in ("major", "minor"):
+                assert relative(*relative(root, q)) == (root, q)
+
+
+class TestApplyTransforms:
+    def test_pl(self):
+        result = apply_transforms(0, "major", "PL")
+        assert result == (8, "major")
+
+    def test_empty(self):
+        assert apply_transforms(0, "major", "") == (0, "major")
+
+    def test_single_r(self):
+        assert apply_transforms(0, "major", "R") == (9, "minor")
+
+
+class TestChordToStr:
+    def test_c_major(self):
+        assert chord_to_str(0, "major") == "C major"
+
+    def test_ab_major(self):
+        assert chord_to_str(8, "major") == "Ab major"
+
+    def test_f_sharp_minor(self):
+        assert chord_to_str(6, "minor") == "F# minor"
