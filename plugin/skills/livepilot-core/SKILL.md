@@ -1,17 +1,17 @@
 ---
 name: livepilot-core
-description: Core discipline for controlling Ableton Live 12 through LivePilot's 127 MCP tools, device atlas (280+ devices), M4L analyzer (spectrum/RMS/key detection), and technique memory. Use whenever working with Ableton Live through MCP tools.
+description: Core discipline for controlling Ableton Live 12 through LivePilot's 135 MCP tools, device atlas (280+ devices), M4L analyzer (spectrum/RMS/key detection), automation intelligence (16 curve types, 15 recipes), and technique memory. Use whenever working with Ableton Live through MCP tools.
 ---
 
 # LivePilot Core — Ableton Live 12 AI Copilot
 
-LivePilot is an agentic production system for Ableton Live 12. It combines 127 MCP tools with three layers of intelligence:
+LivePilot is an agentic production system for Ableton Live 12. It combines 135 MCP tools with three layers of intelligence:
 
 - **Device Atlas** — A structured knowledge corpus of 280+ instruments, 139 drum kits, and 350+ impulse responses. Consult the atlas before loading any device. It contains real browser URIs, preset names, and sonic descriptions. Never guess a device name — look it up.
 - **M4L Analyzer** — Real-time audio analysis on the master bus (8-band spectrum, RMS/peak, key detection). Use it to verify mixing decisions, detect frequency problems, and find the key before writing harmonic content.
 - **Technique Memory** — Persistent storage for production decisions. Consult `memory_recall` before creative tasks to understand the user's taste. Save techniques when the user likes something. The memory shapes future decisions without constraining them.
 
-These layers sit on top of 127 deterministic tools across 11 domains: transport, tracks, clips, MIDI notes, devices, scenes, mixing, browser, arrangement, technique memory, and real-time DSP analysis.
+These layers sit on top of 135 deterministic tools across 12 domains: transport, tracks, clips, MIDI notes, devices, scenes, mixing, browser, arrangement, technique memory, real-time DSP analysis, and automation.
 
 ## Golden Rules
 
@@ -64,7 +64,7 @@ These layers sit on top of 127 deterministic tools across 11 domains: transport,
 - MIDI track with no instrument loaded
 - Notes programmed but clip not fired
 
-## Tool Domains (127 total)
+## Tool Domains (135 total)
 
 ### Transport (12)
 `get_session_info` · `set_tempo` · `set_time_signature` · `start_playback` · `stop_playback` · `continue_playback` · `toggle_metronome` · `set_session_loop` · `undo` · `redo` · `get_recent_actions` · `get_session_diagnostics`
@@ -98,6 +98,29 @@ These layers sit on top of 127 deterministic tools across 11 domains: transport,
 
 ### Analyzer (20) — requires LivePilot Analyzer M4L device on master track
 `get_master_spectrum` · `get_master_rms` · `get_detected_key` · `get_hidden_parameters` · `get_automation_state` · `walk_device_tree` · `get_clip_file_path` · `replace_simpler_sample` · `load_sample_to_simpler` · `get_simpler_slices` · `crop_simpler` · `reverse_simpler` · `warp_simpler` · `get_warp_markers` · `add_warp_marker` · `move_warp_marker` · `remove_warp_marker` · `scrub_clip` · `stop_scrub` · `get_display_values`
+
+### Automation (8)
+Clip automation CRUD + intelligent curve generation with 15 built-in recipes.
+
+**Tools:** `get_clip_automation` · `set_clip_automation` · `clear_clip_automation` · `apply_automation_shape` · `apply_automation_recipe` · `get_automation_recipes` · `generate_automation_curve` · `analyze_for_automation`
+
+**Key discipline:**
+
+**The Feedback Loop (MANDATORY for all automation work):**
+1. PERCEIVE: `get_master_spectrum` + `get_track_meters` -> understand current state
+2. DIAGNOSE: What needs to change? Use diagnostic filter technique if unsure
+3. DECIDE: Which parameter, which curve, which recipe?
+4. ACT: `apply_automation_shape` or `apply_automation_recipe`
+5. VERIFY: `get_master_spectrum` again -> did it work?
+6. ADJUST: If not right, `clear_clip_automation` -> try different curve/params
+7. NEVER write automation without reading spectrum first and after
+
+**Rules:**
+- Use `analyze_for_automation` before writing — let spectral data guide decisions
+- Use recipes for common patterns (filter_sweep_up, dub_throw, sidechain_pump)
+- Use `apply_automation_shape` for custom curves with specific math
+- Clear existing automation before rewriting: `clear_clip_automation` first
+- Load `references/automation-atlas.md` for curve theory, genre recipes, diagnostic technique, and cross-track spectral mapping
 
 ## Workflow: Building a Beat
 
@@ -240,10 +263,11 @@ Deep production knowledge lives in `references/`. Consult these when making crea
 
 | File | What's inside | When to consult |
 |------|--------------|-----------------|
-| `references/overview.md` | All 127 tools mapped with params, units, ranges | Quick lookup for any tool |
+| `references/overview.md` | All 135 tools mapped with params, units, ranges | Quick lookup for any tool |
 | `references/midi-recipes.md` | Drum patterns by genre, chord voicings, scales, hi-hat techniques, humanization, polymetrics | Programming MIDI notes, building beats |
 | `references/sound-design.md` | Stock instruments/effects, parameter recipes for bass/pad/lead/pluck, device chain patterns | Loading and configuring devices |
 | `references/mixing-patterns.md` | Gain staging, parallel compression, sidechain, EQ by instrument, bus processing, stereo width | Setting volumes, panning, adding effects |
 | `references/ableton-workflow-patterns.md` | Session/Arrangement workflow, song structures by genre, follow actions, clip launch modes, export | Organizing sessions, structuring songs |
 | `references/m4l-devices.md` | Browser organization, MIDI effects, rack systems, device loading patterns | Finding and loading devices, using racks |
 | `references/memory-guide.md` | Qualities template, good/bad examples for each technique type | Saving techniques, writing qualities |
+| `references/automation-atlas.md` | Curve theory, perception-action loop, genre recipes, diagnostic filter technique, spectral mapping | Writing automation, choosing curves, mixing with spectral feedback |

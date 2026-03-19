@@ -1,6 +1,6 @@
-# LivePilot v1.5.0 — Architecture & Tool Reference
+# LivePilot v1.6.0 — Architecture & Tool Reference
 
-LivePilot is an agentic production system for Ableton Live 12. It combines 127 MCP tools with a device knowledge corpus, real-time audio analysis, and persistent technique memory.
+LivePilot is an agentic production system for Ableton Live 12. It combines 135 MCP tools with a device knowledge corpus, real-time audio analysis, automation intelligence, and persistent technique memory.
 
 ## Architecture
 
@@ -32,7 +32,7 @@ A flat tool list lets the AI press buttons. LivePilot's three layers give it con
 
 This turns "set EQ band 3 to -4 dB" into "cut 400 Hz by 4 dB, then read the spectrum to confirm the mud is actually reduced."
 
-## The 127 Tools — What Each One Does
+## The 135 Tools — What Each One Does
 
 ### Transport (12) — Playback, tempo, global state, diagnostics
 
@@ -226,6 +226,23 @@ This turns "set EQ band 3 to -4 dB" into "cut 400 Hz by 4 dB, then read the spec
 | `scrub_clip` | Preview audio at position | `track_index`, `clip_index`, `beat_time` |
 | `stop_scrub` | Stop preview | `track_index`, `clip_index` |
 | `get_display_values` | Human-readable parameter values ("440 Hz", "-6 dB") | `track_index`, `device_index` |
+
+### Automation (8) — Clip automation CRUD + intelligent curve generation
+
+| Tool | What it does | Key params |
+|------|-------------|------------|
+| `get_clip_automation` | Lists all automation envelopes on a session clip | `track_index`, `clip_index` |
+| `set_clip_automation` | Writes automation points to a clip envelope | `track_index`, `clip_index`, `parameter_type`, `points` |
+| `clear_clip_automation` | Clears automation envelopes (specific or all) | `track_index`, `clip_index`, `parameter_type` (optional) |
+| `apply_automation_shape` | Generates and applies a curve to a clip in one call | `track_index`, `clip_index`, `parameter_type`, `curve_type`, `duration`, `density` |
+| `apply_automation_recipe` | Applies a named recipe (filter_sweep_up, dub_throw, etc.) | `track_index`, `clip_index`, `parameter_type`, `recipe`, `duration` |
+| `get_automation_recipes` | Lists all 15 recipes with descriptions and targets | — |
+| `generate_automation_curve` | Previews curve points without writing them | `curve_type`, `duration`, `density`, curve-specific params |
+| `analyze_for_automation` | Spectral analysis + device-aware automation suggestions | `track_index` |
+
+**16 curve types:** linear, exponential, logarithmic, s_curve, sine, sawtooth, spike, square, steps, perlin, brownian, spring, bezier, easing, euclidean, stochastic
+
+**15 recipes:** filter_sweep_up, filter_sweep_down, dub_throw, tape_stop, build_rise, sidechain_pump, fade_in, fade_out, tremolo, auto_pan, stutter, breathing, washout, vinyl_crackle, stereo_narrow
 
 ## Units & Ranges Quick Reference
 

@@ -24,8 +24,9 @@ Given a high-level description, you:
 6. **Program patterns** — write MIDI notes that fit the genre and style
 7. **Add effects** — load and configure effect chains for the desired sound
 8. **HEALTH CHECK** — verify effects aren't pass-throughs (Dry/Wet > 0, Drive set, etc.)
-9. **Mix** — balance volumes, set panning, configure sends
-10. **Final verify** — `get_session_info`, fire scenes, confirm audio output
+9. **Automate** — add movement and evolution to the mix (see Automation Phase below)
+10. **Mix** — balance volumes, set panning, configure sends
+11. **Final verify** — `get_session_info`, fire scenes, confirm audio output
 
 ## Mandatory Track Health Checks
 
@@ -48,6 +49,35 @@ After loading any instrument, run this checklist:
 - **NEVER load bare "Drum Rack"** — it's empty, zero samples. Load a **kit preset**: `search_browser` path="Drums" name_filter="Kit" → pick one → `load_browser_item`
 - **For synths, use `search_browser` → `load_browser_item`** with exact URI. `find_and_load_device` can match sample files before the actual instrument (e.g., "Drift" matches a .wav sample first)
 - **After loading any effect**, set its key parameters to non-default values. A Saturator with Drive=0, a Reverb with Dry/Wet=0, or a Compressor with Threshold at max are all pass-throughs.
+
+## Automation Phase (after writing notes, before mixing)
+
+### Step 1: Spectral Diagnosis
+- Solo each track -> `get_master_spectrum` -> build spectral map
+- Identify frequency overlaps between tracks (masking)
+- Note problem areas: resonances, mud, harshness
+
+### Step 2: Per-Track Analysis
+- `analyze_for_automation` on each track -> get device-specific suggestions
+- Cross-reference with spectral map: which suggestions address the problems found?
+
+### Step 3: Write Automation (perception-action loop)
+For each automation decision:
+1. Read spectrum BEFORE
+2. Apply recipe or custom curve
+3. Read spectrum AFTER
+4. Compare: did it improve? If not, clear and adjust
+5. Store the final working automation parameters in memory
+
+### Step 4: Spatial Design
+- Add send automation for depth (dub throws, reverb washes)
+- Consider complementary automation: as one track's filter opens, another's narrows
+- Use cross-track spectral awareness to avoid new masking from automation
+
+### Step 5: Generative/Evolving Textures
+- Consider polyrhythmic automation for non-repeating evolution
+- Unlinked envelopes with prime-number beat lengths (3, 5, 7 beats)
+- Spectral-driven automation: use analyzer data to modulate parameters in real-time concepts
 
 ## Rules
 
