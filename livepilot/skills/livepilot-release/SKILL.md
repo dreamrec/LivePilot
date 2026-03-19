@@ -12,24 +12,24 @@ Run this checklist EVERY time the user says "update everything", "push", "releas
 - [ ] `package.json` → `"version"`
 - [ ] `package-lock.json` → `"version"` (run `npm install --package-lock-only` if stale)
 - [ ] `server.json` → `"version"` (TWO locations: top-level and package)
-- [ ] `plugin/plugin.json` → `"version"`
+- [ ] `livepilot/.claude-plugin/plugin.json` → `"version"`
 - [ ] `mcp_server/__init__.py` → `__version__`
 - [ ] `remote_script/LivePilot/__init__.py` → version in log message
 - [ ] `m4l_device/livepilot_bridge.js` → version in ping response
 - [ ] `CHANGELOG.md` → latest version header
 - [ ] `docs/social-banner.html` → version display
 
-**How to check:** `grep -rn "1\.[0-9]\.[0-9]" package.json server.json plugin/plugin.json mcp_server/__init__.py remote_script/LivePilot/__init__.py m4l_device/livepilot_bridge.js CHANGELOG.md docs/social-banner.html`
+**How to check:** `grep -rn "1\.[0-9]\.[0-9]" package.json server.json livepilot/.claude-plugin/plugin.json mcp_server/__init__.py remote_script/LivePilot/__init__.py m4l_device/livepilot_bridge.js CHANGELOG.md docs/social-banner.html`
 
 ## 2. Tool Count (must ALL match)
 
 - [ ] `README.md` — every occurrence
 - [ ] `package.json` → `"description"`
 - [ ] `server.json` → `"description"`
-- [ ] `plugin/plugin.json` → `"description"`
+- [ ] `livepilot/.claude-plugin/plugin.json` → `"description"`
 - [ ] `CLAUDE.md`
-- [ ] `plugin/skills/livepilot-core/SKILL.md` — header and domain breakdown
-- [ ] `plugin/skills/livepilot-core/references/overview.md`
+- [ ] `livepilot/skills/livepilot-core/SKILL.md` — header and domain breakdown
+- [ ] `livepilot/skills/livepilot-core/references/overview.md`
 - [ ] `docs/manual/index.md`
 - [ ] `docs/manual/tool-reference.md`
 - [ ] `docs/TOOL_REFERENCE.md`
@@ -97,5 +97,5 @@ Run this checklist EVERY time the user says "update everything", "push", "releas
 
 Run this one-liner to catch most issues:
 ```bash
-echo "=== Versions ===" && grep -h '"version"' package.json server.json plugin/plugin.json | head -5 && grep __version__ mcp_server/__init__.py && echo "=== Tool count ===" && grep -rc "@mcp.tool" mcp_server/tools/ | tail -1 && echo "=== npm ===" && npm view livepilot version 2>/dev/null && echo "=== GitHub release ===" && gh release list --limit 1 && echo "=== Tags ===" && git tag -l
+echo "=== Versions ===" && grep -h '"version"' package.json server.json livepilot/.claude-plugin/plugin.json | head -5 && grep __version__ mcp_server/__init__.py && echo "=== Tool count ===" && grep -rc "@mcp.tool" mcp_server/tools/ | tail -1 && echo "=== npm ===" && npm view livepilot version 2>/dev/null && echo "=== GitHub release ===" && gh release list --limit 1 && echo "=== Tags ===" && git tag -l
 ```

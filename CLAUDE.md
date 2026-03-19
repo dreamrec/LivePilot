@@ -16,7 +16,7 @@
   - `livepilot_bridge.js`: 22 bridge commands for LiveAPI access
   - `SpectralCache`: thread-safe, time-expiring data cache (5s max age)
   - Bridge is optional — all core tools work without it
-- **Plugin** (`plugin/`): Plugin with skills, commands, agent
+- **Plugin** (`livepilot/`): Claude Code plugin (marketplace-compatible: `.claude-plugin/plugin.json`)
 - **Installer** (`installer/`): Auto-detects Ableton path, copies Remote Script
 
 ## Key Rules
@@ -43,4 +43,4 @@ When modifying .amxd attributes that Max editor won't persist (e.g., `openinpres
 4. Structure: 24-byte `ampf` header + `ptch` chunk + `mx@c` header + JSON patcher + frozen deps
 
 ## Tool Count
-Currently 168 tools. If adding/removing tools, update: README.md, package.json description, plugin/plugin.json, server.json, plugin/skills/livepilot-core/SKILL.md, plugin/skills/livepilot-core/references/overview.md, CLAUDE.md, CHANGELOG.md, tests/test_tools_contract.py, docs/manual/index.md, docs/manual/tool-reference.md
+Currently 168 tools. If adding/removing tools, update: README.md, package.json description, livepilot/.claude-plugin/plugin.json, server.json, livepilot/skills/livepilot-core/SKILL.md, livepilot/skills/livepilot-core/references/overview.md, CLAUDE.md, CHANGELOG.md, tests/test_tools_contract.py, docs/manual/index.md, docs/manual/tool-reference.md

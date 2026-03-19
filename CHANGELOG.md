@@ -6,6 +6,7 @@
 - Fix: re-freeze LivePilot_Analyzer.amxd with v1.8.0 bridge + patch openinpresentation
 - Fix: address audit findings from fresh v1.8 code review
 - Fix: update bridge version string
+- Fix: restructure plugin directory for Claude Code marketplace compatibility (`plugin/` → `livepilot/.claude-plugin/`)
 
 ## 1.8.0 — Perception Layer (March 2026)
 

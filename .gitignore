@@ -43,11 +43,11 @@ demo Project/
 
 # User's personal library data — NEVER upload to GitHub
 # (Native Ableton device atlas files ARE committed — they help all users)
-plugin/skills/livepilot-core/references/device-atlas/synths-m4l.md
-plugin/skills/livepilot-core/references/device-atlas/plugins-synths.md
-plugin/skills/livepilot-core/references/device-atlas/utility-and-workflow.md
-plugin/skills/livepilot-core/references/device-atlas/samples-and-irs.md
-plugin/skills/livepilot-core/references/device-atlas/presets-by-vibe.md
+livepilot/skills/livepilot-core/references/device-atlas/synths-m4l.md
+livepilot/skills/livepilot-core/references/device-atlas/plugins-synths.md
+livepilot/skills/livepilot-core/references/device-atlas/utility-and-workflow.md
+livepilot/skills/livepilot-core/references/device-atlas/samples-and-irs.md
+livepilot/skills/livepilot-core/references/device-atlas/presets-by-vibe.md
 .mcp.json
 
 # Internal dev docs (keep locally, not on GitHub)

@@ -19,11 +19,11 @@ CLAUDE.md
 server.json
 
 # Personal library data — NEVER publish
-plugin/skills/livepilot-core/references/device-atlas/synths-m4l.md
-plugin/skills/livepilot-core/references/device-atlas/plugins-synths.md
-plugin/skills/livepilot-core/references/device-atlas/utility-and-workflow.md
-plugin/skills/livepilot-core/references/device-atlas/samples-and-irs.md
-plugin/skills/livepilot-core/references/device-atlas/presets-by-vibe.md
+livepilot/skills/livepilot-core/references/device-atlas/synths-m4l.md
+livepilot/skills/livepilot-core/references/device-atlas/plugins-synths.md
+livepilot/skills/livepilot-core/references/device-atlas/utility-and-workflow.md
+livepilot/skills/livepilot-core/references/device-atlas/samples-and-irs.md
+livepilot/skills/livepilot-core/references/device-atlas/presets-by-vibe.md
 .mcp.json
 
 # Claude Code
