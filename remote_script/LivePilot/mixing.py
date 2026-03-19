@@ -1,5 +1,5 @@
 """
-LivePilot - Mixing domain handlers (8 commands).
+LivePilot - Mixing domain handlers (11 commands).
 """
 
 from .router import register
@@ -112,6 +112,95 @@ def get_track_routing(song, params):
     except AttributeError:
         result["output_routing_channel"] = None
     return result
+
+
+@register("get_track_meters")
+def get_track_meters(song, params):
+    """Read output meter levels for one or all tracks.
+
+    Returns peak level (0.0-1.0) for each track. When track_index is
+    provided, returns a single track. Otherwise returns all tracks.
+
+    The 'level' value is the hold-peak of max(L, R). It's cheap to read.
+    The 'left'/'right' values add GUI load — only included when
+    include_stereo=True.
+    """
+    include_stereo = bool(params.get("include_stereo", False))
+    track_index = params.get("track_index")
+
+    def read_meters(track, idx):
+        entry = {
+            "index": idx,
+            "name": track.name,
+            "level": track.output_meter_level,
+        }
+        if include_stereo:
+            entry["left"] = track.output_meter_left
+            entry["right"] = track.output_meter_right
+        return entry
+
+    if track_index is not None:
+        track = get_track(song, int(track_index))
+        return {"tracks": [read_meters(track, int(track_index))]}
+
+    tracks = []
+    for i, track in enumerate(song.tracks):
+        tracks.append(read_meters(track, i))
+    return {"tracks": tracks}
+
+
+@register("get_master_meters")
+def get_master_meters(song, params):
+    """Read output meter levels for the master track."""
+    master = song.master_track
+    result = {
+        "level": master.output_meter_level,
+        "left": master.output_meter_left,
+        "right": master.output_meter_right,
+    }
+    return result
+
+
+@register("get_mix_snapshot")
+def get_mix_snapshot(song, params):
+    """Get a complete snapshot of the mix: all track levels, volumes, pans,
+    mute/solo states, and master meters. One call to assess the full mix."""
+    tracks = []
+    for i, track in enumerate(song.tracks):
+        tracks.append({
+            "index": i,
+            "name": track.name,
+            "meter_level": track.output_meter_level,
+            "volume": track.mixer_device.volume.value,
+            "pan": track.mixer_device.panning.value,
+            "mute": track.mute,
+            "solo": track.solo,
+            "has_audio_output": track.has_audio_output,
+        })
+    returns = []
+    for i, track in enumerate(song.return_tracks):
+        returns.append({
+            "index": i,
+            "name": track.name,
+            "meter_level": track.output_meter_level,
+            "volume": track.mixer_device.volume.value,
+            "pan": track.mixer_device.panning.value,
+            "mute": track.mute,
+            "solo": track.solo,
+        })
+    master = song.master_track
+    return {
+        "tracks": tracks,
+        "return_tracks": returns,
+        "master": {
+            "level": master.output_meter_level,
+            "left": master.output_meter_left,
+            "right": master.output_meter_right,
+            "volume": master.mixer_device.volume.value,
+        },
+        "is_playing": song.is_playing,
+        "tempo": song.tempo,
+    }
 
 
 @register("set_track_routing")

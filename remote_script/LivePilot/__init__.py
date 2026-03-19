@@ -31,7 +31,7 @@ class LivePilot(ControlSurface):
         ControlSurface.__init__(self, c_instance)
         self._server = LivePilotServer(self)
         self._server.start()
-        self.log_message("LivePilot v1.0.0 initialized")
+        self.log_message("LivePilot v1.5.0 initialized")
         self.show_message("LivePilot: Listening on port 9878")
 
     def disconnect(self):

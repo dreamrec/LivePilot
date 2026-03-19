@@ -1,19 +1,43 @@
 """FastMCP entry point for LivePilot."""
 
 from contextlib import asynccontextmanager
+import asyncio
 
 from fastmcp import FastMCP, Context  # noqa: F401
 
 from .connection import AbletonConnection
+from .m4l_bridge import SpectralCache, SpectralReceiver, M4LBridge
 
 
 @asynccontextmanager
 async def lifespan(server):
-    """Create and yield the shared AbletonConnection for all tools."""
+    """Create and yield the shared AbletonConnection + M4L bridge."""
     ableton = AbletonConnection()
+    spectral = SpectralCache()
+    receiver = SpectralReceiver(spectral)
+    m4l = M4LBridge(spectral, receiver)
+
+    # Start UDP listener for incoming M4L spectral data (port 9880)
+    loop = asyncio.get_event_loop()
     try:
-        yield {"ableton": ableton}
+        transport, _ = await loop.create_datagram_endpoint(
+            lambda: receiver,
+            local_addr=('127.0.0.1', 9880),
+        )
+    except OSError:
+        # Port in use — M4L bridge won't work but core tools still function
+        transport = None
+
+    try:
+        yield {
+            "ableton": ableton,
+            "spectral": spectral,
+            "m4l": m4l,
+        }
     finally:
+        if transport:
+            transport.close()
+        m4l.close()
         ableton.disconnect()
 
 
@@ -30,6 +54,7 @@ from .tools import mixing       # noqa: F401, E402
 from .tools import browser      # noqa: F401, E402
 from .tools import arrangement  # noqa: F401, E402
 from .tools import memory       # noqa: F401, E402
+from .tools import analyzer     # noqa: F401, E402
 
 
 # ---------------------------------------------------------------------------

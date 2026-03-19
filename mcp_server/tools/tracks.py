@@ -127,12 +127,12 @@ def set_track_mute(ctx: Context, track_index: int, muted: bool) -> dict:
 
 
 @mcp.tool()
-def set_track_solo(ctx: Context, track_index: int, soloed: bool) -> dict:
+def set_track_solo(ctx: Context, track_index: int, solo: bool) -> dict:
     """Solo or unsolo a track."""
     _validate_track_index(track_index)
     return _get_ableton(ctx).send_command("set_track_solo", {
         "track_index": track_index,
-        "solo": soloed,
+        "solo": solo,
     })
 
 

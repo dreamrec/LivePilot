@@ -1,20 +1,38 @@
-# LivePilot Architecture & Tool Reference
+# LivePilot v1.5.0 — Architecture & Tool Reference
 
-LivePilot is an MCP server that controls Ableton Live 12 in real-time through 104 tools across 10 domains. This document maps every tool to what it actually does in Ableton, so you know exactly which tool to reach for.
+LivePilot is an agentic production system for Ableton Live 12. It combines 127 MCP tools with a device knowledge corpus, real-time audio analysis, and persistent technique memory.
 
 ## Architecture
 
 ```
 AI Client  ──MCP──►  FastMCP Server  ──TCP/9878──►  Remote Script (inside Ableton)
                         (validates)                    (executes on main thread)
+                            │
+                            ├── Device Atlas (280+ devices, 139 kits, 350+ IRs)
+                            ├── M4L Analyzer ──UDP/OSC──► LivePilot_Analyzer.amxd
+                            └── Technique Memory (~/.livepilot/memory/)
 ```
 
 - **MCP Server** validates inputs (ranges, types) before sending
 - **Remote Script** runs inside Ableton's Python environment, executes on the main thread via `schedule_message`
+- **Device Atlas** provides structured knowledge of Ableton's device library — real names, real URIs, sonic descriptions
+- **M4L Analyzer** reads the master bus in real-time: 8-band spectrum, RMS/peak, pitch tracking, Krumhansl-Schmuckler key detection
+- **Technique Memory** persists production decisions across sessions as typed, searchable, replayable data structures
 - **Protocol**: JSON over TCP, newline-delimited. Every command gets a response.
 - **Thread safety**: All Live Object Model (LOM) access happens on Ableton's main thread
 
-## The 104 Tools — What Each One Does
+## The Agentic Difference
+
+A flat tool list lets the AI press buttons. LivePilot's three layers give it context:
+
+1. **Before loading a device** — the agent consults the atlas to find a real preset, not a hallucinated name
+2. **Before writing harmonic content** — the agent reads the detected key from the analyzer
+3. **Before making creative decisions** — the agent checks technique memory for the user's style preferences
+4. **After every mixing move** — the agent reads the spectrum to verify the result
+
+This turns "set EQ band 3 to -4 dB" into "cut 400 Hz by 4 dB, then read the spectrum to confirm the mud is actually reduced."
+
+## The 127 Tools — What Each One Does
 
 ### Transport (12) — Playback, tempo, global state, diagnostics
 
@@ -122,7 +140,7 @@ AI Client  ──MCP──►  FastMCP Server  ──TCP/9878──►  Remote S
 | `set_scene_color` | Sets scene color | `scene_index`, `color_index` (0-69) |
 | `set_scene_tempo` | Sets tempo that triggers when scene fires | `scene_index`, `tempo` (20-999 BPM) |
 
-### Mixing (8) — Levels, panning, routing
+### Mixing (11) — Levels, panning, routing, metering
 
 | Tool | What it does | Key params |
 |------|-------------|------------|
@@ -134,6 +152,9 @@ AI Client  ──MCP──►  FastMCP Server  ──TCP/9878──►  Remote S
 | `set_master_volume` | Sets master output level | `volume` (0.0-1.0) |
 | `get_track_routing` | Returns input/output routing config | `track_index` |
 | `set_track_routing` | Configures input/output routing | `track_index`, routing params |
+| `get_track_meters` | Returns real-time output levels for a track | `track_index` |
+| `get_master_meters` | Returns real-time output levels for the master | — |
+| `get_mix_snapshot` | Returns all levels, panning, routing, mute/solo state for entire session | — |
 
 ### Browser (4) — Finding and loading presets/devices
 
@@ -180,6 +201,31 @@ AI Client  ──MCP──►  FastMCP Server  ──TCP/9878──►  Remote S
 | `memory_favorite` | Stars and/or rates a technique | `technique_id`, `favorite`, `rating` (0-5) |
 | `memory_update` | Updates name, tags, or qualities | `technique_id`, `name`, `tags`, `qualities` |
 | `memory_delete` | Removes technique (backs up first) | `technique_id` |
+
+### Analyzer (20) — Real-time DSP analysis (requires LivePilot Analyzer M4L device on master track)
+
+| Tool | What it does | Key params |
+|------|-------------|------------|
+| `get_master_spectrum` | 8-band spectral analysis of master output | — |
+| `get_master_rms` | True RMS and peak amplitude levels | — |
+| `get_detected_key` | Detects musical key (Krumhansl-Schmuckler) | — |
+| `get_hidden_parameters` | All device parameters including hidden ones | `track_index`, `device_index` |
+| `get_automation_state` | Parameters with active automation | `track_index`, `device_index` |
+| `walk_device_tree` | Recursive device tree (racks, drum pads, 6 levels) | `track_index`, `device_index` |
+| `get_clip_file_path` | Audio file path on disk | `track_index`, `clip_index` |
+| `replace_simpler_sample` | Replace sample in Simpler | `track_index`, `device_index`, `file_path` |
+| `load_sample_to_simpler` | Bootstrap Simpler and load sample (full workflow) | `track_index`, `file_path` |
+| `get_simpler_slices` | Slice points from Simpler | `track_index`, `device_index` |
+| `crop_simpler` | Crop sample to active region | `track_index`, `device_index` |
+| `reverse_simpler` | Reverse sample | `track_index`, `device_index` |
+| `warp_simpler` | Warp sample to N beats | `track_index`, `device_index`, `beats` |
+| `get_warp_markers` | All warp markers (beat_time + sample_time) | `track_index`, `clip_index` |
+| `add_warp_marker` | Add warp marker | `track_index`, `clip_index`, `beat_time` |
+| `move_warp_marker` | Move warp marker | `track_index`, `clip_index`, `old_beat`, `new_beat` |
+| `remove_warp_marker` | Remove warp marker | `track_index`, `clip_index`, `beat_time` |
+| `scrub_clip` | Preview audio at position | `track_index`, `clip_index`, `beat_time` |
+| `stop_scrub` | Stop preview | `track_index`, `clip_index` |
+| `get_display_values` | Human-readable parameter values ("440 Hz", "-6 dB") | `track_index`, `device_index` |
 
 ## Units & Ranges Quick Reference
 

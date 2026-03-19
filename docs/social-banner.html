@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@700&family=Inter:wght@200;300;700;900&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 1280px;
+    height: 640px;
+    background: #000;
+    color: #fff;
+    overflow: hidden;
+    position: relative;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .content {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .ascii {
+    font-family: 'Fira Code', monospace;
+    font-weight: 700;
+    font-size: 17.5px;
+    line-height: 0.93;
+    letter-spacing: -0.3px;
+    white-space: pre;
+    text-align: center;
+    color: #fff;
+    text-shadow:
+      0 0 0 #fff,
+      0.5px 0 0 #fff,
+      -0.5px 0 0 #fff,
+      0 0.5px 0 #fff,
+      0 -0.5px 0 #fff;
+  }
+
+  .divider {
+    width: 60px;
+    height: 1px;
+    background: #fff;
+    margin: 22px 0 16px;
+    opacity: 0.35;
+  }
+
+  .subtitle {
+    font-family: 'Fira Code', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    opacity: 0.35;
+  }
+
+  .subtitle .ai {
+    color: #fff;
+    opacity: 1;
+    letter-spacing: 1px;
+  }
+
+  .meta {
+    position: absolute;
+    bottom: 130px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+  }
+
+  .meta span {
+    font-family: 'Fira Code', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    opacity: 0.22;
+  }
+
+  .version {
+    position: absolute;
+    top: 36px;
+    right: 50px;
+    font-family: 'Fira Code', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    opacity: 0.15;
+  }
+</style>
+</head>
+<body>
+  <div class="version">v1.5.0</div>
+
+  <div class="content">
+    <pre class="ascii">
+  ╔═══════════════════════════════════════════════════════════════════╗
+  ║                                                                 ║
+  ║  ██╗     ██╗██╗   ██╗███████╗██████╗ ██╗██╗      ██████╗ ████████╗  ║
+  ║  ██║     ██║██║   ██║██╔════╝██╔══██╗██║██║     ██╔═══██╗╚══██╔══╝  ║
+  ║  ██║     ██║██║   ██║█████╗  ██████╔╝██║██║     ██║   ██║   ██║     ║
+  ║  ██║     ██║╚██╗ ██╔╝██╔══╝  ██╔═══╝ ██║██║     ██║   ██║   ██║     ║
+  ║  ███████╗██║ ╚████╔╝ ███████╗██║     ██║███████╗╚██████╔╝   ██║     ║
+  ║  ╚══════╝╚═╝  ╚═══╝  ╚══════╝╚═╝     ╚═╝╚══════╝ ╚═════╝    ╚═╝     ║
+  ║                                                                 ║
+  ╠═════════════════════════════════════════════════╦═══════════════╣
+  ║  ◈  AI CONTROL FOR ABLETON LIVE 12             ║   127 TOOLS   ║
+  ╚═════════════════════════════════════════════════╩═══════════════╝
+</pre>
+
+  </div>
+
+  <div class="meta">
+    <span>transport</span>
+    <span>tracks</span>
+    <span>clips</span>
+    <span>notes</span>
+    <span>devices</span>
+    <span>scenes</span>
+    <span>mixing</span>
+    <span>browser</span>
+    <span>arrangement</span>
+    <span>memory</span>
+    <span>analyzer</span>
+  </div>
+</body>
+</html>

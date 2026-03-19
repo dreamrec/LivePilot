@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import socket
+import threading
 import time
 import uuid
 from collections import deque
@@ -54,6 +55,7 @@ class AbletonConnection:
         self._socket: Optional[socket.socket] = None
         self._recv_buf: bytes = b""
         self._command_log: deque[dict] = deque(maxlen=self.MAX_LOG_ENTRIES)
+        self._lock = threading.Lock()  # Serialize all TCP send/receive cycles
 
     # ------------------------------------------------------------------
     # Connection lifecycle
@@ -101,7 +103,8 @@ class AbletonConnection:
     def ping(self) -> bool:
         """Send a ping and return True if a pong is received."""
         try:
-            resp = self._send_raw({"type": "ping"})
+            with self._lock:
+                resp = self._send_raw({"type": "ping"})
             return resp.get("result", {}).get("pong") is True
         except Exception:
             return False
@@ -109,25 +112,28 @@ class AbletonConnection:
     def send_command(self, command_type: str, params: Optional[dict] = None) -> dict:
         """Send a command to Ableton and return the result dict.
 
+        Thread-safe: a lock serializes all TCP send/receive cycles to
+        prevent socket corruption when multiple MCP tools fire concurrently.
         Retries once on socket errors with a fresh connection.
         """
-        # Ensure we have a connection
-        if not self.is_connected():
-            self.connect()
+        with self._lock:
+            # Ensure we have a connection
+            if not self.is_connected():
+                self.connect()
 
-        command: dict = {"type": command_type}
-        if params:
-            command["params"] = params
+            command: dict = {"type": command_type}
+            if params:
+                command["params"] = params
 
-        try:
-            response = self._send_raw(command)
-        except (OSError, AbletonConnectionError):
-            # Retry once with a fresh connection
-            self.disconnect()
-            self.connect()
-            response = self._send_raw(command)
+            try:
+                response = self._send_raw(command)
+            except (OSError, AbletonConnectionError):
+                # Retry once with a fresh connection
+                self.disconnect()
+                self.connect()
+                response = self._send_raw(command)
 
-        # Log the command and response
+        # Log and error handling outside the lock (no socket access needed)
         log_entry = {
             "command": command_type,
             "params": params,

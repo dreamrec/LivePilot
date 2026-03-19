@@ -1,6 +1,6 @@
-"""Mixing MCP tools — volume, pan, sends, routing, master.
+"""Mixing MCP tools — volume, pan, sends, routing, master, metering.
 
-8 tools matching the Remote Script mixing domain.
+11 tools matching the Remote Script mixing domain.
 """
 
 from __future__ import annotations
@@ -88,6 +88,42 @@ def set_master_volume(ctx: Context, volume: float) -> dict:
 
 
 @mcp.tool()
+def get_track_meters(
+    ctx: Context,
+    track_index: Optional[int] = None,
+    include_stereo: bool = False,
+) -> dict:
+    """Read real-time output meter levels for tracks.
+
+    Returns peak level (0.0-1.0) for each track. Call while playing to
+    check levels, detect clipping, or verify a track is producing sound.
+
+    track_index:    specific track (omit for all tracks)
+    include_stereo: include left/right channel meters (adds GUI load)
+    """
+    params: dict = {}
+    if track_index is not None:
+        params["track_index"] = track_index
+    if include_stereo:
+        params["include_stereo"] = include_stereo
+    return _get_ableton(ctx).send_command("get_track_meters", params)
+
+
+@mcp.tool()
+def get_master_meters(ctx: Context) -> dict:
+    """Read real-time output meter levels for the master track (left, right, peak)."""
+    return _get_ableton(ctx).send_command("get_master_meters")
+
+
+@mcp.tool()
+def get_mix_snapshot(ctx: Context) -> dict:
+    """Get a complete mix snapshot: all track meters, volumes, pans, mute/solo,
+    return tracks, and master levels. One call to assess the full mix state.
+    Call while playing for meaningful meter readings."""
+    return _get_ableton(ctx).send_command("get_mix_snapshot")
+
+
+@mcp.tool()
 def get_track_routing(ctx: Context, track_index: int) -> dict:
     """Get input/output routing info for a track. Use negative track_index for return tracks (-1=A, -2=B)."""
     _validate_track_index(track_index)
@@ -100,22 +136,22 @@ def get_track_routing(ctx: Context, track_index: int) -> dict:
 def set_track_routing(
     ctx: Context,
     track_index: int,
-    input_type: Optional[str] = None,
-    input_channel: Optional[str] = None,
-    output_type: Optional[str] = None,
-    output_channel: Optional[str] = None,
+    input_routing_type: Optional[str] = None,
+    input_routing_channel: Optional[str] = None,
+    output_routing_type: Optional[str] = None,
+    output_routing_channel: Optional[str] = None,
 ) -> dict:
     """Set input/output routing for a track by display name. Use negative track_index for return tracks (-1=A, -2=B)."""
     _validate_track_index(track_index)
     params = {"track_index": track_index}
-    if input_type is not None:
-        params["input_type"] = input_type
-    if input_channel is not None:
-        params["input_channel"] = input_channel
-    if output_type is not None:
-        params["output_type"] = output_type
-    if output_channel is not None:
-        params["output_channel"] = output_channel
+    if input_routing_type is not None:
+        params["input_type"] = input_routing_type
+    if input_routing_channel is not None:
+        params["input_channel"] = input_routing_channel
+    if output_routing_type is not None:
+        params["output_type"] = output_routing_type
+    if output_routing_channel is not None:
+        params["output_channel"] = output_routing_channel
     if len(params) == 1:
         raise ValueError("At least one routing parameter must be provided")
     return _get_ableton(ctx).send_command("set_track_routing", params)

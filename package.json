@@ -1,8 +1,8 @@
 {
   "name": "livepilot",
-  "version": "1.0.0",
+  "version": "1.5.0",
   "mcpName": "io.github.dreamrec/livepilot",
-  "description": "AI copilot for Ableton Live 12 — 104 MCP tools for music production, sound design, and mixing",
+  "description": "AI copilot for Ableton Live 12 — 127 tools, device atlas (280+ devices), real-time audio analysis, and technique memory",
   "author": "Pilot Studio",
   "license": "MIT",
   "type": "commonjs",

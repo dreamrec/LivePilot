@@ -144,27 +144,31 @@ def set_clip_loop(
     ctx: Context,
     track_index: int,
     clip_index: int,
-    enabled: bool,
-    start: Optional[float] = None,
-    end: Optional[float] = None,
+    enabled: Optional[bool] = None,
+    loop_start: Optional[float] = None,
+    loop_end: Optional[float] = None,
 ) -> dict:
-    """Enable/disable clip looping and optionally set loop start/end (in beats)."""
+    """Enable/disable clip looping and optionally set loop start/end (in beats).
+    All parameters are optional but at least one must be provided."""
     _validate_track_index(track_index)
     _validate_clip_index(clip_index)
+    if enabled is None and loop_start is None and loop_end is None:
+        raise ValueError("At least one of enabled, loop_start, or loop_end must be provided")
     params = {
         "track_index": track_index,
         "clip_index": clip_index,
-        "enabled": enabled,
     }
-    if start is not None:
-        if start < 0:
+    if enabled is not None:
+        params["enabled"] = enabled
+    if loop_start is not None:
+        if loop_start < 0:
             raise ValueError("Loop start must be >= 0")
-        params["start"] = start
-    if end is not None:
-        if end <= 0:
+        params["start"] = loop_start
+    if loop_end is not None:
+        if loop_end <= 0:
             raise ValueError("Loop end must be > 0")
-        params["end"] = end
-    if start is not None and end is not None and start >= end:
+        params["end"] = loop_end
+    if loop_start is not None and loop_end is not None and loop_start >= loop_end:
         raise ValueError("Loop start must be less than loop end")
     return _get_ableton(ctx).send_command("set_clip_loop", params)
 

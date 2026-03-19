@@ -1,11 +1,17 @@
 ---
 name: livepilot-core
-description: Core discipline for controlling Ableton Live 12 through LivePilot's 104 MCP tools. Use whenever working with Ableton Live through MCP tools.
+description: Core discipline for controlling Ableton Live 12 through LivePilot's 127 MCP tools, device atlas (280+ devices), M4L analyzer (spectrum/RMS/key detection), and technique memory. Use whenever working with Ableton Live through MCP tools.
 ---
 
 # LivePilot Core — Ableton Live 12 AI Copilot
 
-LivePilot gives you 104 MCP tools to control Ableton Live 12 in real-time: transport, tracks, clips, MIDI notes, devices, scenes, mixing, browser, arrangement, and technique memory.
+LivePilot is an agentic production system for Ableton Live 12. It combines 127 MCP tools with three layers of intelligence:
+
+- **Device Atlas** — A structured knowledge corpus of 280+ instruments, 139 drum kits, and 350+ impulse responses. Consult the atlas before loading any device. It contains real browser URIs, preset names, and sonic descriptions. Never guess a device name — look it up.
+- **M4L Analyzer** — Real-time audio analysis on the master bus (8-band spectrum, RMS/peak, key detection). Use it to verify mixing decisions, detect frequency problems, and find the key before writing harmonic content.
+- **Technique Memory** — Persistent storage for production decisions. Consult `memory_recall` before creative tasks to understand the user's taste. Save techniques when the user likes something. The memory shapes future decisions without constraining them.
+
+These layers sit on top of 127 deterministic tools across 11 domains: transport, tracks, clips, MIDI notes, devices, scenes, mixing, browser, arrangement, technique memory, and real-time DSP analysis.
 
 ## Golden Rules
 
@@ -58,7 +64,7 @@ LivePilot gives you 104 MCP tools to control Ableton Live 12 in real-time: trans
 - MIDI track with no instrument loaded
 - Notes programmed but clip not fired
 
-## Tool Domains (104 total)
+## Tool Domains (127 total)
 
 ### Transport (12)
 `get_session_info` · `set_tempo` · `set_time_signature` · `start_playback` · `stop_playback` · `continue_playback` · `toggle_metronome` · `set_session_loop` · `undo` · `redo` · `get_recent_actions` · `get_session_diagnostics`
@@ -78,8 +84,8 @@ LivePilot gives you 104 MCP tools to control Ableton Live 12 in real-time: trans
 ### Scenes (8)
 `get_scenes_info` · `create_scene` · `delete_scene` · `duplicate_scene` · `fire_scene` · `set_scene_name` · `set_scene_color` · `set_scene_tempo`
 
-### Mixing (8)
-`set_track_volume` · `set_track_pan` · `set_track_send` · `get_return_tracks` · `get_master_track` · `set_master_volume` · `get_track_routing` · `set_track_routing`
+### Mixing (11)
+`set_track_volume` · `set_track_pan` · `set_track_send` · `get_return_tracks` · `get_master_track` · `set_master_volume` · `get_track_routing` · `set_track_routing` · `get_track_meters` · `get_master_meters` · `get_mix_snapshot`
 
 ### Browser (4)
 `get_browser_tree` · `get_browser_items` · `search_browser` · `load_browser_item`
@@ -89,6 +95,9 @@ LivePilot gives you 104 MCP tools to control Ableton Live 12 in real-time: trans
 
 ### Memory (8)
 `memory_learn` · `memory_recall` · `memory_get` · `memory_replay` · `memory_list` · `memory_favorite` · `memory_update` · `memory_delete`
+
+### Analyzer (20) — requires LivePilot Analyzer M4L device on master track
+`get_master_spectrum` · `get_master_rms` · `get_detected_key` · `get_hidden_parameters` · `get_automation_state` · `walk_device_tree` · `get_clip_file_path` · `replace_simpler_sample` · `load_sample_to_simpler` · `get_simpler_slices` · `crop_simpler` · `reverse_simpler` · `warp_simpler` · `get_warp_markers` · `add_warp_marker` · `move_warp_marker` · `remove_warp_marker` · `scrub_clip` · `stop_scrub` · `get_display_values`
 
 ## Workflow: Building a Beat
 
@@ -120,11 +129,43 @@ LivePilot gives you 104 MCP tools to control Ableton Live 12 in real-time: trans
 ## Workflow: Mixing
 
 1. `get_session_info` — see all tracks and current levels
-2. `set_track_volume` / `set_track_pan` — set levels and stereo position
-3. `set_track_send` — route to return tracks for shared effects
-4. `get_return_tracks` — check return track setup
-5. `set_master_volume` — final output level
-6. `set_track_routing` — configure input/output routing
+2. `get_mix_snapshot` — one-call overview of all levels, panning, routing, mute/solo
+3. `set_track_volume` / `set_track_pan` — set levels and stereo position
+4. `set_track_send` — route to return tracks for shared effects
+5. `get_return_tracks` — check return track setup
+6. `set_master_volume` — final output level
+7. `set_track_routing` — configure input/output routing
+8. `get_track_meters` / `get_master_meters` — check real-time output levels
+
+### With LivePilot Analyzer (M4L device on master):
+9. `get_master_spectrum` — check frequency balance across 8 bands (sub → air)
+10. `get_master_rms` — true RMS and peak levels
+11. `get_detected_key` — detect musical key before writing harmonies/bass
+12. `get_hidden_parameters` — see ALL device params including hidden ones
+13. `get_automation_state` — check which params have automation before overwriting
+14. `walk_device_tree` — inspect nested racks and drum pads
+15. `get_display_values` — human-readable parameter values ("440 Hz", "-6 dB")
+
+## Workflow: Sample Chopping
+
+1. Resample your beat to an audio track (set input to Resampling, arm, record)
+2. `get_clip_file_path` — get the audio file path of the recorded clip
+3. Load Simpler on a new MIDI track (with any sample pre-loaded)
+4. `replace_simpler_sample` — load the resampled audio into Simpler
+5. `set_simpler_playback_mode` — set to Slice mode
+6. `get_simpler_slices` — see all auto-detected slice points
+7. Program MIDI patterns targeting slice indices
+8. Use `reverse_simpler` / `crop_simpler` / `warp_simpler` for transformations
+9. `get_master_spectrum` — verify the result through the analyzer
+
+## Workflow: Time Manipulation
+
+1. `get_warp_markers` — see current timing map of an audio clip
+2. `add_warp_marker` — pin key beats (downbeats, snare hits)
+3. `move_warp_marker` — stretch/compress specific segments for tempo effects
+4. `scrub_clip` / `stop_scrub` — preview specific positions
+5. `get_master_spectrum` — verify the result sounds right
+6. `remove_warp_marker` — clean up if needed
 
 ## Live 12 Note API
 
@@ -199,7 +240,7 @@ Deep production knowledge lives in `references/`. Consult these when making crea
 
 | File | What's inside | When to consult |
 |------|--------------|-----------------|
-| `references/overview.md` | All 104 tools mapped with params, units, ranges | Quick lookup for any tool |
+| `references/overview.md` | All 127 tools mapped with params, units, ranges | Quick lookup for any tool |
 | `references/midi-recipes.md` | Drum patterns by genre, chord voicings, scales, hi-hat techniques, humanization, polymetrics | Programming MIDI notes, building beats |
 | `references/sound-design.md` | Stock instruments/effects, parameter recipes for bass/pad/lead/pluck, device chain patterns | Loading and configuring devices |
 | `references/mixing-patterns.md` | Gain staging, parallel compression, sidechain, EQ by instrument, bus processing, stereo width | Setting volumes, panning, adding effects |

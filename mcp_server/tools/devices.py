@@ -106,9 +106,9 @@ def batch_set_parameters(
     ctx: Context,
     track_index: int,
     device_index: int,
-    parameters: list,
+    parameters: Any,
 ) -> dict:
-    """Set multiple device parameters in one call. parameters is a list of objects: [{"name_or_index": "Dry/Wet", "value": 0.5}, ...].
+    """Set multiple device parameters in one call. parameters is a JSON array of objects: [{"name_or_index": "Dry/Wet", "value": 0.5}, ...].
     track_index: 0+ for regular tracks, -1/-2/... for return tracks (A/B/...), -1000 for master."""
     _validate_track_index(track_index)
     _validate_device_index(device_index)

@@ -10,60 +10,81 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/dreamrec/LivePilot/actions/workflows/ci.yml/badge.svg)](https://github.com/dreamrec/LivePilot/actions/workflows/ci.yml)
 [![GitHub stars](https://img.shields.io/github/stars/dreamrec/LivePilot)](https://github.com/dreamrec/LivePilot/stargazers)
+[![npm](https://img.shields.io/npm/v/livepilot)](https://www.npmjs.com/package/livepilot)
 
-**AI copilot for Ableton Live 12** — 104 MCP tools for music production, sound design, and mixing.
+**AI copilot for Ableton Live 12** — 127 MCP tools, a deep device knowledge corpus, real-time audio analysis, and persistent technique memory.
 
-Talk to your DAW. Create tracks, program MIDI, load instruments, tweak parameters, arrange songs, and mix — all through natural language. LivePilot connects any MCP-compatible AI client (Claude, Cursor, VS Code Copilot) to Ableton Live and gives it full control over your session.
+Most Ableton MCP servers give the AI tools to push buttons. LivePilot gives it three things on top of that:
 
-Every command goes through Ableton's official Live Object Model API. No hacks, no injection — the same interface Ableton's own control surfaces use. Everything is deterministic and reversible with undo.
+- **Knowledge** — A device atlas of 280+ instruments, 139 drum kits, and 350+ impulse responses. The AI doesn't guess device names or parameters. It looks them up.
+- **Perception** — An M4L analyzer that reads the master bus in real-time: 8-band spectrum, RMS/peak metering, pitch tracking, key detection. The AI makes decisions based on what it hears, not just what's configured.
+- **Memory** — A technique library that persists across sessions. The AI remembers how you built that bass sound, what swing you like on hi-hats, which reverb chain worked on vocals. It learns your taste over time.
+
+These three layers sit on top of 127 deterministic MCP tools that cover transport, tracks, clips, MIDI, devices, scenes, mixing, browser, arrangement, and sample manipulation. Every command goes through Ableton's official Live Object Model API — the same interface Ableton's own control surfaces use. Everything is reversible with undo.
 
 ---
 
-## Agent & Technique Memory
+## The Three Layers
 
-LivePilot is stateless by default — 104 tools, deterministic execution, no hidden context. The agent layer adds **persistent state** on top: a technique memory system that stores production decisions as typed, searchable, replayable data structures with structured metadata.
+Most MCP servers are a flat list of tools. LivePilot is a production system with three layers that work together.
 
-### How it works
+### 1. Device Atlas — What the AI knows
 
-The memory system stores five technique types: `beat_pattern`, `device_chain`, `mix_template`, `preference`, and `browser_pin`. Each technique consists of three layers:
+A structured knowledge corpus of 280+ Ableton devices, 139 drum kits, and 350+ impulse responses. When the AI needs to load an instrument, it doesn't hallucinate a name and hope for the best. It consults the atlas, finds the exact preset, and loads it by URI.
+
+The atlas is organized by category (synths, drums, effects, samples) with metadata about each device: what it sounds like, what parameters matter, what presets are available. When you say "load something warm and analog", the AI can search the atlas for instruments tagged with those qualities and pick one that actually exists in your library.
+
+This is the difference between an AI that says "I'll load Warm Analog Pad" (and crashes because it doesn't exist) and one that searches the drum kit index, finds "Kit-606 Tape.adg", and loads it by its real browser URI.
+
+### 2. Analyzer — What the AI hears
+
+The LivePilot Analyzer is an M4L device that sits on the master track and feeds real-time audio data back to the AI:
+
+- **8-band spectrum** — sub, low, low-mid, mid, high-mid, high, presence, air
+- **RMS and peak metering** — true loudness, not just parameter values
+- **Pitch tracking and key detection** — Krumhansl-Schmuckler algorithm on accumulated pitch data
+
+This means the AI can verify its own work. After adding an EQ cut at 400 Hz, it reads the spectrum to confirm the cut actually reduced the mud. After loading a bass preset, it checks that the low end is present. Before writing a bass line, it detects the key of what's already playing.
+
+Without the analyzer, the AI is working blind — it can set parameters but can't hear the result. With it, the AI closes the feedback loop.
+
+### 3. Technique Memory — What the AI learns
+
+The memory system (`memory_learn` / `memory_recall` / `memory_replay`) stores production decisions as structured, searchable, replayable data. Not just parameter snapshots — the full context: what genre, what mood, what made it work, what the signal chain was, what MIDI pattern drove it.
+
+Five technique types: `beat_pattern`, `device_chain`, `mix_template`, `preference`, `browser_pin`. Each stores three layers of data:
 
 | Layer | Contents | Purpose |
 |-------|----------|---------|
-| **Identity** | UUID, name, type, tags, timestamps, rating, replay count | Indexing, filtering, sorting |
-| **Qualities** | Structured analysis — summary, mood, genre tags, rhythm feel, harmonic character, sonic texture, production notes, reference points | Search ranking, agent context at decision time |
-| **Payload** | Raw data — MIDI notes, device params, tempo, kit URIs, send levels | Exact replay or adaptation |
+| **Identity** | UUID, name, type, tags, timestamps, rating | Indexing and filtering |
+| **Qualities** | Mood, genre, rhythm feel, harmonic character, sonic texture, production notes | Search ranking and creative context |
+| **Payload** | Raw MIDI notes, device params, tempo, kit URIs, send levels | Exact replay or adaptation |
 
-When you save a technique, the agent collects raw data from Ableton using existing tools (`get_notes`, `get_device_parameters`, etc.) and writes a structured qualities analysis. The qualities are what make search useful — `memory_recall(query="dark heavy 808")` matches against mood, genre tags, sonic texture, and summary fields, not just names.
+The agent consults memory by default before creative decisions. `memory_recall(query="dark heavy 808")` matches against mood, genre, and texture — not just names. The results inform the AI's choices without constraining them. Say "ignore my history" and it works from a clean slate. Say "use that boom bap beat from last session" and it pulls the exact technique and replays it.
 
-### Three operating modes
+Over time, the library becomes a structured representation of your production taste: swing ranges, kit preferences, harmonic tendencies, arrangement density. The AI reads across this at decision time. New output is always generated; the memory shapes the generation.
 
-| Mode | Trigger | Behavior |
-|------|---------|----------|
-| **Informed** (default) | Any creative task | Agent calls `memory_recall`, reads top results' qualities, lets them influence decisions (kit selection, parameter ranges, rhythmic density) without copying |
-| **Fresh** | "ignore my history" / "something new" | Agent skips memory entirely — uses only the shipped reference corpus and its own knowledge |
-| **Explicit recall** | "use that boom bap beat" / "load my reverb chain" | Direct retrieval via `memory_get` → `memory_replay` with `adapt=false` (exact) or `adapt=true` (variation) |
+### How the layers combine
 
-The agent consults memory by default but never constrains itself to it. Override is always one sentence away.
+"Make a boom bap beat at 86 BPM" triggers the full stack:
 
-### Replay architecture
+1. **Atlas** — finds the right drum kit (not a guess, a real preset with real samples)
+2. **Memory** — recalls your previous boom bap patterns, checks your preferred swing amount and velocity curves
+3. **Tools** — creates tracks, loads instruments, programs MIDI, chains effects, sets levels
+4. **Analyzer** — reads the spectrum to verify the kick sits right, detects the key for the bass line, checks RMS to balance levels
 
-`memory_replay` does not execute Ableton commands directly. It returns a structured plan — an ordered list of tool calls (`search_browser`, `load_browser_item`, `create_clip`, `add_notes`, etc.) that the agent then executes through the existing MCP tools. This keeps the memory system decoupled from the Ableton connection and makes replay logic testable without a running DAW.
-
-### Building the corpus over time
-
-The shipped plugin includes a reference corpus (~2,700 lines): genre-specific drum patterns, chord voicings, sound design recipes, mixing templates, and workflow patterns. This is the baseline — the agent is competent from the first session.
-
-The technique memory extends this with user-specific data. As you save techniques, rate them, and tag them, the library becomes a structured representation of your production preferences. The agent reads across saved qualities at decision time — not to copy stored patterns, but to understand tendencies: swing ranges, kit preferences, harmonic language, arrangement density. New output is always generated; the memory informs the generation.
+No other Ableton MCP server does this. Others have tools. LivePilot has tools + knowledge + perception + memory.
 
 ---
 
 ## What You Can Do
 
-- **Produce** — Create tracks, load instruments, program drum patterns, bass lines, chord progressions, and melodies
+- **Produce** — Create tracks, load instruments from the atlas, program drum patterns, bass lines, chord progressions, and melodies — informed by your saved techniques
 - **Arrange** — Build full song structures in arrangement view with MIDI editing, cue points, automation, and timeline navigation
-- **Design sounds** — Browse Ableton's library, load presets, tweak every device parameter, chain effects
-- **Mix** — Set levels, panning, sends, and routing across all track types including return tracks and master. Run diagnostics to catch silent tracks and stale solos
-- **Remember and evolve** — Save techniques, build a personal style library, and let the agent learn your taste over time
+- **Design sounds** — Browse Ableton's library, load presets, tweak every device parameter, chain effects, walk nested racks 6 levels deep
+- **Mix with ears** — Set levels, panning, sends, and routing. Read the spectrum, check RMS, detect the key. The analyzer tells the AI what changed, not just what was set
+- **Remember and evolve** — Save techniques, build a personal style library, replay past decisions exactly or as variations
+- **Chop samples** — Load audio into Simpler, slice, reverse, crop, warp, and reprogram — all from conversation
 - **Iterate fast** — Transpose, humanize, quantize, duplicate, and reshape patterns through conversation
 
 ---
@@ -223,7 +244,7 @@ npx -y github:dreamrec/LivePilot --status
 
 ---
 
-## 104 Tools Across 10 Domains
+## 127 Tools Across 11 Domains
 
 | Domain | Tools | What you can do |
 |--------|:-----:|-----------------|
@@ -233,10 +254,11 @@ npx -y github:dreamrec/LivePilot --status
 | **Notes** | 8 | Add/get/remove/modify MIDI notes, transpose, quantize, duplicate |
 | **Devices** | 12 | Load instruments & effects, tweak parameters, rack chains, presets — works on regular, return, and master tracks |
 | **Scenes** | 8 | Create, delete, duplicate, fire, rename, color, per-scene tempo |
-| **Mixing** | 8 | Volume, pan, sends, routing — return tracks and master fully supported |
+| **Mixing** | 11 | Volume, pan, sends, routing, meters, mix snapshot — return tracks and master fully supported |
 | **Browser** | 4 | Search Ableton's library, browse categories, load presets |
 | **Arrangement** | 19 | Create clips, full MIDI note CRUD, cue points, recording, automation |
 | **Memory** | 8 | Save, recall, replay, and manage production techniques |
+| **Analyzer** | 20 | Real-time spectral analysis, key detection, sample manipulation, warp markers, device introspection (requires M4L device) |
 
 <details>
 <summary><strong>Full tool list</strong></summary>
@@ -259,8 +281,8 @@ npx -y github:dreamrec/LivePilot --status
 ### Scenes (8)
 `get_scenes_info` · `create_scene` · `delete_scene` · `duplicate_scene` · `fire_scene` · `set_scene_name` · `set_scene_color` · `set_scene_tempo`
 
-### Mixing (8)
-`set_track_volume` · `set_track_pan` · `set_track_send` · `get_return_tracks` · `get_master_track` · `set_master_volume` · `get_track_routing` · `set_track_routing`
+### Mixing (11)
+`set_track_volume` · `set_track_pan` · `set_track_send` · `get_return_tracks` · `get_master_track` · `set_master_volume` · `get_track_routing` · `set_track_routing` · `get_track_meters` · `get_master_meters` · `get_mix_snapshot`
 
 ### Browser (4)
 `get_browser_tree` · `get_browser_items` · `search_browser` · `load_browser_item`
@@ -270,6 +292,9 @@ npx -y github:dreamrec/LivePilot --status
 
 ### Memory (8)
 `memory_learn` · `memory_recall` · `memory_get` · `memory_replay` · `memory_list` · `memory_favorite` · `memory_update` · `memory_delete`
+
+### Analyzer (20) — requires LivePilot Analyzer M4L device on master track
+`get_master_spectrum` · `get_master_rms` · `get_detected_key` · `get_hidden_parameters` · `get_automation_state` · `walk_device_tree` · `get_clip_file_path` · `replace_simpler_sample` · `load_sample_to_simpler` · `get_simpler_slices` · `crop_simpler` · `reverse_simpler` · `warp_simpler` · `get_warp_markers` · `add_warp_marker` · `move_warp_marker` · `remove_warp_marker` · `scrub_clip` · `stop_scrub` · `get_display_values`
 
 </details>
 
@@ -295,38 +320,88 @@ claude plugin add github:dreamrec/LivePilot/plugin
 
 ### Producer Agent
 
-Autonomous agent that executes multi-step production tasks from high-level descriptions. Handles the full pipeline: session planning, track creation, instrument loading, MIDI programming, effect configuration, and mixing — with mandatory health checks between each stage to verify every track produces audible output.
+Autonomous agent that handles multi-step production tasks end-to-end. "Make a lo-fi hip hop beat at 75 BPM" triggers a full pipeline: consult the technique memory for style context, search the device atlas for the right drum kit and instruments, create tracks, program MIDI, chain effects, set levels — then read the spectrum through the analyzer to verify everything sounds right.
 
-The agent ships with a 2,700-line reference corpus covering genre-specific drum patterns, chord voicings, sound design parameter recipes, mixing templates, and song structures. It consults the technique memory by default (see above), and can be overridden to work from a clean slate.
+The agent ships with a 2,700-line reference corpus (drum patterns, chord voicings, sound design recipes, mixing templates) and consults the technique memory by default. Mandatory health checks between each stage verify every track produces audible output — the analyzer confirms what the meters suggest.
 
 ### Core Skill
 
-`livepilot-core` encodes operational discipline for the 104 tools: read state before writing, verify after every mutation, validate instrument loading (empty Drum Racks produce silence), never hallucinate device names (always `search_browser` first), use negative track indices for return tracks. Without it, an LLM with access to the tools will produce silent tracks and load wrong devices.
+`livepilot-core` encodes the operational discipline that connects all three layers. It teaches the AI to consult the device atlas before loading instruments, read the analyzer after mixing moves, check technique memory before creative decisions, and verify every mutation through state reads. It enforces the rules that prevent silent failures: never load empty Drum Racks, never hallucinate device names, always verify audio output. Without it, an LLM with access to the tools will produce silent tracks and load wrong devices.
 
 ---
 
-## How It Compares
+## M4L Analyzer
 
-| Feature | LivePilot | [AbletonMCP](https://github.com/ahujasid/ableton-mcp) | [Ableton MCP Extended](https://github.com/uisato/ableton-mcp-extended) |
-|---------|:---------:|:---------:|:---------:|
-| **Tools** | 104 | ~20 | ~50 |
-| **Arrangement view** | Full (clips, notes, cue points, automation) | No | Partial (automation "not perfect yet") |
-| **MIDI note editing** | Full CRUD with note IDs, probability, velocity deviation | Basic add/get | Add/get/modify |
-| **Device control** | Load, params, batch edit, rack chains, presets, Simpler modes | Load, basic params | Load, params |
-| **Browser search** | Tree navigation, path filtering, URI-based loading | Basic search | Search with categories |
-| **Mixing** | Volume, pan, sends, routing, master, diagnostics | Volume, pan | Volume, pan, sends |
-| **Undo support** | Full (begin/end_undo_step wrapping) | No | Partial |
-| **Session diagnostics** | Built-in health checks (armed tracks, solos, silent tracks) | No | No |
-| **Per-note probability** | Yes (Live 12 API) | No | No |
-| **Plugin/skills** | Plugin with 5 commands + producer agent | No | No |
-| **Voice generation** | No | No | Yes (ElevenLabs) |
-| **UDP low-latency mode** | No (TCP, reliable) | No | Yes (experimental) |
-| **Protocol** | JSON/TCP, single-client, structured errors | JSON/TCP | JSON/TCP + UDP |
-| **Installation** | Auto-detect CLI (`--install`) | Manual copy | Manual copy |
-| **Live version** | Live 12 (modern note API) | Live 11+ | Live 11+ |
-| **License** | MIT | MIT | MIT |
+The LivePilot Analyzer (`LivePilot_Analyzer.amxd`) gives the AI ears. Drop it on the master track and 20 additional tools unlock: 8-band spectral analysis, RMS/peak metering, Krumhansl-Schmuckler key detection, plus deep LOM access for sample manipulation, warp markers, device introspection, and human-readable parameter display values.
 
-LivePilot focuses on **comprehensive, deterministic control** with safety nets (undo wrapping, diagnostics, verification patterns). It trades real-time parameter streaming (Extended's UDP mode) and external service integration (Extended's ElevenLabs) for deeper coverage of Ableton's core operations — especially arrangement, device management, and MIDI editing with Live 12's modern note API.
+All 107 core tools work without it. The analyzer is what turns LivePilot from a remote control into a feedback loop — the AI can set an EQ curve and then read the spectrum to verify the result.
+
+---
+
+## The Landscape
+
+There are **15+ MCP servers for Ableton Live** as of March 2026. Here's how the major ones compare:
+
+### At a Glance
+
+| | [LivePilot](https://github.com/dreamrec/LivePilot) | [AbletonMCP](https://github.com/ahujasid/ableton-mcp) | [MCP Extended](https://github.com/uisato/ableton-mcp-extended) | [Ableton Copilot](https://github.com/xiaolaa2/ableton-copilot-mcp) | [AbletonBridge](https://github.com/hidingwill/AbletonBridge) | [Producer Pal](https://github.com/adamjmurray/producer-pal) |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| **Tools** | 127 | ~20 | ~35 | ~45 | 322 | ~25 |
+| **Device knowledge** | 280+ devices | -- | -- | -- | -- | -- |
+| **Audio analysis** | Spectrum/RMS/key | -- | -- | -- | Metering | -- |
+| **Technique memory** | Persistent | -- | -- | -- | -- | -- |
+| **Stars** | new | 2.3k | 139 | 72 | 13 | 103 |
+| **Language** | Python | Python | Python | TypeScript | Python | TypeScript |
+| **Active** | Yes | Slow | Yes | Yes | Yes | Yes |
+
+### Feature Comparison
+
+| Capability | LivePilot | AbletonMCP | Extended | Copilot | Bridge | Producer Pal |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| Transport | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Tracks (MIDI/audio/return) | ✅ | Partial | ✅ | ✅ | ✅ | ✅ |
+| Session clips | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Arrangement view** | ✅ | — | — | ✅ | ? | ? |
+| **Arrangement automation** | ✅ | — | — | — | ? | — |
+| MIDI notes (add/get) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **MIDI notes (modify/delete by ID)** | ✅ | — | — | ✅ | ? | — |
+| **Per-note probability** | ✅ | — | — | — | — | — |
+| Device loading | ✅ | ✅ | ✅ | ✅ | ✅ | ? |
+| Device parameters | ✅ | Basic | ✅ | ✅ | ✅ | ? |
+| **Batch parameter editing** | ✅ | — | — | — | ? | — |
+| **Rack chains** | ✅ | — | — | — | ✅ | — |
+| Browser (tree/search/URI) | ✅ | Basic | ✅ | ✅ | ✅ | — |
+| **Plugin browser (AU/VST)** | ✅ | — | — | — | ? | — |
+| Mixing (vol/pan/sends) | ✅ | Basic | ✅ | Basic | ✅ | ? |
+| **Master track control** | ✅ | — | — | — | ✅ | — |
+| Scenes | ✅ | — | ✅ | ? | ✅ | ✅ |
+| **Undo wrapping** | ✅ | — | Partial | — | ? | — |
+| **Session diagnostics** | ✅ | — | — | — | — | — |
+| **Technique memory** | ✅ | — | — | — | — | — |
+| **AI plugin (skills/agent)** | ✅ | — | — | — | — | — |
+| **Device Atlas (built-in)** | ✅ | — | — | — | — | — |
+| **Auto-detect installer** | ✅ | — | — | ✅ | — | — |
+| Snapshots/rollback | — | — | — | ✅ | — | — |
+| Voice generation | — | — | — | — | ✅ | — |
+| **Real-time DSP analysis** | ✅ | — | — | — | ✅ | — |
+| M4L-native install | — | — | — | — | — | ✅ |
+| Multi-LLM support | Any MCP | Claude | Claude | Any MCP | Any MCP | Multi |
+
+### Also Notable
+
+- **[Simon-Kansara](https://github.com/Simon-Kansara/ableton-live-mcp-server)** (369★) — OSC-based, exhaustive address mapping, inactive since 2025
+- **[jpoindexter](https://github.com/jpoindexter/ableton-mcp)** — 200+ tools, triple interface (MCP + REST + M4L), 13 scales
+- **[cafeTechne](https://github.com/cafeTechne/ableton-11-mcp-for-windows-codex-and-antigravity)** — 220+ tools, Windows/Codex optimized, Live 11 focused
+- **[FabianTinkl](https://github.com/FabianTinkl/AbletonMCP)** — AI-powered chord/melody generation, genre-specific composition
+- **[nozomi-koborinai](https://github.com/nozomi-koborinai/ableton-osc-mcp)** — Only Go implementation, uses Google Genkit
+
+### Where LivePilot Fits
+
+Every server on this list gives the AI tools to control Ableton. LivePilot is the only one that also gives it **knowledge** (device atlas with 280+ devices, 139 kits, 350+ IRs), **perception** (real-time spectrum, RMS, key detection from the M4L analyzer), and **memory** (persistent technique library that accumulates production decisions across sessions).
+
+The practical difference: other servers let the AI set a parameter. LivePilot lets the AI choose the right parameter based on what device is loaded (atlas), verify the result by reading the audio output (analyzer), and remember the technique for next time (memory).
+
+AbletonBridge has more raw tools (322 vs 127). Producer Pal has the easiest install (drag a .amxd). The original AbletonMCP has the community (2.3k stars). LivePilot has the deepest integration — tools that execute, knowledge that informs, perception that verifies, and memory that accumulates.
 
 ---
 
@@ -367,7 +442,7 @@ All commands execute on Ableton's main thread via `schedule_message` — the sam
 | Max for Live devices | — | Yes |
 | Third-party VST/AU plugins | Yes | — |
 
-**Requirements:** Ableton Live 12 · Python 3.10+ · Node.js 18+
+**Requirements:** Ableton Live 12 · Python 3.9+ · Node.js 18+
 
 ---
 

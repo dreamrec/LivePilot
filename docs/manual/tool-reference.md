@@ -1,6 +1,6 @@
 # Tool Reference
 
-LivePilot gives you 104 tools that control every part of Ableton Live 12. You don't call these tools directly -- you describe what you want in plain language, and the AI picks the right tools behind the scenes. But knowing what's available helps you ask better questions and understand what's happening when the AI works on your session.
+LivePilot gives you 127 tools that control every part of Ableton Live 12. You don't call these tools directly -- you describe what you want in plain language, and the AI picks the right tools behind the scenes. But knowing what's available helps you ask better questions and understand what's happening when the AI works on your session.
 
 This chapter covers every tool, grouped by what it does. Each entry tells you the tool name, what it does in practice, what parameters it accepts, and when you'd want it.
 
@@ -1102,6 +1102,42 @@ Configures a track's input and/or output routing by display name. You can set an
 
 ---
 
+### get_track_meters
+
+Returns real-time output levels (left/right peak) for a track.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | *(required)* | Track number (0-based) |
+
+**When to use:** "Is this track producing sound?" or verifying levels after loading instruments.
+
+---
+
+### get_master_meters
+
+Returns real-time output levels (left/right peak) for the master track.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | — | — | — |
+
+**When to use:** "How loud is the output?" or checking for clipping.
+
+---
+
+### get_mix_snapshot
+
+Returns a complete overview of all tracks' levels, panning, routing, mute/solo state, and send levels in one call.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | — | — | — |
+
+**When to use:** "Show me the current mix" or before making mixing decisions. Much faster than calling get_track_info on every track.
+
+---
+
 ## Browser
 
 Tools for finding and loading instruments, effects, samples, and presets from Ableton's browser.
@@ -1561,6 +1597,274 @@ Removes a technique from the library. Creates a backup file first for safety.
 | `technique_id` | str | *(required)* | UUID of the technique to delete |
 
 **When to use:** "Delete that old beat pattern." Reversible by restoring from backup.
+
+---
+
+## Analyzer
+
+These 20 tools require the LivePilot Analyzer Max for Live device on the master track. They provide real-time DSP analysis, deep device introspection, sample manipulation, and warp marker control. All other tools work without the device.
+
+### get_master_spectrum
+
+Returns 8-band spectral analysis of the master output (sub, low, low-mid, mid, high-mid, high, presence, air).
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | — | — | Reads from the spectral cache |
+
+**When to use:** "Check the frequency balance" or "is there too much sub bass?"
+
+---
+
+### get_master_rms
+
+Returns true RMS and peak amplitude levels of the master output.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | — | — | Reads from the spectral cache |
+
+**When to use:** "How loud is the master?" or "check the peak levels."
+
+---
+
+### get_detected_key
+
+Detects the musical key of the current audio using Krumhansl-Schmuckler algorithm.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | — | — | Analyzes pitch data from the spectral cache |
+
+**When to use:** "What key is this in?" or before writing harmonies/bass to match the existing material.
+
+---
+
+### get_hidden_parameters
+
+Returns all device parameters including hidden ones not shown in Ableton's GUI, with display strings.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | *(required)* | Track number (0-based) |
+| `device_index` | int | *(required)* | Device position in chain (0-based) |
+
+**When to use:** "Show me all the hidden parameters on this synth."
+
+---
+
+### get_automation_state
+
+Returns only parameters that have automation (active or overridden) on a device.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | *(required)* | Track number (0-based) |
+| `device_index` | int | *(required)* | Device position in chain (0-based) |
+
+**When to use:** "Which parameters are automated?" or before overwriting a parameter that might have automation.
+
+---
+
+### walk_device_tree
+
+Recursively walks the device tree including racks, drum pads, and nested devices (up to 6 levels deep).
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | *(required)* | Track number (0-based) |
+| `device_index` | int | *(required)* | Device position in chain (0-based) |
+
+**When to use:** "Show me everything inside this rack" or inspecting complex instrument setups.
+
+---
+
+### get_clip_file_path
+
+Returns the audio file path on disk for a clip.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | *(required)* | Track number (0-based) |
+| `clip_index` | int | *(required)* | Clip slot (0-based) |
+
+**When to use:** "Where is this audio file?" or before loading a sample into Simpler.
+
+---
+
+### replace_simpler_sample
+
+Replaces the loaded sample in a Simpler device with a different audio file.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | *(required)* | Track number (0-based) |
+| `device_index` | int | *(required)* | Simpler device position (0-based) |
+| `file_path` | str | *(required)* | Path to the new audio file |
+
+**When to use:** "Load this sample into the Simpler." Requires an existing sample in the Simpler.
+
+---
+
+### load_sample_to_simpler
+
+Full workflow tool: bootstraps a Simpler via the browser if needed, then replaces the sample. Works even when no Simpler exists on the track.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | *(required)* | Track number (0-based) |
+| `file_path` | str | *(required)* | Path to the audio file to load |
+
+**When to use:** "Put this sample in a Simpler" — handles the full setup automatically.
+
+---
+
+### get_simpler_slices
+
+Returns all auto-detected slice points from a Simpler in Slice mode.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | *(required)* | Track number (0-based) |
+| `device_index` | int | *(required)* | Simpler device position (0-based) |
+
+**When to use:** "Show me the slice points" or before programming MIDI to trigger slices.
+
+---
+
+### crop_simpler
+
+Crops the sample in a Simpler to the active region.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | *(required)* | Track number (0-based) |
+| `device_index` | int | *(required)* | Simpler device position (0-based) |
+
+**When to use:** "Crop this sample" to trim to the selected region.
+
+---
+
+### reverse_simpler
+
+Reverses the sample loaded in a Simpler.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | *(required)* | Track number (0-based) |
+| `device_index` | int | *(required)* | Simpler device position (0-based) |
+
+**When to use:** "Reverse this sample" for creative effects.
+
+---
+
+### warp_simpler
+
+Warps the sample in a Simpler to fit a specified number of beats.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | *(required)* | Track number (0-based) |
+| `device_index` | int | *(required)* | Simpler device position (0-based) |
+| `beats` | float | *(required)* | Target beat count |
+
+**When to use:** "Warp this sample to 4 beats" to time-stretch to tempo.
+
+---
+
+### get_warp_markers
+
+Returns all warp markers from an audio clip (beat_time and sample_time pairs).
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | *(required)* | Track number (0-based) |
+| `clip_index` | int | *(required)* | Clip slot (0-based) |
+
+**When to use:** "Show me the warp markers" to inspect timing.
+
+---
+
+### add_warp_marker
+
+Adds a warp marker to an audio clip at a specific beat position.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | *(required)* | Track number (0-based) |
+| `clip_index` | int | *(required)* | Clip slot (0-based) |
+| `beat_time` | float | *(required)* | Beat position for the marker |
+
+**When to use:** "Pin the downbeat" or before stretching specific sections.
+
+---
+
+### move_warp_marker
+
+Moves an existing warp marker to a new beat position.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | *(required)* | Track number (0-based) |
+| `clip_index` | int | *(required)* | Clip slot (0-based) |
+| `old_beat` | float | *(required)* | Current beat position |
+| `new_beat` | float | *(required)* | New beat position |
+
+**When to use:** "Stretch this section" or "fix the timing on beat 3."
+
+---
+
+### remove_warp_marker
+
+Removes a warp marker from an audio clip.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | *(required)* | Track number (0-based) |
+| `clip_index` | int | *(required)* | Clip slot (0-based) |
+| `beat_time` | float | *(required)* | Beat position of the marker to remove |
+
+**When to use:** "Remove that warp marker" to clean up timing edits.
+
+---
+
+### scrub_clip
+
+Previews audio at a specific position in a clip.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | *(required)* | Track number (0-based) |
+| `clip_index` | int | *(required)* | Clip slot (0-based) |
+| `beat_time` | float | *(required)* | Beat position to preview |
+
+**When to use:** "Play from beat 8" to audition specific positions.
+
+---
+
+### stop_scrub
+
+Stops a clip preview started by scrub_clip.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | *(required)* | Track number (0-based) |
+| `clip_index` | int | *(required)* | Clip slot (0-based) |
+
+**When to use:** After previewing, stop the scrub playback.
+
+---
+
+### get_display_values
+
+Returns human-readable display strings for all device parameters (e.g., "440 Hz", "-6 dB", "Saw").
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | *(required)* | Track number (0-based) |
+| `device_index` | int | *(required)* | Device position in chain (0-based) |
+
+**When to use:** "What are the actual values?" to see parameters in the same format as Ableton's GUI.
 
 ---
 

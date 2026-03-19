@@ -1,4 +1,4 @@
-"""Verify all 104 MCP tools are registered across 10 domains."""
+"""Verify all 127 MCP tools are registered across 11 domains."""
 
 import asyncio
 import sys
@@ -137,6 +137,9 @@ def test_mixing_tools_registered():
         "set_master_volume",
         "get_track_routing",
         "set_track_routing",
+        "get_track_meters",
+        "get_master_meters",
+        "get_mix_snapshot",
     }
     missing = expected - names
     assert not missing, f"Missing mixing tools: {missing}"
@@ -197,7 +200,37 @@ def test_memory_tools_registered():
     assert not missing, f"Missing memory tools: {missing}"
 
 
+def test_analyzer_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "get_master_spectrum",
+        "get_master_rms",
+        "get_detected_key",
+        "get_hidden_parameters",
+        "get_automation_state",
+        "walk_device_tree",
+        # Phase 2: Sample Operations
+        "get_clip_file_path",
+        "replace_simpler_sample",
+        "get_simpler_slices",
+        "crop_simpler",
+        "reverse_simpler",
+        "warp_simpler",
+        # Phase 2: Warp Markers
+        "get_warp_markers",
+        "add_warp_marker",
+        "move_warp_marker",
+        "remove_warp_marker",
+        # Phase 2: Clip & Display
+        "scrub_clip",
+        "stop_scrub",
+        "get_display_values",
+    }
+    missing = expected - names
+    assert not missing, f"Missing analyzer tools: {missing}"
+
+
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 104, f"Expected 104 tools, got {len(tools)}"
+    assert len(tools) == 127, f"Expected 127 tools, got {len(tools)}"

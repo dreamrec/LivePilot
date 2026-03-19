@@ -6,7 +6,7 @@ This guide takes you from zero to making sound in about five minutes.
 
 - **Ableton Live 12** (any edition — Intro, Standard, or Suite)
 - **Node.js 18+** ([download](https://nodejs.org/))
-- **Python 3.10+** (usually pre-installed on macOS; [download](https://www.python.org/) for Windows)
+- **Python 3.9+** (usually pre-installed on macOS; [download](https://www.python.org/) for Windows)
 - **An MCP-compatible AI client** — [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Claude Desktop](https://claude.ai/download), [Cursor](https://cursor.sh), VS Code with Copilot, or any other MCP client
 
 ## Step 1: Install the Remote Script
@@ -166,6 +166,7 @@ This adds:
 - `/beat` — Guided beat creation workflow
 - `/mix` — Mixing assistant
 - `/sounddesign` — Sound design workflow
+- `/memory` — Browse, search, and manage saved techniques
 
 ### The producer agent
 
@@ -203,6 +204,29 @@ npx -y github:dreamrec/LivePilot --doctor
 ```
 
 This checks Python version, dependencies, Ableton connection, and Remote Script installation.
+
+## Optional: M4L Analyzer
+
+The LivePilot Analyzer is an optional Max for Live device that enables real-time audio analysis tools not available through Ableton's standard API.
+
+### Installation
+
+1. Copy `m4l_device/LivePilot_Analyzer.amxd` to your User Library (drag it into Ableton's browser under **User Library**)
+2. Drag the device onto your **master track**
+3. The device communicates with the MCP server over UDP (ports 9880/9881) — no additional configuration needed
+
+### What it enables
+
+With the Analyzer installed, you get 20 additional tools including:
+
+- **Spectrum analysis** — real-time frequency data from the master output
+- **Key detection** — automatic key/scale detection using the Krumhansl-Schmuckler algorithm
+- **Simpler operations** — replace samples, get slices, crop, reverse, and warp
+- **Warp markers** — read, add, move, and remove warp markers on audio clips
+- **Hidden parameters** — access device parameters not exposed by the standard ControlSurface API
+- **Display values** — read human-readable parameter values (e.g., "−6.0 dB" instead of 0.70)
+
+The Analyzer is optional. All 107 core tools work without it. The 20 analyzer tools will return clear errors if the device is not present.
 
 ---
 
