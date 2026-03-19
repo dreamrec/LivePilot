@@ -312,7 +312,7 @@ npx -y github:dreamrec/LivePilot --status
 | **Automation** | 8 | Clip envelope CRUD, 16-type curve engine, 15 named recipes, spectral-aware suggestions |
 | **Memory** | 8 | Save, recall, replay, and manage production techniques |
 | **Analyzer** | 20 | Real-time spectral analysis, key detection, sample manipulation, warp markers, device introspection (requires M4L device) |
-| **Theory** | 7 | Harmony analysis, Roman numerals, scale identification, chord suggestions, countermelody, SATB harmonization, smart transposition (requires music21) |
+| **Theory** | 7 | Harmony analysis, Roman numerals, scale identification, chord suggestions, countermelody, SATB harmonization, smart transposition |
 
 <details>
 <summary><strong>Full tool list</strong></summary>

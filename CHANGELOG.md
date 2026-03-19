@@ -1,8 +1,18 @@
 # Changelog
 
+## 1.6.5 — Drop music21 (March 2026)
+
+**Theory tools rewritten with zero-dependency pure Python engine.**
+
+- Replace music21 (~100MB) with built-in `_theory_engine.py` (~350 lines)
+- Krumhansl-Schmuckler key detection with 7 mode profiles (major, minor, dorian, phrygian, lydian, mixolydian, locrian)
+- All 7 theory tools keep identical APIs and return formats
+- Zero external dependencies — theory tools work on every install
+- 2-3s faster cold start (no music21 import overhead)
+
 ## 1.6.4 — Music Theory (March 2026)
 
-**7 new tools (135 -> 142), music21-powered theory analysis on live MIDI clips.**
+**7 new tools (135 -> 142), theory analysis on live MIDI clips.**
 
 ### Theory Domain (7 tools)
 - `analyze_harmony` — chord-by-chord Roman numeral analysis of session clips
@@ -14,12 +24,9 @@
 - `transpose_smart` — diatonic or chromatic transposition preserving scale relationships
 
 ### Architecture
-- Notes-to-Stream bridge: converts LivePilot note dicts → music21 Part objects with quantization (1/32 note grid)
-- Lazy imports: music21 is optional — all 135 core tools work without it installed
-- Key hint parsing: handles "A minor" → lowercase tonic for music21 compatibility
-
-### Dependencies
-- Optional: `pip install 'music21>=9.3'` (not auto-installed — ~50MB with numpy/matplotlib)
+- Pure Python `_theory_engine.py`: Krumhansl-Schmuckler key detection, Roman numeral analysis, voice leading checks
+- Chordify bridge: groups notes by quantized beat position (1/32 note grid)
+- Key hint parsing: handles "A minor", "F# major", enharmonic normalization
 
 ## 1.6.3 — Audit Hardening (March 2026)
 
