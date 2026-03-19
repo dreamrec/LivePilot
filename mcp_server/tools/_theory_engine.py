@@ -82,8 +82,23 @@ def pitch_name(midi: int) -> str:
 
 
 def parse_key(key_str: str) -> dict:
-    """Parse key string -> {tonic: 0-11, tonic_name: str, mode: str}."""
-    parts = key_str.strip().split()
+    """Parse key string -> {tonic: 0-11, tonic_name: str, mode: str}.
+
+    Accepts: "D minor", "Dm", "C# major", "C#m", "Bb", "Bbm", "F#m".
+    """
+    s = key_str.strip()
+
+    # Shorthand: trailing 'm' after a note name means minor (e.g. "Am", "C#m", "Bbm")
+    # But not "Dm" vs "D" — check if removing 'm' leaves a valid tonic
+    if len(s) >= 2 and s[-1] == 'm' and ' ' not in s:
+        candidate = s[:-1]
+        norm = candidate[0].upper() + candidate[1:]
+        if norm in ENHARMONIC:
+            norm = ENHARMONIC[norm]
+        if norm in NOTE_NAMES:
+            return {"tonic": NOTE_NAMES.index(norm), "tonic_name": norm, "mode": "minor"}
+
+    parts = s.split()
     raw_tonic = parts[0]
     mode = parts[1].lower() if len(parts) > 1 else 'major'
 

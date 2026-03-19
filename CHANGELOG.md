@@ -4,6 +4,9 @@
 
 **13 new tools (155 → 168), 1 new domain (perception), FluCoMa real-time DSP, offline audio analysis, audio capture.**
 
+### Fixes
+- `parse_key()` now accepts shorthand key notation ("Am", "C#m", "Bbm") in addition to "A minor" / "C# major"
+
 ### Perception Domain (4 tools)
 - `analyze_loudness` — LUFS, sample peak, RMS, crest factor, LRA, streaming compliance
 - `analyze_spectrum_offline` — spectral centroid, rolloff, flatness, bandwidth, 5-band balance
