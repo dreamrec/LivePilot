@@ -4,3 +4,8 @@ fastmcp>=3.0.0,<4.0.0
 midiutil>=1.2.1
 pretty_midi>=0.2.10
 opycleid>=0.5.1
+# v1.8 Perception Layer (offline analysis)
+pyloudnorm>=0.1.0
+soundfile>=0.12.0
+scipy>=1.11.0
+mutagen>=1.47.0
