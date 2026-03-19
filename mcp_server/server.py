@@ -57,6 +57,9 @@ from .tools import memory       # noqa: F401, E402
 from .tools import analyzer     # noqa: F401, E402
 from .tools import automation   # noqa: F401, E402
 from .tools import theory       # noqa: F401, E402
+from .tools import generative   # noqa: F401, E402
+from .tools import harmony      # noqa: F401, E402
+from .tools import midi_io      # noqa: F401, E402
 
 
 # ---------------------------------------------------------------------------
