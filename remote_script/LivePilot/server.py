@@ -52,6 +52,9 @@ WRITE_COMMANDS = frozenset([
     "modify_arrangement_notes", "duplicate_arrangement_notes",
     "transpose_arrangement_notes", "set_arrangement_automation",
     "set_arrangement_clip_name",
+    # clip automation
+    "set_clip_automation",
+    "clear_clip_automation",
 ])
 
 
