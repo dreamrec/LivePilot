@@ -1,17 +1,17 @@
 ---
 name: livepilot-core
-description: Core discipline for controlling Ableton Live 12 through LivePilot's 155 MCP tools, device atlas (280+ devices), M4L analyzer (spectrum/RMS/key detection), automation intelligence (16 curve types, 15 recipes), music theory analysis, generative algorithms, neo-Riemannian harmony, MIDI file I/O, and technique memory. Use whenever working with Ableton Live through MCP tools.
+description: Core discipline for LivePilot — agentic production system for Ableton Live 12. 155 tools across 16 domains. Device atlas (280+ devices), M4L analyzer (spectrum/RMS/key detection), technique memory, automation intelligence (16 curve types, 15 recipes), music theory (Krumhansl-Schmuckler, species counterpoint), generative algorithms (Euclidean rhythm, tintinnabuli, phase shift), neo-Riemannian harmony (PRL transforms, Tonnetz), MIDI file I/O. Use whenever working with Ableton Live through MCP tools.
 ---
 
-# LivePilot Core — Ableton Live 12 AI Copilot
+# LivePilot Core — Ableton Live 12
 
-LivePilot is an agentic production system for Ableton Live 12. It combines 155 MCP tools with three layers of intelligence:
+Agentic production system for Ableton Live 12. 155 tools across 16 domains, three layers:
 
 - **Device Atlas** — A structured knowledge corpus of 280+ instruments, 139 drum kits, and 350+ impulse responses. Consult the atlas before loading any device. It contains real browser URIs, preset names, and sonic descriptions. Never guess a device name — look it up.
 - **M4L Analyzer** — Real-time audio analysis on the master bus (8-band spectrum, RMS/peak, key detection). Use it to verify mixing decisions, detect frequency problems, and find the key before writing harmonic content.
 - **Technique Memory** — Persistent storage for production decisions. Consult `memory_recall` before creative tasks to understand the user's taste. Save techniques when the user likes something. The memory shapes future decisions without constraining them.
 
-These layers sit on top of 155 deterministic tools across 16 domains: transport, tracks, clips, MIDI notes, devices, scenes, mixing, browser, arrangement, technique memory, real-time DSP analysis, automation, music theory, generative algorithms, neo-Riemannian harmony, and MIDI file I/O.
+These layers sit on top of 155 deterministic tools across 16 domains: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, analyzer, automation, theory, generative, harmony, and MIDI I/O.
 
 ## Golden Rules
 

@@ -1,88 +1,59 @@
 # LivePilot Manual
 
-## What is LivePilot?
-
-LivePilot connects AI to Ableton Live 12 — not as a remote control, but as a production partner with knowledge, perception, and memory.
-
-Say *"set up a 126 BPM session with drums, bass, and a pad"* — and it builds it. It picks instruments from a knowledge base of 280+ devices (not by guessing names), programs patterns informed by your saved techniques, and reads the spectrum to verify the mix balance. Say *"add some swing to the hi-hats"* — and it remembers your preferred swing range from past sessions.
-
-LivePilot is built on three layers that work together:
-
-- **Device Atlas** — A deep corpus of 280+ instruments, 139 drum kits, and 350+ impulse responses. The AI looks up real device names and browser URIs instead of hallucinating them.
-- **M4L Analyzer** — Real-time audio analysis on the master bus: 8-band spectrum, RMS/peak metering, pitch tracking, key detection. The AI hears the result of its own changes.
-- **Technique Memory** — A persistent library of production decisions. The AI remembers how you built sounds, what patterns you liked, and how you mixed — and uses that context in future sessions.
-
-On top of these sit 155 MCP tools across 16 domains. Every command is deterministic, goes through Ableton's official Live Object Model API, and is reversible with undo.
-
-## What it actually does
-
-LivePilot gives you **155 tools** organized across 16 domains:
-
-| Domain | What it handles |
-|--------|----------------|
-| [Transport](getting-started.md#your-first-session) | Tempo, time signature, playback, loop, undo/redo |
-| [Tracks](tool-reference.md#tracks) | Create, name, color, mute, solo, arm, delete, duplicate |
-| [Clips](tool-reference.md#clips) | Create, fire, stop, loop, launch mode, duplicate |
-| [Notes](midi-guide.md) | Add, read, modify, transpose, quantize, humanize MIDI |
-| [Devices](sound-design.md) | Load instruments and effects, tweak every parameter, browse presets |
-| [Scenes](tool-reference.md#scenes) | Create, fire, name, duplicate entire rows |
-| [Mixing](mixing.md) | Volume, pan, sends, routing, return tracks, master |
-| [Browser](sound-design.md#browsing-abletons-library) | Search the full Ableton library, load presets by name |
-| [Arrangement](workflows.md#arrangement-workflow) | Timeline editing, MIDI notes in arrangement, cue points, recording |
-| [Automation](tool-reference.md#automation) | Clip envelopes, 16-type curve engine, 15 recipes, spectral suggestions |
-| [Memory](tool-reference.md#memory) | Save, recall, replay, and manage production techniques |
-| [Analyzer](tool-reference.md#analyzer) | Real-time spectral analysis, key detection, sample manipulation, warp markers (requires M4L device) |
-| [Theory](tool-reference.md#theory) | Harmony analysis, Roman numerals, scale identification, chord suggestions, countermelody, transposition |
-| [Generative](tool-reference.md#generative) | Euclidean rhythms, polyrhythmic layering, Pärt tintinnabuli, Reich phase shift, Glass additive process |
-| [Harmony](tool-reference.md#harmony) | Tonnetz navigation, voice leading paths, neo-Riemannian classification, chromatic mediants |
-| [MIDI I/O](tool-reference.md#midi-io) | Export clips to .mid, import .mid files, offline MIDI analysis, piano roll extraction |
-
-Each tool maps directly to an Ableton Live API call. There's no abstraction layer that guesses what you mean — when you ask to set a parameter, it sets that parameter. When you ask to read notes, it reads the actual MIDI data from the clip. Everything is deterministic and reversible with undo.
-
-## How it works
-
-```
-You (natural language)
-  │
-  ▼
-AI Client ──MCP──► LivePilot MCP Server ──TCP──► Remote Script inside Ableton
-                              (validates inputs)           (executes on main thread)
-```
-
-The MCP server validates your requests (range checks, type checks) before they reach Ableton. The Remote Script runs inside Ableton's Python environment and executes every command on the main thread — the same thread that handles the UI. This means your commands are always consistent with what you see on screen.
-
-Everything goes through Ableton's official Live Object Model (LOM) API. LivePilot doesn't hack, inject, or work around the DAW — it uses the same interfaces that Ableton's own control surfaces use.
-
-## Who this is for
-
-Anyone curious about what happens when you put AI inside a DAW. Whether you're a seasoned producer or just getting started — if the idea of jamming with AI sounds interesting, this is for you.
-
-## What's in this manual
-
-| Chapter | What you'll learn |
-|---------|-------------------|
-| [Getting Started](getting-started.md) | Installation, setup, your first session |
-| [Tool Reference](tool-reference.md) | Every tool explained with parameters and examples |
-| [Workflows](workflows.md) | Real production workflows from idea to arrangement |
-| [MIDI Guide](midi-guide.md) | Drum patterns, scales, chords, humanization |
-| [Sound Design](sound-design.md) | Instruments, effects, and recipe starting points |
-| [Mixing](mixing.md) | Levels, EQ, compression, sends, stereo width |
-| [Troubleshooting](troubleshooting.md) | When things go wrong and how to fix them |
-
-## The agentic approach
-
-LivePilot is not a tool palette — it's an agentic system. The difference matters.
-
-A tool palette exposes buttons: "set volume", "add note", "load device". The AI presses them one at a time, with no context about whether the device name is real, whether the result sounds right, or whether you've made something similar before.
-
-LivePilot's agent operates differently. Before loading an instrument, it consults the device atlas to find one that actually exists. Before writing a bass line, it reads the key from the analyzer. Before choosing a drum pattern, it checks your technique memory for style preferences. After every change, it can verify the result through the spectrum and meters.
-
-The three layers — atlas, analyzer, memory — give the agent the context it needs to make informed decisions rather than blind guesses. Your ears are still the final authority. But now the AI has ears too.
-
-## How to think about it
-
-Start with a rough idea. Listen. Adjust. Push further. It's a conversation — you set the direction, the agent handles the execution with the full context of what it knows, what it hears, and what it remembers.
+An agentic production system for Ableton Live 12.
+155 tools. 16 domains. Device atlas. Spectral perception. Technique memory.
 
 ---
 
-Next: [Getting Started](getting-started.md)
+## Architecture
+
+```
+AI Client  ──MCP──►  FastMCP Server  ──TCP/9878──►  Remote Script (inside Ableton)
+                        (validates)                    (executes on main thread)
+                            │
+                            ├── Device Atlas (280+ devices, 139 kits, 350+ IRs)
+                            ├── M4L Analyzer ──UDP/OSC──► LivePilot_Analyzer.amxd
+                            └── Technique Memory (~/.livepilot/memory/)
+```
+
+The atlas resolves device names and browser URIs — the AI never hallucinates a preset. The analyzer feeds back spectral data from the master bus so the AI hears the result of its own changes. The memory persists production decisions across sessions as searchable, replayable data structures. All three layers feed into 155 deterministic LOM calls on Ableton's main thread. Everything is reversible with undo.
+
+---
+
+## Domain Map
+
+| Domain | # | Scope | Reference |
+|--------|:-:|-------|-----------|
+| Transport | 12 | playback, tempo, time sig, loop, metronome, undo/redo, diagnostics | [tool-reference](tool-reference.md#transport) |
+| Tracks | 14 | create MIDI/audio/return, delete, duplicate, arm, mute, solo, routing | [tool-reference](tool-reference.md#tracks) |
+| Clips | 11 | create, delete, duplicate, fire, stop, loop, launch mode, warp mode | [tool-reference](tool-reference.md#clips) |
+| Notes | 8 | add/get/remove/modify MIDI, transpose, duplicate, per-note probability | [tool-reference](tool-reference.md#notes) |
+| Devices | 12 | load by name or URI, params, batch edit, racks, chains, presets | [tool-reference](tool-reference.md#devices) |
+| Scenes | 8 | create, delete, duplicate, fire, name, color, per-scene tempo | [tool-reference](tool-reference.md#scenes) |
+| Browser | 4 | search library, browse tree, load items | [tool-reference](tool-reference.md#browser) |
+| Mixing | 11 | volume, pan, sends, routing, meters, return tracks, mix snapshot | [tool-reference](tool-reference.md#mixing) |
+| Arrangement | 19 | timeline editing, arrangement notes, cue points, recording, capture | [tool-reference](tool-reference.md#arrangement) |
+| Automation | 8 | clip envelopes, 16 curve types, 15 recipes, spectral suggestions | [tool-reference](tool-reference.md#automation) |
+| Memory | 8 | save, recall, replay, manage production techniques | [tool-reference](tool-reference.md#memory) |
+| Analyzer | 20 | spectrum, RMS, key detection, Simpler ops, warp markers `[M4L]` | [tool-reference](tool-reference.md#analyzer) |
+| Theory | 7 | harmony analysis, Roman numerals, scales, countermelody, transposition | [tool-reference](tool-reference.md#theory) |
+| Generative | 5 | Euclidean rhythm, tintinnabuli, phase shift, additive process | [tool-reference](tool-reference.md#generative) |
+| Harmony | 4 | Tonnetz navigation, voice leading, neo-Riemannian classification | [tool-reference](tool-reference.md#harmony) |
+| MIDI I/O | 4 | export/import .mid, offline analysis, piano roll extraction | [tool-reference](tool-reference.md#midi-io) |
+
+---
+
+## Chapters
+
+| Chapter | What's inside |
+|---------|---------------|
+| [Tool Reference](tool-reference.md) | Every tool with parameters, ranges, and usage notes |
+| [Workflows](workflows.md) | Production workflows from session setup to arrangement |
+| [MIDI Guide](midi-guide.md) | Drum patterns, scales, chords, humanization techniques |
+| [Sound Design](sound-design.md) | Instruments, effects, parameter recipes, device chains |
+| [Mixing](mixing.md) | Gain staging, EQ, compression, sends, stereo width |
+| [Troubleshooting](troubleshooting.md) | Connection issues, common errors, diagnostics |
+
+---
+
+Next: [Tool Reference](tool-reference.md)
