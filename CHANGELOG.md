@@ -1,5 +1,34 @@
 # Changelog
 
+## 1.7.0 — Creative Engine (March 2026)
+
+**13 new tools (142 → 155), 3 new domains, MIDI file I/O, neo-Riemannian harmony, generative algorithms.**
+
+### MIDI I/O Domain (4 tools)
+- `export_clip_midi` — export session clip to .mid file
+- `import_midi_to_clip` — load .mid file into session clip
+- `analyze_midi_file` — offline analysis of any .mid file
+- `extract_piano_roll` — 2D velocity matrix from .mid file
+
+### Generative Domain (5 tools)
+- `generate_euclidean_rhythm` — Bjorklund algorithm, identifies known rhythms
+- `layer_euclidean_rhythms` — stack patterns for polyrhythmic textures
+- `generate_tintinnabuli` — Arvo Pärt technique: triad voice from melody
+- `generate_phase_shift` — Steve Reich technique: drifting canon
+- `generate_additive_process` — Philip Glass technique: expanding melody
+
+### Harmony Domain (4 tools)
+- `navigate_tonnetz` — PRL neighbors in harmonic space
+- `find_voice_leading_path` — shortest path between two chords through Tonnetz
+- `classify_progression` — identify neo-Riemannian transform pattern
+- `suggest_chromatic_mediants` — all chromatic mediant relations with film score picks
+
+### Architecture
+- Two new pure Python engines (`_generative_engine.py`, `_harmony_engine.py`)
+- New dependencies: midiutil, pretty-midi, opycleid (~5 MB total, lazy-loaded)
+- Opycleid fallback: harmony tools work without the package via pure Python PRL
+- All generative tools return note arrays — LLM orchestrates placement
+
 ## 1.6.5 — Drop music21 (March 2026)
 
 **Theory tools rewritten with zero-dependency pure Python engine.**

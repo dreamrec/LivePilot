@@ -12,7 +12,7 @@
 [![GitHub stars](https://img.shields.io/github/stars/dreamrec/LivePilot)](https://github.com/dreamrec/LivePilot/stargazers)
 [![npm](https://img.shields.io/npm/v/livepilot)](https://www.npmjs.com/package/livepilot)
 
-**AI copilot for Ableton Live 12** — 142 MCP tools, a deep device knowledge corpus, real-time audio analysis, and persistent technique memory.
+**AI copilot for Ableton Live 12** — 155 MCP tools, a deep device knowledge corpus, real-time audio analysis, generative algorithms, neo-Riemannian harmony, MIDI file I/O, and persistent technique memory.
 
 Most Ableton MCP servers give the AI tools to push buttons. LivePilot gives it three things on top of that:
 
@@ -20,7 +20,7 @@ Most Ableton MCP servers give the AI tools to push buttons. LivePilot gives it t
 - **Perception** — An M4L analyzer that reads the master bus in real-time: 8-band spectrum, RMS/peak metering, pitch tracking, key detection. The AI makes decisions based on what it hears, not just what's configured.
 - **Memory** — A technique library that persists across sessions. The AI remembers how you built that bass sound, what swing you like on hi-hats, which reverb chain worked on vocals. It learns your taste over time.
 
-These three layers sit on top of 142 deterministic MCP tools that cover transport, tracks, clips, MIDI, devices, scenes, mixing, browser, arrangement, and sample manipulation. Every command goes through Ableton's official Live Object Model API — the same interface Ableton's own control surfaces use. Everything is reversible with undo.
+These three layers sit on top of 155 deterministic MCP tools that cover transport, tracks, clips, MIDI, devices, scenes, mixing, browser, arrangement, sample manipulation, generative algorithms, neo-Riemannian harmony, and MIDI file I/O. Every command goes through Ableton's official Live Object Model API — the same interface Ableton's own control surfaces use. Everything is reversible with undo.
 
 ---
 
@@ -296,7 +296,7 @@ npx -y github:dreamrec/LivePilot --status
 
 ---
 
-## 142 Tools Across 13 Domains
+## 155 Tools Across 16 Domains
 
 | Domain | Tools | What you can do |
 |--------|:-----:|-----------------|
@@ -313,6 +313,9 @@ npx -y github:dreamrec/LivePilot --status
 | **Memory** | 8 | Save, recall, replay, and manage production techniques |
 | **Analyzer** | 20 | Real-time spectral analysis, key detection, sample manipulation, warp markers, device introspection (requires M4L device) |
 | **Theory** | 7 | Harmony analysis, Roman numerals, scale identification, chord suggestions, countermelody, SATB harmonization, smart transposition |
+| **Generative** | 5 | Euclidean rhythms (Bjorklund), polyrhythmic layering, Pärt tintinnabuli, Reich phase shift, Glass additive process |
+| **Harmony** | 4 | Tonnetz navigation, voice leading paths, neo-Riemannian classification, chromatic mediants |
+| **MIDI I/O** | 4 | Export clips to .mid, import .mid files, offline MIDI analysis, piano roll extraction |
 
 <details>
 <summary><strong>Full tool list</strong></summary>
@@ -352,6 +355,18 @@ npx -y github:dreamrec/LivePilot --status
 
 ### Analyzer (20) — requires LivePilot Analyzer M4L device on master track
 `get_master_spectrum` · `get_master_rms` · `get_detected_key` · `get_hidden_parameters` · `get_automation_state` · `walk_device_tree` · `get_clip_file_path` · `replace_simpler_sample` · `load_sample_to_simpler` · `get_simpler_slices` · `crop_simpler` · `reverse_simpler` · `warp_simpler` · `get_warp_markers` · `add_warp_marker` · `move_warp_marker` · `remove_warp_marker` · `scrub_clip` · `stop_scrub` · `get_display_values`
+
+### Theory (7)
+`analyze_harmony` · `suggest_next_chord` · `detect_theory_issues` · `identify_scale` · `harmonize_melody` · `generate_countermelody` · `transpose_smart`
+
+### Generative (5)
+`generate_euclidean_rhythm` · `layer_euclidean_rhythms` · `generate_tintinnabuli` · `generate_phase_shift` · `generate_additive_process`
+
+### Harmony (4)
+`navigate_tonnetz` · `find_voice_leading_path` · `classify_progression` · `suggest_chromatic_mediants`
+
+### MIDI I/O (4)
+`export_clip_midi` · `import_midi_to_clip` · `analyze_midi_file` · `extract_piano_roll`
 
 </details>
 
@@ -403,7 +418,7 @@ There are **15+ MCP servers for Ableton Live** as of March 2026. Here's how the 
 
 | | [LivePilot](https://github.com/dreamrec/LivePilot) | [AbletonMCP](https://github.com/ahujasid/ableton-mcp) | [MCP Extended](https://github.com/uisato/ableton-mcp-extended) | [Ableton Copilot](https://github.com/xiaolaa2/ableton-copilot-mcp) | [AbletonBridge](https://github.com/hidingwill/AbletonBridge) | [Producer Pal](https://github.com/adamjmurray/producer-pal) |
 |---|:-:|:-:|:-:|:-:|:-:|:-:|
-| **Tools** | 142 | ~20 | ~35 | ~45 | 322 | ~25 |
+| **Tools** | 155 | ~20 | ~35 | ~45 | 322 | ~25 |
 | **Device knowledge** | 280+ devices | -- | -- | -- | -- | -- |
 | **Audio analysis** | Spectrum/RMS/key | -- | -- | -- | Metering | -- |
 | **Technique memory** | Persistent | -- | -- | -- | -- | -- |
@@ -460,7 +475,7 @@ Every server on this list gives the AI tools to control Ableton. LivePilot is th
 
 The practical difference: other servers let the AI set a parameter. LivePilot lets the AI choose the right parameter based on what device is loaded (atlas), verify the result by reading the audio output (analyzer), and remember the technique for next time (memory).
 
-AbletonBridge has more raw tools (322 vs 142). Producer Pal has the easiest install (drag a .amxd). The original AbletonMCP has the community (2.3k stars). LivePilot has the deepest integration — tools that execute, knowledge that informs, perception that verifies, and memory that accumulates.
+AbletonBridge has more raw tools (322 vs 155). Producer Pal has the easiest install (drag a .amxd). The original AbletonMCP has the community (2.3k stars). LivePilot has the deepest integration — tools that execute, knowledge that informs, perception that verifies, and memory that accumulates.
 
 ---
 

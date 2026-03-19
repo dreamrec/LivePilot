@@ -1,17 +1,17 @@
 ---
 name: livepilot-core
-description: Core discipline for controlling Ableton Live 12 through LivePilot's 142 MCP tools, device atlas (280+ devices), M4L analyzer (spectrum/RMS/key detection), automation intelligence (16 curve types, 15 recipes), music theory analysis, and technique memory. Use whenever working with Ableton Live through MCP tools.
+description: Core discipline for controlling Ableton Live 12 through LivePilot's 155 MCP tools, device atlas (280+ devices), M4L analyzer (spectrum/RMS/key detection), automation intelligence (16 curve types, 15 recipes), music theory analysis, generative algorithms, neo-Riemannian harmony, MIDI file I/O, and technique memory. Use whenever working with Ableton Live through MCP tools.
 ---
 
 # LivePilot Core — Ableton Live 12 AI Copilot
 
-LivePilot is an agentic production system for Ableton Live 12. It combines 142 MCP tools with three layers of intelligence:
+LivePilot is an agentic production system for Ableton Live 12. It combines 155 MCP tools with three layers of intelligence:
 
 - **Device Atlas** — A structured knowledge corpus of 280+ instruments, 139 drum kits, and 350+ impulse responses. Consult the atlas before loading any device. It contains real browser URIs, preset names, and sonic descriptions. Never guess a device name — look it up.
 - **M4L Analyzer** — Real-time audio analysis on the master bus (8-band spectrum, RMS/peak, key detection). Use it to verify mixing decisions, detect frequency problems, and find the key before writing harmonic content.
 - **Technique Memory** — Persistent storage for production decisions. Consult `memory_recall` before creative tasks to understand the user's taste. Save techniques when the user likes something. The memory shapes future decisions without constraining them.
 
-These layers sit on top of 142 deterministic tools across 13 domains: transport, tracks, clips, MIDI notes, devices, scenes, mixing, browser, arrangement, technique memory, real-time DSP analysis, automation, and music theory.
+These layers sit on top of 155 deterministic tools across 16 domains: transport, tracks, clips, MIDI notes, devices, scenes, mixing, browser, arrangement, technique memory, real-time DSP analysis, automation, music theory, generative algorithms, neo-Riemannian harmony, and MIDI file I/O.
 
 ## Golden Rules
 
@@ -32,7 +32,7 @@ These layers sit on top of 142 deterministic tools across 13 domains: transport,
 Not all tools respond instantly. Know the tiers and act accordingly.
 
 ### Instant (<1s) — Use freely, no warning needed
-All 142 core tools (transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, automation, theory) plus Layer A perception tools (spectral shape, timbral profile, mel spectrum, chroma, onsets, harmonic/percussive, novelty, momentary loudness). These are the reflex tools — call them anytime without hesitation.
+All 155 core tools (transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, automation, theory, generative, harmony, midi_io) plus Layer A perception tools (spectral shape, timbral profile, mel spectrum, chroma, onsets, harmonic/percussive, novelty, momentary loudness). These are the reflex tools — call them anytime without hesitation.
 
 ### Fast (1-5s) — Use freely, barely noticeable
 `analyze_loudness` · `analyze_dynamic_range` · `compare_loudness`
@@ -117,7 +117,7 @@ Never skip levels. The user's question determines the entry point, but always st
 - MIDI track with no instrument loaded
 - Notes programmed but clip not fired
 
-## Tool Domains (142 total)
+## Tool Domains (155 total)
 
 ### Transport (12)
 `get_session_info` · `set_tempo` · `set_time_signature` · `start_playback` · `stop_playback` · `continue_playback` · `toggle_metronome` · `set_session_loop` · `undo` · `redo` · `get_recent_actions` · `get_session_diagnostics`
@@ -186,6 +186,44 @@ Music theory analysis — built-in pure Python engine, zero external dependencie
 - `analyze_harmony` and `detect_theory_issues` are analysis-only; `harmonize_melody`, `generate_countermelody`, and `transpose_smart` return note data ready for `add_notes`
 - Use your own musical knowledge alongside these tools — the engine provides data, you provide interpretation
 - Processing time: 2-5s for generative tools (harmonize, countermelody)
+
+### Generative (5)
+Algorithmic composition tools — Euclidean rhythms, minimalist techniques.
+
+**Tools:** `generate_euclidean_rhythm` · `layer_euclidean_rhythms` · `generate_tintinnabuli` · `generate_phase_shift` · `generate_additive_process`
+
+**Key discipline:**
+- All generative tools return note arrays — use `add_notes` to place them in clips
+- `generate_euclidean_rhythm` uses the Bjorklund algorithm and identifies named rhythms (e.g., "tresillo", "cinquillo")
+- `layer_euclidean_rhythms` stacks multiple patterns for polyrhythmic textures across tracks
+- `generate_tintinnabuli` implements Arvo Pärt's technique: a T-voice (triad arpeggio) against a M-voice (melody)
+- `generate_phase_shift` implements Steve Reich's phasing: two identical patterns drifting apart over time
+- `generate_additive_process` implements Philip Glass's technique: melody expanded by adding one note per iteration
+
+### Harmony (4)
+Neo-Riemannian harmony tools — Tonnetz navigation, voice leading, chromatic mediants.
+
+**Tools:** `navigate_tonnetz` · `find_voice_leading_path` · `classify_progression` · `suggest_chromatic_mediants`
+
+**Key discipline:**
+- These tools work with chord names and return harmonic relationships — no clip MIDI required
+- `navigate_tonnetz` returns PRL (Parallel, Relative, Leading-tone) neighbors for any chord
+- `find_voice_leading_path` finds the shortest harmonic path between two chords through Tonnetz space
+- `classify_progression` identifies the neo-Riemannian transform pattern in a chord sequence
+- `suggest_chromatic_mediants` returns all chromatic mediant relations with film score usage notes
+- Opycleid library provides full Tonnetz; falls back to pure Python PRL if not installed
+
+### MIDI I/O (4)
+MIDI file import/export — works with standard .mid files on disk.
+
+**Tools:** `export_clip_midi` · `import_midi_to_clip` · `analyze_midi_file` · `extract_piano_roll`
+
+**Key discipline:**
+- `export_clip_midi` exports a session clip's notes to a .mid file at the specified path
+- `import_midi_to_clip` loads a .mid file into a clip, replacing existing notes
+- `analyze_midi_file` performs offline analysis of any .mid file (tempo, notes, structure) — does not require Ableton connection
+- `extract_piano_roll` returns a 2D velocity matrix (pitch × time) from a .mid file for visualization or processing
+- Dependencies: midiutil (export), pretty-midi (import/analysis) — lazy-loaded, ~5 MB total
 
 ## Workflow: Building a Beat
 
@@ -328,7 +366,7 @@ Deep production knowledge lives in `references/`. Consult these when making crea
 
 | File | What's inside | When to consult |
 |------|--------------|-----------------|
-| `references/overview.md` | All 142 tools mapped with params, units, ranges | Quick lookup for any tool |
+| `references/overview.md` | All 155 tools mapped with params, units, ranges | Quick lookup for any tool |
 | `references/midi-recipes.md` | Drum patterns by genre, chord voicings, scales, hi-hat techniques, humanization, polymetrics | Programming MIDI notes, building beats |
 | `references/sound-design.md` | Stock instruments/effects, parameter recipes for bass/pad/lead/pluck, device chain patterns | Loading and configuring devices |
 | `references/mixing-patterns.md` | Gain staging, parallel compression, sidechain, EQ by instrument, bus processing, stereo width | Setting volumes, panning, adding effects |

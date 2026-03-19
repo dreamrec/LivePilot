@@ -12,11 +12,11 @@ LivePilot is built on three layers that work together:
 - **M4L Analyzer** — Real-time audio analysis on the master bus: 8-band spectrum, RMS/peak metering, pitch tracking, key detection. The AI hears the result of its own changes.
 - **Technique Memory** — A persistent library of production decisions. The AI remembers how you built sounds, what patterns you liked, and how you mixed — and uses that context in future sessions.
 
-On top of these sit 142 MCP tools across 13 domains. Every command is deterministic, goes through Ableton's official Live Object Model API, and is reversible with undo.
+On top of these sit 155 MCP tools across 16 domains. Every command is deterministic, goes through Ableton's official Live Object Model API, and is reversible with undo.
 
 ## What it actually does
 
-LivePilot gives you **142 tools** organized across 13 domains:
+LivePilot gives you **155 tools** organized across 16 domains:
 
 | Domain | What it handles |
 |--------|----------------|
@@ -33,6 +33,9 @@ LivePilot gives you **142 tools** organized across 13 domains:
 | [Memory](tool-reference.md#memory) | Save, recall, replay, and manage production techniques |
 | [Analyzer](tool-reference.md#analyzer) | Real-time spectral analysis, key detection, sample manipulation, warp markers (requires M4L device) |
 | [Theory](tool-reference.md#theory) | Harmony analysis, Roman numerals, scale identification, chord suggestions, countermelody, transposition |
+| [Generative](tool-reference.md#generative) | Euclidean rhythms, polyrhythmic layering, Pärt tintinnabuli, Reich phase shift, Glass additive process |
+| [Harmony](tool-reference.md#harmony) | Tonnetz navigation, voice leading paths, neo-Riemannian classification, chromatic mediants |
+| [MIDI I/O](tool-reference.md#midi-io) | Export clips to .mid, import .mid files, offline MIDI analysis, piano roll extraction |
 
 Each tool maps directly to an Ableton Live API call. There's no abstraction layer that guesses what you mean — when you ask to set a parameter, it sets that parameter. When you ask to read notes, it reads the actual MIDI data from the clip. Everything is deterministic and reversible with undo.
 

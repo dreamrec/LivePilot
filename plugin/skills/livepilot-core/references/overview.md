@@ -1,6 +1,6 @@
-# LivePilot v1.6.5 — Architecture & Tool Reference
+# LivePilot v1.7.0 — Architecture & Tool Reference
 
-LivePilot is an agentic production system for Ableton Live 12. It combines 142 MCP tools with a device knowledge corpus, real-time audio analysis, automation intelligence, and persistent technique memory.
+LivePilot is an agentic production system for Ableton Live 12. It combines 155 MCP tools with a device knowledge corpus, real-time audio analysis, automation intelligence, generative algorithms, neo-Riemannian harmony, MIDI file I/O, and persistent technique memory.
 
 ## Architecture
 
@@ -32,7 +32,7 @@ A flat tool list lets the AI press buttons. LivePilot's three layers give it con
 
 This turns "set EQ band 3 to -4 dB" into "cut 400 Hz by 4 dB, then read the spectrum to confirm the mud is actually reduced."
 
-## The 142 Tools — What Each One Does
+## The 155 Tools — What Each One Does
 
 ### Transport (12) — Playback, tempo, global state, diagnostics
 

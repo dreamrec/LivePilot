@@ -1,6 +1,6 @@
 # Tool Reference
 
-LivePilot gives you 142 tools that control every part of Ableton Live 12. You don't call these tools directly -- you describe what you want in plain language, and the AI picks the right tools behind the scenes. But knowing what's available helps you ask better questions and understand what's happening when the AI works on your session.
+LivePilot gives you 155 tools that control every part of Ableton Live 12. You don't call these tools directly -- you describe what you want in plain language, and the AI picks the right tools behind the scenes. But knowing what's available helps you ask better questions and understand what's happening when the AI works on your session.
 
 This chapter covers every tool, grouped by what it does. Each entry tells you the tool name, what it does in practice, what parameters it accepts, and when you'd want it.
 
@@ -1998,6 +1998,196 @@ Returns human-readable display strings for all device parameters (e.g., "440 Hz"
 | `device_index` | int | *(required)* | Device position in chain (0-based) |
 
 **When to use:** "What are the actual values?" to see parameters in the same format as Ableton's GUI.
+
+---
+
+## Generative
+
+These tools implement classic algorithmic composition techniques — Euclidean rhythms, minimalist phasing, additive processes. All return note arrays that you place into clips with `add_notes`.
+
+### generate_euclidean_rhythm
+
+Distributes N hits across K steps as evenly as possible using the Bjorklund algorithm. Identifies named rhythms (tresillo, cinquillo, clave, etc.) where applicable.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `hits` | int | *(required)* | Number of active steps |
+| `steps` | int | *(required)* | Total step count |
+| `pitch` | int | 60 | MIDI note number |
+| `velocity` | int | 100 | Note velocity |
+| `step_duration` | float | 0.25 | Duration of each step in beats |
+| `offset` | int | 0 | Rotate pattern by N steps |
+
+**When to use:** "Give me a tresillo pattern" or "3 hits across 8 steps for a hi-hat."
+
+---
+
+### layer_euclidean_rhythms
+
+Generates multiple Euclidean patterns with different pitches for stacking into polyrhythmic textures.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `layers` | list | *(required)* | List of `{hits, steps, pitch, velocity}` objects |
+| `step_duration` | float | 0.25 | Duration of each step in beats |
+
+**When to use:** "Create a polyrhythmic pattern with kick on 3/8, snare on 5/8, hi-hat on 7/8."
+
+---
+
+### generate_tintinnabuli
+
+Implements Arvo Pärt's tintinnabuli technique: a T-voice (tintinnabuli, triad arpeggio) against an M-voice (melody).
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `melody_notes` | list | *(required)* | List of `{pitch, start_time, duration}` note objects |
+| `triad` | list | *(required)* | Three MIDI pitches forming the tintinnabuli chord |
+| `position` | string | `"above"` | T-voice position: `"above"` or `"below"` the melody |
+
+**When to use:** "Apply Pärt's tintinnabuli technique to this melody in A minor."
+
+---
+
+### generate_phase_shift
+
+Implements Steve Reich's phase shifting: two identical patterns gradually drift apart in time.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `pattern` | list | *(required)* | Base note pattern as `{pitch, start_time, duration}` objects |
+| `drift_per_cycle` | float | 0.0625 | How much the second voice shifts each loop (in beats) |
+| `cycles` | int | 8 | Number of phase cycles to generate |
+
+**When to use:** "Create a Reich-style phase piece from this motif."
+
+---
+
+### generate_additive_process
+
+Implements Philip Glass's additive process: a melody grows by adding one note per repetition.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `base_notes` | list | *(required)* | Full melody as `{pitch, start_time, duration}` objects |
+| `repetitions` | int | *(required)* | How many additive steps to generate |
+| `gap_beats` | float | 0.0 | Silence between repetitions |
+
+**When to use:** "Build up this motif using Glass's additive technique over 8 repetitions."
+
+---
+
+## Harmony
+
+Neo-Riemannian harmony tools for exploring chromatic voice leading, Tonnetz space, and mediant relationships.
+
+### navigate_tonnetz
+
+Returns the PRL (Parallel, Relative, Leading-tone exchange) harmonic neighbors of a chord in Tonnetz space.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `chord` | string | *(required)* | Root and quality, e.g., `"C major"`, `"A minor"` |
+
+**When to use:** "What chords are a Tonnetz step away from C major?"
+
+---
+
+### find_voice_leading_path
+
+Finds the shortest path between two chords through Tonnetz space using PRL transformations.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `start_chord` | string | *(required)* | Starting chord, e.g., `"C major"` |
+| `end_chord` | string | *(required)* | Target chord, e.g., `"Ab major"` |
+| `max_steps` | int | 6 | Maximum path length to search |
+
+**When to use:** "Find the smoothest voice leading path from C major to Ab major."
+
+---
+
+### classify_progression
+
+Identifies the neo-Riemannian transform pattern (P, R, L, PL, PR, RL, etc.) in a chord sequence.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `chords` | list | *(required)* | Sequence of chord strings, e.g., `["C major", "A minor", "F major"]` |
+
+**When to use:** "What neo-Riemannian transforms are in this progression?"
+
+---
+
+### suggest_chromatic_mediants
+
+Returns all chromatic mediant relationships for a given chord, with film score usage notes.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `chord` | string | *(required)* | Root chord, e.g., `"C major"` |
+
+**When to use:** "What chromatic mediants work with C major? Any film score examples?"
+
+---
+
+## MIDI I/O
+
+Import and export standard MIDI files. Work with .mid files on disk — useful for exchanging patterns, offline analysis, and piano roll visualization.
+
+### export_clip_midi
+
+Exports a session clip's MIDI notes to a .mid file on disk.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | *(required)* | Track number (0-based) |
+| `clip_index` | int | *(required)* | Clip slot (0-based) |
+| `file_path` | string | *(required)* | Output .mid file path |
+| `tempo` | float | *(session tempo)* | BPM to embed in the MIDI file |
+
+**When to use:** "Export this clip to a MIDI file" or "save the drum pattern as .mid."
+
+---
+
+### import_midi_to_clip
+
+Loads a .mid file from disk into a session clip, replacing existing notes.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | *(required)* | Track number (0-based) |
+| `clip_index` | int | *(required)* | Clip slot (0-based) |
+| `file_path` | string | *(required)* | Input .mid file path |
+| `track_number` | int | 0 | Which MIDI track to read from the file |
+
+**When to use:** "Load this .mid file into the bass clip."
+
+---
+
+### analyze_midi_file
+
+Performs offline analysis of a .mid file without needing Ableton: tempo, note density, pitch range, duration, track structure.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `file_path` | string | *(required)* | Path to the .mid file |
+
+**When to use:** "Analyze this MIDI file" or "what's in this .mid before I import it?"
+
+---
+
+### extract_piano_roll
+
+Returns a 2D velocity matrix (pitch × time grid) from a .mid file for visualization or further processing.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `file_path` | string | *(required)* | Path to the .mid file |
+| `track_number` | int | 0 | Which MIDI track to extract |
+| `resolution` | float | 0.25 | Time grid resolution in beats |
+
+**When to use:** "Give me the piano roll data from this .mid file."
 
 ---
 
