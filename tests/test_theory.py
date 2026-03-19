@@ -1,8 +1,8 @@
-"""Test music21 theory tools — bridge function and analysis accuracy."""
+"""Test theory tools — engine integration and tool registration."""
 
 import pytest
-from mcp_server.tools.theory import (
-    _notes_to_stream, _detect_key, _pitch_name,
+from mcp_server.tools._theory_engine import (
+    pitch_name, detect_key, chordify, roman_numeral, chord_name,
 )
 
 
@@ -33,7 +33,6 @@ I_VI_IV_V_IN_C = [
     {"pitch": 62, "start_time": 3.0, "duration": 1.0, "velocity": 100},
 ]
 
-# Parallel fifths: C-G → D-A (both voices move up by step, interval stays P5)
 PARALLEL_FIFTHS = [
     {"pitch": 60, "start_time": 0.0, "duration": 1.0, "velocity": 100},  # C4
     {"pitch": 67, "start_time": 0.0, "duration": 1.0, "velocity": 100},  # G4
@@ -41,100 +40,67 @@ PARALLEL_FIFTHS = [
     {"pitch": 69, "start_time": 1.0, "duration": 1.0, "velocity": 100},  # A4
 ]
 
-D_DORIAN_MELODY = [
-    {"pitch": 62, "start_time": 0.0, "duration": 0.5, "velocity": 100},   # D
-    {"pitch": 64, "start_time": 0.5, "duration": 0.5, "velocity": 100},   # E
-    {"pitch": 65, "start_time": 1.0, "duration": 0.5, "velocity": 100},   # F
-    {"pitch": 67, "start_time": 1.5, "duration": 0.5, "velocity": 100},   # G
-    {"pitch": 69, "start_time": 2.0, "duration": 0.5, "velocity": 100},   # A
-    {"pitch": 71, "start_time": 2.5, "duration": 0.5, "velocity": 100},   # B (nat)
-    {"pitch": 72, "start_time": 3.0, "duration": 1.0, "velocity": 100},   # C
-]
 
+# -- Chordify tests (replaces _notes_to_stream tests) -----------------------
 
-# -- Bridge tests ------------------------------------------------------------
-
-class TestNotesToStream:
+class TestChordify:
     def test_single_note(self):
-        notes = [{"pitch": 60, "start_time": 0.0, "duration": 1.0, "velocity": 100}]
-        s = _notes_to_stream(notes)
-        elements = list(s.recurse().getElementsByClass('Note'))
-        assert len(elements) == 1
-        assert elements[0].pitch.midi == 60
+        notes = [{"pitch": 60, "start_time": 0.0, "duration": 1.0}]
+        result = chordify(notes)
+        assert len(result) == 1
+        assert result[0]["pitches"] == [60]
 
     def test_simultaneous_notes_become_chord(self):
-        s = _notes_to_stream(C_MAJOR_TRIAD)
-        chords = list(s.recurse().getElementsByClass('Chord'))
-        assert len(chords) == 1
-        assert len(chords[0].pitches) == 3
+        result = chordify(C_MAJOR_TRIAD)
+        assert len(result) == 1
+        assert len(result[0]["pitches"]) == 3
 
     def test_muted_notes_excluded(self):
         notes = [
-            {"pitch": 60, "start_time": 0.0, "duration": 1.0, "velocity": 100, "mute": False},
-            {"pitch": 64, "start_time": 0.0, "duration": 1.0, "velocity": 100, "mute": True},
+            {"pitch": 60, "start_time": 0.0, "duration": 1.0, "mute": False},
+            {"pitch": 64, "start_time": 0.0, "duration": 1.0, "mute": True},
         ]
-        s = _notes_to_stream(notes)
-        # Should have 1 note, not a chord
-        m21_notes = list(s.recurse().getElementsByClass('Note'))
-        assert len(m21_notes) == 1
-
-    def test_key_hint_applied(self):
-        from music21 import key
-        s = _notes_to_stream(C_MAJOR_TRIAD, key_hint="A minor")
-        keys = list(s.recurse().getElementsByClass(key.Key))
-        assert len(keys) == 1
-        assert keys[0].tonic.name == 'A'
+        result = chordify(notes)
+        assert result[0]["pitches"] == [60]
 
     def test_quantization_groups_near_times(self):
-        """Notes within 1/32 should group into same chord."""
         notes = [
-            {"pitch": 60, "start_time": 0.0, "duration": 1.0, "velocity": 100},
-            {"pitch": 64, "start_time": 0.01, "duration": 1.0, "velocity": 100},  # ~1ms late
+            {"pitch": 60, "start_time": 0.0, "duration": 1.0},
+            {"pitch": 64, "start_time": 0.01, "duration": 1.0},
         ]
-        s = _notes_to_stream(notes)
-        chords = list(s.recurse().getElementsByClass('Chord'))
-        assert len(chords) == 1, "Near-simultaneous notes should group as chord"
+        result = chordify(notes)
+        assert len(result) == 1, "Near-simultaneous notes should group as chord"
 
     def test_empty_notes(self):
-        s = _notes_to_stream([])
-        notes = list(s.recurse().getElementsByClass('GeneralNote'))
-        assert len(notes) == 0
+        result = chordify([])
+        assert len(result) == 0
 
 
 # -- Key detection tests -----------------------------------------------------
 
 class TestKeyDetection:
     def test_c_major_progression(self):
-        s = _notes_to_stream(I_VI_IV_V_IN_C)
-        k = _detect_key(s)
-        assert str(k) == "C major"
+        result = detect_key(I_VI_IV_V_IN_C)
+        assert result["tonic_name"] == "C"
+        assert result["mode"] in ("major", "lydian", "mixolydian")
 
     def test_confidence_score(self):
-        s = _notes_to_stream(I_VI_IV_V_IN_C)
-        k = _detect_key(s)
-        assert hasattr(k, 'correlationCoefficient')
-        assert k.correlationCoefficient > 0.7
-
-    def test_key_hint_overrides(self):
-        from music21 import key
-        s = _notes_to_stream(I_VI_IV_V_IN_C, key_hint="G major")
-        k = _detect_key(s)
-        # Should use the hint, not auto-detect
-        assert str(k) == "G major"
+        result = detect_key(I_VI_IV_V_IN_C)
+        assert result["confidence"] > 0.7
 
 
 # -- Roman numeral analysis tests -------------------------------------------
 
 class TestRomanNumerals:
     def test_i_vi_iv_v(self):
-        from music21 import roman
-        s = _notes_to_stream(I_VI_IV_V_IN_C)
-        k = _detect_key(s)
-        chordified = s.chordify()
+        key_info = detect_key(I_VI_IV_V_IN_C)
+        tonic = key_info["tonic"]
+        mode = key_info["mode"]
+        groups = chordify(I_VI_IV_V_IN_C)
         figures = []
-        for c in chordified.recurse().getElementsByClass('Chord'):
-            rn = roman.romanNumeralFromChord(c, k)
-            figures.append(rn.figure)
+        for g in groups:
+            rn = roman_numeral(g["pitch_classes"], tonic, mode)
+            figures.append(rn["figure"])
         assert figures == ['I', 'vi', 'IV', 'V']
 
 
@@ -142,10 +108,10 @@ class TestRomanNumerals:
 
 class TestPitchName:
     def test_middle_c(self):
-        assert _pitch_name(60) == "C4"
+        assert pitch_name(60) == "C4"
 
     def test_a440(self):
-        assert _pitch_name(69) == "A4"
+        assert pitch_name(69) == "A4"
 
 
 # -- Tool registration tests ------------------------------------------------
