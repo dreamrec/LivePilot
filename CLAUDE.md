@@ -1,4 +1,4 @@
-# LivePilot v1.6.0 — Ableton Live 12 AI Copilot
+# LivePilot v1.6.2 — Ableton Live 12 AI Copilot
 
 ## Project
 - **Repo:** `/Users/visansilviugeorge/Desktop/LivePilot/`

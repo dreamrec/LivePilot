@@ -38,12 +38,12 @@ Run this checklist EVERY time the user says "update everything", "push", "releas
 - [ ] `mcp_server/tools/analyzer.py` → module docstring
 - [ ] `tests/test_tools_contract.py` → expected count
 
-**How to check:** `grep -rn "127\|104\|113" --include="*.md" --include="*.json" --include="*.py" --include="*.html" --include="*.js" . | grep -v node_modules | grep -v .git | grep -v __pycache__`
+**How to check:** `grep -rn "127\|128\|129\|130\|131\|132\|133\|134" --include="*.md" --include="*.json" --include="*.py" --include="*.html" --include="*.js" . | grep -v node_modules | grep -v .git | grep -v __pycache__`
 
 ## 3. Domain Count
 
-- [ ] All files above that mention "10 domains" should say "11 domains"
-- [ ] Domain lists should include: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, analyzer
+- [ ] All files above that mention "11 domains" should say "12 domains"
+- [ ] Domain lists should include: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, automation, memory, analyzer
 
 ## 4. npm Registry
 

@@ -1,4 +1,4 @@
-# LivePilot v1.6.0 — Architecture & Tool Reference
+# LivePilot v1.6.2 — Architecture & Tool Reference
 
 LivePilot is an agentic production system for Ableton Live 12. It combines 135 MCP tools with a device knowledge corpus, real-time audio analysis, automation intelligence, and persistent technique memory.
 
