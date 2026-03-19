@@ -1,5 +1,36 @@
 # Changelog
 
+## 1.8.0 — Perception Layer (March 2026)
+
+**13 new tools (155 → 168), 1 new domain (perception), FluCoMa real-time DSP, offline audio analysis, audio capture.**
+
+### Perception Domain (4 tools)
+- `analyze_loudness` — LUFS, sample peak, RMS, crest factor, LRA, streaming compliance
+- `analyze_spectrum_offline` — spectral centroid, rolloff, flatness, bandwidth, 5-band balance
+- `compare_to_reference` — mix vs reference: loudness/spectral/stereo deltas + suggestions
+- `read_audio_metadata` — format, duration, sample rate, tags, artwork detection
+
+### Analyzer — Capture (2 tools)
+- `capture_audio` — record master output to WAV via M4L buffer~/record~
+- `capture_stop` — cancel in-progress capture
+
+### Analyzer — FluCoMa Real-Time (7 tools)
+- `get_spectral_shape` — 7 descriptors (centroid, spread, skewness, kurtosis, rolloff, flatness, crest)
+- `get_mel_spectrum` — 40-band mel spectrum (5x resolution of get_master_spectrum)
+- `get_chroma` — 12 pitch class energies for chord detection
+- `get_onsets` — real-time onset/transient detection
+- `get_novelty` — spectral novelty for section boundary detection
+- `get_momentary_loudness` — EBU R128 momentary LUFS + peak
+- `check_flucoma` — verify FluCoMa installation status
+
+### Architecture
+- New `_perception_engine.py` — pure scipy/pyloudnorm/soundfile/mutagen analysis (no MCP deps)
+- New `perception.py` — 4 MCP tool wrappers with format validation
+- 6 FluCoMa OSC handlers in SpectralReceiver (`/spectral_shape`, `/mel_bands`, `/chroma`, `/onset`, `/novelty`, `/loudness`)
+- Dedicated `/capture_complete` channel with `_capture_future` (separate from bridge responses)
+- `--setup-flucoma` CLI command — auto-downloads and installs FluCoMa Max package
+- New dependencies: pyloudnorm, soundfile, scipy, mutagen
+
 ## 1.7.0 — Creative Engine (March 2026)
 
 **13 new tools (142 → 155), 3 new domains, MIDI file I/O, neo-Riemannian harmony, generative algorithms.**
