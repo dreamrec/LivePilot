@@ -137,6 +137,26 @@ def apply_automation_shape(
     factor: float = 3.0,
     invert: bool = False,
     time_offset: float = 0.0,
+    # Steps params
+    values: Optional[list[float]] = None,
+    # Euclidean params
+    hits: int = 5,
+    steps: int = 16,
+    # Organic params
+    seed: float = 0.0,
+    drift: float = 0.0,
+    volatility: float = 0.1,
+    damping: float = 0.15,
+    stiffness: float = 8.0,
+    # Bezier params
+    control1: float = 0.0,
+    control2: float = 1.0,
+    control1_time: float = 0.33,
+    control2_time: float = 0.66,
+    # Easing params
+    easing_type: str = "ease_out",
+    # Stochastic params
+    narrowing: float = 0.5,
 ) -> dict:
     """Generate and apply an automation curve to a session clip.
 
@@ -177,6 +197,14 @@ def apply_automation_shape(
         low=low, high=high,
         factor=factor,
         invert=invert,
+        values=values or [],
+        hits=hits, steps=steps,
+        seed=seed, drift=drift, volatility=volatility,
+        damping=damping, stiffness=stiffness,
+        control1=control1, control2=control2,
+        control1_time=control1_time, control2_time=control2_time,
+        easing_type=easing_type,
+        narrowing=narrowing,
     )
 
     # Apply time offset
@@ -293,6 +321,26 @@ def generate_automation_curve(
     high: float = 1.0,
     factor: float = 3.0,
     invert: bool = False,
+    # Steps params
+    values: Optional[list[float]] = None,
+    # Euclidean params
+    hits: int = 5,
+    steps: int = 16,
+    # Organic params
+    seed: float = 0.0,
+    drift: float = 0.0,
+    volatility: float = 0.1,
+    damping: float = 0.15,
+    stiffness: float = 8.0,
+    # Bezier params
+    control1: float = 0.0,
+    control2: float = 1.0,
+    control1_time: float = 0.33,
+    control2_time: float = 0.66,
+    # Easing params
+    easing_type: str = "ease_out",
+    # Stochastic params
+    narrowing: float = 0.5,
 ) -> dict:
     """Generate automation curve points WITHOUT writing them.
 
@@ -312,6 +360,14 @@ def generate_automation_curve(
         low=low, high=high,
         factor=factor,
         invert=invert,
+        values=values or [],
+        hits=hits, steps=steps,
+        seed=seed, drift=drift, volatility=volatility,
+        damping=damping, stiffness=stiffness,
+        control1=control1, control2=control2,
+        control1_time=control1_time, control2_time=control2_time,
+        easing_type=easing_type,
+        narrowing=narrowing,
     )
     return {
         "curve_type": curve_type,
@@ -349,7 +405,8 @@ def analyze_for_automation(
     spectral = ctx.lifespan_context.get("spectral")
     spectrum = {}
     if spectral and spectral.is_connected:
-        spectrum = spectral.get_spectrum()
+        data = spectral.get("spectrum")
+        spectrum = data["value"] if data else {}
 
     # Get meter level
     meters = ableton.send_command("get_track_meters", {
