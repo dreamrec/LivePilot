@@ -1,4 +1,4 @@
-# LivePilot v1.7.5 — Ableton Live 12
+# LivePilot v1.7.6 — Ableton Live 12
 
 ## Project
 - **Repo:** `/Users/visansilviugeorge/Desktop/LivePilot/`
