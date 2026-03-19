@@ -8,53 +8,75 @@
 ```
 
 An agentic production system for Ableton Live 12.
-155 tools. Device atlas. Spectral perception. Technique memory.
-Neo-Riemannian harmony. Euclidean rhythm. Species counterpoint,
-++ more 
 
----
+155 tools. Device atlas. Spectral perception. Technique memory.
+Neo-Riemannian harmony. Euclidean rhythm. Species counterpoint.
+
+It doesn't assist — it produces.
+
+<br>
+
+───────────────────────────────────────────────────────────────
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                                                         │
-│   KNOWLEDGE          PERCEPTION         MEMORY          │
-│   ───────────        ──────────         ──────          │
-│   280+ devices       8-band FFT         recall by       │
-│   139 drum kits      RMS / peak         mood, genre,    │
-│   350+ impulse       pitch tracking     texture         │
-│   responses          key detection                      │
-│                                                         │
-│   ┌────────────┐    ┌────────────┐    ┌────────────┐   │
-│   │   Device   │───▶│    M4L     │───▶│ Technique  │   │
-│   │   Atlas    │    │  Analyzer  │    │   Store    │   │
-│   └─────┬──────┘    └─────┬──────┘    └─────┬──────┘   │
-│         └─────────────────┼─────────────────┘           │
-│                           ▼                             │
-│                  ┌─────────────────┐                    │
-│                  │   155 MCP Tools  │                    │
-│                  │   16 domains     │                    │
-│                  └────────┬────────┘                    │
-│                           │                             │
-│           Remote Script ──┤── TCP 9878                  │
-│           M4L Bridge ─────┤── UDP 9880 / OSC 9881       │
-│                           │                             │
-│                  ┌────────────────┐                     │
-│                  │  Ableton Live  │                     │
-│                  └────────────────┘                     │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                                                             │
+│   KNOWLEDGE            PERCEPTION           MEMORY          │
+│   ───────────          ──────────           ──────          │
+│                                                             │
+│   280+ devices         8-band FFT           recall by       │
+│   139 drum kits        RMS / peak           mood, genre,    │
+│   350+ impulse         pitch tracking       texture         │
+│   responses            key detection                        │
+│                                                             │
+│   ┌────────────┐      ┌────────────┐      ┌────────────┐   │
+│   │   Device   │─────▶│    M4L     │─────▶│ Technique  │   │
+│   │   Atlas    │      │  Analyzer  │      │   Store    │   │
+│   └─────┬──────┘      └─────┬──────┘      └─────┬──────┘   │
+│         └───────────────────┼───────────────────┘           │
+│                             ▼                               │
+│                    ┌─────────────────┐                      │
+│                    │   155 MCP Tools  │                      │
+│                    │   16 domains     │                      │
+│                    └────────┬────────┘                      │
+│                             │                               │
+│             Remote Script ──┤── TCP 9878                    │
+│             M4L Bridge ─────┤── UDP 9880 / OSC 9881         │
+│                             │                               │
+│                    ┌────────────────┐                       │
+│                    │  Ableton Live  │                       │
+│                    └────────────────┘                       │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-The atlas gives the AI knowledge of every device in Ableton's library — real names, real URIs, real parameters. The analyzer gives it ears — spectral data from the master bus via a Max for Live device. The memory gives it history — a searchable library of production decisions that persists across sessions. All three feed into 155 deterministic tools that execute on Ableton's main thread through the official Live Object Model API. Everything is reversible with undo.
+The atlas gives the AI knowledge of every device in Ableton's library —
+real names, real URIs, real parameters.
 
----
+The analyzer gives it ears — spectral data from the master bus
+via a Max for Live device.
+
+The memory gives it history — a searchable library of production decisions
+that persists across sessions.
+
+All three feed into 155 deterministic tools that execute on Ableton's main thread
+through the official Live Object Model API. Everything is reversible with undo.
+
+<br>
+
+───────────────────────────────────────────────────────────────
 
 ## Tools
 
-### CORE ─────────────────────────────────────────
+<br>
 
-The foundation. Session control, MIDI, device management, mixing. Every tool maps directly to an LOM call — no abstraction, no guessing.
+### CORE ──────────────────────────────────────────────────────
+
+The foundation. Session control, MIDI, device management, mixing.
+Every tool maps directly to an LOM call — no abstraction, no guessing.
+
+<br>
 
 | Domain | # | Scope |
 |--------|:-:|-------|
@@ -67,83 +89,220 @@ The foundation. Session control, MIDI, device management, mixing. Every tool map
 | Browser | 4 | search library, browse tree, load items, filter by category |
 | Mixing | 11 | volume, pan, sends, routing, meters, return tracks, master, full mix snapshot |
 
-### PERCEPTION ───────────────────────────────────
+<br>
 
-The M4L Analyzer sits on the master track. UDP 9880 carries spectral data from Max to the server. OSC 9881 sends commands back. All 135 core tools work without it — the analyzer adds 20 more and closes the feedback loop.
+### PERCEPTION ────────────────────────────────────────────────
 
-**Spectral Analysis (3)** — 8-band frequency decomposition (sub → air), true RMS/peak metering, Krumhansl-Schmuckler key detection on accumulated pitch data.
+The M4L Analyzer sits on the master track. UDP 9880 carries spectral data
+from Max to the server. OSC 9881 sends commands back.
 
-**Deep LOM Access (4)** — hidden parameters not in the ControlSurface API, automation state for every parameter, recursive device tree walking (6 levels into nested racks), human-readable display values as shown in Live's UI.
+All 135 core tools work without it — the analyzer adds 20 more
+and closes the feedback loop.
 
-**Simpler Operations (7)** — replace/load samples, get slice points, crop, reverse, warp to N beats, get audio file paths on disk.
+<br>
 
-**Warp Markers (4)** — get/add/move/remove. Tempo manipulation at the sample level.
+```
+SPECTRAL ─────── 8-band frequency decomposition (sub → air)
+                 true RMS / peak metering
+                 Krumhansl-Schmuckler key detection
 
-**Clip Preview (2)** — scrub at beat position, stop scrub.
+DEEP LOM ─────── hidden parameters beyond ControlSurface API
+                 automation state per parameter
+                 recursive device tree (6 levels into nested racks)
+                 human-readable display values as shown in Live's UI
 
-### INTELLIGENCE ─────────────────────────────────
+SIMPLER ──────── replace / load samples
+                 get slice points, crop, reverse
+                 warp to N beats, get audio file paths
 
-#### Theory — 7 tools
+WARP ─────────── get / add / move / remove markers
+                 tempo manipulation at the sample level
 
-Krumhansl-Schmuckler key detection with 7 mode profiles (major, minor, dorian, phrygian, lydian, mixolydian, locrian). Roman numeral analysis via scale-degree chord matching on a 1/32 note quantization grid. Voice leading checks — parallel fifths, parallel octaves, voice crossing, unresolved dominants. Species counterpoint generation (1st and 2nd species). SATB harmonization with smooth voice leading. Diatonic transposition that preserves scale relationships.
+PREVIEW ──────── scrub at beat position
+                 stop scrub
+```
 
-`analyze_harmony` · `suggest_next_chord` · `detect_theory_issues` · `identify_scale` · `harmonize_melody` · `generate_countermelody` · `transpose_smart`
+<br>
 
-#### Harmony — 4 tools
+### INTELLIGENCE ──────────────────────────────────────────────
 
-Neo-Riemannian PRL transforms on the Tonnetz. P flips the third: Cm ↔ C. L shifts by semitone: C ↔ Em. R by whole tone: C ↔ Am. All three are involutions — apply twice, return to origin. BFS through PRL space finds the shortest voice-leading path between any two triads. Cm to E major? That's PLP — the hexatonic pole. Three steps, each moving one voice by a semitone. The Hitchcock chord change.
+<br>
 
-Chromatic mediants for film-score harmony: chords a major/minor third away sharing 0-1 common tones. Maximum color shift, minimal voice movement.
+#### Theory ─── 7 tools
 
-`navigate_tonnetz` · `find_voice_leading_path` · `classify_progression` · `suggest_chromatic_mediants`
+Krumhansl-Schmuckler key detection with 7 mode profiles:
+major, minor, dorian, phrygian, lydian, mixolydian, locrian.
 
-#### Generative — 5 tools
+Roman numeral analysis via scale-degree chord matching
+on a 1/32 note quantization grid.
 
-Bjorklund distributes N pulses across M steps — Bresenham's line algorithm applied to rhythm. E(3,8) = tresillo. E(5,8) = cinquillo. E(7,16) = Brazilian necklace. Layer multiple Euclidean patterns at different pitches for polyrhythmic textures.
+Voice leading checks — parallel fifths, parallel octaves,
+voice crossing, unresolved dominants.
 
-Tintinnabuli (Arvo Pärt): for each melody note, find the nearest tone of a specified triad — above, below, or nearest. The T-voice gravitates toward the triad while the M-voice moves stepwise. Two voices, one rule, infinite music.
+Species counterpoint generation (1st and 2nd species).
+SATB harmonization with smooth voice leading.
+Diatonic transposition that preserves scale relationships.
 
-Phase shifting (Steve Reich): identical voices with accumulating timing drift. Voice 0 plays straight. Each subsequent voice shifts by N beats per repetition. They start in unison, gradually separate, and eventually realign.
+```
+analyze_harmony         suggest_next_chord      detect_theory_issues
+identify_scale          harmonize_melody         generate_countermelody
+transpose_smart
+```
 
-Additive process (Philip Glass): melody unfolds note by note. Forward: 1, then 1-2, then 1-2-3. Backward: full melody, then remove from front. Both: forward then backward. The structure *is* the composition.
+<br>
 
-`generate_euclidean_rhythm` · `layer_euclidean_rhythms` · `generate_tintinnabuli` · `generate_phase_shift` · `generate_additive_process`
+#### Harmony ─── 4 tools
 
-#### Automation — 8 tools
+Neo-Riemannian PRL transforms on the Tonnetz.
+
+```
+P  flips the third ─────── Cm ↔ C
+L  shifts by semitone ──── C  ↔ Em
+R  shifts by whole tone ── C  ↔ Am
+```
+
+All three are involutions — apply twice, return to origin.
+
+BFS through PRL space finds the shortest voice-leading path
+between any two triads. Cm to E major? That's PLP — the hexatonic pole.
+Three steps, each moving one voice by a semitone.
+The Hitchcock chord change.
+
+Chromatic mediants for film-score harmony: chords a major/minor third away
+sharing 0-1 common tones. Maximum color shift, minimal voice movement.
+
+```
+navigate_tonnetz        find_voice_leading_path
+classify_progression    suggest_chromatic_mediants
+```
+
+<br>
+
+#### Generative ─── 5 tools
+
+**Euclidean Rhythm** — Bjorklund distributes N pulses across M steps.
+Bresenham's line algorithm applied to rhythm.
+
+```
+E(3,8)  = tresillo          ×··×··×·
+E(5,8)  = cinquillo          ×·××·××·
+E(7,16) = Brazilian necklace ×·×·×××·×·×·×××·
+```
+
+Layer multiple patterns at different pitches for polyrhythmic textures.
+
+**Tintinnabuli** (Arvo Pärt) — for each melody note, find the nearest tone
+of a specified triad: above, below, or nearest. The T-voice gravitates toward
+the triad while the M-voice moves stepwise. Two voices, one rule, infinite music.
+
+**Phase Shifting** (Steve Reich) — identical voices with accumulating timing drift.
+Voice 0 plays straight. Each subsequent voice shifts by N beats per repetition.
+They start in unison, gradually separate, and eventually realign.
+
+**Additive Process** (Philip Glass) — melody unfolds note by note.
+Forward: 1, then 1-2, then 1-2-3.
+Backward: full melody, then remove from front.
+Both: forward then backward.
+The structure *is* the composition.
+
+```
+generate_euclidean_rhythm    layer_euclidean_rhythms
+generate_tintinnabuli        generate_phase_shift
+generate_additive_process
+```
+
+<br>
+
+#### Automation ─── 8 tools
 
 16 curve types in 4 categories:
 
 ```
-BASIC ─────── linear · exponential · logarithmic · s_curve
-              sine · sawtooth · spike · square · steps
-ORGANIC ───── perlin · brownian · spring
-SHAPE ─────── bezier · easing (8 types: bounce, elastic, back...)
-GENERATIVE ── euclidean · stochastic
+BASIC ──────────── linear · exponential · logarithmic · s_curve
+                   sine · sawtooth · spike · square · steps
+
+ORGANIC ─────────── perlin · brownian · spring
+
+SHAPE ──────────── bezier · easing
+                   (bounce, elastic, back, quad, cubic,
+                    quart, quint, expo)
+
+GENERATIVE ─────── euclidean · stochastic
 ```
 
-15 built-in recipes: `filter_sweep_up` · `filter_sweep_down` · `dub_throw` · `tape_stop` · `build_rise` · `sidechain_pump` · `fade_in` · `fade_out` · `tremolo` · `auto_pan` · `stutter` · `breathing` · `washout` · `vinyl_crackle` · `stereo_narrow`
+15 built-in recipes:
 
-Perception-action loop: `analyze_for_automation` reads the spectrum and device chain, suggests what to automate, and maps each suggestion to a recipe. The AI doesn't write automation blind — it knows what to automate based on what it hears.
+```
+filter_sweep_up     filter_sweep_down    dub_throw
+tape_stop           build_rise           sidechain_pump
+fade_in             fade_out             tremolo
+auto_pan            stutter              breathing
+washout             vinyl_crackle        stereo_narrow
+```
 
-`get_clip_automation` · `set_clip_automation` · `clear_clip_automation` · `apply_automation_shape` · `apply_automation_recipe` · `get_automation_recipes` · `generate_automation_curve` · `analyze_for_automation`
+Perception-action loop: `analyze_for_automation` reads the spectrum
+and device chain, suggests what to automate, and maps each suggestion
+to a recipe. The AI doesn't write automation blind — it knows what
+to automate based on what it hears.
 
-### MEMORY + I/O ──────────────────────────────────
+```
+get_clip_automation      set_clip_automation       clear_clip_automation
+apply_automation_shape   apply_automation_recipe   get_automation_recipes
+generate_automation_curve                          analyze_for_automation
+```
 
-#### Memory — 8 tools
+<br>
 
-Persistent technique library. Five types: `beat_pattern`, `device_chain`, `mix_template`, `preference`, `browser_pin`. Each stores identity (name, tags, timestamps), qualities (mood, genre, texture, production notes), and payload (raw MIDI, device params, tempo, URIs). Recall by text query matching mood, genre, texture — not just names. Favorite, rate, replay.
+### MEMORY + I/O ──────────────────────────────────────────────
 
-`memory_learn` · `memory_recall` · `memory_list` · `memory_get` · `memory_update` · `memory_delete` · `memory_favorite` · `memory_replay`
+<br>
 
-#### MIDI I/O — 4 tools
+#### Memory ─── 8 tools
 
-Export session clips to standard .mid files. Import .mid into session clips — auto-creates the clip, tempo-aware timing conversion. Offline analysis without Ableton: note count, duration, tempo, pitch range, velocity stats, density curve, key estimate. Piano roll extraction: 2D velocity matrix at configurable resolution (default 1/32 note). Dependencies lazy-loaded — graceful error if missing.
+Persistent technique library across sessions.
 
-`export_clip_midi` · `import_midi_to_clip` · `analyze_midi_file` · `extract_piano_roll`
+Five types: `beat_pattern` · `device_chain` · `mix_template` · `preference` · `browser_pin`
 
----
+Each stores:
+- **Identity** — name, tags, timestamps
+- **Qualities** — mood, genre, texture, production notes
+- **Payload** — raw MIDI, device params, tempo, URIs
+
+Recall by text query matching mood, genre, texture — not just names.
+Favorite, rate, replay.
+
+```
+memory_learn     memory_recall     memory_list       memory_get
+memory_update    memory_delete     memory_favorite   memory_replay
+```
+
+<br>
+
+#### MIDI I/O ─── 4 tools
+
+Export session clips to standard .mid files.
+Import .mid into session clips — auto-creates the clip, tempo-aware timing.
+
+Offline analysis without Ableton: note count, duration, tempo,
+pitch range, velocity stats, density curve, key estimate.
+
+Piano roll extraction: 2D velocity matrix at configurable resolution
+(default 1/32 note).
+
+Dependencies lazy-loaded — graceful error if missing.
+
+```
+export_clip_midi     import_midi_to_clip
+analyze_midi_file    extract_piano_roll
+```
+
+<br>
+
+───────────────────────────────────────────────────────────────
 
 ## Install
+
+<br>
 
 ### 1. Remote Script
 
@@ -152,6 +311,8 @@ npx livepilot --install
 ```
 
 Restart Ableton → Preferences → Link, Tempo & MIDI → Control Surface → **LivePilot**
+
+<br>
 
 ### 2. MCP Client
 
@@ -259,9 +420,18 @@ Windsurf — `~/.codeium/windsurf/mcp_config.json`:
 
 </details>
 
+<br>
+
 ### 3. M4L Analyzer (optional)
 
-Drag `LivePilot_Analyzer.amxd` onto the master track. Unlocks 20 additional tools: spectral analysis, key detection, sample manipulation, deep device introspection. All core tools work without it.
+Drag `LivePilot_Analyzer.amxd` onto the master track.
+
+Unlocks 20 additional tools: spectral analysis, key detection,
+sample manipulation, deep device introspection.
+
+All core tools work without it.
+
+<br>
 
 ### 4. Verify
 
@@ -269,13 +439,17 @@ Drag `LivePilot_Analyzer.amxd` onto the master track. Unlocks 20 additional tool
 npx livepilot --status
 ```
 
----
+<br>
+
+───────────────────────────────────────────────────────────────
 
 ## Plugin
 
 ```bash
 claude plugin add github:dreamrec/LivePilot/plugin
 ```
+
+<br>
 
 | Command | What |
 |---------|------|
@@ -285,17 +459,30 @@ claude plugin add github:dreamrec/LivePilot/plugin
 | `/sounddesign` | Sound design workflow |
 | `/memory` | Technique library management |
 
-**Producer Agent** — autonomous multi-step production. Consults memory for style context, searches the atlas for instruments, creates tracks, programs MIDI, chains effects, reads the spectrum to verify. Ships with a reference corpus (drum patterns, chord voicings, sound design recipes, mixing templates).
+<br>
 
-**Core Skill** — operational discipline connecting all three layers. Consult atlas before loading. Read analyzer after mixing. Check memory before creative decisions. Verify every mutation.
+**Producer Agent** — autonomous multi-step production.
+Consults memory for style context, searches the atlas for instruments,
+creates tracks, programs MIDI, chains effects, reads the spectrum to verify.
+Ships with a reference corpus (drum patterns, chord voicings,
+sound design recipes, mixing templates).
 
----
+**Core Skill** — operational discipline connecting all three layers.
+Consult atlas before loading. Read analyzer after mixing.
+Check memory before creative decisions. Verify every mutation.
 
-## Full Tool List ────────────────────────────────
+<br>
+
+───────────────────────────────────────────────────────────────
+
+## Full Tool List
 
 155 tools across 16 domains.
 
+<br>
+
 ### Transport (12)
+
 | Tool | Description |
 |------|-------------|
 | `get_session_info` | Session state: tempo, tracks, scenes, transport |
@@ -311,7 +498,10 @@ claude plugin add github:dreamrec/LivePilot/plugin
 | `get_recent_actions` | Recent undo history |
 | `get_session_diagnostics` | Analyze session for issues |
 
+<br>
+
 ### Tracks (14)
+
 | Tool | Description |
 |------|-------------|
 | `get_track_info` | Track details: clips, devices, mixer |
@@ -329,7 +519,10 @@ claude plugin add github:dreamrec/LivePilot/plugin
 | `set_group_fold` | Fold/unfold group track |
 | `set_track_input_monitoring` | Set monitoring mode |
 
+<br>
+
 ### Clips (11)
+
 | Tool | Description |
 |------|-------------|
 | `get_clip_info` | Clip details: length, loop, launch |
@@ -344,7 +537,10 @@ claude plugin add github:dreamrec/LivePilot/plugin
 | `set_clip_launch` | Launch mode and quantization |
 | `set_clip_warp_mode` | Set warp algorithm |
 
+<br>
+
 ### Notes (8)
+
 | Tool | Description |
 |------|-------------|
 | `add_notes` | Add MIDI notes with velocity, probability |
@@ -356,7 +552,10 @@ claude plugin add github:dreamrec/LivePilot/plugin
 | `transpose_notes` | Shift pitch by semitones |
 | `quantize_clip` | Quantize to grid |
 
+<br>
+
 ### Devices (12)
+
 | Tool | Description |
 |------|-------------|
 | `get_device_info` | Device name, class, parameters |
@@ -372,7 +571,10 @@ claude plugin add github:dreamrec/LivePilot/plugin
 | `set_chain_volume` | Set chain volume in rack |
 | `get_device_presets` | List available presets |
 
+<br>
+
 ### Scenes (8)
+
 | Tool | Description |
 |------|-------------|
 | `get_scenes_info` | All scenes: name, tempo, color |
@@ -384,7 +586,10 @@ claude plugin add github:dreamrec/LivePilot/plugin
 | `set_scene_color` | Set color |
 | `set_scene_tempo` | Per-scene tempo |
 
+<br>
+
 ### Mixing (11)
+
 | Tool | Description |
 |------|-------------|
 | `set_track_volume` | Volume (0.0-1.0) |
@@ -399,7 +604,10 @@ claude plugin add github:dreamrec/LivePilot/plugin
 | `get_master_meters` | Master meter levels |
 | `get_mix_snapshot` | Full mix state in one call |
 
+<br>
+
 ### Browser (4)
+
 | Tool | Description |
 |------|-------------|
 | `get_browser_tree` | Browse category tree |
@@ -407,7 +615,10 @@ claude plugin add github:dreamrec/LivePilot/plugin
 | `search_browser` | Search by name with filters |
 | `load_browser_item` | Load item by URI |
 
+<br>
+
 ### Arrangement (19)
+
 | Tool | Description |
 |------|-------------|
 | `get_arrangement_clips` | List arrangement clips |
@@ -430,7 +641,10 @@ claude plugin add github:dreamrec/LivePilot/plugin
 | `jump_to_cue` | Jump to cue point |
 | `toggle_cue_point` | Add/remove cue point |
 
+<br>
+
 ### Automation (8)
+
 | Tool | Description |
 |------|-------------|
 | `get_clip_automation` | List envelopes on a clip |
@@ -442,7 +656,10 @@ claude plugin add github:dreamrec/LivePilot/plugin
 | `generate_automation_curve` | Preview curve without writing |
 | `analyze_for_automation` | Spectral analysis + suggestions |
 
+<br>
+
 ### Memory (8)
+
 | Tool | Description |
 |------|-------------|
 | `memory_learn` | Save a technique |
@@ -454,7 +671,10 @@ claude plugin add github:dreamrec/LivePilot/plugin
 | `memory_favorite` | Toggle favorite |
 | `memory_replay` | Replay saved technique |
 
+<br>
+
 ### Analyzer (20) `[M4L]`
+
 | Tool | Description |
 |------|-------------|
 | `get_master_spectrum` | 8-band frequency analysis |
@@ -478,7 +698,10 @@ claude plugin add github:dreamrec/LivePilot/plugin
 | `scrub_clip` | Preview at beat position |
 | `stop_scrub` | Stop preview |
 
+<br>
+
 ### Theory (7)
+
 | Tool | Description |
 |------|-------------|
 | `analyze_harmony` | Chord-by-chord Roman numeral analysis |
@@ -489,7 +712,10 @@ claude plugin add github:dreamrec/LivePilot/plugin
 | `generate_countermelody` | Species counterpoint (1st/2nd) |
 | `transpose_smart` | Diatonic or chromatic transposition |
 
+<br>
+
 ### Generative (5)
+
 | Tool | Description |
 |------|-------------|
 | `generate_euclidean_rhythm` | Bjorklund algorithm, identifies named rhythms |
@@ -498,7 +724,10 @@ claude plugin add github:dreamrec/LivePilot/plugin
 | `generate_phase_shift` | Steve Reich — drifting canon |
 | `generate_additive_process` | Philip Glass — expanding/contracting melody |
 
+<br>
+
 ### Harmony (4)
+
 | Tool | Description |
 |------|-------------|
 | `navigate_tonnetz` | PRL neighbors at depth N |
@@ -506,7 +735,10 @@ claude plugin add github:dreamrec/LivePilot/plugin
 | `classify_progression` | Identify neo-Riemannian pattern |
 | `suggest_chromatic_mediants` | All chromatic mediant relations |
 
+<br>
+
 ### MIDI I/O (4)
+
 | Tool | Description |
 |------|-------------|
 | `export_clip_midi` | Export clip to .mid file |
@@ -514,9 +746,11 @@ claude plugin add github:dreamrec/LivePilot/plugin
 | `analyze_midi_file` | Offline MIDI analysis |
 | `extract_piano_roll` | 2D velocity matrix extraction |
 
----
+<br>
 
-## Coming ────────────────────────────────────────
+───────────────────────────────────────────────────────────────
+
+## Coming
 
 ```
 □  Real-time DSP analysis via LOM meters
@@ -526,7 +760,9 @@ claude plugin add github:dreamrec/LivePilot/plugin
 □  Plugin parameter mapping — VST/AU deep control
 ```
 
----
+<br>
+
+───────────────────────────────────────────────────────────────
 
 ## CLI
 
@@ -539,9 +775,15 @@ npx livepilot --doctor     # Full diagnostic check
 npx livepilot --version    # Show version
 ```
 
+<br>
+
 ## Compatibility
 
-Live 12 all editions. Suite required for stock instruments (Drift, Meld, Wavetable) and Max for Live. Python 3.9+. Node.js 18+.
+Live 12 all editions. Suite required for stock instruments
+(Drift, Meld, Wavetable) and Max for Live.
+Python 3.9+. Node.js 18+.
+
+<br>
 
 ## Development
 
@@ -552,7 +794,9 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/pytest tests/ -v
 ```
 
----
+<br>
+
+───────────────────────────────────────────────────────────────
 
 [MIT](LICENSE) — Pilot Studio
 
