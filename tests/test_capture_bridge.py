@@ -170,3 +170,48 @@ async def test_bridge_send_capture_uses_capture_future():
 
     # Verify _response_callback was NOT set (still None)
     assert receiver._response_callback is None
+
+
+# ── Task 10 Tests — FluCoMa OSC handlers ──────────────────────────────────
+
+
+def test_spectral_shape_osc():
+    cache = SpectralCache()
+    receiver = SpectralReceiver(cache)
+    packet = _build_osc("/spectral_shape", 2840.0, 1200.0, 0.34, 2.1, 6200.0, 0.012, 8.4)
+    receiver.datagram_received(packet, ("127.0.0.1", 9880))
+    data = cache.get("spectral_shape")
+    assert data is not None
+    assert abs(data["value"]["centroid"] - 2840.0) < 1
+
+
+def test_mel_bands_osc():
+    cache = SpectralCache()
+    receiver = SpectralReceiver(cache)
+    bands = [0.01 * i for i in range(40)]
+    packet = _build_osc("/mel_bands", *bands)
+    receiver.datagram_received(packet, ("127.0.0.1", 9880))
+    data = cache.get("mel_bands")
+    assert data is not None
+    assert len(data["value"]) == 40
+
+
+def test_chroma_osc():
+    cache = SpectralCache()
+    receiver = SpectralReceiver(cache)
+    chroma = [0.85, 0.12, 0.45, 0.08, 0.72, 0.15, 0.05, 0.68, 0.10, 0.52, 0.06, 0.38]
+    packet = _build_osc("/chroma", *chroma)
+    receiver.datagram_received(packet, ("127.0.0.1", 9880))
+    data = cache.get("chroma")
+    assert data is not None
+    assert len(data["value"]) == 12
+
+
+def test_loudness_osc():
+    cache = SpectralCache()
+    receiver = SpectralReceiver(cache)
+    packet = _build_osc("/loudness", -14.2, -1.5)
+    receiver.datagram_received(packet, ("127.0.0.1", 9880))
+    data = cache.get("loudness")
+    assert data is not None
+    assert abs(data["value"]["momentary_lufs"] - (-14.2)) < 0.2

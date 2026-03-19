@@ -177,6 +177,36 @@ class SpectralReceiver(asyncio.DatagramProtocol):
                 "scale": str(args[1]),
             })
 
+        elif address == "/spectral_shape" and len(args) >= 7:
+            names = ["centroid", "spread", "skewness", "kurtosis", "rolloff", "flatness", "crest"]
+            self.cache.update("spectral_shape", {
+                n: round(float(args[i]), 4) for i, n in enumerate(names)
+            })
+
+        elif address == "/mel_bands" and len(args) >= 1:
+            self.cache.update("mel_bands", [round(float(a), 6) for a in args])
+
+        elif address == "/chroma" and len(args) >= 12:
+            self.cache.update("chroma", [round(float(a), 4) for a in args[:12]])
+
+        elif address == "/onset" and len(args) >= 2:
+            self.cache.update("onset", {
+                "detected": float(args[0]) > 0.5,
+                "strength": round(float(args[1]), 4),
+            })
+
+        elif address == "/novelty" and len(args) >= 2:
+            self.cache.update("novelty", {
+                "score": round(float(args[0]), 4),
+                "boundary": float(args[1]) > 0.5,
+            })
+
+        elif address == "/loudness" and len(args) >= 2:
+            self.cache.update("loudness", {
+                "momentary_lufs": round(float(args[0]), 1),
+                "true_peak_dbtp": round(float(args[1]), 1),
+            })
+
         elif address == "/capture_complete" and len(args) >= 1:
             self._handle_capture_complete(str(args[0]))
 
