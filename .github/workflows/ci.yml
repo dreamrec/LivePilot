@@ -14,5 +14,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install numpy && pip install -r requirements.txt pytest
+      - run: |
+          pip install numpy
+          pip install --no-build-isolation opycleid>=0.5.1
+          pip install -r requirements.txt pytest
       - run: pytest tests/ -v
