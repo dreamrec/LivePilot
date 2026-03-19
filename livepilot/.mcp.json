@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "LivePilot": {
+    "livepilot": {
       "command": "npx",
       "args": ["livepilot"]
     }

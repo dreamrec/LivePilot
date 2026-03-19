@@ -415,7 +415,7 @@
 					"id": "obj-js",
 					"maxclass": "newobj",
 					"text": "js livepilot_bridge.js",
-					"numinlets": 1,
+					"numinlets": 2,
 					"numoutlets": 2,
 					"outlettype": ["", ""],
 					"patching_rect": [500.0, 550.0, 130.0, 22.0]

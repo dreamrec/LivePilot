@@ -2,11 +2,36 @@
 
 from contextlib import asynccontextmanager
 import asyncio
+import os
+import signal
+import subprocess
 
 from fastmcp import FastMCP, Context  # noqa: F401
 
 from .connection import AbletonConnection
 from .m4l_bridge import SpectralCache, SpectralReceiver, M4LBridge
+
+
+def _kill_port_holder(port: int) -> None:
+    """Kill whichever process holds the given UDP port.
+
+    Used to reclaim port 9880 when a stale duplicate server instance
+    is hogging it (common when both project .mcp.json and plugin
+    .mcp.json launch the server).
+    """
+    try:
+        out = subprocess.check_output(
+            ["lsof", "-t", "-i", f"UDP:{port}"],
+            text=True,
+            timeout=3,
+        ).strip()
+        my_pid = os.getpid()
+        for pid_str in out.splitlines():
+            pid = int(pid_str)
+            if pid != my_pid:
+                os.kill(pid, signal.SIGTERM)
+    except (subprocess.CalledProcessError, FileNotFoundError, ValueError):
+        pass  # lsof not found or no process — nothing to kill
 
 
 @asynccontextmanager
@@ -19,14 +44,35 @@ async def lifespan(server):
 
     # Start UDP listener for incoming M4L spectral data (port 9880)
     loop = asyncio.get_running_loop()
+    transport = None
     try:
         transport, _ = await loop.create_datagram_endpoint(
             lambda: receiver,
             local_addr=('127.0.0.1', 9880),
         )
     except OSError:
-        # Port in use — M4L bridge won't work but core tools still function
-        transport = None
+        # Port 9880 already bound — likely a duplicate server instance
+        # (project .mcp.json + plugin .mcp.json both launching).
+        # Kill the stale holder so this instance gets the port.
+        import sys
+        print(
+            "LivePilot: UDP port 9880 in use — reclaiming from stale instance",
+            file=sys.stderr,
+        )
+        _kill_port_holder(9880)
+        await asyncio.sleep(0.3)
+        try:
+            transport, _ = await loop.create_datagram_endpoint(
+                lambda: receiver,
+                local_addr=('127.0.0.1', 9880),
+            )
+        except OSError:
+            print(
+                "LivePilot: WARNING — could not bind UDP 9880, "
+                "analyzer tools will be unavailable",
+                file=sys.stderr,
+            )
+            transport = None
 
     try:
         yield {
