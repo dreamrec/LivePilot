@@ -1,6 +1,6 @@
 # LivePilot Tool Reference
 
-135 MCP tools across 12 domains. Tools marked with [M4L] require the LivePilot Analyzer device on the master track. Tools marked with [M4L*] use M4L data when available but work without it.
+155 MCP tools across 16 domains. Tools marked with [M4L] require the LivePilot Analyzer device on the master track. Tools marked with [M4L*] use M4L data when available but work without it.
 
 ## Transport (12 tools)
 
@@ -218,6 +218,34 @@ All tools in this domain require the LivePilot Analyzer M4L device on the master
 | `remove_warp_marker` | Remove warp marker | `track_index`, `clip_index`, `beat_time` |
 | `scrub_clip` | Preview clip at beat position | `track_index`, `clip_index`, `beat_time` |
 | `stop_scrub` | Stop clip preview | `track_index`, `clip_index` |
+
+## Generative (5 tools)
+
+| Tool | Description | Required Params |
+|------|-------------|-----------------|
+| `generate_euclidean_rhythm` | Bjorklund algorithm — Euclidean rhythm generation | `pulses`, `steps` |
+| `layer_euclidean_rhythms` | Stack multiple Euclidean rhythms for polyrhythmic textures | `layers` |
+| `generate_tintinnabuli` | Arvo Pärt technique — triad voice from melody | `melody_notes`, `triad` |
+| `generate_phase_shift` | Steve Reich technique — drifting phase canon | `pattern_notes` |
+| `generate_additive_process` | Philip Glass technique — expanding melody process | `melody_notes` |
+
+## Harmony (4 tools)
+
+| Tool | Description | Required Params |
+|------|-------------|-----------------|
+| `navigate_tonnetz` | PRL neighbors on the Tonnetz | `chord` |
+| `find_voice_leading_path` | Shortest neo-Riemannian path between two chords | `from_chord`, `to_chord` |
+| `classify_progression` | Identify neo-Riemannian transform pattern in progression | `chords` |
+| `suggest_chromatic_mediants` | Chromatic mediant relations with cinematic picks | `chord` |
+
+## MIDI I/O (4 tools)
+
+| Tool | Description | Required Params |
+|------|-------------|-----------------|
+| `export_clip_midi` | Export session clip notes to .mid file | `track_index`, `clip_index` |
+| `import_midi_to_clip` | Load .mid file into session clip | `file_path`, `track_index`, `clip_index` |
+| `analyze_midi_file` | Offline analysis of any .mid file | `file_path` |
+| `extract_piano_roll` | 2D velocity matrix from .mid file | `file_path` |
 
 ## Track Index Convention
 
