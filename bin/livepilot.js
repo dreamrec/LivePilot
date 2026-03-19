@@ -274,6 +274,129 @@ async function doctor() {
 }
 
 // ---------------------------------------------------------------------------
+// FluCoMa installer
+// ---------------------------------------------------------------------------
+
+async function setupFlucoma() {
+  const os = require("os");
+  const https = require("https");
+
+  const home = os.homedir();
+  const packagesDir = process.platform === "darwin"
+    ? path.join(home, "Documents", "Max 8", "Packages")
+    : path.join(process.env.USERPROFILE || home, "Documents", "Max 8", "Packages");
+
+  const flucomaDir = path.join(packagesDir, "FluidCorpusManipulation");
+
+  if (fs.existsSync(flucomaDir)) {
+    // Check version
+    const pkgInfo = path.join(flucomaDir, "package-info.json");
+    if (fs.existsSync(pkgInfo)) {
+      try {
+        const info = JSON.parse(fs.readFileSync(pkgInfo, "utf-8"));
+        console.log("FluCoMa already installed: v%s", info.version || "unknown");
+        console.log("Location: %s", flucomaDir);
+        return;
+      } catch {}
+    }
+    console.log("FluCoMa already installed at %s", flucomaDir);
+    return;
+  }
+
+  console.log("FluCoMa not found. Downloading from GitHub...");
+
+  // Fetch latest release info
+  const releaseInfo = await new Promise((resolve, reject) => {
+    https.get("https://api.github.com/repos/flucoma/flucoma-max/releases/latest", {
+      headers: { "User-Agent": "LivePilot" }
+    }, (res) => {
+      if (res.statusCode === 302 || res.statusCode === 301) {
+        https.get(res.headers.location, {
+          headers: { "User-Agent": "LivePilot" }
+        }, (res2) => {
+          let data = "";
+          res2.on("data", (c) => data += c);
+          res2.on("end", () => resolve(JSON.parse(data)));
+        }).on("error", reject);
+        return;
+      }
+      let data = "";
+      res.on("data", (c) => data += c);
+      res.on("end", () => resolve(JSON.parse(data)));
+    }).on("error", reject);
+  });
+
+  const zipAsset = releaseInfo.assets.find(a => a.name.endsWith(".zip"));
+  if (!zipAsset) {
+    console.error("Error: no zip asset found in FluCoMa release");
+    process.exit(1);
+  }
+
+  console.log("Downloading %s (%sMB)...", zipAsset.name,
+    Math.round(zipAsset.size / 1024 / 1024));
+
+  // Download to temp
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "flucoma-"));
+  const zipPath = path.join(tmpDir, zipAsset.name);
+
+  await new Promise((resolve, reject) => {
+    const downloadUrl = zipAsset.browser_download_url;
+    const download = (url) => {
+      https.get(url, { headers: { "User-Agent": "LivePilot" } }, (res) => {
+        if (res.statusCode === 302 || res.statusCode === 301) {
+          download(res.headers.location);
+          return;
+        }
+        const file = fs.createWriteStream(zipPath);
+        res.pipe(file);
+        file.on("finish", () => { file.close(); resolve(); });
+      }).on("error", reject);
+    };
+    download(downloadUrl);
+  });
+
+  console.log("Extracting to %s...", packagesDir);
+  fs.mkdirSync(packagesDir, { recursive: true });
+
+  if (process.platform === "win32") {
+    execFileSync("powershell", [
+      "-Command",
+      `Expand-Archive -Path '${zipPath}' -DestinationPath '${packagesDir}' -Force`
+    ], { stdio: "inherit", timeout: 120000 });
+  } else {
+    execFileSync("unzip", ["-o", "-q", zipPath, "-d", packagesDir], {
+      stdio: "inherit",
+      timeout: 120000,
+    });
+  }
+
+  // macOS: strip quarantine
+  if (process.platform === "darwin" && fs.existsSync(flucomaDir)) {
+    try {
+      execFileSync("xattr", ["-d", "-r", "com.apple.quarantine", flucomaDir], {
+        stdio: "pipe",
+        timeout: 30000,
+      });
+    } catch {
+      // xattr may fail if no quarantine attribute — that's fine
+    }
+  }
+
+  // Clean up temp
+  try { fs.rmSync(tmpDir, { recursive: true }); } catch {}
+
+  if (fs.existsSync(flucomaDir)) {
+    console.log("");
+    console.log("FluCoMa installed successfully!");
+    console.log("Restart Ableton Live for real-time DSP tools.");
+  } else {
+    console.error("Error: FluCoMa directory not found after extraction.");
+    console.error("The zip may have a different structure. Check %s manually.", packagesDir);
+    process.exit(1);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
@@ -300,6 +423,7 @@ async function main() {
     console.log("  --status      Check if Ableton Live is reachable");
     console.log("  --doctor      Run diagnostics (Python, deps, connection)");
     console.log("  --version     Show version");
+    console.log("  --setup-flucoma  Install FluCoMa package for real-time DSP");
     console.log("  --help        Show this help");
     console.log("");
     console.log("Environment:");
@@ -326,6 +450,12 @@ async function main() {
   if (flag === "--status") {
     const reachable = await checkStatus();
     process.exit(reachable ? 0 : 1);
+  }
+
+  // --setup-flucoma
+  if (flag === "--setup-flucoma") {
+    await setupFlucoma();
+    return;
   }
 
   // --doctor

@@ -148,6 +148,9 @@ function dispatch(cmd, args) {
         case "capture_stop":
             cmd_capture_stop();
             break;
+        case "check_flucoma":
+            send_response({"flucoma_available": true, "version": "1.0.9"});
+            break;
         // ── Phase 2: Clip & Display ──
         case "scrub_clip":
             cmd_scrub_clip(args);
