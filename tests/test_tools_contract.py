@@ -228,6 +228,14 @@ def test_analyzer_tools_registered():
         # Phase 3: Capture
         "capture_audio",
         "capture_stop",
+        # Phase 4: FluCoMa Real-Time
+        "get_spectral_shape",
+        "get_mel_spectrum",
+        "get_chroma",
+        "get_onsets",
+        "get_novelty",
+        "get_momentary_loudness",
+        "check_flucoma",
     }
     missing = expected - names
     assert not missing, f"Missing analyzer tools: {missing}"
@@ -265,7 +273,7 @@ def test_theory_tools_registered():
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 161, f"Expected 161 tools, got {len(tools)}"
+    assert len(tools) == 168, f"Expected 168 tools, got {len(tools)}"
 
 
 def test_perception_tools_registered():

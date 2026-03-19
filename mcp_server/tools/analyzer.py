@@ -562,3 +562,125 @@ async def capture_stop(ctx: Context) -> dict:
     _require_analyzer(cache)
     bridge = _get_m4l(ctx)
     return await bridge.send_command("capture_stop")
+
+
+# ── Phase 4: FluCoMa Real-Time ───────────────────────────────────────────
+
+PITCH_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+
+
+def _require_flucoma(cache) -> None:
+    for key in ("spectral_shape", "mel_bands", "chroma", "loudness"):
+        if cache.get(key):
+            return
+    raise ValueError(
+        "FluCoMa not detected. Install via Max Package Manager or: npx livepilot --setup-flucoma"
+    )
+
+
+@mcp.tool()
+def get_spectral_shape(ctx: Context) -> dict:
+    """Get 7 real-time spectral descriptors from FluCoMa.
+
+    Returns centroid, spread, skewness, kurtosis, rolloff, flatness, crest.
+    Requires FluCoMa package in Max.
+    """
+    cache = _get_spectral(ctx)
+    _require_analyzer(cache)
+    data = cache.get("spectral_shape")
+    if not data:
+        _require_flucoma(cache)
+        return {"error": "No spectral shape data — play some audio"}
+    return {**data["value"], "age_ms": data["age_ms"]}
+
+
+@mcp.tool()
+def get_mel_spectrum(ctx: Context) -> dict:
+    """Get 40-band mel spectrum from FluCoMa (5x resolution of get_master_spectrum).
+
+    Requires FluCoMa package in Max.
+    """
+    cache = _get_spectral(ctx)
+    _require_analyzer(cache)
+    data = cache.get("mel_bands")
+    if not data:
+        _require_flucoma(cache)
+        return {"error": "No mel data — play some audio"}
+    return {"mel_bands": data["value"], "band_count": len(data["value"]), "age_ms": data["age_ms"]}
+
+
+@mcp.tool()
+def get_chroma(ctx: Context) -> dict:
+    """Get 12 pitch class energies from FluCoMa for real-time chord detection.
+
+    Requires FluCoMa package in Max.
+    """
+    cache = _get_spectral(ctx)
+    _require_analyzer(cache)
+    data = cache.get("chroma")
+    if not data:
+        _require_flucoma(cache)
+        return {"error": "No chroma data — play some audio"}
+    values = data["value"]
+    chroma_dict = {PITCH_NAMES[i]: round(v, 3) for i, v in enumerate(values[:12])}
+    max_val = max(values[:12]) if values else 0
+    dominant = [PITCH_NAMES[i] for i, v in enumerate(values[:12])
+                if v >= max_val * 0.5 and max_val > 0.01]
+    return {"chroma": chroma_dict, "dominant_pitches": dominant, "age_ms": data["age_ms"]}
+
+
+@mcp.tool()
+def get_onsets(ctx: Context) -> dict:
+    """Get real-time onset/transient detection from FluCoMa.
+
+    Requires FluCoMa package in Max.
+    """
+    cache = _get_spectral(ctx)
+    _require_analyzer(cache)
+    data = cache.get("onset")
+    if not data:
+        _require_flucoma(cache)
+        return {"error": "No onset data — play some audio"}
+    return {**data["value"], "age_ms": data["age_ms"]}
+
+
+@mcp.tool()
+def get_novelty(ctx: Context) -> dict:
+    """Get real-time spectral novelty for section boundary detection from FluCoMa.
+
+    Requires FluCoMa package in Max.
+    """
+    cache = _get_spectral(ctx)
+    _require_analyzer(cache)
+    data = cache.get("novelty")
+    if not data:
+        _require_flucoma(cache)
+        return {"error": "No novelty data — play some audio"}
+    return {**data["value"], "age_ms": data["age_ms"]}
+
+
+@mcp.tool()
+def get_momentary_loudness(ctx: Context) -> dict:
+    """Get EBU R128 momentary LUFS + true peak from FluCoMa.
+
+    Real-time LUFS metering — industry standard. Complements get_master_rms.
+    Requires FluCoMa package in Max.
+    """
+    cache = _get_spectral(ctx)
+    _require_analyzer(cache)
+    data = cache.get("loudness")
+    if not data:
+        _require_flucoma(cache)
+        return {"error": "No loudness data — play some audio"}
+    return {**data["value"], "age_ms": data["age_ms"]}
+
+
+@mcp.tool()
+async def check_flucoma(ctx: Context) -> dict:
+    """Check if FluCoMa is installed and sending data."""
+    cache = _get_spectral(ctx)
+    streams = {}
+    for key in ("spectral_shape", "mel_bands", "chroma", "onset", "novelty", "loudness"):
+        streams[key] = cache.get(key) is not None
+    active = sum(1 for v in streams.values() if v)
+    return {"flucoma_available": active > 0, "active_streams": active, "streams": streams}
