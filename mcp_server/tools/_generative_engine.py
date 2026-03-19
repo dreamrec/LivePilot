@@ -205,3 +205,67 @@ def phase_shift(
             repetition += 1
 
     return sorted(result, key=lambda n: n["start_time"])
+
+
+# ---------------------------------------------------------------------------
+# Additive process (Philip Glass)
+# ---------------------------------------------------------------------------
+
+def additive_process(
+    melody_notes: list[dict],
+    direction: str = "forward",
+    repetitions_per_stage: int = 2,
+) -> list[dict]:
+    """Glass-style additive process.
+
+    Forward: play note 0, then 0-1, then 0-1-2, ... each repeated N times.
+    Backward: play all, then remove from front.
+    Both: forward, then backward (skipping the full melody to avoid duplicate).
+    """
+    if not melody_notes:
+        return []
+
+    sorted_notes = sorted(melody_notes, key=lambda n: n["start_time"])
+    base = sorted_notes[0]["start_time"]
+    normalized = []
+    for n in sorted_notes:
+        normalized.append({
+            "pitch": n["pitch"],
+            "start_time": round(n["start_time"] - base, 4),
+            "duration": n["duration"],
+            "velocity": n.get("velocity", 100),
+        })
+
+    def _stage_duration(notes: list[dict]) -> float:
+        if not notes:
+            return 0.0
+        return max(n["start_time"] + n["duration"] for n in notes)
+
+    def _build_stages(note_slices: list[list[dict]]) -> list[dict]:
+        result: list[dict] = []
+        cursor = 0.0
+        for stage_notes in note_slices:
+            for _ in range(repetitions_per_stage):
+                for n in stage_notes:
+                    result.append({
+                        "pitch": n["pitch"],
+                        "start_time": round(cursor + n["start_time"], 4),
+                        "duration": n["duration"],
+                        "velocity": n["velocity"],
+                    })
+                cursor += _stage_duration(stage_notes)
+            cursor = round(cursor, 4)
+        return result
+
+    n_notes = len(normalized)
+
+    if direction == "forward":
+        slices = [normalized[:k + 1] for k in range(n_notes)]
+        return _build_stages(slices)
+    elif direction == "backward":
+        slices = [normalized[k:] for k in range(n_notes)]
+        return _build_stages(slices)
+    else:  # both
+        forward_slices = [normalized[:k + 1] for k in range(n_notes)]
+        backward_slices = [normalized[k:] for k in range(1, n_notes)]  # skip full
+        return _build_stages(forward_slices + backward_slices)

@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from mcp_server.tools._generative_engine import (
     bjorklund, rotate_pattern, identify_rhythm,
-    tintinnabuli_voice, phase_shift,
+    tintinnabuli_voice, phase_shift, additive_process,
 )
 
 
@@ -135,3 +135,39 @@ class TestPhaseShift:
                              shift_amount=0.125, total_length=4.0)
         for n in result:
             assert n["start_time"] < 4.0
+
+
+class TestAdditiveProcess:
+    def _melody(self):
+        return [
+            {"pitch": 60, "start_time": 0.0, "duration": 0.5},
+            {"pitch": 62, "start_time": 0.5, "duration": 0.5},
+            {"pitch": 64, "start_time": 1.0, "duration": 0.5},
+        ]
+
+    def test_forward_stages(self):
+        result = additive_process(self._melody(), direction="forward",
+                                  repetitions_per_stage=1)
+        assert len(result) == 6
+
+    def test_forward_with_repetitions(self):
+        result = additive_process(self._melody(), direction="forward",
+                                  repetitions_per_stage=2)
+        assert len(result) == 12
+
+    def test_backward_stages(self):
+        result = additive_process(self._melody(), direction="backward",
+                                  repetitions_per_stage=1)
+        assert len(result) == 6
+
+    def test_both_direction(self):
+        result = additive_process(self._melody(), direction="both",
+                                  repetitions_per_stage=1)
+        assert len(result) == 9
+
+    def test_timing_increases(self):
+        result = additive_process(self._melody(), direction="forward",
+                                  repetitions_per_stage=1)
+        times = [n["start_time"] for n in result]
+        for i in range(1, len(times)):
+            assert times[i] >= times[i - 1]
