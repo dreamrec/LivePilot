@@ -1,4 +1,4 @@
-"""Verify all 135 MCP tools are registered across 12 domains."""
+"""Verify all 142 MCP tools are registered across 13 domains."""
 
 import asyncio
 import sys
@@ -246,7 +246,20 @@ def test_automation_tools_registered():
     assert not missing, f"Missing automation tools: {missing}"
 
 
+def test_theory_tools_registered():
+    from mcp_server.server import mcp
+    tools = asyncio.run(mcp.list_tools())
+    names = {t.name for t in tools}
+    expected = {
+        'analyze_harmony', 'suggest_next_chord', 'detect_theory_issues',
+        'identify_scale', 'harmonize_melody', 'generate_countermelody',
+        'transpose_smart',
+    }
+    missing = expected - names
+    assert not missing, f"Missing theory tools: {missing}"
+
+
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 135, f"Expected 135 tools, got {len(tools)}"
+    assert len(tools) == 142, f"Expected 142 tools, got {len(tools)}"

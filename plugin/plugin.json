@@ -1,7 +1,7 @@
 {
   "name": "livepilot",
-  "version": "1.6.3",
-  "description": "AI copilot for Ableton Live 12 — 135 tools, device atlas (280+ devices), real-time audio analysis, automation intelligence, and technique memory",
+  "version": "1.6.4",
+  "description": "AI copilot for Ableton Live 12 — 142 tools, device atlas (280+ devices), real-time audio analysis, automation intelligence, and technique memory",
   "author": "Pilot Studio",
   "skills": [
     "skills/livepilot-core",

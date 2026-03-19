@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.6.4 — Music Theory (March 2026)
+
+**7 new tools (135 -> 142), music21-powered theory analysis on live MIDI clips.**
+
+### Theory Domain (7 tools)
+- `analyze_harmony` — chord-by-chord Roman numeral analysis of session clips
+- `suggest_next_chord` — theory-valid chord continuations with style presets (common_practice, jazz, modal, pop)
+- `detect_theory_issues` — parallel fifths/octaves, out-of-key notes, voice crossing, unresolved dominants
+- `identify_scale` — Krumhansl-Schmuckler key/mode detection with confidence-ranked alternatives
+- `harmonize_melody` — 2 or 4-voice SATB harmonization with smooth voice leading
+- `generate_countermelody` — species counterpoint (1st or 2nd species) against a melody
+- `transpose_smart` — diatonic or chromatic transposition preserving scale relationships
+
+### Architecture
+- Notes-to-Stream bridge: converts LivePilot note dicts → music21 Part objects with quantization (1/32 note grid)
+- Lazy imports: music21 is optional — all 135 core tools work without it installed
+- Key hint parsing: handles "A minor" → lowercase tonic for music21 compatibility
+
+### Dependencies
+- Optional: `pip install 'music21>=9.3'` (not auto-installed — ~50MB with numpy/matplotlib)
+
 ## 1.6.3 — Audit Hardening (March 2026)
 
 - Fix: cursor aliasing in M4L bridge `walk_device` — nested rack traversal now reads chain/pad counts before recursion clobbers shared cursors

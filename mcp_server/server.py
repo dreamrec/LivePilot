@@ -56,6 +56,7 @@ from .tools import arrangement  # noqa: F401, E402
 from .tools import memory       # noqa: F401, E402
 from .tools import analyzer     # noqa: F401, E402
 from .tools import automation   # noqa: F401, E402
+from .tools import theory       # noqa: F401, E402
 
 
 # ---------------------------------------------------------------------------

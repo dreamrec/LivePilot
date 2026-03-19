@@ -1,2 +1,5 @@
 # LivePilot MCP Server dependencies
 fastmcp>=3.0.0,<4.0.0
+
+# Optional: Music theory tools (lazy-imported, not required for core tools)
+# pip install music21>=9.3

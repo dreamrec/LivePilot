@@ -12,11 +12,11 @@ LivePilot is built on three layers that work together:
 - **M4L Analyzer** — Real-time audio analysis on the master bus: 8-band spectrum, RMS/peak metering, pitch tracking, key detection. The AI hears the result of its own changes.
 - **Technique Memory** — A persistent library of production decisions. The AI remembers how you built sounds, what patterns you liked, and how you mixed — and uses that context in future sessions.
 
-On top of these sit 135 MCP tools across 12 domains. Every command is deterministic, goes through Ableton's official Live Object Model API, and is reversible with undo.
+On top of these sit 142 MCP tools across 13 domains. Every command is deterministic, goes through Ableton's official Live Object Model API, and is reversible with undo.
 
 ## What it actually does
 
-LivePilot gives you **135 tools** organized across 12 domains:
+LivePilot gives you **142 tools** organized across 13 domains:
 
 | Domain | What it handles |
 |--------|----------------|
@@ -32,6 +32,7 @@ LivePilot gives you **135 tools** organized across 12 domains:
 | [Automation](tool-reference.md#automation) | Clip envelopes, 16-type curve engine, 15 recipes, spectral suggestions |
 | [Memory](tool-reference.md#memory) | Save, recall, replay, and manage production techniques |
 | [Analyzer](tool-reference.md#analyzer) | Real-time spectral analysis, key detection, sample manipulation, warp markers (requires M4L device) |
+| [Theory](tool-reference.md#theory) | Harmony analysis, Roman numerals, scale identification, chord suggestions, countermelody, transposition (requires music21) |
 
 Each tool maps directly to an Ableton Live API call. There's no abstraction layer that guesses what you mean — when you ask to set a parameter, it sets that parameter. When you ask to read notes, it reads the actual MIDI data from the clip. Everything is deterministic and reversible with undo.
 
