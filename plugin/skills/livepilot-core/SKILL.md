@@ -1,17 +1,17 @@
 ---
 name: livepilot-core
-description: Core discipline for controlling Ableton Live 12 through LivePilot's 135 MCP tools, device atlas (280+ devices), M4L analyzer (spectrum/RMS/key detection), automation intelligence (16 curve types, 15 recipes), and technique memory. Use whenever working with Ableton Live through MCP tools.
+description: Core discipline for controlling Ableton Live 12 through LivePilot's 142 MCP tools, device atlas (280+ devices), M4L analyzer (spectrum/RMS/key detection), automation intelligence (16 curve types, 15 recipes), music theory analysis (music21), and technique memory. Use whenever working with Ableton Live through MCP tools.
 ---
 
 # LivePilot Core — Ableton Live 12 AI Copilot
 
-LivePilot is an agentic production system for Ableton Live 12. It combines 135 MCP tools with three layers of intelligence:
+LivePilot is an agentic production system for Ableton Live 12. It combines 142 MCP tools with three layers of intelligence:
 
 - **Device Atlas** — A structured knowledge corpus of 280+ instruments, 139 drum kits, and 350+ impulse responses. Consult the atlas before loading any device. It contains real browser URIs, preset names, and sonic descriptions. Never guess a device name — look it up.
 - **M4L Analyzer** — Real-time audio analysis on the master bus (8-band spectrum, RMS/peak, key detection). Use it to verify mixing decisions, detect frequency problems, and find the key before writing harmonic content.
 - **Technique Memory** — Persistent storage for production decisions. Consult `memory_recall` before creative tasks to understand the user's taste. Save techniques when the user likes something. The memory shapes future decisions without constraining them.
 
-These layers sit on top of 135 deterministic tools across 12 domains: transport, tracks, clips, MIDI notes, devices, scenes, mixing, browser, arrangement, technique memory, real-time DSP analysis, and automation.
+These layers sit on top of 142 deterministic tools across 13 domains: transport, tracks, clips, MIDI notes, devices, scenes, mixing, browser, arrangement, technique memory, real-time DSP analysis, automation, and music theory.
 
 ## Golden Rules
 
@@ -25,6 +25,59 @@ These layers sit on top of 135 deterministic tools across 12 domains: transport,
 8. **Volume is 0.0-1.0, pan is -1.0 to 1.0** — these are normalized, not dB
 9. **Tempo range 20-999 BPM** — validated before sending to Ableton
 10. **Always name your tracks and clips** — organization is part of the creative process
+11. **Respect tool speed tiers** — see below. Never call heavy tools without user consent.
+
+## Tool Speed Tiers
+
+Not all tools respond instantly. Know the tiers and act accordingly.
+
+### Instant (<1s) — Use freely, no warning needed
+All 142 core tools (transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, automation, theory) plus Layer A perception tools (spectral shape, timbral profile, mel spectrum, chroma, onsets, harmonic/percussive, novelty, momentary loudness). These are the reflex tools — call them anytime without hesitation.
+
+### Fast (1-5s) — Use freely, barely noticeable
+`analyze_loudness` · `analyze_dynamic_range` · `compare_loudness`
+
+File-based analysis that reads audio from disk. Fast enough to use mid-conversation. No warning needed for files under 2 minutes.
+
+### Slow (5-15s) — Tell the user before calling
+`analyze_spectral_evolution` · `compare_to_reference` · `transcribe_to_midi`
+
+These run multi-pass analysis or load AI models. Always tell the user what you're about to do and roughly how long it takes. Never chain multiple slow tools back-to-back without checking in.
+
+### Heavy (30-120s) — ALWAYS ask the user first
+`separate_stems` · `diagnose_mix`
+
+These run GPU-intensive processes (Demucs stem separation). Processing time: 15-25s on GPU, 60-90s on CPU/MPS. `diagnose_mix` chains stem separation with per-stem analysis and can take 2+ minutes.
+
+**CRITICAL: Heavy Tool Protocol**
+- NEVER call `separate_stems` or `diagnose_mix` unless the user explicitly requests it
+- NEVER call them speculatively or "just to check"
+- NEVER call them during creative flow (beat-making, sound design, mixing) — they break momentum
+- ALWAYS warn the user with an estimated time before calling
+- ALWAYS prefer fast tools first: if the user says "check my mix", use `analyze_loudness` + `analyze_dynamic_range` (2 seconds total), report findings, THEN offer to escalate: "I could separate stems to investigate further, but that takes about a minute. Want me to?"
+
+**Wrong:** User says "how does my track sound?" → call `diagnose_mix` (120s surprise)
+**Right:** User says "how does my track sound?" → call `analyze_loudness` + `get_master_spectrum` (1s) → report findings → offer heavy analysis only if needed
+
+### Escalation Pattern for Analysis
+
+Always follow this ladder — start fast, escalate only with consent:
+
+```
+Level 1 (instant):  get_master_spectrum + get_track_meters
+                    → frequency balance + levels. Enough for 80% of questions.
+
+Level 2 (fast):     analyze_loudness + analyze_dynamic_range
+                    → LUFS, true peak, LRA, crest factor. For mastering prep.
+
+Level 3 (slow):     analyze_spectral_evolution + compare_to_reference
+                    → timbral trends, reference matching. Ask first.
+
+Level 4 (heavy):    separate_stems → per-stem analysis → diagnose_mix
+                    → full diagnostic. Explicit user consent required.
+```
+
+Never skip levels. The user's question determines the entry point, but always start at the lowest appropriate level and offer to go deeper.
 
 ## Track Health Checks — MANDATORY
 
@@ -64,7 +117,7 @@ These layers sit on top of 135 deterministic tools across 12 domains: transport,
 - MIDI track with no instrument loaded
 - Notes programmed but clip not fired
 
-## Tool Domains (135 total)
+## Tool Domains (142 total)
 
 ### Transport (12)
 `get_session_info` · `set_tempo` · `set_time_signature` · `start_playback` · `stop_playback` · `continue_playback` · `toggle_metronome` · `set_session_loop` · `undo` · `redo` · `get_recent_actions` · `get_session_diagnostics`
@@ -121,6 +174,18 @@ Clip automation CRUD + intelligent curve generation with 15 built-in recipes.
 - Use `apply_automation_shape` for custom curves with specific math
 - Clear existing automation before rewriting: `clear_clip_automation` first
 - Load `references/automation-atlas.md` for curve theory, genre recipes, diagnostic technique, and cross-track spectral mapping
+
+### Theory (7)
+Music theory analysis powered by music21. Optional dependency — install with `pip install 'music21>=9.3'`.
+
+**Tools:** `analyze_harmony` · `suggest_next_chord` · `detect_theory_issues` · `identify_scale` · `harmonize_melody` · `generate_countermelody` · `transpose_smart`
+
+**Key discipline:**
+- These tools read MIDI notes directly from session clips — no file export needed
+- Auto-detects key via Krumhansl-Schmuckler if not provided; pass `key` hint for better accuracy
+- `analyze_harmony` and `detect_theory_issues` are analysis-only; `harmonize_melody`, `generate_countermelody`, and `transpose_smart` return note data ready for `add_notes`
+- Use your own musical knowledge alongside these tools — music21 provides data, you provide interpretation
+- Processing time: 2-5s for generative tools (harmonize, countermelody)
 
 ## Workflow: Building a Beat
 
@@ -263,7 +328,7 @@ Deep production knowledge lives in `references/`. Consult these when making crea
 
 | File | What's inside | When to consult |
 |------|--------------|-----------------|
-| `references/overview.md` | All 135 tools mapped with params, units, ranges | Quick lookup for any tool |
+| `references/overview.md` | All 142 tools mapped with params, units, ranges | Quick lookup for any tool |
 | `references/midi-recipes.md` | Drum patterns by genre, chord voicings, scales, hi-hat techniques, humanization, polymetrics | Programming MIDI notes, building beats |
 | `references/sound-design.md` | Stock instruments/effects, parameter recipes for bass/pad/lead/pluck, device chain patterns | Loading and configuring devices |
 | `references/mixing-patterns.md` | Gain staging, parallel compression, sidechain, EQ by instrument, bus processing, stereo width | Setting volumes, panning, adding effects |

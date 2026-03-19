@@ -1,6 +1,6 @@
-# LivePilot v1.6.3 — Architecture & Tool Reference
+# LivePilot v1.6.4 — Architecture & Tool Reference
 
-LivePilot is an agentic production system for Ableton Live 12. It combines 135 MCP tools with a device knowledge corpus, real-time audio analysis, automation intelligence, and persistent technique memory.
+LivePilot is an agentic production system for Ableton Live 12. It combines 142 MCP tools with a device knowledge corpus, real-time audio analysis, automation intelligence, and persistent technique memory.
 
 ## Architecture
 
@@ -32,7 +32,7 @@ A flat tool list lets the AI press buttons. LivePilot's three layers give it con
 
 This turns "set EQ band 3 to -4 dB" into "cut 400 Hz by 4 dB, then read the spectrum to confirm the mud is actually reduced."
 
-## The 135 Tools — What Each One Does
+## The 142 Tools — What Each One Does
 
 ### Transport (12) — Playback, tempo, global state, diagnostics
 
@@ -243,6 +243,20 @@ This turns "set EQ band 3 to -4 dB" into "cut 400 Hz by 4 dB, then read the spec
 **16 curve types:** linear, exponential, logarithmic, s_curve, sine, sawtooth, spike, square, steps, perlin, brownian, spring, bezier, easing, euclidean, stochastic
 
 **15 recipes:** filter_sweep_up, filter_sweep_down, dub_throw, tape_stop, build_rise, sidechain_pump, fade_in, fade_out, tremolo, auto_pan, stutter, breathing, washout, vinyl_crackle, stereo_narrow
+
+### Theory (7) — Music theory analysis powered by music21 (optional dependency)
+
+| Tool | What it does | Key params |
+|------|-------------|------------|
+| `analyze_harmony` | Chord-by-chord Roman numeral analysis of a clip | `track_index`, `clip_index`, `key` (optional) |
+| `suggest_next_chord` | Suggests theory-valid chord continuations | `track_index`, `clip_index`, `style` (common_practice/jazz/modal/pop) |
+| `detect_theory_issues` | Finds parallel fifths/octaves, out-of-key notes, voice crossing | `track_index`, `clip_index`, `strict` (bool) |
+| `identify_scale` | Deep scale/mode identification with confidence ranking | `track_index`, `clip_index` |
+| `harmonize_melody` | Generates 2 or 4-voice SATB harmonization | `track_index`, `clip_index`, `voices` (2 or 4) |
+| `generate_countermelody` | Species counterpoint against a melody | `track_index`, `clip_index`, `species` (1 or 2) |
+| `transpose_smart` | Diatonic or chromatic transposition to a new key | `track_index`, `clip_index`, `target_key`, `mode` (diatonic/chromatic) |
+
+**Requires:** `pip install 'music21>=9.3'` — optional dependency, all other 135 tools work without it.
 
 ## Units & Ranges Quick Reference
 
