@@ -341,10 +341,12 @@ async function setupFlucoma() {
 
   await new Promise((resolve, reject) => {
     const downloadUrl = zipAsset.browser_download_url;
-    const download = (url) => {
+    const download = (url, depth) => {
+      if (depth > 5) { reject(new Error("Too many redirects")); return; }
+      if (!url.startsWith("https://")) { reject(new Error("Refusing non-HTTPS redirect")); return; }
       https.get(url, { headers: { "User-Agent": "LivePilot" } }, (res) => {
         if (res.statusCode === 302 || res.statusCode === 301) {
-          download(res.headers.location);
+          download(res.headers.location, depth + 1);
           return;
         }
         const file = fs.createWriteStream(zipPath);
@@ -352,16 +354,19 @@ async function setupFlucoma() {
         file.on("finish", () => { file.close(); resolve(); });
       }).on("error", reject);
     };
-    download(downloadUrl);
+    download(downloadUrl, 0);
   });
 
   console.log("Extracting to %s...", packagesDir);
   fs.mkdirSync(packagesDir, { recursive: true });
 
   if (process.platform === "win32") {
+    // Escape single quotes for PowerShell: ' → ''
+    const psZip = zipPath.replace(/'/g, "''");
+    const psDest = packagesDir.replace(/'/g, "''");
     execFileSync("powershell", [
       "-Command",
-      `Expand-Archive -Path '${zipPath}' -DestinationPath '${packagesDir}' -Force`
+      `Expand-Archive -Path '${psZip}' -DestinationPath '${psDest}' -Force`
     ], { stdio: "inherit", timeout: 120000 });
   } else {
     execFileSync("unzip", ["-o", "-q", zipPath, "-d", packagesDir], {

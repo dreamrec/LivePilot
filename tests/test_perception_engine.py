@@ -55,12 +55,12 @@ class TestComputeLoudness:
         assert "meets_streaming" in result
         assert "spotify" in result["meets_streaming"]
 
-    def test_true_peak_present(self, tmp_path):
+    def test_sample_peak_present(self, tmp_path):
         from mcp_server.tools._perception_engine import compute_loudness
         wav = _make_sine_wav(str(tmp_path / "sine.wav"))
         result = compute_loudness(wav)
-        assert "true_peak_dbtp" in result
-        assert isinstance(result["true_peak_dbtp"], float)
+        assert "sample_peak_dbfs" in result
+        assert isinstance(result["sample_peak_dbfs"], float)
 
     def test_short_term_in_full_mode(self, tmp_path):
         from mcp_server.tools._perception_engine import compute_loudness

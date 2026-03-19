@@ -305,6 +305,10 @@ class M4LBridge:
         if not self.cache.is_connected:
             return {"error": "LivePilot Analyzer not connected. Drop it on the master track."}
 
+        # Cancel any stale capture future before creating a new one
+        if self.receiver and self.receiver._capture_future and not self.receiver._capture_future.done():
+            self.receiver._capture_future.cancel()
+
         loop = asyncio.get_running_loop()
         future = loop.create_future()
         if self.receiver:
@@ -317,7 +321,16 @@ class M4LBridge:
             result = await asyncio.wait_for(future, timeout=timeout)
             return result
         except asyncio.TimeoutError:
+            # Clean up the dangling future
+            if self.receiver:
+                self.receiver._capture_future = None
             return {"error": "M4L capture timeout — device may be busy or removed"}
+
+    def cancel_capture_future(self) -> None:
+        """Cancel any in-progress capture future (called by capture_stop)."""
+        if self.receiver and self.receiver._capture_future and not self.receiver._capture_future.done():
+            self.receiver._capture_future.cancel()
+            self.receiver._capture_future = None
 
     def _build_osc(self, address: str, args: tuple) -> bytes:
         """Build a minimal OSC message."""

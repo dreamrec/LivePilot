@@ -63,9 +63,17 @@ def _normalize_to_lufs(
     gain_linear = 10 ** (gain_db / 20.0)
     data, sr = _load_audio(file_path)
     normalized = np.clip(data * gain_linear, -1.0, 1.0)
-    tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
-    sf.write(tmp.name, normalized, sr)
-    return tmp.name
+    tmp_path = tempfile.mktemp(suffix=".wav")
+    try:
+        sf.write(tmp_path, normalized, sr)
+    except Exception:
+        # Clean up on failure to avoid orphan files
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
+    return tmp_path
 
 
 # ---------------------------------------------------------------------------
@@ -80,7 +88,7 @@ def compute_loudness(file_path: str, detail: str = "summary") -> dict[str, Any]:
         detail: "summary" (default) or "full" (includes short_term_lufs array).
 
     Returns:
-        dict with integrated_lufs, true_peak_dbtp, rms_dbfs, crest_factor_db,
+        dict with integrated_lufs, sample_peak_dbfs, rms_dbfs, crest_factor_db,
         lra_lu, meets_streaming, and optionally short_term_lufs.
     """
     import pyloudnorm as pyln
@@ -97,17 +105,16 @@ def compute_loudness(file_path: str, detail: str = "summary") -> dict[str, Any]:
     raw_lufs = meter.integrated_loudness(data)
     integrated_lufs = max(float(raw_lufs), SILENCE_FLOOR) if np.isfinite(raw_lufs) else SILENCE_FLOOR
 
-    # True peak (max across channels in dBTP)
-    # Compute via simple maximum absolute value -> dBFS (close enough for true peak)
+    # Sample peak (max absolute value, no oversampling — not EBU R128 true peak)
     peak_linear = float(np.max(np.abs(data)))
-    true_peak_dbtp = float(20.0 * np.log10(max(peak_linear, 1e-10)))
+    sample_peak_dbfs = float(20.0 * np.log10(max(peak_linear, 1e-10)))
 
     # RMS dBFS
     rms_linear = float(np.sqrt(np.mean(data ** 2)))
     rms_dbfs = float(20.0 * np.log10(max(rms_linear, 1e-10)))
 
     # Crest factor
-    crest_factor_db = true_peak_dbtp - rms_dbfs
+    crest_factor_db = sample_peak_dbfs - rms_dbfs
 
     # Short-term LUFS (3s window, 1s hop) — also used for LRA
     window_samples = int(sr * 3.0)
@@ -154,7 +161,7 @@ def compute_loudness(file_path: str, detail: str = "summary") -> dict[str, Any]:
 
     result: dict[str, Any] = {
         "integrated_lufs": round(integrated_lufs, 2),
-        "true_peak_dbtp": round(true_peak_dbtp, 2),
+        "sample_peak_dbfs": round(sample_peak_dbfs, 2),
         "rms_dbfs": round(rms_dbfs, 2),
         "crest_factor_db": round(crest_factor_db, 2),
         "lra_lu": round(lra_lu, 2),

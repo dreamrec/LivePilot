@@ -561,6 +561,8 @@ async def capture_stop(ctx: Context) -> dict:
     cache = _get_spectral(ctx)
     _require_analyzer(cache)
     bridge = _get_m4l(ctx)
+    # Cancel the capture future so send_capture doesn't hang forever
+    bridge.cancel_capture_future()
     return await bridge.send_command("capture_stop")
 
 
@@ -569,13 +571,17 @@ async def capture_stop(ctx: Context) -> dict:
 PITCH_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
 
-def _require_flucoma(cache) -> None:
+def _flucoma_hint(cache) -> str:
+    """Return an error hint if no FluCoMa data has arrived.
+
+    If ANY stream has data, FluCoMa is working and the specific stream just
+    hasn't updated yet — return a 'play audio' hint. If NO streams have data,
+    FluCoMa may not be installed — return an install hint.
+    """
     for key in ("spectral_shape", "mel_bands", "chroma", "loudness"):
         if cache.get(key):
-            return
-    raise ValueError(
-        "FluCoMa not detected. Install via Max Package Manager or: npx livepilot --setup-flucoma"
-    )
+            return "play some audio"
+    return "FluCoMa may not be installed. Install via: npx livepilot --setup-flucoma"
 
 
 @mcp.tool()
@@ -589,8 +595,8 @@ def get_spectral_shape(ctx: Context) -> dict:
     _require_analyzer(cache)
     data = cache.get("spectral_shape")
     if not data:
-        _require_flucoma(cache)
-        return {"error": "No spectral shape data — play some audio"}
+        hint = _flucoma_hint(cache)
+        return {"error": f"No spectral shape data — {hint}"}
     return {**data["value"], "age_ms": data["age_ms"]}
 
 
@@ -604,8 +610,8 @@ def get_mel_spectrum(ctx: Context) -> dict:
     _require_analyzer(cache)
     data = cache.get("mel_bands")
     if not data:
-        _require_flucoma(cache)
-        return {"error": "No mel data — play some audio"}
+        hint = _flucoma_hint(cache)
+        return {"error": f"No mel data — {hint}"}
     return {"mel_bands": data["value"], "band_count": len(data["value"]), "age_ms": data["age_ms"]}
 
 
@@ -619,8 +625,8 @@ def get_chroma(ctx: Context) -> dict:
     _require_analyzer(cache)
     data = cache.get("chroma")
     if not data:
-        _require_flucoma(cache)
-        return {"error": "No chroma data — play some audio"}
+        hint = _flucoma_hint(cache)
+        return {"error": f"No chroma data — {hint}"}
     values = data["value"]
     chroma_dict = {PITCH_NAMES[i]: round(v, 3) for i, v in enumerate(values[:12])}
     max_val = max(values[:12]) if values else 0
@@ -639,8 +645,8 @@ def get_onsets(ctx: Context) -> dict:
     _require_analyzer(cache)
     data = cache.get("onset")
     if not data:
-        _require_flucoma(cache)
-        return {"error": "No onset data — play some audio"}
+        hint = _flucoma_hint(cache)
+        return {"error": f"No onset data — {hint}"}
     return {**data["value"], "age_ms": data["age_ms"]}
 
 
@@ -654,8 +660,8 @@ def get_novelty(ctx: Context) -> dict:
     _require_analyzer(cache)
     data = cache.get("novelty")
     if not data:
-        _require_flucoma(cache)
-        return {"error": "No novelty data — play some audio"}
+        hint = _flucoma_hint(cache)
+        return {"error": f"No novelty data — {hint}"}
     return {**data["value"], "age_ms": data["age_ms"]}
 
 
@@ -670,13 +676,13 @@ def get_momentary_loudness(ctx: Context) -> dict:
     _require_analyzer(cache)
     data = cache.get("loudness")
     if not data:
-        _require_flucoma(cache)
-        return {"error": "No loudness data — play some audio"}
+        hint = _flucoma_hint(cache)
+        return {"error": f"No loudness data — {hint}"}
     return {**data["value"], "age_ms": data["age_ms"]}
 
 
 @mcp.tool()
-async def check_flucoma(ctx: Context) -> dict:
+def check_flucoma(ctx: Context) -> dict:
     """Check if FluCoMa is installed and sending data."""
     cache = _get_spectral(ctx)
     streams = {}
