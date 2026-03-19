@@ -17,8 +17,8 @@
  */
 
 autowatch = 1;
-inlets = 1;
-outlets = 2; // 0: to udpsend (responses), 1: to status UI
+inlets = 2;  // 0: OSC commands, 1: dspstate~ (sample rate)
+outlets = 2; // 0: to udpsend (responses), 1: to buffer~/status
 
 // ── State ──────────────────────────────────────────────────────────────────
 
@@ -29,6 +29,12 @@ var pitch_history = []; // Rolling buffer for key detection
 var MAX_PITCH_HISTORY = 128;
 var detected_key = "";
 var detected_scale = "";
+
+// Capture state
+var capture_active = false;
+var capture_timer = null;
+var capture_filename = "";
+var current_sample_rate = 44100; // Updated by dspstate~ via inlet 1
 
 // Base64 encoding table
 var B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
@@ -43,6 +49,15 @@ function bang() {
         initialized = true;
         outlet(1, "status", "ready");
         post("LivePilot Bridge: initialized\n");
+    }
+}
+
+// ── DSP State (inlet 1: dspstate~ sample rate) ─────────────────────────────
+
+function msg_int(v) {
+    // dspstate~ sends the sample rate as an int on inlet 1
+    if (inlet === 1) {
+        current_sample_rate = v > 0 ? v : 44100;
     }
 }
 
@@ -125,6 +140,13 @@ function dispatch(cmd, args) {
             break;
         case "remove_warp_marker":
             cmd_remove_warp_marker(args);
+            break;
+        // ── Phase 3: Capture ──
+        case "capture_audio":
+            cmd_capture_audio(args);
+            break;
+        case "capture_stop":
+            cmd_capture_stop();
             break;
         // ── Phase 2: Clip & Display ──
         case "scrub_clip":
@@ -919,6 +941,95 @@ function cmd_get_display_values(args) {
         }
     }
     read_batch();
+}
+
+// ── Phase 3: Audio Capture ────────────────────────────────────────────
+
+function cmd_capture_audio(args) {
+    // args: [duration_ms, filename]
+    // duration_ms is the requested record length in milliseconds.
+    // filename is the desired output name (empty = auto-generate).
+    if (capture_active) {
+        send_response({"error": "Capture already in progress. Call capture_stop first."});
+        return;
+    }
+
+    var duration_ms = parseInt(args[0]) || 10000;
+    var requested_name = args[1] ? args[1].toString().trim() : "";
+
+    // Generate a timestamped filename if none provided
+    var d = new Date();
+    var ts = d.getFullYear() + "_"
+        + pad2(d.getMonth() + 1) + "_"
+        + pad2(d.getDate()) + "_"
+        + pad2(d.getHours()) + pad2(d.getMinutes()) + pad2(d.getSeconds());
+    capture_filename = requested_name.length > 0 ? requested_name : ("capture_" + ts + ".wav");
+
+    // Calculate sample count from duration and current sample rate
+    var num_samples = Math.ceil((duration_ms / 1000.0) * current_sample_rate);
+
+    capture_active = true;
+
+    // Tell the Max patch to start recording into buffer~ via outlet 1.
+    // The patch is expected to connect outlet 1 to a buffer~ / record~ rig.
+    // Message: "capture_start <filename> <num_samples>"
+    outlet(1, "capture_start", capture_filename, num_samples);
+
+    // Set a timer to call cmd_capture_write_done after duration_ms.
+    // If the buffer~ fires its bang first (via a connected message), that
+    // call will also land here — the guard flag prevents double-response.
+    capture_timer = new Task(function() {
+        cmd_capture_write_done();
+    });
+    capture_timer.schedule(duration_ms);
+}
+
+function cmd_capture_write_done() {
+    // Called when buffer~ finishes writing (bang from record~), or by the
+    // timer. Guards against double invocation.
+    if (!capture_active) return;
+    capture_active = false;
+    if (capture_timer) {
+        capture_timer.cancel();
+        capture_timer = null;
+    }
+
+    var written = capture_filename;
+    capture_filename = "";
+
+    // Send /capture_complete back to the MCP server via outlet 0.
+    var encoded = base64_encode(JSON.stringify({
+        "ok": true,
+        "file": written,
+        "sample_rate": current_sample_rate
+    }));
+    outlet(0, "/capture_complete", encoded);
+}
+
+function cmd_capture_stop() {
+    if (!capture_active) {
+        send_response({"ok": true, "stopped": false, "message": "No capture was active"});
+        return;
+    }
+
+    // Cancel the countdown timer so cmd_capture_write_done isn't called twice
+    if (capture_timer) {
+        capture_timer.cancel();
+        capture_timer = null;
+    }
+
+    // Signal the Max patch to stop recording early
+    outlet(1, "capture_stop");
+
+    capture_active = false;
+    var written = capture_filename;
+    capture_filename = "";
+
+    send_response({"ok": true, "stopped": true, "file": written});
+}
+
+function pad2(n) {
+    return n < 10 ? "0" + n : "" + n;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
