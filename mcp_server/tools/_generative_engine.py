@@ -150,3 +150,58 @@ def _find_triad_tone(pitch: int, triad_pcs: list[int], position: str) -> int:
         if not others:
             return pitch
         return min(others, key=lambda c: abs(c - pitch))
+
+
+# ---------------------------------------------------------------------------
+# Phase shifting (Steve Reich)
+# ---------------------------------------------------------------------------
+
+def phase_shift(
+    pattern_notes: list[dict],
+    voices: int = 2,
+    shift_amount: float = 0.125,
+    total_length: float = 16.0,
+) -> list[dict]:
+    """Generate phase-shifted canon.
+
+    Voice 0 loops the pattern normally. Each subsequent voice accumulates
+    shift_amount offset per repetition, creating gradual phase drift.
+
+    Returns combined note array with velocity encoding per voice:
+    voice 0 = 100, voice 1 = 90, voice 2 = 80, etc.
+    """
+    if not pattern_notes:
+        return []
+
+    sorted_notes = sorted(pattern_notes, key=lambda n: n["start_time"])
+    pattern_length = max(n["start_time"] + n["duration"] for n in sorted_notes)
+    if pattern_length <= 0:
+        return []
+
+    result: list[dict] = []
+
+    for voice in range(voices):
+        velocity = max(100 - voice * 10, 30)
+        # Voice N starts shifted by voice * shift_amount and accumulates
+        # additional drift of voice * shift_amount per repetition.
+        # offset(rep) = rep * pattern_length + voice * shift_amount * (rep + 1)
+        repetition = 0
+        while True:
+            offset = repetition * pattern_length + voice * shift_amount * (repetition + 1)
+
+            if offset >= total_length:
+                break
+
+            for note in sorted_notes:
+                t = offset + note["start_time"]
+                if t >= total_length:
+                    continue
+                result.append({
+                    "pitch": note["pitch"],
+                    "start_time": round(t, 4),
+                    "duration": note["duration"],
+                    "velocity": velocity,
+                })
+            repetition += 1
+
+    return sorted(result, key=lambda n: n["start_time"])
