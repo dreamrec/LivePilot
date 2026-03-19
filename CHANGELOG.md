@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.2 — Automation Params Fix (March 2026)
+
+- Fix: expose all curve-specific params in `generate_automation_curve` and `apply_automation_shape` MCP tools — `values` (steps), `hits`/`steps` (euclidean), `seed`/`drift`/`volatility` (organic), `damping`/`stiffness` (spring), `control1`/`control2` (bezier), `easing_type`, `narrowing` (stochastic)
+- Fix: `analyze_for_automation` spectral getter used wrong method (`.get_spectrum()` → `.get("spectrum")`)
+
 ## 1.6.1 — Hotfix (March 2026)
 
 - Fix: `clip_automation.py` imported `register` from `utils` instead of `router`, causing Remote Script to fail to load in Ableton (LivePilot disappeared from Control Surface list)
