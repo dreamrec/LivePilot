@@ -1,5 +1,6 @@
 """Persistent JSON store for LivePilot techniques (beat patterns, device chains, etc.)."""
 
+import copy
 import json
 import os
 import threading
@@ -101,7 +102,7 @@ class TechniqueStore:
         with self._lock:
             for t in self._data["techniques"]:
                 if t["id"] == technique_id:
-                    return dict(t)
+                    return copy.deepcopy(t)
         raise ValueError(f"NOT_FOUND: technique '{technique_id}' does not exist")
 
     def search(

@@ -190,12 +190,19 @@ class TestTracksContracts:
 # ── Clips contracts ─────────────────────────────────────────────────
 
 class TestClipsContracts:
-    def test_launch_mode_range(self):
-        """Launch modes: 0=Trigger, 1=Gate, 2=Toggle, 3=Repeat."""
+    def test_index_validation_accepts_zero(self):
+        """Track and clip index validators accept zero (minimum valid index)."""
         from mcp_server.tools.clips import _validate_track_index, _validate_clip_index
-        # Validate the range check is defined
         _validate_track_index(0)
         _validate_clip_index(0)
+
+    def test_index_validation_rejects_negative(self):
+        """Track and clip index validators reject negative indices."""
+        from mcp_server.tools.clips import _validate_track_index, _validate_clip_index
+        with pytest.raises(ValueError):
+            _validate_track_index(-1)
+        with pytest.raises(ValueError):
+            _validate_clip_index(-1)
 
 
 # ── Connection contracts ────────────────────────────────────────────

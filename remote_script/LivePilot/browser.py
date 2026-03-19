@@ -100,7 +100,6 @@ def _search_recursive(item, name_filter, loadable_only, results, depth, max_dept
                 entry["uri"] = None
             results.append(entry)
         if child.is_folder:
-            before = len(results)
             _search_recursive(
                 child, name_filter, loadable_only, results, depth + 1, max_depth,
                 max_results
