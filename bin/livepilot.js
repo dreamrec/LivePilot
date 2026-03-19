@@ -289,7 +289,7 @@ async function main() {
 
   // --help / -h
   if (flag === "--help" || flag === "-h") {
-    console.log("livepilot v%s — AI copilot for Ableton Live 12", PKG.version);
+    console.log("livepilot v%s — agentic production system for Ableton Live 12", PKG.version);
     console.log("");
     console.log("Usage: npx livepilot [command]");
     console.log("");
