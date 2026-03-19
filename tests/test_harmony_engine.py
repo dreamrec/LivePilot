@@ -80,3 +80,64 @@ class TestChordToStr:
 
     def test_f_sharp_minor(self):
         assert chord_to_str(6, "minor") == "F# minor"
+
+
+from mcp_server.tools._harmony_engine import (
+    get_neighbors, find_shortest_path, classify_transform_sequence,
+    get_chromatic_mediants,
+)
+
+
+class TestGetNeighbors:
+    def test_c_major_depth1(self):
+        result = get_neighbors(0, "major", depth=1)
+        assert "P" in result
+        assert result["P"] == (0, "minor")
+        assert result["L"] == (4, "minor")
+        assert result["R"] == (9, "minor")
+
+    def test_depth2_has_compound(self):
+        result = get_neighbors(0, "major", depth=2)
+        assert "PL" in result
+        assert result["PL"] == (8, "major")
+
+
+class TestFindShortestPath:
+    def test_c_to_ab(self):
+        path = find_shortest_path((0, "major"), (8, "major"), max_depth=4)
+        assert path["found"] is True
+        assert path["steps"] == 2
+        assert path["transforms"] == ["P", "L"]
+
+    def test_same_chord(self):
+        path = find_shortest_path((0, "major"), (0, "major"), max_depth=4)
+        assert path["found"] is True
+        assert path["steps"] == 0
+
+    def test_unreachable_in_1(self):
+        path = find_shortest_path((0, "major"), (8, "major"), max_depth=1)
+        assert path["found"] is False
+
+
+class TestClassifyTransformSequence:
+    def test_pl_sequence(self):
+        chords = [(0, "major"), (0, "minor"), (8, "major")]
+        result = classify_transform_sequence(chords)
+        assert result == ["P", "L"]
+
+    def test_single_r(self):
+        chords = [(0, "major"), (9, "minor")]
+        result = classify_transform_sequence(chords)
+        assert result == ["R"]
+
+    def test_unknown_step(self):
+        chords = [(0, "major"), (2, "major")]
+        result = classify_transform_sequence(chords)
+        assert result == ["?"]
+
+
+class TestChromaticMediants:
+    def test_c_major(self):
+        result = get_chromatic_mediants(0, "major")
+        assert result["upper_major_third"] == (4, "major")
+        assert result["lower_major_third"] == (8, "major")
