@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.1 — Hotfix (March 2026)
+
+- Fix: `clip_automation.py` imported `register` from `utils` instead of `router`, causing Remote Script to fail to load in Ableton (LivePilot disappeared from Control Surface list)
+
 ## 1.6.0 — Automation Intelligence (March 2026)
 
 **8 new tools (127 -> 135), 16-type curve engine, 15 recipes, spectral feedback loop.**

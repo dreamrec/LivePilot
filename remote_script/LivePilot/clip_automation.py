@@ -5,7 +5,8 @@ Uses the same LOM API as arrangement automation (AutomationEnvelope)
 but targets session clips via track.clip_slots[i].clip.
 """
 
-from .utils import get_track, register
+from .router import register
+from .utils import get_track
 
 
 @register("get_clip_automation")
