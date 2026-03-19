@@ -2,7 +2,7 @@
   "name": "livepilot",
   "version": "1.7.2",
   "mcpName": "io.github.dreamrec/livepilot",
-  "description": "AI copilot for Ableton Live 12 — 155 tools, device atlas (280+ devices), real-time audio analysis, generative algorithms, neo-Riemannian harmony, MIDI file I/O, and technique memory",
+  "description": "Agentic production system for Ableton Live 12 — 155 tools, 16 domains, device atlas, spectral perception, technique memory, neo-Riemannian harmony, Euclidean rhythm, species counterpoint, MIDI I/O",
   "author": "Pilot Studio",
   "license": "MIT",
   "type": "commonjs",

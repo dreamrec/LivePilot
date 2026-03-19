@@ -1,17 +1,17 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.dreamrec/livepilot",
-  "description": "AI copilot for Ableton Live 12 — 155 MCP tools for music production and mixing",
+  "description": "Agentic production system for Ableton Live 12 — 155 tools, 16 domains, device atlas, spectral perception, technique memory, neo-Riemannian harmony, Euclidean rhythm, species counterpoint",
   "repository": {
     "url": "https://github.com/dreamrec/LivePilot",
     "source": "github"
   },
-  "version": "1.7.0",
+  "version": "1.7.2",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "livepilot",
-      "version": "1.7.0",
+      "version": "1.7.2",
       "transport": {
         "type": "stdio"
       }

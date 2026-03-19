@@ -1,6 +1,6 @@
-# LivePilot v1.7.0 — Architecture & Tool Reference
+# LivePilot v1.7.2 — Architecture & Tool Reference
 
-LivePilot is an agentic production system for Ableton Live 12. It combines 155 MCP tools with a device knowledge corpus, real-time audio analysis, automation intelligence, generative algorithms, neo-Riemannian harmony, MIDI file I/O, and persistent technique memory.
+Agentic production system for Ableton Live 12. 155 tools across 16 domains. Device atlas (280+ devices), spectral perception (M4L analyzer), technique memory, automation intelligence (16 curve types, 15 recipes), music theory (Krumhansl-Schmuckler, species counterpoint), generative algorithms (Euclidean rhythm, tintinnabuli, phase shift, additive process), neo-Riemannian harmony (PRL transforms, Tonnetz), MIDI file I/O.
 
 ## Architecture
 

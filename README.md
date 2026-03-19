@@ -7,175 +7,162 @@
 ╚══════╝╚═╝  ╚═══╝  ╚══════╝╚═╝     ╚═╝╚══════╝ ╚═════╝    ╚═╝
 ```
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![CI](https://github.com/dreamrec/LivePilot/actions/workflows/ci.yml/badge.svg)](https://github.com/dreamrec/LivePilot/actions/workflows/ci.yml)
-[![GitHub stars](https://img.shields.io/github/stars/dreamrec/LivePilot)](https://github.com/dreamrec/LivePilot/stargazers)
-[![npm](https://img.shields.io/npm/v/livepilot)](https://www.npmjs.com/package/livepilot)
-
-**AI copilot for Ableton Live 12** — 155 MCP tools, a deep device knowledge corpus, real-time audio analysis, generative algorithms, neo-Riemannian harmony, MIDI file I/O, and persistent technique memory.
-
-Most Ableton MCP servers give the AI tools to push buttons. LivePilot gives it three things on top of that:
-
-- **Knowledge** — A device atlas of 280+ instruments, 139 drum kits, and 350+ impulse responses. The AI doesn't guess device names or parameters. It looks them up.
-- **Perception** — An M4L analyzer that reads the master bus in real-time: 8-band spectrum, RMS/peak metering, pitch tracking, key detection. The AI makes decisions based on what it hears, not just what's configured.
-- **Memory** — A technique library that persists across sessions. The AI remembers how you built that bass sound, what swing you like on hi-hats, which reverb chain worked on vocals. It learns your taste over time.
-
-These three layers sit on top of 155 deterministic MCP tools that cover transport, tracks, clips, MIDI, devices, scenes, mixing, browser, arrangement, sample manipulation, generative algorithms, neo-Riemannian harmony, and MIDI file I/O. Every command goes through Ableton's official Live Object Model API — the same interface Ableton's own control surfaces use. Everything is reversible with undo.
+An agentic production system for Ableton Live 12.
+155 tools. Device atlas. Spectral perception. Technique memory.
+Neo-Riemannian harmony. Euclidean rhythm. Species counterpoint.
+It doesn't assist — it produces.
 
 ---
 
-## The Three Layers
+## Architecture
 
-Most MCP servers are a flat list of tools. LivePilot is a production system with three layers that work together.
-
-### 1. Device Atlas — What the AI knows
-
-A structured knowledge corpus of 280+ Ableton devices, 139 drum kits, and 350+ impulse responses. When the AI needs to load an instrument, it doesn't hallucinate a name and hope for the best. It consults the atlas, finds the exact preset, and loads it by URI.
-
-The atlas is organized by category (synths, drums, effects, samples) with metadata about each device: what it sounds like, what parameters matter, what presets are available. When you say "load something warm and analog", the AI can search the atlas for instruments tagged with those qualities and pick one that actually exists in your library.
-
-This is the difference between an AI that says "I'll load Warm Analog Pad" (and crashes because it doesn't exist) and one that searches the drum kit index, finds "Kit-606 Tape.adg", and loads it by its real browser URI.
-
-### 2. Analyzer — What the AI hears
-
-The LivePilot Analyzer is an M4L device that sits on the master track and feeds real-time audio data back to the AI:
-
-- **8-band spectrum** — sub, low, low-mid, mid, high-mid, high, presence, air
-- **RMS and peak metering** — true loudness, not just parameter values
-- **Pitch tracking and key detection** — Krumhansl-Schmuckler algorithm on accumulated pitch data
-
-This means the AI can verify its own work. After adding an EQ cut at 400 Hz, it reads the spectrum to confirm the cut actually reduced the mud. After loading a bass preset, it checks that the low end is present. Before writing a bass line, it detects the key of what's already playing.
-
-Without the analyzer, the AI is working blind — it can set parameters but can't hear the result. With it, the AI closes the feedback loop.
-
-### 3. Technique Memory — What the AI learns
-
-The memory system (`memory_learn` / `memory_recall` / `memory_replay`) stores production decisions as structured, searchable, replayable data. Not just parameter snapshots — the full context: what genre, what mood, what made it work, what the signal chain was, what MIDI pattern drove it.
-
-Five technique types: `beat_pattern`, `device_chain`, `mix_template`, `preference`, `browser_pin`. Each stores three layers of data:
-
-| Layer | Contents | Purpose |
-|-------|----------|---------|
-| **Identity** | UUID, name, type, tags, timestamps, rating | Indexing and filtering |
-| **Qualities** | Mood, genre, rhythm feel, harmonic character, sonic texture, production notes | Search ranking and creative context |
-| **Payload** | Raw MIDI notes, device params, tempo, kit URIs, send levels | Exact replay or adaptation |
-
-The agent consults memory by default before creative decisions. `memory_recall(query="dark heavy 808")` matches against mood, genre, and texture — not just names. The results inform the AI's choices without constraining them. Say "ignore my history" and it works from a clean slate. Say "use that boom bap beat from last session" and it pulls the exact technique and replays it.
-
-Over time, the library becomes a structured representation of your production taste: swing ranges, kit preferences, harmonic tendencies, arrangement density. The AI reads across this at decision time. New output is always generated; the memory shapes the generation.
-
-### How the layers combine
-
-"Make a boom bap beat at 86 BPM" triggers the full stack:
-
-1. **Atlas** — finds the right drum kit (not a guess, a real preset with real samples)
-2. **Memory** — recalls your previous boom bap patterns, checks your preferred swing amount and velocity curves
-3. **Tools** — creates tracks, loads instruments, programs MIDI, chains effects, sets levels
-4. **Analyzer** — reads the spectrum to verify the kick sits right, detects the key for the bass line, checks RMS to balance levels
-
-No other Ableton MCP server does this. Others have tools. LivePilot has tools + knowledge + perception + memory.
-
----
-
-## Automation Intelligence
-
-Most DAW integrations let the AI set a parameter to a value. LivePilot lets the AI write **automation curves** — envelopes that evolve parameters over time inside clips. This is the difference between a static mix and a living one.
-
-### The Curve Engine
-
-16 mathematically precise curve types, organized in 4 categories:
-
-| Category | Curves | What they do |
-|----------|--------|-------------|
-| **Basic Waveforms** | `linear` · `exponential` · `logarithmic` · `s_curve` · `sine` · `sawtooth` · `spike` · `square` · `steps` | The building blocks. Exponential for filter sweeps (perceptually even). Logarithmic for volume fades (matches the ear). Spike for dub throws. Sawtooth for sidechain pumps. |
-| **Organic / Natural** | `perlin` · `brownian` · `spring` | What makes automation feel alive. Perlin noise for drifting textures. Brownian for analog-style parameter wander. Spring for realistic knob movements with overshoot and settle. |
-| **Shape Control** | `bezier` · `easing` | Precision curves for intentional design. Bezier with arbitrary control points. 8 easing types from the animation world: bounce, elastic, back overshoot, ease in/out. |
-| **Algorithmic** | `euclidean` · `stochastic` | Generative intelligence. Euclidean distributes automation events using the Bjorklund algorithm (the same math behind Euclidean rhythms). Stochastic applies Xenakis-inspired controlled randomness within narrowing bounds. |
-
-Every curve generates normalized points (0.0–1.0) that map to any parameter in Ableton — volume, pan, sends, device parameters, anything with an envelope.
-
-### 15 Production Recipes
-
-Named presets for common techniques. One tool call instead of manual point calculation:
-
-| Recipe | Curve | What it does |
-|--------|-------|-------------|
-| `filter_sweep_up` | exponential | LP filter opening over 8-32 bars |
-| `filter_sweep_down` | logarithmic | LP filter closing, mirrors the sweep up |
-| `dub_throw` | spike | Instant send spike for reverb/delay throws |
-| `tape_stop` | exponential | Pitch dropping to zero — steep deceleration |
-| `build_rise` | exponential | Tension build on HP filter + volume + reverb |
-| `sidechain_pump` | sawtooth | Volume ducking per beat — fast duck, slow recovery |
-| `fade_in` / `fade_out` | log / exp | Perceptually smooth volume fades |
-| `tremolo` | sine | Periodic volume oscillation |
-| `auto_pan` | sine | Stereo movement via pan |
-| `stutter` | square | Rapid on/off gating |
-| `breathing` | sine | Subtle filter movement — acoustic instrument feel |
-| `washout` | exponential | Reverb/delay feedback increasing to wash |
-| `vinyl_crackle` | sine | Slow bit reduction for lo-fi character |
-| `stereo_narrow` | exponential | Collapse stereo to mono before drop |
-
-### The Feedback Loop
-
-`analyze_for_automation` reads the spectrum and device chain, then suggests what to automate:
-
-1. **Reads the spectrum** — identifies frequency balance, sub content, dynamic range
-2. **Scans the device chain** — detects filters, reverbs, synths, distortion
-3. **Suggests automation targets** — "Filter detected → automate cutoff for movement", "Heavy sub content → HP filter sweep for builds"
-4. **Recommends recipes** — maps each suggestion to the right named recipe
-
-The AI doesn't just write automation — it knows what to automate based on what it hears.
-
----
-
-## What You Can Do
-
-- **Produce** — Create tracks, load instruments from the atlas, program drum patterns, bass lines, chord progressions, and melodies — informed by your saved techniques
-- **Arrange** — Build full song structures in arrangement view with MIDI editing, cue points, automation, and timeline navigation
-- **Design sounds** — Browse Ableton's library, load presets, tweak every device parameter, chain effects, walk nested racks 6 levels deep
-- **Mix with ears** — Set levels, panning, sends, and routing. Read the spectrum, check RMS, detect the key. The analyzer tells the AI what changed, not just what was set
-- **Automate intelligently** — Write clip automation with 16 mathematically precise curve types, apply named recipes (dub throws, filter sweeps, sidechain pumps), get spectral-aware suggestions for what to automate next
-- **Remember and evolve** — Save techniques, build a personal style library, replay past decisions exactly or as variations
-- **Chop samples** — Load audio into Simpler, slice, reverse, crop, warp, and reprogram — all from conversation
-- **Iterate fast** — Transpose, humanize, quantize, duplicate, and reshape patterns through conversation
-
----
-
-## Quick Start
-
-### 1. Install the Remote Script
-
-```bash
-npx -y github:dreamrec/LivePilot --install
+```
+┌─────────────────────────────────────────────────────────┐
+│                                                         │
+│   KNOWLEDGE          PERCEPTION         MEMORY          │
+│   ───────────        ──────────         ──────          │
+│   280+ devices       8-band FFT         recall by       │
+│   139 drum kits      RMS / peak         mood, genre,    │
+│   350+ impulse       pitch tracking     texture         │
+│   responses          key detection                      │
+│                                                         │
+│   ┌────────────┐    ┌────────────┐    ┌────────────┐   │
+│   │   Device   │───▶│    M4L     │───▶│ Technique  │   │
+│   │   Atlas    │    │  Analyzer  │    │   Store    │   │
+│   └─────┬──────┘    └─────┬──────┘    └─────┬──────┘   │
+│         └─────────────────┼─────────────────┘           │
+│                           ▼                             │
+│                  ┌─────────────────┐                    │
+│                  │   155 MCP Tools  │                    │
+│                  │   16 domains     │                    │
+│                  └────────┬────────┘                    │
+│                           │                             │
+│           Remote Script ──┤── TCP 9878                  │
+│           M4L Bridge ─────┤── UDP 9880 / OSC 9881       │
+│                           │                             │
+│                  ┌────────────────┐                     │
+│                  │  Ableton Live  │                     │
+│                  └────────────────┘                     │
+└─────────────────────────────────────────────────────────┘
 ```
 
-### 2. Enable in Ableton
+The atlas gives the AI knowledge of every device in Ableton's library — real names, real URIs, real parameters. The analyzer gives it ears — spectral data from the master bus via a Max for Live device. The memory gives it history — a searchable library of production decisions that persists across sessions. All three feed into 155 deterministic tools that execute on Ableton's main thread through the official Live Object Model API. Everything is reversible with undo.
 
-Restart Ableton Live, then go to **Preferences > Link, Tempo & MIDI > Control Surface** and select **LivePilot**.
+---
 
-### 3. Add to your MCP client
+## Tools
+
+### CORE ─────────────────────────────────────────
+
+The foundation. Session control, MIDI, device management, mixing. Every tool maps directly to an LOM call — no abstraction, no guessing.
+
+| Domain | # | Scope |
+|--------|:-:|-------|
+| Transport | 12 | playback, tempo, time sig, loop, metronome, undo/redo, cue points, diagnostics |
+| Tracks | 14 | create MIDI/audio/return, delete, duplicate, arm, mute, solo, color, routing, monitoring |
+| Clips | 11 | create, delete, duplicate, fire, stop, loop, launch mode, warp mode, quantize |
+| Notes | 8 | add/get/remove/modify MIDI notes, transpose, duplicate, per-note probability |
+| Devices | 12 | load by name or URI, get/set parameters, batch edit, racks, chains, presets, toggle |
+| Scenes | 8 | create, delete, duplicate, fire, name, color, per-scene tempo |
+| Browser | 4 | search library, browse tree, load items, filter by category |
+| Mixing | 11 | volume, pan, sends, routing, meters, return tracks, master, full mix snapshot |
+
+### PERCEPTION ───────────────────────────────────
+
+The M4L Analyzer sits on the master track. UDP 9880 carries spectral data from Max to the server. OSC 9881 sends commands back. All 135 core tools work without it — the analyzer adds 20 more and closes the feedback loop.
+
+**Spectral Analysis (3)** — 8-band frequency decomposition (sub → air), true RMS/peak metering, Krumhansl-Schmuckler key detection on accumulated pitch data.
+
+**Deep LOM Access (4)** — hidden parameters not in the ControlSurface API, automation state for every parameter, recursive device tree walking (6 levels into nested racks), human-readable display values as shown in Live's UI.
+
+**Simpler Operations (7)** — replace/load samples, get slice points, crop, reverse, warp to N beats, get audio file paths on disk.
+
+**Warp Markers (4)** — get/add/move/remove. Tempo manipulation at the sample level.
+
+**Clip Preview (2)** — scrub at beat position, stop scrub.
+
+### INTELLIGENCE ─────────────────────────────────
+
+#### Theory — 7 tools
+
+Krumhansl-Schmuckler key detection with 7 mode profiles (major, minor, dorian, phrygian, lydian, mixolydian, locrian). Roman numeral analysis via scale-degree chord matching on a 1/32 note quantization grid. Voice leading checks — parallel fifths, parallel octaves, voice crossing, unresolved dominants. Species counterpoint generation (1st and 2nd species). SATB harmonization with smooth voice leading. Diatonic transposition that preserves scale relationships.
+
+`analyze_harmony` · `suggest_next_chord` · `detect_theory_issues` · `identify_scale` · `harmonize_melody` · `generate_countermelody` · `transpose_smart`
+
+#### Harmony — 4 tools
+
+Neo-Riemannian PRL transforms on the Tonnetz. P flips the third: Cm ↔ C. L shifts by semitone: C ↔ Em. R by whole tone: C ↔ Am. All three are involutions — apply twice, return to origin. BFS through PRL space finds the shortest voice-leading path between any two triads. Cm to E major? That's PLP — the hexatonic pole. Three steps, each moving one voice by a semitone. The Hitchcock chord change.
+
+Chromatic mediants for film-score harmony: chords a major/minor third away sharing 0-1 common tones. Maximum color shift, minimal voice movement.
+
+`navigate_tonnetz` · `find_voice_leading_path` · `classify_progression` · `suggest_chromatic_mediants`
+
+#### Generative — 5 tools
+
+Bjorklund distributes N pulses across M steps — Bresenham's line algorithm applied to rhythm. E(3,8) = tresillo. E(5,8) = cinquillo. E(7,16) = Brazilian necklace. Layer multiple Euclidean patterns at different pitches for polyrhythmic textures.
+
+Tintinnabuli (Arvo Pärt): for each melody note, find the nearest tone of a specified triad — above, below, or nearest. The T-voice gravitates toward the triad while the M-voice moves stepwise. Two voices, one rule, infinite music.
+
+Phase shifting (Steve Reich): identical voices with accumulating timing drift. Voice 0 plays straight. Each subsequent voice shifts by N beats per repetition. They start in unison, gradually separate, and eventually realign.
+
+Additive process (Philip Glass): melody unfolds note by note. Forward: 1, then 1-2, then 1-2-3. Backward: full melody, then remove from front. Both: forward then backward. The structure *is* the composition.
+
+`generate_euclidean_rhythm` · `layer_euclidean_rhythms` · `generate_tintinnabuli` · `generate_phase_shift` · `generate_additive_process`
+
+#### Automation — 8 tools
+
+16 curve types in 4 categories:
+
+```
+BASIC ─────── linear · exponential · logarithmic · s_curve
+              sine · sawtooth · spike · square · steps
+ORGANIC ───── perlin · brownian · spring
+SHAPE ─────── bezier · easing (8 types: bounce, elastic, back...)
+GENERATIVE ── euclidean · stochastic
+```
+
+15 built-in recipes: `filter_sweep_up` · `filter_sweep_down` · `dub_throw` · `tape_stop` · `build_rise` · `sidechain_pump` · `fade_in` · `fade_out` · `tremolo` · `auto_pan` · `stutter` · `breathing` · `washout` · `vinyl_crackle` · `stereo_narrow`
+
+Perception-action loop: `analyze_for_automation` reads the spectrum and device chain, suggests what to automate, and maps each suggestion to a recipe. The AI doesn't write automation blind — it knows what to automate based on what it hears.
+
+`get_clip_automation` · `set_clip_automation` · `clear_clip_automation` · `apply_automation_shape` · `apply_automation_recipe` · `get_automation_recipes` · `generate_automation_curve` · `analyze_for_automation`
+
+### MEMORY + I/O ──────────────────────────────────
+
+#### Memory — 8 tools
+
+Persistent technique library. Five types: `beat_pattern`, `device_chain`, `mix_template`, `preference`, `browser_pin`. Each stores identity (name, tags, timestamps), qualities (mood, genre, texture, production notes), and payload (raw MIDI, device params, tempo, URIs). Recall by text query matching mood, genre, texture — not just names. Favorite, rate, replay.
+
+`memory_learn` · `memory_recall` · `memory_list` · `memory_get` · `memory_update` · `memory_delete` · `memory_favorite` · `memory_replay`
+
+#### MIDI I/O — 4 tools
+
+Export session clips to standard .mid files. Import .mid into session clips — auto-creates the clip, tempo-aware timing conversion. Offline analysis without Ableton: note count, duration, tempo, pitch range, velocity stats, density curve, key estimate. Piano roll extraction: 2D velocity matrix at configurable resolution (default 1/32 note). Dependencies lazy-loaded — graceful error if missing.
+
+`export_clip_midi` · `import_midi_to_clip` · `analyze_midi_file` · `extract_piano_roll`
+
+---
+
+## Install
+
+### 1. Remote Script
+
+```bash
+npx livepilot --install
+```
+
+Restart Ableton → Preferences → Link, Tempo & MIDI → Control Surface → **LivePilot**
+
+### 2. MCP Client
 
 <details open>
 <summary><strong>Claude Code</strong></summary>
 
 ```bash
-claude mcp add LivePilot -- npx -y github:dreamrec/LivePilot
+claude mcp add LivePilot -- npx livepilot
 ```
 
-Or add to `.mcp.json`:
-
-```json
-{
-  "mcpServers": {
-    "LivePilot": {
-      "command": "npx",
-      "args": ["-y", "github:dreamrec/LivePilot"]
-    }
-  }
-}
-```
-
-**Optional:** Install the Claude Code plugin for skills, slash commands, and the producer agent:
+Plugin (adds skills, slash commands, producer agent):
 
 ```bash
 claude plugin add github:dreamrec/LivePilot/plugin
@@ -186,34 +173,30 @@ claude plugin add github:dreamrec/LivePilot/plugin
 <details>
 <summary><strong>Claude Desktop (macOS)</strong></summary>
 
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+`~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
     "LivePilot": {
       "command": "npx",
-      "args": ["-y", "github:dreamrec/LivePilot"]
+      "args": ["livepilot"]
     }
   }
 }
 ```
-
-Restart Claude Desktop after saving.
 
 </details>
 
 <details>
 <summary><strong>Claude Desktop (Windows)</strong></summary>
 
-On Windows, `npx` can cause EBUSY file-locking errors. Install globally instead:
-
 ```cmd
-npm install -g github:dreamrec/LivePilot
+npm install -g livepilot
 livepilot --install
 ```
 
-Add to `%APPDATA%\Claude\claude_desktop_config.json`:
+`%APPDATA%\Claude\claude_desktop_config.json`:
 
 ```json
 {
@@ -225,26 +208,19 @@ Add to `%APPDATA%\Claude\claude_desktop_config.json`:
 }
 ```
 
-Restart Claude Desktop after saving.
-
 </details>
 
 <details>
 <summary><strong>Cursor</strong></summary>
 
-Open Cursor Settings > MCP Servers > Add Server, then use:
-
-- **Name:** LivePilot
-- **Command:** `npx -y github:dreamrec/LivePilot`
-
-Or add to `.cursor/mcp.json`:
+`.cursor/mcp.json`:
 
 ```json
 {
   "mcpServers": {
     "LivePilot": {
       "command": "npx",
-      "args": ["-y", "github:dreamrec/LivePilot"]
+      "args": ["livepilot"]
     }
   }
 }
@@ -253,34 +229,29 @@ Or add to `.cursor/mcp.json`:
 </details>
 
 <details>
-<summary><strong>VS Code (Copilot)</strong></summary>
+<summary><strong>VS Code / Windsurf</strong></summary>
 
-Add to `.vscode/mcp.json`:
+VS Code — `.vscode/mcp.json`:
 
 ```json
 {
   "servers": {
     "LivePilot": {
       "command": "npx",
-      "args": ["-y", "github:dreamrec/LivePilot"]
+      "args": ["livepilot"]
     }
   }
 }
 ```
 
-</details>
-
-<details>
-<summary><strong>Windsurf</strong></summary>
-
-Add to `~/.codeium/windsurf/mcp_config.json`:
+Windsurf — `~/.codeium/windsurf/mcp_config.json`:
 
 ```json
 {
   "mcpServers": {
     "LivePilot": {
       "command": "npx",
-      "args": ["-y", "github:dreamrec/LivePilot"]
+      "args": ["livepilot"]
     }
   }
 }
@@ -288,235 +259,272 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
 
 </details>
 
-### 4. Verify connection
+### 3. M4L Analyzer (optional)
+
+Drag `LivePilot_Analyzer.amxd` onto the master track. Unlocks 20 additional tools: spectral analysis, key detection, sample manipulation, deep device introspection. All core tools work without it.
+
+### 4. Verify
 
 ```bash
-npx -y github:dreamrec/LivePilot --status
+npx livepilot --status
 ```
-
----
-
-## 155 Tools Across 16 Domains
-
-| Domain | Tools | What you can do |
-|--------|:-----:|-----------------|
-| **Transport** | 12 | Play/stop, tempo, time signature, loop, undo/redo, metronome, diagnostics |
-| **Tracks** | 14 | Create MIDI/audio/return tracks, name, color, mute, solo, arm, group fold, input monitoring |
-| **Clips** | 11 | Create, delete, duplicate, fire, stop, loop settings, launch mode, warp mode |
-| **Notes** | 8 | Add/get/remove/modify MIDI notes, transpose, quantize, duplicate |
-| **Devices** | 12 | Load instruments & effects, tweak parameters, rack chains, presets — works on regular, return, and master tracks |
-| **Scenes** | 8 | Create, delete, duplicate, fire, rename, color, per-scene tempo |
-| **Mixing** | 11 | Volume, pan, sends, routing, meters, mix snapshot — return tracks and master fully supported |
-| **Browser** | 4 | Search Ableton's library, browse categories, load presets |
-| **Arrangement** | 19 | Create clips, full MIDI note CRUD, cue points, recording, automation |
-| **Automation** | 8 | Clip envelope CRUD, 16-type curve engine, 15 named recipes, spectral-aware suggestions |
-| **Memory** | 8 | Save, recall, replay, and manage production techniques |
-| **Analyzer** | 20 | Real-time spectral analysis, key detection, sample manipulation, warp markers, device introspection (requires M4L device) |
-| **Theory** | 7 | Harmony analysis, Roman numerals, scale identification, chord suggestions, countermelody, SATB harmonization, smart transposition |
-| **Generative** | 5 | Euclidean rhythms (Bjorklund), polyrhythmic layering, Pärt tintinnabuli, Reich phase shift, Glass additive process |
-| **Harmony** | 4 | Tonnetz navigation, voice leading paths, neo-Riemannian classification, chromatic mediants |
-| **MIDI I/O** | 4 | Export clips to .mid, import .mid files, offline MIDI analysis, piano roll extraction |
-
-<details>
-<summary><strong>Full tool list</strong></summary>
-
-### Transport (12)
-`get_session_info` · `set_tempo` · `set_time_signature` · `start_playback` · `stop_playback` · `continue_playback` · `toggle_metronome` · `set_session_loop` · `undo` · `redo` · `get_recent_actions` · `get_session_diagnostics`
-
-### Tracks (14)
-`get_track_info` · `create_midi_track` · `create_audio_track` · `create_return_track` · `delete_track` · `duplicate_track` · `set_track_name` · `set_track_color` · `set_track_mute` · `set_track_solo` · `set_track_arm` · `stop_track_clips` · `set_group_fold` · `set_track_input_monitoring`
-
-### Clips (11)
-`get_clip_info` · `create_clip` · `delete_clip` · `duplicate_clip` · `fire_clip` · `stop_clip` · `set_clip_name` · `set_clip_color` · `set_clip_loop` · `set_clip_launch` · `set_clip_warp_mode`
-
-### Notes (8)
-`add_notes` · `get_notes` · `remove_notes` · `remove_notes_by_id` · `modify_notes` · `duplicate_notes` · `transpose_notes` · `quantize_clip`
-
-### Devices (12)
-`get_device_info` · `get_device_parameters` · `set_device_parameter` · `batch_set_parameters` · `toggle_device` · `delete_device` · `load_device_by_uri` · `find_and_load_device` · `get_rack_chains` · `set_simpler_playback_mode` · `set_chain_volume` · `get_device_presets`
-
-### Scenes (8)
-`get_scenes_info` · `create_scene` · `delete_scene` · `duplicate_scene` · `fire_scene` · `set_scene_name` · `set_scene_color` · `set_scene_tempo`
-
-### Mixing (11)
-`set_track_volume` · `set_track_pan` · `set_track_send` · `get_return_tracks` · `get_master_track` · `set_master_volume` · `get_track_routing` · `set_track_routing` · `get_track_meters` · `get_master_meters` · `get_mix_snapshot`
-
-### Browser (4)
-`get_browser_tree` · `get_browser_items` · `search_browser` · `load_browser_item`
-
-### Arrangement (19)
-`get_arrangement_clips` · `create_arrangement_clip` · `add_arrangement_notes` · `get_arrangement_notes` · `remove_arrangement_notes` · `remove_arrangement_notes_by_id` · `modify_arrangement_notes` · `duplicate_arrangement_notes` · `transpose_arrangement_notes` · `set_arrangement_clip_name` · `set_arrangement_automation` · `back_to_arranger` · `jump_to_time` · `capture_midi` · `start_recording` · `stop_recording` · `get_cue_points` · `jump_to_cue` · `toggle_cue_point`
-
-### Automation (8)
-`get_clip_automation` · `set_clip_automation` · `clear_clip_automation` · `apply_automation_shape` · `apply_automation_recipe` · `get_automation_recipes` · `generate_automation_curve` · `analyze_for_automation`
-
-### Memory (8)
-`memory_learn` · `memory_recall` · `memory_get` · `memory_replay` · `memory_list` · `memory_favorite` · `memory_update` · `memory_delete`
-
-### Analyzer (20) — requires LivePilot Analyzer M4L device on master track
-`get_master_spectrum` · `get_master_rms` · `get_detected_key` · `get_hidden_parameters` · `get_automation_state` · `walk_device_tree` · `get_clip_file_path` · `replace_simpler_sample` · `load_sample_to_simpler` · `get_simpler_slices` · `crop_simpler` · `reverse_simpler` · `warp_simpler` · `get_warp_markers` · `add_warp_marker` · `move_warp_marker` · `remove_warp_marker` · `scrub_clip` · `stop_scrub` · `get_display_values`
-
-### Theory (7)
-`analyze_harmony` · `suggest_next_chord` · `detect_theory_issues` · `identify_scale` · `harmonize_melody` · `generate_countermelody` · `transpose_smart`
-
-### Generative (5)
-`generate_euclidean_rhythm` · `layer_euclidean_rhythms` · `generate_tintinnabuli` · `generate_phase_shift` · `generate_additive_process`
-
-### Harmony (4)
-`navigate_tonnetz` · `find_voice_leading_path` · `classify_progression` · `suggest_chromatic_mediants`
-
-### MIDI I/O (4)
-`export_clip_midi` · `import_midi_to_clip` · `analyze_midi_file` · `extract_piano_roll`
-
-</details>
 
 ---
 
 ## Plugin
 
-The plugin adds a skill, an autonomous agent, and 5 slash commands on top of the MCP tools.
-
 ```bash
 claude plugin add github:dreamrec/LivePilot/plugin
 ```
 
-### Commands
-
-| Command | Description |
-|---------|-------------|
+| Command | What |
+|---------|------|
 | `/session` | Full session overview with diagnostics |
-| `/beat` | Guided beat creation — genre, tempo, instrumentation |
-| `/mix` | Mixing assistant — levels, panning, sends |
-| `/sounddesign` | Sound design workflow — instruments, effects, presets |
-| `/memory` | Browse, search, and manage your technique library |
+| `/beat` | Guided beat creation |
+| `/mix` | Mixing assistant |
+| `/sounddesign` | Sound design workflow |
+| `/memory` | Technique library management |
 
-### Producer Agent
+**Producer Agent** — autonomous multi-step production. Consults memory for style context, searches the atlas for instruments, creates tracks, programs MIDI, chains effects, reads the spectrum to verify. Ships with a reference corpus (drum patterns, chord voicings, sound design recipes, mixing templates).
 
-Autonomous agent that handles multi-step production tasks end-to-end. "Make a lo-fi hip hop beat at 75 BPM" triggers a full pipeline: consult the technique memory for style context, search the device atlas for the right drum kit and instruments, create tracks, program MIDI, chain effects, set levels — then read the spectrum through the analyzer to verify everything sounds right.
-
-The agent ships with a 2,700-line reference corpus (drum patterns, chord voicings, sound design recipes, mixing templates) and consults the technique memory by default. Mandatory health checks between each stage verify every track produces audible output — the analyzer confirms what the meters suggest.
-
-### Core Skill
-
-`livepilot-core` encodes the operational discipline that connects all three layers. It teaches the AI to consult the device atlas before loading instruments, read the analyzer after mixing moves, check technique memory before creative decisions, and verify every mutation through state reads. It enforces the rules that prevent silent failures: never load empty Drum Racks, never hallucinate device names, always verify audio output. Without it, an LLM with access to the tools will produce silent tracks and load wrong devices.
+**Core Skill** — operational discipline connecting all three layers. Consult atlas before loading. Read analyzer after mixing. Check memory before creative decisions. Verify every mutation.
 
 ---
 
-## M4L Analyzer
+## Full Tool List ────────────────────────────────
 
-The LivePilot Analyzer (`LivePilot_Analyzer.amxd`) gives the AI ears. Drop it on the master track and 20 additional tools unlock: 8-band spectral analysis, RMS/peak metering, Krumhansl-Schmuckler key detection, plus deep LOM access for sample manipulation, warp markers, device introspection, and human-readable parameter display values.
+155 tools across 16 domains.
 
-All 115 core tools work without it. The analyzer is what turns LivePilot from a remote control into a feedback loop — the AI can set an EQ curve and then read the spectrum to verify the result.
+### Transport (12)
+| Tool | Description |
+|------|-------------|
+| `get_session_info` | Session state: tempo, tracks, scenes, transport |
+| `set_tempo` | Set tempo (20-999 BPM) |
+| `set_time_signature` | Set time signature |
+| `start_playback` | Start from beginning |
+| `stop_playback` | Stop |
+| `continue_playback` | Resume from current position |
+| `toggle_metronome` | Enable/disable click |
+| `set_session_loop` | Set loop start, length, on/off |
+| `undo` | Undo last action |
+| `redo` | Redo |
+| `get_recent_actions` | Recent undo history |
+| `get_session_diagnostics` | Analyze session for issues |
+
+### Tracks (14)
+| Tool | Description |
+|------|-------------|
+| `get_track_info` | Track details: clips, devices, mixer |
+| `create_midi_track` | New MIDI track |
+| `create_audio_track` | New audio track |
+| `create_return_track` | New return track |
+| `delete_track` | Delete a track |
+| `duplicate_track` | Copy track with all content |
+| `set_track_name` | Rename |
+| `set_track_color` | Set color (0-69) |
+| `set_track_mute` | Mute on/off |
+| `set_track_solo` | Solo on/off |
+| `set_track_arm` | Arm for recording |
+| `stop_track_clips` | Stop all clips on track |
+| `set_group_fold` | Fold/unfold group track |
+| `set_track_input_monitoring` | Set monitoring mode |
+
+### Clips (11)
+| Tool | Description |
+|------|-------------|
+| `get_clip_info` | Clip details: length, loop, launch |
+| `create_clip` | New empty MIDI clip |
+| `delete_clip` | Delete a clip |
+| `duplicate_clip` | Copy to another slot |
+| `fire_clip` | Launch a clip |
+| `stop_clip` | Stop a clip |
+| `set_clip_name` | Rename |
+| `set_clip_color` | Set color |
+| `set_clip_loop` | Loop start, end, on/off |
+| `set_clip_launch` | Launch mode and quantization |
+| `set_clip_warp_mode` | Set warp algorithm |
+
+### Notes (8)
+| Tool | Description |
+|------|-------------|
+| `add_notes` | Add MIDI notes with velocity, probability |
+| `get_notes` | Read notes from a region |
+| `remove_notes` | Remove notes in a region |
+| `remove_notes_by_id` | Remove specific notes by ID |
+| `modify_notes` | Change pitch, time, velocity, probability |
+| `duplicate_notes` | Copy notes to new position |
+| `transpose_notes` | Shift pitch by semitones |
+| `quantize_clip` | Quantize to grid |
+
+### Devices (12)
+| Tool | Description |
+|------|-------------|
+| `get_device_info` | Device name, class, parameters |
+| `get_device_parameters` | All params with names, values, ranges |
+| `set_device_parameter` | Set param by name or index |
+| `batch_set_parameters` | Set multiple params in one call |
+| `toggle_device` | Enable/disable |
+| `delete_device` | Remove from chain |
+| `load_device_by_uri` | Load by browser URI |
+| `find_and_load_device` | Search and load by name |
+| `get_rack_chains` | Get chains in a rack |
+| `set_simpler_playback_mode` | Classic/1-shot/slice |
+| `set_chain_volume` | Set chain volume in rack |
+| `get_device_presets` | List available presets |
+
+### Scenes (8)
+| Tool | Description |
+|------|-------------|
+| `get_scenes_info` | All scenes: name, tempo, color |
+| `create_scene` | New scene |
+| `delete_scene` | Delete a scene |
+| `duplicate_scene` | Copy scene with all clips |
+| `fire_scene` | Launch all clips in scene |
+| `set_scene_name` | Rename |
+| `set_scene_color` | Set color |
+| `set_scene_tempo` | Per-scene tempo |
+
+### Mixing (11)
+| Tool | Description |
+|------|-------------|
+| `set_track_volume` | Volume (0.0-1.0) |
+| `set_track_pan` | Pan (-1.0 to 1.0) |
+| `set_track_send` | Send level (0.0-1.0) |
+| `get_return_tracks` | Return track info |
+| `get_master_track` | Master track info |
+| `set_master_volume` | Master volume |
+| `get_track_routing` | Input/output routing |
+| `set_track_routing` | Set routing by display name |
+| `get_track_meters` | Live meter levels |
+| `get_master_meters` | Master meter levels |
+| `get_mix_snapshot` | Full mix state in one call |
+
+### Browser (4)
+| Tool | Description |
+|------|-------------|
+| `get_browser_tree` | Browse category tree |
+| `get_browser_items` | List items in a category |
+| `search_browser` | Search by name with filters |
+| `load_browser_item` | Load item by URI |
+
+### Arrangement (19)
+| Tool | Description |
+|------|-------------|
+| `get_arrangement_clips` | List arrangement clips |
+| `create_arrangement_clip` | New clip at timeline position |
+| `add_arrangement_notes` | Add MIDI notes to arrangement clip |
+| `get_arrangement_notes` | Read arrangement notes |
+| `remove_arrangement_notes` | Remove notes in region |
+| `remove_arrangement_notes_by_id` | Remove by ID |
+| `modify_arrangement_notes` | Modify arrangement notes |
+| `duplicate_arrangement_notes` | Copy notes |
+| `transpose_arrangement_notes` | Shift pitch |
+| `set_arrangement_clip_name` | Rename arrangement clip |
+| `set_arrangement_automation` | Write arrangement automation |
+| `back_to_arranger` | Switch to arrangement view |
+| `jump_to_time` | Seek to beat position |
+| `capture_midi` | Capture played MIDI |
+| `start_recording` | Start recording |
+| `stop_recording` | Stop recording |
+| `get_cue_points` | List cue points |
+| `jump_to_cue` | Jump to cue point |
+| `toggle_cue_point` | Add/remove cue point |
+
+### Automation (8)
+| Tool | Description |
+|------|-------------|
+| `get_clip_automation` | List envelopes on a clip |
+| `set_clip_automation` | Write automation points |
+| `clear_clip_automation` | Clear envelopes |
+| `apply_automation_shape` | Generate + write curve in one call |
+| `apply_automation_recipe` | Apply named recipe |
+| `get_automation_recipes` | List all 15 recipes |
+| `generate_automation_curve` | Preview curve without writing |
+| `analyze_for_automation` | Spectral analysis + suggestions |
+
+### Memory (8)
+| Tool | Description |
+|------|-------------|
+| `memory_learn` | Save a technique |
+| `memory_recall` | Search by text/mood/genre |
+| `memory_list` | Browse library |
+| `memory_get` | Get full technique with payload |
+| `memory_update` | Update a technique |
+| `memory_delete` | Delete a technique |
+| `memory_favorite` | Toggle favorite |
+| `memory_replay` | Replay saved technique |
+
+### Analyzer (20) `[M4L]`
+| Tool | Description |
+|------|-------------|
+| `get_master_spectrum` | 8-band frequency analysis |
+| `get_master_rms` | RMS and peak levels |
+| `get_detected_key` | Krumhansl-Schmuckler key detection |
+| `get_hidden_parameters` | All params including hidden ones |
+| `get_automation_state` | Automation state per parameter |
+| `walk_device_tree` | Recursive device chain tree (6 levels) |
+| `get_display_values` | Human-readable param values |
+| `get_clip_file_path` | Audio file path on disk |
+| `replace_simpler_sample` | Load audio into Simpler |
+| `load_sample_to_simpler` | Bootstrap Simpler + load sample |
+| `get_simpler_slices` | Slice point positions |
+| `crop_simpler` | Crop to active region |
+| `reverse_simpler` | Reverse sample |
+| `warp_simpler` | Time-stretch to N beats |
+| `get_warp_markers` | Get all warp markers |
+| `add_warp_marker` | Add warp marker |
+| `move_warp_marker` | Move warp marker |
+| `remove_warp_marker` | Remove warp marker |
+| `scrub_clip` | Preview at beat position |
+| `stop_scrub` | Stop preview |
+
+### Theory (7)
+| Tool | Description |
+|------|-------------|
+| `analyze_harmony` | Chord-by-chord Roman numeral analysis |
+| `suggest_next_chord` | Theory-valid continuations with style presets |
+| `detect_theory_issues` | Parallel 5ths, out-of-key, voice crossing |
+| `identify_scale` | Key/mode detection with confidence ranking |
+| `harmonize_melody` | 2 or 4-voice SATB harmonization |
+| `generate_countermelody` | Species counterpoint (1st/2nd) |
+| `transpose_smart` | Diatonic or chromatic transposition |
+
+### Generative (5)
+| Tool | Description |
+|------|-------------|
+| `generate_euclidean_rhythm` | Bjorklund algorithm, identifies named rhythms |
+| `layer_euclidean_rhythms` | Stack patterns for polyrhythmic textures |
+| `generate_tintinnabuli` | Arvo Pärt — triad voice from melody |
+| `generate_phase_shift` | Steve Reich — drifting canon |
+| `generate_additive_process` | Philip Glass — expanding/contracting melody |
+
+### Harmony (4)
+| Tool | Description |
+|------|-------------|
+| `navigate_tonnetz` | PRL neighbors at depth N |
+| `find_voice_leading_path` | Shortest path between two chords |
+| `classify_progression` | Identify neo-Riemannian pattern |
+| `suggest_chromatic_mediants` | All chromatic mediant relations |
+
+### MIDI I/O (4)
+| Tool | Description |
+|------|-------------|
+| `export_clip_midi` | Export clip to .mid file |
+| `import_midi_to_clip` | Import .mid into session clip |
+| `analyze_midi_file` | Offline MIDI analysis |
+| `extract_piano_roll` | 2D velocity matrix extraction |
 
 ---
 
-## The Landscape
-
-There are **15+ MCP servers for Ableton Live** as of March 2026. Here's how the major ones compare:
-
-### At a Glance
-
-| | [LivePilot](https://github.com/dreamrec/LivePilot) | [AbletonMCP](https://github.com/ahujasid/ableton-mcp) | [MCP Extended](https://github.com/uisato/ableton-mcp-extended) | [Ableton Copilot](https://github.com/xiaolaa2/ableton-copilot-mcp) | [AbletonBridge](https://github.com/hidingwill/AbletonBridge) | [Producer Pal](https://github.com/adamjmurray/producer-pal) |
-|---|:-:|:-:|:-:|:-:|:-:|:-:|
-| **Tools** | 155 | ~20 | ~35 | ~45 | 322 | ~25 |
-| **Device knowledge** | 280+ devices | -- | -- | -- | -- | -- |
-| **Audio analysis** | Spectrum/RMS/key | -- | -- | -- | Metering | -- |
-| **Technique memory** | Persistent | -- | -- | -- | -- | -- |
-| **Stars** | new | 2.3k | 139 | 72 | 13 | 103 |
-| **Language** | Python | Python | Python | TypeScript | Python | TypeScript |
-| **Active** | Yes | Slow | Yes | Yes | Yes | Yes |
-
-### Feature Comparison
-
-| Capability | LivePilot | AbletonMCP | Extended | Copilot | Bridge | Producer Pal |
-|---|:-:|:-:|:-:|:-:|:-:|:-:|
-| Transport | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Tracks (MIDI/audio/return) | ✅ | Partial | ✅ | ✅ | ✅ | ✅ |
-| Session clips | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Arrangement view** | ✅ | — | — | ✅ | ? | ? |
-| **Arrangement automation** | ✅ | — | — | — | ? | — |
-| **Clip automation (envelopes)** | ✅ | — | — | — | — | — |
-| **Automation curve engine** | ✅ | — | — | — | — | — |
-| MIDI notes (add/get) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **MIDI notes (modify/delete by ID)** | ✅ | — | — | ✅ | ? | — |
-| **Per-note probability** | ✅ | — | — | — | — | — |
-| Device loading | ✅ | ✅ | ✅ | ✅ | ✅ | ? |
-| Device parameters | ✅ | Basic | ✅ | ✅ | ✅ | ? |
-| **Batch parameter editing** | ✅ | — | — | — | ? | — |
-| **Rack chains** | ✅ | — | — | — | ✅ | — |
-| Browser (tree/search/URI) | ✅ | Basic | ✅ | ✅ | ✅ | — |
-| **Plugin browser (AU/VST)** | ✅ | — | — | — | ? | — |
-| Mixing (vol/pan/sends) | ✅ | Basic | ✅ | Basic | ✅ | ? |
-| **Master track control** | ✅ | — | — | — | ✅ | — |
-| Scenes | ✅ | — | ✅ | ? | ✅ | ✅ |
-| **Undo wrapping** | ✅ | — | Partial | — | ? | — |
-| **Session diagnostics** | ✅ | — | — | — | — | — |
-| **Technique memory** | ✅ | — | — | — | — | — |
-| **AI plugin (skills/agent)** | ✅ | — | — | — | — | — |
-| **Device Atlas (built-in)** | ✅ | — | — | — | — | — |
-| **Auto-detect installer** | ✅ | — | — | ✅ | — | — |
-| Snapshots/rollback | — | — | — | ✅ | — | — |
-| Voice generation | — | — | — | — | ✅ | — |
-| **Real-time DSP analysis** | ✅ | — | — | — | ✅ | — |
-| M4L-native install | — | — | — | — | — | ✅ |
-| Multi-LLM support | Any MCP | Claude | Claude | Any MCP | Any MCP | Multi |
-
-### Also Notable
-
-- **[Simon-Kansara](https://github.com/Simon-Kansara/ableton-live-mcp-server)** (369★) — OSC-based, exhaustive address mapping, inactive since 2025
-- **[jpoindexter](https://github.com/jpoindexter/ableton-mcp)** — 200+ tools, triple interface (MCP + REST + M4L), 13 scales
-- **[cafeTechne](https://github.com/cafeTechne/ableton-11-mcp-for-windows-codex-and-antigravity)** — 220+ tools, Windows/Codex optimized, Live 11 focused
-- **[FabianTinkl](https://github.com/FabianTinkl/AbletonMCP)** — AI-powered chord/melody generation, genre-specific composition
-- **[nozomi-koborinai](https://github.com/nozomi-koborinai/ableton-osc-mcp)** — Only Go implementation, uses Google Genkit
-
-### Where LivePilot Fits
-
-Every server on this list gives the AI tools to control Ableton. LivePilot is the only one that also gives it **knowledge** (device atlas with 280+ devices, 139 kits, 350+ IRs), **perception** (real-time spectrum, RMS, key detection from the M4L analyzer), and **memory** (persistent technique library that accumulates production decisions across sessions).
-
-The practical difference: other servers let the AI set a parameter. LivePilot lets the AI choose the right parameter based on what device is loaded (atlas), verify the result by reading the audio output (analyzer), and remember the technique for next time (memory).
-
-AbletonBridge has more raw tools (322 vs 155). Producer Pal has the easiest install (drag a .amxd). The original AbletonMCP has the community (2.3k stars). LivePilot has the deepest integration — tools that execute, knowledge that informs, perception that verifies, and memory that accumulates.
-
----
-
-## Architecture
+## Coming ────────────────────────────────────────
 
 ```
-AI Client
-       │ MCP Protocol (stdio)
-       ▼
-┌─────────────────────┐
-│   MCP Server        │  Python (FastMCP)
-│   mcp_server/       │  Input validation, auto-reconnect
-└────────┬────────────┘
-         │ JSON over TCP (port 9878)
-         ▼
-┌─────────────────────┐
-│   Remote Script     │  Runs inside Ableton's Python
-│   remote_script/    │  Thread-safe command queue
-│   LivePilot/        │  ControlSurface base class
-└─────────────────────┘
+□  Real-time DSP analysis via LOM meters
+□  M4L bridge expansion — deeper LiveAPI access
+□  Arrangement view — clip placement, tempo automation
+□  Audio clip manipulation — stretch, slice, resample
+□  Plugin parameter mapping — VST/AU deep control
 ```
-
-All commands execute on Ableton's main thread via `schedule_message` — the same thread that handles the UI. This guarantees consistency with what you see on screen. Single-client TCP by design, because Ableton's Live Object Model is not thread-safe.
-
-**Structured errors** with codes (`INDEX_ERROR`, `NOT_FOUND`, `INVALID_PARAM`, `STATE_ERROR`, `TIMEOUT`, `INTERNAL`) so the AI can understand what went wrong and recover.
-
----
-
-## Compatibility
-
-| | Live 12 (all editions) | Suite only |
-|---|:---:|:---:|
-| Transport, tracks, clips, scenes, mixing | Yes | — |
-| MIDI notes (add, modify, remove, probability) | Yes | — |
-| Device parameters, effects, browser | Yes | — |
-| Arrangement (clips, notes, cue points) | Yes | — |
-| Stock instruments (Drift, Meld, Wavetable) | — | Yes |
-| Max for Live devices | — | Yes |
-| Third-party VST/AU plugins | Yes | — |
-
-**Requirements:** Ableton Live 12 · Python 3.9+ · Node.js 18+
 
 ---
 
@@ -531,28 +539,21 @@ npx livepilot --doctor     # Full diagnostic check
 npx livepilot --version    # Show version
 ```
 
----
+## Compatibility
 
-## Documentation
-
-**[Read the full manual](docs/manual/index.md)** — Getting started, tool reference, production workflows, MIDI programming, sound design, mixing, and troubleshooting.
-
----
+Live 12 all editions. Suite required for stock instruments (Drift, Meld, Wavetable) and Max for Live. Python 3.9+. Node.js 18+.
 
 ## Development
 
 ```bash
 git clone https://github.com/dreamrec/LivePilot.git
 cd LivePilot
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/pytest tests/ -v
 ```
 
-## Contributing
-
-Contributions welcome. Please [open an issue](https://github.com/dreamrec/LivePilot/issues) first to discuss what you'd like to change.
-
-## License
+---
 
 [MIT](LICENSE) — Pilot Studio
+
+Sister projects: [TDPilot](https://github.com/dreamrec/TDPilot) (TouchDesigner) · [ComfyPilot](https://github.com/dreamrec/ComfyPilot) (ComfyUI)
