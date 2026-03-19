@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.6.3 — Audit Hardening (March 2026)
+
+- Fix: cursor aliasing in M4L bridge `walk_device` — nested rack traversal now reads chain/pad counts before recursion clobbers shared cursors
+- Fix: `clip_automation.py` — use `get_clip()` for bounds-checked access, add negative index guards, proper validation in `clear_clip_automation`
+- Fix: `set_clip_loop` crash when `enabled` param omitted
+- Fix: Brownian curve reflection escaping [0,1] for large volatility
+- Fix: division by zero in M4L bridge when `sample_rate=0`
+- Fix: `technique_store.get()` shallow copy allows shared mutation — now uses deepcopy
+- Fix: `asyncio.get_event_loop()` deprecation — use `get_running_loop()` (Python 3.12+)
+- Fix: dead code in `browser.py`, stale tool counts in docs (107 → 115 core)
+- Fix: wrong param name in tool-reference docs (`soloed` → `solo`)
+- Fix: social banner missing "automation" domain (11 → 12)
+- Fix: tautological spring test, dead automation contract test, misleading clips test
+- Add: `livepilot-release` skill registered in plugin.json
+- Add: `__version__` to Remote Script `__init__.py`
+
 ## 1.6.2 — Automation Params Fix (March 2026)
 
 - Fix: expose all curve-specific params in `generate_automation_curve` and `apply_automation_shape` MCP tools — `values` (steps), `hits`/`steps` (euclidean), `seed`/`drift`/`volatility` (organic), `damping`/`stiffness` (spring), `control1`/`control2` (bezier), `easing_type`, `narrowing` (stochastic)
