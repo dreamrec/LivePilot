@@ -82,7 +82,7 @@ def pitch_name(midi: int) -> str:
 
 
 def parse_key(key_str: str) -> dict:
-    """Parse key string -> {tonic: 0-11, mode: str}."""
+    """Parse key string -> {tonic: 0-11, tonic_name: str, mode: str}."""
     parts = key_str.strip().split()
     raw_tonic = parts[0]
     mode = parts[1].lower() if len(parts) > 1 else 'major'
@@ -97,7 +97,7 @@ def parse_key(key_str: str) -> dict:
     if tonic_name not in NOTE_NAMES:
         raise ValueError(f"Unknown tonic: {tonic_name} (from '{key_str}')")
 
-    return {"tonic": NOTE_NAMES.index(tonic_name), "mode": mode}
+    return {"tonic": NOTE_NAMES.index(tonic_name), "tonic_name": tonic_name, "mode": mode}
 
 
 def get_scale_pitches(tonic: int, mode: str) -> list[int]:
