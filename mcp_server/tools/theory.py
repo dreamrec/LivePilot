@@ -1,4 +1,4 @@
-"""Music theory tools powered by music21.
+"""Music theory tools — pure Python, zero dependencies.
 
 7 tools for harmonic analysis, chord suggestion, voice leading detection,
 counterpoint generation, scale identification, harmonization, and intelligent
@@ -7,18 +7,18 @@ transposition — all working directly on live session clip data via get_notes.
 Design principle: tools compute from data, the LLM interprets and explains.
 Returns precise musical data (Roman numerals, pitch names, intervals), never
 explanations the LLM already knows from training.
-
-Requires: pip install music21 (lazy-imported, never at module level)
 """
 
 from __future__ import annotations
 
+import random
 from collections import defaultdict
 from typing import Optional
 
 from fastmcp import Context
 
 from ..server import mcp
+from . import _theory_engine as engine
 
 
 # -- Shared utilities --------------------------------------------------------
@@ -36,99 +36,19 @@ def _get_clip_notes(ctx: Context, track_index: int, clip_index: int) -> list[dic
     return result.get("notes", [])
 
 
-def _parse_key_string(key_str: str):
-    """Parse a human-friendly key string into a music21 Key object.
-
-    Accepts: "C", "c", "C major", "A minor", "g minor", "F# major", etc.
-    music21's Key() wants: uppercase tonic = major, lowercase = minor.
-    """
-    from music21 import key
-    hint = key_str.strip()
-    if ' ' in hint:
-        parts = hint.split()
-        tonic = parts[0]
-        mode = parts[1].lower() if len(parts) > 1 else 'major'
-        if mode == 'minor':
-            tonic = tonic[0].lower() + tonic[1:]
-        return key.Key(tonic)
-    return key.Key(hint)
-
-
-def _notes_to_stream(notes: list[dict], key_hint: str | None = None):
-    """Convert LivePilot note dicts to a music21 Stream.
-
-    This is the bridge between Ableton's note format and music21's
-    analysis engine. Groups simultaneous notes into Chord objects.
-    Quantizes start_times to 1/32 note resolution to avoid chordify
-    fragmentation from micro-timing variations.
-    """
-    from music21 import stream, note, chord, meter
-
-    s = stream.Part()
-    s.append(meter.TimeSignature('4/4'))
-
+def _detect_or_parse_key(notes: list[dict], key_hint: str | None = None) -> dict:
+    """Detect key from notes, or parse the user's hint."""
     if key_hint:
         try:
-            k = _parse_key_string(key_hint)
-            s.insert(0, k)
-        except Exception:
+            return engine.parse_key(key_hint)
+        except ValueError:
             pass
-
-    # Quantize to 1/32 note (0.125 beats) to group near-simultaneous notes
-    QUANT = 0.125
-
-    time_groups: dict[float, list[dict]] = defaultdict(list)
-    for n in notes:
-        if n.get("mute", False):
-            continue
-        q_time = round(n["start_time"] / QUANT) * QUANT
-        time_groups[q_time].append(n)
-
-    for t in sorted(time_groups.keys()):
-        group = time_groups[t]
-        if len(group) == 1:
-            n = group[0]
-            m21_note = note.Note(n["pitch"])
-            m21_note.quarterLength = max(QUANT, n["duration"])
-            m21_note.volume.velocity = n.get("velocity", 100)
-            s.insert(t, m21_note)
-        else:
-            pitches = sorted(set(n["pitch"] for n in group))
-            dur = max(n["duration"] for n in group)
-            m21_chord = chord.Chord(pitches)
-            m21_chord.quarterLength = max(QUANT, dur)
-            s.insert(t, m21_chord)
-
-    return s
+    return engine.detect_key(notes)
 
 
-def _detect_key(s):
-    """Detect key from a music21 stream. Uses Krumhansl-Schmuckler algorithm."""
-    from music21 import key as m21key
-
-    # Check if key was already set by the user
-    existing = list(s.recurse().getElementsByClass(m21key.Key))
-    if existing:
-        return existing[0]
-
-    return s.analyze('key')
-
-
-def _pitch_name(midi_num: int) -> str:
-    """MIDI number to note name (e.g., 60 → 'C4')."""
-    from music21 import pitch
-    return str(pitch.Pitch(midi_num))
-
-
-def _require_music21():
-    """Verify music21 is installed, raise clear error if not."""
-    try:
-        import music21  # noqa: F401
-    except ImportError:
-        raise ImportError(
-            "music21 is required for theory tools. "
-            "Install with: pip install 'music21>=9.3'"
-        )
+def _key_display(key_info: dict) -> str:
+    """Format key info as 'C major' string."""
+    return f"{key_info['tonic_name']} {key_info['mode']}"
 
 
 # -- Tool 1: analyze_harmony ------------------------------------------------
@@ -148,54 +68,53 @@ def analyze_harmony(
     Returns chord progression with Roman numeral analysis. The tool computes
     the data; interpret the musical meaning yourself.
     """
-    _require_music21()
-    from music21 import roman
-
     notes = _get_clip_notes(ctx, track_index, clip_index)
     if not notes:
         return {"error": "No notes in clip", "suggestion": "Add notes first"}
 
-    s = _notes_to_stream(notes, key_hint=key)
-    detected_key = _detect_key(s)
+    key_info = _detect_or_parse_key(notes, key_hint=key)
+    tonic = key_info["tonic"]
+    mode = key_info["mode"]
 
-    chordified = s.chordify()
+    chord_groups = engine.chordify(notes)
     chords = []
 
-    for c in chordified.recurse().getElementsByClass('Chord'):
-        entry = {
-            "beat": round(float(c.offset), 3),
-            "duration": round(float(c.quarterLength), 3),
-            "pitches": [str(p) for p in c.pitches],
-            "midi_pitches": [p.midi for p in c.pitches],
-            "chord_name": c.pitchedCommonName,
-        }
-        try:
-            rn = roman.romanNumeralFromChord(c, detected_key)
-            entry["roman_numeral"] = rn.romanNumeral
-            entry["figure"] = rn.figure
-            entry["quality"] = rn.quality
-            entry["inversion"] = rn.inversion()
-            entry["scale_degree"] = rn.scaleDegree
-        except Exception:
-            entry["roman_numeral"] = "?"
-            entry["figure"] = "?"
+    for group in chord_groups:
+        pitches = group["pitches"]
+        pcs = group["pitch_classes"]
 
+        rn = engine.roman_numeral(pcs, tonic, mode)
+        cn = engine.chord_name(pitches)
+
+        entry = {
+            "beat": group["beat"],
+            "duration": group["duration"],
+            "pitches": [engine.pitch_name(p) for p in pitches],
+            "midi_pitches": pitches,
+            "chord_name": cn,
+            "roman_numeral": rn["figure"],
+            "figure": rn["figure"],
+            "quality": rn["quality"],
+            "inversion": rn["inversion"],
+            "scale_degree": rn["degree"] + 1,
+        }
         chords.append(entry)
 
     progression = " - ".join(c.get("figure", "?") for c in chords[:24])
 
-    # Key confidence
-    key_info = {"key": str(detected_key)}
-    if hasattr(detected_key, 'correlationCoefficient'):
-        key_info["confidence"] = round(detected_key.correlationCoefficient, 3)
-    if hasattr(detected_key, 'alternateInterpretations'):
-        alts = detected_key.alternateInterpretations[:3]
-        key_info["alternatives"] = [str(k) for k in alts]
+    key_result = {
+        "key": _key_display(key_info),
+        "confidence": key_info.get("confidence"),
+    }
+    if "alternatives" in key_info:
+        key_result["alternatives"] = [
+            f"{a['tonic_name']} {a['mode']}" for a in key_info["alternatives"][:3]
+        ]
 
     return {
         "track_index": track_index,
         "clip_index": clip_index,
-        **key_info,
+        **key_result,
         "chord_count": len(chords),
         "progression": progression,
         "chords": chords[:32],
@@ -220,40 +139,33 @@ def suggest_next_chord(
 
     Returns concrete chord suggestions with pitches ready for add_notes.
     """
-    _require_music21()
-    from music21 import roman
-
     notes = _get_clip_notes(ctx, track_index, clip_index)
     if not notes:
         return {"error": "No notes in clip"}
 
-    s = _notes_to_stream(notes, key_hint=key)
-    detected_key = _detect_key(s)
+    key_info = _detect_or_parse_key(notes, key_hint=key)
+    tonic = key_info["tonic"]
+    mode = key_info["mode"]
 
-    # Find the last chord
-    chordified = s.chordify()
-    chord_list = list(chordified.recurse().getElementsByClass('Chord'))
-    if not chord_list:
+    chord_groups = engine.chordify(notes)
+    if not chord_groups:
         return {"error": "No chords detected in clip"}
 
-    last_chord = chord_list[-1]
-    last_figure = "I"
-    try:
-        last_rn = roman.romanNumeralFromChord(last_chord, detected_key)
-        last_figure = last_rn.romanNumeral
-    except Exception:
-        last_rn = None
+    # Analyze last chord
+    last_group = chord_groups[-1]
+    last_rn = engine.roman_numeral(last_group["pitch_classes"], tonic, mode)
+    last_figure = last_rn["figure"]
 
     # Progression maps by style
     _progressions = {
         "common_practice": {
             "I": ["IV", "V", "vi", "ii"],
-            "ii": ["V", "viio", "IV"],
+            "ii": ["V", "vii\u00b0", "IV"],
             "iii": ["vi", "IV", "ii"],
             "IV": ["V", "I", "ii"],
             "V": ["I", "vi", "IV"],
             "vi": ["ii", "IV", "V", "I"],
-            "viio": ["I", "iii"],
+            "vii\u00b0": ["I", "iii"],
         },
         "jazz": {
             "I": ["IV7", "ii7", "vi7", "bVII7"],
@@ -283,7 +195,6 @@ def suggest_next_chord(
     # Match the last chord to the closest key in the map
     candidates = style_map.get(last_figure)
     if not candidates:
-        # Try uppercase/lowercase variants
         for k in style_map:
             if k.upper() == last_figure.upper():
                 candidates = style_map[k]
@@ -294,21 +205,21 @@ def suggest_next_chord(
     # Build concrete suggestions with MIDI pitches
     suggestions = []
     for fig in candidates:
-        try:
-            rn = roman.RomanNumeral(fig, detected_key)
+        result = engine.roman_figure_to_pitches(fig, tonic, mode)
+        if "error" not in result:
             suggestions.append({
                 "figure": fig,
-                "chord_name": rn.pitchedCommonName,
-                "pitches": [str(p) for p in rn.pitches],
-                "midi_pitches": [p.midi for p in rn.pitches],
-                "quality": rn.quality,
+                "chord_name": engine.chord_name(result["midi_pitches"]),
+                "pitches": result["pitches"],
+                "midi_pitches": result["midi_pitches"],
+                "quality": result["quality"],
             })
-        except Exception:
+        else:
             suggestions.append({"figure": fig, "chord_name": fig})
 
     return {
-        "key": str(detected_key),
-        "last_chord": last_rn.figure if last_rn else "unknown",
+        "key": _key_display(key_info),
+        "last_chord": last_figure,
         "style": style,
         "suggestions": suggestions,
     }
@@ -330,21 +241,16 @@ def detect_theory_issues(
     strict=False: Only clear errors (parallels, out-of-key).
     strict=True: Also flag style issues (large leaps, missing resolution).
 
-    Uses music21's VoiceLeadingQuartet for accurate parallel detection.
     Returns ranked issues with beat positions.
     """
-    _require_music21()
-    from music21 import roman, voiceLeading, note as m21note
-
     notes = _get_clip_notes(ctx, track_index, clip_index)
     if not notes:
         return {"error": "No notes in clip"}
 
-    s = _notes_to_stream(notes, key_hint=key)
-    detected_key = _detect_key(s)
-    scale_pitch_classes = set(
-        p.midi % 12 for p in detected_key.getScale().getPitches()
-    )
+    key_info = _detect_or_parse_key(notes, key_hint=key)
+    tonic = key_info["tonic"]
+    mode = key_info["mode"]
+    scale_pcs = set(engine.get_scale_pitches(tonic, mode))
 
     issues = []
 
@@ -352,86 +258,53 @@ def detect_theory_issues(
     for n in notes:
         if n.get("mute", False):
             continue
-        if n["pitch"] % 12 not in scale_pitch_classes:
+        if n["pitch"] % 12 not in scale_pcs:
             issues.append({
                 "type": "out_of_key",
                 "severity": "warning",
                 "beat": round(n["start_time"], 3),
-                "detail": f"{_pitch_name(n['pitch'])} not in {detected_key}",
+                "detail": f"{engine.pitch_name(n['pitch'])} not in {_key_display(key_info)}",
             })
 
-    # 2. Parallel fifths/octaves using VoiceLeadingQuartet
-    chordified = s.chordify()
-    chord_list = list(chordified.recurse().getElementsByClass('Chord'))
+    # 2. Parallel fifths/octaves and voice crossing
+    chord_groups = engine.chordify(notes)
+    for i in range(1, len(chord_groups)):
+        prev_pitches = chord_groups[i - 1]["pitches"]
+        curr_pitches = chord_groups[i]["pitches"]
+        beat = chord_groups[i]["beat"]
 
-    for i in range(1, len(chord_list)):
-        prev_c = chord_list[i - 1]
-        curr_c = chord_list[i]
-        prev_pitches = sorted(prev_c.pitches, key=lambda p: p.midi)
-        curr_pitches = sorted(curr_c.pitches, key=lambda p: p.midi)
-
-        if len(prev_pitches) < 2 or len(curr_pitches) < 2:
-            continue
-
-        # Check outer voices (bass and soprano)
-        try:
-            vlq = voiceLeading.VoiceLeadingQuartet(
-                prev_pitches[-1], curr_pitches[-1],  # soprano
-                prev_pitches[0], curr_pitches[0],     # bass
-            )
-            if vlq.parallelFifth():
-                issues.append({
-                    "type": "parallel_fifths",
-                    "severity": "error",
-                    "beat": round(float(curr_c.offset), 3),
-                    "detail": "Parallel fifths in outer voices",
-                })
-            if vlq.parallelOctave():
-                issues.append({
-                    "type": "parallel_octaves",
-                    "severity": "error",
-                    "beat": round(float(curr_c.offset), 3),
-                    "detail": "Parallel octaves in outer voices",
-                })
-            if vlq.voiceCrossing():
-                issues.append({
-                    "type": "voice_crossing",
-                    "severity": "warning",
-                    "beat": round(float(curr_c.offset), 3),
-                    "detail": "Voice crossing detected",
-                })
-            if strict and vlq.hiddenFifth():
-                issues.append({
-                    "type": "hidden_fifth",
-                    "severity": "info",
-                    "beat": round(float(curr_c.offset), 3),
-                    "detail": "Hidden fifth in outer voices",
-                })
-        except Exception:
-            pass
+        vl_issues = engine.check_voice_leading(prev_pitches, curr_pitches)
+        for vl in vl_issues:
+            severity = "error" if vl["type"] in ("parallel_fifths", "parallel_octaves") else "warning"
+            if vl["type"] == "hidden_fifth":
+                severity = "info"
+                if not strict:
+                    continue
+            detail_map = {
+                "parallel_fifths": "Parallel fifths in outer voices",
+                "parallel_octaves": "Parallel octaves in outer voices",
+                "voice_crossing": "Voice crossing detected",
+                "hidden_fifth": "Hidden fifth in outer voices",
+            }
+            issues.append({
+                "type": vl["type"],
+                "severity": severity,
+                "beat": round(beat, 3),
+                "detail": detail_map.get(vl["type"], vl["type"]),
+            })
 
     # 3. Unresolved dominant (strict mode)
     if strict:
-        for i in range(len(chord_list) - 1):
-            try:
-                rn = roman.romanNumeralFromChord(chord_list[i], detected_key)
-                next_rn = roman.romanNumeralFromChord(
-                    chord_list[i + 1], detected_key
-                )
-                if rn.romanNumeral in ('V', 'V7') and next_rn.romanNumeral not in (
-                    'I', 'i', 'vi', 'VI'
-                ):
-                    issues.append({
-                        "type": "unresolved_dominant",
-                        "severity": "info",
-                        "beat": round(float(chord_list[i].offset), 3),
-                        "detail": (
-                            f"{rn.figure} resolves to {next_rn.figure} "
-                            f"instead of tonic"
-                        ),
-                    })
-            except Exception:
-                pass
+        for i in range(len(chord_groups) - 1):
+            rn = engine.roman_numeral(chord_groups[i]["pitch_classes"], tonic, mode)
+            next_rn = engine.roman_numeral(chord_groups[i + 1]["pitch_classes"], tonic, mode)
+            if rn["figure"] in ('V', 'V7') and next_rn["figure"] not in ('I', 'i', 'vi', 'VI'):
+                issues.append({
+                    "type": "unresolved_dominant",
+                    "severity": "info",
+                    "beat": round(chord_groups[i]["beat"], 3),
+                    "detail": f"{rn['figure']} resolves to {next_rn['figure']} instead of tonic",
+                })
 
     # 4. Large leaps without resolution (strict mode)
     if strict:
@@ -453,7 +326,7 @@ def detect_theory_issues(
     issues.sort(key=lambda x: (severity_order.get(x["severity"], 3), x.get("beat", 0)))
 
     return {
-        "key": str(detected_key),
+        "key": _key_display(key_info),
         "strict_mode": strict,
         "issue_count": len(issues),
         "errors": sum(1 for i in issues if i["severity"] == "error"),
@@ -472,41 +345,31 @@ def identify_scale(
 ) -> dict:
     """Identify the scale/mode of a MIDI clip beyond basic major/minor.
 
-    Goes deeper than get_detected_key — uses music21's Krumhansl-Schmuckler
-    algorithm with alternateInterpretations for modes (Dorian, Phrygian,
-    Lydian, Mixolydian) and exotic scales.
+    Uses Krumhansl-Schmuckler algorithm with 7 mode profiles (major, minor,
+    dorian, phrygian, lydian, mixolydian, locrian).
 
     Returns ranked key matches with confidence scores.
     """
-    _require_music21()
-
     notes = _get_clip_notes(ctx, track_index, clip_index)
     if not notes:
         return {"error": "No notes in clip"}
 
-    s = _notes_to_stream(notes)
-
-    # music21's key analysis returns the best match and alternatives
-    detected = s.analyze('key')
+    detected = engine.detect_key(notes, mode_detection=True)
 
     results = [{
-        "key": str(detected),
-        "confidence": round(detected.correlationCoefficient, 3)
-        if hasattr(detected, 'correlationCoefficient') else None,
-        "mode": detected.mode,
-        "tonic": str(detected.tonic),
+        "key": f"{detected['tonic_name']} {detected['mode']}",
+        "confidence": detected["confidence"],
+        "mode": detected["mode"],
+        "tonic": detected["tonic_name"],
     }]
 
-    # Add alternatives
-    if hasattr(detected, 'alternateInterpretations'):
-        for alt in detected.alternateInterpretations[:7]:
-            results.append({
-                "key": str(alt),
-                "confidence": round(alt.correlationCoefficient, 3)
-                if hasattr(alt, 'correlationCoefficient') else None,
-                "mode": alt.mode,
-                "tonic": str(alt.tonic),
-            })
+    for alt in detected.get("alternatives", [])[:7]:
+        results.append({
+            "key": f"{alt['tonic_name']} {alt['mode']}",
+            "confidence": alt["confidence"],
+            "mode": alt["mode"],
+            "tonic": alt["tonic_name"],
+        })
 
     # Pitch class usage for context
     pitch_classes = defaultdict(float)
@@ -514,9 +377,8 @@ def identify_scale(
         if not n.get("mute", False):
             pitch_classes[n["pitch"] % 12] += n["duration"]
 
-    note_names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
     pc_usage = {
-        note_names[pc]: round(dur, 3)
+        engine.NOTE_NAMES[pc]: round(dur, 3)
         for pc, dur in sorted(pitch_classes.items())
     }
 
@@ -548,21 +410,18 @@ def harmonize_melody(
 
     Processing time: 2-5s.
     """
-    _require_music21()
-    from music21 import roman
-
     notes = _get_clip_notes(ctx, track_index, clip_index)
     if not notes:
         return {"error": "No notes in clip"}
 
-    # Use only non-muted, sorted by time
     melody = sorted(
         [n for n in notes if not n.get("mute", False)],
         key=lambda n: n["start_time"],
     )
 
-    s = _notes_to_stream(melody, key_hint=key)
-    detected_key = _detect_key(s)
+    key_info = _detect_or_parse_key(melody, key_hint=key)
+    tonic = key_info["tonic"]
+    mode = key_info["mode"]
 
     result_voices = {"soprano": [], "bass": []}
     if voices == 4:
@@ -572,38 +431,35 @@ def harmonize_melody(
     prev_bass_midi = None
 
     for n in melody:
-        from music21 import pitch as m21pitch
         melody_pitch = n["pitch"]
         beat = n["start_time"]
         dur = n["duration"]
         mel_pc = melody_pitch % 12
 
         # Find the best diatonic chord containing this pitch
-        best_rn = None
-        for degree in [1, 4, 5, 6, 2, 3, 7]:
-            try:
-                rn = roman.RomanNumeral(degree, detected_key)
-                chord_pcs = [p.midi % 12 for p in rn.pitches]
-                if mel_pc in chord_pcs:
-                    best_rn = rn
-                    break
-            except Exception:
-                continue
+        best_chord = None
+        for degree in [0, 3, 4, 5, 1, 2, 6]:  # I, IV, V, vi, ii, iii, vii
+            chord = engine.build_chord(degree, tonic, mode)
+            if mel_pc in chord["pitch_classes"]:
+                best_chord = chord
+                break
 
-        if best_rn is None:
-            # Fallback: use tonic triad
-            best_rn = roman.RomanNumeral(1, detected_key)
+        if best_chord is None:
+            best_chord = engine.build_chord(0, tonic, mode)
 
-        chord_midis = sorted([p.midi for p in best_rn.pitches])
+        # Build MIDI pitches for the chord
+        chord_midis = sorted([
+            60 + ((pc - best_chord["root_pc"]) % 12) + best_chord["root_pc"]
+            for pc in best_chord["pitch_classes"]
+        ])
 
         # Bass: root in low octave, smooth motion preferred
-        bass = chord_midis[0]
-        while bass > 52:
+        bass = 36 + best_chord["root_pc"]
+        if bass > 52:
             bass -= 12
-        while bass < 36:
+        if bass < 36:
             bass += 12
         if prev_bass_midi is not None:
-            # Try octave that's closest to previous bass
             options = [bass, bass - 12, bass + 12]
             options = [b for b in options if 33 <= b <= 55]
             if options:
@@ -650,7 +506,7 @@ def harmonize_melody(
             })
 
     result = {
-        "key": str(detected_key),
+        "key": _key_display(key_info),
         "voices": voices,
         "melody_notes": len(melody),
     }
@@ -683,8 +539,6 @@ def generate_countermelody(
     Returns note data ready for add_notes on a new track.
     Processing time: 2-5s.
     """
-    _require_music21()
-    import random
     random.seed(seed)
 
     notes = _get_clip_notes(ctx, track_index, clip_index)
@@ -696,15 +550,11 @@ def generate_countermelody(
         key=lambda n: n["start_time"],
     )
 
-    s = _notes_to_stream(melody, key_hint=key)
-    detected_key = _detect_key(s)
-    scale_pcs = [p.midi % 12 for p in detected_key.getScale().getPitches()]
+    key_info = _detect_or_parse_key(melody, key_hint=key)
+    scale_pcs = set(engine.get_scale_pitches(key_info["tonic"], key_info["mode"]))
 
     # Build pool of scale pitches in range
-    pool = []
-    for p in range(range_low, range_high + 1):
-        if p % 12 in scale_pcs:
-            pool.append(p)
+    pool = [p for p in range(range_low, range_high + 1) if p % 12 in scale_pcs]
     if not pool:
         return {"error": "No scale pitches in given range"}
 
@@ -720,7 +570,6 @@ def generate_countermelody(
         dur = n["duration"] / species
 
         for s_idx in range(species):
-            # Score candidates
             scored = []
             for cp in pool:
                 iv = abs(cp - mel_pitch) % 12
@@ -736,10 +585,9 @@ def generate_countermelody(
                     if (mel_dir > 0 and cp_dir < 0) or (mel_dir < 0 and cp_dir > 0):
                         score += 10
                     # Penalize parallel perfect intervals
-                    if prev_cp is not None and i > 0:
-                        prev_iv = abs(prev_cp - melody[i - 1]["pitch"]) % 12
-                        if prev_iv == iv and iv in (0, 7):
-                            score -= 50  # Hard penalty for parallel P5/P8
+                    prev_iv = abs(prev_cp - melody[i - 1]["pitch"]) % 12
+                    if prev_iv == iv and iv in (0, 7):
+                        score -= 50
 
                 # Stepwise motion bonus
                 if prev_cp is not None:
@@ -753,12 +601,10 @@ def generate_countermelody(
                 else:
                     score += 3
 
-                # Small random variation for musicality
                 score += random.uniform(0, 2)
                 scored.append((cp, score))
 
             if not scored:
-                # Fallback: pick any pool note
                 scored = [(random.choice(pool), 0)]
 
             scored.sort(key=lambda x: -x[1])
@@ -773,12 +619,12 @@ def generate_countermelody(
             prev_cp = chosen
 
     return {
-        "key": str(detected_key),
+        "key": _key_display(key_info),
         "species": species,
         "melody_notes": len(melody),
         "counter_notes": counter_notes,
         "counter_note_count": len(counter_notes),
-        "range": f"{_pitch_name(range_low)}-{_pitch_name(range_high)}",
+        "range": f"{engine.pitch_name(range_low)}-{engine.pitch_name(range_high)}",
         "seed": seed,
     }
 
@@ -802,24 +648,20 @@ def transpose_smart(
 
     Returns transposed note data ready for add_notes or modify_notes.
     """
-    _require_music21()
-    from music21 import pitch as m21pitch
-
     notes = _get_clip_notes(ctx, track_index, clip_index)
     if not notes:
         return {"error": "No notes in clip"}
 
-    s = _notes_to_stream(notes)
-    source_key = _detect_key(s)
+    source_key = engine.detect_key(notes)
 
     try:
-        target = _parse_key_string(target_key)
-    except Exception:
+        target = engine.parse_key(target_key)
+    except ValueError:
         return {"error": f"Invalid target key: {target_key}"}
 
-    source_tonic = m21pitch.Pitch(str(source_key.tonic))
-    target_tonic = m21pitch.Pitch(str(target.tonic))
-    semitone_shift = target_tonic.midi - source_tonic.midi
+    source_tonic = source_key["tonic"]
+    target_tonic = target["tonic"]
+    semitone_shift = target_tonic - source_tonic
 
     if mode == "chromatic":
         transposed = []
@@ -830,10 +672,10 @@ def transpose_smart(
             transposed.append(tn)
     else:
         # Diatonic: map scale degrees
-        source_scale = source_key.getScale().getPitches()
-        target_scale = target.getScale().getPitches()
-        source_pcs = [p.midi % 12 for p in source_scale]
-        target_pcs = [p.midi % 12 for p in target_scale]
+        source_mode = source_key["mode"]
+        target_mode = target.get("mode", source_mode)
+        source_pcs = engine.get_scale_pitches(source_tonic, source_mode)
+        target_pcs = engine.get_scale_pitches(target_tonic, target_mode)
 
         degree_map = {}
         for i in range(min(len(source_pcs), len(target_pcs))):
@@ -847,7 +689,6 @@ def transpose_smart(
 
             if pc in degree_map:
                 new_pc = degree_map[pc]
-                # Calculate octave adjustment from tonic shift
                 new_pitch = octave * 12 + new_pc
                 # Adjust if the shift crossed an octave boundary
                 if abs(new_pitch - (n["pitch"] + semitone_shift)) > 6:
@@ -856,15 +697,14 @@ def transpose_smart(
                     else:
                         new_pitch -= 12
             else:
-                # Chromatic note: shift by tonic distance
                 new_pitch = n["pitch"] + semitone_shift
 
             tn["pitch"] = max(0, min(127, new_pitch))
             transposed.append(tn)
 
     return {
-        "source_key": str(source_key),
-        "target_key": str(target),
+        "source_key": _key_display(source_key),
+        "target_key": f"{engine.NOTE_NAMES[target_tonic]} {target.get('mode', 'major')}",
         "mode": mode,
         "semitone_shift": semitone_shift,
         "note_count": len(transposed),
