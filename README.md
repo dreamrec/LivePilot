@@ -16,7 +16,7 @@ It doesn't assist — it produces.
 
 <br>
 
-───────────────────────────────────────────────────────────────
+---
 
 ## Architecture
 
@@ -65,13 +65,13 @@ through the official Live Object Model API. Everything is reversible with undo.
 
 <br>
 
-───────────────────────────────────────────────────────────────
+---
 
 ## Tools
 
 <br>
 
-### CORE ──────────────────────────────────────────────────────
+### CORE
 
 The foundation. Session control, MIDI, device management, mixing.
 Every tool maps directly to an LOM call — no abstraction, no guessing.
@@ -91,7 +91,7 @@ Every tool maps directly to an LOM call — no abstraction, no guessing.
 
 <br>
 
-### PERCEPTION ────────────────────────────────────────────────
+### PERCEPTION
 
 The M4L Analyzer sits on the master track. UDP 9880 carries spectral data
 from Max to the server. OSC 9881 sends commands back.
@@ -124,11 +124,11 @@ PREVIEW ──────── scrub at beat position
 
 <br>
 
-### INTELLIGENCE ──────────────────────────────────────────────
+### INTELLIGENCE
 
 <br>
 
-#### Theory ─── 7 tools
+#### Theory — 7 tools
 
 Krumhansl-Schmuckler key detection with 7 mode profiles:
 major, minor, dorian, phrygian, lydian, mixolydian, locrian.
@@ -151,7 +151,7 @@ transpose_smart
 
 <br>
 
-#### Harmony ─── 4 tools
+#### Harmony — 4 tools
 
 Neo-Riemannian PRL transforms on the Tonnetz.
 
@@ -178,7 +178,7 @@ classify_progression    suggest_chromatic_mediants
 
 <br>
 
-#### Generative ─── 5 tools
+#### Generative — 5 tools
 
 **Euclidean Rhythm** — Bjorklund distributes N pulses across M steps.
 Bresenham's line algorithm applied to rhythm.
@@ -213,7 +213,7 @@ generate_additive_process
 
 <br>
 
-#### Automation ─── 8 tools
+#### Automation — 8 tools
 
 16 curve types in 4 categories:
 
@@ -253,11 +253,11 @@ generate_automation_curve                          analyze_for_automation
 
 <br>
 
-### MEMORY + I/O ──────────────────────────────────────────────
+### MEMORY + I/O
 
 <br>
 
-#### Memory ─── 8 tools
+#### Memory — 8 tools
 
 Persistent technique library across sessions.
 
@@ -278,7 +278,7 @@ memory_update    memory_delete     memory_favorite   memory_replay
 
 <br>
 
-#### MIDI I/O ─── 4 tools
+#### MIDI I/O — 4 tools
 
 Export session clips to standard .mid files.
 Import .mid into session clips — auto-creates the clip, tempo-aware timing.
@@ -298,7 +298,7 @@ analyze_midi_file    extract_piano_roll
 
 <br>
 
-───────────────────────────────────────────────────────────────
+---
 
 ## Install
 
@@ -441,7 +441,7 @@ npx livepilot --status
 
 <br>
 
-───────────────────────────────────────────────────────────────
+---
 
 ## Plugin
 
@@ -473,7 +473,7 @@ Check memory before creative decisions. Verify every mutation.
 
 <br>
 
-───────────────────────────────────────────────────────────────
+---
 
 ## Full Tool List
 
@@ -748,7 +748,7 @@ Check memory before creative decisions. Verify every mutation.
 
 <br>
 
-───────────────────────────────────────────────────────────────
+---
 
 ## Coming
 
@@ -762,7 +762,7 @@ Check memory before creative decisions. Verify every mutation.
 
 <br>
 
-───────────────────────────────────────────────────────────────
+---
 
 ## CLI
 
@@ -796,7 +796,7 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 
 <br>
 
-───────────────────────────────────────────────────────────────
+---
 
 [MIT](LICENSE) — Pilot Studio
 
