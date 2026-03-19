@@ -27,19 +27,19 @@ class TestPitchName:
 
 class TestParseKey:
     def test_simple_major(self):
-        assert parse_key("C") == {"tonic": 0, "mode": "major"}
+        assert parse_key("C") == {"tonic": 0, "tonic_name": "C", "mode": "major"}
 
     def test_minor(self):
-        assert parse_key("A minor") == {"tonic": 9, "mode": "minor"}
+        assert parse_key("A minor") == {"tonic": 9, "tonic_name": "A", "mode": "minor"}
 
     def test_flat_key(self):
-        assert parse_key("Bb major") == {"tonic": 10, "mode": "major"}
+        assert parse_key("Bb major") == {"tonic": 10, "tonic_name": "A#", "mode": "major"}
 
     def test_dorian(self):
-        assert parse_key("D dorian") == {"tonic": 2, "mode": "dorian"}
+        assert parse_key("D dorian") == {"tonic": 2, "tonic_name": "D", "mode": "dorian"}
 
     def test_case_insensitive(self):
-        assert parse_key("f# minor") == {"tonic": 6, "mode": "minor"}
+        assert parse_key("f# minor") == {"tonic": 6, "tonic_name": "F#", "mode": "minor"}
 
 
 class TestScalePitches:
