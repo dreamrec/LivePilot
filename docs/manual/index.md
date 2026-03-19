@@ -1,7 +1,7 @@
 # LivePilot Manual
 
 An agentic production system for Ableton Live 12.
-155 tools. 16 domains. Device atlas. Spectral perception. Technique memory.
+168 tools. 17 domains. Device atlas. Spectral perception. Technique memory.
 
 ---
 
@@ -16,7 +16,7 @@ AI Client  ──MCP──►  FastMCP Server  ──TCP/9878──►  Remote S
                             └── Technique Memory (~/.livepilot/memory/)
 ```
 
-The atlas resolves device names and browser URIs — the AI never hallucinates a preset. The analyzer feeds back spectral data from the master bus so the AI hears the result of its own changes. The memory persists production decisions across sessions as searchable, replayable data structures. All three layers feed into 155 deterministic LOM calls on Ableton's main thread. Everything is reversible with undo.
+The atlas resolves device names and browser URIs — the AI never hallucinates a preset. The analyzer feeds back spectral data from the master bus so the AI hears the result of its own changes. The memory persists production decisions across sessions as searchable, replayable data structures. All three layers feed into 168 deterministic LOM calls on Ableton's main thread. Everything is reversible with undo.
 
 ---
 
@@ -40,6 +40,7 @@ The atlas resolves device names and browser URIs — the AI never hallucinates a
 | Generative | 5 | Euclidean rhythm, tintinnabuli, phase shift, additive process | [tool-reference](tool-reference.md#generative) |
 | Harmony | 4 | Tonnetz navigation, voice leading, neo-Riemannian classification | [tool-reference](tool-reference.md#harmony) |
 | MIDI I/O | 4 | export/import .mid, offline analysis, piano roll extraction | [tool-reference](tool-reference.md#midi-io) |
+| Perception | 13 | spectral shape, timbral profile, mel spectrum, chroma, onsets, loudness, stems | [tool-reference](tool-reference.md#perception) |
 
 ---
 
