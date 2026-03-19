@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from mcp_server.tools._generative_engine import (
     bjorklund, rotate_pattern, identify_rhythm,
-    tintinnabuli_voice,
+    tintinnabuli_voice, phase_shift,
 )
 
 
@@ -98,3 +98,40 @@ class TestTintinnabuli:
         result = tintinnabuli_voice(melody, triad_pcs, "above")
         # Above A4(69): C5(72)
         assert result[0] == 72
+
+
+class TestPhaseShift:
+    def _simple_pattern(self):
+        return [
+            {"pitch": 60, "start_time": 0.0, "duration": 0.5},
+            {"pitch": 62, "start_time": 0.5, "duration": 0.5},
+            {"pitch": 64, "start_time": 1.0, "duration": 0.5},
+            {"pitch": 65, "start_time": 1.5, "duration": 0.5},
+        ]
+
+    def test_two_voices_basic(self):
+        result = phase_shift(self._simple_pattern(), voices=2,
+                             shift_amount=0.125, total_length=4.0)
+        assert len(result) > len(self._simple_pattern())
+        v0 = [n for n in result if n["velocity"] == 100]
+        v1 = [n for n in result if n["velocity"] == 90]
+        assert len(v0) > 0
+        assert len(v1) > 0
+
+    def test_shift_accumulates(self):
+        result = phase_shift(self._simple_pattern(), voices=2,
+                             shift_amount=0.25, total_length=8.0)
+        v1 = sorted([n for n in result if n["velocity"] == 90],
+                     key=lambda n: n["start_time"])
+        assert v1[0]["start_time"] == 0.25
+
+    def test_single_voice_returns_looped(self):
+        result = phase_shift(self._simple_pattern(), voices=1,
+                             shift_amount=0.125, total_length=4.0)
+        assert all(n["velocity"] == 100 for n in result)
+
+    def test_notes_within_total_length(self):
+        result = phase_shift(self._simple_pattern(), voices=3,
+                             shift_amount=0.125, total_length=4.0)
+        for n in result:
+            assert n["start_time"] < 4.0
