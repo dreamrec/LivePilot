@@ -1,2 +1,5 @@
 # LivePilot MCP Server dependencies
 fastmcp>=3.0.0,<4.0.0
+midiutil>=1.2.1
+pretty_midi>=0.2.10
+opycleid>=0.5.1
