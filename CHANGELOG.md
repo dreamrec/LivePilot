@@ -1,5 +1,37 @@
 # Changelog
 
+## 1.6.0 — Automation Intelligence (March 2026)
+
+**8 new tools (127 -> 135), 16-type curve engine, 15 recipes, spectral feedback loop.**
+
+### Automation Curve Engine
+- 16 curve types in 4 categories: basic (9), organic (3), shape (2), generative (2)
+- Pure math module — no Ableton dependency, fully testable offline
+- 15 built-in recipes for common production techniques
+
+### New Tools: Automation Domain (8 tools)
+- `get_clip_automation` — list automation envelopes on a session clip
+- `set_clip_automation` — write automation points to clip envelope
+- `clear_clip_automation` — clear automation envelopes
+- `apply_automation_shape` — generate + apply curve in one call
+- `apply_automation_recipe` — apply named recipe (filter_sweep_up, dub_throw, etc.)
+- `get_automation_recipes` — list all 15 recipes with descriptions
+- `generate_automation_curve` — preview curve points without writing
+- `analyze_for_automation` — spectral analysis + device-aware suggestions
+
+### Automation Atlas
+- Knowledge corpus: curve theory, perception-action loop, genre recipes
+- Diagnostic filter technique: using EQ as a measurement instrument
+- Cross-track spectral mapping for complementary automation
+- Golden rules for musically intelligent automation
+
+### Producer Agent
+- New automation phase in production workflow
+- Mandatory spectral feedback loop: perceive -> diagnose -> act -> verify -> adjust
+- Spectral-driven automation decisions, not just blind curve application
+
+---
+
 ## 1.5.0 — Agentic Production System (March 19, 2026)
 
 **Three-layer intelligence: Device Atlas + M4L Analyzer + Technique Memory.**

@@ -12,11 +12,11 @@ LivePilot is built on three layers that work together:
 - **M4L Analyzer** — Real-time audio analysis on the master bus: 8-band spectrum, RMS/peak metering, pitch tracking, key detection. The AI hears the result of its own changes.
 - **Technique Memory** — A persistent library of production decisions. The AI remembers how you built sounds, what patterns you liked, and how you mixed — and uses that context in future sessions.
 
-On top of these sit 127 MCP tools across 11 domains. Every command is deterministic, goes through Ableton's official Live Object Model API, and is reversible with undo.
+On top of these sit 135 MCP tools across 12 domains. Every command is deterministic, goes through Ableton's official Live Object Model API, and is reversible with undo.
 
 ## What it actually does
 
-LivePilot gives you **127 tools** organized across 11 domains:
+LivePilot gives you **135 tools** organized across 12 domains:
 
 | Domain | What it handles |
 |--------|----------------|

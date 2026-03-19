@@ -1,4 +1,4 @@
-# LivePilot v1.5.0 — Ableton Live 12 AI Copilot
+# LivePilot v1.6.0 — Ableton Live 12 AI Copilot
 
 ## Project
 - **Repo:** `/Users/visansilviugeorge/Desktop/LivePilot/`
@@ -22,7 +22,7 @@
 ## Key Rules
 - ALL Live Object Model (LOM) calls must execute on Ableton's main thread via schedule_message queue
 - Live 12 minimum — use modern note API (add_new_notes, get_notes_extended, apply_note_modifications)
-- 127 tools across 11 domains: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, analyzer
+- 135 tools across 12 domains: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, analyzer, automation
 - JSON over TCP, newline-delimited, port 9878
 - Structured errors with codes: INDEX_ERROR, NOT_FOUND, INVALID_PARAM, STATE_ERROR, TIMEOUT, INTERNAL
 
@@ -43,4 +43,4 @@ When modifying .amxd attributes that Max editor won't persist (e.g., `openinpres
 4. Structure: 24-byte `ampf` header + `ptch` chunk + `mx@c` header + JSON patcher + frozen deps
 
 ## Tool Count
-Currently 127 tools. If adding/removing tools, update: README.md, package.json description, plugin/plugin.json, server.json, plugin/skills/livepilot-core/SKILL.md, plugin/skills/livepilot-core/references/overview.md, CLAUDE.md, CHANGELOG.md, tests/test_tools_contract.py, docs/manual/index.md, docs/manual/tool-reference.md
+Currently 135 tools. If adding/removing tools, update: README.md, package.json description, plugin/plugin.json, server.json, plugin/skills/livepilot-core/SKILL.md, plugin/skills/livepilot-core/references/overview.md, CLAUDE.md, CHANGELOG.md, tests/test_tools_contract.py, docs/manual/index.md, docs/manual/tool-reference.md

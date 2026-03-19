@@ -12,7 +12,7 @@
 [![GitHub stars](https://img.shields.io/github/stars/dreamrec/LivePilot)](https://github.com/dreamrec/LivePilot/stargazers)
 [![npm](https://img.shields.io/npm/v/livepilot)](https://www.npmjs.com/package/livepilot)
 
-**AI copilot for Ableton Live 12** — 127 MCP tools, a deep device knowledge corpus, real-time audio analysis, and persistent technique memory.
+**AI copilot for Ableton Live 12** — 135 MCP tools, a deep device knowledge corpus, real-time audio analysis, and persistent technique memory.
 
 Most Ableton MCP servers give the AI tools to push buttons. LivePilot gives it three things on top of that:
 
@@ -20,7 +20,7 @@ Most Ableton MCP servers give the AI tools to push buttons. LivePilot gives it t
 - **Perception** — An M4L analyzer that reads the master bus in real-time: 8-band spectrum, RMS/peak metering, pitch tracking, key detection. The AI makes decisions based on what it hears, not just what's configured.
 - **Memory** — A technique library that persists across sessions. The AI remembers how you built that bass sound, what swing you like on hi-hats, which reverb chain worked on vocals. It learns your taste over time.
 
-These three layers sit on top of 127 deterministic MCP tools that cover transport, tracks, clips, MIDI, devices, scenes, mixing, browser, arrangement, and sample manipulation. Every command goes through Ableton's official Live Object Model API — the same interface Ableton's own control surfaces use. Everything is reversible with undo.
+These three layers sit on top of 135 deterministic MCP tools that cover transport, tracks, clips, MIDI, devices, scenes, mixing, browser, arrangement, and sample manipulation. Every command goes through Ableton's official Live Object Model API — the same interface Ableton's own control surfaces use. Everything is reversible with undo.
 
 ---
 
