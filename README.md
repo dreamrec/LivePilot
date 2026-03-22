@@ -12,7 +12,6 @@ An agentic production system for Ableton Live 12.
 168 tools. Device atlas. Spectral perception. Technique memory.
 Neo-Riemannian harmony. Euclidean rhythm. Species counterpoint.
 
-It doesn't assist — it produces.
 
 <br>
 
