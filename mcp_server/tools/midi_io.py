@@ -14,6 +14,7 @@ from typing import Any, Optional
 
 from fastmcp import Context
 
+from ..connection import AbletonConnectionError
 from ..server import mcp
 from . import _theory_engine as theory
 
@@ -177,18 +178,25 @@ def import_midi_to_clip(
 
     if create_clip:
         # Check if clip already exists — only create if the slot is empty
+        slot_has_clip = False
         try:
             ableton.send_command("get_clip_info", {
                 "track_index": track_index,
                 "clip_index": clip_index,
             })
+            slot_has_clip = True
+        except AbletonConnectionError:
+            # Slot is empty — no clip to clear
+            pass
+
+        if slot_has_clip:
             # Clip exists — clear its notes before importing
             ableton.send_command("remove_notes", {
                 "track_index": track_index,
                 "clip_index": clip_index,
             })
-        except Exception:
-            # No clip in slot — create one
+        else:
+            # Empty slot — create a new clip
             ableton.send_command("create_clip", {
                 "track_index": track_index,
                 "clip_index": clip_index,

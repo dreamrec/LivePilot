@@ -107,6 +107,31 @@ def create_arrangement_clip(song, params):
 
             clip_count += 1
             pos += loop_length
+
+        # Trim the last clip's overshoot: if the last duplicate extends
+        # past end_pos, remove notes beyond the requested region and
+        # set loop_end so only the needed portion plays.
+        if clip_count > 0:
+            arr_clips = list(track.arrangement_clips)
+            for c in arr_clips:
+                clip_end = c.start_time + c.length
+                if c.start_time >= start_time and clip_end > end_pos + 0.01:
+                    # This clip overshoots — trim its content
+                    overshoot_start = end_pos - c.start_time
+                    if overshoot_start > 0:
+                        try:
+                            c.looping = True
+                            c.loop_start = 0.0
+                            c.loop_end = overshoot_start
+                        except (AttributeError, RuntimeError):
+                            pass
+                        # Remove notes beyond the trim point
+                        try:
+                            c.remove_notes_extended(
+                                0, 128, overshoot_start, c.length
+                            )
+                        except Exception:
+                            pass
     finally:
         song.end_undo_step()
 
