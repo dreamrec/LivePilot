@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.9.6 — Arrangement clip identification + expression data (March 2026)
+
+- Fix(P1): create_arrangement_clip now identifies new clips by object identity, not position match — prevents mutating pre-existing overlapping clips
+- Fix(P2): set_arrangement_automation fallback preserves probability, velocity_deviation, release_velocity when rebuilding notes
+- Fix(P2): get_arrangement_clips effective length uses loop_end - loop_start (not just loop_end)
+
 ## 1.9.5 — TCP Retry Fix + Arrangement Automation Fix (March 2026)
 
 - Fix(P1): disconnect() now clears _recv_buf — prevents partial JSON corruption on TCP retry

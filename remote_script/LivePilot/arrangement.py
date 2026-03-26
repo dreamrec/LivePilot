@@ -18,8 +18,10 @@ def get_arrangement_clips(song, params):
         # (arrangement clips may have been trimmed by create_arrangement_clip)
         effective_length = timeline_length
         try:
-            if clip.looping and clip.loop_end < timeline_length:
-                effective_length = clip.loop_end
+            if clip.looping:
+                loop_len = clip.loop_end - clip.loop_start
+                if 0 < loop_len < timeline_length:
+                    effective_length = loop_len
         except (AttributeError, RuntimeError):
             pass
         clips.append({
@@ -86,34 +88,48 @@ def create_arrangement_clip(song, params):
         first_clip_index = None
 
         while pos < end_pos:
+            # Snapshot clip IDs before duplication to identify the new one
+            old_ids = set(id(c) for c in track.arrangement_clips)
+
             track.duplicate_clip_to_arrangement(source_clip, pos)
 
-            # Find and configure the newly placed clip
+            # Find the NEW clip (not in old_ids) at the target position
             arr_clips = list(track.arrangement_clips)
+            new_clip = None
+            new_clip_idx = None
             for i, c in enumerate(arr_clips):
-                if abs(c.start_time - pos) < 0.01:
-                    if first_clip_index is None:
-                        first_clip_index = i
-                    if name:
-                        c.name = name
-                    if color_index is not None:
-                        c.color_index = int(color_index)
-
-                    # When loop_length < source_length, set the internal
-                    # loop region so only loop_length beats of content play.
-                    # Arrangement clip timeline length is read-only in the
-                    # LOM, but overlapping clips are handled by Ableton
-                    # (later clips take priority), so playback is correct.
-                    remaining = end_pos - pos
-                    target_len = min(loop_length, remaining)
-                    if target_len < source_length:
-                        try:
-                            c.looping = True
-                            c.loop_start = 0.0
-                            c.loop_end = target_len
-                        except (AttributeError, RuntimeError):
-                            pass
+                if id(c) not in old_ids and abs(c.start_time - pos) < 0.01:
+                    new_clip = c
+                    new_clip_idx = i
                     break
+
+            # Fallback: if id-based detection fails, match by position
+            if new_clip is None:
+                for i, c in enumerate(arr_clips):
+                    if abs(c.start_time - pos) < 0.01:
+                        new_clip = c
+                        new_clip_idx = i
+                        break
+
+            if new_clip is not None:
+                if first_clip_index is None:
+                    first_clip_index = new_clip_idx
+                if name:
+                    new_clip.name = name
+                if color_index is not None:
+                    new_clip.color_index = int(color_index)
+
+                # When loop_length < source_length, set the internal
+                # loop region so only loop_length beats of content play.
+                remaining = end_pos - pos
+                target_len = min(loop_length, remaining)
+                if target_len < source_length:
+                    try:
+                        new_clip.looping = True
+                        new_clip.loop_start = 0.0
+                        new_clip.loop_end = target_len
+                    except (AttributeError, RuntimeError):
+                        pass
 
             clip_count += 1
             pos += loop_length
@@ -574,13 +590,21 @@ def set_arrangement_automation(song, params):
             import Live
             note_specs = []
             for note in orig_notes:
-                spec = Live.Clip.MidiNoteSpecification(
+                kwargs = dict(
                     pitch=note.pitch,
                     start_time=note.start_time,
                     duration=note.duration,
                     velocity=note.velocity,
                     mute=note.mute,
                 )
+                # Preserve per-note expression data
+                if hasattr(note, 'probability') and note.probability is not None:
+                    kwargs['probability'] = note.probability
+                if hasattr(note, 'velocity_deviation') and note.velocity_deviation is not None:
+                    kwargs['velocity_deviation'] = note.velocity_deviation
+                if hasattr(note, 'release_velocity') and note.release_velocity is not None:
+                    kwargs['release_velocity'] = note.release_velocity
+                spec = Live.Clip.MidiNoteSpecification(**kwargs)
                 note_specs.append(spec)
             if note_specs:
                 temp_clip.add_new_notes(tuple(note_specs))
