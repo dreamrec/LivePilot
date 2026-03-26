@@ -84,13 +84,14 @@ class AbletonConnection:
             ) from exc
 
     def disconnect(self) -> None:
-        """Close the TCP connection."""
+        """Close the TCP connection and discard any partial receive buffer."""
         if self._socket is not None:
             try:
                 self._socket.close()
             except OSError:
                 pass
             self._socket = None
+        self._recv_buf = b""
 
     def is_connected(self) -> bool:
         """Return True if a socket is currently held."""

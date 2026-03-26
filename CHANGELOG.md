@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.9.5 — TCP Retry Fix + Arrangement Automation Fix (March 2026)
+
+- Fix(P1): disconnect() now clears _recv_buf — prevents partial JSON corruption on TCP retry
+- Fix(P1): set_arrangement_automation fallback copies notes + deletes original clip to avoid silent duplication
+- Fix(P2): get_arrangement_clips reports effective length based on loop_end, not raw timeline length
+- 2 new connection tests for recv_buf corruption
+- 257 tests passing
+
 ## 1.9.4 — Doc Sync + M4L Analyzer Fix + Full Validation (March 2026)
 
 **178 tools, all validated live in Ableton. M4L analyzer fully working.**

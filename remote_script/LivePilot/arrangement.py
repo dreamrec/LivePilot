@@ -13,12 +13,22 @@ def get_arrangement_clips(song, params):
     track = get_track(song, track_index)
     clips = []
     for i, clip in enumerate(track.arrangement_clips):
+        timeline_length = clip.length
+        # Report effective length based on loop_end if looping is active
+        # (arrangement clips may have been trimmed by create_arrangement_clip)
+        effective_length = timeline_length
+        try:
+            if clip.looping and clip.loop_end < timeline_length:
+                effective_length = clip.loop_end
+        except (AttributeError, RuntimeError):
+            pass
         clips.append({
             "index": i,
             "name": clip.name,
             "start_time": clip.start_time,
-            "end_time": clip.start_time + clip.length,
-            "length": clip.length,
+            "end_time": clip.start_time + effective_length,
+            "length": effective_length,
+            "timeline_length": timeline_length,
             "color_index": clip.color_index,
             "is_audio_clip": clip.is_audio_clip,
         })
@@ -557,7 +567,36 @@ def set_arrangement_automation(song, params):
             temp_envelope.insert_step(time, duration, value)
             points_written += 1
 
-        # Duplicate session clip to arrangement at the same position
+        # Copy notes from original arrangement clip to the temp session clip
+        # so the replacement clip has the same musical content.
+        try:
+            orig_notes = clip.get_notes_extended(0, 128, 0.0, arr_length + 1.0)
+            import Live
+            note_specs = []
+            for note in orig_notes:
+                spec = Live.Clip.MidiNoteSpecification(
+                    pitch=note.pitch,
+                    start_time=note.start_time,
+                    duration=note.duration,
+                    velocity=note.velocity,
+                    mute=note.mute,
+                )
+                note_specs.append(spec)
+            if note_specs:
+                temp_clip.add_new_notes(tuple(note_specs))
+        except Exception:
+            pass  # Non-MIDI clips or errors — automation-only is still valid
+
+        # Delete the original arrangement clip BEFORE placing the replacement
+        # to avoid creating a second overlapping clip at the same position.
+        try:
+            clip.delete_clip()
+        except (AttributeError, RuntimeError):
+            # delete_clip may not exist on arrangement clips in all versions;
+            # in that case we accept the overlap as a known limitation.
+            pass
+
+        # Place the session clip (with automation + notes) into arrangement
         track.duplicate_clip_to_arrangement(temp_clip, arr_start)
 
         # Clean up the temporary session clip

@@ -164,3 +164,32 @@ def test_connection_refused():
     conn = AbletonConnection(host="127.0.0.1", port=19999)
     with pytest.raises(AbletonConnectionError):
         conn.connect()
+
+
+def test_disconnect_clears_recv_buf():
+    """Verify disconnect() discards partial receive buffer so retries
+    don't corrupt the next response with leftover bytes."""
+    conn = AbletonConnection(host="127.0.0.1", port=19999)
+    # Simulate partial data left in buffer
+    conn._recv_buf = b'{"partial": tru'
+    conn.disconnect()
+    assert conn._recv_buf == b"", "disconnect must clear _recv_buf"
+
+
+def test_retry_after_timeout_gets_clean_response(mock_server):
+    """After a timeout + reconnect, the next command should not see
+    leftover bytes from the failed attempt."""
+    conn = AbletonConnection(host="127.0.0.1", port=mock_server.port)
+    conn.connect()
+    try:
+        # Inject garbage into the recv buffer to simulate partial read
+        conn._recv_buf = b'{"broken": '
+        # disconnect should clear it
+        conn.disconnect()
+        assert conn._recv_buf == b""
+        # Reconnect and verify clean response
+        conn.connect()
+        result = conn.send_command("ping")
+        assert result.get("pong") is True
+    finally:
+        conn.disconnect()
