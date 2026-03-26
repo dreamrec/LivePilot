@@ -80,11 +80,11 @@ Every tool maps directly to an LOM call — no abstraction, no guessing.
 | Domain | # | Scope |
 |--------|:-:|-------|
 | Transport | 12 | playback, tempo, time sig, loop, metronome, undo/redo, cue points, diagnostics |
-| Tracks | 14 | create MIDI/audio/return, delete, duplicate, arm, mute, solo, color, routing, monitoring |
+| Tracks | 17 | create MIDI/audio/return, delete, duplicate, arm, mute, solo, color, monitoring, freeze, flatten |
 | Clips | 11 | create, delete, duplicate, fire, stop, loop, launch mode, warp mode, quantize |
 | Notes | 8 | add/get/remove/modify MIDI notes, transpose, duplicate, per-note probability |
-| Devices | 12 | load by name or URI, get/set parameters, batch edit, racks, chains, presets, toggle |
-| Scenes | 8 | create, delete, duplicate, fire, name, color, per-scene tempo |
+| Devices | 15 | load by name or URI, get/set parameters, batch edit, racks, chains, presets, plugin params |
+| Scenes | 12 | create, delete, duplicate, fire, name, color, tempo, scene matrix, selective launch |
 | Browser | 4 | search library, browse tree, load items, filter by category |
 | Mixing | 11 | volume, pan, sends, routing, meters, return tracks, master, full mix snapshot |
 
@@ -95,7 +95,7 @@ Every tool maps directly to an LOM call — no abstraction, no guessing.
 The M4L Analyzer sits on the master track. UDP 9880 carries spectral data
 from Max to the server. OSC 9881 sends commands back.
 
-All 139 core tools work without it — the analyzer adds 29 more
+All 146 core tools work without it — the analyzer adds 32 more
 and closes the feedback loop.
 
 <br>
@@ -425,8 +425,8 @@ Windsurf — `~/.codeium/windsurf/mcp_config.json`:
 
 Drag `LivePilot_Analyzer.amxd` onto the master track.
 
-Unlocks 20 additional tools: spectral analysis, key detection,
-sample manipulation, deep device introspection.
+Unlocks 32 additional tools: spectral analysis, key detection,
+sample manipulation, deep device introspection, plugin parameter mapping.
 
 All core tools work without it.
 
@@ -499,7 +499,7 @@ Check memory before creative decisions. Verify every mutation.
 
 <br>
 
-### Tracks (14)
+### Tracks (17)
 
 | Tool | Description |
 |------|-------------|
@@ -517,6 +517,9 @@ Check memory before creative decisions. Verify every mutation.
 | `stop_track_clips` | Stop all clips on track |
 | `set_group_fold` | Fold/unfold group track |
 | `set_track_input_monitoring` | Set monitoring mode |
+| `freeze_track` | Freeze track (render devices to audio) |
+| `flatten_track` | Flatten frozen track (commit audio permanently) |
+| `get_freeze_status` | Check if track is frozen |
 
 <br>
 
@@ -572,7 +575,7 @@ Check memory before creative decisions. Verify every mutation.
 
 <br>
 
-### Scenes (8)
+### Scenes (12)
 
 | Tool | Description |
 |------|-------------|
@@ -584,6 +587,10 @@ Check memory before creative decisions. Verify every mutation.
 | `set_scene_name` | Rename |
 | `set_scene_color` | Set color |
 | `set_scene_tempo` | Per-scene tempo |
+| `get_scene_matrix` | Full clip grid: every track × every scene with states |
+| `fire_scene_clips` | Fire scene with optional track filter |
+| `stop_all_clips` | Stop all playing clips (panic) |
+| `get_playing_clips` | All currently playing/triggered clips |
 
 <br>
 
@@ -705,6 +712,14 @@ Check memory before creative decisions. Verify every mutation.
 | `check_flucoma` | Verify FluCoMa installation |
 | `capture_audio` | Record master output to WAV |
 | `capture_stop` | Cancel in-progress capture |
+
+### Devices — Plugin Deep Control (3) `[M4L]`
+
+| Tool | Description |
+|------|-------------|
+| `get_plugin_parameters` | All VST/AU params including unconfigured |
+| `map_plugin_parameter` | Add param to Ableton's Configure list |
+| `get_plugin_presets` | List plugin's internal presets/banks |
 
 <br>
 

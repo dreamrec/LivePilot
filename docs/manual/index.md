@@ -16,7 +16,7 @@ AI Client  ──MCP──►  FastMCP Server  ──TCP/9878──►  Remote S
                             └── Technique Memory (~/.livepilot/memory/)
 ```
 
-The atlas resolves device names and browser URIs — the AI never hallucinates a preset. The analyzer feeds back spectral data from the master bus so the AI hears the result of its own changes. The memory persists production decisions across sessions as searchable, replayable data structures. All three layers feed into 168 deterministic LOM calls on Ableton's main thread. Everything is reversible with undo.
+The atlas resolves device names and browser URIs — the AI never hallucinates a preset. The analyzer feeds back spectral data from the master bus so the AI hears the result of its own changes. The memory persists production decisions across sessions as searchable, replayable data structures. All three layers feed into 178 deterministic LOM calls on Ableton's main thread. Everything is reversible with undo.
 
 ---
 
