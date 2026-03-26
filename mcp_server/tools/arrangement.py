@@ -105,7 +105,13 @@ def create_arrangement_clip(
     length:          total clip length in beats on the timeline
     loop_length:     pattern length to loop within the clip (e.g. 8.0 for an
                      8-beat pattern inside a 128-beat section). Defaults to
-                     the source clip's length.
+                     the source clip's length. Must be > 0.
+
+    When loop_length < source clip length, overlapping copies are placed
+    every loop_length beats. Ableton's "later clip takes priority" rule
+    ensures correct playback. Each copy's internal loop region is set to
+    loop_length beats. For best results, use loop_length >= source length.
+
     name:            optional clip display name
     color_index:     optional 0-69 Ableton color
 
@@ -125,6 +131,8 @@ def create_arrangement_clip(
         "length": length,
     }
     if loop_length is not None:
+        if loop_length <= 0:
+            raise ValueError("loop_length must be > 0")
         params["loop_length"] = loop_length
     if name:
         params["name"] = name

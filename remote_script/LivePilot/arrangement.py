@@ -61,6 +61,8 @@ def create_arrangement_clip(song, params):
 
     # Use loop_length as the repeat unit (defaults to source clip length)
     loop_length = float(params.get("loop_length", source_length))
+    if loop_length <= 0:
+        raise ValueError("loop_length must be > 0")
 
     name = str(params.get("name", ""))
     color_index = params.get("color_index")
@@ -86,6 +88,21 @@ def create_arrangement_clip(song, params):
                         c.name = name
                     if color_index is not None:
                         c.color_index = int(color_index)
+
+                    # When loop_length < source_length, set the internal
+                    # loop region so only loop_length beats of content play.
+                    # Arrangement clip timeline length is read-only in the
+                    # LOM, but overlapping clips are handled by Ableton
+                    # (later clips take priority), so playback is correct.
+                    remaining = end_pos - pos
+                    target_len = min(loop_length, remaining)
+                    if target_len < source_length:
+                        try:
+                            c.looping = True
+                            c.loop_start = 0.0
+                            c.loop_end = target_len
+                        except (AttributeError, RuntimeError):
+                            pass
                     break
 
             clip_count += 1

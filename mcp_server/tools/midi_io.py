@@ -59,6 +59,27 @@ def _validate_midi_path(file_path: str) -> Path:
     return p
 
 
+def _midi_notes_to_beats(pm) -> list[dict]:
+    """Convert pretty_midi notes to beat-position dicts using the file's own tempo map.
+
+    Uses time_to_tick/resolution to preserve the MIDI file's beat grid,
+    regardless of the current Ableton session tempo.
+    """
+    notes_raw = []
+    for inst in pm.instruments:
+        for n in inst.notes:
+            start_beat = round(pm.time_to_tick(n.start) / pm.resolution, 3)
+            end_beat = round(pm.time_to_tick(n.end) / pm.resolution, 3)
+            dur_beat = round(end_beat - start_beat, 3)
+            notes_raw.append({
+                "pitch": n.pitch,
+                "start_time": start_beat,
+                "duration": max(dur_beat, 0.001),
+                "velocity": n.velocity,
+            })
+    return notes_raw
+
+
 # -- Tool 1: export_clip_midi ------------------------------------------------
 
 @mcp.tool()
@@ -127,8 +148,10 @@ def import_midi_to_clip(
 ) -> dict:
     """Load a .mid file into a session clip.
 
-    Reads MIDI, converts timing to beats using session tempo, and writes
-    notes into the target clip slot. Creates the clip if needed.
+    Reads MIDI, converts timing to beats using the file's own tempo map,
+    and writes notes into the target clip slot. When create_clip=True
+    (default), creates a new clip if the slot is empty; if a clip already
+    exists, clears its notes before importing.
     """
     pretty_midi = _require_pretty_midi()
     ableton = _get_ableton(ctx)
@@ -136,20 +159,8 @@ def import_midi_to_clip(
     path = _validate_midi_path(file_path)
     pm = pretty_midi.PrettyMIDI(str(path))
 
-    session = ableton.send_command("get_session_info", {})
-    tempo = float(session.get("tempo", 120.0))
-
-    notes_raw = []
-    for inst in pm.instruments:
-        for n in inst.notes:
-            start_beat = round(n.start * (tempo / 60.0), 3)
-            dur_beat = round((n.end - n.start) * (tempo / 60.0), 3)
-            notes_raw.append({
-                "pitch": n.pitch,
-                "start_time": start_beat,
-                "duration": max(dur_beat, 0.001),
-                "velocity": n.velocity,
-            })
+    # Convert using the MIDI file's own tempo map (not session tempo)
+    notes_raw = _midi_notes_to_beats(pm)
 
     seen = set()
     notes = []
@@ -165,11 +176,24 @@ def import_midi_to_clip(
                          default=4.0)
 
     if create_clip:
-        ableton.send_command("create_clip", {
-            "track_index": track_index,
-            "clip_index": clip_index,
-            "length": round(duration_beats, 2),
-        })
+        # Check if clip already exists — only create if the slot is empty
+        try:
+            ableton.send_command("get_clip_info", {
+                "track_index": track_index,
+                "clip_index": clip_index,
+            })
+            # Clip exists — clear its notes before importing
+            ableton.send_command("remove_notes", {
+                "track_index": track_index,
+                "clip_index": clip_index,
+            })
+        except Exception:
+            # No clip in slot — create one
+            ableton.send_command("create_clip", {
+                "track_index": track_index,
+                "clip_index": clip_index,
+                "length": round(duration_beats, 2),
+            })
 
     if notes:
         ableton.send_command("add_notes", {
@@ -178,10 +202,13 @@ def import_midi_to_clip(
             "notes": notes,
         })
 
+    tempo_changes = pm.get_tempo_changes()
+    midi_tempo = float(tempo_changes[1][0]) if len(tempo_changes[1]) > 0 else 120.0
+
     return {
         "note_count": len(notes),
         "duration_beats": round(duration_beats, 4),
-        "tempo_source": tempo,
+        "midi_tempo": midi_tempo,
     }
 
 

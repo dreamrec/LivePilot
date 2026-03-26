@@ -3,6 +3,8 @@ import sys
 import os
 import tempfile
 
+import pytest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
@@ -135,5 +137,55 @@ class TestFileValidation:
         try:
             with pytest.raises(ValueError):
                 _validate_midi_path(path)
+        finally:
+            os.unlink(path)
+
+
+class TestImportTempoIndependence:
+    """Verify MIDI import preserves beat positions regardless of session tempo."""
+
+    def test_60bpm_midi_beat_positions_preserved(self):
+        """A note at beat 1.0 in a 60 BPM MIDI file should import at beat 1.0."""
+        import pretty_midi
+        from mcp_server.tools.midi_io import _midi_notes_to_beats
+
+        with tempfile.NamedTemporaryFile(suffix=".mid", delete=False) as f:
+            path = f.name
+        try:
+            _create_test_midi(path, notes=[
+                (60, 0.0, 1.0, 100),   # beat 0, duration 1 beat
+                (64, 1.0, 0.5, 90),    # beat 1, duration 0.5 beats
+                (67, 2.0, 1.0, 80),    # beat 2, duration 1 beat
+            ], tempo=60.0)
+
+            pm = pretty_midi.PrettyMIDI(path)
+            notes = _midi_notes_to_beats(pm)
+
+            assert notes[0]["start_time"] == pytest.approx(0.0, abs=0.05)
+            assert notes[1]["start_time"] == pytest.approx(1.0, abs=0.05)
+            assert notes[2]["start_time"] == pytest.approx(2.0, abs=0.05)
+            assert notes[0]["duration"] == pytest.approx(1.0, abs=0.05)
+            assert notes[1]["duration"] == pytest.approx(0.5, abs=0.05)
+        finally:
+            os.unlink(path)
+
+    def test_120bpm_midi_beat_positions(self):
+        """120 BPM MIDI should also preserve beat positions correctly."""
+        import pretty_midi
+        from mcp_server.tools.midi_io import _midi_notes_to_beats
+
+        with tempfile.NamedTemporaryFile(suffix=".mid", delete=False) as f:
+            path = f.name
+        try:
+            _create_test_midi(path, notes=[
+                (60, 0.0, 1.0, 100),
+                (64, 2.0, 0.5, 90),
+            ], tempo=120.0)
+
+            pm = pretty_midi.PrettyMIDI(path)
+            notes = _midi_notes_to_beats(pm)
+
+            assert notes[0]["start_time"] == pytest.approx(0.0, abs=0.05)
+            assert notes[1]["start_time"] == pytest.approx(2.0, abs=0.05)
         finally:
             os.unlink(path)

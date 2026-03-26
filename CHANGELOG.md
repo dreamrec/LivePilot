@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.8.4 — Bug Fix Audit (March 2026)
+
+**5 bugs fixed (2 P1, 3 P2), verified live in Ableton.**
+
+### P1 — Safety-Critical
+- Fix: `create_arrangement_clip` no longer hangs Ableton when `loop_length` is zero or negative — validation at MCP + Remote Script layers
+- Fix: `import_midi_to_clip` now preserves the MIDI file's beat grid instead of scaling by session tempo — a 60 BPM MIDI imported at 120 BPM no longer doubles note positions
+
+### P2 — Correctness
+- Fix: `create_arrangement_clip` now sets `loop_end` on duplicated clips when `loop_length < source_length`, with documented LOM limitation for arrangement clip resizing
+- Fix: `--status` / `--doctor` CLI commands no longer report success for error responses — only resolves true on valid pong
+- Fix: `import_midi_to_clip` with `create_clip=True` now checks for existing clips before creating — clears notes if occupied, creates if empty
+
+### Tests
+- 2 new tests for MIDI tempo independence (`test_midi_io.py::TestImportTempoIndependence`)
+- 255 total tests passing
+
 ## 1.8.3 — FluCoMa Wiring + Analyzer Fix (March 2026)
 
 - Fix: wire 6 FluCoMa DSP objects into LivePilot_Analyzer.maxpat (spectral shape, mel bands, chroma, loudness, onset, novelty)

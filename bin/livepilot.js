@@ -127,10 +127,12 @@ function checkStatus() {
     sock.on("data", (chunk) => {
       buf += chunk.toString();
       if (buf.includes("\n")) {
+        let ok = false;
         try {
           const resp = JSON.parse(buf.split("\n")[0]);
           if (resp.ok === true && resp.result && resp.result.pong) {
             console.log("  Ableton Live: connected on %s:%d", HOST, PORT);
+            ok = true;
           } else {
             console.log("  Ableton Live: unexpected response:", JSON.stringify(resp));
           }
@@ -138,7 +140,7 @@ function checkStatus() {
           console.log("  Ableton Live: invalid response");
         }
         sock.destroy();
-        resolve(true);
+        resolve(ok);
       }
     });
 
