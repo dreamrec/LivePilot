@@ -1,9 +1,15 @@
 # Changelog
 
-## 1.9.2 — Rebuild .amxd with v1.9 Bridge (March 2026)
+## 1.9.3 — M4L Analyzer Fix + Full Validation (March 2026)
 
-- Rebuild LivePilot_Analyzer.amxd in Max editor to freeze 3 new plugin parameter bridge commands
+**178 tools, all validated live in Ableton. M4L analyzer fully working.**
+
+- Fix: multislider `settype` 0→1 (integer→float) — spectrum bars now render correctly
+- Fix: added `loadbang → 1 → snapshot~` init chain for reliable auto-output
+- Fix: panel z-order for visible UI in presentation mode
 - Binary-patch `openinpresentation` for presentation mode
+- Rebuilt .amxd with v1.9 bridge (3 new plugin parameter commands frozen)
+- Full live validation: 77 PASS across all 17 domains, FluCoMa 6/6 streams, 255 pytest passing
 
 ## 1.9.0 — Scene Matrix, Freeze/Flatten, Plugin Deep Control (March 2026)
 

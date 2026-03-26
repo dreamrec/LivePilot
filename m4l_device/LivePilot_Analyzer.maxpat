@@ -784,7 +784,7 @@
 					],
 					"orientation": 1,
 					"setstyle": 1,
-					"settype": 0,
+					"settype": 1,
 					"slidercolor": [
 						0.65,
 						0.82,
