@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.9.3 — M4L Analyzer Fix + Full Validation (March 2026)
+## 1.9.4 — Doc Sync + M4L Analyzer Fix + Full Validation (March 2026)
 
 **178 tools, all validated live in Ableton. M4L analyzer fully working.**
 
