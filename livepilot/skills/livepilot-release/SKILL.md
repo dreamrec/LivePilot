@@ -13,43 +13,56 @@ Run this checklist EVERY time the user says "update everything", "push", "releas
 - [ ] `package-lock.json` → `"version"` (run `npm install --package-lock-only` if stale)
 - [ ] `server.json` → `"version"` (TWO locations: top-level and package)
 - [ ] `livepilot/.claude-plugin/plugin.json` → `"version"`
+- [ ] `.claude-plugin/marketplace.json` → `"version"` in plugins array
 - [ ] `mcp_server/__init__.py` → `__version__`
-- [ ] `remote_script/LivePilot/__init__.py` → version in log message
+- [ ] `remote_script/LivePilot/__init__.py` → `__version__` (log message auto-uses it)
 - [ ] `m4l_device/livepilot_bridge.js` → version in ping response
+- [ ] `CLAUDE.md` → header line
+- [ ] `livepilot/skills/livepilot-core/references/overview.md` → header line
 - [ ] `CHANGELOG.md` → latest version header
 - [ ] `docs/social-banner.html` → version display
+- [ ] `docs/M4L_BRIDGE.md` → ping response example
 
-**How to check:** `grep -rn "1\.[0-9]\.[0-9]" package.json server.json livepilot/.claude-plugin/plugin.json mcp_server/__init__.py remote_script/LivePilot/__init__.py m4l_device/livepilot_bridge.js CHANGELOG.md docs/social-banner.html`
+**How to check:** `grep -rn "1\.[0-9]\.[0-9]" package.json server.json livepilot/.claude-plugin/plugin.json .claude-plugin/marketplace.json mcp_server/__init__.py remote_script/LivePilot/__init__.py m4l_device/livepilot_bridge.js CHANGELOG.md CLAUDE.md livepilot/skills/livepilot-core/references/overview.md docs/social-banner.html docs/M4L_BRIDGE.md`
 
 ## 2. Tool Count (must ALL match)
 
-- [ ] `README.md` — every occurrence
-- [ ] `package.json` → `"description"`
+Current: **168 tools across 17 domains**.
+Core (no M4L): **139**. Analyzer (M4L): **29**. Perception (offline): **4**.
+
+Verify: `grep -rc "@mcp.tool" mcp_server/tools/ | grep -v ":0" | awk -F: '{sum+=$2} END{print sum}'`
+
+Files that reference tool count:
+- [ ] `README.md` — header, PERCEPTION section ("139 core...29 analyzer"), Analyzer table header "(29)", Perception table header "(4)"
+- [ ] `package.json` → `"description"` (168 tools, 17 domains)
 - [ ] `server.json` → `"description"`
 - [ ] `livepilot/.claude-plugin/plugin.json` → `"description"`
-- [ ] `CLAUDE.md`
-- [ ] `livepilot/skills/livepilot-core/SKILL.md` — header and domain breakdown
-- [ ] `livepilot/skills/livepilot-core/references/overview.md`
-- [ ] `docs/manual/index.md`
-- [ ] `docs/manual/tool-reference.md`
-- [ ] `docs/TOOL_REFERENCE.md`
-- [ ] `docs/M4L_BRIDGE.md`
+- [ ] `.claude-plugin/marketplace.json` → `"description"`
+- [ ] `CLAUDE.md` → "168 tools across 17 domains"
+- [ ] `livepilot/skills/livepilot-core/SKILL.md` — "168 tools across 17 domains", Analyzer (29), Perception (4)
+- [ ] `livepilot/skills/livepilot-core/references/overview.md` — "168 tools across 17 domains"
+- [ ] `docs/manual/index.md` — domain table: Analyzer (29), Perception (4)
+- [ ] `docs/manual/getting-started.md` — "139 core tools...29 analyzer"
+- [ ] `docs/manual/tool-reference.md` — all domains present with correct counts
+- [ ] `docs/TOOL_REFERENCE.md` — all domains present
+- [ ] `docs/M4L_BRIDGE.md` — "139 core tools...29 analyzer"
 - [ ] `docs/social-banner.html`
 - [ ] `mcp_server/tools/analyzer.py` → module docstring
-- [ ] `tests/test_tools_contract.py` → expected count
+- [ ] `tests/test_tools_contract.py` → expected total count
 
-**How to check:** `grep -rn "127\|128\|129\|130\|131\|132\|133\|134" --include="*.md" --include="*.json" --include="*.py" --include="*.html" --include="*.js" . | grep -v node_modules | grep -v .git | grep -v __pycache__`
+**How to check:** `grep -rn "168\|139\|135\|127\|115\|107" --include="*.md" --include="*.json" --include="*.py" --include="*.html" . | grep -v node_modules | grep -v .git | grep -v __pycache__ | grep -v CHANGELOG`
 
 ## 3. Domain Count
 
-- [ ] All files above that mention "11 domains" should say "12 domains"
-- [ ] Domain lists should include: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, automation, memory, analyzer
+Current: **17 domains**: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, analyzer, automation, theory, generative, harmony, midi_io, perception.
+
+- [ ] All files that mention domain count say "17 domains"
+- [ ] Domain lists include ALL 17 (especially perception — it's the newest and most often omitted)
 
 ## 4. npm Registry
 
 - [ ] `npm view livepilot version` matches local version
 - [ ] If not: `npm publish`
-- [ ] Verify badge will update: badge URL in README.md points to shields.io/npm/v/livepilot
 
 ## 5. GitHub
 
@@ -57,9 +70,6 @@ Run this checklist EVERY time the user says "update everything", "push", "releas
 - [ ] Topics are current (should include: ai, mcp, ableton, livepilot, max-for-live, audio-analysis)
 - [ ] Latest release matches current version (`gh release list`)
 - [ ] Release notes are current
-- [ ] Old stale releases cleaned up
-- [ ] Git tags: only relevant versions exist (`git tag -l`)
-- [ ] No co-author or unwanted metadata in commit messages
 
 ## 6. Plugin Cache
 
@@ -74,28 +84,26 @@ Run this checklist EVERY time the user says "update everything", "push", "releas
 
 ## 8. Documentation Content
 
-- [ ] `README.md` — features match current capabilities
-- [ ] `docs/manual/getting-started.md` — install instructions current, mentions M4L Analyzer
-- [ ] `docs/manual/tool-reference.md` — all tools listed
-- [ ] `docs/M4L_BRIDGE.md` — architecture accurate
-- [ ] `docs/TOOL_REFERENCE.md` — all tools listed with correct params
+- [ ] `README.md` — features match current capabilities, "Coming" section is accurate
+- [ ] `docs/manual/getting-started.md` — install instructions current
+- [ ] `docs/manual/tool-reference.md` — all 17 domains listed, all 168 tools present
+- [ ] `docs/TOOL_REFERENCE.md` — all 17 domains present
+- [ ] `docs/M4L_BRIDGE.md` — architecture accurate, core tool count correct
 
 ## 9. Derived Artifacts
 
 - [ ] `m4l_device/LivePilot_Analyzer.amxd` — frozen JS matches source? All commands present?
-- [ ] Distributable zip on Desktop — rebuilt with latest?
-- [ ] Private backup repo — synced and pushed?
-- [ ] `LivePilot-v*.INSTALL.txt` — updated?
+- [ ] If `livepilot_bridge.js` changed → amxd needs rebuilding in Max editor
 
 ## 10. Code Consistency
 
 - [ ] `@mcp.tool()` count matches documented tool count: `grep -r "@mcp.tool" mcp_server/tools/ | wc -l`
 - [ ] No dead imports or unused code in recently changed files
 - [ ] Remote script version matches MCP server version
+- [ ] All tests pass: `python3 -m pytest tests/ -v`
 
 ## Quick Verify Command
 
-Run this one-liner to catch most issues:
 ```bash
-echo "=== Versions ===" && grep -h '"version"' package.json server.json livepilot/.claude-plugin/plugin.json | head -5 && grep __version__ mcp_server/__init__.py && echo "=== Tool count ===" && grep -rc "@mcp.tool" mcp_server/tools/ | tail -1 && echo "=== npm ===" && npm view livepilot version 2>/dev/null && echo "=== GitHub release ===" && gh release list --limit 1 && echo "=== Tags ===" && git tag -l
+echo "=== Versions ===" && grep -h '"version"' package.json server.json livepilot/.claude-plugin/plugin.json .claude-plugin/marketplace.json | head -6 && grep __version__ mcp_server/__init__.py remote_script/LivePilot/__init__.py && echo "=== Tool count ===" && grep -rc "@mcp.tool" mcp_server/tools/ | grep -v ":0" | awk -F: '{sum+=$2} END{print "Total:", sum}' && echo "=== Tests ===" && python3 -m pytest tests/ -q 2>&1 | tail -1
 ```

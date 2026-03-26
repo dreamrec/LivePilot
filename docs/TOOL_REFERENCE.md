@@ -192,7 +192,7 @@
 | `memory_update` | Update technique metadata | `technique_id` |
 | `memory_delete` | Delete technique (creates backup) | `technique_id` |
 
-## Analyzer (20 tools) [M4L]
+## Analyzer (29 tools) [M4L]
 
 All tools in this domain require the LivePilot Analyzer M4L device on the master track.
 
@@ -218,6 +218,38 @@ All tools in this domain require the LivePilot Analyzer M4L device on the master
 | `remove_warp_marker` | Remove warp marker | `track_index`, `clip_index`, `beat_time` |
 | `scrub_clip` | Preview clip at beat position | `track_index`, `clip_index`, `beat_time` |
 | `stop_scrub` | Stop clip preview | `track_index`, `clip_index` |
+| `get_spectral_shape` | 7 spectral descriptors via FluCoMa | (none) |
+| `get_mel_spectrum` | 40-band mel spectrum via FluCoMa | (none) |
+| `get_chroma` | 12 pitch class energies via FluCoMa | (none) |
+| `get_onsets` | Real-time onset/transient detection | (none) |
+| `get_novelty` | Spectral novelty for section boundaries | (none) |
+| `get_momentary_loudness` | EBU R128 momentary LUFS + peak | (none) |
+| `check_flucoma` | Verify FluCoMa installation status | (none) |
+| `capture_audio` | Record master output to WAV | `duration_seconds` |
+| `capture_stop` | Cancel in-progress capture | (none) |
+
+## Theory (7 tools)
+
+| Tool | Description | Required Params |
+|------|-------------|-----------------|
+| `analyze_harmony` | Chord-by-chord Roman numeral analysis | `track_index`, `clip_index` |
+| `suggest_next_chord` | Theory-valid chord continuations | `track_index`, `clip_index` |
+| `detect_theory_issues` | Parallel 5ths, out-of-key, voice crossing | `track_index`, `clip_index` |
+| `identify_scale` | Key/mode detection with confidence | `track_index`, `clip_index` |
+| `harmonize_melody` | 2 or 4-voice SATB harmonization | `track_index`, `clip_index` |
+| `generate_countermelody` | Species counterpoint (1st/2nd) | `track_index`, `clip_index` |
+| `transpose_smart` | Diatonic or chromatic transposition | `track_index`, `clip_index`, `semitones` |
+
+## Perception (4 tools)
+
+Offline audio analysis — no Ableton connection required.
+
+| Tool | Description | Required Params |
+|------|-------------|-----------------|
+| `analyze_loudness` | Integrated LUFS, true peak, LRA, streaming compliance | `file_path` |
+| `analyze_spectrum_offline` | Spectral centroid, rolloff, flatness, 5-band balance | `file_path` |
+| `compare_to_reference` | Mix vs reference loudness + spectral delta | `mix_path`, `reference_path` |
+| `read_audio_metadata` | Format, duration, sample rate, tags | `file_path` |
 
 ## Generative (5 tools)
 
