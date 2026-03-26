@@ -298,13 +298,28 @@ def freeze_track(song, params):
             "is_frozen": True,
             "note": "Track is already frozen",
         }
-    # In Live 12, freeze is a track method accessible from ControlSurface
+    # Try track.freeze() first (available in some Live versions),
+    # then fall back to song-level freeze API
+    frozen = False
     try:
         track.freeze()
+        frozen = True
     except AttributeError:
+        pass
+
+    if not frozen:
+        # Song-level API: freeze by track index
+        try:
+            song.freeze_track(track_index)
+            frozen = True
+        except AttributeError:
+            pass
+
+    if not frozen:
         raise ValueError(
-            "freeze() not available on this track type. "
-            "Only MIDI and audio tracks with devices can be frozen."
+            "freeze() not available via ControlSurface API. "
+            "Use Ableton's Freeze Track command (Cmd+F) manually, "
+            "or use the M4L bridge for programmatic freeze."
         )
     return {
         "track_index": track_index,
