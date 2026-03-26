@@ -25,6 +25,17 @@ The intent is to keep V2 grounded in three questions:
 3. [2026-03-27-v2-backlog.md](./2026-03-27-v2-backlog.md)  
    Epics, milestones, dependencies, sprint order, and acceptance criteria.
 
+## Companion Notes
+
+- [2026-03-27-v2-feedback-response.md](./2026-03-27-v2-feedback-response.md)  
+  A practical response to external review, including scope corrections,
+  release reframing, and concrete follow-through implications for V2.
+
+- [2026-03-27-livepilot-product-line-and-go-to-market-strategy.md](./2026-03-27-livepilot-product-line-and-go-to-market-strategy.md)  
+  Product-family strategy covering editions, audiences, positioning,
+  commercialization, marketing, and implementation planning beyond the core V2
+  roadmap.
+
 ## Relationship To Existing Docs
 
 This package should be read alongside the current V1-era specs in [../specs](../specs), especially:

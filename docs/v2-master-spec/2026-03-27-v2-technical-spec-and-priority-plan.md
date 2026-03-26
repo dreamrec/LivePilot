@@ -64,6 +64,24 @@ V2 is a system that should:
 - generate constrained musical options
 - support research, composition, production, and performance
 
+### Release framing
+
+The V2 vision should be implemented as staged releases, not as one monolithic
+delivery.
+
+- `V2.0`: listening foundation
+- `V2.1`: thin retrieval foundation
+- `V2.2`: critique engine
+- `V2.x`: corpus workflows, variation, and broader co-creative systems
+- `V3 / R&D`: performer-mode co-agency
+
+The most important practical consequence is scope:
+
+- V2.0 should mean listening plus snapshots plus section/reference analysis
+- retrieval should start small and descriptor-first
+- critique should be the next identity-changing release
+- performer mode is not part of the core committed V2 path
+
 ---
 
 ## 3. Top-Level Priorities
@@ -186,6 +204,11 @@ Primary outputs:
 - live summaries
 - confidence-bounded behavior
 
+Note:
+
+- Performer Mode remains part of the long-term product model
+- it should be treated as `V3 / R&D` unless radically narrowed
+
 ---
 
 ## 6. System Architecture
@@ -243,7 +266,7 @@ Use Max where it is strongest:
 Python should become the real intelligence hub:
 
 - offline MIR analysis
-- vector indexing
+- similarity indexing and optional embedding support
 - similarity retrieval
 - memory persistence
 - critique generation
@@ -275,6 +298,10 @@ livepilot_v2/
     remote_commands.py
     session_snapshot.py
   analysis/
+    backends/
+      base.py
+      librosa_backend.py
+      essentia_backend.py
     offline_audio/
       descriptors.py
       rhythm.py
@@ -293,8 +320,9 @@ livepilot_v2/
     schemas.py
     outcomes.py
     preferences.py
-    vector_index.py
+    embedding_backend.py
   retrieval/
+    similarity_store.py
     nearest_neighbors.py
     hybrid_search.py
     corpus_builder.py
@@ -318,6 +346,10 @@ livepilot_v2/
     coagency_state.py
   interfaces/
     mcp_tools/
+      tool_registry.py
+    skills/
+      workflow_guides.md
+      decision_loops.md
     max_messages/
     reports/
 ```
@@ -374,8 +406,8 @@ Purpose:
     }
   },
   "embedding_refs": {
-    "audio": "embedding_id_1",
-    "section": "embedding_id_2"
+    "audio": "optional_embedding_id_1",
+    "section": "optional_embedding_id_2"
   }
 }
 ```
@@ -402,7 +434,7 @@ Purpose:
     "attack_sharpness": 0.73
   },
   "embedding_refs": {
-    "audio": "embedding_uuid"
+    "audio": "optional_embedding_uuid"
   },
   "analysis_refs": {
     "segments": [],
@@ -439,7 +471,7 @@ This extends the current memory concept.
       "width": 0.74
     },
     "embedding_refs": {
-      "audio_demo": "embedding_uuid"
+      "audio_demo": "optional_embedding_uuid"
     }
   },
   "usage_history": {
@@ -532,12 +564,17 @@ V2 should maintain:
 
 - relational metadata store
 - JSON document store for rich payloads
-- vector index for embeddings
 - file-backed analysis cache
+- local similarity artifacts for retrieval
+
+Optional later:
+
+- embedding store
+- vector or ANN index if corpus scale actually requires it
 
 ### 9.2 Suggested approach
 
-#### Option A: SQLite + JSON + local vector index
+#### Option A: SQLite + JSON + local similarity layer
 
 Recommended for V2.
 
@@ -545,7 +582,8 @@ Use:
 
 - SQLite for metadata and relationships
 - JSON blobs for flexible payloads
-- a local vector library or lightweight ANN index for embeddings
+- persisted descriptor arrays or similarity features for retrieval
+- optional embedding caches behind an abstraction layer
 
 Advantages:
 
@@ -553,12 +591,13 @@ Advantages:
 - easy to back up
 - no cloud dependency
 - good enough at V2 scale
+- does not overcommit the project to retrieval infrastructure too early
 
 ### 9.3 What should be cached
 
 - clip-level analysis snapshots
 - exported preview renders
-- embeddings
+- optional embeddings
 - nearest-neighbor results
 - critique reports
 
@@ -584,7 +623,38 @@ V2 emphasis:
 
 - higher-level workflow tools
 
-### 10.3 Recommended V2 tool families
+### 10.3 Tool Surface Evolution
+
+The V2 workflow shift must coexist with the already shipped V1 primitive tool
+surface.
+
+That requires an explicit migration policy:
+
+- keep existing primitive tools stable during V2
+- introduce workflow tools as the recommended surface
+- classify current tools as `keep`, `workflow_wrapped`, `internal_only`, or
+  `future_deprecate`
+- document when a workflow tool supersedes a primitive sequence
+- avoid removing or hiding primitives until workflow adoption is proven
+
+This should be reflected both in MCP registration structure and in user-facing
+docs.
+
+### 10.4 Agent Skill Evolution
+
+The V2 shift is not complete if only the tool registry changes.
+
+Agent-facing guidance also needs to evolve so the model learns when to use the
+new workflows and when to fall back to low-level primitives.
+
+That guidance should:
+
+- teach the `Hear -> Diagnose -> Propose -> Act -> Audition -> Learn` loop
+- prefer high-level workflow tools before primitive multi-step sequences
+- preserve primitive fallback patterns for advanced control and compatibility
+- be updated alongside new workflow tool releases, not after them
+
+### 10.5 Recommended V2 tool families
 
 #### Analysis tools
 
@@ -596,8 +666,8 @@ V2 emphasis:
 #### Retrieval tools
 
 - `find_similar_audio`
+- `find_similar_section`
 - `find_related_chains`
-- `search_corpus_by_text`
 - `search_corpus_by_example`
 
 #### Critique tools
@@ -621,7 +691,7 @@ V2 emphasis:
 - `apply_cue_transition`
 - `panic_freeze`
 
-### 10.4 Tools to avoid unless proven necessary
+### 10.6 Tools to avoid unless proven necessary
 
 - overly fine-grained descriptors as standalone tools
 - one-tool-per-theoretical-transformation expansion
@@ -738,9 +808,17 @@ Give LivePilot better ears.
 
 ### Dependencies
 
-- Essentia or equivalent MIR stack
+- pluggable analysis backend
 - stable file-analysis job pipeline
 - snapshot schema
+
+### Backend rule
+
+- start with a low-friction default backend
+- use `librosa` as the default backend for the initial V2.0 release
+- support Essentia as an optional higher-power backend, not a hard requirement
+- degrade gracefully when optional backends are unavailable
+- do not let analysis install complexity become the defining V2.0 problem
 
 ### First MCP workflows to expose
 
@@ -759,24 +837,27 @@ Give LivePilot better ears.
 
 ---
 
-## Phase 2: Semantic Memory + Retrieval Foundation
+## Phase 2: Thin Retrieval Foundation
 
 ### Goal
 
-Make prior work searchable by sound, not just name and tags.
+Make prior work searchable in a simple, useful way before building heavy
+retrieval infrastructure.
 
 ### Must build
 
-- embedding pipeline for audio assets
-- vector index
-- descriptor-backed hybrid search
 - memory schema V2
+- audio asset catalog
+- descriptor-backed local similarity
+- thin hybrid search
 - outcome logging
+- optional embedding backend abstraction
 
 ### Suggested concrete modules
 
 - `memory/schemas.py`
-- `memory/vector_index.py`
+- `memory/embedding_backend.py`
+- `retrieval/similarity_store.py`
 - `retrieval/nearest_neighbors.py`
 - `retrieval/hybrid_search.py`
 
@@ -784,17 +865,18 @@ Make prior work searchable by sound, not just name and tags.
 
 Use hybrid ranking:
 
-- text
 - tags
 - descriptors
-- embeddings
 - usage outcomes
+
+Embeddings are optional in this phase.
+They are not a gate for retrieval usefulness.
 
 ### First MCP workflows to expose
 
 - `find_similar_audio`
+- `find_similar_section`
 - `find_related_chains`
-- `search_corpus_by_text`
 
 ### Exit criteria
 
@@ -802,6 +884,8 @@ Use hybrid ranking:
 
 ### Defer
 
+- full text-guided semantic retrieval
+- vector-database complexity
 - giant automatic corpus interfaces
 - complex live behavior logic
 
@@ -952,6 +1036,9 @@ Keep this optional and modular.
 
 ## Phase 7: Performer Mode
 
+This is outside the core committed V2 path.
+Treat it as a V3 / research track unless it is substantially narrowed.
+
 ### Goal
 
 Create a performance-safe co-agency layer.
@@ -984,8 +1071,7 @@ This is the short version.
 ### Build first
 
 - listening foundation
-- semantic memory
-- hybrid retrieval
+- thin retrieval
 - critique engine
 
 ### Build second
@@ -1011,35 +1097,43 @@ This is the short version.
 
 This assumes focused work, not a large team.
 
+This is best understood as a path to `V2.0` plus preparation for `V2.1`, not a
+plan to ship the entire V2 vision in one pass.
+
+The authoritative task sequence lives in the backlog's
+[Suggested Sprint Order](./2026-03-27-v2-backlog.md#7-suggested-sprint-order).
+This section is a narrative summary and should be updated to match it.
+
 ## Weeks 1-2
 
 - freeze non-essential tool growth
 - define V2 schemas
-- set up analysis and memory module boundaries
-- choose storage approach
+- set up analysis, retrieval, and MCP module boundaries
+- define tool-surface migration rules
 
 ## Weeks 3-5
 
-- ship offline analysis pipeline
+- ship pluggable offline analysis pipeline
 - ship analysis snapshot storage
 - expose first high-level analysis workflows
 
 ## Weeks 6-8
 
-- ship embeddings and vector index
-- ship hybrid retrieval
-- extend memory records with perceptual data and outcomes
+- harden analysis outputs on a canonical fixture set
+- refine section and reference-delta reporting
+- document `V2.0` success criteria and workflow usage
 
 ## Weeks 9-10
 
-- ship critique report engine
-- add reference compare and stagnation detection
+- ship audio asset catalog
+- ship descriptor-first local similarity
+- expose first thin retrieval workflow(s)
 
 ## Weeks 11-12
 
-- ship first corpus lab workflow
-- expose by-text and by-example retrieval
-- prepare next-phase composition work
+- stabilize retrieval ranking
+- prepare critique schemas and evaluation protocol
+- cut `V2.0` or `V2.0.x` with listening firmly landed
 
 ---
 
@@ -1078,8 +1172,9 @@ The following metrics are worth tracking.
 ### Strong candidates
 
 - Python for orchestration and analysis
-- SQLite + JSON + local vector index for storage
-- Essentia for MIR-heavy analysis
+- SQLite + JSON + local similarity layer for storage
+- pluggable analysis backend, with a low-friction default path
+- optional Essentia backend for MIR-heavy analysis
 - FluCoMa for interactive corpus workflows in Max
 - optional embedding model workers, isolated from the control core
 
@@ -1088,6 +1183,7 @@ The following metrics are worth tracking.
 - giant monolithic AI services
 - remote-only dependencies for core functionality
 - fragile model calls in the critical control path
+- large mandatory embedding models in the first release
 
 ---
 

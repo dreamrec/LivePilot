@@ -48,6 +48,60 @@ The core recommendation of this document is simple:
 
 **LivePilot V2 should evolve from an Ableton command layer into a research-grade musical intelligence layer for editable sessions.**
 
+## Practical Release Reframing
+
+The original V2 strategy is still directionally correct, but it should not be
+treated as one monolithic delivery arc.
+
+The better framing is staged, identity-changing releases:
+
+- `V2.0`: listening foundation
+- `V2.1`: thin retrieval foundation
+- `V2.2`: critique engine
+- `V2.x`: corpus workflows, variation, and broader co-creative systems
+- `V3 / R&D`: performer-mode co-agency
+
+The practical meaning of that reframing is:
+
+- `V2.0` should ship stronger hearing, snapshot persistence, and section /
+  reference analysis before it tries to ship the whole V2 vision
+- retrieval should begin in a thin, descriptor-first form rather than as a
+  full vector infrastructure project
+- critique should follow once listening and minimal retrieval are stable enough
+  to support credible evaluation
+- performer mode should remain a real opportunity, but not a committed V2
+  delivery target until it has its own deeper safety and systems design pass
+
+If only one near-term release ships, it should be this:
+
+- stronger offline analysis
+- snapshot persistence
+- `analyze_section`
+- `analyze_reference_delta`
+- enough artifact reuse to make later retrieval possible
+
+That is already enough to change the product's identity.
+
+## One More Constraint: Evolve The Tool Surface Carefully
+
+V2 is not being built in a vacuum.
+
+LivePilot already has a large shipped primitive tool surface, along with
+skills, prompts, and habits that may depend on it.
+
+That means the V2 move toward workflows over primitives needs an explicit tool
+surface strategy:
+
+- keep V1 primitives stable while V2 workflows are introduced
+- guide new users toward workflow tools first
+- classify current tools as keep, workflow-wrapped, internal-only, or
+  future-deprecate
+- avoid pretending the old surface disappears just because a better one is
+  being designed
+
+Without this, V2 risks having the right architecture on paper but a confused
+public surface in practice.
+
 ---
 
 ## The Honest Assessment
@@ -569,9 +623,9 @@ Because the current system cannot become truly intelligent until it can hear mus
 
 #### Suggested technical stack
 
-- **Essentia** for robust MIR descriptors and rhythm/tonal features  
+- **librosa** as the default low-friction analysis backend
+- **Essentia** as an optional higher-power backend for rhythm / tonal / MIR-heavy analysis  
   [https://essentia.upf.edu/documentation.html](https://essentia.upf.edu/documentation.html)
-- **librosa** where lightweight exploratory MIR helps
 - **FluCoMa** in Max for interactive descriptor extraction and corpus work  
   [https://learn.flucoma.org/getting-started/](https://learn.flucoma.org/getting-started/)
 - optional custom offline analysis jobs for deeper passes on stems, references, and exports
@@ -644,7 +698,8 @@ into:
 
 #### What to build
 
-- a local vector store for audio/item embeddings
+- a local similarity layer for clips, assets, and techniques
+- optional embedding storage behind a backend abstraction
 - perceptual fingerprints for clips and device states
 - technique records that link text, signal features, and outcomes
 
@@ -1224,8 +1279,8 @@ This is the build order I would recommend.
 
 #### Suggested stack
 
-- Essentia
-- librosa
+- librosa by default
+- optional Essentia backend
 - existing M4L bridge for real-time metrics
 
 #### Success metric
@@ -1242,7 +1297,7 @@ This is the build order I would recommend.
 
 - descriptor vectors stored with techniques
 - audio/item embeddings
-- local vector retrieval
+- local similarity retrieval
 - user feedback capture
 - outcome-aware technique records
 
