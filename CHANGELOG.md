@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.9.7 — Safe automation fallback + correct clip length reporting (March 2026)
+
+- Fix(P1): set_arrangement_automation places replacement BEFORE deleting original — no data loss if placement fails
+- Fix(P2): get_arrangement_clips reports timeline length (not loop span) as length/end_time; loop info as separate fields
+- Reverted the effective-length mangling that misreported looped clip sizes
+
 ## 1.9.6 — Arrangement clip identification + expression data (March 2026)
 
 - Fix(P1): create_arrangement_clip now identifies new clips by object identity, not position match — prevents mutating pre-existing overlapping clips
