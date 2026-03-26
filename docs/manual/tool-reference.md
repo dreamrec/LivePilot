@@ -708,6 +708,36 @@ Snaps notes to a rhythmic grid. You can quantize fully or partially to keep some
 
 ---
 
+### `freeze_track`
+
+Freeze a track -- render all devices to audio for CPU savings. Freeze is async in Ableton, so the tool initiates the render and returns immediately. Use `get_freeze_status` to poll for completion.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `track_index` | int | Track to freeze |
+
+**When to use:** "Freeze that synth track to save CPU" or when preparing a session for live performance.
+
+### `flatten_track`
+
+Flatten a frozen track -- commit the rendered audio permanently. Destructive operation (but undo-able). The track must already be frozen.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `track_index` | int | Track to flatten (must be frozen) |
+
+**When to use:** "Flatten the frozen track so I can edit the audio directly."
+
+### `get_freeze_status`
+
+Check if a track is frozen. Use after `freeze_track` to poll for completion, or before `flatten_track` to verify readiness.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `track_index` | int | Track to check |
+
+---
+
 ## Devices
 
 Tools for working with instruments and effects on tracks. This covers everything from loading a synth to tweaking reverb parameters.
@@ -883,6 +913,34 @@ Lists all available presets for a built-in Ableton device.
 
 **When to use:** "What Wavetable presets are available?" or when the AI wants to load a specific preset rather than building from scratch. Returns preset names and URIs.
 
+### `get_plugin_parameters` `[M4L]`
+
+Get ALL parameters from a VST/AU plugin including unconfigured ones. Returns every parameter the plugin exposes, not just the 128 in Ableton's Configure panel.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `track_index` | int | Track containing the plugin |
+| `device_index` | int | Plugin device index |
+
+### `map_plugin_parameter` `[M4L]`
+
+Add a plugin parameter to Ableton's Configure list so it becomes automatable.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `track_index` | int | Track containing the plugin |
+| `device_index` | int | Plugin device index |
+| `parameter_index` | int | Parameter to map |
+
+### `get_plugin_presets` `[M4L]`
+
+List a VST/AU plugin's internal presets and banks.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `track_index` | int | Track containing the plugin |
+| `device_index` | int | Plugin device index |
+
 ---
 
 ## Scenes
@@ -987,6 +1045,27 @@ Assigns a tempo to a scene. When the scene is launched, Ableton automatically sw
 **When to use:** "Set the breakdown scene to 110 BPM" or "make the chorus faster at 140." This is the proper way to create tempo changes between sections — more reliable than embedding tempo in the scene name.
 
 > **Tip:** Set tempo to 0 to clear a scene's tempo override, returning to the global song tempo.
+
+### `get_scene_matrix`
+
+Get the full session clip grid: every track x every scene. Returns clip states (empty/stopped/playing/triggered/recording), clip names, and colors. Use for a bird's-eye view before making clip launch decisions.
+
+### `fire_scene_clips`
+
+Fire a scene, optionally filtering to specific tracks. If `track_indices` is omitted, fires the entire scene. If provided, fires only those tracks' clip slots -- useful for building up layers gradually.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `scene_index` | int | Scene to fire |
+| `track_indices` | list (optional) | Fire only these tracks |
+
+### `stop_all_clips`
+
+Stop all playing clips in the session. Panic button.
+
+### `get_playing_clips`
+
+Get all currently playing or triggered clips with their track/scene position.
 
 ---
 

@@ -19,7 +19,7 @@
 | `get_recent_actions` | Log of recent commands (newest first) | (none) |
 | `get_session_diagnostics` | Analyze session for issues (armed tracks, solos, empty clips) | (none) |
 
-## Tracks (14 tools)
+## Tracks (17 tools)
 
 | Tool | Description | Required Params |
 |------|-------------|-----------------|
@@ -67,7 +67,7 @@
 | `transpose_notes` | Transpose notes by semitones | `track_index`, `clip_index`, `semitones` |
 | `quantize_clip` | Quantize notes to grid | `track_index`, `clip_index`, `grid` |
 
-## Devices (12 tools)
+## Devices (15 tools)
 
 | Tool | Description | Required Params |
 |------|-------------|-----------------|
@@ -84,7 +84,7 @@
 | `set_chain_volume` | Set chain volume/pan in rack | `track_index`, `device_index`, `chain_index` |
 | `get_device_presets` | List available presets for a device | `device_name` |
 
-## Scenes (8 tools)
+## Scenes (12 tools)
 
 | Tool | Description | Required Params |
 |------|-------------|-----------------|
