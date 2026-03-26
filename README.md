@@ -95,7 +95,7 @@ Every tool maps directly to an LOM call — no abstraction, no guessing.
 The M4L Analyzer sits on the master track. UDP 9880 carries spectral data
 from Max to the server. OSC 9881 sends commands back.
 
-All 135 core tools work without it — the analyzer adds 20 more
+All 139 core tools work without it — the analyzer adds 29 more
 and closes the feedback loop.
 
 <br>
@@ -672,7 +672,7 @@ Check memory before creative decisions. Verify every mutation.
 
 <br>
 
-### Analyzer (20) `[M4L]`
+### Analyzer (29) `[M4L]`
 
 | Tool | Description |
 |------|-------------|
@@ -696,6 +696,26 @@ Check memory before creative decisions. Verify every mutation.
 | `remove_warp_marker` | Remove warp marker |
 | `scrub_clip` | Preview at beat position |
 | `stop_scrub` | Stop preview |
+| `get_spectral_shape` | 7 spectral descriptors via FluCoMa |
+| `get_mel_spectrum` | 40-band mel spectrum |
+| `get_chroma` | 12 pitch class energies |
+| `get_onsets` | Real-time onset detection |
+| `get_novelty` | Spectral novelty for section boundaries |
+| `get_momentary_loudness` | EBU R128 momentary LUFS + peak |
+| `check_flucoma` | Verify FluCoMa installation |
+| `capture_audio` | Record master output to WAV |
+| `capture_stop` | Cancel in-progress capture |
+
+<br>
+
+### Perception (4)
+
+| Tool | Description |
+|------|-------------|
+| `analyze_loudness` | Integrated LUFS, true peak, LRA, streaming compliance |
+| `analyze_spectrum_offline` | Spectral centroid, rolloff, flatness, 5-band balance |
+| `compare_to_reference` | Mix vs reference: loudness + spectral delta |
+| `read_audio_metadata` | Format, duration, sample rate, tags |
 
 <br>
 
@@ -752,11 +772,10 @@ Check memory before creative decisions. Verify every mutation.
 ## Coming
 
 ```
-□  Real-time DSP analysis via LOM meters
-□  M4L bridge expansion — deeper LiveAPI access
-□  Arrangement view — clip placement, tempo automation
-□  Audio clip manipulation — stretch, slice, resample
 □  Plugin parameter mapping — VST/AU deep control
+□  Audio track freeze/flatten automation
+□  Clip launch scene matrix operations
+□  Multi-track arrangement templates
 ```
 
 <br>

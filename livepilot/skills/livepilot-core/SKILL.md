@@ -149,8 +149,8 @@ Never skip levels. The user's question determines the entry point, but always st
 ### Memory (8)
 `memory_learn` · `memory_recall` · `memory_get` · `memory_replay` · `memory_list` · `memory_favorite` · `memory_update` · `memory_delete`
 
-### Analyzer (20) — requires LivePilot Analyzer M4L device on master track
-`get_master_spectrum` · `get_master_rms` · `get_detected_key` · `get_hidden_parameters` · `get_automation_state` · `walk_device_tree` · `get_clip_file_path` · `replace_simpler_sample` · `load_sample_to_simpler` · `get_simpler_slices` · `crop_simpler` · `reverse_simpler` · `warp_simpler` · `get_warp_markers` · `add_warp_marker` · `move_warp_marker` · `remove_warp_marker` · `scrub_clip` · `stop_scrub` · `get_display_values`
+### Analyzer (29) — requires LivePilot Analyzer M4L device on master track
+`get_master_spectrum` · `get_master_rms` · `get_detected_key` · `get_hidden_parameters` · `get_automation_state` · `walk_device_tree` · `get_clip_file_path` · `replace_simpler_sample` · `load_sample_to_simpler` · `get_simpler_slices` · `crop_simpler` · `reverse_simpler` · `warp_simpler` · `get_warp_markers` · `add_warp_marker` · `move_warp_marker` · `remove_warp_marker` · `scrub_clip` · `stop_scrub` · `get_display_values` · `get_spectral_shape` · `get_mel_spectrum` · `get_chroma` · `get_onsets` · `get_novelty` · `get_momentary_loudness` · `check_flucoma` · `capture_audio` · `capture_stop`
 
 ### Automation (8)
 Clip automation CRUD + intelligent curve generation with 15 built-in recipes.
@@ -174,6 +174,14 @@ Clip automation CRUD + intelligent curve generation with 15 built-in recipes.
 - Use `apply_automation_shape` for custom curves with specific math
 - Clear existing automation before rewriting: `clear_clip_automation` first
 - Load `references/automation-atlas.md` for curve theory, genre recipes, diagnostic technique, and cross-track spectral mapping
+
+### Perception (4) — offline audio analysis, no Ableton connection required
+`analyze_loudness` · `analyze_spectrum_offline` · `compare_to_reference` · `read_audio_metadata`
+
+**Key discipline:**
+- These work on any local audio file — no Ableton connection needed
+- Use `compare_to_reference` for A/B mix comparisons against reference tracks
+- Use `analyze_loudness` to check streaming compliance (Spotify, Apple Music, YouTube targets)
 
 ### Theory (7)
 Music theory analysis — built-in pure Python engine, zero external dependencies.

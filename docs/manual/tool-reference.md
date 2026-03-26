@@ -1735,7 +1735,7 @@ Removes a technique from the library. Creates a backup file first for safety.
 
 ## Analyzer
 
-These 20 tools require the LivePilot Analyzer Max for Live device on the master track. They provide real-time DSP analysis, deep device introspection, sample manipulation, and warp marker control. All other tools work without the device.
+These 29 tools require the LivePilot Analyzer Max for Live device on the master track. They provide real-time DSP analysis, FluCoMa spectral descriptors, audio capture, deep device introspection, sample manipulation, and warp marker control. All other 139 tools work without the device.
 
 ### get_master_spectrum
 

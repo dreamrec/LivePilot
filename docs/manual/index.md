@@ -35,12 +35,12 @@ The atlas resolves device names and browser URIs — the AI never hallucinates a
 | Arrangement | 19 | timeline editing, arrangement notes, cue points, recording, capture | [tool-reference](tool-reference.md#arrangement) |
 | Automation | 8 | clip envelopes, 16 curve types, 15 recipes, spectral suggestions | [tool-reference](tool-reference.md#automation) |
 | Memory | 8 | save, recall, replay, manage production techniques | [tool-reference](tool-reference.md#memory) |
-| Analyzer | 20 | spectrum, RMS, key detection, Simpler ops, warp markers `[M4L]` | [tool-reference](tool-reference.md#analyzer) |
+| Analyzer | 29 | spectrum, RMS, key detection, Simpler ops, warp markers, FluCoMa DSP, capture `[M4L]` | [tool-reference](tool-reference.md#analyzer) |
 | Theory | 7 | harmony analysis, Roman numerals, scales, countermelody, transposition | [tool-reference](tool-reference.md#theory) |
 | Generative | 5 | Euclidean rhythm, tintinnabuli, phase shift, additive process | [tool-reference](tool-reference.md#generative) |
 | Harmony | 4 | Tonnetz navigation, voice leading, neo-Riemannian classification | [tool-reference](tool-reference.md#harmony) |
 | MIDI I/O | 4 | export/import .mid, offline analysis, piano roll extraction | [tool-reference](tool-reference.md#midi-io) |
-| Perception | 13 | spectral shape, timbral profile, mel spectrum, chroma, onsets, loudness, stems | [tool-reference](tool-reference.md#perception) |
+| Perception | 4 | offline loudness analysis, spectral analysis, reference comparison, metadata | [tool-reference](tool-reference.md#perception) |
 
 ---
 

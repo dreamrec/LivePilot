@@ -14,7 +14,7 @@ This guide takes you from zero to making sound in about five minutes.
 The Remote Script is a small Python program that runs inside Ableton and listens for commands from LivePilot. Run this once:
 
 ```bash
-npx -y github:dreamrec/LivePilot --install
+npx livepilot --install
 ```
 
 This auto-detects your Ableton installation and copies the script to the right folder. Works on macOS and Windows.
@@ -37,7 +37,7 @@ If you don't see LivePilot in the dropdown, the Remote Script wasn't copied to t
 ### Claude Code
 
 ```bash
-claude mcp add LivePilot -- npx -y github:dreamrec/LivePilot
+claude mcp add LivePilot -- npx livepilot
 ```
 
 ### Claude Desktop
@@ -75,7 +75,7 @@ Add to your MCP config file (`.mcp.json`, `.cursor/mcp.json`, `.vscode/mcp.json`
 ## Step 4: Verify the connection
 
 ```bash
-npx -y github:dreamrec/LivePilot --status
+npx livepilot --status
 ```
 
 This pings Ableton over TCP. If you see `Connected`, you're good. If it says `Connection refused`, make sure:
@@ -185,7 +185,7 @@ The `livepilot-core` skill teaches the AI how to use LivePilot properly: always 
 ### When you update LivePilot
 
 After pulling a new version:
-1. Run `npx -y github:dreamrec/LivePilot --install` again to update the Remote Script
+1. Run `npx livepilot --install` again to update the Remote Script
 2. Restart Ableton to load the new handlers
 3. Restart your AI client to pick up new MCP tools
 
@@ -194,13 +194,13 @@ The MCP server (Python process) and Ableton's Remote Script are separate. New to
 ### Checking your version
 
 ```bash
-npx -y github:dreamrec/LivePilot --version
+npx livepilot --version
 ```
 
 ### Running diagnostics
 
 ```bash
-npx -y github:dreamrec/LivePilot --doctor
+npx livepilot --doctor
 ```
 
 This checks Python version, dependencies, Ableton connection, and Remote Script installation.
@@ -226,7 +226,7 @@ With the Analyzer installed, you get 20 additional tools including:
 - **Hidden parameters** — access device parameters not exposed by the standard ControlSurface API
 - **Display values** — read human-readable parameter values (e.g., "−6.0 dB" instead of 0.70)
 
-The Analyzer is optional. All 115 core tools work without it. The 20 analyzer tools will return clear errors if the device is not present.
+The Analyzer is optional. All 139 core tools work without it. The 29 analyzer tools will return clear errors if the device is not present.
 
 ---
 
