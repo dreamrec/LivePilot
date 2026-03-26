@@ -83,7 +83,7 @@ function anything() {
 function dispatch(cmd, args) {
     switch(cmd) {
         case "ping":
-            send_response({"ok": true, "version": "1.8.4"});
+            send_response({"ok": true, "version": "1.9.0"});
             break;
         case "get_params":
             cmd_get_params(args);
@@ -160,6 +160,16 @@ function dispatch(cmd, args) {
             break;
         case "get_display_values":
             cmd_get_display_values(args);
+            break;
+        // ── Plugin Parameters ──
+        case "get_plugin_params":
+            cmd_get_plugin_params(args);
+            break;
+        case "map_plugin_param":
+            cmd_map_plugin_param(args);
+            break;
+        case "get_plugin_presets":
+            cmd_get_plugin_presets(args);
             break;
         default:
             send_response({"error": "Unknown command: " + cmd});
@@ -1033,6 +1043,165 @@ function cmd_capture_stop() {
 
 function pad2(n) {
     return n < 10 ? "0" + n : "" + n;
+}
+
+// ── Plugin Parameters ──────────────────────────────────────────────────────
+
+function cmd_get_plugin_params(args) {
+    // Returns all parameters for a VST/AU plugin device
+    var track_idx = parseInt(args[0]);
+    var device_idx = parseInt(args[1]);
+    var path = build_device_path(track_idx, device_idx);
+
+    cursor_a.goto(path);
+    var class_name = cursor_a.get("class_name").toString();
+
+    // Check if this is a plugin device
+    var is_plugin = (class_name === "PluginDevice" || class_name === "AuPluginDevice");
+    if (!is_plugin) {
+        send_response({
+            "error": "Device is " + class_name + ", not a plugin (PluginDevice/AuPluginDevice)"
+        });
+        return;
+    }
+
+    var device_name = cursor_a.get("name").toString();
+    var param_count = cursor_a.getcount("parameters");
+    var params = [];
+    var current = 0;
+    var batch_size = 4;
+
+    function read_batch() {
+        var end = Math.min(current + batch_size, param_count);
+        for (var i = current; i < end; i++) {
+            cursor_b.goto(path + " parameters " + i);
+            params.push({
+                index: i,
+                name: cursor_b.get("name").toString(),
+                value: parseFloat(cursor_b.get("value")),
+                min: parseFloat(cursor_b.get("min")),
+                max: parseFloat(cursor_b.get("max")),
+                default_value: parseFloat(cursor_b.get("default_value")),
+                is_quantized: parseInt(cursor_b.get("is_quantized")) === 1,
+                value_string: String(cursor_b.call("str_for_value", parseFloat(cursor_b.get("value"))))
+            });
+        }
+        current = end;
+
+        if (current < param_count) {
+            var next_task = new Task(read_batch);
+            next_task.schedule(50);
+        } else {
+            send_response({
+                "track": track_idx,
+                "device": device_idx,
+                "name": device_name,
+                "class_name": class_name,
+                "is_plugin": true,
+                "parameter_count": param_count,
+                "parameters": params
+            });
+        }
+    }
+
+    if (param_count > 0) {
+        read_batch();
+    } else {
+        send_response({
+            "track": track_idx,
+            "device": device_idx,
+            "name": device_name,
+            "class_name": class_name,
+            "is_plugin": true,
+            "parameter_count": 0,
+            "parameters": []
+        });
+    }
+}
+
+function cmd_map_plugin_param(args) {
+    // Add a plugin parameter to Ableton's Configure list
+    var track_idx = parseInt(args[0]);
+    var device_idx = parseInt(args[1]);
+    var param_idx = parseInt(args[2]);
+    var path = build_device_path(track_idx, device_idx);
+
+    cursor_a.goto(path);
+    var param_count = cursor_a.getcount("parameters");
+    if (param_idx < 0 || param_idx >= param_count) {
+        send_response({"error": "Parameter index " + param_idx + " out of range (0.." + (param_count - 1) + ")"});
+        return;
+    }
+
+    // Navigate to the parameter and read its name
+    cursor_b.goto(path + " parameters " + param_idx);
+    var param_name = cursor_b.get("name").toString();
+
+    // Select the parameter — this is how Ableton's Configure mode works
+    // via LiveAPI. The parameter becomes visible in the device's macro panel.
+    try {
+        cursor_a.set("selected_parameter", param_idx);
+        cursor_a.call("store_chosen_bank");
+        send_response({
+            "mapped": true,
+            "parameter_index": param_idx,
+            "parameter_name": param_name
+        });
+    } catch(e) {
+        send_response({
+            "error": "Failed to map parameter: " + e.message,
+            "parameter_index": param_idx,
+            "parameter_name": param_name
+        });
+    }
+}
+
+function cmd_get_plugin_presets(args) {
+    // List plugin's internal presets
+    var track_idx = parseInt(args[0]);
+    var device_idx = parseInt(args[1]);
+    var path = build_device_path(track_idx, device_idx);
+
+    cursor_a.goto(path);
+    var class_name = cursor_a.get("class_name").toString();
+    var device_name = cursor_a.get("name").toString();
+
+    var is_plugin = (class_name === "PluginDevice" || class_name === "AuPluginDevice");
+    if (!is_plugin) {
+        send_response({
+            "error": "Device is " + class_name + ", not a plugin"
+        });
+        return;
+    }
+
+    // Read presets — the presets property returns an array of preset names
+    var presets = [];
+    try {
+        var preset_count = cursor_a.getcount("presets");
+        for (var i = 0; i < preset_count; i++) {
+            cursor_b.goto(path + " presets " + i);
+            presets.push({
+                index: i,
+                name: cursor_b.get("name").toString()
+            });
+        }
+    } catch(e) {
+        // Some plugins don't expose presets via LOM
+    }
+
+    // Try to get selected preset index
+    var selected = -1;
+    try {
+        selected = parseInt(cursor_a.get("selected_preset_index"));
+    } catch(e) {}
+
+    send_response({
+        "track": track_idx,
+        "device": device_idx,
+        "name": device_name,
+        "presets": presets,
+        "selected_preset": selected
+    });
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────

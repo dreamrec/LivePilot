@@ -85,7 +85,7 @@ Commands are sent WITHOUT a leading `/` in the OSC address. This is critical —
 
 | Command | Args | Description |
 |---------|------|-------------|
-| `ping` | (none) | Health check, returns `{ok: true, version: "1.8.4"}` |
+| `ping` | (none) | Health check, returns `{ok: true, version: "1.9.0"}` |
 | `get_params` | track_idx, device_idx | All parameters with value, range, automation state |
 | `get_hidden_params` | track_idx, device_idx | All parameters including hidden ones, with display string |
 | `get_auto_state` | track_idx, device_idx | Only parameters that have automation (active or overridden) |

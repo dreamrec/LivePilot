@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.9.0 — Scene Matrix, Freeze/Flatten, Plugin Deep Control (March 2026)
+
+**10 new tools (168 → 178), 3 features shipped.**
+
+### Scene Matrix Operations (+4 tools)
+- `get_scene_matrix` — full N×M clip grid with states (empty/stopped/playing/triggered/recording)
+- `fire_scene_clips` — fire a scene with optional track filter for selective launching
+- `stop_all_clips` — stop all playing clips in the session (panic button)
+- `get_playing_clips` — return all currently playing or triggered clips
+
+### Track Freeze/Flatten (+3 tools)
+- `freeze_track` — freeze a track (render devices to audio for CPU savings)
+- `flatten_track` — flatten a frozen track (commit rendered audio permanently)
+- `get_freeze_status` — check if a track is frozen
+
+### Plugin Parameter Mapping (+3 tools, M4L)
+- `get_plugin_parameters` — get ALL VST/AU plugin parameters including unconfigured ones
+- `map_plugin_parameter` — add a plugin parameter to Ableton's Configure list for automation
+- `get_plugin_presets` — list a plugin's internal presets and banks
+
+### Infrastructure
+- `SLOW_WRITE_COMMANDS` set for freeze_track (35s timeout vs 15s for normal writes)
+- Removed "Coming" section from README — all roadmap features shipped or dropped
+
 ## 1.8.4 — Bug Fix Audit (March 2026)
 
 **5 bugs fixed (2 P1, 3 P2), verified live in Ableton.**

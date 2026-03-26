@@ -1,5 +1,5 @@
 """
-LivePilot - Track domain handlers (14 commands).
+LivePilot - Track domain handlers (17 commands).
 """
 
 from .router import register
@@ -266,4 +266,74 @@ def set_track_input_monitoring(song, params):
     return {
         "index": track_index,
         "monitoring_state": track.current_monitoring_state,
+    }
+
+
+# ── Freeze / Flatten ────────────────────────────────────────────────────
+
+
+@register("get_freeze_status")
+def get_freeze_status(song, params):
+    """Return freeze state for a track."""
+    track_index = int(params["track_index"])
+    track = get_track(song, track_index)
+    return {
+        "track_index": track_index,
+        "is_frozen": track.is_frozen,
+    }
+
+
+@register("freeze_track")
+def freeze_track(song, params):
+    """Freeze a track — render all devices to audio for CPU savings.
+
+    Freeze is async in Ableton — this call initiates it and returns
+    immediately. Use get_freeze_status to poll for completion.
+    """
+    track_index = int(params["track_index"])
+    track = get_track(song, track_index)
+    if track.is_frozen:
+        return {
+            "track_index": track_index,
+            "is_frozen": True,
+            "note": "Track is already frozen",
+        }
+    # In Live 12, freeze is a track method accessible from ControlSurface
+    try:
+        track.freeze()
+    except AttributeError:
+        raise ValueError(
+            "freeze() not available on this track type. "
+            "Only MIDI and audio tracks with devices can be frozen."
+        )
+    return {
+        "track_index": track_index,
+        "freezing": True,
+        "note": "Freeze initiated. Poll get_freeze_status to check completion.",
+    }
+
+
+@register("flatten_track")
+def flatten_track(song, params):
+    """Flatten a frozen track — commits rendered audio permanently.
+
+    Destructive operation. The track must already be frozen.
+    Wrapped in undo step so it can be reverted.
+    """
+    track_index = int(params["track_index"])
+    track = get_track(song, track_index)
+    if not track.is_frozen:
+        raise ValueError(
+            "Track %d is not frozen. Freeze it first with freeze_track."
+            % track_index
+        )
+    song.begin_undo_step()
+    try:
+        # flatten() is a method on the track, not the song
+        track.flatten()
+    finally:
+        song.end_undo_step()
+    return {
+        "track_index": track_index,
+        "flattened": True,
     }

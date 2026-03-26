@@ -9,7 +9,7 @@
 
 An agentic production system for Ableton Live 12.
 
-168 tools. Device atlas. Spectral perception. Technique memory.
+178 tools. Device atlas. Spectral perception. Technique memory.
 Neo-Riemannian harmony. Euclidean rhythm. Species counterpoint.
 
 
@@ -37,7 +37,7 @@ Neo-Riemannian harmony. Euclidean rhythm. Species counterpoint.
 │         └───────────────────┼───────────────────┘           │
 │                             ▼                               │
 │                    ┌─────────────────┐                      │
-│                    │   168 MCP Tools  │                      │
+│                    │   178 MCP Tools  │                      │
 │                    │   17 domains     │                      │
 │                    └────────┬────────┘                      │
 │                             │                               │
@@ -59,7 +59,7 @@ via a Max for Live device.
 The memory gives it history — a searchable library of production decisions
 that persists across sessions.
 
-All three feed into 168 deterministic tools that execute on Ableton's main thread
+All three feed into 178 deterministic tools that execute on Ableton's main thread
 through the official Live Object Model API. Everything is reversible with undo.
 
 <br>
@@ -476,7 +476,7 @@ Check memory before creative decisions. Verify every mutation.
 
 ## Full Tool List
 
-168 tools across 17 domains.
+178 tools across 17 domains.
 
 <br>
 
@@ -768,17 +768,6 @@ Check memory before creative decisions. Verify every mutation.
 <br>
 
 ---
-
-## Coming
-
-```
-□  Plugin parameter mapping — VST/AU deep control
-□  Audio track freeze/flatten automation
-□  Clip launch scene matrix operations
-□  Multi-track arrangement templates
-```
-
-<br>
 
 ---
 

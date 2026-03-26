@@ -1,6 +1,6 @@
-"""Device MCP tools — parameters, racks, browser loading.
+"""Device MCP tools — parameters, racks, browser loading, plugin deep control.
 
-12 tools matching the Remote Script devices domain.
+15 tools matching the Remote Script devices domain + M4L bridge.
 """
 
 from __future__ import annotations
@@ -254,3 +254,96 @@ def get_device_presets(ctx: Context, device_name: str) -> dict:
     return _get_ableton(ctx).send_command("get_device_presets", {
         "device_name": device_name,
     })
+
+
+# ── Plugin Deep Control (M4L Bridge) ────────────────────────────────────
+
+
+def _get_m4l(ctx: Context):
+    """Get M4LBridge from lifespan context."""
+    bridge = ctx.lifespan_context.get("m4l")
+    if not bridge:
+        raise RuntimeError("M4L bridge not initialized")
+    return bridge
+
+
+def _get_spectral(ctx: Context):
+    """Get SpectralCache from lifespan context."""
+    cache = ctx.lifespan_context.get("spectral")
+    if not cache:
+        raise RuntimeError("Spectral cache not initialized")
+    return cache
+
+
+def _require_analyzer(cache) -> None:
+    if not cache.is_connected:
+        raise ValueError(
+            "LivePilot Analyzer not detected. "
+            "Drag 'LivePilot Analyzer' onto the master track."
+        )
+
+
+@mcp.tool()
+async def get_plugin_parameters(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+) -> dict:
+    """Get ALL parameters from a VST/AU plugin including unconfigured ones.
+
+    Returns every parameter the plugin exposes — not just the 128
+    that Ableton's Configure panel shows. Includes name, value, min,
+    max, default, and display string for each.
+    Only works on PluginDevice/AuPluginDevice types.
+    Requires LivePilot Analyzer on master track.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    cache = _get_spectral(ctx)
+    _require_analyzer(cache)
+    bridge = _get_m4l(ctx)
+    return await bridge.send_command("get_plugin_params", track_index, device_index)
+
+
+@mcp.tool()
+async def map_plugin_parameter(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+    parameter_index: int,
+) -> dict:
+    """Add a plugin parameter to Ableton's Configure list for automation.
+
+    After mapping, the parameter becomes visible in the device's macro
+    panel and can be automated with set_device_parameter or
+    set_clip_automation like any native parameter.
+    Requires LivePilot Analyzer on master track.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    if parameter_index < 0:
+        raise ValueError("parameter_index must be >= 0")
+    cache = _get_spectral(ctx)
+    _require_analyzer(cache)
+    bridge = _get_m4l(ctx)
+    return await bridge.send_command("map_plugin_param", track_index, device_index, parameter_index)
+
+
+@mcp.tool()
+async def get_plugin_presets(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+) -> dict:
+    """List a VST/AU plugin's internal presets and banks.
+
+    Returns preset names and the currently selected preset index.
+    Only works on PluginDevice/AuPluginDevice types.
+    Requires LivePilot Analyzer on master track.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    cache = _get_spectral(ctx)
+    _require_analyzer(cache)
+    bridge = _get_m4l(ctx)
+    return await bridge.send_command("get_plugin_presets", track_index, device_index)
