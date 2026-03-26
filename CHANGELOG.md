@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.9.1 — Rebuild .amxd with v1.9 Bridge (March 2026)
+
+- Rebuild LivePilot_Analyzer.amxd in Max editor to freeze 3 new plugin parameter bridge commands
+- Binary-patch `openinpresentation` for presentation mode
+
 ## 1.9.0 — Scene Matrix, Freeze/Flatten, Plugin Deep Control (March 2026)
 
 **10 new tools (168 → 178), 3 features shipped.**
