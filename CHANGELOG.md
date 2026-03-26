@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.9.1 — Rebuild .amxd with v1.9 Bridge (March 2026)
+## 1.9.2 — Rebuild .amxd with v1.9 Bridge (March 2026)
 
 - Rebuild LivePilot_Analyzer.amxd in Max editor to freeze 3 new plugin parameter bridge commands
 - Binary-patch `openinpresentation` for presentation mode
