@@ -344,8 +344,23 @@ def flatten_track(song, params):
         )
     song.begin_undo_step()
     try:
-        # flatten() is a method on the track, not the song
-        track.flatten()
+        flattened = False
+        try:
+            track.flatten()
+            flattened = True
+        except AttributeError:
+            pass
+        if not flattened:
+            try:
+                song.flatten_track(track_index)
+                flattened = True
+            except AttributeError:
+                pass
+        if not flattened:
+            raise ValueError(
+                "flatten() not available via ControlSurface API. "
+                "Use Ableton's Flatten command manually."
+            )
     finally:
         song.end_undo_step()
     return {
