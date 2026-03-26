@@ -39,6 +39,9 @@ WRITE_COMMANDS = frozenset([
     # scenes
     "create_scene", "delete_scene", "duplicate_scene", "fire_scene",
     "set_scene_name", "set_scene_color", "set_scene_tempo",
+    "fire_scene_clips", "stop_all_clips",
+    # tracks (freeze/flatten)
+    "freeze_track", "flatten_track",
     # mixing
     "set_track_volume", "set_track_pan", "set_track_send",
     "set_master_volume", "set_track_routing",
@@ -55,6 +58,11 @@ WRITE_COMMANDS = frozenset([
     # clip automation
     "set_clip_automation",
     "clear_clip_automation",
+])
+
+# Commands that need longer timeouts (e.g., freeze renders audio)
+SLOW_WRITE_COMMANDS = frozenset([
+    "freeze_track",
 ])
 
 
@@ -212,9 +220,14 @@ class LivePilotServer(object):
         request_id = command.get("id", "unknown")
         cmd_type = command.get("type", "")
 
-        # Determine timeout based on read vs write
+        # Determine timeout based on read vs write vs slow write
         is_write = cmd_type in WRITE_COMMANDS
-        timeout = 15 if is_write else 10
+        if cmd_type in SLOW_WRITE_COMMANDS:
+            timeout = 35
+        elif is_write:
+            timeout = 15
+        else:
+            timeout = 10
 
         # Per-command response queue
         response_queue = queue.Queue()

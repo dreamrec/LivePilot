@@ -1,4 +1,4 @@
-"""Verify all 168 MCP tools are registered across 17 domains."""
+"""Verify all 178 MCP tools are registered across 17 domains."""
 
 import asyncio
 import sys
@@ -50,6 +50,10 @@ def test_tracks_tools_registered():
         "stop_track_clips",
         "set_group_fold",
         "set_track_input_monitoring",
+        # Freeze/flatten
+        "freeze_track",
+        "flatten_track",
+        "get_freeze_status",
     }
     missing = expected - names
     assert not missing, f"Missing tracks tools: {missing}"
@@ -105,6 +109,10 @@ def test_devices_tools_registered():
         "get_rack_chains",
         "set_chain_volume",
         "get_device_presets",
+        # Plugin deep control (M4L)
+        "get_plugin_parameters",
+        "map_plugin_parameter",
+        "get_plugin_presets",
     }
     missing = expected - names
     assert not missing, f"Missing devices tools: {missing}"
@@ -121,6 +129,11 @@ def test_scenes_tools_registered():
         "set_scene_name",
         "set_scene_color",
         "set_scene_tempo",
+        # Scene matrix operations
+        "get_scene_matrix",
+        "fire_scene_clips",
+        "stop_all_clips",
+        "get_playing_clips",
     }
     missing = expected - names
     assert not missing, f"Missing scenes tools: {missing}"
@@ -273,7 +286,7 @@ def test_theory_tools_registered():
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 168, f"Expected 168 tools, got {len(tools)}"
+    assert len(tools) == 178, f"Expected 178 tools, got {len(tools)}"
 
 
 def test_perception_tools_registered():

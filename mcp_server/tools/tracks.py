@@ -1,6 +1,6 @@
-"""Track MCP tools — create, delete, rename, mute, solo, arm, group fold, monitor.
+"""Track MCP tools — create, delete, rename, mute, solo, arm, group fold, monitor, freeze, flatten.
 
-14 tools matching the Remote Script tracks domain.
+17 tools matching the Remote Script tracks domain.
 """
 
 from __future__ import annotations
@@ -172,4 +172,47 @@ def set_track_input_monitoring(ctx: Context, track_index: int, state: int) -> di
     return _get_ableton(ctx).send_command("set_track_input_monitoring", {
         "track_index": track_index,
         "state": state,
+    })
+
+
+# ── Freeze / Flatten ────────────────────────────────────────────────────
+
+
+@mcp.tool()
+def freeze_track(ctx: Context, track_index: int) -> dict:
+    """Freeze a track — render all devices to audio for CPU savings.
+
+    Freeze is async in Ableton: this initiates the render and returns
+    immediately. Poll get_freeze_status to check when it's done.
+    Freezing a track that's already frozen is a no-op.
+    """
+    _validate_track_index(track_index)
+    return _get_ableton(ctx).send_command("freeze_track", {
+        "track_index": track_index,
+    })
+
+
+@mcp.tool()
+def flatten_track(ctx: Context, track_index: int) -> dict:
+    """Flatten a frozen track — commit rendered audio permanently.
+
+    Destructive: replaces all devices with the rendered audio file.
+    The track must already be frozen. Use undo to revert.
+    """
+    _validate_track_index(track_index)
+    return _get_ableton(ctx).send_command("flatten_track", {
+        "track_index": track_index,
+    })
+
+
+@mcp.tool()
+def get_freeze_status(ctx: Context, track_index: int) -> dict:
+    """Check if a track is frozen.
+
+    Use after freeze_track to poll for completion, or before
+    flatten_track to verify the track is ready to flatten.
+    """
+    _validate_track_index(track_index)
+    return _get_ableton(ctx).send_command("get_freeze_status", {
+        "track_index": track_index,
     })

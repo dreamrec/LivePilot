@@ -1,7 +1,10 @@
-"""Scene MCP tools — list, create, delete, duplicate, fire, rename, color, tempo.
+"""Scene MCP tools — list, create, delete, duplicate, fire, rename, color, tempo, matrix.
 
-8 tools matching the Remote Script scenes domain.
+12 tools matching the Remote Script scenes domain.
 """
+
+import json
+from typing import Any, Optional
 
 from fastmcp import Context
 
@@ -87,3 +90,63 @@ def set_scene_tempo(ctx: Context, scene_index: int, tempo: float) -> dict:
         "scene_index": scene_index,
         "tempo": tempo,
     })
+
+
+# ── Scene Matrix Operations ─────────────────────────────────────────────
+
+
+def _ensure_list(value: Any) -> list:
+    if isinstance(value, str):
+        return json.loads(value)
+    return value
+
+
+@mcp.tool()
+def get_scene_matrix(ctx: Context) -> dict:
+    """Get the full session clip grid: every track x every scene.
+
+    Returns clip states (empty/stopped/playing/triggered/recording),
+    clip names, and colors. Use this for a bird's-eye view of the
+    entire session before making clip launch decisions.
+    """
+    return _get_ableton(ctx).send_command("get_scene_matrix")
+
+
+@mcp.tool()
+def fire_scene_clips(
+    ctx: Context,
+    scene_index: int,
+    track_indices: Optional[Any] = None,
+) -> dict:
+    """Fire a scene, optionally filtering to specific tracks.
+
+    If track_indices is omitted, fires the entire scene (all tracks).
+    If provided (JSON array of ints), fires only those tracks' clip slots
+    from the scene — useful for launching drums + bass without triggering
+    the lead, or building up layers gradually.
+    """
+    _validate_scene_index(scene_index)
+    params: dict = {"scene_index": scene_index}
+    if track_indices is not None:
+        track_indices = _ensure_list(track_indices)
+        for ti in track_indices:
+            if int(ti) < 0:
+                raise ValueError("track_indices must all be >= 0")
+        params["track_indices"] = track_indices
+    return _get_ableton(ctx).send_command("fire_scene_clips", params)
+
+
+@mcp.tool()
+def stop_all_clips(ctx: Context) -> dict:
+    """Stop all playing clips in the session. Panic button."""
+    return _get_ableton(ctx).send_command("stop_all_clips")
+
+
+@mcp.tool()
+def get_playing_clips(ctx: Context) -> dict:
+    """Get all currently playing or triggered clips.
+
+    Returns track index/name, clip index/name, and whether each clip
+    is actively playing or just triggered (waiting for quantization).
+    """
+    return _get_ableton(ctx).send_command("get_playing_clips")
