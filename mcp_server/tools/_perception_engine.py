@@ -63,7 +63,8 @@ def _normalize_to_lufs(
     gain_linear = 10 ** (gain_db / 20.0)
     data, sr = _load_audio(file_path)
     normalized = np.clip(data * gain_linear, -1.0, 1.0)
-    tmp_path = tempfile.mktemp(suffix=".wav")
+    tmp_fd, tmp_path = tempfile.mkstemp(suffix=".wav")
+    os.close(tmp_fd)
     try:
         sf.write(tmp_path, normalized, sr)
     except Exception:
@@ -155,7 +156,7 @@ def compute_loudness(file_path: str, detail: str = "summary") -> dict[str, Any]:
 
     # Streaming compliance
     meets_streaming = {
-        name: integrated_lufs >= (target - 1.0)  # ±1 LU tolerance
+        name: abs(integrated_lufs - target) <= 1.0  # ±1 LU tolerance
         for name, target in STREAMING_TARGETS.items()
     }
 

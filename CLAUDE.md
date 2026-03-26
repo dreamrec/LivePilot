@@ -1,7 +1,7 @@
 # LivePilot v1.8.0 — Ableton Live 12
 
 ## Project
-- **Repo:** `/Users/visansilviugeorge/Desktop/LivePilot/`
+- **Repo:** This directory (LivePilot)
 - **Type:** Agentic MCP production system for Ableton Live 12
 - **Three layers:** Device Atlas (knowledge) + M4L Analyzer (perception) + Technique Memory (learning)
 - **Sister projects:** TDPilot (TouchDesigner), ComfyPilot (ComfyUI)

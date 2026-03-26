@@ -101,7 +101,8 @@ def get_track_info(song, params):
         result["arm"] = None
         result["has_midi_input"] = None
         result["has_audio_input"] = None
-        result["is_return_track"] = True
+        result["is_return_track"] = track_index != -1000
+        result["is_master_track"] = track_index == -1000
 
     return result
 

@@ -135,6 +135,10 @@ def remove_notes(
     """Remove all MIDI notes in a pitch/time region. Use undo to revert. Defaults remove ALL notes in the clip."""
     _validate_track_index(track_index)
     _validate_clip_index(clip_index)
+    if not 0 <= from_pitch <= 127:
+        raise ValueError("from_pitch must be 0-127")
+    if pitch_span < 1 or pitch_span > 128:
+        raise ValueError("pitch_span must be 1-128")
     params = {
         "track_index": track_index,
         "clip_index": clip_index,

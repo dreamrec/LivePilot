@@ -226,10 +226,10 @@ def suggest_chromatic_mediants(
 
     mediants = harmony.get_chromatic_mediants(root_pc, quality)
 
-    chord_pcs = set(harmony.chord_to_midi(root_pc, quality))
+    chord_pcs = {p % 12 for p in harmony.chord_to_midi(root_pc, quality)}
     formatted = {}
     for key, (r, q) in mediants.items():
-        mediant_pcs = set(harmony.chord_to_midi(r, q))
+        mediant_pcs = {p % 12 for p in harmony.chord_to_midi(r, q)}
         common = len(chord_pcs & mediant_pcs)
         formatted[key] = {
             "chord": harmony.chord_to_str(r, q),

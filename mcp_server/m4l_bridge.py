@@ -97,6 +97,7 @@ class SpectralReceiver(asyncio.DatagramProtocol):
     def __init__(self, cache: SpectralCache):
         self.cache = cache
         self._chunks: dict[str, dict] = {}  # Reassembly buffer for chunked responses
+        self._chunk_id = 0
         self._response_callback: Optional[asyncio.Future] = None
         self._capture_future: Optional[asyncio.Future] = None
 
@@ -106,8 +107,9 @@ class SpectralReceiver(asyncio.DatagramProtocol):
     def datagram_received(self, data: bytes, addr: tuple) -> None:
         try:
             self._parse_osc(data)
-        except Exception:
-            pass  # Malformed packet, ignore
+        except Exception as exc:
+            import sys
+            print(f"LivePilot: malformed OSC packet from {addr}: {exc}", file=sys.stderr)
 
     def _parse_osc(self, data: bytes) -> None:
         """Parse a minimal OSC message (address + typed args)."""
@@ -227,12 +229,15 @@ class SpectralReceiver(asyncio.DatagramProtocol):
             result = json.loads(decoded)
             if self._response_callback and not self._response_callback.done():
                 self._response_callback.set_result(result)
-        except Exception:
-            pass
+        except Exception as exc:
+            import sys
+            print(f"LivePilot: failed to decode bridge response: {exc}", file=sys.stderr)
 
     def _handle_chunk(self, index: int, total: int, encoded: str) -> None:
         """Reassemble chunked responses."""
-        key = str(total)  # Simple key — assumes one response at a time
+        if index == 0:
+            self._chunk_id += 1
+        key = str(self._chunk_id)
         if key not in self._chunks:
             self._chunks[key] = {"parts": {}, "total": total}
 
@@ -254,8 +259,9 @@ class SpectralReceiver(asyncio.DatagramProtocol):
             result = json.loads(decoded)
             if self._capture_future and not self._capture_future.done():
                 self._capture_future.set_result(result)
-        except Exception:
-            pass
+        except Exception as exc:
+            import sys
+            print(f"LivePilot: failed to decode capture response: {exc}", file=sys.stderr)
 
     def set_response_future(self, future: asyncio.Future) -> None:
         """Set a future to be resolved with the next response."""
@@ -278,29 +284,31 @@ class M4LBridge:
         self.receiver = receiver
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._m4l_addr = ("127.0.0.1", 9881)
+        self._cmd_lock = asyncio.Lock()
 
     async def send_command(self, command: str, *args: Any, timeout: float = 5.0) -> dict:
         """Send an OSC command to the M4L device and wait for the response."""
         if not self.cache.is_connected:
             return {"error": "LivePilot Analyzer not connected. Drop it on the master track."}
 
-        # Create a future for the response
-        loop = asyncio.get_running_loop()
-        future = loop.create_future()
-        if self.receiver:
-            self.receiver.set_response_future(future)
+        async with self._cmd_lock:
+            # Create a future for the response
+            loop = asyncio.get_running_loop()
+            future = loop.create_future()
+            if self.receiver:
+                self.receiver.set_response_future(future)
 
-        # Build and send OSC message (no leading / — Max udpreceive
-        # passes messagename with / intact to JS, breaking dispatch)
-        osc_data = self._build_osc(command, args)
-        self._sock.sendto(osc_data, self._m4l_addr)
+            # Build and send OSC message (no leading / — Max udpreceive
+            # passes messagename with / intact to JS, breaking dispatch)
+            osc_data = self._build_osc(command, args)
+            self._sock.sendto(osc_data, self._m4l_addr)
 
-        # Wait for response with timeout
-        try:
-            result = await asyncio.wait_for(future, timeout=timeout)
-            return result
-        except asyncio.TimeoutError:
-            return {"error": "M4L bridge timeout — device may be busy or removed"}
+            # Wait for response with timeout
+            try:
+                result = await asyncio.wait_for(future, timeout=timeout)
+                return result
+            except asyncio.TimeoutError:
+                return {"error": "M4L bridge timeout — device may be busy or removed"}
 
     async def send_capture(self, command: str, *args: Any, timeout: float = 35.0) -> dict:
         """Send a capture command to the M4L device and wait for /capture_complete."""

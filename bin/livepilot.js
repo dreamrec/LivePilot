@@ -70,7 +70,7 @@ function ensureVenv(systemPython, prefixArgs) {
   // Check if venv already exists and has our deps
   if (fs.existsSync(venvPy)) {
     try {
-      execFileSync(venvPy, ["-c", "import fastmcp; import midiutil; import pretty_midi"], {
+      execFileSync(venvPy, ["-c", "import fastmcp; import midiutil; import pretty_midi; import numpy; import pyloudnorm; import soundfile; import scipy"], {
         encoding: "utf-8",
         timeout: 10000,
         stdio: "pipe",

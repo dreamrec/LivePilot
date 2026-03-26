@@ -12,8 +12,6 @@ import json
 import struct
 import pytest
 
-pytestmark = pytest.mark.asyncio(loop_scope="function")
-
 import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))

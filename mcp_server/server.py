@@ -29,7 +29,16 @@ def _kill_port_holder(port: int) -> None:
         for pid_str in out.splitlines():
             pid = int(pid_str)
             if pid != my_pid:
-                os.kill(pid, signal.SIGTERM)
+                # Only kill if it looks like a Python/LivePilot process
+                try:
+                    cmdline = subprocess.check_output(
+                        ["ps", "-p", str(pid), "-o", "command="],
+                        text=True, timeout=2,
+                    ).strip()
+                    if "mcp_server" in cmdline or "livepilot" in cmdline.lower():
+                        os.kill(pid, signal.SIGTERM)
+                except (subprocess.CalledProcessError, FileNotFoundError):
+                    pass  # Can't verify — don't kill
     except (subprocess.CalledProcessError, FileNotFoundError, ValueError):
         pass  # lsof not found or no process — nothing to kill
 
@@ -139,6 +148,12 @@ def _get_all_tools():
     # FastMCP 3.x: mcp._local_provider._components (dict of key -> Tool)
     if hasattr(mcp, "_local_provider") and hasattr(mcp._local_provider, "_components"):
         return list(mcp._local_provider._components.values())
+    import sys
+    print(
+        "LivePilot: WARNING — could not access FastMCP tool registry, "
+        "string-to-number schema coercion will not work",
+        file=sys.stderr,
+    )
     return []
 
 

@@ -12,8 +12,8 @@ from .utils import get_track, get_clip
 @register("get_clip_automation")
 def get_clip_automation(song, params):
     """List automation envelopes on a session clip."""
-    track_index = params["track_index"]
-    clip_index = params["clip_index"]
+    track_index = int(params["track_index"])
+    clip_index = int(params["clip_index"])
 
     track = get_track(song, track_index)
     clip = get_clip(song, track_index, clip_index)
@@ -80,8 +80,8 @@ def set_clip_automation(song, params):
     parameter_type: "device", "volume", "panning", "send"
     points: [{time, value, duration?}] — time relative to clip start
     """
-    track_index = params["track_index"]
-    clip_index = params["clip_index"]
+    track_index = int(params["track_index"])
+    clip_index = int(params["clip_index"])
     parameter_type = params["parameter_type"]
     points = params["points"]
     device_index = params.get("device_index")
@@ -98,29 +98,23 @@ def set_clip_automation(song, params):
         parameter = track.mixer_device.panning
     elif parameter_type == "send":
         if send_index is None:
-            return {"error": {"code": "INVALID_PARAM",
-                    "message": "send_index required for send automation"}}
+            raise ValueError("send_index required for send automation")
         sends = list(track.mixer_device.sends)
         if send_index < 0 or send_index >= len(sends):
-            return {"error": {"code": "INDEX_ERROR",
-                    "message": "send_index %d out of range" % send_index}}
+            raise IndexError("send_index %d out of range" % send_index)
         parameter = sends[send_index]
     elif parameter_type == "device":
         if device_index is None or parameter_index is None:
-            return {"error": {"code": "INVALID_PARAM",
-                    "message": "device_index and parameter_index required"}}
+            raise ValueError("device_index and parameter_index required")
         devices = list(track.devices)
         if device_index < 0 or device_index >= len(devices):
-            return {"error": {"code": "INDEX_ERROR",
-                    "message": "device_index %d out of range" % device_index}}
+            raise IndexError("device_index %d out of range" % device_index)
         dev_params = list(devices[device_index].parameters)
         if parameter_index < 0 or parameter_index >= len(dev_params):
-            return {"error": {"code": "INDEX_ERROR",
-                    "message": "parameter_index %d out of range" % parameter_index}}
+            raise IndexError("parameter_index %d out of range" % parameter_index)
         parameter = dev_params[parameter_index]
     else:
-        return {"error": {"code": "INVALID_PARAM",
-                "message": "parameter_type must be device/volume/panning/send"}}
+        raise ValueError("parameter_type must be device/volume/panning/send")
 
     # Get or create envelope
     song.begin_undo_step()
@@ -158,8 +152,8 @@ def clear_clip_automation(song, params):
     If parameter_type is provided, clears only that parameter's envelope.
     If omitted, clears ALL envelopes on the clip.
     """
-    track_index = params["track_index"]
-    clip_index = params["clip_index"]
+    track_index = int(params["track_index"])
+    clip_index = int(params["clip_index"])
     parameter_type = params.get("parameter_type")
 
     track = get_track(song, track_index)
@@ -184,31 +178,25 @@ def clear_clip_automation(song, params):
         elif parameter_type == "send":
             send_index = params.get("send_index")
             if send_index is None:
-                return {"error": {"code": "INVALID_PARAM",
-                        "message": "send_index required for send automation"}}
+                raise ValueError("send_index required for send automation")
             sends = list(track.mixer_device.sends)
             if send_index < 0 or send_index >= len(sends):
-                return {"error": {"code": "INDEX_ERROR",
-                        "message": "send_index %d out of range" % send_index}}
+                raise IndexError("send_index %d out of range" % send_index)
             parameter = sends[send_index]
         elif parameter_type == "device":
             device_index = params.get("device_index")
             parameter_index = params.get("parameter_index")
             if device_index is None or parameter_index is None:
-                return {"error": {"code": "INVALID_PARAM",
-                        "message": "device_index and parameter_index required"}}
+                raise ValueError("device_index and parameter_index required")
             devices = list(track.devices)
             if device_index < 0 or device_index >= len(devices):
-                return {"error": {"code": "INDEX_ERROR",
-                        "message": "device_index %d out of range" % device_index}}
+                raise IndexError("device_index %d out of range" % device_index)
             dev_params = list(devices[device_index].parameters)
             if parameter_index < 0 or parameter_index >= len(dev_params):
-                return {"error": {"code": "INDEX_ERROR",
-                        "message": "parameter_index %d out of range" % parameter_index}}
+                raise IndexError("parameter_index %d out of range" % parameter_index)
             parameter = dev_params[parameter_index]
         else:
-            return {"error": {"code": "INVALID_PARAM",
-                    "message": "Unknown parameter_type"}}
+            raise ValueError("Unknown parameter_type")
 
         clip.clear_envelope(parameter)
     finally:

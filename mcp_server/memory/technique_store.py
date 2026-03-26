@@ -114,7 +114,7 @@ class TechniqueStore:
     ) -> list[dict]:
         """Search techniques. Returns summaries (no payload)."""
         with self._lock:
-            results = list(self._data["techniques"])
+            results = copy.deepcopy(self._data["techniques"])
 
         # filter by type
         if type_filter:
@@ -156,7 +156,7 @@ class TechniqueStore:
             )
 
         with self._lock:
-            results = list(self._data["techniques"])
+            results = copy.deepcopy(self._data["techniques"])
 
         if type_filter:
             results = [t for t in results if t["type"] == type_filter]

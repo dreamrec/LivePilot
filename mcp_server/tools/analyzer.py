@@ -284,9 +284,15 @@ async def load_sample_to_simpler(
         "uri": uri,
     })
 
-    # Step 2: Replace with the desired sample via M4L bridge
+    # Step 2: Find the newly created device (it's at the end of the chain)
+    track_info = ableton.send_command("get_track_info", {"track_index": track_index})
+    actual_device_index = len(track_info.get("devices", [])) - 1
+    if actual_device_index < 0:
+        actual_device_index = 0
+
+    # Step 3: Replace with the desired sample via M4L bridge
     result = await bridge.send_command(
-        "replace_simpler_sample", track_index, device_index, file_path
+        "replace_simpler_sample", track_index, actual_device_index, file_path
     )
     if "error" in result:
         return result

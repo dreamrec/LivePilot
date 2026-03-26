@@ -23,7 +23,9 @@ def _ensure_list(v: Any) -> list:
     if isinstance(v, str):
         import json
         return json.loads(v)
-    return list(v)
+    if isinstance(v, list):
+        return v
+    return [v]
 
 
 @mcp.tool()
@@ -482,7 +484,7 @@ def analyze_for_automation(
         "track_index": track_index,
         "track_name": track_info.get("name", ""),
         "device_count": len(devices),
-        "current_level": meters.get("tracks", [{}])[0].get("level", 0),
+        "current_level": (meters.get("tracks") or [{}])[0].get("level", 0) if meters.get("tracks") else 0,
         "spectrum": spectrum,
         "suggestions": suggestions,
     }

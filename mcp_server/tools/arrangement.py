@@ -11,6 +11,7 @@ from typing import Any, Optional
 from fastmcp import Context
 
 from ..server import mcp
+from .notes import _validate_note
 
 
 def _get_ableton(ctx: Context):
@@ -154,6 +155,8 @@ def add_arrangement_notes(
     _validate_clip_index(clip_index)
     if isinstance(notes, str):
         notes = json.loads(notes)
+    for note in notes:
+        _validate_note(note)
     return _get_ableton(ctx).send_command("add_arrangement_notes", {
         "track_index": track_index,
         "clip_index": clip_index,

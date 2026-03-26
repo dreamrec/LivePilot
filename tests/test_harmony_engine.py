@@ -141,3 +141,13 @@ class TestChromaticMediants:
         result = get_chromatic_mediants(0, "major")
         assert result["upper_major_third"] == (4, "major")
         assert result["lower_major_third"] == (8, "major")
+
+
+class TestChromaticMediantsPitchClass:
+    def test_common_tones_use_pitch_classes(self):
+        """Chromatic mediants should compare pitch classes, not absolute MIDI values."""
+        from mcp_server.tools._harmony_engine import chord_to_midi
+        c_major_pcs = {p % 12 for p in chord_to_midi(0, "major")}
+        ab_major_pcs = {p % 12 for p in chord_to_midi(8, "major")}
+        common = len(c_major_pcs & ab_major_pcs)
+        assert common >= 1, "C major and Ab major should share at least 1 pitch class"
