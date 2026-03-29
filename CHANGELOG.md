@@ -6,8 +6,11 @@
 
 ### M4L Bridge (livepilot_bridge.js)
 - Fix(P0): Remove `str_for_value` from all batched JS readers — Auto Filter hangs Max's JS engine (uncatchable), binary-patched .amxd
+- Fix(P1): Deferred `udpsend` socket re-initialization via `deferlow` — fixes UDP not sending when device loads from a saved Live Set (socket fails to bind on frozen device restore)
 - Fix(P1): Add try-catch to ALL Task.schedule batch functions: cmd_get_params, cmd_get_hidden_params, cmd_get_display_values, cmd_get_auto_state, cmd_get_plugin_params — prevents silent crash on parameter read errors
 - Fix(P1): cmd_get_chains_deep, cmd_get_track_cpu, cmd_map_plugin_param — added missing error handling
+- Fix(P2): Add `dspstate~` → JS inlet 1 for sample rate reporting (was declared in JS but missing from patcher)
+- Fix(P2): Deferred `snapshot~` re-activation via `live.thisdevice` → `deferlow` — safety net for frozen device reload
 - Perf: Batch size 4→8, delay 50→20ms (2.5× faster parameter reads)
 - Fix: Binary-patch openinpresentation 0→1 in .amxd
 

@@ -756,6 +756,61 @@
 			},
 			{
 				"box": {
+					"id": "obj-defer-reinit",
+					"maxclass": "newobj",
+					"text": "deferlow",
+					"numinlets": 1,
+					"numoutlets": 1,
+					"outlettype": [
+						""
+					],
+					"patching_rect": [
+						700.0,
+						530.0,
+						55.0,
+						22.0
+					]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-reinit-udpsend",
+					"maxclass": "message",
+					"text": "host 127.0.0.1, port 9880",
+					"numinlets": 2,
+					"numoutlets": 1,
+					"outlettype": [
+						""
+					],
+					"patching_rect": [
+						700.0,
+						560.0,
+						160.0,
+						22.0
+					]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-dspstate",
+					"maxclass": "newobj",
+					"text": "dspstate~",
+					"numinlets": 1,
+					"numoutlets": 2,
+					"outlettype": [
+						"signal",
+						"float"
+					],
+					"patching_rect": [
+						900.0,
+						500.0,
+						65.0,
+						22.0
+					]
+				}
+			},
+			{
+				"box": {
 					"id": "obj-multislider",
 					"maxclass": "multislider",
 					"numinlets": 1,
@@ -1906,6 +1961,66 @@
 					"destination": [
 						"obj-js",
 						0
+					]
+				}
+			},
+			{
+				"patchline": {
+					"source": [
+						"obj-thisdevice",
+						0
+					],
+					"destination": [
+						"obj-defer-reinit",
+						0
+					]
+				}
+			},
+			{
+				"patchline": {
+					"source": [
+						"obj-defer-reinit",
+						0
+					],
+					"destination": [
+						"obj-reinit-udpsend",
+						0
+					]
+				}
+			},
+			{
+				"patchline": {
+					"source": [
+						"obj-defer-reinit",
+						0
+					],
+					"destination": [
+						"obj-snap-start",
+						0
+					]
+				}
+			},
+			{
+				"patchline": {
+					"source": [
+						"obj-reinit-udpsend",
+						0
+					],
+					"destination": [
+						"obj-udpsend",
+						0
+					]
+				}
+			},
+			{
+				"patchline": {
+					"source": [
+						"obj-dspstate",
+						1
+					],
+					"destination": [
+						"obj-js",
+						1
 					]
 				}
 			},
