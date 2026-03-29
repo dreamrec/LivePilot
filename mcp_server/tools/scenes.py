@@ -97,7 +97,10 @@ def set_scene_tempo(ctx: Context, scene_index: int, tempo: float) -> dict:
 
 def _ensure_list(value: Any) -> list:
     if isinstance(value, str):
-        return json.loads(value)
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Invalid JSON in parameter: {exc}") from exc
     return value
 
 

@@ -22,7 +22,10 @@ def _get_ableton(ctx: Context):
 def _ensure_list(v: Any) -> list:
     if isinstance(v, str):
         import json
-        return json.loads(v)
+        try:
+            return json.loads(v)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Invalid JSON in parameter: {exc}") from exc
     if isinstance(v, list):
         return v
     return [v]

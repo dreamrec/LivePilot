@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.9.9 — M4L Bridge Hardening + Deep Audit (March 2026)
+
+**87 tools tested live, 0 failures. 13 bugs fixed across JS bridge + Python tools.**
+
+### M4L Bridge (livepilot_bridge.js)
+- Fix(P0): Remove `str_for_value` from all batched JS readers — Auto Filter hangs Max's JS engine (uncatchable), binary-patched .amxd
+- Fix(P1): Add try-catch to ALL Task.schedule batch functions: cmd_get_params, cmd_get_hidden_params, cmd_get_display_values, cmd_get_auto_state, cmd_get_plugin_params — prevents silent crash on parameter read errors
+- Fix(P1): cmd_get_chains_deep, cmd_get_track_cpu, cmd_map_plugin_param — added missing error handling
+- Perf: Batch size 4→8, delay 50→20ms (2.5× faster parameter reads)
+- Fix: Binary-patch openinpresentation 0→1 in .amxd
+
+### Python MCP Server
+- Fix(P1): classify_progression accepts dict inputs `{"root": "F#", "quality": "minor"}` in addition to strings
+- Fix(P1): Higher bridge timeouts — hidden_params 15s, display_values 15s, auto_state 10s, plugin_params 20s, plugin_presets 15s, map_plugin 10s
+- Fix(P1): load_sample_to_simpler wraps send_command calls in try-except (prevents AbletonConnectionError propagation)
+- Fix(P2): _ensure_list catches json.JSONDecodeError → ValueError (6 files: notes, devices, generative, scenes, harmony, automation)
+- Fix(P2): _get_m4l/_get_spectral raise ValueError instead of RuntimeError (FastMCP compatibility)
+
 ## 1.9.7 — Safe automation fallback + correct clip length reporting (March 2026)
 
 - Fix(P1): set_arrangement_automation places replacement BEFORE deleting original — no data loss if placement fails

@@ -19,7 +19,7 @@ def _get_spectral(ctx: Context):
     """Get SpectralCache from lifespan context."""
     cache = ctx.lifespan_context.get("spectral")
     if not cache:
-        raise RuntimeError("Spectral cache not initialized")
+        raise ValueError("Spectral cache not initialized — restart the MCP server")
     return cache
 
 
@@ -27,7 +27,7 @@ def _get_m4l(ctx: Context):
     """Get M4LBridge from lifespan context."""
     bridge = ctx.lifespan_context.get("m4l")
     if not bridge:
-        raise RuntimeError("M4L bridge not initialized")
+        raise ValueError("M4L bridge not initialized — restart the MCP server")
     return bridge
 
 
@@ -140,7 +140,7 @@ async def get_hidden_parameters(
     cache = _get_spectral(ctx)
     _require_analyzer(cache)
     bridge = _get_m4l(ctx)
-    return await bridge.send_command("get_hidden_params", track_index, device_index)
+    return await bridge.send_command("get_hidden_params", track_index, device_index, timeout=15.0)
 
 
 @mcp.tool()
@@ -161,7 +161,7 @@ async def get_automation_state(
     cache = _get_spectral(ctx)
     _require_analyzer(cache)
     bridge = _get_m4l(ctx)
-    return await bridge.send_command("get_auto_state", track_index, device_index)
+    return await bridge.send_command("get_auto_state", track_index, device_index, timeout=10.0)
 
 
 @mcp.tool()
@@ -267,25 +267,34 @@ async def load_sample_to_simpler(
 
     # Step 1: Load a sample from the browser to create Simpler with content
     ableton = ctx.lifespan_context["ableton"]
-    search = ableton.send_command("search_browser", {
-        "path": "samples",
-        "name_filter": "kick",
-        "loadable_only": True,
-        "max_results": 1,
-    })
+    try:
+        search = ableton.send_command("search_browser", {
+            "path": "samples",
+            "name_filter": "kick",
+            "loadable_only": True,
+            "max_results": 1,
+        })
+    except Exception as exc:
+        return {"error": f"Browser search failed: {exc}"}
     results = search.get("results", [])
     if not results:
         return {"error": "No samples found in browser to bootstrap Simpler"}
 
     # Load the dummy sample — Ableton auto-creates Simpler
     uri = results[0]["uri"]
-    ableton.send_command("load_browser_item", {
-        "track_index": track_index,
-        "uri": uri,
-    })
+    try:
+        ableton.send_command("load_browser_item", {
+            "track_index": track_index,
+            "uri": uri,
+        })
+    except Exception as exc:
+        return {"error": f"Failed to load bootstrap sample: {exc}"}
 
     # Step 2: Find the newly created device (it's at the end of the chain)
-    track_info = ableton.send_command("get_track_info", {"track_index": track_index})
+    try:
+        track_info = ableton.send_command("get_track_info", {"track_index": track_index})
+    except Exception as exc:
+        return {"error": f"Failed to read track after loading sample: {exc}"}
     actual_device_index = len(track_info.get("devices", [])) - 1
     if actual_device_index < 0:
         actual_device_index = 0
@@ -515,7 +524,7 @@ async def get_display_values(
     cache = _get_spectral(ctx)
     _require_analyzer(cache)
     bridge = _get_m4l(ctx)
-    return await bridge.send_command("get_display_values", track_index, device_index)
+    return await bridge.send_command("get_display_values", track_index, device_index, timeout=15.0)
 
 
 # ── Phase 3: Audio Capture ─────────────────────────────────────────────

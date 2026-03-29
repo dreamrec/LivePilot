@@ -19,7 +19,10 @@ from . import _theory_engine as theory
 
 def _ensure_list(value: Any) -> list:
     if isinstance(value, str):
-        return json.loads(value)
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Invalid JSON in parameter: {exc}") from exc
     return value
 
 
@@ -168,8 +171,18 @@ def classify_progression(
     if len(chords) < 2:
         return {"error": "Need at least 2 chords to classify"}
 
+    # Normalize dict inputs like {"root": "F#", "quality": "minor"} to strings
+    normalized = []
+    for c in chords:
+        if isinstance(c, dict):
+            root = c.get("root", "")
+            quality = c.get("quality", "major")
+            normalized.append(f"{root} {quality}")
+        else:
+            normalized.append(str(c))
+
     try:
-        parsed = [harmony.parse_chord(c) for c in chords]
+        parsed = [harmony.parse_chord(c) for c in normalized]
     except ValueError as e:
         return {"error": str(e)}
 
@@ -198,7 +211,7 @@ def classify_progression(
         classification = names.get(clean, classification)
 
     return {
-        "chords": chords,
+        "chords": normalized,
         "transforms": transforms,
         "pattern": pattern,
         "classification": classification,

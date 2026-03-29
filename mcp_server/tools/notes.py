@@ -21,7 +21,10 @@ def _get_ableton(ctx: Context):
 def _ensure_list(value: Any) -> list:
     """Parse JSON strings into lists. MCP clients may serialize list params as strings."""
     if isinstance(value, str):
-        return json.loads(value)
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Invalid JSON in parameter: {exc}") from exc
     return value
 
 

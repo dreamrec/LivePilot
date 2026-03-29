@@ -188,36 +188,40 @@ function cmd_get_params(args) {
     var param_count = cursor_a.getcount("parameters");
     var params = [];
 
-    // Chunked reading: 4 params per batch
-    var batch_size = 4;
+    var batch_size = 8;
     var current = 0;
 
     function read_batch() {
-        var end = Math.min(current + batch_size, param_count);
-        for (var i = current; i < end; i++) {
-            cursor_b.goto(path + " parameters " + i);
-            var p = {
-                index: i,
-                name: cursor_b.get("name").toString(),
-                value: parseFloat(cursor_b.get("value")),
-                min: parseFloat(cursor_b.get("min")),
-                max: parseFloat(cursor_b.get("max")),
-                is_quantized: parseInt(cursor_b.get("is_quantized")) === 1,
-                automation_state: parseInt(cursor_b.get("automation_state")),
-                state: parseInt(cursor_b.get("state"))
-            };
-            // state: 0=enabled, 1=disabled, 2=irrelevant
-            // automation_state: 0=none, 1=active, 2=overridden
-            params.push(p);
-        }
-        current = end;
+        try {
+            var end = Math.min(current + batch_size, param_count);
+            for (var i = current; i < end; i++) {
+                cursor_b.goto(path + " parameters " + i);
+                params.push({
+                    index: i,
+                    name: cursor_b.get("name").toString(),
+                    value: parseFloat(cursor_b.get("value")),
+                    min: parseFloat(cursor_b.get("min")),
+                    max: parseFloat(cursor_b.get("max")),
+                    is_quantized: parseInt(cursor_b.get("is_quantized")) === 1,
+                    automation_state: parseInt(cursor_b.get("automation_state")),
+                    state: parseInt(cursor_b.get("state"))
+                });
+            }
+            current = end;
 
-        if (current < param_count) {
-            // Schedule next batch in 50ms
-            var next_task = new Task(read_batch);
-            next_task.schedule(50);
-        } else {
-            send_response({"track": track_idx, "device": device_idx, "params": params});
+            if (current < param_count) {
+                var next_task = new Task(read_batch);
+                next_task.schedule(20);
+            } else {
+                send_response({"track": track_idx, "device": device_idx, "params": params});
+            }
+        } catch (e) {
+            send_response({
+                "error": "Failed reading parameter " + current + ": " + String(e),
+                "track": track_idx,
+                "device": device_idx,
+                "partial_params": params
+            });
         }
     }
 
@@ -237,37 +241,47 @@ function cmd_get_hidden_params(args) {
     var device_name = cursor_a.get("name").toString();
     var params = [];
     var current = 0;
-    var batch_size = 4;
+    var batch_size = 8;
 
     function read_batch() {
-        var end = Math.min(current + batch_size, param_count);
-        for (var i = current; i < end; i++) {
-            cursor_b.goto(path + " parameters " + i);
-            params.push({
-                index: i,
-                name: cursor_b.get("name").toString(),
-                value: parseFloat(cursor_b.get("value")),
-                min: parseFloat(cursor_b.get("min")),
-                max: parseFloat(cursor_b.get("max")),
-                default_value: parseFloat(cursor_b.get("default_value")),
-                is_quantized: parseInt(cursor_b.get("is_quantized")) === 1,
-                value_string: String(cursor_b.call("str_for_value", parseFloat(cursor_b.get("value")))),
-                automation_state: parseInt(cursor_b.get("automation_state")),
-                state: parseInt(cursor_b.get("state"))
-            });
-        }
-        current = end;
+        try {
+            var end = Math.min(current + batch_size, param_count);
+            for (var i = current; i < end; i++) {
+                cursor_b.goto(path + " parameters " + i);
+                var val = parseFloat(cursor_b.get("value"));
+                params.push({
+                    index: i,
+                    name: cursor_b.get("name").toString(),
+                    value: val,
+                    min: parseFloat(cursor_b.get("min")),
+                    max: parseFloat(cursor_b.get("max")),
+                    default_value: parseFloat(cursor_b.get("default_value")),
+                    is_quantized: parseInt(cursor_b.get("is_quantized")) === 1,
+                    automation_state: parseInt(cursor_b.get("automation_state")),
+                    state: parseInt(cursor_b.get("state"))
+                });
+            }
+            current = end;
 
-        if (current < param_count) {
-            var next_task = new Task(read_batch);
-            next_task.schedule(50);
-        } else {
+            if (current < param_count) {
+                var next_task = new Task(read_batch);
+                next_task.schedule(20);
+            } else {
+                send_response({
+                    "track": track_idx,
+                    "device": device_idx,
+                    "device_name": device_name,
+                    "total_params": param_count,
+                    "params": params
+                });
+            }
+        } catch (e) {
             send_response({
+                "error": "Failed reading parameter " + current + ": " + String(e),
                 "track": track_idx,
                 "device": device_idx,
                 "device_name": device_name,
-                "total_params": param_count,
-                "params": params
+                "partial_params": params
             });
         }
     }
@@ -285,31 +299,40 @@ function cmd_get_auto_state(args) {
     var param_count = cursor_a.getcount("parameters");
     var results = [];
     var current = 0;
-    var batch_size = 4;
+    var batch_size = 8;
 
     function read_batch() {
-        var end = Math.min(current + batch_size, param_count);
-        for (var i = current; i < end; i++) {
-            cursor_b.goto(path + " parameters " + i);
-            var state = parseInt(cursor_b.get("automation_state"));
-            // Only include params that HAVE automation (skip state=0)
-            if (state > 0) {
-                results.push({
-                    index: i,
-                    name: cursor_b.get("name").toString(),
-                    automation_state: state,
-                    // 1 = automation active, 2 = automation overridden (user moved knob)
-                    state_label: state === 1 ? "active" : "overridden"
+        try {
+            var end = Math.min(current + batch_size, param_count);
+            for (var i = current; i < end; i++) {
+                cursor_b.goto(path + " parameters " + i);
+                var state = parseInt(cursor_b.get("automation_state"));
+                if (state > 0) {
+                    results.push({
+                        index: i,
+                        name: cursor_b.get("name").toString(),
+                        automation_state: state,
+                        state_label: state === 1 ? "active" : "overridden"
+                    });
+                }
+            }
+            current = end;
+
+            if (current < param_count) {
+                var next_task = new Task(read_batch);
+                next_task.schedule(20);
+            } else {
+                send_response({
+                    "track": track_idx,
+                    "device": device_idx,
+                    "total_params": param_count,
+                    "automated_params": results,
+                    "automated_count": results.length
                 });
             }
-        }
-        current = end;
-
-        if (current < param_count) {
-            var next_task = new Task(read_batch);
-            next_task.schedule(50);
-        } else {
+        } catch (e) {
             send_response({
+                "error": "Failed reading automation state at param " + current + ": " + String(e),
                 "track": track_idx,
                 "device": device_idx,
                 "total_params": param_count,
@@ -391,62 +414,73 @@ function walk_device(path, depth) {
 }
 
 function cmd_get_chains_deep(args) {
-    // Get detailed chain info including all devices in each chain
     var track_idx = parseInt(args[0]);
     var device_idx = parseInt(args[1]);
     var path = build_device_path(track_idx, device_idx);
 
-    cursor_a.goto(path);
-    var chain_count = cursor_a.getcount("chains");
-    var chains = [];
+    try {
+        cursor_a.goto(path);
+        var chain_count = cursor_a.getcount("chains");
+        var chains = [];
 
-    for (var c = 0; c < chain_count; c++) {
-        var chain_path = path + " chains " + c;
-        cursor_b.goto(chain_path);
-        var chain = {
-            index: c,
-            name: cursor_b.get("name").toString(),
-            volume: parseFloat(cursor_b.get("volume")),
-            panning: parseFloat(cursor_b.get("panning")),
-            mute: parseInt(cursor_b.get("mute")) === 1,
-            solo: parseInt(cursor_b.get("solo")) === 1,
-            devices: []
-        };
+        for (var c = 0; c < chain_count; c++) {
+            var chain_path = path + " chains " + c;
+            cursor_b.goto(chain_path);
+            var chain = {
+                index: c,
+                name: cursor_b.get("name").toString(),
+                volume: parseFloat(cursor_b.get("volume")),
+                panning: parseFloat(cursor_b.get("panning")),
+                mute: parseInt(cursor_b.get("mute")) === 1,
+                solo: parseInt(cursor_b.get("solo")) === 1,
+                devices: []
+            };
 
-        var dev_count = cursor_b.getcount("devices");
-        for (var d = 0; d < dev_count; d++) {
-            cursor_a.goto(chain_path + " devices " + d);
-            chain.devices.push({
-                index: d,
-                name: cursor_a.get("name").toString(),
-                class_name: cursor_a.get("class_name").toString(),
-                is_active: parseInt(cursor_a.get("is_active")) === 1,
-                param_count: cursor_a.getcount("parameters")
-            });
+            var dev_count = cursor_b.getcount("devices");
+            for (var d = 0; d < dev_count; d++) {
+                cursor_a.goto(chain_path + " devices " + d);
+                chain.devices.push({
+                    index: d,
+                    name: cursor_a.get("name").toString(),
+                    class_name: cursor_a.get("class_name").toString(),
+                    is_active: parseInt(cursor_a.get("is_active")) === 1,
+                    param_count: cursor_a.getcount("parameters")
+                });
+            }
+            chains.push(chain);
         }
-        chains.push(chain);
-    }
 
-    send_response({"track": track_idx, "device": device_idx, "chains": chains});
+        send_response({"track": track_idx, "device": device_idx, "chains": chains});
+    } catch (e) {
+        send_response({"error": "Failed reading chains: " + String(e), "track": track_idx, "device": device_idx});
+    }
 }
 
 function cmd_get_track_cpu(args) {
-    // Get CPU performance impact per track
-    var results = [];
-    cursor_a.goto("live_set");
-    var track_count = cursor_a.getcount("tracks");
+    try {
+        var results = [];
+        cursor_a.goto("live_set");
+        var track_count = cursor_a.getcount("tracks");
 
-    for (var t = 0; t < track_count; t++) {
-        cursor_b.goto("live_set tracks " + t);
-        results.push({
-            index: t,
-            name: cursor_b.get("name").toString(),
-            // performance_impact is 0.0-1.0 representing CPU load
-            cpu: parseFloat(cursor_b.get("performance_impact") || 0)
-        });
+        for (var t = 0; t < track_count; t++) {
+            cursor_b.goto("live_set tracks " + t);
+            var cpu = 0;
+            try {
+                cpu = parseFloat(cursor_b.get("performance_impact") || 0);
+            } catch (e) {
+                cpu = -1;
+            }
+            results.push({
+                index: t,
+                name: cursor_b.get("name").toString(),
+                cpu: cpu
+            });
+        }
+
+        send_response({"tracks": results, "count": track_count});
+    } catch (e) {
+        send_response({"error": "Failed reading track CPU: " + String(e)});
     }
-
-    send_response({"tracks": results, "count": track_count});
 }
 
 function cmd_get_selected() {
@@ -924,32 +958,43 @@ function cmd_get_display_values(args) {
     var device_name = cursor_a.get("name").toString();
     var params = [];
     var current = 0;
-    var batch_size = 4;
+    var batch_size = 8;
 
     function read_batch() {
-        var end = Math.min(current + batch_size, param_count);
-        for (var i = current; i < end; i++) {
-            cursor_b.goto(path + " parameters " + i);
-            var state = parseInt(cursor_b.get("state"));
-            if (state !== 2) {
-                params.push({
-                    index: i,
-                    name: cursor_b.get("name").toString(),
-                    display_value: String(cursor_b.call("str_for_value", parseFloat(cursor_b.get("value")))),
-                    value: parseFloat(cursor_b.get("value"))
+        try {
+            var end = Math.min(current + batch_size, param_count);
+            for (var i = current; i < end; i++) {
+                cursor_b.goto(path + " parameters " + i);
+                var state = parseInt(cursor_b.get("state"));
+                if (state !== 2) {
+                    var val = parseFloat(cursor_b.get("value"));
+                    params.push({
+                        index: i,
+                        name: cursor_b.get("name").toString(),
+                        display_value: String(val),
+                        value: val
+                    });
+                }
+            }
+            current = end;
+            if (current < param_count) {
+                var next_task = new Task(read_batch);
+                next_task.schedule(20);
+            } else {
+                send_response({
+                    "track": track_idx,
+                    "device": device_idx,
+                    "device_name": device_name,
+                    "params": params
                 });
             }
-        }
-        current = end;
-        if (current < param_count) {
-            var next_task = new Task(read_batch);
-            next_task.schedule(50);
-        } else {
+        } catch (e) {
             send_response({
+                "error": "Failed reading parameter " + current + ": " + String(e),
                 "track": track_idx,
                 "device": device_idx,
                 "device_name": device_name,
-                "params": params
+                "partial_params": params
             });
         }
     }
@@ -1069,37 +1114,48 @@ function cmd_get_plugin_params(args) {
     var param_count = cursor_a.getcount("parameters");
     var params = [];
     var current = 0;
-    var batch_size = 4;
+    var batch_size = 8;
 
     function read_batch() {
-        var end = Math.min(current + batch_size, param_count);
-        for (var i = current; i < end; i++) {
-            cursor_b.goto(path + " parameters " + i);
-            params.push({
-                index: i,
-                name: cursor_b.get("name").toString(),
-                value: parseFloat(cursor_b.get("value")),
-                min: parseFloat(cursor_b.get("min")),
-                max: parseFloat(cursor_b.get("max")),
-                default_value: parseFloat(cursor_b.get("default_value")),
-                is_quantized: parseInt(cursor_b.get("is_quantized")) === 1,
-                value_string: String(cursor_b.call("str_for_value", parseFloat(cursor_b.get("value"))))
-            });
-        }
-        current = end;
+        try {
+            var end = Math.min(current + batch_size, param_count);
+            for (var i = current; i < end; i++) {
+                cursor_b.goto(path + " parameters " + i);
+                var val = parseFloat(cursor_b.get("value"));
+                params.push({
+                    index: i,
+                    name: cursor_b.get("name").toString(),
+                    value: val,
+                    min: parseFloat(cursor_b.get("min")),
+                    max: parseFloat(cursor_b.get("max")),
+                    default_value: parseFloat(cursor_b.get("default_value")),
+                    is_quantized: parseInt(cursor_b.get("is_quantized")) === 1,
+                    value_string: String(val)
+                });
+            }
+            current = end;
 
-        if (current < param_count) {
-            var next_task = new Task(read_batch);
-            next_task.schedule(50);
-        } else {
+            if (current < param_count) {
+                var next_task = new Task(read_batch);
+                next_task.schedule(20);
+            } else {
+                send_response({
+                    "track": track_idx,
+                    "device": device_idx,
+                    "name": device_name,
+                    "class_name": class_name,
+                    "is_plugin": true,
+                    "parameter_count": param_count,
+                    "parameters": params
+                });
+            }
+        } catch (e) {
             send_response({
+                "error": "Failed reading plugin param " + current + ": " + String(e),
                 "track": track_idx,
                 "device": device_idx,
                 "name": device_name,
-                "class_name": class_name,
-                "is_plugin": true,
-                "parameter_count": param_count,
-                "parameters": params
+                "partial_params": params
             });
         }
     }
@@ -1133,13 +1189,10 @@ function cmd_map_plugin_param(args) {
         return;
     }
 
-    // Navigate to the parameter and read its name
-    cursor_b.goto(path + " parameters " + param_idx);
-    var param_name = cursor_b.get("name").toString();
-
-    // Select the parameter — this is how Ableton's Configure mode works
-    // via LiveAPI. The parameter becomes visible in the device's macro panel.
     try {
+        cursor_b.goto(path + " parameters " + param_idx);
+        var param_name = cursor_b.get("name").toString();
+
         cursor_a.set("selected_parameter", param_idx);
         cursor_a.call("store_chosen_bank");
         send_response({
@@ -1149,9 +1202,8 @@ function cmd_map_plugin_param(args) {
         });
     } catch(e) {
         send_response({
-            "error": "Failed to map parameter: " + e.message,
-            "parameter_index": param_idx,
-            "parameter_name": param_name
+            "error": "Failed to map parameter: " + String(e),
+            "parameter_index": param_idx
         });
     }
 }

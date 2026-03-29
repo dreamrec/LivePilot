@@ -16,7 +16,10 @@ from ..server import mcp
 def _ensure_list(value: Any) -> list:
     """Parse JSON strings into lists. MCP clients may serialize list params as strings."""
     if isinstance(value, str):
-        return json.loads(value)
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Invalid JSON in parameter: {exc}") from exc
     return value
 
 
@@ -263,7 +266,7 @@ def _get_m4l(ctx: Context):
     """Get M4LBridge from lifespan context."""
     bridge = ctx.lifespan_context.get("m4l")
     if not bridge:
-        raise RuntimeError("M4L bridge not initialized")
+        raise ValueError("M4L bridge not initialized — restart the MCP server")
     return bridge
 
 
@@ -271,7 +274,7 @@ def _get_spectral(ctx: Context):
     """Get SpectralCache from lifespan context."""
     cache = ctx.lifespan_context.get("spectral")
     if not cache:
-        raise RuntimeError("Spectral cache not initialized")
+        raise ValueError("Spectral cache not initialized — restart the MCP server")
     return cache
 
 
@@ -302,7 +305,7 @@ async def get_plugin_parameters(
     cache = _get_spectral(ctx)
     _require_analyzer(cache)
     bridge = _get_m4l(ctx)
-    return await bridge.send_command("get_plugin_params", track_index, device_index)
+    return await bridge.send_command("get_plugin_params", track_index, device_index, timeout=20.0)
 
 
 @mcp.tool()
@@ -326,7 +329,7 @@ async def map_plugin_parameter(
     cache = _get_spectral(ctx)
     _require_analyzer(cache)
     bridge = _get_m4l(ctx)
-    return await bridge.send_command("map_plugin_param", track_index, device_index, parameter_index)
+    return await bridge.send_command("map_plugin_param", track_index, device_index, parameter_index, timeout=10.0)
 
 
 @mcp.tool()
@@ -346,4 +349,4 @@ async def get_plugin_presets(
     cache = _get_spectral(ctx)
     _require_analyzer(cache)
     bridge = _get_m4l(ctx)
-    return await bridge.send_command("get_plugin_presets", track_index, device_index)
+    return await bridge.send_command("get_plugin_presets", track_index, device_index, timeout=15.0)
