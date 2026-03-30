@@ -66,6 +66,13 @@ def dispatch(song, command):
     try:
         result = handler(song, params)
         return success_response(request_id, result)
+    except KeyError as exc:
+        # Missing required parameter — report as INVALID_PARAM, not INTERNAL
+        return error_response(
+            request_id,
+            "Missing required parameter: %s" % str(exc),
+            INVALID_PARAM,
+        )
     except IndexError as exc:
         return error_response(request_id, str(exc), INDEX_ERROR)
     except ValueError as exc:

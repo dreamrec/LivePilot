@@ -13,6 +13,7 @@ Run this checklist EVERY time the user says "update everything", "push", "releas
 - [ ] `package-lock.json` → `"version"` (run `npm install --package-lock-only` if stale)
 - [ ] `server.json` → `"version"` (TWO locations: top-level and package)
 - [ ] `livepilot/.claude-plugin/plugin.json` → `"version"`
+- [ ] `livepilot/.Codex-plugin/plugin.json` → `"version"` (must match Claude plugin)
 - [ ] `.claude-plugin/marketplace.json` → `"version"` in plugins array
 - [ ] `mcp_server/__init__.py` → `__version__`
 - [ ] `remote_script/LivePilot/__init__.py` → `__version__` (log message auto-uses it)
@@ -23,7 +24,7 @@ Run this checklist EVERY time the user says "update everything", "push", "releas
 - [ ] `docs/social-banner.html` → version display
 - [ ] `docs/M4L_BRIDGE.md` → ping response example
 
-**How to check:** `grep -rn "1\.[0-9]\.[0-9]" package.json server.json livepilot/.claude-plugin/plugin.json .claude-plugin/marketplace.json mcp_server/__init__.py remote_script/LivePilot/__init__.py m4l_device/livepilot_bridge.js CHANGELOG.md CLAUDE.md livepilot/skills/livepilot-core/references/overview.md docs/social-banner.html docs/M4L_BRIDGE.md`
+**How to check:** `grep -rn "1\.[0-9]\.[0-9]" package.json server.json livepilot/.claude-plugin/plugin.json livepilot/.Codex-plugin/plugin.json .claude-plugin/marketplace.json mcp_server/__init__.py remote_script/LivePilot/__init__.py m4l_device/livepilot_bridge.js CHANGELOG.md CLAUDE.md livepilot/skills/livepilot-core/references/overview.md docs/social-banner.html docs/M4L_BRIDGE.md`
 
 ## 2. Tool Count (must ALL match)
 
@@ -37,6 +38,7 @@ Files that reference tool count:
 - [ ] `package.json` → `"description"` (178 tools, 17 domains)
 - [ ] `server.json` → `"description"`
 - [ ] `livepilot/.claude-plugin/plugin.json` → `"description"`
+- [ ] `livepilot/.Codex-plugin/plugin.json` → `"description"` (must match Claude plugin)
 - [ ] `.claude-plugin/marketplace.json` → `"description"`
 - [ ] `CLAUDE.md` → "178 tools across 17 domains"
 - [ ] `livepilot/skills/livepilot-core/SKILL.md` — "178 tools across 17 domains", Analyzer (29), Perception (4)

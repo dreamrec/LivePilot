@@ -343,8 +343,13 @@ class M4LBridge:
             self.receiver._capture_future = None
 
     def _build_osc(self, address: str, args: tuple) -> bytes:
-        """Build a minimal OSC message."""
-        # Address string (null-terminated, padded to 4 bytes)
+        """Build a minimal OSC message.
+
+        OSC addresses are ASCII-only (command names).
+        String arguments (file paths, user text) are encoded as UTF-8
+        to support non-ASCII characters (accented names, CJK, etc.).
+        """
+        # Address string — always ASCII (command names like "get_params")
         addr_bytes = address.encode('ascii') + b'\x00'
         while len(addr_bytes) % 4 != 0:
             addr_bytes += b'\x00'
@@ -361,7 +366,9 @@ class M4LBridge:
                 arg_data += struct.pack('>f', arg)
             elif isinstance(arg, str):
                 type_tags += "s"
-                s_bytes = arg.encode('ascii') + b'\x00'
+                # UTF-8 encode string args — supports non-ASCII file
+                # paths, device names, and user-provided text.
+                s_bytes = arg.encode('utf-8') + b'\x00'
                 while len(s_bytes) % 4 != 0:
                     s_bytes += b'\x00'
                 arg_data += s_bytes
