@@ -230,8 +230,7 @@ function cmd_get_params(args) {
 
 function cmd_get_hidden_params(args) {
     // Returns ALL parameters including hidden ones not in ControlSurface API
-    // Same as get_params but also includes value_string and whether it's
-    // accessible from the standard API
+    // Includes value_string (human-readable) via str_for_value where safe
     var track_idx = parseInt(args[0]);
     var device_idx = parseInt(args[1]);
     var path = build_device_path(track_idx, device_idx);
@@ -239,6 +238,7 @@ function cmd_get_hidden_params(args) {
     cursor_a.goto(path);
     var param_count = cursor_a.getcount("parameters");
     var device_name = cursor_a.get("name").toString();
+    var device_class = cursor_a.get("class_name").toString();
     var params = [];
     var current = 0;
     var batch_size = 8;
@@ -253,6 +253,7 @@ function cmd_get_hidden_params(args) {
                     index: i,
                     name: cursor_b.get("name").toString(),
                     value: val,
+                    value_string: _safe_display_string(cursor_b, val, device_class),
                     min: parseFloat(cursor_b.get("min")),
                     max: parseFloat(cursor_b.get("max")),
                     default_value: parseFloat(cursor_b.get("default_value")),
@@ -633,12 +634,12 @@ function send_response(obj) {
 }
 
 function base64_encode(str) {
-    var result = "";
-    var bytes = [];
-    for (var i = 0; i < str.length; i++) {
-        bytes.push(str.charCodeAt(i) & 0xFF);
-    }
+    // UTF-8 encode first, then base64 encode the byte sequence.
+    // This preserves non-ASCII characters (accented names, CJK, emoji)
+    // that would otherwise be truncated by charCodeAt & 0xFF.
+    var bytes = _utf8_encode(str);
 
+    var result = "";
     for (var i = 0; i < bytes.length; i += 3) {
         var b0 = bytes[i];
         var b1 = (i + 1 < bytes.length) ? bytes[i + 1] : 0;
@@ -655,6 +656,27 @@ function base64_encode(str) {
     }
 
     return result;
+}
+
+function _utf8_encode(str) {
+    // Convert a JavaScript string to a UTF-8 byte array.
+    // Handles codepoints U+0000..U+FFFF (BMP) which covers all
+    // characters Max JS can produce from LiveAPI get() calls.
+    var bytes = [];
+    for (var i = 0; i < str.length; i++) {
+        var c = str.charCodeAt(i);
+        if (c < 0x80) {
+            bytes.push(c);
+        } else if (c < 0x800) {
+            bytes.push(0xC0 | (c >> 6));
+            bytes.push(0x80 | (c & 0x3F));
+        } else {
+            bytes.push(0xE0 | (c >> 12));
+            bytes.push(0x80 | ((c >> 6) & 0x3F));
+            bytes.push(0x80 | (c & 0x3F));
+        }
+    }
+    return bytes;
 }
 
 // ── Phase 2: Sample Operations ────────────────────────────────────────
@@ -948,6 +970,28 @@ function cmd_stop_scrub(args) {
     }
 }
 
+// Device classes where str_for_value freezes Max JS (uncatchable hang).
+// Auto Filter is the confirmed case; others may exist.
+var STR_FOR_VALUE_BLACKLIST = ["AutoFilter"];
+
+function _safe_display_string(cursor, val, device_class) {
+    // Return the human-readable UI string for a parameter value.
+    // Falls back to raw value string for blacklisted device classes
+    // where str_for_value hangs Max's JS engine.
+    if (STR_FOR_VALUE_BLACKLIST.indexOf(device_class) !== -1) {
+        return String(val);
+    }
+    try {
+        var result = cursor.call("str_for_value", val);
+        if (result !== undefined && result !== null && String(result) !== "") {
+            return String(result);
+        }
+    } catch(e) {
+        // str_for_value not available on this parameter
+    }
+    return String(val);
+}
+
 function cmd_get_display_values(args) {
     var track_idx = parseInt(args[0]);
     var device_idx = parseInt(args[1]);
@@ -956,6 +1000,7 @@ function cmd_get_display_values(args) {
     cursor_a.goto(path);
     var param_count = cursor_a.getcount("parameters");
     var device_name = cursor_a.get("name").toString();
+    var device_class = cursor_a.get("class_name").toString();
     var params = [];
     var current = 0;
     var batch_size = 8;
@@ -971,7 +1016,7 @@ function cmd_get_display_values(args) {
                     params.push({
                         index: i,
                         name: cursor_b.get("name").toString(),
-                        display_value: String(val),
+                        display_value: _safe_display_string(cursor_b, val, device_class),
                         value: val
                     });
                 }

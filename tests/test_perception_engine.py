@@ -161,3 +161,41 @@ class TestReadAudioMetadata:
         from mcp_server.tools._perception_engine import read_audio_metadata
         with pytest.raises(FileNotFoundError):
             read_audio_metadata("/tmp/does_not_exist_12345.wav")
+
+
+# ---------------------------------------------------------------------------
+# True peak estimation tests (audit fix)
+# ---------------------------------------------------------------------------
+
+class TestTruePeak:
+    def test_true_peak_present(self, tmp_path):
+        from mcp_server.tools._perception_engine import compute_loudness
+        wav = _make_sine_wav(str(tmp_path / "sine.wav"))
+        result = compute_loudness(wav)
+        assert "true_peak_dbtp" in result, "true_peak_dbtp missing from loudness result"
+        assert isinstance(result["true_peak_dbtp"], float)
+
+    def test_true_peak_gte_sample_peak(self, tmp_path):
+        """True peak (4x oversampled) should be >= sample peak for the same file."""
+        from mcp_server.tools._perception_engine import compute_loudness
+        wav = _make_sine_wav(str(tmp_path / "sine.wav"), freq=997.0, amplitude=0.95)
+        result = compute_loudness(wav)
+        assert result["true_peak_dbtp"] >= result["sample_peak_dbfs"] - 0.1, (
+            f"true_peak ({result['true_peak_dbtp']}) should be >= "
+            f"sample_peak ({result['sample_peak_dbfs']})"
+        )
+
+    def test_backward_compat_sample_peak_still_present(self, tmp_path):
+        from mcp_server.tools._perception_engine import compute_loudness
+        wav = _make_sine_wav(str(tmp_path / "sine.wav"))
+        result = compute_loudness(wav)
+        assert "sample_peak_dbfs" in result, "sample_peak_dbfs removed — breaks backward compat"
+
+    def test_crest_factor_uses_true_peak(self, tmp_path):
+        from mcp_server.tools._perception_engine import compute_loudness
+        wav = _make_sine_wav(str(tmp_path / "sine.wav"))
+        result = compute_loudness(wav)
+        expected_crest = result["true_peak_dbtp"] - result["rms_dbfs"]
+        assert abs(result["crest_factor_db"] - expected_crest) < 0.05, (
+            "crest_factor should be true_peak_dbtp - rms_dbfs"
+        )

@@ -78,6 +78,25 @@ def _normalize_to_lufs(
 
 
 # ---------------------------------------------------------------------------
+# True-peak helper
+# ---------------------------------------------------------------------------
+
+def _true_peak_dbtp(data: np.ndarray, sr: int) -> float:
+    """Estimate EBU R128 true peak via 4x oversampling.
+
+    Uses scipy's resample_poly for phase-accurate upsampling,
+    then measures the absolute peak of the oversampled signal.
+    Returns the result in dBTP (decibels relative to true peak).
+    """
+    from scipy.signal import resample_poly
+
+    # 4x oversample each channel independently
+    oversampled = resample_poly(data, up=4, down=1, axis=0)
+    peak_linear = float(np.max(np.abs(oversampled)))
+    return float(20.0 * np.log10(max(peak_linear, 1e-10)))
+
+
+# ---------------------------------------------------------------------------
 # compute_loudness
 # ---------------------------------------------------------------------------
 
@@ -89,8 +108,8 @@ def compute_loudness(file_path: str, detail: str = "summary") -> dict[str, Any]:
         detail: "summary" (default) or "full" (includes short_term_lufs array).
 
     Returns:
-        dict with integrated_lufs, sample_peak_dbfs, rms_dbfs, crest_factor_db,
-        lra_lu, meets_streaming, and optionally short_term_lufs.
+        dict with integrated_lufs, true_peak_dbtp, sample_peak_dbfs, rms_dbfs,
+        crest_factor_db, lra_lu, meets_streaming, and optionally short_term_lufs.
     """
     import pyloudnorm as pyln
 
@@ -110,12 +129,15 @@ def compute_loudness(file_path: str, detail: str = "summary") -> dict[str, Any]:
     peak_linear = float(np.max(np.abs(data)))
     sample_peak_dbfs = float(20.0 * np.log10(max(peak_linear, 1e-10)))
 
+    # True peak via 4x oversampling (EBU R128 compliant)
+    true_peak_dbtp = _true_peak_dbtp(data, sr)
+
     # RMS dBFS
     rms_linear = float(np.sqrt(np.mean(data ** 2)))
     rms_dbfs = float(20.0 * np.log10(max(rms_linear, 1e-10)))
 
     # Crest factor
-    crest_factor_db = sample_peak_dbfs - rms_dbfs
+    crest_factor_db = true_peak_dbtp - rms_dbfs
 
     # Short-term LUFS (3s window, 1s hop) — also used for LRA
     window_samples = int(sr * 3.0)
@@ -162,6 +184,7 @@ def compute_loudness(file_path: str, detail: str = "summary") -> dict[str, Any]:
 
     result: dict[str, Any] = {
         "integrated_lufs": round(integrated_lufs, 2),
+        "true_peak_dbtp": round(true_peak_dbtp, 2),
         "sample_peak_dbfs": round(sample_peak_dbfs, 2),
         "rms_dbfs": round(rms_dbfs, 2),
         "crest_factor_db": round(crest_factor_db, 2),
