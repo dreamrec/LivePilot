@@ -3,7 +3,6 @@
 from contextlib import asynccontextmanager
 import asyncio
 import os
-import signal
 import subprocess
 
 from fastmcp import FastMCP, Context  # noqa: F401
@@ -12,12 +11,11 @@ from .connection import AbletonConnection
 from .m4l_bridge import SpectralCache, SpectralReceiver, M4LBridge
 
 
-def _kill_port_holder(port: int) -> None:
-    """Kill whichever process holds the given UDP port.
+def _identify_port_holder(port: int) -> str | None:
+    """Identify which process holds the given UDP port (for logging only).
 
-    Used to reclaim port 9880 when a stale duplicate server instance
-    is hogging it (common when both project .mcp.json and plugin
-    .mcp.json launch the server).
+    Returns a string like "PID 12345 (python3 mcp_server)" or None if
+    identification fails. Never kills or modifies the holder.
     """
     try:
         out = subprocess.check_output(
@@ -29,18 +27,17 @@ def _kill_port_holder(port: int) -> None:
         for pid_str in out.splitlines():
             pid = int(pid_str)
             if pid != my_pid:
-                # Only kill if it looks like a Python/LivePilot process
                 try:
                     cmdline = subprocess.check_output(
                         ["ps", "-p", str(pid), "-o", "command="],
                         text=True, timeout=2,
                     ).strip()
-                    if "mcp_server" in cmdline or "livepilot" in cmdline.lower():
-                        os.kill(pid, signal.SIGTERM)
+                    return f"{pid} ({cmdline[:60]})"
                 except (subprocess.CalledProcessError, FileNotFoundError):
-                    pass  # Can't verify — don't kill
+                    return str(pid)
+        return None
     except (subprocess.CalledProcessError, FileNotFoundError, ValueError):
-        pass  # lsof not found or no process — nothing to kill
+        return None
 
 
 @asynccontextmanager
@@ -60,28 +57,18 @@ async def lifespan(server):
             local_addr=('127.0.0.1', 9880),
         )
     except OSError:
-        # Port 9880 already bound — likely a duplicate server instance
-        # (project .mcp.json + plugin .mcp.json both launching).
-        # Kill the stale holder so this instance gets the port.
+        # Port 9880 already bound — another LivePilot instance is running.
+        # Do NOT kill the holder; degrade gracefully instead.
         import sys
+        holder_info = _identify_port_holder(9880)
         print(
-            "LivePilot: UDP port 9880 in use — reclaiming from stale instance",
+            "LivePilot: UDP port 9880 already in use%s — "
+            "analyzer/bridge tools will be unavailable. "
+            "Stop the other LivePilot instance to enable them."
+            % (f" (PID {holder_info})" if holder_info else ""),
             file=sys.stderr,
         )
-        _kill_port_holder(9880)
-        await asyncio.sleep(0.3)
-        try:
-            transport, _ = await loop.create_datagram_endpoint(
-                lambda: receiver,
-                local_addr=('127.0.0.1', 9880),
-            )
-        except OSError:
-            print(
-                "LivePilot: WARNING — could not bind UDP 9880, "
-                "analyzer tools will be unavailable",
-                file=sys.stderr,
-            )
-            transport = None
+        transport = None
 
     try:
         yield {

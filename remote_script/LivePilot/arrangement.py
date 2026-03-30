@@ -494,6 +494,10 @@ def set_arrangement_automation(song, params):
             "parameter_type must be 'device', 'volume', 'panning', or 'send'"
         )
 
+    # Clamp values to parameter range
+    p_min = float(parameter.min)
+    p_max = float(parameter.max)
+
     # Try direct envelope access on the arrangement clip
     envelope = clip.automation_envelope(parameter)
     if envelope is None:
@@ -509,7 +513,7 @@ def set_arrangement_automation(song, params):
             points_written = 0
             for pt in points:
                 time = float(pt["time"])
-                value = float(pt["value"])
+                value = max(p_min, min(p_max, float(pt["value"])))
                 duration = float(pt.get("duration", 0.125))
                 envelope.insert_step(time, duration, value)
                 points_written += 1
@@ -523,120 +527,19 @@ def set_arrangement_automation(song, params):
             "method": "direct",
         }
 
-    # Fallback: session-clip-then-duplicate workaround.
-    # Create a temporary session clip, write automation there,
-    # then duplicate to arrangement. Envelopes may survive the copy.
-    arr_start = clip.start_time
-    arr_length = clip.length
-
-    # Find an empty clip slot for the temporary clip
-    slots = list(track.clip_slots)
-    temp_slot_index = None
-    for si, slot in enumerate(slots):
-        if not slot.has_clip:
-            temp_slot_index = si
-            break
-
-    # If all clip slots are full, create a temporary scene to get an empty slot
-    created_temp_scene = False
-    if temp_slot_index is None:
-        song.create_scene(-1)  # append a new scene at the end
-        created_temp_scene = True
-        # Re-read slots — the new scene added one slot per track
-        slots = list(track.clip_slots)
-        temp_slot_index = len(slots) - 1
-
-    song.begin_undo_step()
-    try:
-        # Create temporary session clip
-        slot = slots[temp_slot_index]
-        slot.create_clip(arr_length)
-        temp_clip = slot.clip
-
-        # Write automation to the session clip
-        temp_envelope = temp_clip.automation_envelope(parameter)
-        if temp_envelope is None:
-            try:
-                temp_envelope = temp_clip.create_automation_envelope(parameter)
-            except (AttributeError, RuntimeError):
-                pass
-
-        if temp_envelope is None:
-            # Neither direct nor session clip approach works
-            slot.delete_clip()
-            if created_temp_scene:
-                song.delete_scene(len(list(song.scenes)) - 1)
-            raise ValueError(
-                "Cannot create automation envelope for parameter '%s' "
-                "(neither arrangement nor session clip supports it)"
-                % parameter.name
-            )
-
-        points_written = 0
-        for pt in points:
-            time = float(pt["time"])
-            value = float(pt["value"])
-            duration = float(pt.get("duration", 0.125))
-            temp_envelope.insert_step(time, duration, value)
-            points_written += 1
-
-        # Copy notes from original arrangement clip to the temp session clip
-        # so the replacement clip has the same musical content.
-        try:
-            orig_notes = clip.get_notes_extended(0, 128, 0.0, arr_length + 1.0)
-            import Live
-            note_specs = []
-            for note in orig_notes:
-                kwargs = dict(
-                    pitch=note.pitch,
-                    start_time=note.start_time,
-                    duration=note.duration,
-                    velocity=note.velocity,
-                    mute=note.mute,
-                )
-                # Preserve per-note expression data
-                if hasattr(note, 'probability') and note.probability is not None:
-                    kwargs['probability'] = note.probability
-                if hasattr(note, 'velocity_deviation') and note.velocity_deviation is not None:
-                    kwargs['velocity_deviation'] = note.velocity_deviation
-                if hasattr(note, 'release_velocity') and note.release_velocity is not None:
-                    kwargs['release_velocity'] = note.release_velocity
-                spec = Live.Clip.MidiNoteSpecification(**kwargs)
-                note_specs.append(spec)
-            if note_specs:
-                temp_clip.add_new_notes(tuple(note_specs))
-        except Exception:
-            pass  # Non-MIDI clips or errors — automation-only is still valid
-
-        # Place the session clip (with automation + notes) into arrangement.
-        # Do this BEFORE deleting the original — if placement fails, the
-        # original clip is preserved (no data loss on partial failure).
-        track.duplicate_clip_to_arrangement(temp_clip, arr_start)
-
-        # Placement succeeded — now safe to remove the original clip
-        # to avoid a second overlapping clip at the same position.
-        try:
-            clip.delete_clip()
-        except (AttributeError, RuntimeError):
-            # delete_clip may not exist on arrangement clips in all versions;
-            # in that case we accept the overlap as a known limitation.
-            pass
-
-        # Clean up the temporary session clip
-        slot.delete_clip()
-
-        # Clean up the temporary scene if we created one
-        if created_temp_scene:
-            song.delete_scene(len(list(song.scenes)) - 1)
-    finally:
-        song.end_undo_step()
-
+    # No fallback — direct envelope creation is the only safe approach.
+    # Session-clip duplication can silently create overlapping clips.
     return {
+        "error": (
+            "Cannot create automation envelope for parameter '%s' on this "
+            "arrangement clip. Direct envelope access is not supported for "
+            "this parameter type or Live version."
+            % parameter.name
+        ),
+        "code": "STATE_ERROR",
         "track_index": track_index,
         "clip_index": clip_index,
         "parameter_name": parameter.name,
-        "points_written": points_written,
-        "method": "session_workaround",
     }
 
 

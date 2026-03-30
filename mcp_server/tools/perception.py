@@ -84,7 +84,8 @@ def analyze_loudness(
                 array (up to 100 points, mean-pooled).
 
     Returns:
-        On success: dict with integrated_lufs, true_peak_dbtp, rms_dbfs,
+        On success: dict with integrated_lufs, true_peak_dbtp (4x oversampled),
+        sample_peak_dbfs (raw sample peak, kept for backward compat), rms_dbfs,
         crest_factor_db, lra_lu, meets_streaming {spotify, apple, youtube, tidal},
         and optionally short_term_lufs.
         On error: {"error": ..., "code": ...}
