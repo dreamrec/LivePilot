@@ -26,6 +26,8 @@ These layers sit on top of 178 deterministic tools across 17 domains: transport,
 9. **Tempo range 20-999 BPM** — validated before sending to Ableton
 10. **Always name your tracks and clips** — organization is part of the creative process
 11. **Respect tool speed tiers** — see below. Never call heavy tools without user consent.
+12. **ALWAYS report tool errors to the user** — if any tool call returns an error, immediately tell the user what failed, why, and what workaround you're using. Never silently swallow errors or switch strategies without explaining. Include: the tool name, the error message, and your fallback plan. This applies to all tool errors including missing M4L analyzer, dead plugins (`parameter_count` <= 1 on AU/VST), connection timeouts, and invalid parameter responses.
+13. **Verify AU/VST plugin health after loading** — after `find_and_load_device` or `load_device_by_uri` for any AU/VST plugin, call `get_device_info`. If `parameter_count` <= 1 and `class_name` contains "PluginDevice", the plugin is dead. Delete it with `delete_device` and replace with a native Ableton alternative. Report the failure to the user.
 
 ## Tool Speed Tiers
 
@@ -88,6 +90,13 @@ Never skip levels. The user's question determines the entry point, but always st
 2. **For Drum Racks: `get_rack_chains`** — confirm chains exist (an empty Drum Rack = silence). You need named chains like "Bass Drum", "Snare", etc.
 3. **For synths: `get_device_parameters`** — confirm `Volume`/`Gain` parameter is not 0. Check oscillators are on.
 4. **For effects: check `Dry/Wet` and `Drive`/key params** — a Saturator with Drive=0 or a Reverb with Dry/Wet=0 does nothing.
+5. **For AU/VST plugins: `get_device_info`** — if `parameter_count` <= 1 and `class_name` contains "PluginDevice", the plugin is dead. Delete and replace with native alternative. Report the failure.
+6. **CRITICAL — Sample-dependent instruments produce silence without source material.** These plugins load "successfully" (many parameters) but output nothing until a sample/audio source is provided. Since MCP tools CANNOT load samples into third-party plugin UIs, **NEVER use these as standalone instruments**:
+   - **Granular synths:** iDensity, Tardigrain, Koala Sampler, Burns Audio Granular
+   - **Samplers without presets:** bare Simpler, bare Sampler (always load a preset, never the empty shell)
+   - **Sample players:** AudioLayer, sEGments (need user to load samples via plugin GUI)
+   - **Instead use:** Wavetable, Operator, Drift, Analog, Meld, Collision, Tension — these are self-contained synthesizers that produce sound immediately from MIDI input alone.
+   - **If granular textures are needed:** Use Wavetable with aggressive wavetable position modulation, or Operator with FM feedback and short envelopes, or load a Simpler/Sampler **preset** (not the bare instrument) from the Sounds browser.
 
 ### After programming notes:
 1. **`fire_clip` or `fire_scene`** — always listen. If the track has notes but the instrument has no samples/chains, you're playing silence.
@@ -100,11 +109,15 @@ Never skip levels. The user's question determines the entry point, but always st
 
 ### Quick health check pattern:
 ```
-1. get_track_info(track_index)          → has devices? has clips?
-2. get_rack_chains (if Drum Rack)       → has chains with samples?
-3. get_device_parameters                → volume > 0? key params set?
-4. Check mixer.volume > 0              → track is audible?
-5. fire_clip / fire_scene              → sound comes out?
+1. get_device_info(track, device)       → class_name? parameter_count?
+   - PluginDevice with param_count<=1?  → DEAD PLUGIN. Delete + replace.
+   - Is it a sample-dependent plugin?   → SILENT. Replace with self-contained synth.
+2. get_track_info(track_index)          → has devices? has clips?
+3. get_rack_chains (if Drum Rack)       → has chains with samples?
+4. get_device_parameters                → volume > 0? key params set?
+5. Check mixer.volume > 0              → track is audible?
+6. fire_clip / fire_scene              → sound comes out?
+7. REPORT any issues to the user        → never silently work around failures.
 ```
 
 ### Red flags (things that produce silence):
@@ -116,6 +129,8 @@ Never skip levels. The user's question determines the entry point, but always st
 - Master volume at 0
 - MIDI track with no instrument loaded
 - Notes programmed but clip not fired
+- **Dead AU/VST plugin** — `parameter_count` <= 1 on a PluginDevice (plugin shell loaded, DSP engine crashed)
+- **Sample-dependent plugin with no sample** — granular synths, bare samplers, and sample players load "successfully" with many parameters but produce zero audio without source material. The sneakiest silent failure because `get_device_info` looks healthy.
 
 ## Tool Domains (178 total)
 
@@ -246,8 +261,15 @@ MIDI file import/export — works with standard .mid files on disk.
 6. `create_clip` — create clips on each track (4 beats = 1 bar at 4/4)
 7. `add_notes` — program MIDI patterns. Each note needs `pitch`, `start_time`, `duration`
 8. **HEALTH CHECK per track:** `get_track_info` → confirm device loaded, mixer volume > 0, not muted
-9. `fire_scene` or `fire_clip` — listen to your work
-10. Iterate: `get_notes` → `modify_notes` / `transpose_notes` → listen again
+9. **PITCH & TUNING AUDIT (MANDATORY before firing):**
+   - `identify_scale` on every melodic track — verify all tracks share the same tonal center
+   - `analyze_harmony` on chordal tracks — verify chord quality (no accidental augmented/diminished)
+   - `detect_theory_issues` with `strict=true` — check out-of-key notes, parallel fifths, voice crossing
+   - **Interpret against intended scale:** The analyzer only knows 7 standard modes. Exotic scales (Hijaz, Hungarian minor, whole tone, etc.) produce false "out of key" warnings. Cross-reference flagged pitches against the intended scale manually.
+   - Report a clear tuning table to the user before proceeding
+   - Fix wrong notes with `modify_notes` before firing
+10. `fire_scene` or `fire_clip` — listen to your work
+11. Iterate: `get_notes` → `modify_notes` / `transpose_notes` → listen again
 
 ## Workflow: Sound Design
 

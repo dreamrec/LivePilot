@@ -10,7 +10,7 @@ import os
 
 from fastmcp import Context
 
-from ..server import mcp
+from ..server import mcp, _identify_port_holder
 
 CAPTURE_DIR = os.path.expanduser("~/Documents/LivePilot/captures")
 
@@ -20,6 +20,9 @@ def _get_spectral(ctx: Context):
     cache = ctx.lifespan_context.get("spectral")
     if not cache:
         raise ValueError("Spectral cache not initialized — restart the MCP server")
+    # Keep the active request context attached so analyzer error paths can
+    # distinguish "device missing" from "bridge disconnected".
+    setattr(cache, "_livepilot_ctx", ctx)
     return cache
 
 
@@ -34,6 +37,39 @@ def _get_m4l(ctx: Context):
 def _require_analyzer(cache) -> None:
     """Raise a helpful error if the analyzer is not connected."""
     if not cache.is_connected:
+        ctx = getattr(cache, "_livepilot_ctx", None)
+        try:
+            track = (
+                ctx.lifespan_context["ableton"].send_command("get_master_track")
+                if ctx else {}
+            )
+        except Exception:
+            track = {}
+
+        devices = track.get("devices", []) if isinstance(track, dict) else []
+        analyzer_loaded = False
+        for device in devices:
+            normalized = " ".join(
+                str(device.get("name") or "").replace("_", " ").replace("-", " ").lower().split()
+            )
+            if normalized == "livepilot analyzer":
+                analyzer_loaded = True
+                break
+
+        if analyzer_loaded:
+            holder = _identify_port_holder(9880)
+            detail = (
+                "LivePilot Analyzer is loaded on the master track, but its UDP bridge is not connected. "
+            )
+            if holder:
+                detail += (
+                    "UDP port 9880 is currently held by another LivePilot instance "
+                    f"({holder}). Close the other client/server, then retry."
+                )
+            else:
+                detail += "Reload the analyzer device or restart the MCP server."
+            raise ValueError(detail)
+
         raise ValueError(
             "LivePilot Analyzer not detected. "
             "Drag 'LivePilot Analyzer' onto the master track from "

@@ -55,6 +55,31 @@ function venvPython() {
   return path.join(VENV_DIR, isWin ? "Scripts" : "bin", isWin ? "python.exe" : "python3");
 }
 
+function findOtherLiveClient(host, port) {
+  try {
+    const out = execFileSync("lsof", ["-nP", `-iTCP:${port}`], {
+      encoding: "utf-8",
+      timeout: 3000,
+      stdio: ["pipe", "pipe", "ignore"],
+    });
+    const target = `->${host}:${port}`;
+    const lines = out.trim().split("\n").slice(1);
+    for (const line of lines) {
+      if (!line.includes(target) || !line.includes("(ESTABLISHED)")) {
+        continue;
+      }
+      const parts = line.trim().split(/\s+/);
+      const pid = parseInt(parts[1], 10);
+      if (!Number.isNaN(pid) && pid !== process.pid) {
+        return `PID ${pid} (${parts[0]})`;
+      }
+    }
+  } catch {
+    // best-effort only
+  }
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Virtual environment bootstrap
 // ---------------------------------------------------------------------------
@@ -133,6 +158,13 @@ function checkStatus() {
           if (resp.ok === true && resp.result && resp.result.pong) {
             console.log("  Ableton Live: connected on %s:%d", HOST, PORT);
             ok = true;
+          } else if (resp.ok === false && resp.error && resp.error.code === "STATE_ERROR") {
+            console.log(
+              "  Ableton Live: reachable, but another LivePilot client is already connected"
+            );
+            if (resp.error.message) {
+              console.log("    Detail: %s", resp.error.message);
+            }
           } else {
             console.log("  Ableton Live: unexpected response:", JSON.stringify(resp));
           }
@@ -145,7 +177,15 @@ function checkStatus() {
     });
 
     sock.on("timeout", () => {
-      console.log("  Ableton Live: connection timed out");
+      const otherClient = findOtherLiveClient(HOST, PORT);
+      if (otherClient) {
+        console.log(
+          "  Ableton Live: reachable, but another LivePilot client appears connected (%s)",
+          otherClient
+        );
+      } else {
+        console.log("  Ableton Live: connection timed out");
+      }
       sock.destroy();
       resolve(false);
     });

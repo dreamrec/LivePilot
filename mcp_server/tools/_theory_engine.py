@@ -35,19 +35,20 @@ PHRYGIAN_PROFILE   = MAJOR_PROFILE[4:] + MAJOR_PROFILE[:4]
 LYDIAN_PROFILE     = MAJOR_PROFILE[5:] + MAJOR_PROFILE[:5]
 MIXOLYDIAN_PROFILE = MAJOR_PROFILE[7:] + MAJOR_PROFILE[:7]
 LOCRIAN_PROFILE    = MAJOR_PROFILE[11:] + MAJOR_PROFILE[:11]
+PHRYGIAN_DOMINANT_PROFILE = [6.35, 4.75, 1.75, 1.95, 4.9, 3.9, 1.8, 5.2, 3.6, 1.7, 3.4, 1.6]
 
 MODE_PROFILES = {
     'major': MAJOR_PROFILE, 'minor': MINOR_PROFILE,
     'dorian': DORIAN_PROFILE, 'phrygian': PHRYGIAN_PROFILE,
     'lydian': LYDIAN_PROFILE, 'mixolydian': MIXOLYDIAN_PROFILE,
-    'locrian': LOCRIAN_PROFILE,
+    'locrian': LOCRIAN_PROFILE, 'phrygian_dominant': PHRYGIAN_DOMINANT_PROFILE,
 }
 
 SCALES = {
     'major': [0, 2, 4, 5, 7, 9, 11], 'minor': [0, 2, 3, 5, 7, 8, 10],
     'dorian': [0, 2, 3, 5, 7, 9, 10], 'phrygian': [0, 1, 3, 5, 7, 8, 10],
     'lydian': [0, 2, 4, 6, 7, 9, 11], 'mixolydian': [0, 2, 4, 5, 7, 9, 10],
-    'locrian': [0, 1, 3, 5, 6, 8, 10],
+    'locrian': [0, 1, 3, 5, 6, 8, 10], 'phrygian_dominant': [0, 1, 4, 5, 7, 8, 10],
 }
 
 TRIAD_QUALITIES = {
@@ -58,6 +59,25 @@ TRIAD_QUALITIES = {
     'lydian':     ['major', 'major', 'minor', 'diminished', 'major', 'minor', 'minor'],
     'mixolydian': ['major', 'minor', 'diminished', 'major', 'minor', 'minor', 'major'],
     'locrian':    ['diminished', 'major', 'minor', 'minor', 'major', 'major', 'minor'],
+    'phrygian_dominant': ['major', 'major', 'diminished', 'minor', 'diminished', 'augmented', 'minor'],
+}
+
+MODE_ALIASES = {
+    'major': 'major',
+    'ionian': 'major',
+    'maj': 'major',
+    'minor': 'minor',
+    'aeolian': 'minor',
+    'min': 'minor',
+    'dorian': 'dorian',
+    'phrygian': 'phrygian',
+    'lydian': 'lydian',
+    'mixolydian': 'mixolydian',
+    'locrian': 'locrian',
+    'phrygian dominant': 'phrygian_dominant',
+    'phrygian_dominant': 'phrygian_dominant',
+    'phrygian-dominant': 'phrygian_dominant',
+    'hijaz': 'phrygian_dominant',
 }
 
 CHORD_PATTERNS = {
@@ -81,6 +101,15 @@ def pitch_name(midi: int) -> str:
     return NOTE_NAMES[midi % 12] + str(midi // 12 - 1)
 
 
+def _normalize_mode_name(mode: str) -> str:
+    """Normalize user-facing mode names into canonical scale ids."""
+    normalized = " ".join(mode.strip().lower().replace("_", " ").replace("-", " ").split())
+    canonical = MODE_ALIASES.get(normalized, normalized.replace(" ", "_"))
+    if canonical not in SCALES:
+        raise ValueError(f"Unknown mode: {mode}")
+    return canonical
+
+
 def parse_key(key_str: str) -> dict:
     """Parse key string -> {tonic: 0-11, tonic_name: str, mode: str}.
 
@@ -100,7 +129,8 @@ def parse_key(key_str: str) -> dict:
 
     parts = s.split()
     raw_tonic = parts[0]
-    mode = parts[1].lower() if len(parts) > 1 else 'major'
+    raw_mode = " ".join(parts[1:]) if len(parts) > 1 else 'major'
+    mode = _normalize_mode_name(raw_mode)
 
     # Normalize tonic: capitalize first letter
     tonic_name = raw_tonic[0].upper() + raw_tonic[1:]
@@ -117,17 +147,18 @@ def parse_key(key_str: str) -> dict:
 
 def get_scale_pitches(tonic: int, mode: str) -> list[int]:
     """Return pitch classes (0-11) for the scale."""
-    intervals = SCALES.get(mode, SCALES['major'])
+    intervals = SCALES[_normalize_mode_name(mode)]
     return [(tonic + iv) % 12 for iv in intervals]
 
 
 def build_chord(degree: int, tonic: int, mode: str) -> dict:
     """Build triad from scale degree (0-indexed)."""
+    mode = _normalize_mode_name(mode)
     scale = get_scale_pitches(tonic, mode)
     root = scale[degree % 7]
     third = scale[(degree + 2) % 7]
     fifth = scale[(degree + 4) % 7]
-    quality = TRIAD_QUALITIES.get(mode, TRIAD_QUALITIES['major'])[degree % 7]
+    quality = TRIAD_QUALITIES[mode][degree % 7]
     return {
         "root_pc": root,
         "pitch_classes": [root, third, fifth],

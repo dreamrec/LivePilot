@@ -11,6 +11,7 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from mcp_server.connection import AbletonConnection, AbletonConnectionError
+import mcp_server.connection as connection_mod
 
 
 class MockAbletonServer:
@@ -193,3 +194,27 @@ def test_retry_after_timeout_gets_clean_response(mock_server):
         assert result.get("pong") is True
     finally:
         conn.disconnect()
+
+
+def test_timeout_mentions_other_connected_client(monkeypatch, mock_server):
+    conn = AbletonConnection(host="127.0.0.1", port=mock_server.port)
+    conn.connect()
+
+    class _TimeoutSocket:
+        def sendall(self, _payload):
+            return None
+
+        def recv(self, _size):
+            raise socket.timeout()
+
+        def close(self):
+            return None
+
+        def settimeout(self, _timeout):
+            return None
+
+    monkeypatch.setattr(connection_mod, "_identify_other_tcp_client", lambda host, port: "PID 999 (node)")
+    conn._socket = _TimeoutSocket()
+
+    with pytest.raises(AbletonConnectionError, match="Another LivePilot client appears to be connected"):
+        conn._send_raw({"type": "ping"})

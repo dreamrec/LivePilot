@@ -10,7 +10,7 @@ from typing import Any, Optional
 
 from fastmcp import Context
 
-from ..server import mcp
+from ..server import mcp, _identify_port_holder
 
 
 def _ensure_list(value: Any) -> list:
@@ -29,6 +29,153 @@ def _get_ableton(ctx: Context):
 
 
 MASTER_TRACK_INDEX = -1000
+_PLUGIN_CLASS_NAMES = {"PluginDevice", "AuPluginDevice"}
+_SAMPLE_DEPENDENT_DEVICE_NAMES = {
+    "idensity": "Requires source audio loaded inside the plugin UI before MIDI can produce sound.",
+    "tardigrain": "Requires source audio loaded inside the plugin UI before MIDI can produce sound.",
+    "koala sampler": "Requires source audio loaded inside the plugin UI before MIDI can produce sound.",
+    "burns audio granular": "Requires source audio loaded inside the plugin UI before MIDI can produce sound.",
+    "audiolayer": "Requires samples loaded inside the plugin UI before MIDI can produce sound.",
+    "segments": "Requires source audio loaded inside the plugin UI before MIDI can produce sound.",
+    "segments (instr)": "Requires source audio loaded inside the plugin UI before MIDI can produce sound.",
+}
+
+
+def _sample_dependency_reason(device_name: str) -> Optional[str]:
+    lowered = device_name.strip().lower()
+    for candidate, reason in _SAMPLE_DEPENDENT_DEVICE_NAMES.items():
+        if candidate in lowered:
+            return reason
+    return None
+
+
+def _annotate_device_info(result: dict) -> dict:
+    """Attach MCP-focused health hints to raw get_device_info results."""
+    if not isinstance(result, dict):
+        return result
+
+    class_name = str(result.get("class_name") or "")
+    device_name = str(result.get("name") or "")
+    parameter_count = int(result.get("parameter_count") or 0)
+    is_plugin = class_name in _PLUGIN_CLASS_NAMES
+
+    plugin_host_status = "not_plugin"
+    if is_plugin:
+        plugin_host_status = "host_visible" if parameter_count > 1 else "opaque_or_failed"
+
+    flags: list[str] = []
+    warnings: list[str] = []
+
+    sample_reason = _sample_dependency_reason(device_name)
+    if sample_reason:
+        flags.append("sample_dependent")
+        warnings.append(sample_reason)
+
+    if plugin_host_status == "opaque_or_failed":
+        flags.append("opaque_or_failed_plugin")
+        warnings.append(
+            "Ableton only sees %d host parameter(s) for this plugin. "
+            "If auditioning produces no audio, the plugin likely failed to initialize. "
+            "If audio is flowing, the plugin is usable but opaque to MCP sound design."
+            % parameter_count
+        )
+
+    annotated = dict(result)
+    annotated["is_plugin"] = is_plugin
+    annotated["plugin_host_status"] = plugin_host_status
+    annotated["health_flags"] = flags
+    annotated["mcp_sound_design_ready"] = len(flags) == 0
+    if warnings:
+        annotated["warnings"] = warnings
+    return annotated
+
+
+def _annotate_loaded_device_result(result: dict) -> dict:
+    """Attach preflight warnings to load results based on loaded device names."""
+    if not isinstance(result, dict):
+        return result
+
+    loaded_name = str(result.get("loaded") or "")
+    sample_reason = _sample_dependency_reason(loaded_name)
+    if not sample_reason:
+        return result
+
+    annotated = dict(result)
+    annotated["health_flags"] = ["sample_dependent"]
+    annotated["warnings"] = [sample_reason]
+    annotated["mcp_sound_design_ready"] = False
+    return annotated
+
+
+def _merge_unique(base: list[str], extra: list[str]) -> list[str]:
+    merged = list(base)
+    for item in extra:
+        if item not in merged:
+            merged.append(item)
+    return merged
+
+
+def _postflight_loaded_device(ctx: Context, result: dict) -> dict:
+    """Attach post-load health info by inspecting the newly loaded device."""
+    annotated = _annotate_loaded_device_result(result)
+    if not isinstance(annotated, dict):
+        return annotated
+
+    track_index = annotated.get("track_index")
+    loaded_name = str(annotated.get("loaded") or "")
+    if track_index is None or not loaded_name:
+        return annotated
+
+    try:
+        track_info = _get_ableton(ctx).send_command("get_track_info", {
+            "track_index": int(track_index),
+        })
+    except Exception:
+        return annotated
+
+    devices = track_info.get("devices", []) if isinstance(track_info, dict) else []
+    if not isinstance(devices, list) or not devices:
+        return annotated
+
+    match = None
+    for device in reversed(devices):
+        if str(device.get("name") or "") == loaded_name:
+            match = device
+            break
+    if match is None:
+        match = devices[-1]
+
+    device_info = _annotate_device_info({
+        "name": match.get("name"),
+        "class_name": match.get("class_name"),
+        "is_active": match.get("is_active"),
+        "parameter_count": len(match.get("parameters", [])),
+    })
+
+    merged = dict(annotated)
+    merged["device_index"] = match.get("index")
+    merged["class_name"] = device_info.get("class_name")
+    merged["parameter_count"] = device_info.get("parameter_count")
+    merged["is_plugin"] = device_info.get("is_plugin")
+    merged["plugin_host_status"] = device_info.get("plugin_host_status")
+    merged["mcp_sound_design_ready"] = (
+        merged.get("mcp_sound_design_ready", True)
+        and device_info.get("mcp_sound_design_ready", True)
+    )
+
+    merged["health_flags"] = _merge_unique(
+        annotated.get("health_flags", []),
+        device_info.get("health_flags", []),
+    )
+
+    warnings = _merge_unique(
+        annotated.get("warnings", []),
+        device_info.get("warnings", []),
+    )
+    if warnings:
+        merged["warnings"] = warnings
+
+    return merged
 
 
 def _validate_track_index(track_index: int):
@@ -57,10 +204,11 @@ def get_device_info(ctx: Context, track_index: int, device_index: int) -> dict:
     track_index: 0+ for regular tracks, -1/-2/... for return tracks (A/B/...), -1000 for master."""
     _validate_track_index(track_index)
     _validate_device_index(device_index)
-    return _get_ableton(ctx).send_command("get_device_info", {
+    result = _get_ableton(ctx).send_command("get_device_info", {
         "track_index": track_index,
         "device_index": device_index,
     })
+    return _annotate_device_info(result)
 
 
 @mcp.tool()
@@ -160,10 +308,11 @@ def load_device_by_uri(ctx: Context, track_index: int, uri: str) -> dict:
     _validate_track_index(track_index)
     if not uri.strip():
         raise ValueError("URI cannot be empty")
-    return _get_ableton(ctx).send_command("load_device_by_uri", {
+    result = _get_ableton(ctx).send_command("load_device_by_uri", {
         "track_index": track_index,
         "uri": uri,
     })
+    return _postflight_loaded_device(ctx, result)
 
 
 @mcp.tool()
@@ -173,10 +322,11 @@ def find_and_load_device(ctx: Context, track_index: int, device_name: str) -> di
     _validate_track_index(track_index)
     if not device_name.strip():
         raise ValueError("device_name cannot be empty")
-    return _get_ableton(ctx).send_command("find_and_load_device", {
+    result = _get_ableton(ctx).send_command("find_and_load_device", {
         "track_index": track_index,
         "device_name": device_name,
     })
+    return _postflight_loaded_device(ctx, result)
 
 
 @mcp.tool()
@@ -275,11 +425,47 @@ def _get_spectral(ctx: Context):
     cache = ctx.lifespan_context.get("spectral")
     if not cache:
         raise ValueError("Spectral cache not initialized — restart the MCP server")
+    # Keep the active request context attached so analyzer error paths can
+    # distinguish "device missing" from "bridge disconnected".
+    setattr(cache, "_livepilot_ctx", ctx)
     return cache
 
 
 def _require_analyzer(cache) -> None:
     if not cache.is_connected:
+        ctx = getattr(cache, "_livepilot_ctx", None)
+        try:
+            track = (
+                ctx.lifespan_context["ableton"].send_command("get_master_track")
+                if ctx else {}
+            )
+        except Exception:
+            track = {}
+
+        devices = track.get("devices", []) if isinstance(track, dict) else []
+        analyzer_loaded = False
+        for device in devices:
+            normalized = " ".join(
+                str(device.get("name") or "").replace("_", " ").replace("-", " ").lower().split()
+            )
+            if normalized == "livepilot analyzer":
+                analyzer_loaded = True
+                break
+
+        if analyzer_loaded:
+            holder = _identify_port_holder(9880)
+            detail = (
+                "LivePilot Analyzer is loaded on the master track, but its UDP bridge is not connected. "
+            )
+            if holder:
+                detail += (
+                    "UDP port 9880 is currently held by another LivePilot instance "
+                    f"({holder}). Close the other client/server, then retry."
+                )
+            else:
+                detail += "Reload the analyzer device or restart the MCP server."
+            raise ValueError(detail)
+
         raise ValueError(
             "LivePilot Analyzer not detected. "
             "Drag 'LivePilot Analyzer' onto the master track."
