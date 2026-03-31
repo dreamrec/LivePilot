@@ -82,6 +82,7 @@ class LivePilotServer(object):
         self._running = False
         self._server_socket = None
         self._thread = None
+        self._client_thread = None
         self._command_queue = queue.Queue()
         self._client_lock = threading.Lock()
         self._client_connected = False
@@ -106,6 +107,8 @@ class LivePilotServer(object):
                 pass
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=3)
+        if self._client_thread and self._client_thread.is_alive():
+            self._client_thread.join(timeout=3)
         self._log("Server stopped")
 
     # ── Logging ──────────────────────────────────────────────────────────
@@ -158,19 +161,12 @@ class LivePilotServer(object):
                             pass
                         continue
                     self._client_connected = True
-                self._log("Client connected from %s:%d" % addr)
-                try:
-                    self._handle_client(client)
-                except OSError as exc:
-                    self._log("Client error: %s" % exc)
-                finally:
-                    with self._client_lock:
-                        self._client_connected = False
-                    try:
-                        client.close()
-                    except OSError:
-                        pass
-                    self._log("Client disconnected")
+                self._client_thread = threading.Thread(
+                    target=self._run_client_session,
+                    args=(client, addr),
+                )
+                self._client_thread.daemon = True
+                self._client_thread.start()
             except socket.timeout:
                 continue
             except OSError:
@@ -182,6 +178,22 @@ class LivePilotServer(object):
             self._server_socket.close()
         except OSError:
             pass
+
+    def _run_client_session(self, client, addr):
+        """Handle one active client without blocking new connection rejects."""
+        self._log("Client connected from %s:%d" % addr)
+        try:
+            self._handle_client(client)
+        except OSError as exc:
+            self._log("Client error: %s" % exc)
+        finally:
+            with self._client_lock:
+                self._client_connected = False
+            try:
+                client.close()
+            except OSError:
+                pass
+            self._log("Client disconnected")
 
     def _handle_client(self, client):
         """Read newline-delimited JSON from a connected client."""

@@ -48,7 +48,12 @@ def _detect_or_parse_key(notes: list[dict], key_hint: str | None = None) -> dict
 
 def _key_display(key_info: dict) -> str:
     """Format key info as 'C major' string."""
-    return f"{key_info['tonic_name']} {key_info['mode']}"
+    return f"{key_info['tonic_name']} {key_info['mode'].replace('_', ' ')}"
+
+
+def _mode_display(mode: str) -> str:
+    """Format a canonical mode id for user-facing output."""
+    return mode.replace("_", " ")
 
 
 # -- Tool 1: analyze_harmony ------------------------------------------------
@@ -345,8 +350,9 @@ def identify_scale(
 ) -> dict:
     """Identify the scale/mode of a MIDI clip beyond basic major/minor.
 
-    Uses Krumhansl-Schmuckler algorithm with 7 mode profiles (major, minor,
-    dorian, phrygian, lydian, mixolydian, locrian).
+    Uses Krumhansl-Schmuckler-style profiles with 8 mode profiles (major,
+    minor, dorian, phrygian, lydian, mixolydian, locrian, and phrygian
+    dominant / Hijaz).
 
     Returns ranked key matches with confidence scores.
     """
@@ -357,17 +363,19 @@ def identify_scale(
     detected = engine.detect_key(notes, mode_detection=True)
 
     results = [{
-        "key": f"{detected['tonic_name']} {detected['mode']}",
+        "key": f"{detected['tonic_name']} {_mode_display(detected['mode'])}",
         "confidence": detected["confidence"],
-        "mode": detected["mode"],
+        "mode": _mode_display(detected["mode"]),
+        "mode_id": detected["mode"],
         "tonic": detected["tonic_name"],
     }]
 
     for alt in detected.get("alternatives", [])[:7]:
         results.append({
-            "key": f"{alt['tonic_name']} {alt['mode']}",
+            "key": f"{alt['tonic_name']} {_mode_display(alt['mode'])}",
             "confidence": alt["confidence"],
-            "mode": alt["mode"],
+            "mode": _mode_display(alt["mode"]),
+            "mode_id": alt["mode"],
             "tonic": alt["tonic_name"],
         })
 

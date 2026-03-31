@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import socket
+import subprocess
 import threading
 import time
 import uuid
@@ -42,6 +43,33 @@ def _friendly_error(code: str, message: str, command_type: str) -> str:
     if hint:
         parts.append(hint)
     return " ".join(parts)
+
+
+def _identify_other_tcp_client(host: str, port: int) -> str | None:
+    """Return a short description of another established client on the Live port."""
+    try:
+        out = subprocess.check_output(
+            ["lsof", "-nP", f"-iTCP:{port}"],
+            text=True,
+            timeout=3,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError, ValueError, OSError):
+        return None
+
+    target = f"->{host}:{port}"
+    my_pid = os.getpid()
+    for line in out.splitlines()[1:]:
+        parts = line.split()
+        if len(parts) < 2 or target not in line or "(ESTABLISHED)" not in line:
+            continue
+        try:
+            pid = int(parts[1])
+        except ValueError:
+            continue
+        if pid == my_pid:
+            continue
+        return f"PID {pid} ({parts[0]})"
+    return None
 
 
 class AbletonConnection:
@@ -197,6 +225,13 @@ class AbletonConnection:
         except socket.timeout as exc:
             self._recv_buf = buf
             self.disconnect()
+            other_client = _identify_other_tcp_client(self.host, self.port)
+            if other_client:
+                raise AbletonConnectionError(
+                    "Timeout waiting for response from Ableton. "
+                    f"Another LivePilot client appears to be connected on {self.host}:{self.port} "
+                    f"({other_client}). Disconnect the other client and retry."
+                ) from exc
             raise AbletonConnectionError(
                 f"Timeout waiting for response from Ableton ({RECV_TIMEOUT}s)"
             ) from exc

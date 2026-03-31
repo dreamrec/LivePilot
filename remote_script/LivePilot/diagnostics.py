@@ -14,6 +14,16 @@ from .router import register
 _DEFAULT_NAME_PATTERNS = frozenset([
     "MIDI", "Audio", "Inst", "Return",
 ])
+_PLUGIN_CLASS_NAMES = frozenset(["PluginDevice", "AuPluginDevice"])
+_SAMPLE_DEPENDENT_DEVICE_NAMES = frozenset([
+    "idensity",
+    "tardigrain",
+    "koala sampler",
+    "burns audio granular",
+    "audiolayer",
+    "segments",
+    "segments (instr)",
+])
 
 
 def _looks_default_name(name):
@@ -27,6 +37,22 @@ def _looks_default_name(name):
         if part in _DEFAULT_NAME_PATTERNS:
             return True
     return False
+
+
+def _sample_dependent_device(name):
+    lowered = name.strip().lower()
+    for candidate in _SAMPLE_DEPENDENT_DEVICE_NAMES:
+        if candidate in lowered:
+            return True
+    return False
+
+
+def _safe_attr(obj, name, default=None):
+    """Read a Live attribute defensively — some track types omit properties."""
+    try:
+        return getattr(obj, name)
+    except Exception:
+        return default
 
 
 @register("get_session_diagnostics")
@@ -57,19 +83,21 @@ def get_session_diagnostics(song, params):
     unnamed_tracks = []
     empty_tracks = []  # no clips at all
     no_device_midi_tracks = []  # MIDI tracks with no instruments
+    opaque_or_failed_plugins = []
+    sample_dependent_devices = []
     track_slots = []  # cached clip_slots per track (avoid re-evaluating LOM tuple)
 
     for i, track in enumerate(tracks):
         # Armed check
-        if track.arm:
+        if _safe_attr(track, "arm", False):
             armed_tracks.append({"index": i, "name": track.name})
 
         # Solo check
-        if track.solo:
+        if _safe_attr(track, "solo", False):
             soloed_tracks.append({"index": i, "name": track.name})
 
         # Muted tracks (informational, only flag if many)
-        if track.mute:
+        if _safe_attr(track, "mute", False):
             muted_tracks.append({"index": i, "name": track.name})
 
         # Unnamed / default name check
@@ -91,8 +119,32 @@ def get_session_diagnostics(song, params):
             empty_tracks.append({"index": i, "name": track.name})
 
         # MIDI track with no devices (no instrument loaded)
-        if track.has_midi_input and len(list(track.devices)) == 0:
+        if _safe_attr(track, "has_midi_input", False) and len(list(track.devices)) == 0:
             no_device_midi_tracks.append({"index": i, "name": track.name})
+
+        for j, device in enumerate(track.devices):
+            class_name = getattr(device, "class_name", "")
+            try:
+                parameter_count = len(list(device.parameters))
+            except Exception:
+                parameter_count = None
+
+            if class_name in _PLUGIN_CLASS_NAMES and parameter_count is not None and parameter_count <= 1:
+                opaque_or_failed_plugins.append({
+                    "track_index": i,
+                    "track_name": track.name,
+                    "device_index": j,
+                    "device_name": device.name,
+                    "parameter_count": parameter_count,
+                })
+
+            if _sample_dependent_device(device.name):
+                sample_dependent_devices.append({
+                    "track_index": i,
+                    "track_name": track.name,
+                    "device_index": j,
+                    "device_name": device.name,
+                })
 
     # Build issues from checks
     if armed_tracks:
@@ -145,6 +197,30 @@ def get_session_diagnostics(song, params):
             "details": no_device_midi_tracks,
         })
 
+    if opaque_or_failed_plugins:
+        issues.append({
+            "type": "opaque_or_failed_plugins",
+            "severity": "warning",
+            "message": (
+                "%d plugin(s) expose <=1 host parameter. If silent after auditioning, "
+                "they likely failed to initialize. If audio is flowing, they are opaque to MCP control."
+                % len(opaque_or_failed_plugins)
+            ),
+            "details": opaque_or_failed_plugins,
+        })
+
+    if sample_dependent_devices:
+        issues.append({
+            "type": "sample_dependent_devices",
+            "severity": "info",
+            "message": (
+                "%d likely sample-dependent device(s) loaded — they may stay silent until source audio is loaded "
+                "inside the plugin UI."
+                % len(sample_dependent_devices)
+            ),
+            "details": sample_dependent_devices,
+        })
+
     # ── Scene-level checks ──────────────────────────────────────────────
 
     empty_scenes = []
@@ -171,7 +247,7 @@ def get_session_diagnostics(song, params):
 
     soloed_returns = []
     for i, track in enumerate(return_tracks):
-        if track.solo:
+        if _safe_attr(track, "solo", False):
             soloed_returns.append({"index": i, "name": track.name})
 
     if soloed_returns:

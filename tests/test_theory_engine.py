@@ -41,6 +41,20 @@ class TestParseKey:
     def test_case_insensitive(self):
         assert parse_key("f# minor") == {"tonic": 6, "tonic_name": "F#", "mode": "minor"}
 
+    def test_hijaz_alias(self):
+        assert parse_key("C hijaz") == {
+            "tonic": 0,
+            "tonic_name": "C",
+            "mode": "phrygian_dominant",
+        }
+
+    def test_phrygian_dominant_name(self):
+        assert parse_key("D phrygian dominant") == {
+            "tonic": 2,
+            "tonic_name": "D",
+            "mode": "phrygian_dominant",
+        }
+
 
 class TestScalePitches:
     def test_c_major(self):
@@ -48,6 +62,9 @@ class TestScalePitches:
 
     def test_a_minor(self):
         assert get_scale_pitches(9, "minor") == [9, 11, 0, 2, 4, 5, 7]
+
+    def test_c_phrygian_dominant(self):
+        assert get_scale_pitches(0, "phrygian_dominant") == [0, 1, 4, 5, 7, 8, 10]
 
 
 class TestBuildChord:
@@ -61,6 +78,11 @@ class TestBuildChord:
         c = build_chord(5, 0, "major")
         assert c["root_pc"] == 9
         assert c["quality"] == "minor"
+
+    def test_phrygian_dominant_augmented_sixth_degree(self):
+        c = build_chord(5, 0, "phrygian_dominant")
+        assert c["root_pc"] == 8
+        assert c["quality"] == "augmented"
 
 
 class TestDetectKey:
@@ -98,6 +120,20 @@ class TestDetectKey:
         result = detect_key(notes)
         confs = [a["confidence"] for a in result["alternatives"]]
         assert confs == sorted(confs, reverse=True)
+
+    def test_phrygian_dominant_material_detects_mode(self):
+        notes = [
+            {"pitch": 60, "start_time": 0, "duration": 3},   # C
+            {"pitch": 61, "start_time": 0.5, "duration": 2}, # Db
+            {"pitch": 64, "start_time": 1.0, "duration": 2}, # E
+            {"pitch": 67, "start_time": 1.5, "duration": 3}, # G
+            {"pitch": 68, "start_time": 2.0, "duration": 2}, # Ab
+            {"pitch": 70, "start_time": 2.5, "duration": 2}, # Bb
+            {"pitch": 72, "start_time": 3.0, "duration": 3}, # C
+        ]
+        result = detect_key(notes)
+        assert result["tonic"] == 0
+        assert result["mode"] == "phrygian_dominant"
 
 
 class TestRomanNumeral:
