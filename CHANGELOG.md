@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.9.11 — Session Diagnostics + Client Conflict Clarity (March 2026)
+
+**Live-tested against the open Ableton set after reloading the updated Remote Script.**
+
+- Fix(P1): device loading now surfaces post-load plugin health hints, including `opaque_or_failed_plugin`, `sample_dependent`, `plugin_host_status`, and `mcp_sound_design_ready`
+- Fix(P1): `get_session_diagnostics` now flags opaque/sample-dependent plugins and no longer crashes on track types that omit standard `arm`/`mute`/`solo` properties
+- Fix(P1): analyzer tools now distinguish between “analyzer missing” and “analyzer loaded but bridge/client conflict” when UDP 9880 is unavailable
+- Fix(P1): add Hijaz / Phrygian Dominant theory support across key parsing, scale construction, chord building, and `identify_scale`
+- Fix(P2): `--status` and TCP timeout paths now explain when another LivePilot client appears to be connected instead of only reporting a generic timeout
+- Docs: beat/sounddesign/core skill guidance now includes device-health checks, sample-dependent plugin cautions, and pitch-audit discipline from the live stress-test sessions
+- Verification: `292 passed`, `npm pack --dry-run` passed, live set diagnostics succeeded, analyzer bridge streamed on the master track, and conflict reproduction now reports the competing client PID
 ## 1.9.10 — Analyzer Capture Finalization + Release Sync (March 2026)
 
 **Live-tested in Ableton after a full analyzer rebuild and master-track validation.**
