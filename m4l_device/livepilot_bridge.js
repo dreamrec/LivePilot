@@ -34,6 +34,7 @@ var detected_scale = "";
 var capture_active = false;
 var capture_timer = null;
 var capture_filename = "";
+var capture_file_path = "";
 var current_sample_rate = 44100; // Updated by dspstate~ via inlet 1
 
 // Base64 encoding table
@@ -67,7 +68,7 @@ function anything() {
     // OSC messages arrive as messagename — strip leading / if present
     var cmd = messagename;
     if (cmd.charAt(0) === "/") cmd = cmd.substring(1);
-    var args = arrayfromargs(arguments);
+    var args = _decode_arg_strings(arrayfromargs(arguments));
 
     // Defer to low-priority thread for LiveAPI safety
     var task = new Task(function() {
@@ -83,7 +84,7 @@ function anything() {
 function dispatch(cmd, args) {
     switch(cmd) {
         case "ping":
-            send_response({"ok": true, "version": "1.9.9"});
+            send_response({"ok": true, "version": "1.9.10"});
             break;
         case "get_params":
             cmd_get_params(args);
@@ -679,6 +680,109 @@ function _utf8_encode(str) {
     return bytes;
 }
 
+function base64_decode(str) {
+    var clean = String(str || "").replace(/=/g, "");
+    var bytes = [];
+
+    for (var i = 0; i < clean.length; i += 4) {
+        var c0 = B64.indexOf(clean.charAt(i));
+        var c1 = B64.indexOf(clean.charAt(i + 1));
+        var c2 = (i + 2 < clean.length) ? B64.indexOf(clean.charAt(i + 2)) : -1;
+        var c3 = (i + 3 < clean.length) ? B64.indexOf(clean.charAt(i + 3)) : -1;
+
+        if (c0 < 0 || c1 < 0 || (c2 < 0 && i + 2 < clean.length) || (c3 < 0 && i + 3 < clean.length)) {
+            throw new Error("Invalid base64 input");
+        }
+
+        bytes.push(((c0 << 2) | (c1 >> 4)) & 0xFF);
+        if (c2 !== -1) {
+            bytes.push((((c1 & 15) << 4) | (c2 >> 2)) & 0xFF);
+        }
+        if (c3 !== -1) {
+            bytes.push((((c2 & 3) << 6) | c3) & 0xFF);
+        }
+    }
+
+    return bytes;
+}
+
+function _utf8_decode(bytes) {
+    // Convert a UTF-8 byte array back to a JavaScript string.
+    // Handles BMP codepoints which covers the text LivePilot exchanges.
+    var result = "";
+    for (var i = 0; i < bytes.length;) {
+        var b0 = bytes[i];
+        if (b0 < 0x80) {
+            result += String.fromCharCode(b0);
+            i += 1;
+        } else if ((b0 & 0xE0) === 0xC0 && i + 1 < bytes.length) {
+            var b1 = bytes[i + 1];
+            result += String.fromCharCode(((b0 & 0x1F) << 6) | (b1 & 0x3F));
+            i += 2;
+        } else if (i + 2 < bytes.length) {
+            var b2 = bytes[i + 1];
+            var b3 = bytes[i + 2];
+            result += String.fromCharCode(
+                ((b0 & 0x0F) << 12) |
+                ((b2 & 0x3F) << 6) |
+                (b3 & 0x3F)
+            );
+            i += 3;
+        } else {
+            break;
+        }
+    }
+    return result;
+}
+
+function _decode_b64_arg(arg) {
+    if (arg === null || arg === undefined) {
+        return arg;
+    }
+    var text = String(arg);
+    if (text.indexOf("b64:") !== 0) {
+        return arg;
+    }
+    try {
+        return _utf8_decode(base64_decode(text.substring(4)));
+    } catch (e) {
+        return arg;
+    }
+}
+
+function _decode_arg_strings(args) {
+    var decoded = [];
+    for (var i = 0; i < args.length; i++) {
+        decoded.push(_decode_b64_arg(args[i]));
+    }
+    return decoded;
+}
+
+function _to_posix_path(path) {
+    if (!path || path.length < 2) return path;
+
+    // Keep Windows-style drive paths unchanged.
+    if (path.length >= 3 && path.charAt(1) === ":" &&
+        (path.charAt(2) === "/" || path.charAt(2) === "\\")) {
+        return path;
+    }
+
+    var colon = path.indexOf(":");
+    var slash = path.indexOf("/");
+    if (colon <= 0 || (slash !== -1 && colon > slash)) {
+        return path;
+    }
+
+    var rest = path.substring(colon + 1);
+    if (rest.indexOf(":") !== -1) {
+        rest = rest.replace(/:/g, "/");
+    }
+    if (rest.charAt(0) !== "/") {
+        rest = "/" + rest.replace(/^[/\\]+/, "");
+    }
+    return rest;
+}
+
 // ── Phase 2: Sample Operations ────────────────────────────────────────
 
 function cmd_get_clip_file_path(args) {
@@ -697,7 +801,7 @@ function cmd_get_clip_file_path(args) {
         send_response({
             "track": track_idx,
             "clip": clip_idx,
-            "file_path": sample_path,
+            "file_path": _to_posix_path(sample_path),
             "length": parseFloat(cursor_a.get("length")),
             "name": cursor_a.get("name").toString()
         });
@@ -709,7 +813,8 @@ function cmd_get_clip_file_path(args) {
 function cmd_replace_simpler_sample(args) {
     var track_idx = parseInt(args[0]);
     var device_idx = parseInt(args[1]);
-    // Reconstruct file path — spaces in path split into multiple OSC args
+    // Keep the join for backward compatibility with older clients.
+    // Current clients send file paths as a single decoded b64: arg.
     var parts = [];
     for (var i = 2; i < args.length; i++) parts.push(args[i].toString());
     var file_path = parts.join(" ");
@@ -1067,16 +1172,16 @@ function cmd_capture_audio(args) {
         + pad2(d.getDate()) + "_"
         + pad2(d.getHours()) + pad2(d.getMinutes()) + pad2(d.getSeconds());
     capture_filename = requested_name.length > 0 ? requested_name : ("capture_" + ts + ".wav");
+    capture_file_path = _join_path(_get_patcher_dir(), capture_filename);
 
     // Calculate sample count from duration and current sample rate
     var num_samples = Math.ceil((duration_ms / 1000.0) * current_sample_rate);
 
     capture_active = true;
 
-    // Tell the Max patch to start recording into buffer~ via outlet 1.
-    // The patch is expected to connect outlet 1 to a buffer~ / record~ rig.
-    // Message: "capture_start <filename> <num_samples>"
-    outlet(1, "capture_start", capture_filename, num_samples);
+    // Tell the Max patch to start recording the incoming stereo signal.
+    // Message: "capture_start <absolute_path> <num_samples>"
+    outlet(1, "capture_start", capture_file_path, num_samples);
 
     // Set a timer to call cmd_capture_write_done after duration_ms.
     // If the buffer~ fires its bang first (via a connected message), that
@@ -1098,12 +1203,18 @@ function cmd_capture_write_done() {
     }
 
     var written = capture_filename;
+    var written_path = capture_file_path;
     capture_filename = "";
+    capture_file_path = "";
+
+    // Stop the recorder before reporting completion so the file is flushed.
+    outlet(1, "capture_stop");
 
     // Send /capture_complete back to the MCP server via outlet 0.
     var encoded = base64_encode(JSON.stringify({
         "ok": true,
         "file": written,
+        "file_path": _to_posix_path(written_path),
         "sample_rate": current_sample_rate
     }));
     outlet(0, "/capture_complete", encoded);
@@ -1126,9 +1237,11 @@ function cmd_capture_stop() {
 
     capture_active = false;
     var written = capture_filename;
+    var written_path = capture_file_path;
     capture_filename = "";
+    capture_file_path = "";
 
-    send_response({"ok": true, "stopped": true, "file": written});
+    send_response({"ok": true, "stopped": true, "file": written, "file_path": _to_posix_path(written_path)});
 }
 
 function pad2(n) {
@@ -1323,4 +1436,23 @@ function build_device_path(track_idx, device_idx) {
     } else {
         return "live_set tracks " + track_idx + " devices " + device_idx;
     }
+}
+
+function _get_patcher_dir() {
+    try {
+        var filepath = this.patcher && this.patcher.filepath ? this.patcher.filepath.toString() : "";
+        if (!filepath) return "";
+        var slash = Math.max(filepath.lastIndexOf("/"), filepath.lastIndexOf("\\"));
+        if (slash < 0) return "";
+        return filepath.substring(0, slash + 1);
+    } catch (e) {
+        return "";
+    }
+}
+
+function _join_path(dir, file) {
+    if (!dir) return file;
+    var last = dir.charAt(dir.length - 1);
+    if (last !== "/" && last !== "\\") dir += "/";
+    return dir + file;
 }

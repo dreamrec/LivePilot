@@ -58,6 +58,32 @@ def _encode_payload(payload: dict) -> str:
     return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
 
 
+def _parse_string_args(packet: bytes) -> list[str]:
+    """Extract OSC string args from a packet."""
+    null_pos = packet.index(b"\x00")
+    offset = null_pos + 1
+    while offset % 4 != 0:
+        offset += 1
+
+    tag_null = packet.index(b"\x00", offset)
+    type_tags = packet[offset + 1:tag_null].decode("ascii")
+    offset = tag_null + 1
+    while offset % 4 != 0:
+        offset += 1
+
+    strings = []
+    for tag in type_tags:
+        if tag == "i" or tag == "f":
+            offset += 4
+        elif tag == "s":
+            s_null = packet.index(b"\x00", offset)
+            strings.append(packet[offset:s_null].decode("ascii"))
+            offset = s_null + 1
+            while offset % 4 != 0:
+                offset += 1
+    return strings
+
+
 # ── Task 1 Tests ────────────────────────────────────────────────────────────
 
 def test_capture_complete_resolves_capture_future():
@@ -213,3 +239,60 @@ def test_loudness_osc():
     data = cache.get("loudness")
     assert data is not None
     assert abs(data["value"]["momentary_lufs"] - (-14.2)) < 0.2
+
+
+def test_build_osc_base64_encodes_unicode_string_args():
+    cache = SpectralCache()
+    receiver = SpectralReceiver(cache)
+    bridge = M4LBridge(cache, receiver)
+
+    original = "Beyonce_테스트_東京.wav"
+    packet = bridge._build_osc("replace_simpler_sample", (0, 1, original))
+    strings = _parse_string_args(packet)
+
+    assert len(strings) == 1
+    encoded = strings[0]
+    assert encoded.startswith("b64:")
+    assert encoded.isascii()
+
+    payload = encoded[4:] + "=" * (-len(encoded[4:]) % 4)
+    decoded = base64.urlsafe_b64decode(payload).decode("utf-8")
+    assert decoded == original
+
+
+def test_capture_complete_normalizes_max_style_file_path():
+    loop = asyncio.new_event_loop()
+    try:
+        cache = SpectralCache()
+        receiver = SpectralReceiver(cache)
+
+        capture_fut = loop.create_future()
+        receiver.set_capture_future(capture_fut)
+
+        payload = {
+            "ok": True,
+            "file": "capture.wav",
+            "file_path": "Macintosh HD:/Users/tester/Desktop/capture.wav",
+        }
+        encoded = _encode_payload(payload)
+        packet = _build_osc("/capture_complete", encoded)
+
+        receiver._parse_osc(packet)
+
+        assert capture_fut.done()
+        result = capture_fut.result()
+        assert result["file_path"] == "/Users/tester/Desktop/capture.wav"
+    finally:
+        loop.close()
+
+
+def test_bridge_js_has_b64_decode_support():
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    bridge_js = os.path.join(root, "m4l_device", "livepilot_bridge.js")
+    with open(bridge_js, "r", encoding="utf-8") as f:
+        source = f.read()
+
+    assert "_decode_arg_strings" in source
+    assert "_decode_b64_arg" in source
+    assert 'b64:' in source
+    assert "String(arg)" in source

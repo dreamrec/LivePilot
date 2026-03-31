@@ -21,6 +21,50 @@ import time
 from typing import Any, Optional
 
 
+def _encode_string_arg(value: str) -> str:
+    """Encode a Python string arg into an ASCII-safe OSC payload.
+
+    The Max JS side decodes values with the ``b64:`` prefix back to UTF-8.
+    Keeping the wire payload ASCII-only avoids OSC/client issues with
+    non-ASCII file paths and device names.
+    """
+    encoded = base64.urlsafe_b64encode(value.encode("utf-8")).decode("ascii")
+    return "b64:" + encoded.rstrip("=")
+
+
+def _normalize_macos_path(path: str) -> str:
+    """Convert Max-style HFS-ish paths into POSIX paths when possible."""
+    if len(path) >= 3 and path[1] == ":" and path[2] in ("/", "\\"):
+        return path
+
+    colon = path.find(":")
+    slash = path.find("/")
+    if colon <= 0 or (slash != -1 and colon > slash):
+        return path
+
+    rest = path[colon + 1:]
+    if ":" in rest:
+        rest = rest.replace(":", "/")
+    if not rest.startswith("/"):
+        rest = "/" + rest.lstrip("/\\")
+    return rest
+
+
+def _normalize_bridge_payload(value: Any) -> Any:
+    """Normalize filesystem paths inside bridge payloads."""
+    if isinstance(value, dict):
+        normalized = {}
+        for key, item in value.items():
+            if key == "file_path" and isinstance(item, str):
+                normalized[key] = _normalize_macos_path(item)
+            else:
+                normalized[key] = _normalize_bridge_payload(item)
+        return normalized
+    if isinstance(value, list):
+        return [_normalize_bridge_payload(item) for item in value]
+    return value
+
+
 class SpectralCache:
     """Thread-safe cache for incoming spectral data from M4L.
 
@@ -226,7 +270,7 @@ class SpectralReceiver(asyncio.DatagramProtocol):
             # URL-safe base64 decode (- and _ instead of + and /)
             padded = encoded + "=" * (-len(encoded) % 4)
             decoded = base64.urlsafe_b64decode(padded).decode('utf-8')
-            result = json.loads(decoded)
+            result = _normalize_bridge_payload(json.loads(decoded))
             if self._response_callback and not self._response_callback.done():
                 self._response_callback.set_result(result)
         except Exception as exc:
@@ -256,7 +300,7 @@ class SpectralReceiver(asyncio.DatagramProtocol):
         try:
             padded = encoded + "=" * (-len(encoded) % 4)
             decoded = base64.urlsafe_b64decode(padded).decode('utf-8')
-            result = json.loads(decoded)
+            result = _normalize_bridge_payload(json.loads(decoded))
             if self._capture_future and not self._capture_future.done():
                 self._capture_future.set_result(result)
         except Exception as exc:
@@ -345,9 +389,9 @@ class M4LBridge:
     def _build_osc(self, address: str, args: tuple) -> bytes:
         """Build a minimal OSC message.
 
-        OSC addresses are ASCII-only (command names).
-        String arguments (file paths, user text) are encoded as UTF-8
-        to support non-ASCII characters (accented names, CJK, etc.).
+        OSC addresses are ASCII-only command names.
+        String arguments are encoded into an ASCII-safe ``b64:...`` payload
+        and decoded back to UTF-8 in the Max bridge.
         """
         # Address string — always ASCII (command names like "get_params")
         addr_bytes = address.encode('ascii') + b'\x00'
@@ -366,9 +410,8 @@ class M4LBridge:
                 arg_data += struct.pack('>f', arg)
             elif isinstance(arg, str):
                 type_tags += "s"
-                # UTF-8 encode string args — supports non-ASCII file
-                # paths, device names, and user-provided text.
-                s_bytes = arg.encode('utf-8') + b'\x00'
+                encoded = _encode_string_arg(arg)
+                s_bytes = encoded.encode('ascii') + b'\x00'
                 while len(s_bytes) % 4 != 0:
                     s_bytes += b'\x00'
                 arg_data += s_bytes

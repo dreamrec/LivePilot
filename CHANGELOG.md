@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.9.10 — Analyzer Capture Finalization + Release Sync (March 2026)
+
+**Live-tested in Ableton after a full analyzer rebuild and master-track validation.**
+
+- Fix(P1): `capture_audio` now writes finalized WAV files instead of header-only stubs by correcting the `sfrecord~` start/stop messages in the analyzer patch
+- Fix(P1): add a small delayed record start in `LivePilot_Analyzer.maxpat` to avoid the open/start race on fresh capture writes
+- Fix(P2): normalize Max-style `Macintosh HD:/Users/...` file paths to POSIX paths in the Python bridge and offline perception tools
+- Fix(P2): make OSC string args Unicode-safe end to end with ASCII-safe `b64:` transport and Max-side UTF-8 decode
+- Fix(P2): arrangement automation unsupported cases now surface as outer MCP errors instead of fake success payloads
+- Fix(P2): missing required Remote Script params now return `INVALID_PARAM` consistently
+- Fix(P3): release metadata now treats Codex as the primary plugin manifest with Claude as a mirrored manifest
+- Verification: live `capture_audio` wrote a 1.48s WAV from the master track; offline loudness + metadata reads succeeded on the returned path
+
 ## 1.9.9 — M4L Bridge Hardening + Deep Audit (March 2026)
 
 **87 tools tested live, 0 failures. 13 bugs fixed across JS bridge + Python tools.**

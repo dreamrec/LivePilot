@@ -34,11 +34,31 @@ _LOSSY_EXTS = {".mp3", ".m4a"}
 _MAX_FILE_SIZE = 500 * 1024 * 1024  # 500 MB
 
 
+def _normalize_audio_path(file_path: str) -> str:
+    """Convert Max-style HFS-ish paths into POSIX paths when possible."""
+    if len(file_path) >= 3 and file_path[1] == ":" and file_path[2] in ("/", "\\"):
+        return file_path
+
+    colon = file_path.find(":")
+    slash = file_path.find("/")
+    if colon <= 0 or (slash != -1 and colon > slash):
+        return file_path
+
+    rest = file_path[colon + 1:]
+    if ":" in rest:
+        rest = rest.replace(":", "/")
+    if not rest.startswith("/"):
+        rest = "/" + rest.lstrip("/\\")
+    return rest
+
+
 def _validate_audio(file_path: str, allow_mp3: bool = False) -> Optional[dict]:
     """Validate that a file exists, has a supported extension, and is < 500 MB.
 
     Returns None if valid, or an error dict if invalid.
     """
+    file_path = _normalize_audio_path(file_path)
+
     if not os.path.exists(file_path):
         return {"error": f"File not found: {file_path}", "code": "INVALID_PARAM"}
 
@@ -98,6 +118,7 @@ def analyze_loudness(
         return {"error": "detail must be 'summary' or 'full'", "code": "INVALID_PARAM"}
 
     try:
+        file_path = _normalize_audio_path(file_path)
         return compute_loudness(file_path, detail=detail)
     except FileNotFoundError as exc:
         return {"error": str(exc), "code": "INVALID_PARAM"}
@@ -136,6 +157,7 @@ def analyze_spectrum_offline(
         return {"error": "hop_length must be between 1 and n_fft", "code": "INVALID_PARAM"}
 
     try:
+        file_path = _normalize_audio_path(file_path)
         return compute_spectral(file_path, n_fft=n_fft, hop_length=hop_length)
     except FileNotFoundError as exc:
         return {"error": str(exc), "code": "INVALID_PARAM"}
@@ -177,6 +199,8 @@ def compare_to_reference(
         return {"error": f"reference_path: {err['error']}", "code": err["code"]}
 
     try:
+        mix_path = _normalize_audio_path(mix_path)
+        reference_path = _normalize_audio_path(reference_path)
         return _compare(mix_path, reference_path, normalize=normalize)
     except FileNotFoundError as exc:
         return {"error": str(exc), "code": "INVALID_PARAM"}
@@ -208,6 +232,7 @@ def read_audio_metadata(
         return err
 
     try:
+        file_path = _normalize_audio_path(file_path)
         return _read_metadata(file_path)
     except FileNotFoundError as exc:
         return {"error": str(exc), "code": "INVALID_PARAM"}
