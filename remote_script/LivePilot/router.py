@@ -51,6 +51,15 @@ def dispatch(song, command):
     if cmd_type is None:
         return error_response(request_id, "Missing 'type' field", INVALID_PARAM)
 
+    if params is None:
+        params = {}
+    elif not isinstance(params, dict):
+        return error_response(
+            request_id,
+            "'params' must be an object/dict",
+            INVALID_PARAM,
+        )
+
     # Built-in ping — no handler registration needed.
     if cmd_type == "ping":
         return success_response(request_id, {"pong": True})
@@ -65,6 +74,12 @@ def dispatch(song, command):
 
     try:
         result = handler(song, params)
+        if isinstance(result, dict) and "error" in result:
+            return error_response(
+                request_id,
+                result["error"],
+                result.get("code", INTERNAL),
+            )
         return success_response(request_id, result)
     except KeyError as exc:
         # Missing required parameter — report as INVALID_PARAM, not INTERNAL

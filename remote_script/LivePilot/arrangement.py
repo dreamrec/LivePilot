@@ -529,18 +529,12 @@ def set_arrangement_automation(song, params):
 
     # No fallback — direct envelope creation is the only safe approach.
     # Session-clip duplication can silently create overlapping clips.
-    return {
-        "error": (
-            "Cannot create automation envelope for parameter '%s' on this "
-            "arrangement clip. Direct envelope access is not supported for "
-            "this parameter type or Live version."
-            % parameter.name
-        ),
-        "code": "STATE_ERROR",
-        "track_index": track_index,
-        "clip_index": clip_index,
-        "parameter_name": parameter.name,
-    }
+    raise ValueError(
+        "Cannot create automation envelope for parameter '%s' on this "
+        "arrangement clip. Direct envelope access is not supported for "
+        "this parameter type or Live version."
+        % parameter.name
+    )
 
 
 @register("transpose_arrangement_notes")

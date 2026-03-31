@@ -1052,10 +1052,12 @@
 				"box": {
 					"id": "obj-route-status",
 					"maxclass": "newobj",
-					"text": "route status key",
+					"text": "route status key capture_start capture_stop",
 					"numinlets": 1,
-					"numoutlets": 3,
+					"numoutlets": 5,
 					"outlettype": [
+						"",
+						"",
 						"",
 						"",
 						""
@@ -1063,7 +1065,7 @@
 					"patching_rect": [
 						700.0,
 						580.0,
-						105.0,
+						248.0,
 						22.0
 					]
 				}
@@ -1100,6 +1102,131 @@
 						810.0,
 						620.0,
 						72.0,
+						22.0
+					]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-capture-unpack",
+					"maxclass": "newobj",
+					"text": "unpack s i",
+					"numinlets": 1,
+					"numoutlets": 2,
+					"outlettype": [
+						"",
+						"int"
+					],
+					"patching_rect": [
+						700.0,
+						660.0,
+						64.0,
+						22.0
+					]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-capture-record-off",
+					"maxclass": "message",
+					"text": "0",
+					"numinlets": 2,
+					"numoutlets": 1,
+					"outlettype": [
+						""
+					],
+					"patching_rect": [
+						860.0,
+						660.0,
+						56.0,
+						22.0
+					]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-capture-trigger",
+					"maxclass": "newobj",
+					"text": "t b s",
+					"numinlets": 1,
+					"numoutlets": 2,
+					"outlettype": [
+						"bang",
+						""
+					],
+					"patching_rect": [
+						700.0,
+						700.0,
+						38.0,
+						22.0
+					]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-capture-record-delay",
+					"maxclass": "newobj",
+					"text": "delay 20",
+					"numinlets": 2,
+					"numoutlets": 1,
+					"outlettype": [
+						"bang"
+					],
+					"patching_rect": [
+						700.0,
+						740.0,
+						55.0,
+						22.0
+					]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-capture-record-on",
+					"maxclass": "message",
+					"text": "1",
+					"numinlets": 2,
+					"numoutlets": 1,
+					"outlettype": [
+						""
+					],
+					"patching_rect": [
+						700.0,
+						740.0,
+						56.0,
+						22.0
+					]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-capture-open",
+					"maxclass": "newobj",
+					"text": "prepend open",
+					"numinlets": 1,
+					"numoutlets": 1,
+					"outlettype": [
+						""
+					],
+					"patching_rect": [
+						770.0,
+						740.0,
+						84.0,
+						22.0
+					]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-capture-rec",
+					"maxclass": "newobj",
+					"text": "sfrecord~ 2",
+					"numinlets": 2,
+					"numoutlets": 0,
+					"patching_rect": [
+						700.0,
+						780.0,
+						78.0,
 						22.0
 					]
 				}
@@ -1396,6 +1523,30 @@
 					],
 					"destination": [
 						"obj-3",
+						0
+					]
+				}
+			},
+			{
+				"patchline": {
+					"source": [
+						"obj-1",
+						1
+					],
+					"destination": [
+						"obj-capture-rec",
+						1
+					]
+				}
+			},
+			{
+				"patchline": {
+					"source": [
+						"obj-1",
+						0
+					],
+					"destination": [
+						"obj-capture-rec",
 						0
 					]
 				}
@@ -2092,6 +2243,114 @@
 					],
 					"destination": [
 						"obj-key-display",
+						0
+					]
+				}
+			},
+			{
+				"patchline": {
+					"source": [
+						"obj-route-status",
+						2
+					],
+					"destination": [
+						"obj-capture-unpack",
+						0
+					]
+				}
+			},
+			{
+				"patchline": {
+					"source": [
+						"obj-capture-unpack",
+						0
+					],
+					"destination": [
+						"obj-capture-trigger",
+						0
+					]
+				}
+			},
+			{
+				"patchline": {
+					"source": [
+						"obj-capture-trigger",
+						0
+					],
+					"destination": [
+						"obj-capture-record-delay",
+						0
+					]
+				}
+			},
+			{
+				"patchline": {
+					"source": [
+						"obj-capture-record-delay",
+						0
+					],
+					"destination": [
+						"obj-capture-record-on",
+						0
+					]
+				}
+			},
+			{
+				"patchline": {
+					"source": [
+						"obj-capture-trigger",
+						1
+					],
+					"destination": [
+						"obj-capture-open",
+						0
+					]
+				}
+			},
+			{
+				"patchline": {
+					"source": [
+						"obj-capture-open",
+						0
+					],
+					"destination": [
+						"obj-capture-rec",
+						0
+					]
+				}
+			},
+			{
+				"patchline": {
+					"source": [
+						"obj-capture-record-on",
+						0
+					],
+					"destination": [
+						"obj-capture-rec",
+						0
+					]
+				}
+			},
+			{
+				"patchline": {
+					"source": [
+						"obj-route-status",
+						3
+					],
+					"destination": [
+						"obj-capture-record-off",
+						0
+					]
+				}
+			},
+			{
+				"patchline": {
+					"source": [
+						"obj-capture-record-off",
+						0
+					],
+					"destination": [
+						"obj-capture-rec",
 						0
 					]
 				}
