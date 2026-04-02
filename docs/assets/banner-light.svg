@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" fill="none">
+  <defs>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#111111;stop-opacity:0.9"/>
+      <stop offset="50%" style="stop-color:#000000;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#111111;stop-opacity:0.9"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#999999;stop-opacity:0"/>
+      <stop offset="20%" style="stop-color:#999999;stop-opacity:0.3"/>
+      <stop offset="80%" style="stop-color:#999999;stop-opacity:0.3"/>
+      <stop offset="100%" style="stop-color:#999999;stop-opacity:0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="200" fill="transparent"/>
+
+  <!-- Top rule -->
+  <rect x="200" y="30" width="400" height="0.5" fill="url(#accent)"/>
+
+  <!-- LIVEPILOT wordmark -->
+  <text x="400" y="95" text-anchor="middle" font-family="'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace" font-size="52" font-weight="700" letter-spacing="8" fill="url(#glow)">LIVEPILOT</text>
+
+  <!-- Tagline -->
+  <text x="400" y="128" text-anchor="middle" font-family="'SF Mono', 'Fira Code', 'Cascadia Code', monospace" font-size="11" font-weight="400" letter-spacing="5" fill="#777777">AGENTIC PRODUCTION FOR ABLETON LIVE 12</text>
+
+  <!-- Bottom rule -->
+  <rect x="200" y="150" width="400" height="0.5" fill="url(#accent)"/>
+
+  <!-- Stats -->
+  <text x="285" y="175" text-anchor="middle" font-family="'SF Mono', 'Fira Code', monospace" font-size="9" font-weight="600" letter-spacing="2" fill="#999999">178 TOOLS</text>
+  <text x="400" y="175" text-anchor="middle" font-family="'SF Mono', 'Fira Code', monospace" font-size="9" font-weight="600" letter-spacing="2" fill="#999999">17 DOMAINS</text>
+  <text x="520" y="175" text-anchor="middle" font-family="'SF Mono', 'Fira Code', monospace" font-size="9" font-weight="600" letter-spacing="2" fill="#999999">3 LAYERS</text>
+</svg>

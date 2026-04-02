@@ -1,0 +1,113 @@
+name: Bug Report
+description: Report a bug in LivePilot
+labels: ["bug"]
+body:
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight
+      options:
+        - label: I'm using the [latest version](https://github.com/dreamrec/LivePilot/releases/latest) of LivePilot
+          required: true
+        - label: I searched [existing issues](https://github.com/dreamrec/LivePilot/issues) and this hasn't been reported
+          required: true
+        - label: I restarted Ableton and the MCP server before reporting
+          required: true
+
+  - type: input
+    id: livepilot-version
+    attributes:
+      label: LivePilot version
+      description: "Run `npx livepilot --version`"
+      placeholder: "1.9.11"
+    validations:
+      required: true
+
+  - type: input
+    id: ableton-version
+    attributes:
+      label: Ableton Live version
+      placeholder: "12.1.5 Suite"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mcp-client
+    attributes:
+      label: MCP client
+      options:
+        - Claude Code
+        - Claude Desktop
+        - Cursor
+        - VS Code Copilot
+        - Windsurf
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Windows
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the bug. Include the tool name if applicable.
+      placeholder: |
+        When I call `find_and_load_device` with name "Drift", the tool returns success
+        but no device appears on the track.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps to trigger the bug.
+      placeholder: |
+        1. Create a new MIDI track
+        2. Call `find_and_load_device` with name "Drift"
+        3. Check the track's device chain
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      placeholder: Drift should appear as the first device on the track.
+    validations:
+      required: true
+
+  - type: textarea
+    id: error-output
+    attributes:
+      label: Error output
+      description: Paste any error messages, stack traces, or MCP error responses.
+      render: shell
+
+  - type: dropdown
+    id: m4l-analyzer
+    attributes:
+      label: M4L Analyzer loaded?
+      description: Is LivePilot_Analyzer.amxd on the master track?
+      options:
+        - "Yes"
+        - "No"
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics output
+      description: "Run `npx livepilot --doctor` and paste the result."
+      render: shell

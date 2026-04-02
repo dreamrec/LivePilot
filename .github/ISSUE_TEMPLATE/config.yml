@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question / Help
+    url: https://github.com/dreamrec/LivePilot/discussions/new?category=q-a
+    about: Ask questions about setup, usage, or troubleshooting — don't open an issue.
+  - name: Show & Tell
+    url: https://github.com/dreamrec/LivePilot/discussions/new?category=show-and-tell
+    about: Share what you've built with LivePilot.
+  - name: Ideas
+    url: https://github.com/dreamrec/LivePilot/discussions/new?category=ideas
+    about: Brainstorm new features or integrations before filing a formal request.
