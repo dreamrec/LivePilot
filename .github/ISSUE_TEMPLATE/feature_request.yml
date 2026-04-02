@@ -1,0 +1,65 @@
+name: Feature Request
+description: Suggest a new tool, improvement, or integration
+labels: ["enhancement"]
+body:
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight
+      options:
+        - label: I searched [existing issues](https://github.com/dreamrec/LivePilot/issues) and this hasn't been requested
+          required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options:
+        - New tool
+        - Improve existing tool
+        - New domain
+        - Plugin / skill
+        - Browser / device atlas
+        - M4L Analyzer
+        - Automation / generative
+        - Theory / harmony
+        - Memory system
+        - CLI / installer
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or motivation
+      description: What workflow limitation or pain point does this address?
+      placeholder: |
+        When mixing, I often need to check the loudness of individual tracks,
+        but `analyze_loudness` only works on the master bus.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Describe what the tool or feature should do.
+      placeholder: |
+        Add a `track` parameter to `analyze_loudness` that solos the track,
+        measures, then restores the solo state.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches you've thought about.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Workflow examples, screenshots, links to Ableton docs, etc.
