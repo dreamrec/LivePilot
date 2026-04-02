@@ -51,6 +51,22 @@ def _output_dir() -> Path:
     return d
 
 
+def _safe_output_path(directory: Path, filename: str) -> Path:
+    """Join *filename* to *directory* with path-traversal containment.
+
+    Strips directory components (``../../evil.mid`` → ``evil.mid``),
+    resolves the result, and verifies it is still inside *directory*.
+    Raises ``ValueError`` on any escape attempt.
+    """
+    safe_name = Path(filename).name          # strip directory components
+    if not safe_name:
+        raise ValueError(f"Invalid filename: {filename!r}")
+    out = (directory / safe_name).resolve()
+    if not str(out).startswith(str(directory.resolve())):
+        raise ValueError(f"Filename escapes output directory: {filename!r}")
+    return out
+
+
 def _validate_midi_path(file_path: str) -> Path:
     p = Path(file_path)
     if not p.exists():
@@ -112,7 +128,7 @@ def export_clip_midi(
     if not filename.endswith((".mid", ".midi")):
         filename += ".mid"
 
-    out_path = _output_dir() / filename
+    out_path = _safe_output_path(_output_dir(), filename)
 
     midi = MIDIFile(1)
     midi.addTempo(0, 0, tempo)

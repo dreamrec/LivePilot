@@ -16,6 +16,5 @@ jobs:
           python-version: "3.12"
       - run: |
           pip install numpy setuptools wheel
-          pip install --no-build-isolation opycleid>=0.5.1
           pip install -r requirements.txt pytest pytest-asyncio
       - run: pytest tests/ -v

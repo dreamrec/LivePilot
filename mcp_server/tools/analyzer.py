@@ -590,6 +590,17 @@ async def capture_audio(
     if source not in ("master",):
         raise ValueError(f"Unsupported source '{source}'. Valid: 'master'")
 
+    # Sanitize filename — strip directory components to prevent path traversal
+    if filename:
+        import os
+        safe_name = os.path.basename(filename)
+        if not safe_name or safe_name != filename:
+            if ".." in filename or "/" in filename or "\\" in filename:
+                raise ValueError(
+                    f"Filename must not contain path separators or '..' segments: {filename!r}"
+                )
+        filename = safe_name
+
     bridge = _get_m4l(ctx)
     duration_ms = duration_seconds * 1000
     result = await bridge.send_capture(

@@ -20,16 +20,17 @@ def get_clip_automation(song, params):
     envelopes = []
 
     # Check mixer parameters: volume, panning, sends
+    # Use the specific parameter_type that set/clear accept (not generic "mixer")
     mixer = track.mixer_device
-    for param_name, param in [
-        ("Volume", mixer.volume),
-        ("Pan", mixer.panning),
+    for param_name, param_type, param in [
+        ("Volume", "volume", mixer.volume),
+        ("Pan", "panning", mixer.panning),
     ]:
         env = clip.automation_envelope(param)
         if env is not None:
             envelopes.append({
                 "parameter_name": param_name,
-                "parameter_type": "mixer",
+                "parameter_type": param_type,
                 "has_envelope": True,
             })
 

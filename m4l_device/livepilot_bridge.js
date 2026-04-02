@@ -1165,6 +1165,15 @@ function cmd_capture_audio(args) {
     var duration_ms = parseInt(args[0]) || 10000;
     var requested_name = args[1] ? args[1].toString().trim() : "";
 
+    // Sanitize filename — strip any directory components (defense-in-depth)
+    if (requested_name.length > 0) {
+        requested_name = _safe_filename(requested_name);
+        if (!requested_name || requested_name.length === 0) {
+            send_response({"error": "Invalid capture filename (path traversal blocked)"});
+            return;
+        }
+    }
+
     // Generate a timestamped filename if none provided
     var d = new Date();
     var ts = d.getFullYear() + "_"
@@ -1448,6 +1457,16 @@ function _get_patcher_dir() {
     } catch (e) {
         return "";
     }
+}
+
+function _safe_filename(name) {
+    // Strip directory components and reject traversal attempts.
+    // This is defense-in-depth — Python should sanitize first.
+    if (!name || name.length === 0) return name;
+    var slash = Math.max(name.lastIndexOf("/"), name.lastIndexOf("\\"));
+    if (slash >= 0) name = name.substring(slash + 1);
+    if (name === "." || name === ".." || name.length === 0) return "";
+    return name;
 }
 
 function _join_path(dir, file) {
