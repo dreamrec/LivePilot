@@ -84,7 +84,7 @@ function anything() {
 function dispatch(cmd, args) {
     switch(cmd) {
         case "ping":
-            send_response({"ok": true, "version": "1.9.10"});
+            send_response({"ok": true, "version": "1.9.11"});
             break;
         case "get_params":
             cmd_get_params(args);
@@ -150,7 +150,7 @@ function dispatch(cmd, args) {
             cmd_capture_stop();
             break;
         case "check_flucoma":
-            send_response({"flucoma_available": true, "version": "1.0.9"});
+            cmd_check_flucoma();
             break;
         // ── Phase 2: Clip & Display ──
         case "scrub_clip":
@@ -455,6 +455,22 @@ function cmd_get_chains_deep(args) {
         send_response({"track": track_idx, "device": device_idx, "chains": chains});
     } catch (e) {
         send_response({"error": "Failed reading chains: " + String(e), "track": track_idx, "device": device_idx});
+    }
+}
+
+function cmd_check_flucoma() {
+    // Check if FluCoMa externals are installed.
+    // Max JS cannot reliably probe the object search path at runtime,
+    // so we check if the FluCoMa package folder exists on disk.
+    try {
+        var pkg_path = max.appsupportpath + "/Packages/FluidCorpusManipulation";
+        var f = new Folder(pkg_path);
+        var available = (f.typelist !== undefined);
+        f.close();
+        send_response({"flucoma_available": available});
+    } catch (e) {
+        // Can't probe — report unknown rather than lying
+        send_response({"flucoma_available": false, "probe_error": String(e)});
     }
 }
 

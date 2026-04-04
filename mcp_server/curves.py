@@ -366,11 +366,15 @@ def _brownian(duration: float, density: int, start: float = 0.5,
         step = drift / density + volatility * _det_random(i, seed)
         value += step
         # Soft boundary reflection (bounce off 0/1 until within range)
-        while value > 1.0 or value < 0.0:
+        for _ in range(100):
+            if 0.0 <= value <= 1.0:
+                break
             if value > 1.0:
                 value = 2.0 - value
             if value < 0.0:
                 value = -value
+        else:
+            value = max(0.0, min(1.0, value))
     return points
 
 

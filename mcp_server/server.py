@@ -128,7 +128,11 @@ def _coerce_schema_property(prop: dict) -> None:
         if "string" in variant_types and variant_types & {"integer", "number"}:
             return
         for variant in prop["anyOf"]:
-            _coerce_schema_property(variant)
+            if isinstance(variant, dict):
+                _coerce_schema_property(variant)
+    # Recurse into array items so list[int]/list[float] params also accept strings
+    if "items" in prop and isinstance(prop["items"], dict):
+        _coerce_schema_property(prop["items"])
 
 
 def _get_all_tools():
