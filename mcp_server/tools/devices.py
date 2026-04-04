@@ -180,12 +180,11 @@ def _postflight_loaded_device(ctx: Context, result: dict) -> dict:
 
 def _validate_track_index(track_index: int):
     if track_index < 0 and track_index != MASTER_TRACK_INDEX:
-        if track_index < -100:
+        if not (-99 <= track_index <= -1):
             raise ValueError(
                 "track_index must be >= 0 for regular tracks, "
-                "negative for return tracks (-1=A, -2=B), or -1000 for master"
+                "-1..-99 for return tracks (-1=A, -2=B), or -1000 for master"
             )
-        # Negative values -1..-99 are valid return track indices
 
 
 def _validate_device_index(device_index: int):

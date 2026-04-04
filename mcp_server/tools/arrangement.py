@@ -162,7 +162,10 @@ def add_arrangement_notes(
     _validate_track_index(track_index)
     _validate_clip_index(clip_index)
     if isinstance(notes, str):
-        notes = json.loads(notes)
+        try:
+            notes = json.loads(notes)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Invalid JSON in notes parameter: {exc}") from exc
     for note in notes:
         _validate_note(note)
     return _get_ableton(ctx).send_command("add_arrangement_notes", {
@@ -206,7 +209,10 @@ def set_arrangement_automation(
     if parameter_type == "send" and send_index is None:
         raise ValueError("send_index required for parameter_type='send'")
     if isinstance(points, str):
-        points = json.loads(points)
+        try:
+            points = json.loads(points)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Invalid JSON in points parameter: {exc}") from exc
     if not points:
         raise ValueError("points list cannot be empty")
     params: dict = {
@@ -352,7 +358,10 @@ def remove_arrangement_notes_by_id(
     _validate_track_index(track_index)
     _validate_clip_index(clip_index)
     if isinstance(note_ids, str):
-        note_ids = json.loads(note_ids)
+        try:
+            note_ids = json.loads(note_ids)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Invalid JSON in note_ids parameter: {exc}") from exc
     if not note_ids:
         raise ValueError("note_ids list cannot be empty")
     return _get_ableton(ctx).send_command("remove_arrangement_notes_by_id", {
@@ -374,7 +383,10 @@ def modify_arrangement_notes(
     _validate_track_index(track_index)
     _validate_clip_index(clip_index)
     if isinstance(modifications, str):
-        modifications = json.loads(modifications)
+        try:
+            modifications = json.loads(modifications)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Invalid JSON in modifications parameter: {exc}") from exc
     if not modifications:
         raise ValueError("modifications list cannot be empty")
     for mod in modifications:
@@ -407,7 +419,10 @@ def duplicate_arrangement_notes(
     _validate_track_index(track_index)
     _validate_clip_index(clip_index)
     if isinstance(note_ids, str):
-        note_ids = json.loads(note_ids)
+        try:
+            note_ids = json.loads(note_ids)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Invalid JSON in note_ids parameter: {exc}") from exc
     if not note_ids:
         raise ValueError("note_ids list cannot be empty")
     return _get_ableton(ctx).send_command("duplicate_arrangement_notes", {

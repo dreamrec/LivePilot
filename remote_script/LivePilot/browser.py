@@ -76,13 +76,19 @@ def _navigate_path(browser, path):
     return current
 
 
+_MAX_SEARCH_ITERATIONS = 100000
+
+
 def _search_recursive(item, name_filter, loadable_only, results, depth, max_depth,
-                      max_results=100):
-    """Recursively search browser children."""
+                      max_results=100, _counter=None):
+    """Recursively search browser children with iteration cap."""
+    if _counter is None:
+        _counter = [0]  # mutable counter shared across recursion
     if depth > max_depth or len(results) >= max_results:
         return
     for child in item.children:
-        if len(results) >= max_results:
+        _counter[0] += 1
+        if _counter[0] > _MAX_SEARCH_ITERATIONS or len(results) >= max_results:
             return
         match = True
         if name_filter and name_filter.lower() not in child.name.lower():
@@ -102,7 +108,7 @@ def _search_recursive(item, name_filter, loadable_only, results, depth, max_dept
         if child.is_folder:
             _search_recursive(
                 child, name_filter, loadable_only, results, depth + 1, max_depth,
-                max_results
+                max_results, _counter
             )
             if len(results) >= max_results:
                 return
@@ -125,12 +131,17 @@ def get_browser_tree(song, params):
 
     result = []
     for name, item in categories.items():
-        children = list(item.children)
-        child_names = [c.name for c in children[:20]]
+        # Count lazily without materializing the full children list
+        children_preview = []
+        count = 0
+        for c in item.children:
+            count += 1
+            if len(children_preview) < 20:
+                children_preview.append(c.name)
         result.append({
             "name": name,
-            "children_count": len(children),
-            "children_preview": child_names,
+            "children_count": count,
+            "children_preview": children_preview,
         })
     return {"categories": result}
 

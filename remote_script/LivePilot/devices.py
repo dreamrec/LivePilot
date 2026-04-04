@@ -3,6 +3,7 @@ LivePilot - Device domain handlers (11 commands).
 """
 
 import Live
+from collections import deque
 
 from .router import register
 from .utils import get_track, get_device
@@ -178,6 +179,8 @@ def toggle_device(song, params):
             break
     if on_param is None:
         # Fallback to parameter 0 for devices that don't use "Device On"
+        if not list(device.parameters):
+            raise ValueError("Device '%s' has no parameters to toggle" % device.name)
         on_param = device.parameters[0]
 
     on_param.value = 1.0 if active else 0.0
@@ -399,10 +402,10 @@ def find_and_load_device(song, params):
         This ensures raw 'Operator' is found before 'Hello Operator.adg' buried
         in a user_library subfolder."""
         nonlocal iterations
-        # Queue of (item, depth) tuples
-        queue = [(category, 0)]
+        # Queue of (item, depth) tuples — deque for O(1) popleft
+        queue = deque([(category, 0)])
         while queue:
-            item, depth = queue.pop(0)
+            item, depth = queue.popleft()
             if depth > 8:
                 continue
             try:

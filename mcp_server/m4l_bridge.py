@@ -141,6 +141,7 @@ class SpectralReceiver(asyncio.DatagramProtocol):
     def __init__(self, cache: SpectralCache):
         self.cache = cache
         self._chunks: dict[str, dict] = {}  # Reassembly buffer for chunked responses
+        self._chunk_times: dict[str, float] = {}  # Monotonic timestamp per chunk sequence
         self._chunk_id = 0
         self._response_callback: Optional[asyncio.Future] = None
         self._capture_future: Optional[asyncio.Future] = None
@@ -284,6 +285,7 @@ class SpectralReceiver(asyncio.DatagramProtocol):
         key = str(self._chunk_id)
         if key not in self._chunks:
             self._chunks[key] = {"parts": {}, "total": total}
+            self._chunk_times[key] = time.monotonic()
 
         self._chunks[key]["parts"][index] = encoded
 
@@ -293,7 +295,15 @@ class SpectralReceiver(asyncio.DatagramProtocol):
             for i in range(total):
                 full += self._chunks[key]["parts"][i]
             del self._chunks[key]
+            self._chunk_times.pop(key, None)
             self._handle_response(full)
+
+        # Evict incomplete chunk sequences older than 30 seconds
+        now = time.monotonic()
+        stale = [k for k, t in self._chunk_times.items() if now - t > 30.0]
+        for k in stale:
+            self._chunks.pop(k, None)
+            self._chunk_times.pop(k, None)
 
     def _handle_capture_complete(self, encoded: str) -> None:
         """Decode a /capture_complete OSC message and resolve _capture_future."""
@@ -359,32 +369,34 @@ class M4LBridge:
         if not self.cache.is_connected:
             return {"error": "LivePilot Analyzer not connected. Drop it on the master track."}
 
-        # Cancel any stale capture future before creating a new one
-        if self.receiver and self.receiver._capture_future and not self.receiver._capture_future.done():
-            self.receiver._capture_future.cancel()
+        async with self._cmd_lock:
+            # Cancel any stale capture future before creating a new one
+            if self.receiver and self.receiver._capture_future and not self.receiver._capture_future.done():
+                self.receiver._capture_future.cancel()
 
-        loop = asyncio.get_running_loop()
-        future = loop.create_future()
-        if self.receiver:
-            self.receiver.set_capture_future(future)
-
-        osc_data = self._build_osc(command, args)
-        self._sock.sendto(osc_data, self._m4l_addr)
-
-        try:
-            result = await asyncio.wait_for(future, timeout=timeout)
-            return result
-        except asyncio.TimeoutError:
-            # Clean up the dangling future
+            loop = asyncio.get_running_loop()
+            future = loop.create_future()
             if self.receiver:
-                self.receiver._capture_future = None
-            return {"error": "M4L capture timeout — device may be busy or removed"}
+                self.receiver.set_capture_future(future)
 
-    def cancel_capture_future(self) -> None:
+            osc_data = self._build_osc(command, args)
+            self._sock.sendto(osc_data, self._m4l_addr)
+
+            try:
+                result = await asyncio.wait_for(future, timeout=timeout)
+                return result
+            except asyncio.TimeoutError:
+                # Clean up the dangling future
+                if self.receiver:
+                    self.receiver._capture_future = None
+                return {"error": "M4L capture timeout — device may be busy or removed"}
+
+    async def cancel_capture_future(self) -> None:
         """Cancel any in-progress capture future (called by capture_stop)."""
-        if self.receiver and self.receiver._capture_future and not self.receiver._capture_future.done():
-            self.receiver._capture_future.cancel()
-            self.receiver._capture_future = None
+        async with self._cmd_lock:
+            if self.receiver and self.receiver._capture_future and not self.receiver._capture_future.done():
+                self.receiver._capture_future.cancel()
+                self.receiver._capture_future = None
 
     def _build_osc(self, address: str, args: tuple) -> bytes:
         """Build a minimal OSC message.

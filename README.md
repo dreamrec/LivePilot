@@ -91,7 +91,7 @@ All three feed into 178 deterministic tools that execute on Ableton's main threa
 | Tracks | 17 | create MIDI/audio/return, delete, duplicate, arm, mute, solo, color, freeze, flatten |
 | Clips | 11 | create, delete, duplicate, fire, stop, loop, launch mode, warp mode, quantize |
 | Notes | 8 | add/get/remove/modify MIDI notes, transpose, duplicate, per-note probability |
-| Devices | 12 | load by name or URI, get/set parameters, batch edit, racks, chains, presets |
+| Devices | 15 | load by name or URI, get/set parameters, batch edit, racks, chains, presets, plugin deep control |
 | Scenes | 12 | create, delete, duplicate, fire, name, color, tempo, scene matrix |
 | Browser | 4 | search library, browse tree, load items, filter by category |
 | Mixing | 11 | volume, pan, sends, routing, meters, return tracks, master, full mix snapshot |
@@ -99,13 +99,13 @@ All three feed into 178 deterministic tools that execute on Ableton's main threa
 
 <br>
 
-### Perception — 32 tools `[M4L]`
+### Perception — 33 tools `[M4L]`
 
 The M4L Analyzer sits on the master track. UDP 9880 carries spectral data
 from Max to the server. OSC 9881 sends commands back.
 
 > [!TIP]
-> All 146 core tools work without the analyzer — it adds 32 more and closes the feedback loop.
+> All 145 core tools work without the analyzer — it adds 33 more and closes the feedback loop.
 
 ```
 SPECTRAL ─────── 8-band frequency decomposition (sub → air)

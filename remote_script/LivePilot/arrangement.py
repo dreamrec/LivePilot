@@ -85,28 +85,18 @@ def create_arrangement_clip(song, params):
         first_clip_index = None
 
         while pos < end_pos:
-            # Snapshot clip IDs before duplication to identify the new one
-            old_ids = set(id(c) for c in track.arrangement_clips)
-
             track.duplicate_clip_to_arrangement(source_clip, pos)
 
-            # Find the NEW clip (not in old_ids) at the target position
+            # Find the new clip by position (id()-based detection is unreliable
+            # because CPython can reuse addresses of GC'd LOM wrappers)
             arr_clips = list(track.arrangement_clips)
             new_clip = None
             new_clip_idx = None
             for i, c in enumerate(arr_clips):
-                if id(c) not in old_ids and abs(c.start_time - pos) < 0.01:
+                if abs(c.start_time - pos) < 0.01:
                     new_clip = c
                     new_clip_idx = i
                     break
-
-            # Fallback: if id-based detection fails, match by position
-            if new_clip is None:
-                for i, c in enumerate(arr_clips):
-                    if abs(c.start_time - pos) < 0.01:
-                        new_clip = c
-                        new_clip_idx = i
-                        break
 
             if new_clip is not None:
                 if first_clip_index is None:

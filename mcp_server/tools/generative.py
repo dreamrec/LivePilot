@@ -94,6 +94,10 @@ def layer_euclidean_rhythms(
     for layer in layers:
         p = int(layer["pulses"])
         s = int(layer["steps"])
+        if s < 1 or s > 64:
+            raise ValueError(f"steps must be between 1 and 64, got {s}")
+        if p < 0 or p > s:
+            raise ValueError(f"pulses must be between 0 and steps ({s}), got {p}")
         rot = int(layer.get("rotation", 0))
         pitch = int(layer["pitch"])
         vel = int(layer.get("velocity", 100))

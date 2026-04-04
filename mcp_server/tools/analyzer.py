@@ -595,10 +595,9 @@ async def capture_audio(
         import os
         safe_name = os.path.basename(filename)
         if not safe_name or safe_name != filename:
-            if ".." in filename or "/" in filename or "\\" in filename:
-                raise ValueError(
-                    f"Filename must not contain path separators or '..' segments: {filename!r}"
-                )
+            raise ValueError(
+                f"Filename must not contain path separators or '..' segments: {filename!r}"
+            )
         filename = safe_name
 
     bridge = _get_m4l(ctx)
@@ -624,7 +623,7 @@ async def capture_stop(ctx: Context) -> dict:
     _require_analyzer(cache)
     bridge = _get_m4l(ctx)
     # Cancel the capture future so send_capture doesn't hang forever
-    bridge.cancel_capture_future()
+    await bridge.cancel_capture_future()
     return await bridge.send_command("capture_stop")
 
 
