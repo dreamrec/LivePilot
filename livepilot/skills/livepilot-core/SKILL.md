@@ -27,7 +27,8 @@ These layers sit on top of 178 deterministic tools across 17 domains: transport,
 10. **Always name your tracks and clips** — organization is part of the creative process
 11. **Respect tool speed tiers** — see below. Never call heavy tools without user consent.
 12. **ALWAYS report tool errors to the user** — if any tool call returns an error, immediately tell the user what failed, why, and what workaround you're using. Never silently swallow errors or switch strategies without explaining. Include: the tool name, the error message, and your fallback plan. This applies to all tool errors including missing M4L analyzer, dead plugins (`parameter_count` <= 1 on AU/VST), connection timeouts, and invalid parameter responses.
-13. **Verify AU/VST plugin health after loading** — after `find_and_load_device` or `load_device_by_uri` for any AU/VST plugin, call `get_device_info`. If `parameter_count` <= 1 and `class_name` contains "PluginDevice", the plugin is dead. Delete it with `delete_device` and replace with a native Ableton alternative. Report the failure to the user.
+13. **Verify plugin health after loading** — v1.9.11+ tools now return `health_flags`, `mcp_sound_design_ready`, and `plugin_host_status` on device load and info calls. Check `mcp_sound_design_ready` — if `false`, check `health_flags` for: `opaque_or_failed_plugin` (dead or untweakable AU/VST), `sample_dependent` (granular synth needing source audio). On failure: delete with `delete_device`, replace with native Ableton alternative, report to user.
+14. **Use `C hijaz` for Hijaz/Phrygian Dominant keys** — v1.9.11+ theory tools accept `hijaz` as a key alias. Use `key="C hijaz"` in `detect_theory_issues`, `analyze_harmony`, etc. to avoid false out-of-key warnings on Hijaz, manele, or Middle Eastern scales.
 
 ## Tool Speed Tiers
 
@@ -137,8 +138,8 @@ Never skip levels. The user's question determines the entry point, but always st
 ### Transport (12)
 `get_session_info` · `set_tempo` · `set_time_signature` · `start_playback` · `stop_playback` · `continue_playback` · `toggle_metronome` · `set_session_loop` · `undo` · `redo` · `get_recent_actions` · `get_session_diagnostics`
 
-### Tracks (14)
-`get_track_info` · `create_midi_track` · `create_audio_track` · `create_return_track` · `delete_track` · `duplicate_track` · `set_track_name` · `set_track_color` · `set_track_mute` · `set_track_solo` · `set_track_arm` · `stop_track_clips` · `set_group_fold` · `set_track_input_monitoring`
+### Tracks (17)
+`get_track_info` · `create_midi_track` · `create_audio_track` · `create_return_track` · `delete_track` · `duplicate_track` · `set_track_name` · `set_track_color` · `set_track_mute` · `set_track_solo` · `set_track_arm` · `stop_track_clips` · `set_group_fold` · `set_track_input_monitoring` · `freeze_track` · `flatten_track` · `get_freeze_status`
 
 ### Clips (11)
 `get_clip_info` · `create_clip` · `delete_clip` · `duplicate_clip` · `fire_clip` · `stop_clip` · `set_clip_name` · `set_clip_color` · `set_clip_loop` · `set_clip_launch` · `set_clip_warp_mode`
@@ -146,11 +147,11 @@ Never skip levels. The user's question determines the entry point, but always st
 ### Notes (8)
 `add_notes` · `get_notes` · `remove_notes` · `remove_notes_by_id` · `modify_notes` · `duplicate_notes` · `transpose_notes` · `quantize_clip`
 
-### Devices (12)
-`get_device_info` · `get_device_parameters` · `set_device_parameter` · `batch_set_parameters` · `toggle_device` · `delete_device` · `load_device_by_uri` · `find_and_load_device` · `set_simpler_playback_mode` · `get_rack_chains` · `set_chain_volume` · `get_device_presets`
+### Devices (15)
+`get_device_info` · `get_device_parameters` · `set_device_parameter` · `batch_set_parameters` · `toggle_device` · `delete_device` · `load_device_by_uri` · `find_and_load_device` · `set_simpler_playback_mode` · `get_rack_chains` · `set_chain_volume` · `get_device_presets` · `get_plugin_parameters` · `map_plugin_parameter` · `get_plugin_presets`
 
-### Scenes (8)
-`get_scenes_info` · `create_scene` · `delete_scene` · `duplicate_scene` · `fire_scene` · `set_scene_name` · `set_scene_color` · `set_scene_tempo`
+### Scenes (12)
+`get_scenes_info` · `create_scene` · `delete_scene` · `duplicate_scene` · `fire_scene` · `set_scene_name` · `set_scene_color` · `set_scene_tempo` · `get_scene_matrix` · `fire_scene_clips` · `stop_all_clips` · `get_playing_clips`
 
 ### Mixing (11)
 `set_track_volume` · `set_track_pan` · `set_track_send` · `get_return_tracks` · `get_master_track` · `set_master_volume` · `get_track_routing` · `set_track_routing` · `get_track_meters` · `get_master_meters` · `get_mix_snapshot`

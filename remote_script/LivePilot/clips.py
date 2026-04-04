@@ -147,12 +147,14 @@ def set_clip_loop(song, params):
     clip_index = int(params["clip_index"])
     clip = get_clip(song, track_index, clip_index)
 
-    if "enabled" in params:
-        clip.looping = bool(params["enabled"])
-    if "start" in params:
-        clip.loop_start = float(params["start"])
+    # Set end before start to avoid Live's loop_start < loop_end clamping.
+    # Expanding the window first ensures the left edge can move freely.
     if "end" in params:
         clip.loop_end = float(params["end"])
+    if "start" in params:
+        clip.loop_start = float(params["start"])
+    if "enabled" in params:
+        clip.looping = bool(params["enabled"])
 
     return {
         "track_index": track_index,
@@ -199,10 +201,16 @@ def set_clip_warp_mode(song, params):
             "3=Re-Pitch, 4=Complex, 6=Complex Pro" % mode
         )
 
-    if "warping" in params:
-        clip.warping = bool(params["warping"])
+    # Enable warping first so warp_mode assignment is accepted by Live,
+    # then disable afterwards if requested.
+    enable_warping = params.get("warping")
+    if enable_warping is not None and bool(enable_warping):
+        clip.warping = True
 
     clip.warp_mode = mode
+
+    if enable_warping is not None and not bool(enable_warping):
+        clip.warping = False
 
     return {
         "track_index": track_index,

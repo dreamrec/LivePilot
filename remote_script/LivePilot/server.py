@@ -205,6 +205,9 @@ class LivePilotServer(object):
                 if not data:
                     break
                 buf += data.decode("utf-8", errors="replace")
+                if len(buf) > 4 * 1024 * 1024:  # 4 MB
+                    self._log("Client buffer overflow — disconnecting")
+                    break
                 while "\n" in buf:
                     line, buf = buf.split("\n", 1)
                     line = line.strip()

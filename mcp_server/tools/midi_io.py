@@ -202,7 +202,8 @@ def import_midi_to_clip(
             })
             slot_has_clip = True
         except AbletonConnectionError:
-            # Slot is empty — no clip to clear
+            # Slot is empty — send_command raises AbletonConnectionError
+            # for all Remote Script errors including INDEX_ERROR/NOT_FOUND
             pass
 
         if slot_has_clip:

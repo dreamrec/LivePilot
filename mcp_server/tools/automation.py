@@ -72,6 +72,13 @@ def set_clip_automation(
     Tip: Use apply_automation_shape to generate points from curves/recipes
     instead of calculating points manually.
     """
+    if parameter_type not in ("device", "volume", "panning", "send"):
+        raise ValueError("parameter_type must be 'device', 'volume', 'panning', or 'send'")
+    if parameter_type == "device":
+        if device_index is None or parameter_index is None:
+            raise ValueError("device_index and parameter_index required for parameter_type='device'")
+    if parameter_type == "send" and send_index is None:
+        raise ValueError("send_index required for parameter_type='send'")
     params: dict = {
         "track_index": track_index,
         "clip_index": clip_index,
@@ -107,6 +114,13 @@ def clear_clip_automation(
         "clip_index": clip_index,
     }
     if parameter_type is not None:
+        if parameter_type not in ("device", "volume", "panning", "send"):
+            raise ValueError("parameter_type must be 'device', 'volume', 'panning', or 'send'")
+        if parameter_type == "device":
+            if device_index is None or parameter_index is None:
+                raise ValueError("device_index and parameter_index required for parameter_type='device'")
+        if parameter_type == "send" and send_index is None:
+            raise ValueError("send_index required for parameter_type='send'")
         params["parameter_type"] = parameter_type
     if device_index is not None:
         params["device_index"] = device_index

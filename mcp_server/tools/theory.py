@@ -669,7 +669,14 @@ def transpose_smart(
 
     source_tonic = source_key["tonic"]
     target_tonic = target["tonic"]
-    semitone_shift = target_tonic - source_tonic
+    # Compute nearest-path semitone shift (never more than ±6)
+    raw_shift = target_tonic - source_tonic
+    if raw_shift > 6:
+        semitone_shift = raw_shift - 12
+    elif raw_shift < -6:
+        semitone_shift = raw_shift + 12
+    else:
+        semitone_shift = raw_shift
 
     if mode == "chromatic":
         transposed = []

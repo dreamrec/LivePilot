@@ -119,7 +119,7 @@ from .tools import perception   # noqa: F401, E402
 
 def _coerce_schema_property(prop: dict) -> None:
     """Widen a single JSON Schema property to also accept strings."""
-    if prop.get("type") in ("integer", "number"):
+    if prop.get("type") in ("integer", "number") and "anyOf" not in prop:
         original_type = prop.pop("type")
         prop["anyOf"] = [{"type": original_type}, {"type": "string"}]
     elif "anyOf" in prop:

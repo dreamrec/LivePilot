@@ -29,7 +29,7 @@ Run this checklist EVERY time the user says "update everything", "push", "releas
 ## 2. Tool Count (must ALL match)
 
 Current: **178 tools across 17 domains**.
-Core (no M4L): **139**. Analyzer (M4L): **29**. Perception (offline): **4**.
+Core (no M4L): **145**. Analyzer (M4L): **29**. Perception (offline): **4**.
 
 Verify: `grep -rc "@mcp.tool" mcp_server/tools/ | grep -v ":0" | awk -F: '{sum+=$2} END{print sum}'`
 
@@ -77,6 +77,7 @@ Current: **17 domains**: transport, tracks, clips, notes, devices, scenes, mixin
 
 - [ ] `~/.claude/plugins/cache/dreamrec-LivePilot/livepilot/` has current version directory
 - [ ] Old version directories removed
+- [ ] `~/.claude/plugins/installed_plugins.json` → `livepilot@dreamrec-LivePilot` entry: update `version`, `installPath`, `gitCommitSha`, `lastUpdated`
 
 ## 7. Social/Promotional Assets
 

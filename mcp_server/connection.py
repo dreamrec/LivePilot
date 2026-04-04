@@ -213,7 +213,7 @@ class AbletonConnection:
             raise AbletonConnectionError(f"Failed to send command: {exc}") from exc
 
         # Read until newline, preserving any trailing bytes in _recv_buf
-        buf = getattr(self, "_recv_buf", b"")
+        buf = self._recv_buf
         try:
             while b"\n" not in buf:
                 chunk = self._socket.recv(4096)
@@ -222,6 +222,10 @@ class AbletonConnection:
                     self.disconnect()
                     raise AbletonConnectionError("Connection closed by Ableton")
                 buf += chunk
+                if len(buf) > 10 * 1024 * 1024:  # 10 MB
+                    self._recv_buf = b""
+                    self.disconnect()
+                    raise AbletonConnectionError("Response too large (>10 MB)")
         except socket.timeout as exc:
             self._recv_buf = buf
             self.disconnect()
