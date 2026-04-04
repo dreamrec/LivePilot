@@ -252,8 +252,14 @@ class LivePilotServer(object):
         try:
             self._cs.schedule_message(0, self._process_next_command)
         except AssertionError:
-            # Already on main thread — process directly
-            self._process_next_command()
+            # ControlSurface is disconnecting — return error instead of
+            # running LOM calls on the TCP thread (which would be unsafe)
+            response_queue.put({
+                "id": request_id,
+                "ok": False,
+                "error": {"code": "STATE_ERROR", "message": "Script is disconnecting"},
+            })
+            return
 
         # Wait for response from main thread
         try:
@@ -299,7 +305,8 @@ class LivePilotServer(object):
             try:
                 self._cs.schedule_message(1, send_response)  # ~100ms
             except AssertionError:
-                send_response()
+                # ControlSurface disconnecting — send result immediately
+                response_queue.put(result)
         else:
             response_queue.put(result)
             # Drain any remaining queued commands
@@ -311,7 +318,9 @@ class LivePilotServer(object):
             try:
                 self._cs.schedule_message(0, self._process_next_command)
             except AssertionError:
-                self._process_next_command()
+                # ControlSurface disconnecting — drop remaining commands
+                # rather than running LOM calls on the wrong thread
+                pass
 
     # ── Socket I/O ───────────────────────────────────────────────────────
 

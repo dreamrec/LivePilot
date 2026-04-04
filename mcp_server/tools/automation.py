@@ -204,6 +204,15 @@ def apply_automation_shape(
     - Throws: use spike with short duration (1-2 beats)
     - Tremolo/pan: use sine with frequency in musical divisions
     """
+    # Validate parameter_type (same rules as set_clip_automation)
+    if parameter_type not in ("device", "volume", "panning", "send"):
+        raise ValueError("parameter_type must be 'device', 'volume', 'panning', or 'send'")
+    if parameter_type == "device":
+        if device_index is None or parameter_index is None:
+            raise ValueError("device_index and parameter_index required for parameter_type='device'")
+    if parameter_type == "send" and send_index is None:
+        raise ValueError("send_index required for parameter_type='send'")
+
     # Generate the curve
     points = generate_curve(
         curve_type=curve_type,
@@ -286,6 +295,15 @@ def apply_automation_recipe(
     - vinyl_crackle: slow bit reduction movement
     - stereo_narrow: collapse to mono before drop
     """
+    # Validate parameter_type (same rules as set_clip_automation)
+    if parameter_type not in ("device", "volume", "panning", "send"):
+        raise ValueError("parameter_type must be 'device', 'volume', 'panning', or 'send'")
+    if parameter_type == "device":
+        if device_index is None or parameter_index is None:
+            raise ValueError("device_index and parameter_index required for parameter_type='device'")
+    if parameter_type == "send" and send_index is None:
+        raise ValueError("send_index required for parameter_type='send'")
+
     points = generate_from_recipe(recipe, duration=duration, density=density)
 
     if time_offset > 0:
