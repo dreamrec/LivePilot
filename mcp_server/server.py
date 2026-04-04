@@ -123,6 +123,10 @@ def _coerce_schema_property(prop: dict) -> None:
         original_type = prop.pop("type")
         prop["anyOf"] = [{"type": original_type}, {"type": "string"}]
     elif "anyOf" in prop:
+        # Skip if this anyOf was already coerced (contains both a numeric and string type)
+        variant_types = {v.get("type") for v in prop["anyOf"] if isinstance(v, dict)}
+        if "string" in variant_types and variant_types & {"integer", "number"}:
+            return
         for variant in prop["anyOf"]:
             _coerce_schema_property(variant)
 
