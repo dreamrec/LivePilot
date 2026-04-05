@@ -11,6 +11,13 @@
 - Fix(P2): `--status` and TCP timeout paths now explain when another LivePilot client appears to be connected instead of only reporting a generic timeout
 - Docs: beat/sounddesign/core skill guidance now includes device-health checks, sample-dependent plugin cautions, and pitch-audit discipline from the live stress-test sessions
 - Verification: `292 passed`, `npm pack --dry-run` passed, live set diagnostics succeeded, analyzer bridge streamed on the master track, and conflict reproduction now reports the competing client PID
+- Fix(P1): brownian automation curve reflection loop now has 100-iteration guard with hard clamp fallback — high volatility values could previously hang the server
+- Fix(P1): schema coercion now recurses into array `items` so `list[float]` params benefit from string-to-number widening for MCP clients that serialize as strings
+- Fix(P1): `apply_automation_shape` and `apply_automation_recipe` now validate `parameter_type` and required companion params before sending to Ableton
+- Fix(P2): Remote Script `AssertionError` fallbacks now return STATE_ERROR instead of running LOM calls on the TCP thread during ControlSurface disconnection
+- Fix(P2): M4L bridge ping version corrected to 1.9.11; `check_flucoma` now probes disk for FluCoMa package instead of returning hardcoded `true`
+- Verification: deep audit across 45+ files (3 parallel agents), 292 unit tests + 15 live integration tests against Ableton session, all passing
+
 ## 1.9.10 — Analyzer Capture Finalization + Release Sync (March 2026)
 
 **Live-tested in Ableton after a full analyzer rebuild and master-track validation.**
