@@ -32,7 +32,7 @@ Ableton's browser is the source for all devices, presets, and samples. The `sear
 | **Delay** | Delay, Echo, Grain Delay, Beat Repeat, Spectral Time |
 | **Reverb** | Reverb, Convolution Reverb (M4L), Hybrid Reverb |
 | **Distortion** | Saturator, Overdrive, Erosion, Redux, Pedal, Amp, Cabinet |
-| **Modulation** | Chorus-Ensemble, Phaser-Flanger, Frequency Shifter, Ring Mod |
+| **Modulation** | Chorus-Ensemble, Phaser-Flanger, Shifter, Ring Mod |
 | **Utility** | Utility, Tuner, Spectrum, External Audio Effect |
 | **Spatial** | Surround Panner (if available) |
 
@@ -295,7 +295,7 @@ find_and_load_device(track_index=0, name="Arpeggiator")
 | Delay | `Delay`, `Echo`, `Grain Delay`, `Beat Repeat` |
 | Reverb | `Reverb`, `Hybrid Reverb` |
 | Distortion | `Saturator`, `Overdrive`, `Erosion`, `Redux`, `Pedal`, `Amp`, `Cabinet` |
-| Modulation | `Chorus-Ensemble`, `Phaser-Flanger`, `Frequency Shifter` |
+| Modulation | `Chorus-Ensemble`, `Phaser-Flanger`, `Shifter` |
 | Utility | `Utility`, `Tuner`, `Spectrum` |
 | MIDI FX | `Arpeggiator`, `Chord`, `Note Length`, `Pitch`, `Random`, `Scale`, `Velocity`, `CC Control` |
 | Racks | `Instrument Rack`, `Audio Effect Rack`, `MIDI Effect Rack` |

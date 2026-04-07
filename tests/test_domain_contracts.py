@@ -162,10 +162,10 @@ class TestNotesContracts:
 # ── Automation contracts ────────────────────────────────────────────
 
 class TestAutomationContracts:
-    def test_get_clip_automation_rejects_negative_track(self):
+    def test_get_clip_automation_rejects_invalid_track(self):
         from mcp_server.tools.automation import get_clip_automation
         with pytest.raises(ValueError, match="track_index"):
-            get_clip_automation(None, track_index=-1, clip_index=0)
+            get_clip_automation(None, track_index=-100, clip_index=0)
 
     def test_get_clip_automation_rejects_negative_clip(self):
         from mcp_server.tools.automation import get_clip_automation
@@ -178,16 +178,16 @@ class TestAutomationContracts:
             set_clip_automation(None, track_index=0, clip_index=0,
                                parameter_type="invalid", points=[])
 
-    def test_apply_automation_shape_rejects_negative_indices(self):
+    def test_apply_automation_shape_rejects_invalid_indices(self):
         from mcp_server.tools.automation import apply_automation_shape
         with pytest.raises(ValueError, match="track_index"):
-            apply_automation_shape(None, track_index=-1, clip_index=0,
+            apply_automation_shape(None, track_index=-100, clip_index=0,
                                    parameter_type="volume", curve_type="linear")
 
-    def test_clear_clip_automation_rejects_negative_track(self):
+    def test_clear_clip_automation_rejects_invalid_track(self):
         from mcp_server.tools.automation import clear_clip_automation
         with pytest.raises(ValueError, match="track_index"):
-            clear_clip_automation(None, track_index=-1, clip_index=0)
+            clear_clip_automation(None, track_index=-100, clip_index=0)
 
 
 # ── Tracks contracts ────────────────────────────────────────────────
@@ -202,10 +202,18 @@ class TestTracksContracts:
         _validate_color_index(0)
         _validate_color_index(69)
 
-    def test_track_index_rejects_negative(self):
+    def test_track_index_accepts_return_tracks(self):
         from mcp_server.tools.tracks import _validate_track_index
+        # Return tracks (-1 to -99) should be accepted
+        _validate_track_index(-1)
+        _validate_track_index(-4)
+        _validate_track_index(-99)
+        # Out of range should be rejected
         with pytest.raises(ValueError, match="track_index"):
-            _validate_track_index(-1)
+            _validate_track_index(-100)
+        # allow_return=False should reject negatives
+        with pytest.raises(ValueError, match="track_index"):
+            _validate_track_index(-1, allow_return=False)
         _validate_track_index(0)
 
 

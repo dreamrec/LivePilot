@@ -43,8 +43,11 @@ def get_clip_automation(
     parameter name, and type (mixer/send/device). Use this to see
     what's already automated before writing new curves.
     """
-    if track_index < 0:
-        raise ValueError("track_index must be >= 0")
+    if track_index < -99:
+        raise ValueError(
+            "track_index must be >= 0 for regular tracks, "
+            "or -1..-99 for return tracks (-1=A, -2=B)"
+        )
     if clip_index < 0:
         raise ValueError("clip_index must be >= 0")
     return _get_ableton(ctx).send_command("get_clip_automation", {
@@ -76,8 +79,11 @@ def set_clip_automation(
     Tip: Use apply_automation_shape to generate points from curves/recipes
     instead of calculating points manually.
     """
-    if track_index < 0:
-        raise ValueError("track_index must be >= 0")
+    if track_index < -99:
+        raise ValueError(
+            "track_index must be >= 0 for regular tracks, "
+            "or -1..-99 for return tracks (-1=A, -2=B)"
+        )
     if clip_index < 0:
         raise ValueError("clip_index must be >= 0")
     if parameter_type not in ("device", "volume", "panning", "send"):
@@ -117,8 +123,11 @@ def clear_clip_automation(
     If parameter_type is omitted, clears ALL envelopes.
     If provided, clears only that parameter's envelope.
     """
-    if track_index < 0:
-        raise ValueError("track_index must be >= 0")
+    if track_index < -99:
+        raise ValueError(
+            "track_index must be >= 0 for regular tracks, "
+            "or -1..-99 for return tracks (-1=A, -2=B)"
+        )
     if clip_index < 0:
         raise ValueError("clip_index must be >= 0")
     params: dict = {
@@ -217,8 +226,11 @@ def apply_automation_shape(
     - Tremolo/pan: use sine with frequency in musical divisions
     """
     # Validate indices and parameter_type (same rules as set_clip_automation)
-    if track_index < 0:
-        raise ValueError("track_index must be >= 0")
+    if track_index < -99:
+        raise ValueError(
+            "track_index must be >= 0 for regular tracks, "
+            "or -1..-99 for return tracks (-1=A, -2=B)"
+        )
     if clip_index < 0:
         raise ValueError("clip_index must be >= 0")
     if parameter_type not in ("device", "volume", "panning", "send"):
@@ -312,8 +324,11 @@ def apply_automation_recipe(
     - stereo_narrow: collapse to mono before drop
     """
     # Validate indices and parameter_type (same rules as set_clip_automation)
-    if track_index < 0:
-        raise ValueError("track_index must be >= 0")
+    if track_index < -99:
+        raise ValueError(
+            "track_index must be >= 0 for regular tracks, "
+            "or -1..-99 for return tracks (-1=A, -2=B)"
+        )
     if clip_index < 0:
         raise ValueError("clip_index must be >= 0")
     if parameter_type not in ("device", "volume", "panning", "send"):

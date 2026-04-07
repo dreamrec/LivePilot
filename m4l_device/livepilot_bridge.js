@@ -1311,7 +1311,9 @@ function cmd_get_plugin_params(args) {
     var is_plugin = (class_name === "PluginDevice" || class_name === "AuPluginDevice");
     if (!is_plugin) {
         send_response({
-            "error": "Device is " + class_name + ", not a plugin (PluginDevice/AuPluginDevice)"
+            "error": "Device is " + class_name + ", not a plugin (PluginDevice/AuPluginDevice). " +
+                "This tool only works on AU/VST plugins. Use get_device_parameters for native Ableton devices. " +
+                "Check get_device_info().is_plugin to verify before calling."
         });
         return;
     }
@@ -1427,7 +1429,8 @@ function cmd_get_plugin_presets(args) {
     var is_plugin = (class_name === "PluginDevice" || class_name === "AuPluginDevice");
     if (!is_plugin) {
         send_response({
-            "error": "Device is " + class_name + ", not a plugin"
+            "error": "Device is " + class_name + ", not a plugin. " +
+                "This tool only works on AU/VST plugins. Check get_device_info().is_plugin first."
         });
         return;
     }

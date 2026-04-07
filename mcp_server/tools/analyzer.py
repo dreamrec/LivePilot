@@ -609,6 +609,24 @@ async def capture_audio(
         filename,
         timeout=float(duration_seconds + 10),
     )
+
+    # Move captured file from M4L device directory to CAPTURE_DIR
+    if result.get("ok") and result.get("file_path"):
+        src = result["file_path"]
+        # Try common extensions the bridge might produce
+        for ext in ("", ".aiff", ".wav", ".aif"):
+            src_path = src + ext if not src.endswith(ext) else src
+            if os.path.isfile(src_path):
+                dst_name = os.path.basename(src_path)
+                dst_path = os.path.join(CAPTURE_DIR, dst_name)
+                try:
+                    import shutil
+                    shutil.move(src_path, dst_path)
+                    result["file_path"] = dst_path
+                except OSError:
+                    pass  # Leave in original location if move fails
+                break
+
     return result
 
 
