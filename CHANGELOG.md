@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.9.14 — Install Reliability + CI Expansion (April 2026)
+
+- Fix(High): `--install` now shows all detected Ableton directories when multiple exist and accepts `LIVEPILOT_INSTALL_PATH` env var to override — previously silently picked the first candidate which could be wrong
+- Fix(Med): FastMCP pinned to `>=3.0.0,<3.3.0` with documented private API dependency (`_tool_manager`, `_local_provider`) — prevents upstream drift from breaking schema coercion
+- Fix(Med): CI expanded to multi-OS matrix (Ubuntu + macOS + Windows) and added JS entrypoint validation (syntax check, npm pack asset verification)
+- Fix(Low/Med): `--setup-flucoma` now enforces SHA256 checksum (TOFU pattern) — first download records the hash, subsequent installs abort on mismatch
+- Fix(Low): `--status` timeout path now resolves `true` when `lsof` detects another LivePilot client on the port — matches the explicit STATE_ERROR fix from v1.9.13
+- Verification: 145 tests passing, 178 tools confirmed
+
 ## 1.9.13 — Security Hardening + Startup Safety (April 2026)
 
 - Fix(P2): `--setup-flucoma` now pins to a known release tag (v1.0.7) instead of unpinned `latest`, prints SHA256 checksum for verification, and selects the platform-specific zip

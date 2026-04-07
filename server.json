@@ -6,12 +6,12 @@
     "url": "https://github.com/dreamrec/LivePilot",
     "source": "github"
   },
-  "version": "1.9.13",
+  "version": "1.9.14",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "livepilot",
-      "version": "1.9.13",
+      "version": "1.9.14",
       "transport": {
         "type": "stdio"
       }

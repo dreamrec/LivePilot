@@ -136,7 +136,12 @@ def _coerce_schema_property(prop: dict) -> None:
 
 
 def _get_all_tools():
-    """Get all registered tools, compatible with FastMCP 0.x and 3.x."""
+    """Get all registered tools, compatible with FastMCP 0.x and 3.x.
+
+    WARNING: Accesses FastMCP private internals (_tool_manager, _local_provider).
+    Pinned to fastmcp>=3.0.0,<3.3.0 in requirements.txt. If upgrading FastMCP,
+    verify these attributes still exist or update this function.
+    """
     # FastMCP 0.x: mcp._tool_manager._tools (dict of name -> Tool)
     if hasattr(mcp, "_tool_manager"):
         return list(mcp._tool_manager._tools.values())

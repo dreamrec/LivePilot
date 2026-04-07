@@ -7,14 +7,35 @@ on:
     branches: [main]
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
+  python-tests:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.12"]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
       - run: |
           pip install numpy setuptools wheel
           pip install -r requirements.txt pytest pytest-asyncio
       - run: pytest tests/ -v
+
+  js-entrypoint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify JS entrypoint parses and --help works
+        run: |
+          node -c bin/livepilot.js
+          node bin/livepilot.js --help || true
+      - name: Verify npm pack includes expected files
+        run: |
+          npm pack --dry-run 2>&1 | tee /dev/stderr | grep -q "livepilot_bridge.js"
+          npm pack --dry-run 2>&1 | grep -q "LivePilot_Analyzer.amxd"
+          npm pack --dry-run 2>&1 | grep -q "remote_script/LivePilot/__init__.py"

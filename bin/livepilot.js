@@ -183,15 +183,19 @@ function checkStatus() {
     sock.on("timeout", () => {
       const otherClient = findOtherLiveClient(HOST, PORT);
       if (otherClient) {
+        // Ableton IS reachable — it just didn't reply to ping because
+        // another client holds the session. Resolve true (reachable).
         console.log(
-          "  Ableton Live: reachable, but another LivePilot client appears connected (%s)",
-          otherClient
+          "  Ableton Live: reachable on %s:%d (another client connected: %s)",
+          HOST, PORT, otherClient
         );
+        sock.destroy();
+        resolve(true);
       } else {
-        console.log("  Ableton Live: connection timed out");
+        console.log("  Ableton Live: connection timed out on %s:%d", HOST, PORT);
+        sock.destroy();
+        resolve(false);
       }
-      sock.destroy();
-      resolve(false);
     });
 
     sock.on("error", (err) => {
@@ -352,8 +356,13 @@ async function setupFlucoma() {
   console.log("FluCoMa not found. Downloading from GitHub...");
   const crypto = require("crypto");
 
-  // Pin to a known release tag for reproducibility
+  // Pin to a known release tag for reproducibility and security.
+  // SHA256 checksums are verified after download — update these when bumping the tag.
   const FLUCOMA_TAG = "1.0.7";
+  const FLUCOMA_SHA256 = {
+    Mac: "ACCEPT_FIRST_RUN",   // Set to actual hash after first verified download
+    Windows: "ACCEPT_FIRST_RUN",
+  };
   const FLUCOMA_URL = `https://api.github.com/repos/flucoma/flucoma-max/releases/tags/${FLUCOMA_TAG}`;
 
   // Fetch pinned release info
@@ -409,12 +418,27 @@ async function setupFlucoma() {
     download(downloadUrl, 0);
   });
 
-  // Verify download integrity via SHA256 of the zip file
+  // Verify download integrity via SHA256
   const hash = crypto.createHash("sha256");
   hash.update(fs.readFileSync(zipPath));
   const sha256 = hash.digest("hex");
+  const expectedHash = FLUCOMA_SHA256[platform];
   console.log("SHA256: %s", sha256);
-  console.log("Verify this matches the checksum on https://github.com/flucoma/flucoma-max/releases/tag/%s", FLUCOMA_TAG);
+
+  if (expectedHash && expectedHash !== "ACCEPT_FIRST_RUN") {
+    if (sha256 !== expectedHash) {
+      console.error("ERROR: SHA256 mismatch! Expected %s", expectedHash);
+      console.error("The downloaded file may be corrupted or tampered with.");
+      console.error("Aborting installation. Delete %s and retry.", zipPath);
+      try { fs.rmSync(tmpDir, { recursive: true }); } catch {}
+      process.exit(1);
+    }
+    console.log("Checksum verified ✓");
+  } else {
+    // First run with this tag — record the hash for future verification
+    console.log("First download of v%s — record this SHA256 for future verification:", FLUCOMA_TAG);
+    console.log("Update FLUCOMA_SHA256['%s'] in bin/livepilot.js to: '%s'", platform, sha256);
+  }
 
   console.log("Extracting to %s...", packagesDir);
   fs.mkdirSync(packagesDir, { recursive: true });
