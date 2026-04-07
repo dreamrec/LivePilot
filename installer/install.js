@@ -46,8 +46,27 @@ function install() {
     process.exit(1);
   }
 
-  // Use the first valid candidate
-  const target = candidates[0];
+  // If multiple candidates exist, let the user choose via --install-path
+  // or LIVEPILOT_INSTALL_PATH env var. Otherwise use the first.
+  let target;
+  const explicitPath = process.env.LIVEPILOT_INSTALL_PATH;
+  if (explicitPath) {
+    target = { path: explicitPath, description: "explicit (LIVEPILOT_INSTALL_PATH)" };
+  } else if (candidates.length > 1) {
+    console.log("Multiple Ableton Remote Scripts directories detected:");
+    candidates.forEach((c, i) => {
+      console.log("  [%d] %s", i + 1, c.description);
+      console.log("      %s", c.path);
+    });
+    console.log("");
+    console.log("Using [1] %s", candidates[0].description);
+    console.log("To use a different location, set LIVEPILOT_INSTALL_PATH:");
+    console.log("  LIVEPILOT_INSTALL_PATH='%s' npx livepilot --install", candidates[1].path);
+    console.log("");
+    target = candidates[0];
+  } else {
+    target = candidates[0];
+  }
   const targetBase = target.path;
   const destDir = path.join(targetBase, "LivePilot");
 
