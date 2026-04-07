@@ -27,7 +27,9 @@ def _get_spectral(ctx: Context):
 
 
 def _parse_json_param(value, name: str) -> dict:
-    """Parse a dict or JSON string parameter."""
+    """Parse a dict, JSON string, or None parameter."""
+    if value is None:
+        return {}
     if isinstance(value, str):
         try:
             return json.loads(value)
@@ -59,6 +61,7 @@ def compile_goal_vector(
     targets: dict of dimension → weight (e.g., {"punch": 0.4, "weight": 0.3, "energy": 0.3}).
              Weights are normalized to sum to 1.0.
     protect: dict of dimension → minimum threshold (e.g., {"clarity": 0.8}).
+             If a dimension drops below this value after a move, the move is undone.
     mode: observe | improve | explore | finish | diagnose
     aggression: 0.0 (subtle) to 1.0 (bold)
     research_mode: none | targeted | deep
@@ -97,8 +100,9 @@ def compile_goal_vector(
 def build_world_model(ctx: Context) -> dict:
     """Build a WorldModel snapshot of the current Ableton session.
 
-    Reads session info, spectral data (if analyzer available), and infers
-    track roles from names. Degrades gracefully if M4L Analyzer is not loaded.
+    Reads session info, spectral data (if analyzer available), per-track
+    device health, and infers track roles from names. Degrades gracefully
+    if M4L Analyzer is not loaded.
 
     Returns topology (tracks, devices, scenes), sonic state (spectrum, RMS, key),
     technical state (analyzer/FluCoMa availability, plugin health), and
@@ -109,6 +113,17 @@ def build_world_model(ctx: Context) -> dict:
 
     # Fetch session info (always available)
     session_info = ableton.send_command("get_session_info")
+
+    # Fetch per-track device info for plugin health checks (I2 fix)
+    track_infos = []
+    for track in session_info.get("tracks", []):
+        try:
+            ti = ableton.send_command("get_track_info", {
+                "track_index": track["index"]
+            })
+            track_infos.append(ti)
+        except Exception:
+            pass  # Skip tracks that fail — don't block world model build
 
     # Fetch spectral data (may be unavailable)
     spectrum = None
@@ -133,11 +148,7 @@ def build_world_model(ctx: Context) -> dict:
         if flucoma_data:
             flucoma_status = flucoma_data["value"] if isinstance(flucoma_data["value"], dict) else {}
     else:
-        # Try FluCoMa check even without spectrum
-        try:
-            flucoma_status = {"flucoma_available": False}
-        except Exception:
-            pass
+        flucoma_status = {"flucoma_available": False}
 
     # Build model
     wm = engine.build_world_model_from_data(
@@ -146,12 +157,14 @@ def build_world_model(ctx: Context) -> dict:
         rms=rms,
         detected_key=detected_key,
         flucoma_status=flucoma_status,
+        track_infos=track_infos,
     )
 
-    # Run critics as part of the world model build
+    # Run critics with all-dimensions stub goal to surface all issues.
+    # The agent should filter these against its actual GoalVector.
     goal_stub = engine.GoalVector(
         request_text="world_model_build",
-        targets={d: 1.0 / len(engine.MEASURABLE_PROXIES) for d in engine.MEASURABLE_PROXIES},
+        targets={d: 1.0 / len(engine.QUALITY_DIMENSIONS) for d in engine.QUALITY_DIMENSIONS},
         mode="observe",
     )
     sonic_issues = engine.run_sonic_critic(wm.sonic, goal_stub, wm.track_roles)
@@ -162,6 +175,7 @@ def build_world_model(ctx: Context) -> dict:
         "sonic": [i.to_dict() for i in sonic_issues],
         "technical": [i.to_dict() for i in technical_issues],
         "total_count": len(sonic_issues) + len(technical_issues),
+        "note": "Issues are unfiltered — filter against your GoalVector targets before acting.",
     }
     return result
 
@@ -187,19 +201,22 @@ def evaluate_move(
 
     Hard rules enforce undo when:
     - No measurable improvement (delta <= 0)
-    - Protected dimension dropped > 0.15
+    - Protected dimension dropped below its threshold or by > 0.15
     - Total score < 0.40
 
     When all target dimensions are unmeasurable (e.g., groove, tension),
     the tool defers keep/undo to the agent's musical judgment.
+
+    Returns consecutive_undo_hint=true when keep_change=false — the agent
+    should track consecutive undos and switch to observe mode after 3.
     """
     gv_dict = _parse_json_param(goal_vector, "goal_vector")
     before = _parse_json_param(before_snapshot, "before_snapshot")
     after = _parse_json_param(after_snapshot, "after_snapshot")
 
-    # Reconstruct GoalVector from dict
-    gv = engine.GoalVector(
-        request_text=gv_dict.get("request_text", ""),
+    # I6 fix: validate the GoalVector to catch malformed input
+    gv = engine.validate_goal_vector(
+        request_text=gv_dict.get("request_text", "evaluate"),
         targets=gv_dict.get("targets", {}),
         protect=gv_dict.get("protect", {}),
         mode=gv_dict.get("mode", "improve"),

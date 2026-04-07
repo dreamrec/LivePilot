@@ -35,9 +35,10 @@ Every production task follows a cyclical evaluation loop. The user says somethin
 
 Interpret the user's natural language into quality dimensions. Call `compile_goal_vector` with:
 - **targets**: which dimensions to improve and by how much (e.g., `{"punch": 0.4, "weight": 0.3, "energy": 0.3}`)
-- **protect**: which dimensions must not be harmed (e.g., `{"clarity": 0.8, "groove": 0.9}`)
+- **protect**: which dimensions must not drop below this value (e.g., `{"clarity": 0.8}` means clarity must stay ≥ 0.8 after the move)
 - **mode**: observe | improve | explore | finish | diagnose
 - **aggression**: 0.0 (subtle) to 1.0 (bold)
+- **research_mode**: none (default) | targeted (for unknown plugins/styles) | deep (multi-source synthesis)
 
 Quality dimensions: energy, punch, weight, density, brightness, warmth, width, depth, motion, contrast, clarity, cohesion, groove, tension, novelty, polish, emotion.
 
@@ -103,10 +104,13 @@ Call `evaluate_move` with the goal vector and before/after snapshots. It returns
 
 ### Step 10: Keep or Undo
 
-If `keep_change` is false: call `undo()` immediately.
-If `keep_change` is true: the change stays.
+If `keep_change` is false: call `undo()` immediately. Check `consecutive_undo_hint` in the response.
+If `keep_change` is true: the change stays, reset your undo counter to 0.
 
-**Escalation policy:** After 3 consecutive undos, switch to observe mode. Report to the user what you tried and what failed. Ask for guidance.
+**Undo counter discipline:** Maintain a mental count of consecutive undos. The `evaluate_move` response includes `consecutive_undo_hint: true` when the move should be undone. Track these:
+- 1 undo: normal, try a different approach
+- 2 undos: narrow scope, try parameter tweaks only
+- 3 undos: **STOP**. Switch to observe mode. Report to the user what you tried and what failed. Ask for guidance.
 
 ### Step 11: Learn
 
