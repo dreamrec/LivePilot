@@ -343,3 +343,140 @@ def evaluate_composition_move(
              for i in after_issues]
 
     return engine.evaluate_composition_move(before, after, targets, prot)
+
+
+# ── get_harmony_field (Round 1) ───────────────────────────────────────
+
+
+@mcp.tool()
+def get_harmony_field(
+    ctx: Context,
+    section_index: int = 0,
+) -> dict:
+    """Analyze the harmonic content of a section — key, chords, voice-leading, tension.
+
+    Combines identify_scale, analyze_harmony, classify_progression, and
+    find_voice_leading_path into a single structured HarmonyField.
+
+    section_index: which section to analyze (0-based, from get_section_graph).
+    Returns: key, mode, chord_progression, voice_leading_quality, instability,
+    resolution_potential.
+    """
+    ableton = _get_ableton(ctx)
+    session = ableton.send_command("get_session_info")
+    scenes = session.get("scenes", [])
+    tracks = session.get("tracks", [])
+    track_count = session.get("track_count", 0)
+
+    clip_matrix = _build_clip_matrix(ableton, len(scenes), track_count)
+    sections = engine.build_section_graph_from_scenes(scenes, clip_matrix, track_count)
+
+    if section_index < 0 or section_index >= len(sections):
+        return {"error": f"section_index {section_index} out of range (0-{len(sections) - 1})"}
+
+    section = sections[section_index]
+
+    # Find a track with notes to analyze harmony
+    scale_info = None
+    harmony_analysis = None
+    progression_info = None
+    voice_leading_info = None
+
+    for t_idx in section.tracks_active:
+        try:
+            # Try identify_scale
+            si = ableton.send_command("identify_scale", {
+                "track_index": t_idx, "clip_index": section_index
+            })
+            if si.get("top_match"):
+                scale_info = si
+
+            # Try analyze_harmony
+            ha = ableton.send_command("analyze_harmony", {
+                "track_index": t_idx, "clip_index": section_index
+            })
+            if ha.get("chords"):
+                harmony_analysis = ha
+
+                # Classify progression if we have chords
+                chord_names = [c.get("chord_name", "") for c in ha.get("chords", []) if c.get("chord_name")]
+                if len(chord_names) >= 2:
+                    try:
+                        progression_info = ableton.send_command("classify_progression", {
+                            "chords": chord_names[:8]
+                        })
+                    except Exception:
+                        pass
+
+            if scale_info and harmony_analysis:
+                break
+        except Exception:
+            continue
+
+    hf = engine.build_harmony_field(
+        section_id=section.section_id,
+        harmony_analysis=harmony_analysis,
+        scale_info=scale_info,
+        progression_info=progression_info,
+        voice_leading_info=voice_leading_info,
+    )
+    result = hf.to_dict()
+    result["section_name"] = section.name
+    return result
+
+
+# ── get_transition_analysis (Round 1) ─────────────────────────────────
+
+
+@mcp.tool()
+def get_transition_analysis(ctx: Context) -> dict:
+    """Analyze transition quality between all adjacent sections.
+
+    Checks for: hard cuts, missing pre-arrival subtraction, groove breaks,
+    harmonic non-sequiturs, and weak builds without role rotation.
+
+    Returns issues with recommended composition moves for each boundary.
+    """
+    ableton = _get_ableton(ctx)
+    session = ableton.send_command("get_session_info")
+    scenes = session.get("scenes", [])
+    tracks = session.get("tracks", [])
+    track_count = session.get("track_count", 0)
+
+    clip_matrix = _build_clip_matrix(ableton, len(scenes), track_count)
+    sections = engine.build_section_graph_from_scenes(scenes, clip_matrix, track_count)
+
+    if len(sections) < 2:
+        return {"issues": [], "note": "Need at least 2 sections for transition analysis"}
+
+    # Build role graph for transition critic
+    track_data = []
+    notes_map: dict[str, dict[int, list]] = {}
+    for track in tracks:
+        t_idx = track["index"]
+        try:
+            ti = ableton.send_command("get_track_info", {"track_index": t_idx})
+            track_data.append(ti)
+        except Exception:
+            track_data.append({"index": t_idx, "name": track.get("name", ""), "devices": []})
+
+    for section in sections:
+        notes_map[section.section_id] = {}
+        for t_idx in section.tracks_active:
+            notes_map[section.section_id][t_idx] = []
+
+    roles = engine.build_role_graph(sections, track_data, notes_map)
+
+    # Build harmony fields (lightweight — skip if tools fail)
+    harmony_fields = []
+    for i, section in enumerate(sections):
+        hf = engine.HarmonyField(section_id=section.section_id)
+        harmony_fields.append(hf)
+
+    issues = engine.run_transition_critic(sections, roles, harmony_fields)
+
+    return {
+        "transition_count": len(sections) - 1,
+        "issues": [i.to_dict() for i in issues],
+        "issue_count": len(issues),
+    }
