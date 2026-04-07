@@ -1,0 +1,553 @@
+"""Agent OS V1 Engine — pure-computation core for goal compilation, world modeling,
+critic analysis, and evaluation scoring.
+
+Zero external dependencies beyond stdlib. All functions are pure — no I/O, no Ableton
+connection, no network calls. The MCP tool wrappers in agent_os.py handle data fetching;
+this module handles computation.
+
+Design: spec at docs/AGENT_OS_V1.md, sections 6-12.
+"""
+
+from __future__ import annotations
+
+import re
+from dataclasses import asdict, dataclass, field
+from typing import Any, Optional
+
+
+# ── Quality Dimensions ────────────────────────────────────────────────
+
+QUALITY_DIMENSIONS = frozenset({
+    "energy", "punch", "weight", "density", "brightness", "warmth",
+    "width", "depth", "motion", "contrast", "clarity", "cohesion",
+    "groove", "tension", "novelty", "polish", "emotion",
+})
+
+# Dimensions with measurable spectral proxies in Phase 1.
+# Others (motion, contrast, groove, tension, novelty, polish, emotion, cohesion)
+# get confidence=0.0 — the LLM agent uses its own musical judgment for those.
+MEASURABLE_PROXIES: dict[str, str] = {
+    "brightness": "high + presence bands",
+    "warmth": "low_mid band energy",
+    "weight": "sub + low bands",
+    "width": "stereo width (side/mid ratio)",
+    "clarity": "inverse of low_mid congestion",
+    "density": "spectral flatness",
+    "energy": "RMS level",
+    "punch": "crest factor (peak/rms ratio)",
+}
+
+VALID_MODES = frozenset({"observe", "improve", "explore", "finish", "diagnose"})
+VALID_RESEARCH_MODES = frozenset({"none", "targeted", "deep"})
+
+
+# ── GoalVector ────────────────────────────────────────────────────────
+
+@dataclass
+class GoalVector:
+    """Compiled user intent as a machine-usable goal.
+
+    targets: dimension → weight (0-1). Weights should approximately sum to 1.0.
+    protect: dimension → minimum acceptable value (0-1). These must not be harmed.
+    """
+    request_text: str
+    targets: dict[str, float] = field(default_factory=dict)
+    protect: dict[str, float] = field(default_factory=dict)
+    mode: str = "improve"
+    aggression: float = 0.5
+    research_mode: str = "none"
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+def validate_goal_vector(
+    request_text: str,
+    targets: dict[str, float],
+    protect: dict[str, float],
+    mode: str,
+    aggression: float,
+    research_mode: str,
+) -> GoalVector:
+    """Validate and construct a GoalVector. Raises ValueError on invalid input."""
+    if not request_text or not request_text.strip():
+        raise ValueError("request_text cannot be empty")
+
+    # Validate dimensions
+    for dim in targets:
+        if dim not in QUALITY_DIMENSIONS:
+            raise ValueError(
+                f"Unknown target dimension '{dim}'. "
+                f"Valid: {sorted(QUALITY_DIMENSIONS)}"
+            )
+    for dim in protect:
+        if dim not in QUALITY_DIMENSIONS:
+            raise ValueError(
+                f"Unknown protect dimension '{dim}'. "
+                f"Valid: {sorted(QUALITY_DIMENSIONS)}"
+            )
+
+    # Validate weights are non-negative
+    for dim, w in targets.items():
+        if w < 0.0:
+            raise ValueError(f"Target weight for '{dim}' must be >= 0.0, got {w}")
+    for dim, w in protect.items():
+        if not 0.0 <= w <= 1.0:
+            raise ValueError(f"Protect threshold for '{dim}' must be 0.0-1.0, got {w}")
+
+    if mode not in VALID_MODES:
+        raise ValueError(f"mode must be one of {sorted(VALID_MODES)}, got '{mode}'")
+    if research_mode not in VALID_RESEARCH_MODES:
+        raise ValueError(
+            f"research_mode must be one of {sorted(VALID_RESEARCH_MODES)}, "
+            f"got '{research_mode}'"
+        )
+    if not 0.0 <= aggression <= 1.0:
+        raise ValueError(f"aggression must be 0.0-1.0, got {aggression}")
+
+    # Normalize target weights to sum to ~1.0 if they don't already
+    total = sum(targets.values())
+    if targets and total > 0:
+        if abs(total - 1.0) > 0.01:
+            targets = {k: v / total for k, v in targets.items()}
+
+    return GoalVector(
+        request_text=request_text.strip(),
+        targets=targets,
+        protect=protect,
+        mode=mode,
+        aggression=aggression,
+        research_mode=research_mode,
+    )
+
+
+# ── WorldModel ────────────────────────────────────────────────────────
+
+# Track role inference patterns — ordered by specificity
+_ROLE_PATTERNS: list[tuple[str, str]] = [
+    (r"kick|bd|bass\s*drum", "kick"),
+    (r"snare|sd|snr", "snare"),
+    (r"clap|cp|hand\s*clap", "clap"),
+    (r"h(?:i)?[\s\-]?hat|hh|hat", "hihat"),
+    (r"perc|percussion|conga|bongo|shaker|tamb", "percussion"),
+    (r"sub\s*bass|sub", "sub_bass"),
+    (r"bass|low", "bass"),
+    (r"pad|atmosphere|atmo|ambient|drone", "pad"),
+    (r"lead|melody|mel|synth\s*lead", "lead"),
+    (r"chord|keys|piano|organ|rhodes", "chords"),
+    (r"vocal|vox|voice", "vocal"),
+    (r"fx|sfx|riser|sweep|noise|texture|tape", "texture"),
+    (r"string", "strings"),
+    (r"brass", "brass"),
+    (r"resamp|bounce|bus|group|master", "utility"),
+]
+
+
+def infer_track_role(track_name: str) -> str:
+    """Infer a track's musical role from its name. Returns 'unknown' if no match."""
+    name_lower = track_name.lower().strip()
+    for pattern, role in _ROLE_PATTERNS:
+        if re.search(pattern, name_lower):
+            return role
+    return "unknown"
+
+
+@dataclass
+class WorldModel:
+    """Session state snapshot for critic analysis."""
+    topology: dict = field(default_factory=dict)
+    sonic: Optional[dict] = None
+    technical: dict = field(default_factory=dict)
+    track_roles: dict = field(default_factory=dict)
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+def build_world_model_from_data(
+    session_info: dict,
+    spectrum: Optional[dict] = None,
+    rms: Optional[dict] = None,
+    detected_key: Optional[dict] = None,
+    flucoma_status: Optional[dict] = None,
+    track_infos: Optional[list[dict]] = None,
+) -> WorldModel:
+    """Assemble a WorldModel from raw tool outputs.
+
+    All parameters are optional — the model degrades gracefully when
+    analyzer data is unavailable.
+    """
+    # Topology
+    tracks = session_info.get("tracks", [])
+    topology = {
+        "tempo": session_info.get("tempo"),
+        "time_signature": f"{session_info.get('signature_numerator', 4)}/{session_info.get('signature_denominator', 4)}",
+        "track_count": session_info.get("track_count", 0),
+        "return_count": session_info.get("return_track_count", 0),
+        "scene_count": session_info.get("scene_count", 0),
+        "is_playing": session_info.get("is_playing", False),
+        "tracks": [
+            {
+                "index": t.get("index"),
+                "name": t.get("name", ""),
+                "has_midi": t.get("has_midi_input", False),
+                "has_audio": t.get("has_audio_input", False),
+                "mute": t.get("mute", False),
+                "solo": t.get("solo", False),
+                "arm": t.get("arm", False),
+            }
+            for t in tracks
+        ],
+    }
+
+    # Track roles
+    track_roles = {}
+    for t in tracks:
+        idx = t.get("index", 0)
+        name = t.get("name", "")
+        track_roles[idx] = infer_track_role(name)
+
+    # Sonic state (None if analyzer unavailable)
+    sonic = None
+    if spectrum and spectrum.get("bands"):
+        sonic = {
+            "spectrum": spectrum.get("bands", {}),
+            "rms": rms.get("rms") if rms else None,
+            "peak": rms.get("peak") if rms else None,
+            "key": detected_key.get("key") if detected_key else None,
+            "scale": detected_key.get("scale") if detected_key else None,
+            "key_confidence": detected_key.get("confidence") if detected_key else None,
+        }
+
+    # Technical state
+    analyzer_available = spectrum is not None and bool(spectrum.get("bands"))
+    flucoma_available = (
+        flucoma_status is not None
+        and flucoma_status.get("flucoma_available", False)
+    )
+
+    # Check plugin health from track_infos if provided
+    unhealthy_devices = []
+    if track_infos:
+        for ti in track_infos:
+            for dev in ti.get("devices", []):
+                flags = dev.get("health_flags", [])
+                if "opaque_or_failed_plugin" in flags:
+                    unhealthy_devices.append({
+                        "track": ti.get("index"),
+                        "device": dev.get("name"),
+                        "flag": "opaque_or_failed_plugin",
+                    })
+
+    technical = {
+        "analyzer_available": analyzer_available,
+        "flucoma_available": flucoma_available,
+        "unhealthy_devices": unhealthy_devices,
+    }
+
+    return WorldModel(
+        topology=topology,
+        sonic=sonic,
+        technical=technical,
+        track_roles=track_roles,
+    )
+
+
+# ── Critics ───────────────────────────────────────────────────────────
+
+@dataclass
+class Issue:
+    """A diagnosed problem or opportunity."""
+    type: str
+    critic: str  # "sonic" or "technical"
+    severity: float  # 0.0-1.0
+    confidence: float  # 0.0-1.0
+    affected_dimensions: list[str] = field(default_factory=list)
+    evidence: list[str] = field(default_factory=list)
+    recommended_actions: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+def run_sonic_critic(
+    sonic: Optional[dict],
+    goal: GoalVector,
+    track_roles: dict,
+) -> list[Issue]:
+    """Run sonic heuristics against spectrum data. Returns issues that overlap
+    with the goal's target dimensions."""
+    if sonic is None:
+        return [Issue(
+            type="analyzer_unavailable",
+            critic="sonic",
+            severity=0.3,
+            confidence=1.0,
+            affected_dimensions=list(MEASURABLE_PROXIES.keys()),
+            evidence=["M4L Analyzer not connected or no audio playing"],
+            recommended_actions=["Load LivePilot_Analyzer on master", "Start playback"],
+        )]
+
+    issues = []
+    bands = sonic.get("spectrum", {})
+    rms = sonic.get("rms")
+    peak = sonic.get("peak")
+    target_dims = set(goal.targets.keys())
+
+    # 1. Mud detection: low_mid congestion
+    low_mid = bands.get("low_mid", 0)
+    if low_mid > 0.7 and {"clarity", "weight", "warmth"} & target_dims:
+        issues.append(Issue(
+            type="low_mid_congestion",
+            critic="sonic",
+            severity=min(1.0, (low_mid - 0.7) * 3.3),
+            confidence=0.85,
+            affected_dimensions=["clarity", "weight"],
+            evidence=[f"low_mid band energy: {low_mid:.2f} (threshold: 0.7)"],
+            recommended_actions=["EQ cut 200-500Hz on muddiest track", "HPF on non-bass elements"],
+        ))
+
+    # 2. Weak sub
+    sub = bands.get("sub", 0)
+    has_bass = any(r in ("kick", "bass", "sub_bass") for r in track_roles.values())
+    if sub < 0.15 and has_bass and {"weight", "energy", "punch"} & target_dims:
+        issues.append(Issue(
+            type="weak_foundation",
+            critic="sonic",
+            severity=0.6,
+            confidence=0.75,
+            affected_dimensions=["weight", "energy"],
+            evidence=[f"sub band energy: {sub:.2f} with bass tracks present"],
+            recommended_actions=["Boost sub on kick/bass", "Check HPF not too aggressive"],
+        ))
+
+    # 3. Harsh top
+    high = bands.get("high", 0)
+    presence = bands.get("presence", 0)
+    if (high + presence) > 0.8 and {"brightness", "clarity", "warmth"} & target_dims:
+        issues.append(Issue(
+            type="harsh_highs",
+            critic="sonic",
+            severity=min(1.0, ((high + presence) - 0.8) * 2.5),
+            confidence=0.80,
+            affected_dimensions=["brightness", "clarity"],
+            evidence=[f"high+presence: {high + presence:.2f} (threshold: 0.8)"],
+            recommended_actions=["Reduce high shelf on brightest element", "Add subtle LP filter"],
+        ))
+
+    # 4. Low headroom
+    if rms is not None and rms > 0.9 and {"energy", "punch", "clarity"} & target_dims:
+        issues.append(Issue(
+            type="headroom_risk",
+            critic="sonic",
+            severity=min(1.0, (rms - 0.9) * 10),
+            confidence=0.90,
+            affected_dimensions=["energy", "clarity", "punch"],
+            evidence=[f"RMS: {rms:.3f} (threshold: 0.9)"],
+            recommended_actions=["Reduce master volume", "Lower loudest track", "Add limiter"],
+        ))
+
+    # 5. Flat dynamics
+    if rms is not None and peak is not None and peak > 0:
+        crest_db = 20 * (peak / max(rms, 0.001)) if rms > 0 else 0
+        if crest_db < 3.0 and {"punch", "energy", "contrast"} & target_dims:
+            issues.append(Issue(
+                type="dynamics_flat",
+                critic="sonic",
+                severity=0.5,
+                confidence=0.70,
+                affected_dimensions=["punch", "contrast"],
+                evidence=[f"crest factor: {crest_db:.1f} dB (threshold: 3 dB)"],
+                recommended_actions=["Reduce compression", "Add transient shaper", "Reduce limiter"],
+            ))
+
+    return issues
+
+
+def run_technical_critic(technical: dict) -> list[Issue]:
+    """Check technical health of the session."""
+    issues = []
+
+    if not technical.get("analyzer_available", False):
+        issues.append(Issue(
+            type="analyzer_offline",
+            critic="technical",
+            severity=0.4,
+            confidence=1.0,
+            evidence=["LivePilot Analyzer not receiving data"],
+            recommended_actions=["Load LivePilot_Analyzer.amxd on master track"],
+        ))
+
+    for dev in technical.get("unhealthy_devices", []):
+        issues.append(Issue(
+            type="unhealthy_plugin",
+            critic="technical",
+            severity=0.7,
+            confidence=0.95,
+            evidence=[f"Track {dev['track']}: {dev['device']} — {dev['flag']}"],
+            recommended_actions=["Delete and replace with native Ableton device"],
+        ))
+
+    return issues
+
+
+# ── Evaluation Engine ─────────────────────────────────────────────────
+
+def _extract_dimension_value(
+    sonic: dict,
+    dimension: str,
+) -> Optional[float]:
+    """Map a quality dimension to a measurable value from sonic data.
+
+    Returns None for unmeasurable dimensions (confidence=0.0 in Phase 1).
+    """
+    if not sonic or not sonic.get("spectrum"):
+        return None
+
+    bands = sonic.get("spectrum", {})
+    rms = sonic.get("rms")
+    peak = sonic.get("peak")
+
+    if dimension == "brightness":
+        high = bands.get("high", 0)
+        presence = bands.get("presence", 0)
+        return (high + presence) / 2.0
+    elif dimension == "warmth":
+        return bands.get("low_mid", 0)
+    elif dimension == "weight":
+        sub = bands.get("sub", 0)
+        low = bands.get("low", 0)
+        return (sub + low) / 2.0
+    elif dimension == "clarity":
+        low_mid = bands.get("low_mid", 0)
+        return max(0.0, 1.0 - low_mid)  # inverse of mud
+    elif dimension == "density":
+        # Spectral flatness proxy: how evenly energy is distributed
+        vals = [v for v in bands.values() if isinstance(v, (int, float))]
+        if not vals:
+            return None
+        mean_v = sum(vals) / len(vals)
+        return mean_v  # Higher = more dense/even
+    elif dimension == "energy":
+        return rms if rms is not None else None
+    elif dimension == "punch":
+        if rms and peak and rms > 0:
+            import math
+            return min(1.0, math.log10(max(peak / rms, 1.0)) / 1.5)
+        return None
+    else:
+        # Unmeasurable in Phase 1
+        return None
+
+
+def compute_evaluation_score(
+    goal: GoalVector,
+    before_sonic: dict,
+    after_sonic: dict,
+) -> dict:
+    """Compute whether a move improved the mix toward the goal.
+
+    Returns:
+        {
+            "score": float (0-1),
+            "keep_change": bool,
+            "goal_progress": float (-1 to 1),
+            "collateral_damage": float (0-1),
+            "measurable_delta": float (-1 to 1),
+            "notes": list[str],
+            "dimension_changes": dict[str, {"before": float, "after": float, "delta": float}],
+        }
+    """
+    notes: list[str] = []
+    dimension_changes: dict[str, dict] = {}
+
+    # Compute per-dimension deltas
+    total_goal_progress = 0.0
+    measurable_count = 0
+
+    for dim, weight in goal.targets.items():
+        before_val = _extract_dimension_value(before_sonic, dim)
+        after_val = _extract_dimension_value(after_sonic, dim)
+
+        if before_val is not None and after_val is not None:
+            delta = after_val - before_val
+            dimension_changes[dim] = {
+                "before": round(before_val, 4),
+                "after": round(after_val, 4),
+                "delta": round(delta, 4),
+            }
+            # Positive delta = improvement (assuming targets want "more")
+            total_goal_progress += delta * weight
+            measurable_count += 1
+        else:
+            notes.append(f"{dim}: not measurable in Phase 1 (confidence=0.0)")
+
+    # Check protected dimensions
+    collateral_damage = 0.0
+    protection_violated = False
+
+    for dim, threshold in goal.protect.items():
+        before_val = _extract_dimension_value(before_sonic, dim)
+        after_val = _extract_dimension_value(after_sonic, dim)
+
+        if before_val is not None and after_val is not None:
+            drop = before_val - after_val
+            if drop > 0:
+                collateral_damage = max(collateral_damage, drop)
+                if drop > 0.15:
+                    protection_violated = True
+                    notes.append(
+                        f"PROTECTED dimension '{dim}' dropped by {drop:.3f} "
+                        f"(threshold: 0.15)"
+                    )
+
+    # Measurable delta (average improvement across measured dimensions)
+    measurable_delta = total_goal_progress / max(measurable_count, 1)
+
+    # Compute composite score (spec section 12.2)
+    goal_fit = max(0.0, min(1.0, 0.5 + total_goal_progress))
+    preservation = max(0.0, 1.0 - collateral_damage * 5)
+    confidence = measurable_count / max(len(goal.targets), 1)
+
+    score = (
+        0.30 * goal_fit
+        + 0.25 * max(0.0, min(1.0, 0.5 + measurable_delta))
+        + 0.15 * preservation
+        + 0.10 * 0.5  # taste_fit placeholder (Phase 2)
+        + 0.10 * confidence
+        + 0.10 * 1.0  # reversibility (always 1.0 for undo-able moves)
+    )
+
+    # Hard rules
+    keep_change = True
+
+    if measurable_count > 0 and measurable_delta <= 0:
+        keep_change = False
+        notes.append("HARD RULE: measurable delta <= 0 — no measurable improvement")
+
+    if protection_violated:
+        keep_change = False
+        notes.append("HARD RULE: protected dimension violated (drop > 0.15)")
+
+    if score < 0.40:
+        keep_change = False
+        notes.append(f"HARD RULE: total score {score:.3f} < 0.40 threshold")
+
+    if measurable_count == 0:
+        # All dimensions unmeasurable — defer to agent judgment
+        keep_change = True
+        notes.append(
+            "No measurable dimensions — deferring keep/undo to agent musical judgment"
+        )
+
+    return {
+        "score": round(score, 4),
+        "keep_change": keep_change,
+        "goal_progress": round(total_goal_progress, 4),
+        "collateral_damage": round(collateral_damage, 4),
+        "measurable_delta": round(measurable_delta, 4),
+        "measurable_dimensions": measurable_count,
+        "total_dimensions": len(goal.targets),
+        "dimension_changes": dimension_changes,
+        "notes": notes,
+    }
