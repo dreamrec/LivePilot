@@ -138,6 +138,37 @@ The mode shapes behavior. The user doesn't name modes — you infer from context
 | **finish** | "polish this" / "prep for export" | Lower novelty, stronger preservation, technical focus |
 | **diagnose** | "what's wrong?" / "why doesn't this work?" | Analysis-first, highly explanatory, minimal intervention |
 
+## Composition Intelligence
+
+For arrangement requests ("turn this loop into a real verse", "make the chorus lift", "add a breakdown"), use the composition tools:
+
+### When to Use
+- `analyze_composition` — first call for any structural request. Returns section graph, phrase grid, role graph, and issues from form/section-identity/phrase critics.
+- `get_section_graph` — lightweight check of section structure only.
+- `get_phrase_grid` — inspect phrase boundaries in a specific section.
+- `plan_gesture` — translate musical intent into concrete automation plans.
+- `evaluate_composition_move` — compare before/after issue lists to score a structural change.
+
+### Gesture Authoring Workflow
+1. `analyze_composition` → identify structural issues
+2. `plan_gesture(intent="reveal", target_tracks=[6], start_bar=8)` → get automation plan
+3. `apply_automation_shape(curve_type=plan.curve_family, ...)` → execute the gesture
+4. `analyze_composition` again → compare issues before/after
+5. `evaluate_composition_move(before_issues, after_issues)` → keep or undo
+
+### Gesture Intents
+| Intent | Musical Meaning | Curve |
+|--------|----------------|-------|
+| `reveal` | Open filter, grow send, unmask | exponential up |
+| `conceal` | Close filter, narrow, darken | logarithmic down |
+| `handoff` | One voice dims, another emerges | s_curve |
+| `inhale` | Pull energy back before impact | exponential down |
+| `release` | Restore weight/width after tension | spring up |
+| `lift` | HP filter rise, reverb increase | exponential up |
+| `sink` | LP close, settle into sub | logarithmic down |
+| `punctuate` | Dub throw, beat repeat burst | spike |
+| `drift` | Subtle organic movement | perlin |
+
 ## Building From Scratch
 
 When creating a new beat/track (not modifying existing), use this expanded flow:
