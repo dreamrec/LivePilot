@@ -215,11 +215,12 @@ Simple 3-band EQ for quick tonal shaping.
 - `Feedback` — Intensity/resonance
 - **Phaser**: Sweeping notches. **Flanger**: Jet/whoosh effect.
 
-**Frequency Shifter**
+**Shifter** (renamed from Frequency Shifter in Live 12)
 - `Frequency` — Shift amount in Hz (not semitones — inharmonic)
 - `Drive` — Input gain
 - `Dry/Wet` — Mix
 - **Use for**: Metallic textures, detuned unease, ring-mod effects
+- **Browser name**: `Shifter` (use this with `find_and_load_device`)
 
 ### Utility
 
@@ -320,7 +321,7 @@ LFO: Multiple slow LFOs mapped to position, filter, pitch (subtle)
 ```
 - Heavy Reverb (5-10s decay, high diffusion, 80-100% wet)
 - Delay with high feedback (60-80%), filtered
-- Frequency Shifter at very small values (+/- 1-5 Hz) for movement
+- Shifter at very small values (+/- 1-5 Hz) for movement
 - Grain Delay for granular textures
 
 ### 808 Bass (Simpler or Drum Rack)

@@ -17,10 +17,21 @@ def _get_ableton(ctx: Context):
     return ctx.lifespan_context["ableton"]
 
 
-def _validate_track_index(track_index: int):
-    """Validate track index. Must be >= 0 for regular tracks."""
+def _validate_track_index(track_index: int, allow_return: bool = True):
+    """Validate track index.
+
+    Regular tracks: >= 0. Return tracks: -1 (A), -2 (B), etc.
+    Set allow_return=False for operations that only work on regular tracks
+    (e.g., create_scene, set_group_fold).
+    """
     if track_index < 0:
-        raise ValueError("track_index must be >= 0")
+        if not allow_return:
+            raise ValueError("track_index must be >= 0 (return tracks not supported for this operation)")
+        if track_index < -99:
+            raise ValueError(
+                "track_index must be >= 0 for regular tracks, "
+                "or -1..-99 for return tracks (-1=A, -2=B)"
+            )
 
 
 def _validate_color_index(color_index: int):
@@ -185,6 +196,10 @@ def freeze_track(ctx: Context, track_index: int) -> dict:
     Freeze is async in Ableton: this initiates the render and returns
     immediately. Poll get_freeze_status to check when it's done.
     Freezing a track that's already frozen is a no-op.
+
+    Note: freeze() is not available via ControlSurface API in all Live
+    versions. If this fails, use Ableton's Freeze Track menu command
+    (Cmd+F on Mac) manually instead.
     """
     _validate_track_index(track_index)
     return _get_ableton(ctx).send_command("freeze_track", {

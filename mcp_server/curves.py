@@ -277,10 +277,18 @@ def _square(duration: float, density: int, low: float, high: float,
     return points
 
 
-def _steps(values: list[float], duration: float, **_) -> list:
-    """Quantized staircase from explicit value list."""
+def _steps(values: list[float], duration: float, start: float = 0.0,
+           end: float = 1.0, steps: int = 16, density: int = 16,
+           **_) -> list:
+    """Quantized staircase from explicit value list or auto-generated from start/end.
+
+    If values is empty, generates a staircase with `steps` evenly spaced
+    levels from `start` to `end`.
+    """
     if not values:
-        return []
+        # Auto-generate staircase from start/end with the given number of steps
+        n = max(steps, 2)
+        values = [start + (end - start) * i / (n - 1) for i in range(n)]
     step_dur = duration / len(values)
     return [
         {"time": i * step_dur, "value": v, "duration": step_dur}

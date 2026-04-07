@@ -73,8 +73,16 @@ def continue_playback(ctx: Context) -> dict:
 
 
 @mcp.tool()
-def toggle_metronome(ctx: Context, enabled: bool) -> dict:
-    """Enable or disable the metronome click."""
+def toggle_metronome(ctx: Context, enabled: Optional[bool] = None) -> dict:
+    """Enable or disable the metronome click.
+
+    If enabled is omitted, toggles the current state (true toggle).
+    If enabled is provided, sets to that value explicitly.
+    """
+    if enabled is None:
+        # True toggle: read current state and flip it
+        info = _get_ableton(ctx).send_command("get_session_info")
+        enabled = not info.get("metronome", False)
     return _get_ableton(ctx).send_command("toggle_metronome", {"enabled": enabled})
 
 

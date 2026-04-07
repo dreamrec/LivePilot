@@ -523,10 +523,20 @@ def set_arrangement_automation(song, params):
 
     # No fallback — direct envelope creation is the only safe approach.
     # Session-clip duplication can silently create overlapping clips.
+    #
+    # Known limitation: clips created via create_arrangement_clip
+    # (duplicate_clip_to_arrangement) often cannot have envelopes
+    # created programmatically. Workaround: record automation by
+    # arming the track and playing back with parameter changes,
+    # or use session-clip automation (set_clip_automation) and then
+    # record the session performance to arrangement.
     raise ValueError(
         "Cannot create automation envelope for parameter '%s' on this "
-        "arrangement clip. Direct envelope access is not supported for "
-        "this parameter type or Live version."
+        "arrangement clip. This is a known Live API limitation for "
+        "programmatically-created arrangement clips. Workarounds: "
+        "(1) use set_clip_automation on a session clip instead, "
+        "(2) record automation by arming the track during playback, "
+        "or (3) use the M4L bridge for deeper LOM envelope access."
         % parameter.name
     )
 
