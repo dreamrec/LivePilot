@@ -39,6 +39,9 @@ livepilot/skills/livepilot-core/references/device-atlas/presets-by-vibe.md
 demo Project/
 *.als
 
+# Audio captures from testing
+m4l_device/*.wav
+
 # IDE
 .vscode/
 .idea/
