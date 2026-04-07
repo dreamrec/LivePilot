@@ -9,5 +9,8 @@ soundfile>=0.12.0
 scipy>=1.11.0
 mutagen>=1.47.0
 
+# Development / testing (not required for runtime)
+# pip install pytest pytest-asyncio
+
 # Optional: neo-Riemannian group theory (not required — harmony engine is pure Python)
 # pip install opycleid>=0.5.1

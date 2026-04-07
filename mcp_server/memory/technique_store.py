@@ -26,10 +26,26 @@ class TechniqueStore:
         if base_dir is None:
             base_dir = os.path.join(os.path.expanduser("~"), ".livepilot", "memory")
         self._base_dir = Path(base_dir)
-        self._base_dir.mkdir(parents=True, exist_ok=True)
         self._file = self._base_dir / "techniques.json"
         self._lock = threading.Lock()
+        self._initialized = False
+        self._data: dict = {"version": 1, "techniques": []}
 
+    def _ensure_initialized(self) -> None:
+        """Lazily create directory and load data on first access.
+
+        Deferred so that a read-only HOME doesn't crash the entire MCP
+        server at import time — memory tools just return errors instead.
+        """
+        if self._initialized:
+            return
+        try:
+            self._base_dir.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            raise RuntimeError(
+                f"Cannot create memory directory {self._base_dir}: {exc}. "
+                "Memory tools are unavailable."
+            ) from exc
         if self._file.exists():
             try:
                 with open(self._file, "r") as f:
@@ -41,6 +57,7 @@ class TechniqueStore:
         else:
             self._data = {"version": 1, "techniques": []}
             self._flush()
+        self._initialized = True
 
     # ── persistence ──────────────────────────────────────────────
 
@@ -64,6 +81,7 @@ class TechniqueStore:
         tags: Optional[list[str]] = None,
     ) -> dict:
         """Create a new technique. Returns {id, name, type, summary}."""
+        self._ensure_initialized()
         if type not in VALID_TYPES:
             raise ValueError(
                 f"INVALID_PARAM: type must be one of {sorted(VALID_TYPES)}, got '{type}'"
@@ -99,6 +117,7 @@ class TechniqueStore:
 
     def get(self, technique_id: str) -> dict:
         """Return full technique by id."""
+        self._ensure_initialized()
         with self._lock:
             for t in self._data["techniques"]:
                 if t["id"] == technique_id:
@@ -113,6 +132,9 @@ class TechniqueStore:
         limit: int = 10,
     ) -> list[dict]:
         """Search techniques. Returns summaries (no payload)."""
+        self._ensure_initialized()
+        if limit < 0:
+            raise ValueError("INVALID_PARAM: limit must be >= 0")
         with self._lock:
             results = copy.deepcopy(self._data["techniques"])
 
@@ -150,6 +172,9 @@ class TechniqueStore:
         limit: int = 20,
     ) -> list[dict]:
         """List techniques as compact summaries."""
+        self._ensure_initialized()
+        if limit < 0:
+            raise ValueError("INVALID_PARAM: limit must be >= 0")
         if sort_by not in VALID_SORT_FIELDS:
             raise ValueError(
                 f"INVALID_PARAM: sort_by must be one of {sorted(VALID_SORT_FIELDS)}, got '{sort_by}'"
@@ -179,6 +204,7 @@ class TechniqueStore:
         rating: Optional[int] = None,
     ) -> dict:
         """Set favorite flag and/or rating."""
+        self._ensure_initialized()
         if rating is not None and (rating < 0 or rating > 5):
             raise ValueError("INVALID_PARAM: rating must be between 0 and 5")
 
@@ -200,6 +226,7 @@ class TechniqueStore:
         qualities: Optional[dict] = None,
     ) -> dict:
         """Update technique fields. Qualities are merged (lists replaced)."""
+        self._ensure_initialized()
         with self._lock:
             t = self._find(technique_id)
             if name is not None:
@@ -216,6 +243,7 @@ class TechniqueStore:
 
     def delete(self, technique_id: str) -> dict:
         """Delete technique after creating a timestamped backup."""
+        self._ensure_initialized()
         with self._lock:
             t = self._find(technique_id)
             # backup

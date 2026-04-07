@@ -159,12 +159,16 @@ function checkStatus() {
             console.log("  Ableton Live: connected on %s:%d", HOST, PORT);
             ok = true;
           } else if (resp.ok === false && resp.error && resp.error.code === "STATE_ERROR") {
+            // Ableton IS reachable — it just has another client connected.
+            // Report as reachable (exit 0) so --status and --doctor don't
+            // falsely report failure in a healthy single-client deployment.
             console.log(
-              "  Ableton Live: reachable, but another LivePilot client is already connected"
+              "  Ableton Live: reachable on %s:%d (another LivePilot client is connected)", HOST, PORT
             );
             if (resp.error.message) {
               console.log("    Detail: %s", resp.error.message);
             }
+            ok = true;
           } else {
             console.log("  Ableton Live: unexpected response:", JSON.stringify(resp));
           }
@@ -346,10 +350,15 @@ async function setupFlucoma() {
   }
 
   console.log("FluCoMa not found. Downloading from GitHub...");
+  const crypto = require("crypto");
 
-  // Fetch latest release info
+  // Pin to a known release tag for reproducibility
+  const FLUCOMA_TAG = "1.0.7";
+  const FLUCOMA_URL = `https://api.github.com/repos/flucoma/flucoma-max/releases/tags/${FLUCOMA_TAG}`;
+
+  // Fetch pinned release info
   const releaseInfo = await new Promise((resolve, reject) => {
-    https.get("https://api.github.com/repos/flucoma/flucoma-max/releases/latest", {
+    https.get(FLUCOMA_URL, {
       headers: { "User-Agent": "LivePilot" }
     }, (res) => {
       if (res.statusCode === 302 || res.statusCode === 301) {
@@ -368,13 +377,14 @@ async function setupFlucoma() {
     }).on("error", reject);
   });
 
-  const zipAsset = releaseInfo.assets.find(a => a.name.endsWith(".zip"));
+  const platform = process.platform === "darwin" ? "Mac" : "Windows";
+  const zipAsset = releaseInfo.assets.find(a => a.name.endsWith(".zip") && a.name.includes(platform));
   if (!zipAsset) {
-    console.error("Error: no zip asset found in FluCoMa release");
+    console.error("Error: no %s zip asset found in FluCoMa release %s", platform, FLUCOMA_TAG);
     process.exit(1);
   }
 
-  console.log("Downloading %s (%sMB)...", zipAsset.name,
+  console.log("Downloading %s (v%s, %sMB)...", zipAsset.name, FLUCOMA_TAG,
     Math.round(zipAsset.size / 1024 / 1024));
 
   // Download to temp
@@ -399,6 +409,13 @@ async function setupFlucoma() {
     download(downloadUrl, 0);
   });
 
+  // Verify download integrity via SHA256 of the zip file
+  const hash = crypto.createHash("sha256");
+  hash.update(fs.readFileSync(zipPath));
+  const sha256 = hash.digest("hex");
+  console.log("SHA256: %s", sha256);
+  console.log("Verify this matches the checksum on https://github.com/flucoma/flucoma-max/releases/tag/%s", FLUCOMA_TAG);
+
   console.log("Extracting to %s...", packagesDir);
   fs.mkdirSync(packagesDir, { recursive: true });
 
@@ -417,8 +434,9 @@ async function setupFlucoma() {
     });
   }
 
-  // macOS: strip quarantine
+  // macOS: strip quarantine on FluCoMa externals only (not on arbitrary paths)
   if (process.platform === "darwin" && fs.existsSync(flucomaDir)) {
+    console.log("Removing macOS quarantine from FluCoMa externals...");
     try {
       execFileSync("xattr", ["-d", "-r", "com.apple.quarantine", flucomaDir], {
         stdio: "pipe",
@@ -434,7 +452,7 @@ async function setupFlucoma() {
 
   if (fs.existsSync(flucomaDir)) {
     console.log("");
-    console.log("FluCoMa installed successfully!");
+    console.log("FluCoMa v%s installed successfully!", FLUCOMA_TAG);
     console.log("Restart Ableton Live for real-time DSP tools.");
   } else {
     console.error("Error: FluCoMa directory not found after extraction.");

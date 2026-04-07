@@ -5,7 +5,7 @@ Entry point for the ControlSurface. Ableton calls create_instance(c_instance)
 when this script is selected in Preferences > Link, Tempo & MIDI.
 """
 
-__version__ = "1.9.12"
+__version__ = "1.9.13"
 
 from _Framework.ControlSurface import ControlSurface
 from .server import LivePilotServer
@@ -34,8 +34,8 @@ class LivePilot(ControlSurface):
         ControlSurface.__init__(self, c_instance)
         self._server = LivePilotServer(self)
         self._server.start()
-        self.log_message("LivePilot v%s initialized" % __version__)
-        self.show_message("LivePilot: Listening on port 9878")
+        self.log_message("LivePilot v%s starting..." % __version__)
+        self.show_message("LivePilot v%s starting..." % __version__)
 
     def disconnect(self):
         """Called by Ableton when the script is unloaded."""
