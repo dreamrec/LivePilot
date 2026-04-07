@@ -95,7 +95,8 @@ class LivePilotServer(object):
         self._thread = threading.Thread(target=self._server_loop)
         self._thread.daemon = True
         self._thread.start()
-        self._log("Server started on %s:%d" % (self._host, self._port))
+        # Note: "Listening on ..." is logged from _server_loop after bind
+        # succeeds. Don't log "Server started" here — bind may still fail.
 
     def stop(self):
         """Shutdown the server gracefully."""

@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.9.13 — Security Hardening + Startup Safety (April 2026)
+
+- Fix(P2): `--setup-flucoma` now pins to a known release tag (v1.0.7) instead of unpinned `latest`, prints SHA256 checksum for verification, and selects the platform-specific zip
+- Fix(P2): memory subsystem now uses lazy initialization — `TechniqueStore` defers directory creation to first tool call instead of blocking server startup when HOME is read-only
+- Fix(P3): `--status` and `--doctor` now return exit 0 when Ableton is reachable but another client is connected (STATE_ERROR = reachable, not failure)
+- Fix(P3): negative `limit` values on `memory_recall` and `memory_list` now raise `ValueError` instead of using Python negative slicing
+- Fix: Remote Script no longer logs "Server started" before bind succeeds — "Listening on..." is logged from the server loop after successful bind
+- Fix: `requirements.txt` now documents dev dependencies (pytest, pytest-asyncio) as comments
+- Verification: 145 tests passing, 178 tools confirmed
+
 ## 1.9.12 — Deep Audit: 21 Fixes Across 15 Files (April 2026)
 
 **Full codebase audit — 5 critical, 10 important, 6 doc/test fixes.**
