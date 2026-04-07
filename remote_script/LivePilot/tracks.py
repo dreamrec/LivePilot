@@ -175,9 +175,14 @@ def duplicate_track(song, params):
             "Track index %d out of range (0..%d)"
             % (track_index, len(tracks) - 1)
         )
+    count_before = len(tracks)
     song.duplicate_track(track_index)
-    new_index = track_index + 1
-    return {"index": new_index, "name": list(song.tracks)[new_index].name}
+    all_tracks = list(song.tracks)
+    # For group tracks, Ableton duplicates the group + all children.
+    # The duplicate block starts right after the original group's last child.
+    added = len(all_tracks) - count_before
+    new_index = track_index + added
+    return {"index": new_index, "name": all_tracks[new_index].name}
 
 
 @register("set_track_name")

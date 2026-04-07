@@ -201,10 +201,11 @@ def import_midi_to_clip(
                 "clip_index": clip_index,
             })
             slot_has_clip = True
-        except AbletonConnectionError:
-            # Slot is empty — send_command raises AbletonConnectionError
-            # for all Remote Script errors including INDEX_ERROR/NOT_FOUND
-            pass
+        except AbletonConnectionError as exc:
+            msg = str(exc)
+            if "NOT_FOUND" not in msg and "STATE_ERROR" not in msg:
+                raise  # propagate INDEX_ERROR, TIMEOUT, connection failures
+            # Slot is empty (NOT_FOUND) or no clip (STATE_ERROR)
 
         if slot_has_clip:
             # Clip exists — clear its notes before importing

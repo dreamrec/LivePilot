@@ -187,12 +187,12 @@ class LivePilotServer(object):
         except OSError as exc:
             self._log("Client error: %s" % exc)
         finally:
-            with self._client_lock:
-                self._client_connected = False
             try:
                 client.close()
             except OSError:
                 pass
+            with self._client_lock:
+                self._client_connected = False
             self._log("Client disconnected")
 
     def _handle_client(self, client):
