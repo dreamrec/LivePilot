@@ -8,7 +8,7 @@ MAXPAT = ROOT / "m4l_device" / "LivePilot_Analyzer.maxpat"
 
 
 def test_capture_js_reports_absolute_file_path_and_stop_signal():
-    text = BRIDGE_JS.read_text()
+    text = BRIDGE_JS.read_text(encoding="utf-8")
 
     assert "var capture_file_path = \"\";" in text
     assert 'outlet(1, "capture_start", capture_file_path, num_samples);' in text

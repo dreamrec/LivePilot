@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import sys
+
 import numpy as np
+import pytest
 
 from mcp_server.tools.perception import analyze_loudness, read_audio_metadata
 
@@ -15,6 +18,7 @@ def _make_sine_wav(path, freq=440.0, duration=1.0, sr=44100, amplitude=0.5):
     return path
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Macintosh HD: paths are macOS-only")
 def test_perception_tools_accept_max_style_macos_paths(tmp_path):
     wav = str(tmp_path / "capture.wav")
     _make_sine_wav(wav)
