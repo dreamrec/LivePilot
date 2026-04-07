@@ -601,6 +601,8 @@ async def capture_audio(
         filename = safe_name
 
     bridge = _get_m4l(ctx)
+    # Ensure captures directory exists before sending to bridge
+    os.makedirs(CAPTURE_DIR, exist_ok=True)
     duration_ms = duration_seconds * 1000
     result = await bridge.send_capture(
         "capture_audio",

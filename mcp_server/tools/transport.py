@@ -23,21 +23,31 @@ def get_session_info(ctx: Context) -> dict:
     return _get_ableton(ctx).send_command("get_session_info")
 
 
+def _validate_tempo(tempo: float) -> None:
+    """Validate tempo is within Ableton's accepted range."""
+    if not 20 <= tempo <= 999:
+        raise ValueError("Tempo must be between 20 and 999 BPM")
+
+
+def _validate_time_signature(numerator: int, denominator: int) -> None:
+    """Validate time signature components."""
+    if numerator < 1 or numerator > 99:
+        raise ValueError("Numerator must be between 1 and 99")
+    if denominator not in (1, 2, 4, 8, 16):
+        raise ValueError("Denominator must be 1, 2, 4, 8, or 16")
+
+
 @mcp.tool()
 def set_tempo(ctx: Context, tempo: float) -> dict:
     """Set the song tempo in BPM (20-999)."""
-    if not 20 <= tempo <= 999:
-        raise ValueError("Tempo must be between 20 and 999 BPM")
+    _validate_tempo(tempo)
     return _get_ableton(ctx).send_command("set_tempo", {"tempo": tempo})
 
 
 @mcp.tool()
 def set_time_signature(ctx: Context, numerator: int, denominator: int) -> dict:
     """Set the time signature (e.g., 4/4, 3/4, 6/8)."""
-    if numerator < 1 or numerator > 99:
-        raise ValueError("Numerator must be between 1 and 99")
-    if denominator not in (1, 2, 4, 8, 16):
-        raise ValueError("Denominator must be 1, 2, 4, 8, or 16")
+    _validate_time_signature(numerator, denominator)
     return _get_ableton(ctx).send_command("set_time_signature", {
         "numerator": numerator,
         "denominator": denominator,

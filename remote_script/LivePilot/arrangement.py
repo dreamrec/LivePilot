@@ -148,20 +148,24 @@ def create_arrangement_clip(song, params):
     finally:
         song.end_undo_step()
 
-    # Re-read to get accurate final state
+    # Re-read to get accurate final state — locate by start_time, not stored
+    # index, because the trim pass (remove_notes_extended) can shift indices.
     arr_clips = list(track.arrangement_clips)
-    if first_clip_index is None or first_clip_index >= len(arr_clips):
+    first_clip = None
+    for c in arr_clips:
+        if abs(c.start_time - start_time) < 0.01:
+            first_clip = c
+            break
+    if first_clip is None:
         raise ValueError("Failed to place any clips in arrangement")
-    first_clip = arr_clips[first_clip_index]
 
     return {
         "track_index": track_index,
-        "clip_index": first_clip_index,
         "start_time": start_time,
         "length": length,
         "clip_count": clip_count,
         "source_length": source_length,
-        "name": first_clip.name if first_clip else "",
+        "name": first_clip.name,
     }
 
 

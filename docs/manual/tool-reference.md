@@ -2222,8 +2222,7 @@ Exports a session clip's MIDI notes to a .mid file on disk.
 |-----------|------|---------|-------------|
 | `track_index` | int | *(required)* | Track number (0-based) |
 | `clip_index` | int | *(required)* | Clip slot (0-based) |
-| `file_path` | string | *(required)* | Output .mid file path |
-| `tempo` | float | *(session tempo)* | BPM to embed in the MIDI file |
+| `filename` | string | *(auto-generated)* | Output .mid filename (auto-generates from track/clip if omitted) |
 
 **When to use:** "Export this clip to a MIDI file" or "save the drum pattern as .mid."
 
@@ -2235,10 +2234,10 @@ Loads a .mid file from disk into a session clip, replacing existing notes.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
+| `file_path` | string | *(required)* | Input .mid file path |
 | `track_index` | int | *(required)* | Track number (0-based) |
 | `clip_index` | int | *(required)* | Clip slot (0-based) |
-| `file_path` | string | *(required)* | Input .mid file path |
-| `track_number` | int | 0 | Which MIDI track to read from the file |
+| `create_clip` | bool | `true` | Create a new clip if slot is empty; clear existing clip's notes if occupied |
 
 **When to use:** "Load this .mid file into the bass clip."
 

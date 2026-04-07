@@ -1,5 +1,45 @@
 # Changelog
 
+## 1.9.12 — Deep Audit: 21 Fixes Across 15 Files (April 2026)
+
+**Full codebase audit — 5 critical, 10 important, 6 doc/test fixes.**
+
+### Critical Fixes
+- Fix(P1): `capture_stop` no longer deadlocks — `cancel_capture_future` removed lock acquisition that blocked behind `send_capture`
+- Fix(P1): `import_midi_to_clip` now distinguishes empty-slot NOT_FOUND from INDEX_ERROR/TIMEOUT instead of swallowing all AbletonConnectionErrors
+- Fix(P1): capture audio files now write to `~/Documents/LivePilot/captures/` (stable path) instead of beside the .amxd preset
+- Fix(P1): `check_flucoma` now uses `Folder.end` to detect FluCoMa — `typelist` check was always true
+- Fix(P1): CI workflow updated to `actions/checkout@v4` + `actions/setup-python@v5` (v6 doesn't exist)
+
+### Safety & Validation
+- Fix(P2): 5 automation tools now validate `track_index >= 0` and `clip_index >= 0` (matching all peer modules)
+- Fix(P2): `cmd_stop_scrub` now checks `cursor_a.id === 0` for empty clip slots (matching all peer bridge functions)
+- Fix(P2): `cmd_get_selected` now resolves return tracks (negative indices) and master track (-1000)
+- Fix(P2): `duplicate_track` uses count-before/after delta for correct group track duplication index
+- Fix(P2): `create_arrangement_clip` locates first clip by `start_time` instead of stale index after trim pass
+- Fix(P2): `get_session_info` reuses already-built lists instead of re-iterating `song.tracks`/`song.scenes`
+- Fix(P2): client disconnect race — socket now closes before clearing `_client_connected` flag
+
+### Tests
+- Fix: transport validation tests now import production `_validate_tempo`/`_validate_time_signature` instead of testing local copies
+- Fix: added `load_sample_to_simpler` to analyzer tool contract (was 28/29)
+- Fix: removed duplicate `test_release_quick_verify_checks_both_plugin_manifests`
+- New: 5 automation negative tests (index validation, parameter_type validation)
+
+### Documentation
+- Fix: `docs/manual/index.md` domain map — Tracks 14→17, Devices 12→15, Scenes 8→12
+- Fix: README perception split — 145+33 → 149+29 (actual analyzer tool count is 29)
+- Fix: M4L_BRIDGE.md command count — 22→28 (6 commands undocumented)
+- Fix: tool-reference.md MIDI docs — `export_clip_midi` and `import_midi_to_clip` parameter tables matched to actual signatures
+
+### Deferred (documented, low-impact)
+- Timed-out commands still execute on main thread (needs cancellation token redesign)
+- Chunked UDP reassembly fragile on packet loss (loopback mitigates)
+- Diatonic transpose octave correction edge case (needs musical test suite)
+- `cmd_map_plugin_param` reports false success (LiveAPI lacks Configure mapping API)
+
+Verification: 145 tests passing (non-fastmcp), 178 tools confirmed, 15 files changed
+
 ## 1.9.11 — Session Diagnostics + Client Conflict Clarity (March 2026)
 
 **Live-tested against the open Ableton set after reloading the updated Remote Script.**

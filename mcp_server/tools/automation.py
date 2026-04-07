@@ -43,6 +43,10 @@ def get_clip_automation(
     parameter name, and type (mixer/send/device). Use this to see
     what's already automated before writing new curves.
     """
+    if track_index < 0:
+        raise ValueError("track_index must be >= 0")
+    if clip_index < 0:
+        raise ValueError("clip_index must be >= 0")
     return _get_ableton(ctx).send_command("get_clip_automation", {
         "track_index": track_index,
         "clip_index": clip_index,
@@ -72,6 +76,10 @@ def set_clip_automation(
     Tip: Use apply_automation_shape to generate points from curves/recipes
     instead of calculating points manually.
     """
+    if track_index < 0:
+        raise ValueError("track_index must be >= 0")
+    if clip_index < 0:
+        raise ValueError("clip_index must be >= 0")
     if parameter_type not in ("device", "volume", "panning", "send"):
         raise ValueError("parameter_type must be 'device', 'volume', 'panning', or 'send'")
     if parameter_type == "device":
@@ -109,6 +117,10 @@ def clear_clip_automation(
     If parameter_type is omitted, clears ALL envelopes.
     If provided, clears only that parameter's envelope.
     """
+    if track_index < 0:
+        raise ValueError("track_index must be >= 0")
+    if clip_index < 0:
+        raise ValueError("clip_index must be >= 0")
     params: dict = {
         "track_index": track_index,
         "clip_index": clip_index,
@@ -204,7 +216,11 @@ def apply_automation_shape(
     - Throws: use spike with short duration (1-2 beats)
     - Tremolo/pan: use sine with frequency in musical divisions
     """
-    # Validate parameter_type (same rules as set_clip_automation)
+    # Validate indices and parameter_type (same rules as set_clip_automation)
+    if track_index < 0:
+        raise ValueError("track_index must be >= 0")
+    if clip_index < 0:
+        raise ValueError("clip_index must be >= 0")
     if parameter_type not in ("device", "volume", "panning", "send"):
         raise ValueError("parameter_type must be 'device', 'volume', 'panning', or 'send'")
     if parameter_type == "device":
@@ -295,7 +311,11 @@ def apply_automation_recipe(
     - vinyl_crackle: slow bit reduction movement
     - stereo_narrow: collapse to mono before drop
     """
-    # Validate parameter_type (same rules as set_clip_automation)
+    # Validate indices and parameter_type (same rules as set_clip_automation)
+    if track_index < 0:
+        raise ValueError("track_index must be >= 0")
+    if clip_index < 0:
+        raise ValueError("clip_index must be >= 0")
     if parameter_type not in ("device", "volume", "panning", "send"):
         raise ValueError("parameter_type must be 'device', 'volume', 'panning', or 'send'")
     if parameter_type == "device":

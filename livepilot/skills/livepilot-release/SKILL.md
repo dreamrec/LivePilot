@@ -29,12 +29,12 @@ Run this checklist EVERY time the user says "update everything", "push", "releas
 ## 2. Tool Count (must ALL match)
 
 Current: **178 tools across 17 domains**.
-Core (no M4L): **145**. Analyzer (M4L): **29**. Perception (offline): **4**.
+Core (no M4L): **149**. Analyzer (M4L): **29**. Perception (offline): **4**.
 
 Verify: `grep -rc "@mcp.tool" mcp_server/tools/ | grep -v ":0" | awk -F: '{sum+=$2} END{print sum}'`
 
 Files that reference tool count:
-- [ ] `README.md` — header, PERCEPTION section ("139 core...29 analyzer"), Analyzer table header "(29)", Perception table header "(4)"
+- [ ] `README.md` — header, PERCEPTION section ("149 core...29 analyzer"), Analyzer table header "(29)", Perception table header "(4)"
 - [ ] `package.json` → `"description"` (178 tools, 17 domains)
 - [ ] `server.json` → `"description"`
 - [ ] `livepilot/.Codex-plugin/plugin.json` → `"description"` (primary Codex manifest)
@@ -44,10 +44,10 @@ Files that reference tool count:
 - [ ] `livepilot/skills/livepilot-core/SKILL.md` — "178 tools across 17 domains", Analyzer (29), Perception (4)
 - [ ] `livepilot/skills/livepilot-core/references/overview.md` — "178 tools across 17 domains"
 - [ ] `docs/manual/index.md` — domain table: Analyzer (29), Perception (4)
-- [ ] `docs/manual/getting-started.md` — "139 core tools...29 analyzer"
+- [ ] `docs/manual/getting-started.md` — "149 core tools...29 analyzer"
 - [ ] `docs/manual/tool-reference.md` — all domains present with correct counts
 - [ ] `docs/TOOL_REFERENCE.md` — all domains present
-- [ ] `docs/M4L_BRIDGE.md` — "139 core tools...29 analyzer"
+- [ ] `docs/M4L_BRIDGE.md` — "149 core tools...29 analyzer"
 - [ ] `docs/social-banner.html`
 - [ ] `mcp_server/tools/analyzer.py` → module docstring
 - [ ] `tests/test_tools_contract.py` → expected total count

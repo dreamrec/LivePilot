@@ -249,6 +249,7 @@ def test_analyzer_tools_registered():
         "get_novelty",
         "get_momentary_loudness",
         "check_flucoma",
+        "load_sample_to_simpler",
     }
     missing = expected - names
     assert not missing, f"Missing analyzer tools: {missing}"

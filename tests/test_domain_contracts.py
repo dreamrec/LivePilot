@@ -92,38 +92,29 @@ def conn(mock_server):
 
 class TestTransportContracts:
     def test_set_tempo_rejects_below_range(self):
-        from mcp_server.tools.transport import set_tempo
+        from mcp_server.tools.transport import _validate_tempo
         with pytest.raises(ValueError, match="20.*999"):
-            # Can't call MCP tool directly without context, so test validation
             _validate_tempo(10)
 
     def test_set_tempo_rejects_above_range(self):
+        from mcp_server.tools.transport import _validate_tempo
         with pytest.raises(ValueError, match="20.*999"):
             _validate_tempo(1000)
 
     def test_set_tempo_accepts_valid(self):
+        from mcp_server.tools.transport import _validate_tempo
         _validate_tempo(120)  # Should not raise
 
     def test_time_signature_rejects_bad_denominator(self):
+        from mcp_server.tools.transport import _validate_time_signature
         with pytest.raises(ValueError, match="[Dd]enominator"):
             _validate_time_signature(4, 3)
 
     def test_time_signature_accepts_valid(self):
+        from mcp_server.tools.transport import _validate_time_signature
         _validate_time_signature(4, 4)
         _validate_time_signature(6, 8)
         _validate_time_signature(3, 4)
-
-
-def _validate_tempo(tempo):
-    if not 20 <= tempo <= 999:
-        raise ValueError("Tempo must be between 20 and 999 BPM")
-
-
-def _validate_time_signature(num, denom):
-    if num < 1 or num > 99:
-        raise ValueError("Numerator must be between 1 and 99")
-    if denom not in (1, 2, 4, 8, 16):
-        raise ValueError("Denominator must be 1, 2, 4, 8, or 16")
 
 
 # ── Notes contracts ─────────────────────────────────────────────────
@@ -166,6 +157,37 @@ class TestNotesContracts:
     def test_valid_note_with_probability(self):
         from mcp_server.tools.notes import _validate_note
         _validate_note({"pitch": 60, "start_time": 0, "duration": 0.5, "probability": 0.5})
+
+
+# ── Automation contracts ────────────────────────────────────────────
+
+class TestAutomationContracts:
+    def test_get_clip_automation_rejects_negative_track(self):
+        from mcp_server.tools.automation import get_clip_automation
+        with pytest.raises(ValueError, match="track_index"):
+            get_clip_automation(None, track_index=-1, clip_index=0)
+
+    def test_get_clip_automation_rejects_negative_clip(self):
+        from mcp_server.tools.automation import get_clip_automation
+        with pytest.raises(ValueError, match="clip_index"):
+            get_clip_automation(None, track_index=0, clip_index=-1)
+
+    def test_set_clip_automation_rejects_invalid_parameter_type(self):
+        from mcp_server.tools.automation import set_clip_automation
+        with pytest.raises(ValueError, match="parameter_type"):
+            set_clip_automation(None, track_index=0, clip_index=0,
+                               parameter_type="invalid", points=[])
+
+    def test_apply_automation_shape_rejects_negative_indices(self):
+        from mcp_server.tools.automation import apply_automation_shape
+        with pytest.raises(ValueError, match="track_index"):
+            apply_automation_shape(None, track_index=-1, clip_index=0,
+                                   parameter_type="volume", curve_type="linear")
+
+    def test_clear_clip_automation_rejects_negative_track(self):
+        from mcp_server.tools.automation import clear_clip_automation
+        with pytest.raises(ValueError, match="track_index"):
+            clear_clip_automation(None, track_index=-1, clip_index=0)
 
 
 # ── Tracks contracts ────────────────────────────────────────────────
@@ -219,7 +241,7 @@ class TestConnectionContracts:
         result = _friendly_error("INDEX_ERROR", "Track 99 not found", "get_track_info")
         assert "[INDEX_ERROR]" in result
         assert "Track 99 not found" in result
-        assert "get_session_info" in result  # from hint
+        assert "get_session_info" in result  # from INDEX_ERROR hint text (command_type param is unused)
 
     def test_friendly_error_unknown_code(self):
         from mcp_server.connection import _friendly_error

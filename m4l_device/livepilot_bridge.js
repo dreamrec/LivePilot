@@ -84,7 +84,7 @@ function anything() {
 function dispatch(cmd, args) {
     switch(cmd) {
         case "ping":
-            send_response({"ok": true, "version": "1.9.11"});
+            send_response({"ok": true, "version": "1.9.12"});
             break;
         case "get_params":
             cmd_get_params(args);
@@ -465,7 +465,7 @@ function cmd_check_flucoma() {
     try {
         var pkg_path = max.appsupportpath + "/Packages/FluidCorpusManipulation";
         var f = new Folder(pkg_path);
-        var available = (f.typelist !== undefined);
+        var available = !f.end;  // end === true means folder not found
         f.close();
         send_response({"flucoma_available": available});
     } catch (e) {
@@ -525,6 +525,25 @@ function cmd_get_selected() {
             if (cursor_a.get("name").toString() === result.selected_track_name) {
                 result.selected_track = i;
                 break;
+            }
+        }
+        // Check return tracks if not found in main tracks
+        if (result.selected_track === -1) {
+            cursor_a.goto("live_set");
+            var rtc = cursor_a.getcount("return_tracks");
+            for (var j = 0; j < rtc; j++) {
+                cursor_a.goto("live_set return_tracks " + j);
+                if (cursor_a.get("name").toString() === result.selected_track_name) {
+                    result.selected_track = -(j + 1);  // -1, -2, ... convention
+                    break;
+                }
+            }
+        }
+        // Check master track if still not found
+        if (result.selected_track === -1) {
+            cursor_a.goto("live_set master_track");
+            if (cursor_a.get("name").toString() === result.selected_track_name) {
+                result.selected_track = -1000;  // master convention
             }
         }
     } catch(e) {}
@@ -1083,6 +1102,10 @@ function cmd_stop_scrub(args) {
     var path = build_track_path(track_idx) + " clip_slots " + clip_idx + " clip";
 
     cursor_a.goto(path);
+    if (cursor_a.id === 0) {
+        send_response({"error": "No clip at track " + track_idx + " slot " + clip_idx});
+        return;
+    }
     try {
         cursor_a.call("stop_scrub");
         send_response({"ok": true});
@@ -1197,7 +1220,7 @@ function cmd_capture_audio(args) {
         + pad2(d.getDate()) + "_"
         + pad2(d.getHours()) + pad2(d.getMinutes()) + pad2(d.getSeconds());
     capture_filename = requested_name.length > 0 ? requested_name : ("capture_" + ts + ".wav");
-    capture_file_path = _join_path(_get_patcher_dir(), capture_filename);
+    capture_file_path = _join_path(_get_captures_dir(), capture_filename);
 
     // Calculate sample count from duration and current sample rate
     var num_samples = Math.ceil((duration_ms / 1000.0) * current_sample_rate);
@@ -1460,6 +1483,22 @@ function build_device_path(track_idx, device_idx) {
         return "live_set return_tracks " + ri + " devices " + device_idx;
     } else {
         return "live_set tracks " + track_idx + " devices " + device_idx;
+    }
+}
+
+function _get_captures_dir() {
+    // Stable captures directory: ~/Documents/LivePilot/captures/
+    // max.appsupportpath = "/Users/<name>/Library/Application Support/Cycling '74"
+    // Walk up to get home directory
+    try {
+        var support = max.appsupportpath;
+        var parts = support.split("/");
+        // /Users/<name>/Library/... → first 3 parts = /Users/<name>
+        var home = parts.slice(0, 3).join("/");
+        return home + "/Documents/LivePilot/captures/";
+    } catch (e) {
+        // Fallback to patcher directory if home detection fails
+        return _get_patcher_dir();
     }
 }
 

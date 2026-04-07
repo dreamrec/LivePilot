@@ -25,11 +25,11 @@ The atlas resolves device names and browser URIs — the AI never hallucinates a
 | Domain | # | Scope | Reference |
 |--------|:-:|-------|-----------|
 | Transport | 12 | playback, tempo, time sig, loop, metronome, undo/redo, diagnostics | [tool-reference](tool-reference.md#transport) |
-| Tracks | 14 | create MIDI/audio/return, delete, duplicate, arm, mute, solo, routing | [tool-reference](tool-reference.md#tracks) |
+| Tracks | 17 | create MIDI/audio/return, delete, duplicate, arm, mute, solo, routing | [tool-reference](tool-reference.md#tracks) |
 | Clips | 11 | create, delete, duplicate, fire, stop, loop, launch mode, warp mode | [tool-reference](tool-reference.md#clips) |
 | Notes | 8 | add/get/remove/modify MIDI, transpose, duplicate, per-note probability | [tool-reference](tool-reference.md#notes) |
-| Devices | 12 | load by name or URI, params, batch edit, racks, chains, presets | [tool-reference](tool-reference.md#devices) |
-| Scenes | 8 | create, delete, duplicate, fire, name, color, per-scene tempo | [tool-reference](tool-reference.md#scenes) |
+| Devices | 15 | load by name or URI, params, batch edit, racks, chains, presets | [tool-reference](tool-reference.md#devices) |
+| Scenes | 12 | create, delete, duplicate, fire, name, color, per-scene tempo | [tool-reference](tool-reference.md#scenes) |
 | Browser | 4 | search library, browse tree, load items | [tool-reference](tool-reference.md#browser) |
 | Mixing | 11 | volume, pan, sends, routing, meters, return tracks, mix snapshot | [tool-reference](tool-reference.md#mixing) |
 | Arrangement | 19 | timeline editing, arrangement notes, cue points, recording, capture | [tool-reference](tool-reference.md#arrangement) |

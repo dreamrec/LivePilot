@@ -15,7 +15,7 @@ def test_capture_js_reports_absolute_file_path_and_stop_signal():
     assert 'outlet(1, "capture_stop");' in text
     assert "function _to_posix_path(path)" in text
     assert '"file_path": _to_posix_path(written_path)' in text
-    assert "capture_file_path = _join_path(_get_patcher_dir(), capture_filename);" in text
+    assert "capture_file_path = _join_path(_get_captures_dir(), capture_filename);" in text
 
 
 def test_maxpat_contains_real_capture_recording_chain():
