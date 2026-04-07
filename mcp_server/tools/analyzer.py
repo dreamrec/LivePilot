@@ -592,7 +592,6 @@ async def capture_audio(
 
     # Sanitize filename — strip directory components to prevent path traversal
     if filename:
-        import os
         safe_name = os.path.basename(filename)
         if not safe_name or safe_name != filename:
             raise ValueError(
