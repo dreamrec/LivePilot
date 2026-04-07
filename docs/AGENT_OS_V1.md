@@ -416,6 +416,7 @@ Contains:
 - plugin health
 - automation occupancy
 - device controllability
+- research provider availability
 - destructive-risk areas
 - latency-sensitive areas
 
@@ -439,6 +440,7 @@ For every important subsystem, maintain a confidence estimate:
 - plugin controllability confidence
 - style transfer confidence
 - research confidence
+- provider coverage confidence
 
 If confidence is low, autonomy should narrow.
 
@@ -700,16 +702,86 @@ The engine must never rely only on one of these.
 
 ## 13. Research System
 
-Research is a first-class subsystem, not an ad hoc fallback.
+Research is a first-class subsystem, not an ad hoc fallback. It must also be capability-aware.
 
-### 13.1 Research Modes
+Agent OS v1 must not assume open-web search exists. Many MCP clients will have:
+
+- no browser tools
+- no web search
+- limited external connectors
+- only local docs, memory, and session state
+
+That is acceptable. Research should degrade gracefully instead of failing hard.
+
+### 13.1 Research Capability Model
+
+At runtime, the agent should build a `ResearchCapabilityState` and plan against the best available providers.
+
+Possible providers:
+
+- session-local evidence
+- local repository docs
+- local technique memory
+- user-supplied references
+- connected structured providers
+- open web search
+
+Definitions:
+
+- `session-local evidence`: loaded devices, parameters, analyzer data, track state, arrangement, recent actions
+- `local repository docs`: docs checked into the repo such as tool references, architecture docs, device maps, and implementation notes
+- `local technique memory`: previously saved technique cards and outcome memories
+- `user-supplied references`: URLs, PDFs, manuals, notes, screenshots, or examples explicitly provided by the user
+- `connected structured providers`: MCP-accessible docs, product docs, app connectors, model docs, plugin manuals, or hub-style knowledge bases
+- `open web search`: general internet search and browsing
+
+The runtime should explicitly track which of these are available.
+
+### 13.2 Graceful Degradation Policy
+
+Research should follow this provider order:
+
+1. session-local evidence
+2. local repository docs
+3. local technique memory
+4. user-supplied references
+5. connected structured providers
+6. open web search
+
+This ordering is intentional:
+
+- local/session evidence is usually the most relevant to the actual task
+- local knowledge is faster and more reproducible
+- open web search is optional enrichment, not the foundation of the system
+
+If web tools are unavailable, the agent should:
+
+- continue with local and connected sources
+- lower research confidence when appropriate
+- avoid claiming broad external coverage
+- say when the result is based on local/session knowledge only
+- still produce usable plans and candidate moves
+
+If no external sources are available at all, the system should still support:
+
+- local research
+- session-aware technique retrieval
+- device-aware inference
+- memory-driven planning
+
+The agent should never respond as if research is impossible solely because web search is unavailable.
+
+### 13.3 Research Modes
 
 - none
 - targeted
 - deep
 - background mining
+- local-only
 
-### 13.2 Trigger Conditions
+`local-only` should be selected automatically when the user asks for research but the runtime has no external research providers.
+
+### 13.4 Trigger Conditions
 
 Trigger research when:
 
@@ -718,25 +790,32 @@ Trigger research when:
 - style transfer is requested
 - knowledge gaps block planning
 - multiple candidate plans need outside evidence
+- there is a large difference between what local memory suggests and what the current session appears to need
 
-### 13.3 Research Loop
+### 13.5 Research Loop
 
 ```text
 1. define research question
 2. identify missing knowledge
 3. inspect current session and available tools/devices
-4. search selectively
-5. extract relevant findings
-6. normalize into LivePilot actions
-7. rank for session fit
-8. optionally test best findings
-9. distill into technique cards
+4. detect available research providers
+5. query providers in priority order
+6. extract relevant findings
+7. normalize findings into LivePilot actions
+8. rank for session fit
+9. optionally test best findings
+10. distill into technique cards
 ```
 
-### 13.4 Source Policy
+The key change is that step 5 is not "search the web." It is "query the best available provider set."
+
+### 13.6 Source Policy
 
 Prefer:
 
+- current session evidence
+- local docs and design references
+- local technique and outcome memory
 - official documentation
 - device/plugin manuals
 - high-signal forum threads
@@ -748,8 +827,32 @@ Avoid:
 - generic SEO-style articles
 - low-signal listicles
 - advice that cannot be operationalized in-session
+- single-source dogma when better corroboration exists
 
-### 13.5 Research Output
+### 13.7 Operational Behavior Without Web Access
+
+When the user says:
+
+- "research this"
+- "go deep"
+- "find the best approach"
+
+and web access is not available, the agent should still do serious research work by:
+
+- inspecting the actual devices and chains already loaded
+- checking local docs and repo references
+- retrieving similar successful techniques from memory
+- reading any user-provided reference materials
+- comparing candidate methods against the live session
+
+The user-facing behavior should be transparent:
+
+- "I can do a local deep-dive with the session, memory, and available docs."
+- "I do not currently have open-web access, so I’ll base this on the loaded devices, internal references, and proven techniques."
+
+That is a valid research experience, not a degraded failure state.
+
+### 13.8 Research Output
 
 Research should not end as links. It should end as `Technique Cards`.
 
@@ -762,9 +865,16 @@ Research should not end as links. It should end as `Technique Cards`.
   "why_it_works": "adds motion without destabilizing core groove",
   "risk": "low",
   "verification": ["motion up", "groove preserved", "mono center preserved"],
-  "evidence": {"sources": 4, "in_session_tested": true}
+  "evidence": {
+    "provider_types": ["session", "local_docs", "memory"],
+    "source_count": 3,
+    "web_used": false,
+    "in_session_tested": true
+  }
 }
 ```
+
+This output format makes the provenance of the research explicit.
 
 ## 14. Memory and Knowledge System
 
