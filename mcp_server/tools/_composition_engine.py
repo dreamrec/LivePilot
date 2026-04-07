@@ -900,5 +900,184 @@ class CompositionAnalysis:
                 "form": len([i for i in self.issues if i.critic == "form"]),
                 "section_identity": len([i for i in self.issues if i.critic == "section_identity"]),
                 "phrase": len([i for i in self.issues if i.critic == "phrase"]),
+                "transition": len([i for i in self.issues if i.critic == "transition"]),
             },
         }
+
+
+# ── Harmony Field (Round 1) ──────────────────────────────────────────
+
+@dataclass
+class HarmonyField:
+    """Harmonic analysis of a section — key, chords, voice-leading, tension."""
+    section_id: str
+    key: str = ""
+    mode: str = ""
+    confidence: float = 0.0
+    chord_progression: list[str] = field(default_factory=list)
+    voice_leading_quality: float = 0.5  # 0=rough, 1=smooth
+    instability: float = 0.0  # 0=stable/tonic, 1=highly unstable
+    resolution_potential: float = 0.5  # tendency toward resolution
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+def build_harmony_field(
+    section_id: str,
+    harmony_analysis: Optional[dict] = None,
+    scale_info: Optional[dict] = None,
+    progression_info: Optional[dict] = None,
+    voice_leading_info: Optional[dict] = None,
+) -> HarmonyField:
+    """Build a HarmonyField from theory/harmony tool outputs.
+
+    All parameters are optional — degrades gracefully.
+    """
+    hf = HarmonyField(section_id=section_id)
+
+    # Scale / key info
+    if scale_info:
+        top = scale_info.get("top_match", {})
+        hf.key = top.get("tonic", "")
+        hf.mode = top.get("mode", "")
+        hf.confidence = top.get("confidence", 0.0)
+
+    # Chord progression
+    if harmony_analysis:
+        chords = harmony_analysis.get("chords", [])
+        hf.chord_progression = [c.get("chord_name", "?") for c in chords]
+
+        # Instability: ratio of non-tonic chords
+        roman_numerals = [c.get("roman_numeral", "?") for c in chords]
+        if roman_numerals:
+            non_tonic = sum(1 for r in roman_numerals if r not in ("i", "I", "?"))
+            hf.instability = non_tonic / len(roman_numerals)
+
+        # Resolution potential: does it end on tonic?
+        if roman_numerals:
+            hf.resolution_potential = 1.0 if roman_numerals[-1] in ("i", "I") else 0.3
+
+    # Progression classification
+    if progression_info:
+        classification = progression_info.get("classification", "")
+        # "diatonic" = more stable, "free neo-Riemannian" = more unstable
+        if "diatonic" in classification.lower():
+            hf.instability = max(0.0, hf.instability - 0.1)
+        elif "free" in classification.lower():
+            hf.instability = min(1.0, hf.instability + 0.1)
+
+    # Voice leading quality
+    if voice_leading_info:
+        steps = voice_leading_info.get("steps", 0)
+        found = voice_leading_info.get("found", False)
+        if found and steps > 0:
+            # Fewer steps = smoother voice leading
+            hf.voice_leading_quality = max(0.0, 1.0 - (steps - 1) * 0.15)
+
+    return hf
+
+
+# ── Transition Critic (Round 1) ──────────────────────────────────────
+
+def run_transition_critic(
+    sections: list[SectionNode],
+    roles: list[RoleNode],
+    harmony_fields: Optional[list[HarmonyField]] = None,
+) -> list[CompositionIssue]:
+    """Analyze boundaries between adjacent sections for transition quality."""
+    issues = []
+    if len(sections) < 2:
+        return issues
+
+    harmony_map = {}
+    if harmony_fields:
+        harmony_map = {hf.section_id: hf for hf in harmony_fields}
+
+    for i in range(1, len(sections)):
+        prev = sections[i - 1]
+        curr = sections[i]
+
+        # 1. Hard cut — no energy or density change at boundary
+        energy_delta = abs(curr.energy - prev.energy)
+        density_delta = abs(curr.density - prev.density)
+
+        if energy_delta < 0.05 and density_delta < 0.05:
+            issues.append(CompositionIssue(
+                issue_type="hard_cut_transition",
+                critic="transition",
+                severity=0.5,
+                confidence=0.70,
+                scope={"from": prev.section_id, "to": curr.section_id},
+                evidence=f"No energy/density change between '{prev.name or prev.section_id}' and '{curr.name or curr.section_id}'",
+                recommended_moves=["add_transition_fx", "create_fill", "vary_density_at_boundary"],
+            ))
+
+        # 2. No pre-arrival subtraction before high-energy section
+        if curr.energy > 0.7 and prev.energy > 0.6:
+            issues.append(CompositionIssue(
+                issue_type="no_pre_arrival_subtraction",
+                critic="transition",
+                severity=0.6,
+                confidence=0.65,
+                scope={"from": prev.section_id, "to": curr.section_id},
+                evidence=f"High-energy section '{curr.name or curr.section_id}' (E={curr.energy:.2f}) not preceded by subtraction (prev E={prev.energy:.2f})",
+                recommended_moves=["thin_preceding_section", "add_breakdown_before_peak", "inhale_gesture"],
+            ))
+
+        # 3. Groove break — rhythmic elements drop out at boundary
+        prev_rhythm = {r.track_index for r in roles
+                       if r.section_id == prev.section_id
+                       and r.role in (RoleType.KICK_ANCHOR, RoleType.RHYTHMIC_TEXTURE)}
+        curr_rhythm = {r.track_index for r in roles
+                       if r.section_id == curr.section_id
+                       and r.role in (RoleType.KICK_ANCHOR, RoleType.RHYTHMIC_TEXTURE)}
+
+        if prev_rhythm and not curr_rhythm:
+            issues.append(CompositionIssue(
+                issue_type="groove_break_at_transition",
+                critic="transition",
+                severity=0.5,
+                confidence=0.60,
+                scope={"from": prev.section_id, "to": curr.section_id},
+                evidence=f"All rhythmic elements ({len(prev_rhythm)} tracks) drop out at '{curr.name or curr.section_id}'",
+                recommended_moves=["carry_one_rhythm_element", "add_transition_percussion"],
+            ))
+
+        # 4. Harmonic non-sequitur — key change without voice-leading support
+        prev_hf = harmony_map.get(prev.section_id)
+        curr_hf = harmony_map.get(curr.section_id)
+
+        if prev_hf and curr_hf and prev_hf.key and curr_hf.key:
+            if prev_hf.key != curr_hf.key:
+                # Key change: check if it's prepared
+                if prev_hf.resolution_potential < 0.5 and curr_hf.instability > 0.5:
+                    issues.append(CompositionIssue(
+                        issue_type="harmonic_non_sequitur",
+                        critic="transition",
+                        severity=0.6,
+                        confidence=0.55,
+                        scope={"from": prev.section_id, "to": curr.section_id},
+                        evidence=f"Key change {prev_hf.key} → {curr_hf.key} without harmonic preparation",
+                        recommended_moves=["add_pivot_chord", "use_chromatic_mediant", "prepare_with_dominant"],
+                    ))
+
+        # 5. Weak build — energy rises but no role rotation
+        if curr.energy > prev.energy + 0.2:
+            prev_fg = {r.track_index for r in roles
+                       if r.section_id == prev.section_id and r.foreground}
+            curr_fg = {r.track_index for r in roles
+                       if r.section_id == curr.section_id and r.foreground}
+
+            if prev_fg == curr_fg and prev_fg:
+                issues.append(CompositionIssue(
+                    issue_type="weak_build",
+                    critic="transition",
+                    severity=0.4,
+                    confidence=0.55,
+                    scope={"from": prev.section_id, "to": curr.section_id},
+                    evidence=f"Energy rises but same foreground voices ({len(prev_fg)} tracks) — no role rotation",
+                    recommended_moves=["rotate_foreground_voice", "add_new_element", "handoff_gesture"],
+                ))
+
+    return issues

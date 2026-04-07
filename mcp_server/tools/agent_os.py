@@ -170,11 +170,31 @@ def build_world_model(ctx: Context) -> dict:
     sonic_issues = engine.run_sonic_critic(wm.sonic, goal_stub, wm.track_roles)
     technical_issues = engine.run_technical_critic(wm.technical)
 
+    # Round 1: Wire structural critic (composition engine) into world model
+    structural_issues = []
+    try:
+        from . import _composition_engine as comp_engine
+        # Build lightweight section graph for structural analysis
+        scenes = session_info.get("scenes", [])
+        track_count = session_info.get("track_count", 0)
+        clip_matrix = []
+        try:
+            matrix_data = ableton.send_command("get_scene_matrix")
+            clip_matrix = matrix_data.get("matrix", [])
+        except Exception:
+            pass
+
+        sections = comp_engine.build_section_graph_from_scenes(scenes, clip_matrix, track_count)
+        structural_issues = comp_engine.run_form_critic(sections)
+    except Exception:
+        pass  # Composition engine unavailable — degrade gracefully
+
     result = wm.to_dict()
     result["issues"] = {
         "sonic": [i.to_dict() for i in sonic_issues],
         "technical": [i.to_dict() for i in technical_issues],
-        "total_count": len(sonic_issues) + len(technical_issues),
+        "structural": [i.to_dict() for i in structural_issues],
+        "total_count": len(sonic_issues) + len(technical_issues) + len(structural_issues),
         "note": "Issues are unfiltered — filter against your GoalVector targets before acting.",
     }
     return result
@@ -225,3 +245,47 @@ def evaluate_move(
     )
 
     return engine.compute_evaluation_score(gv, before, after)
+
+
+# ── analyze_outcomes (Round 1) ────────────────────────────────────────
+
+
+@mcp.tool()
+def analyze_outcomes(
+    ctx: Context,
+    limit: int = 50,
+) -> dict:
+    """Analyze accumulated outcome memories to identify user taste patterns.
+
+    Reads outcome-type memories from the technique library and returns:
+    - keep_rate: what percentage of moves does this user keep?
+    - dimension_success: which quality dimensions improve most often?
+    - common_kept_moves: which action types work best?
+    - common_undone_moves: which action types fail most?
+    - taste_vector: inferred dimension preferences from history
+
+    Use this before choosing moves to align with user taste.
+    The more outcomes stored (via memory_learn type="outcome"),
+    the better the taste analysis becomes.
+    """
+    ableton = _get_ableton(ctx)
+
+    # Fetch outcome memories
+    try:
+        memory_result = ableton.send_command("memory_list", {
+            "type": "outcome",
+            "limit": limit,
+            "sort_by": "updated_at",
+        })
+        techniques = memory_result.get("techniques", [])
+    except Exception:
+        techniques = []
+
+    # Extract payloads from techniques
+    outcomes = []
+    for t in techniques:
+        payload = t.get("payload", {})
+        if isinstance(payload, dict):
+            outcomes.append(payload)
+
+    return engine.analyze_outcome_history(outcomes)

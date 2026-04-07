@@ -7,6 +7,7 @@ from mcp_server.tools._composition_engine import (
     CompositionIssue,
     GestureIntent,
     GesturePlan,
+    HarmonyField,
     PhraseUnit,
     RoleNode,
     RoleType,
@@ -19,9 +20,11 @@ from mcp_server.tools._composition_engine import (
     evaluate_composition_move,
     infer_role_for_track,
     plan_gesture,
+    build_harmony_field,
     run_form_critic,
     run_phrase_critic,
     run_section_identity_critic,
+    run_transition_critic,
 )
 
 
@@ -417,3 +420,144 @@ class TestCompositionAnalysis:
         assert d["role_count"] == 1
         assert d["issue_count"] == 1
         assert d["issue_summary"]["form"] == 1
+
+
+# ── Round 1: Harmony Field ────────────────────────────────────────────
+
+
+class TestHarmonyField:
+    def test_builds_from_scale_info(self):
+        hf = build_harmony_field(
+            "sec_01",
+            scale_info={"top_match": {"tonic": "C", "mode": "minor", "confidence": 0.93}},
+        )
+        assert hf.key == "C"
+        assert hf.mode == "minor"
+        assert hf.confidence == 0.93
+
+    def test_builds_from_harmony_analysis(self):
+        hf = build_harmony_field(
+            "sec_01",
+            harmony_analysis={
+                "chords": [
+                    {"chord_name": "Cm", "roman_numeral": "i"},
+                    {"chord_name": "Ab", "roman_numeral": "VI"},
+                    {"chord_name": "Fm", "roman_numeral": "iv"},
+                    {"chord_name": "Cm", "roman_numeral": "i"},
+                ],
+            },
+        )
+        assert len(hf.chord_progression) == 4
+        assert hf.chord_progression[0] == "Cm"
+        # Ends on tonic → high resolution potential
+        assert hf.resolution_potential == 1.0
+        # 2/4 non-tonic chords → instability 0.5
+        assert hf.instability == 0.5
+
+    def test_degrades_gracefully(self):
+        hf = build_harmony_field("sec_01")
+        assert hf.key == ""
+        assert hf.confidence == 0.0
+
+    def test_voice_leading_quality(self):
+        hf = build_harmony_field(
+            "sec_01",
+            voice_leading_info={"found": True, "steps": 2},
+        )
+        assert hf.voice_leading_quality > 0.5  # 2 steps = decent
+
+    def test_progression_classification_adjusts_instability(self):
+        hf = build_harmony_field(
+            "sec_01",
+            harmony_analysis={
+                "chords": [{"chord_name": "C", "roman_numeral": "I"},
+                           {"chord_name": "F", "roman_numeral": "IV"}],
+            },
+            progression_info={"classification": "diatonic"},
+        )
+        # Diatonic reduces instability
+        assert hf.instability < 0.5
+
+    def test_to_dict(self):
+        hf = HarmonyField("sec_01", "C", "minor", 0.9, ["Cm", "Ab"], 0.8, 0.3, 0.9)
+        d = hf.to_dict()
+        assert d["key"] == "C"
+        assert d["section_id"] == "sec_01"
+
+
+# ── Round 1: Transition Critic ────────────────────────────────────────
+
+
+class TestTransitionCritic:
+    def test_hard_cut(self):
+        sections = [
+            SectionNode("s0", 0, 8, SectionType.VERSE, 0.8, 0.5, 0.5, [0, 1]),
+            SectionNode("s1", 8, 16, SectionType.CHORUS, 0.8, 0.52, 0.52, [0, 1]),
+        ]
+        issues = run_transition_critic(sections, [])
+        assert any(i.issue_type == "hard_cut_transition" for i in issues)
+
+    def test_no_pre_arrival_subtraction(self):
+        sections = [
+            SectionNode("s0", 0, 8, SectionType.BUILD, 0.8, 0.75, 0.7, [0, 1, 2]),
+            SectionNode("s1", 8, 16, SectionType.DROP, 0.8, 0.9, 0.9, [0, 1, 2, 3]),
+        ]
+        issues = run_transition_critic(sections, [])
+        assert any(i.issue_type == "no_pre_arrival_subtraction" for i in issues)
+
+    def test_groove_break(self):
+        sections = [
+            SectionNode("s0", 0, 8, SectionType.VERSE, 0.8, 0.5, 0.5, [0, 1]),
+            SectionNode("s1", 8, 16, SectionType.BRIDGE, 0.8, 0.3, 0.3, [2]),
+        ]
+        roles = [
+            RoleNode(0, "Kick", "s0", RoleType.KICK_ANCHOR, 0.8, True),
+            RoleNode(1, "Hats", "s0", RoleType.RHYTHMIC_TEXTURE, 0.7, False),
+            RoleNode(2, "Pad", "s1", RoleType.HARMONY_BED, 0.7, False),
+        ]
+        issues = run_transition_critic(sections, roles)
+        assert any(i.issue_type == "groove_break_at_transition" for i in issues)
+
+    def test_good_transition_no_issues(self):
+        sections = [
+            SectionNode("s0", 0, 8, SectionType.VERSE, 0.8, 0.4, 0.4, [0, 1]),
+            SectionNode("s1", 8, 16, SectionType.CHORUS, 0.8, 0.8, 0.8, [0, 1, 2, 3]),
+        ]
+        roles = [
+            RoleNode(0, "Kick", "s0", RoleType.KICK_ANCHOR, 0.8, True),
+            RoleNode(0, "Kick", "s1", RoleType.KICK_ANCHOR, 0.8, True),
+        ]
+        issues = run_transition_critic(sections, roles)
+        # Good contrast exists — hard_cut shouldn't fire
+        assert not any(i.issue_type == "hard_cut_transition" for i in issues)
+
+    def test_weak_build(self):
+        sections = [
+            SectionNode("s0", 0, 8, SectionType.VERSE, 0.8, 0.4, 0.4, [0, 1]),
+            SectionNode("s1", 8, 16, SectionType.CHORUS, 0.8, 0.8, 0.8, [0, 1]),
+        ]
+        roles = [
+            RoleNode(0, "Lead", "s0", RoleType.LEAD, 0.8, True),
+            RoleNode(1, "Bass", "s0", RoleType.BASS_ANCHOR, 0.7, False),
+            RoleNode(0, "Lead", "s1", RoleType.LEAD, 0.8, True),
+            RoleNode(1, "Bass", "s1", RoleType.BASS_ANCHOR, 0.7, False),
+        ]
+        issues = run_transition_critic(sections, roles)
+        assert any(i.issue_type == "weak_build" for i in issues)
+
+    def test_harmonic_non_sequitur(self):
+        sections = [
+            SectionNode("s0", 0, 8, SectionType.VERSE, 0.8, 0.5, 0.5),
+            SectionNode("s1", 8, 16, SectionType.BRIDGE, 0.8, 0.5, 0.5),
+        ]
+        harmony = [
+            HarmonyField("s0", "C", "minor", 0.9, resolution_potential=0.3),
+            HarmonyField("s1", "F#", "minor", 0.9, instability=0.7),
+        ]
+        issues = run_transition_critic(sections, [], harmony)
+        assert any(i.issue_type == "harmonic_non_sequitur" for i in issues)
+
+    def test_single_section_no_issues(self):
+        sections = [SectionNode("s0", 0, 8, SectionType.VERSE, 0.8, 0.5, 0.5)]
+        issues = run_transition_critic(sections, [])
+        assert issues == []

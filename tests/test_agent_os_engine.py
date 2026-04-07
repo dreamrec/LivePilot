@@ -7,6 +7,7 @@ from mcp_server.tools._agent_os_engine import (
     GoalVector,
     Issue,
     WorldModel,
+    analyze_outcome_history,
     build_world_model_from_data,
     compute_evaluation_score,
     infer_track_role,
@@ -406,3 +407,60 @@ class TestEvaluationScorer:
         result = compute_evaluation_score(goal, before, after)
         assert "energy" in result["dimension_changes"]
         assert result["dimension_changes"]["energy"]["delta"] > 0
+
+
+# ── Round 1: Outcome Memory Analysis ──────────────────────────────────
+
+
+class TestOutcomeAnalysis:
+    def test_empty_history(self):
+        result = analyze_outcome_history([])
+        assert result["total_outcomes"] == 0
+        assert result["keep_rate"] == 0.0
+
+    def test_basic_analysis(self):
+        outcomes = [
+            {"kept": True, "score": 0.7, "goal_vector": {"targets": {"punch": 0.5, "energy": 0.5}},
+             "dimension_changes": {"punch": {"delta": 0.1}}, "move": {"name": "eq_cut"}},
+            {"kept": True, "score": 0.8, "goal_vector": {"targets": {"punch": 0.7, "weight": 0.3}},
+             "dimension_changes": {"punch": {"delta": 0.15}}, "move": {"name": "saturator_drive"}},
+            {"kept": False, "score": 0.3, "goal_vector": {"targets": {"brightness": 1.0}},
+             "dimension_changes": {}, "move": {"name": "eq_boost"}},
+        ]
+        result = analyze_outcome_history(outcomes)
+        assert result["total_outcomes"] == 3
+        assert result["kept"] == 2
+        assert result["keep_rate"] == pytest.approx(0.667, abs=0.01)
+        assert "punch" in result["dimension_success"]
+        assert result["dimension_success"]["punch"] > 0
+
+    def test_taste_vector(self):
+        outcomes = [
+            {"kept": True, "goal_vector": {"targets": {"punch": 0.8, "weight": 0.2}},
+             "dimension_changes": {}, "move": {}},
+            {"kept": True, "goal_vector": {"targets": {"punch": 0.6, "energy": 0.4}},
+             "dimension_changes": {}, "move": {}},
+        ]
+        result = analyze_outcome_history(outcomes)
+        # Punch appears in both kept outcomes → highest taste weight
+        assert "punch" in result["taste_vector"]
+        assert result["taste_vector"]["punch"] > result["taste_vector"].get("weight", 0)
+
+    def test_low_keep_rate_warning(self):
+        outcomes = [{"kept": False, "goal_vector": {}, "dimension_changes": {}, "move": {}}
+                    for _ in range(10)]
+        result = analyze_outcome_history(outcomes)
+        assert any("Low keep rate" in n for n in result["notes"])
+
+    def test_common_moves(self):
+        outcomes = [
+            {"kept": True, "goal_vector": {}, "dimension_changes": {},
+             "move": {"name": "filter_sweep"}},
+            {"kept": True, "goal_vector": {}, "dimension_changes": {},
+             "move": {"name": "filter_sweep"}},
+            {"kept": True, "goal_vector": {}, "dimension_changes": {},
+             "move": {"name": "compressor_tweak"}},
+        ]
+        result = analyze_outcome_history(outcomes)
+        assert result["common_kept_moves"][0]["move"] == "filter_sweep"
+        assert result["common_kept_moves"][0]["count"] == 2

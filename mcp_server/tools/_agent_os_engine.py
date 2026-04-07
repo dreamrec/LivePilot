@@ -586,3 +586,86 @@ def compute_evaluation_score(
         # I5: hint for the agent to track consecutive undos
         "consecutive_undo_hint": not keep_change,
     }
+
+
+# ── Outcome Memory Analysis (Round 1) ────────────────────────────────
+
+def analyze_outcome_history(outcomes: list[dict]) -> dict:
+    """Analyze accumulated outcome memories to identify user taste patterns.
+
+    outcomes: list of outcome technique payloads from memory_list(type="outcome")
+    Returns taste analysis: keep rate, dimension success, inferred preferences.
+    """
+    if not outcomes:
+        return {
+            "total_outcomes": 0,
+            "keep_rate": 0.0,
+            "dimension_success": {},
+            "common_kept_moves": [],
+            "common_undone_moves": [],
+            "taste_vector": {},
+            "notes": ["No outcome history — use the evaluation loop to build taste data"],
+        }
+
+    total = len(outcomes)
+    kept = [o for o in outcomes if o.get("kept", False)]
+    undone = [o for o in outcomes if not o.get("kept", False)]
+    keep_rate = len(kept) / total
+
+    # Dimension success: average improvement per dimension when kept
+    dimension_success: dict[str, list[float]] = {}
+    for o in kept:
+        for dim, change in o.get("dimension_changes", {}).items():
+            delta = change.get("delta", 0) if isinstance(change, dict) else 0
+            dimension_success.setdefault(dim, []).append(delta)
+
+    avg_dimension_success = {
+        dim: round(sum(vals) / len(vals), 4)
+        for dim, vals in dimension_success.items()
+        if vals
+    }
+
+    # Common move types
+    kept_moves = {}
+    undone_moves = {}
+    for o in kept:
+        move_name = o.get("move", {}).get("name", "unknown") if isinstance(o.get("move"), dict) else "unknown"
+        kept_moves[move_name] = kept_moves.get(move_name, 0) + 1
+    for o in undone:
+        move_name = o.get("move", {}).get("name", "unknown") if isinstance(o.get("move"), dict) else "unknown"
+        undone_moves[move_name] = undone_moves.get(move_name, 0) + 1
+
+    common_kept = sorted(kept_moves.items(), key=lambda x: -x[1])[:5]
+    common_undone = sorted(undone_moves.items(), key=lambda x: -x[1])[:5]
+
+    # Taste vector: which dimensions does this user care about?
+    # Weight by how often each dimension appears in kept outcomes
+    taste_vector: dict[str, float] = {}
+    for o in kept:
+        gv = o.get("goal_vector", {})
+        targets = gv.get("targets", {}) if isinstance(gv, dict) else {}
+        for dim, weight in targets.items():
+            taste_vector[dim] = taste_vector.get(dim, 0) + weight
+
+    # Normalize
+    taste_total = sum(taste_vector.values())
+    if taste_total > 0:
+        taste_vector = {k: round(v / taste_total, 3) for k, v in taste_vector.items()}
+
+    notes = []
+    if keep_rate < 0.3:
+        notes.append(f"Low keep rate ({keep_rate:.0%}) — agent may be too aggressive")
+    if keep_rate > 0.8:
+        notes.append(f"High keep rate ({keep_rate:.0%}) — agent is well-calibrated or too conservative")
+
+    return {
+        "total_outcomes": total,
+        "kept": len(kept),
+        "undone": len(undone),
+        "keep_rate": round(keep_rate, 3),
+        "dimension_success": avg_dimension_success,
+        "common_kept_moves": [{"move": m, "count": c} for m, c in common_kept],
+        "common_undone_moves": [{"move": m, "count": c} for m, c in common_undone],
+        "taste_vector": taste_vector,
+        "notes": notes,
+    }
