@@ -23,6 +23,7 @@ This document is intentionally broader than a prompt. Agent OS is a system desig
 
 This proposal is meant to sit alongside the current LivePilot architecture and documentation:
 
+- [COMPOSITION_ENGINE_V1.md](./COMPOSITION_ENGINE_V1.md)
 - [TOOL_REFERENCE.md](./TOOL_REFERENCE.md)
 - [M4L_BRIDGE.md](./M4L_BRIDGE.md)
 - [v2-master-spec/README.md](./v2-master-spec/README.md)
