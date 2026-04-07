@@ -277,22 +277,42 @@ class TestEvaluationScorer:
         assert result["keep_change"] is False
         assert "measurable delta <= 0" in str(result["notes"])
 
-    def test_protected_dimension_violated(self):
+    def test_protected_dimension_violated_by_threshold(self):
+        """C3 fix: protect threshold is now actually used."""
         goal = GoalVector(
             request_text="test",
             targets={"brightness": 1.0},
-            protect={"weight": 0.8},
+            protect={"weight": 0.4},  # weight must stay >= 0.4
             mode="improve",
             aggression=0.5,
         )
         before = {"spectrum": {"sub": 0.6, "low": 0.6, "high": 0.3, "presence": 0.3},
                   "rms": 0.5, "peak": 0.7}
-        # Weight drops dramatically
-        after = {"spectrum": {"sub": 0.2, "low": 0.2, "high": 0.6, "presence": 0.6},
+        # Weight drops to 0.1 (below threshold 0.4)
+        after = {"spectrum": {"sub": 0.1, "low": 0.1, "high": 0.6, "presence": 0.6},
                  "rms": 0.5, "peak": 0.7}
         result = compute_evaluation_score(goal, before, after)
         assert result["keep_change"] is False
         assert "PROTECTED" in str(result["notes"])
+        assert "below threshold" in str(result["notes"])
+
+    def test_protected_dimension_violated_by_large_drop(self):
+        """Even if still above threshold, a large drop (>0.15) triggers undo."""
+        goal = GoalVector(
+            request_text="test",
+            targets={"brightness": 1.0},
+            protect={"weight": 0.1},  # lenient threshold
+            mode="improve",
+            aggression=0.5,
+        )
+        before = {"spectrum": {"sub": 0.6, "low": 0.6, "high": 0.3, "presence": 0.3},
+                  "rms": 0.5, "peak": 0.7}
+        # Weight drops by 0.2 (> 0.15) but stays above 0.1 threshold
+        after = {"spectrum": {"sub": 0.4, "low": 0.4, "high": 0.5, "presence": 0.5},
+                 "rms": 0.5, "peak": 0.7}
+        result = compute_evaluation_score(goal, before, after)
+        assert result["keep_change"] is False
+        assert "drop" in str(result["notes"])
 
     def test_unmeasurable_defers_to_agent(self):
         goal = self._make_goal(groove=0.5, tension=0.5)
@@ -309,6 +329,41 @@ class TestEvaluationScorer:
         after = {"spectrum": {"sub": 0.49, "low": 0.49}, "rms": 0.59, "peak": 0.79}
         result = compute_evaluation_score(goal, before, after)
         assert result["keep_change"] is False
+
+    def test_width_not_in_measurable_proxies(self):
+        """P4: width is NOT measurable in Phase 1 — it must not be in MEASURABLE_PROXIES."""
+        from mcp_server.tools._agent_os_engine import MEASURABLE_PROXIES
+        assert "width" not in MEASURABLE_PROXIES, \
+            "width should not be in MEASURABLE_PROXIES until stereo analysis is in the snapshot"
+
+    def test_consecutive_undo_hint(self):
+        """I5: evaluate_move returns consecutive_undo_hint for agent tracking."""
+        goal = self._make_goal(weight=1.0)
+        before = {"spectrum": {"sub": 0.5, "low": 0.5}, "rms": 0.6, "peak": 0.8}
+        after = {"spectrum": {"sub": 0.3, "low": 0.3}, "rms": 0.4, "peak": 0.6}
+        result = compute_evaluation_score(goal, before, after)
+        assert result["keep_change"] is False
+        assert result["consecutive_undo_hint"] is True
+
+    def test_consecutive_undo_hint_false_on_keep(self):
+        goal = self._make_goal(weight=0.5, energy=0.5)
+        before = {"spectrum": {"sub": 0.3, "low": 0.3}, "rms": 0.5, "peak": 0.7}
+        after = {"spectrum": {"sub": 0.5, "low": 0.5}, "rms": 0.6, "peak": 0.8}
+        result = compute_evaluation_score(goal, before, after)
+        assert result["keep_change"] is True
+        assert result["consecutive_undo_hint"] is False
+
+    def test_density_uses_geometric_mean(self):
+        """P1: density should use spectral flatness, not simple mean."""
+        from mcp_server.tools._agent_os_engine import _extract_dimension_value
+        # Uniform distribution → flatness close to 1.0
+        uniform = {"spectrum": {"sub": 0.5, "low": 0.5, "mid": 0.5, "high": 0.5}, "rms": 0.5}
+        # Concentrated distribution → flatness close to 0.0
+        peaked = {"spectrum": {"sub": 0.9, "low": 0.01, "mid": 0.01, "high": 0.01}, "rms": 0.5}
+        uniform_density = _extract_dimension_value(uniform, "density")
+        peaked_density = _extract_dimension_value(peaked, "density")
+        assert uniform_density > peaked_density, \
+            "Uniform spectrum should have higher density than peaked"
 
     def test_dimension_changes_tracked(self):
         goal = self._make_goal(energy=1.0)

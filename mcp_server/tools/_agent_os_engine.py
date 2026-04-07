@@ -10,6 +10,7 @@ Design: spec at docs/AGENT_OS_V1.md, sections 6-12.
 
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import asdict, dataclass, field
 from typing import Any, Optional
@@ -24,17 +25,20 @@ QUALITY_DIMENSIONS = frozenset({
 })
 
 # Dimensions with measurable spectral proxies in Phase 1.
-# Others (motion, contrast, groove, tension, novelty, polish, emotion, cohesion)
+# Others (motion, contrast, groove, tension, novelty, polish, emotion, cohesion, depth)
 # get confidence=0.0 — the LLM agent uses its own musical judgment for those.
+#
+# Note: "width" requires stereo width data (side/mid ratio) from compare_to_reference.
+# Phase 1 does NOT have this in the sonic snapshot, so width is NOT measurable yet.
+# It is intentionally excluded here until Phase 2 adds stereo analysis to the snapshot.
 MEASURABLE_PROXIES: dict[str, str] = {
-    "brightness": "high + presence bands",
+    "brightness": "high + presence bands (averaged)",
     "warmth": "low_mid band energy",
-    "weight": "sub + low bands",
-    "width": "stereo width (side/mid ratio)",
+    "weight": "sub + low bands (averaged)",
     "clarity": "inverse of low_mid congestion",
-    "density": "spectral flatness",
+    "density": "spectral flatness (geometric/arithmetic mean ratio)",
     "energy": "RMS level",
-    "punch": "crest factor (peak/rms ratio)",
+    "punch": "crest factor in dB (20*log10(peak/rms))",
 }
 
 VALID_MODES = frozenset({"observe", "improve", "explore", "finish", "diagnose"})
@@ -48,7 +52,8 @@ class GoalVector:
     """Compiled user intent as a machine-usable goal.
 
     targets: dimension → weight (0-1). Weights should approximately sum to 1.0.
-    protect: dimension → minimum acceptable value (0-1). These must not be harmed.
+    protect: dimension → minimum acceptable value (0-1). If a dimension drops
+             below this value after a move, the move is undone.
     """
     request_text: str
     targets: dict[str, float] = field(default_factory=dict)
@@ -347,9 +352,9 @@ def run_sonic_critic(
             recommended_actions=["Reduce master volume", "Lower loudest track", "Add limiter"],
         ))
 
-    # 5. Flat dynamics
-    if rms is not None and peak is not None and peak > 0:
-        crest_db = 20 * (peak / max(rms, 0.001)) if rms > 0 else 0
+    # 5. Flat dynamics (C1 fix: correct dB formula)
+    if rms is not None and peak is not None and rms > 0 and peak > 0:
+        crest_db = 20.0 * math.log10(peak / max(rms, 0.001))
         if crest_db < 3.0 and {"punch", "energy", "contrast"} & target_dims:
             issues.append(Issue(
                 type="dynamics_flat",
@@ -393,6 +398,11 @@ def run_technical_critic(technical: dict) -> list[Issue]:
 
 # ── Evaluation Engine ─────────────────────────────────────────────────
 
+def _clamp(value: float, lo: float = 0.0, hi: float = 1.0) -> float:
+    """Clamp value to [lo, hi] range."""
+    return max(lo, min(hi, value))
+
+
 def _extract_dimension_value(
     sonic: dict,
     dimension: str,
@@ -400,6 +410,7 @@ def _extract_dimension_value(
     """Map a quality dimension to a measurable value from sonic data.
 
     Returns None for unmeasurable dimensions (confidence=0.0 in Phase 1).
+    All returned values are clamped to 0.0-1.0 for consistent scoring.
     """
     if not sonic or not sonic.get("spectrum"):
         return None
@@ -411,32 +422,37 @@ def _extract_dimension_value(
     if dimension == "brightness":
         high = bands.get("high", 0)
         presence = bands.get("presence", 0)
-        return (high + presence) / 2.0
+        return _clamp((high + presence) / 2.0)
     elif dimension == "warmth":
-        return bands.get("low_mid", 0)
+        return _clamp(bands.get("low_mid", 0))
     elif dimension == "weight":
         sub = bands.get("sub", 0)
         low = bands.get("low", 0)
-        return (sub + low) / 2.0
+        return _clamp((sub + low) / 2.0)
     elif dimension == "clarity":
         low_mid = bands.get("low_mid", 0)
-        return max(0.0, 1.0 - low_mid)  # inverse of mud
+        return _clamp(1.0 - low_mid)
     elif dimension == "density":
-        # Spectral flatness proxy: how evenly energy is distributed
-        vals = [v for v in bands.values() if isinstance(v, (int, float))]
+        # Spectral flatness: geometric mean / arithmetic mean of band values.
+        # Higher = more evenly distributed energy (noise-like).
+        # Lower = more tonal (energy concentrated in few bands).
+        vals = [max(v, 1e-10) for v in bands.values() if isinstance(v, (int, float))]
         if not vals:
             return None
-        mean_v = sum(vals) / len(vals)
-        return mean_v  # Higher = more dense/even
+        geo_mean = math.exp(sum(math.log(v) for v in vals) / len(vals))
+        arith_mean = sum(vals) / len(vals)
+        return _clamp(geo_mean / max(arith_mean, 1e-10))
     elif dimension == "energy":
-        return rms if rms is not None else None
+        return _clamp(rms) if rms is not None else None
     elif dimension == "punch":
         if rms and peak and rms > 0:
-            import math
-            return min(1.0, math.log10(max(peak / rms, 1.0)) / 1.5)
+            crest_db = 20.0 * math.log10(max(peak / rms, 1.0))
+            # Normalize: 0 dB = 0.0, 20 dB = 1.0
+            return _clamp(crest_db / 20.0)
         return None
     else:
-        # Unmeasurable in Phase 1
+        # Unmeasurable in Phase 1 (width, depth, motion, contrast,
+        # groove, tension, novelty, polish, emotion, cohesion)
         return None
 
 
@@ -455,7 +471,8 @@ def compute_evaluation_score(
             "collateral_damage": float (0-1),
             "measurable_delta": float (-1 to 1),
             "notes": list[str],
-            "dimension_changes": dict[str, {"before": float, "after": float, "delta": float}],
+            "dimension_changes": dict,
+            "consecutive_undo_hint": bool,
         }
     """
     notes: list[str] = []
@@ -476,13 +493,12 @@ def compute_evaluation_score(
                 "after": round(after_val, 4),
                 "delta": round(delta, 4),
             }
-            # Positive delta = improvement (assuming targets want "more")
             total_goal_progress += delta * weight
             measurable_count += 1
         else:
             notes.append(f"{dim}: not measurable in Phase 1 (confidence=0.0)")
 
-    # Check protected dimensions
+    # Check protected dimensions (C3 fix: use the actual threshold)
     collateral_damage = 0.0
     protection_violated = False
 
@@ -494,28 +510,38 @@ def compute_evaluation_score(
             drop = before_val - after_val
             if drop > 0:
                 collateral_damage = max(collateral_damage, drop)
-                if drop > 0.15:
-                    protection_violated = True
-                    notes.append(
-                        f"PROTECTED dimension '{dim}' dropped by {drop:.3f} "
-                        f"(threshold: 0.15)"
-                    )
+            # Violation: value dropped below the user's threshold
+            if after_val < threshold:
+                protection_violated = True
+                notes.append(
+                    f"PROTECTED dimension '{dim}' at {after_val:.3f}, "
+                    f"below threshold {threshold:.3f}"
+                )
+            # Also flag large drops even if still above threshold
+            elif drop > 0.15:
+                protection_violated = True
+                notes.append(
+                    f"PROTECTED dimension '{dim}' dropped by {drop:.3f} "
+                    f"(absolute drop > 0.15)"
+                )
 
     # Measurable delta (average improvement across measured dimensions)
     measurable_delta = total_goal_progress / max(measurable_count, 1)
 
     # Compute composite score (spec section 12.2)
-    goal_fit = max(0.0, min(1.0, 0.5 + total_goal_progress))
-    preservation = max(0.0, 1.0 - collateral_damage * 5)
+    # I4 fix: reduce constant floor — use 0.0 for placeholders instead of fake values
+    goal_fit = _clamp(0.5 + total_goal_progress)
+    measurable_component = _clamp(0.5 + measurable_delta)
+    preservation = _clamp(1.0 - collateral_damage * 5)
     confidence = measurable_count / max(len(goal.targets), 1)
 
     score = (
         0.30 * goal_fit
-        + 0.25 * max(0.0, min(1.0, 0.5 + measurable_delta))
+        + 0.25 * measurable_component
         + 0.15 * preservation
-        + 0.10 * 0.5  # taste_fit placeholder (Phase 2)
+        + 0.10 * 0.0   # taste_fit: Phase 2 (no free floor)
         + 0.10 * confidence
-        + 0.10 * 1.0  # reversibility (always 1.0 for undo-able moves)
+        + 0.10 * 1.0   # reversibility: 1.0 for undo-able moves
     )
 
     # Hard rules
@@ -527,7 +553,7 @@ def compute_evaluation_score(
 
     if protection_violated:
         keep_change = False
-        notes.append("HARD RULE: protected dimension violated (drop > 0.15)")
+        notes.append("HARD RULE: protected dimension violated")
 
     if score < 0.40:
         keep_change = False
@@ -550,4 +576,6 @@ def compute_evaluation_score(
         "total_dimensions": len(goal.targets),
         "dimension_changes": dimension_changes,
         "notes": notes,
+        # I5: hint for the agent to track consecutive undos
+        "consecutive_undo_hint": not keep_change,
     }
