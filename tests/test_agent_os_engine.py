@@ -353,6 +353,39 @@ class TestEvaluationScorer:
         assert result["keep_change"] is True
         assert result["consecutive_undo_hint"] is False
 
+    def test_protection_overrides_unmeasurable_defer(self):
+        """Finding 1: protection violations must not be overridden by unmeasurable defer."""
+        goal = GoalVector(
+            request_text="test",
+            targets={"groove": 1.0},  # unmeasurable
+            protect={"weight": 0.4},  # measurable + protected
+            mode="improve",
+            aggression=0.5,
+        )
+        before = {"spectrum": {"sub": 0.6, "low": 0.6}, "rms": 0.5, "peak": 0.7}
+        # Weight drops to 0.1, well below threshold 0.4
+        after = {"spectrum": {"sub": 0.1, "low": 0.1}, "rms": 0.5, "peak": 0.7}
+        result = compute_evaluation_score(goal, before, after)
+        assert result["keep_change"] is False, \
+            "Protection violation must force undo even when all targets are unmeasurable"
+        assert "PROTECTED" in str(result["notes"])
+
+    def test_snapshot_accepts_bands_key(self):
+        """Finding 2: evaluator must accept 'bands' key (raw get_master_spectrum output)."""
+        goal = GoalVector(
+            request_text="test",
+            targets={"energy": 1.0},
+            mode="improve",
+            aggression=0.5,
+        )
+        # Use "bands" key instead of "spectrum" — this is what get_master_spectrum returns
+        before = {"bands": {"sub": 0.3, "low": 0.3}, "rms": 0.5, "peak": 0.7}
+        after = {"bands": {"sub": 0.3, "low": 0.3}, "rms": 0.7, "peak": 0.9}
+        result = compute_evaluation_score(goal, before, after)
+        assert result["measurable_dimensions"] > 0, \
+            "Evaluator should accept 'bands' key from raw get_master_spectrum output"
+        assert result["keep_change"] is True
+
     def test_density_uses_geometric_mean(self):
         """P1: density should use spectral flatness, not simple mean."""
         from mcp_server.tools._agent_os_engine import _extract_dimension_value

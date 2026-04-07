@@ -412,10 +412,14 @@ def _extract_dimension_value(
     Returns None for unmeasurable dimensions (confidence=0.0 in Phase 1).
     All returned values are clamped to 0.0-1.0 for consistent scoring.
     """
-    if not sonic or not sonic.get("spectrum"):
+    if not sonic:
         return None
-
-    bands = sonic.get("spectrum", {})
+    # Accept both "spectrum" and "bands" keys — get_master_spectrum returns
+    # {"bands": {...}} while the evaluator historically expected {"spectrum": {...}}.
+    # Finding 2 fix: tolerate either shape so raw analyzer output works.
+    bands = sonic.get("spectrum") or sonic.get("bands")
+    if not bands:
+        return None
     rms = sonic.get("rms")
     peak = sonic.get("peak")
 
@@ -559,11 +563,14 @@ def compute_evaluation_score(
         keep_change = False
         notes.append(f"HARD RULE: total score {score:.3f} < 0.40 threshold")
 
-    if measurable_count == 0:
-        # All dimensions unmeasurable — defer to agent judgment
+    if measurable_count == 0 and not protection_violated:
+        # All TARGET dimensions unmeasurable AND no protection violations —
+        # defer keep/undo to the agent's musical judgment.
+        # IMPORTANT: protection violations still force undo even when
+        # targets are unmeasurable (Finding 1 fix).
         keep_change = True
         notes.append(
-            "No measurable dimensions — deferring keep/undo to agent musical judgment"
+            "No measurable target dimensions — deferring keep/undo to agent musical judgment"
         )
 
     return {

@@ -82,7 +82,12 @@ Avoid leading with destructive sample ops, large chain rebuilds, or multi-track 
 
 ### Steps 6-8: Execute with Before/After Capture
 
-**Before the move:** call `get_master_spectrum` + `get_master_rms` to capture the before state.
+**Before the move:** call `get_master_spectrum` + `get_master_rms` to capture the before state. Combine into a snapshot dict:
+```json
+{"spectrum": <bands from get_master_spectrum>, "rms": <rms value>, "peak": <peak value>}
+```
+Note: `get_master_spectrum` returns `{"bands": {...}}` — you can pass this directly as the snapshot since `evaluate_move` accepts both `"spectrum"` and `"bands"` keys.
+
 **Execute the move** with full health checks (see below).
 **After the move:** call the same tools again for the after state.
 
