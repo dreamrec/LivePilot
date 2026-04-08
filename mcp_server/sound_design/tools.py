@@ -178,23 +178,16 @@ def _build_layer_strategy(track_index: int, patch: PatchModel) -> LayerStrategy:
     return layers
 
 
-async def _fetch_sound_design_data(ctx: Context, track_index: int) -> dict:
+def _fetch_sound_design_data(ctx: Context, track_index: int) -> dict:
     """Fetch data needed to build a SoundDesignState from Ableton."""
     ableton = ctx.lifespan_context["ableton"]
 
-    track_info = await ableton.send_command(
+    track_info = ableton.send_command(
         "get_track_info", {"track_index": track_index}
     )
 
-    # Walk device tree to get all devices on this track
-    devices: list[dict] = []
-    try:
-        tree = await ableton.send_command(
-            "walk_device_tree", {"track_index": track_index}
-        )
-        devices = tree.get("devices", []) if isinstance(tree, dict) else []
-    except Exception:
-        pass
+    # Get devices from track_info response (already included by Remote Script)
+    devices: list[dict] = track_info.get("devices", [])
 
     return {
         "track_info": track_info,
@@ -206,7 +199,7 @@ async def _fetch_sound_design_data(ctx: Context, track_index: int) -> dict:
 
 
 @mcp.tool()
-async def analyze_sound_design(ctx: Context, track_index: int) -> dict:
+def analyze_sound_design(ctx: Context, track_index: int) -> dict:
     """Build full sound design state and run all critics for a track.
 
     Returns the complete timbral analysis including patch model,
@@ -215,7 +208,7 @@ async def analyze_sound_design(ctx: Context, track_index: int) -> dict:
     Args:
         track_index: Index of the track to analyze.
     """
-    data = await _fetch_sound_design_data(ctx, track_index)
+    data = _fetch_sound_design_data(ctx, track_index)
     patch = _build_patch_model(track_index, data["track_info"], data["devices"])
     layers = _build_layer_strategy(track_index, patch)
     state = SoundDesignState(
@@ -236,7 +229,7 @@ async def analyze_sound_design(ctx: Context, track_index: int) -> dict:
 
 
 @mcp.tool()
-async def get_sound_design_issues(ctx: Context, track_index: int) -> dict:
+def get_sound_design_issues(ctx: Context, track_index: int) -> dict:
     """Run all sound design critics and return detected issues only.
 
     Lighter than analyze_sound_design — skips move planning.
@@ -244,7 +237,7 @@ async def get_sound_design_issues(ctx: Context, track_index: int) -> dict:
     Args:
         track_index: Index of the track to analyze.
     """
-    data = await _fetch_sound_design_data(ctx, track_index)
+    data = _fetch_sound_design_data(ctx, track_index)
     patch = _build_patch_model(track_index, data["track_info"], data["devices"])
     layers = _build_layer_strategy(track_index, patch)
     state = SoundDesignState(
@@ -261,7 +254,7 @@ async def get_sound_design_issues(ctx: Context, track_index: int) -> dict:
 
 
 @mcp.tool()
-async def plan_sound_design_move(ctx: Context, track_index: int) -> dict:
+def plan_sound_design_move(ctx: Context, track_index: int) -> dict:
     """Get ranked move suggestions based on current sound design issues.
 
     Runs critics and planner, returns sorted moves with
@@ -270,7 +263,7 @@ async def plan_sound_design_move(ctx: Context, track_index: int) -> dict:
     Args:
         track_index: Index of the track to analyze.
     """
-    data = await _fetch_sound_design_data(ctx, track_index)
+    data = _fetch_sound_design_data(ctx, track_index)
     patch = _build_patch_model(track_index, data["track_info"], data["devices"])
     layers = _build_layer_strategy(track_index, patch)
     state = SoundDesignState(
@@ -289,7 +282,7 @@ async def plan_sound_design_move(ctx: Context, track_index: int) -> dict:
 
 
 @mcp.tool()
-async def get_patch_model(ctx: Context, track_index: int) -> dict:
+def get_patch_model(ctx: Context, track_index: int) -> dict:
     """Get the structural patch model for a track's device chain.
 
     Returns device chain, functional blocks, controllable vs opaque
@@ -298,7 +291,7 @@ async def get_patch_model(ctx: Context, track_index: int) -> dict:
     Args:
         track_index: Index of the track to inspect.
     """
-    data = await _fetch_sound_design_data(ctx, track_index)
+    data = _fetch_sound_design_data(ctx, track_index)
     patch = _build_patch_model(track_index, data["track_info"], data["devices"])
 
     return patch.to_dict()

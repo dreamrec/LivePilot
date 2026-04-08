@@ -56,11 +56,11 @@ def _infer_energy(role: str) -> float:
     return energy_map.get(role, 0.5)
 
 
-async def _fetch_scene_data(ctx: Context) -> tuple[list[SceneRole], int]:
+def _fetch_scene_data(ctx: Context) -> tuple[list[SceneRole], int]:
     """Fetch scene info from Ableton and build SceneRole list."""
     ableton = ctx.lifespan_context["ableton"]
 
-    scenes_info = await ableton.send_command("get_scenes_info", {})
+    scenes_info = ableton.send_command("get_scenes_info", {})
     scenes_list = scenes_info.get("scenes", [])
     scene_count = len(scenes_list)
 
@@ -76,9 +76,19 @@ async def _fetch_scene_data(ctx: Context) -> tuple[list[SceneRole], int]:
             role=role,
         ))
 
-    # Determine current scene from session info
-    session_info = await ableton.send_command("get_session_info", {})
-    current_scene = session_info.get("selected_scene", 0)
+    # Determine current scene — default to 0 since session_info
+    # doesn't expose a selected_scene field
+    current_scene = 0
+    try:
+        session_info = ableton.send_command("get_session_info", {})
+        # Check if any scene is marked as triggered/playing
+        session_scenes = session_info.get("scenes", [])
+        for i, s in enumerate(session_scenes):
+            if s.get("is_triggered", False):
+                current_scene = i
+                break
+    except Exception:
+        pass
 
     return scene_roles, current_scene
 
@@ -87,27 +97,27 @@ async def _fetch_scene_data(ctx: Context) -> tuple[list[SceneRole], int]:
 
 
 @mcp.tool()
-async def get_performance_state(ctx: Context) -> dict:
+def get_performance_state(ctx: Context) -> dict:
     """Get current live performance overview — scenes, energy, safe moves.
 
     Returns scene roles with energy levels, current energy window
     with steering direction, available safe moves, and blocked move types.
     Use this to understand the performance context before making changes.
     """
-    scene_roles, current_scene = await _fetch_scene_data(ctx)
+    scene_roles, current_scene = _fetch_scene_data(ctx)
     state = build_performance_state(scene_roles, current_scene)
     return state.to_dict()
 
 
 @mcp.tool()
-async def get_performance_safe_moves(ctx: Context) -> dict:
+def get_performance_safe_moves(ctx: Context) -> dict:
     """Get available safe moves for live performance.
 
     Returns only performance-safe moves based on current scene
     and energy direction. All moves are reversible and low-risk.
     Also returns the full blocked move list for transparency.
     """
-    scene_roles, current_scene = await _fetch_scene_data(ctx)
+    scene_roles, current_scene = _fetch_scene_data(ctx)
     state = build_performance_state(scene_roles, current_scene)
 
     # Also get energy-specific suggestions
@@ -132,7 +142,7 @@ async def get_performance_safe_moves(ctx: Context) -> dict:
 
 
 @mcp.tool()
-async def plan_scene_handoff(
+def plan_scene_handoff(
     ctx: Context,
     from_scene: int,
     to_scene: int,
@@ -146,7 +156,7 @@ async def plan_scene_handoff(
         from_scene: Source scene index.
         to_scene: Destination scene index.
     """
-    scene_roles, _ = await _fetch_scene_data(ctx)
+    scene_roles, _ = _fetch_scene_data(ctx)
 
     # Find the two scenes
     from_role = None

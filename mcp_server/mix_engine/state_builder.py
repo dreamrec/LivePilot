@@ -38,10 +38,12 @@ def build_balance_state(
     """Build BalanceState from track info dicts.
 
     Args:
-        track_infos: list of dicts with at least "index", "name", "volume",
-                     "pan", "mute", "solo", and optionally "send_levels".
+        track_infos: list of dicts from get_track_info (Remote Script format).
+                     Volume/panning are nested under "mixer", sends under "sends".
         role_hints: optional {track_index: role_name} overrides.
     """
+    from ..tools._agent_os_engine import infer_track_role
+
     role_hints = role_hints or {}
     states: list[TrackMixState] = []
     anchor_indices: list[int] = []
@@ -52,18 +54,26 @@ def build_balance_state(
 
     for info in track_infos:
         idx = info.get("index", 0)
-        role = role_hints.get(idx, info.get("role", "unknown"))
-        vol = info.get("volume", 0.0)
+        name = info.get("name", "")
+        # Infer role from track name if no explicit hint
+        role = role_hints.get(idx, infer_track_role(name))
+        # Extract mixer values from nested Remote Script response
+        mixer = info.get("mixer", {})
+        vol = mixer.get("volume", 0.0) if mixer else info.get("volume", 0.0)
+        pan = mixer.get("panning", 0.0) if mixer else info.get("pan", 0.0)
+        # Extract send levels from sends array
+        sends_raw = info.get("sends", [])
+        send_levels = [s.get("value", 0.0) for s in sends_raw] if sends_raw else []
 
         ts = TrackMixState(
             track_index=idx,
-            name=info.get("name", ""),
+            name=name,
             role=role,
             volume=vol,
-            pan=info.get("pan", 0.0),
+            pan=pan,
             mute=info.get("mute", False),
             solo=info.get("solo", False),
-            send_levels=info.get("send_levels", []),
+            send_levels=send_levels,
         )
         states.append(ts)
 

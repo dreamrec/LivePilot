@@ -54,7 +54,7 @@ def research_technique(
     device_atlas_results = []
     for device_name in query_info.get("likely_devices", [])[:5]:
         try:
-            ref = ableton.send_command("get_device_reference", {"device_name": device_name})
+            ref = ableton.send_command("search_browser", {"query": device_name, "category": "instruments"})
             if ref and not ref.get("error"):
                 device_atlas_results.append(ref)
         except Exception:

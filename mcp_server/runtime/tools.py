@@ -13,7 +13,7 @@ from .capability_state import build_capability_state
 
 
 @mcp.tool()
-async def get_capability_state(ctx: Context) -> dict:
+def get_capability_state(ctx: Context) -> dict:
     """Probe the runtime and return a capability state snapshot.
 
     Checks session connectivity, analyzer freshness, memory availability,
