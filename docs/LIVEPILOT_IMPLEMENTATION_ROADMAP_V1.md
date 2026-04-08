@@ -20,6 +20,24 @@ This roadmap assumes the system direction laid out in:
 - [AGENT_OS_V1.md](./AGENT_OS_V1.md)
 - [COMPOSITION_ENGINE_V1.md](./COMPOSITION_ENGINE_V1.md)
 
+This roadmap is complemented by concrete implementation-spec documents:
+
+- [AGENT_OS_PHASE0_HARDENING_PLAN.md](./AGENT_OS_PHASE0_HARDENING_PLAN.md)
+- [COMPOSITION_ENGINE_V1_INTEGRATION_PLAN.md](./COMPOSITION_ENGINE_V1_INTEGRATION_PLAN.md)
+- [PROJECT_BRAIN_V1.md](./PROJECT_BRAIN_V1.md)
+- [CAPABILITY_STATE_V1.md](./CAPABILITY_STATE_V1.md)
+- [ACTION_LEDGER_V1.md](./ACTION_LEDGER_V1.md)
+- [EVALUATION_FABRIC_V1.md](./EVALUATION_FABRIC_V1.md)
+- [MEMORY_FABRIC_V2.md](./MEMORY_FABRIC_V2.md)
+- [MIX_ENGINE_V1.md](./MIX_ENGINE_V1.md)
+- [REFERENCE_ENGINE_V1.md](./REFERENCE_ENGINE_V1.md)
+- [TASTE_MODEL_V1.md](./TASTE_MODEL_V1.md)
+- [SOUND_DESIGN_ENGINE_V1.md](./SOUND_DESIGN_ENGINE_V1.md)
+- [TRANSITION_ENGINE_V1.md](./TRANSITION_ENGINE_V1.md)
+- [TRANSLATION_ENGINE_V1.md](./TRANSLATION_ENGINE_V1.md)
+- [PERFORMANCE_ENGINE_V1.md](./PERFORMANCE_ENGINE_V1.md)
+- [RESEARCH_ENGINE_V1.md](./RESEARCH_ENGINE_V1.md)
+
 ## 1. Planning Assumptions
 
 This roadmap is built around a few explicit assumptions.
@@ -178,6 +196,10 @@ No phase should be treated as complete based on "prompt feels smarter."
 
 This phase is about making the current base safe and trustworthy.
 
+Primary implementation spec:
+
+- [AGENT_OS_PHASE0_HARDENING_PLAN.md](./AGENT_OS_PHASE0_HARDENING_PLAN.md)
+
 ### 6.1 Product Goal
 
 Make the current Agent OS loop reliable enough that it can safely become the execution substrate for future engines.
@@ -221,6 +243,14 @@ Make the current Agent OS loop reliable enough that it can safely become the exe
 ## 7. Phase 1: Shared Substrate Foundation
 
 This is the most important architecture phase after hardening.
+
+Primary implementation specs:
+
+- [PROJECT_BRAIN_V1.md](./PROJECT_BRAIN_V1.md)
+- [CAPABILITY_STATE_V1.md](./CAPABILITY_STATE_V1.md)
+- [ACTION_LEDGER_V1.md](./ACTION_LEDGER_V1.md)
+- [EVALUATION_FABRIC_V1.md](./EVALUATION_FABRIC_V1.md)
+- [MEMORY_FABRIC_V2.md](./MEMORY_FABRIC_V2.md)
 
 ### 7.1 Product Goal
 
@@ -313,6 +343,15 @@ Move beyond technique-only storage:
 
 This is the first major specialized engine phase.
 
+Primary implementation specs:
+
+- [COMPOSITION_ENGINE_V1.md](./COMPOSITION_ENGINE_V1.md)
+- [COMPOSITION_ENGINE_V1_INTEGRATION_PLAN.md](./COMPOSITION_ENGINE_V1_INTEGRATION_PLAN.md)
+- [TRANSITION_ENGINE_V1.md](./TRANSITION_ENGINE_V1.md)
+- [PROJECT_BRAIN_V1.md](./PROJECT_BRAIN_V1.md)
+- [EVALUATION_FABRIC_V1.md](./EVALUATION_FABRIC_V1.md)
+- [MEMORY_FABRIC_V2.md](./MEMORY_FABRIC_V2.md)
+
 ### 8.1 Product Goal
 
 Make LivePilot capable of turning loops into convincing sections and making structural changes that feel intentional and musical.
@@ -369,6 +408,13 @@ Success should mean:
 
 ## 9. Phase 3: Mix Engine Phase 1
 
+Primary implementation specs:
+
+- [MIX_ENGINE_V1.md](./MIX_ENGINE_V1.md)
+- [EVALUATION_FABRIC_V1.md](./EVALUATION_FABRIC_V1.md)
+- [TRANSLATION_ENGINE_V1.md](./TRANSLATION_ENGINE_V1.md)
+- [MEMORY_FABRIC_V2.md](./MEMORY_FABRIC_V2.md)
+
 ### 9.1 Product Goal
 
 Make LivePilot consistently useful for improvement requests like:
@@ -422,6 +468,12 @@ Scenarios:
 
 ## 10. Phase 4: Taste Model Phase 1
 
+Primary implementation specs:
+
+- [TASTE_MODEL_V1.md](./TASTE_MODEL_V1.md)
+- [MEMORY_FABRIC_V2.md](./MEMORY_FABRIC_V2.md)
+- [ACTION_LEDGER_V1.md](./ACTION_LEDGER_V1.md)
+
 ### 10.1 Product Goal
 
 Make LivePilot meaningfully personal.
@@ -453,6 +505,12 @@ Make LivePilot meaningfully personal.
 - anti-memory is live and queried in ranking
 
 ## 11. Phase 5: Reference Engine Phase 1
+
+Primary implementation specs:
+
+- [REFERENCE_ENGINE_V1.md](./REFERENCE_ENGINE_V1.md)
+- [RESEARCH_ENGINE_V1.md](./RESEARCH_ENGINE_V1.md)
+- [MEMORY_FABRIC_V2.md](./MEMORY_FABRIC_V2.md)
 
 ### 11.1 Product Goal
 
@@ -487,6 +545,12 @@ Scenarios:
 - reference-conditioned moves are tested and scored in-session
 
 ## 12. Phase 6: Sound Design Engine Phase 1
+
+Primary implementation specs:
+
+- [SOUND_DESIGN_ENGINE_V1.md](./SOUND_DESIGN_ENGINE_V1.md)
+- [RESEARCH_ENGINE_V1.md](./RESEARCH_ENGINE_V1.md)
+- [MEMORY_FABRIC_V2.md](./MEMORY_FABRIC_V2.md)
 
 ### 12.1 Product Goal
 
@@ -523,6 +587,12 @@ Scenarios:
 
 ## 13. Phase 7: Transition Engine Phase 1
 
+Primary implementation specs:
+
+- [TRANSITION_ENGINE_V1.md](./TRANSITION_ENGINE_V1.md)
+- [COMPOSITION_ENGINE_V1.md](./COMPOSITION_ENGINE_V1.md)
+- [EVALUATION_FABRIC_V1.md](./EVALUATION_FABRIC_V1.md)
+
 ### 13.1 Product Goal
 
 Make section boundaries and arrivals feel earned.
@@ -550,6 +620,12 @@ Scenarios:
 
 ## 14. Phase 8: Translation Engine Phase 1
 
+Primary implementation specs:
+
+- [TRANSLATION_ENGINE_V1.md](./TRANSLATION_ENGINE_V1.md)
+- [MIX_ENGINE_V1.md](./MIX_ENGINE_V1.md)
+- [EVALUATION_FABRIC_V1.md](./EVALUATION_FABRIC_V1.md)
+
 ### 14.1 Product Goal
 
 Make LivePilot reliable for final-stage robustness checks.
@@ -575,6 +651,12 @@ Scenarios:
 - translation warnings are actionable and accurate enough to trust
 
 ## 15. Phase 9: Performance Engine Phase 1
+
+Primary implementation specs:
+
+- [PERFORMANCE_ENGINE_V1.md](./PERFORMANCE_ENGINE_V1.md)
+- [CAPABILITY_STATE_V1.md](./CAPABILITY_STATE_V1.md)
+- [ACTION_LEDGER_V1.md](./ACTION_LEDGER_V1.md)
 
 ### 15.1 Product Goal
 
@@ -602,6 +684,12 @@ Scenarios:
 - no risky slow-path behavior is triggered by default in performance mode
 
 ## 16. Phase 10: Research Engine And Deep Evaluation
+
+Primary implementation specs:
+
+- [RESEARCH_ENGINE_V1.md](./RESEARCH_ENGINE_V1.md)
+- [EVALUATION_FABRIC_V1.md](./EVALUATION_FABRIC_V1.md)
+- [MEMORY_FABRIC_V2.md](./MEMORY_FABRIC_V2.md)
 
 ### 16.1 Product Goal
 

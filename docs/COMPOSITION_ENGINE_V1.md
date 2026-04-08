@@ -32,8 +32,14 @@ This document is a companion to Agent OS, not a replacement for it. Agent OS def
 This proposal is designed to sit alongside the current repo architecture and documentation:
 
 - [AGENT_OS_V1.md](./AGENT_OS_V1.md)
+- [COMPOSITION_ENGINE_V1_INTEGRATION_PLAN.md](./COMPOSITION_ENGINE_V1_INTEGRATION_PLAN.md)
 - [LIVEPILOT_SYSTEM_ARCHITECTURE_V1.md](./LIVEPILOT_SYSTEM_ARCHITECTURE_V1.md)
 - [LIVEPILOT_IMPLEMENTATION_ROADMAP_V1.md](./LIVEPILOT_IMPLEMENTATION_ROADMAP_V1.md)
+- [PROJECT_BRAIN_V1.md](./PROJECT_BRAIN_V1.md)
+- [EVALUATION_FABRIC_V1.md](./EVALUATION_FABRIC_V1.md)
+- [MEMORY_FABRIC_V2.md](./MEMORY_FABRIC_V2.md)
+- [TRANSITION_ENGINE_V1.md](./TRANSITION_ENGINE_V1.md)
+- [RESEARCH_ENGINE_V1.md](./RESEARCH_ENGINE_V1.md)
 - [TOOL_REFERENCE.md](./TOOL_REFERENCE.md)
 - [M4L_BRIDGE.md](./M4L_BRIDGE.md)
 - [../livepilot/agents/livepilot-producer/AGENT.md](../livepilot/agents/livepilot-producer/AGENT.md)

@@ -23,7 +23,22 @@ This is a system-design document, not a marketing document and not a vague brain
 This architecture builds directly on:
 
 - [AGENT_OS_V1.md](./AGENT_OS_V1.md)
+- [AGENT_OS_PHASE0_HARDENING_PLAN.md](./AGENT_OS_PHASE0_HARDENING_PLAN.md)
 - [COMPOSITION_ENGINE_V1.md](./COMPOSITION_ENGINE_V1.md)
+- [COMPOSITION_ENGINE_V1_INTEGRATION_PLAN.md](./COMPOSITION_ENGINE_V1_INTEGRATION_PLAN.md)
+- [PROJECT_BRAIN_V1.md](./PROJECT_BRAIN_V1.md)
+- [CAPABILITY_STATE_V1.md](./CAPABILITY_STATE_V1.md)
+- [ACTION_LEDGER_V1.md](./ACTION_LEDGER_V1.md)
+- [EVALUATION_FABRIC_V1.md](./EVALUATION_FABRIC_V1.md)
+- [MEMORY_FABRIC_V2.md](./MEMORY_FABRIC_V2.md)
+- [MIX_ENGINE_V1.md](./MIX_ENGINE_V1.md)
+- [REFERENCE_ENGINE_V1.md](./REFERENCE_ENGINE_V1.md)
+- [TASTE_MODEL_V1.md](./TASTE_MODEL_V1.md)
+- [SOUND_DESIGN_ENGINE_V1.md](./SOUND_DESIGN_ENGINE_V1.md)
+- [TRANSITION_ENGINE_V1.md](./TRANSITION_ENGINE_V1.md)
+- [TRANSLATION_ENGINE_V1.md](./TRANSLATION_ENGINE_V1.md)
+- [PERFORMANCE_ENGINE_V1.md](./PERFORMANCE_ENGINE_V1.md)
+- [RESEARCH_ENGINE_V1.md](./RESEARCH_ENGINE_V1.md)
 - [TOOL_REFERENCE.md](./TOOL_REFERENCE.md)
 - [M4L_BRIDGE.md](./M4L_BRIDGE.md)
 - [v2-master-spec/README.md](./v2-master-spec/README.md)
@@ -44,6 +59,8 @@ This architecture is informed by:
 - Voyager for reusable skill accumulation
 - tree-search agent work for selective branching on hard decisions
 - music structure analysis, self-similarity, novelty segmentation, and descriptor systems from current MIR practice
+
+It should be read together with the implementation-spec documents above. This architecture defines the long-range shape; the engine and substrate docs define the concrete module boundaries and delivery contracts.
 
 ## 1. North Star
 
