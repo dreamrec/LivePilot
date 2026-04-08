@@ -1,4 +1,4 @@
-"""Verify all 206 MCP tools are registered across 25 domains."""
+"""Verify all 209 MCP tools are registered across 26 domains."""
 
 import asyncio
 import sys
@@ -384,10 +384,21 @@ def test_evaluation_fabric_tools_registered():
     assert "evaluate_with_fabric" in names, "Missing evaluate_with_fabric tool"
 
 
+def test_memory_fabric_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "get_anti_preferences",
+        "record_anti_preference",
+        "get_promotion_candidates",
+    }
+    missing = expected - names
+    assert not missing, f"Missing memory_fabric tools: {missing}"
+
+
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 206, f"Expected 206 tools, got {len(tools)}"
+    assert len(tools) == 209, f"Expected 209 tools, got {len(tools)}"
 
 
 def test_perception_tools_registered():

@@ -112,6 +112,7 @@ from .project_brain import tools as project_brain_tools  # noqa: F401, E402
 from .runtime import tools as runtime_tools              # noqa: F401, E402
 from .runtime import action_tools as action_ledger_tools  # noqa: F401, E402
 from .evaluation import tools as evaluation_tools  # noqa: F401, E402
+from .memory import tools as memory_fabric_tools   # noqa: F401, E402
 
 
 # ---------------------------------------------------------------------------
