@@ -1,5 +1,47 @@
 # Changelog
 
+## 1.9.2 — V2 Engine Architecture (April 2026)
+
+### New Engine Packages (12)
+- **Project Brain** — shared state substrate with 5 subgraphs (session, arrangement, role, automation, capability), freshness tracking, scoped refresh
+- **Capability State** — runtime capability model (5 domains: session, analyzer, memory, web, research), operating mode inference
+- **Action Ledger** — semantic move tracking with undo groups, memory promotion candidates
+- **Evaluation Fabric** — unified evaluation layer with 5 engine-specific evaluators (sonic, composition, mix, transition, translation)
+- **Memory Fabric V2** — anti-memory (tracks user dislikes), promotion rules, session memory, taste memory (8 extended dimensions)
+- **Mix Engine** — 6 critics (balance, masking, dynamics, stereo, depth, translation), move planner with ranking
+- **Sound Design Engine** — timbral goals, patch model, layer strategy, 5 critics, move planner
+- **Transition Engine** — boundary model, 7 archetypes, 5 critics, payoff scoring
+- **Reference Engine** — audio/style profiles, gap analysis with identity warnings, tactic routing to target engines
+- **Translation Engine** — playback robustness (mono, small speaker, harshness, low-end, front-element)
+- **Performance Engine** — live-safe mode with scene steering, safety policies, energy path planning
+- **Safety Kernel** — policy enforcement (blocked/confirm-required/safe action classification, scope limits, capability gating)
+
+### New Infrastructure
+- **Conductor** — intelligent request routing to engines with keyword classification (22 patterns across 8 engines)
+- **Budget System** — 6 resource pools per turn (latency, risk, novelty, change, undo, research) shaped by mode
+- **Snapshot Normalizer** — canonical input normalization for all evaluators
+- **Evaluation Contracts** — shared types (EvaluationRequest, EvaluationResult, dimension measurability registry)
+- **Research Provider Router** — 6-level provider ladder with mode-based routing and outcome feedback
+
+### Composition Engine Extensions (Rounds 1-4)
+- Round 1: HarmonyField, TransitionCritic, OutcomeAnalyzer
+- Round 2: MotifGraph, 11 GestureTemplates, TechniqueCards, SectionOutcomes
+- Round 3: ResearchEngine (targeted+deep), PlannerEngine (5 styles), EmotionalArcCritic
+- Round 4: TasteModel, 6 StyleTactics, FormEngine (9 transforms), CrossSectionCritic, OrchestrationPlanner
+
+### Bug Fixes
+- Fix(High): Remove async/await from engine tools — send_command is sync
+- Fix(High): Mix engine extracts mixer.volume/panning from nested Remote Script response
+- Fix(High): Replace calls to nonexistent commands (get_device_reference, walk_device_tree)
+- Fix(Med): Remove refs to nonexistent session fields (last_export_path, selected_scene)
+- Fix(Med): Ledger key mismatch — memory promotion now reads correct 'action_ledger' key
+
+### Stats
+- 236 tools across 32 domains (was 194)
+- 1,014 tests passing (was ~400)
+- 12 new engine packages
+- 36 new MCP tools
+
 ## 1.9.14 — Install Reliability + CI Expansion (April 2026)
 
 - Fix(High): `--install` now shows all detected Ableton directories when multiple exist and accepts `LIVEPILOT_INSTALL_PATH` env var to override — previously silently picked the first candidate which could be wrong
