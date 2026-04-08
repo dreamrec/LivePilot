@@ -464,6 +464,7 @@ def compute_evaluation_score(
     goal: GoalVector,
     before_sonic: dict,
     after_sonic: dict,
+    outcome_history: Optional[list[dict]] = None,
 ) -> dict:
     """Compute whether a move improved the mix toward the goal.
 
@@ -532,8 +533,10 @@ def compute_evaluation_score(
     # Measurable delta (average improvement across measured dimensions)
     measurable_delta = total_goal_progress / max(measurable_count, 1)
 
+    # Taste fit: how well does this move align with user preferences?
+    taste_fit = compute_taste_fit(goal, outcome_history) if outcome_history else 0.0
+
     # Compute composite score (spec section 12.2)
-    # I4 fix: reduce constant floor — use 0.0 for placeholders instead of fake values
     goal_fit = _clamp(0.5 + total_goal_progress)
     measurable_component = _clamp(0.5 + measurable_delta)
     preservation = _clamp(1.0 - collateral_damage * 5)
@@ -543,7 +546,7 @@ def compute_evaluation_score(
         0.30 * goal_fit
         + 0.25 * measurable_component
         + 0.15 * preservation
-        + 0.10 * 0.0   # taste_fit: Phase 2 (no free floor)
+        + 0.10 * taste_fit
         + 0.10 * confidence
         + 0.10 * 1.0   # reversibility: 1.0 for undo-able moves
     )
@@ -738,6 +741,103 @@ def analyze_outcome_history(outcomes: list[dict]) -> dict:
         "common_undone_moves": [{"move": m, "count": c} for m, c in common_undone],
         "taste_vector": taste_vector,
         "notes": notes,
+    }
+
+
+# ── Taste Model (Round 4) ────────────────────────────────────────────
+
+def compute_taste_fit(
+    goal: GoalVector,
+    outcome_history: Optional[list[dict]] = None,
+) -> float:
+    """Compute how well a goal aligns with the user's accumulated taste preferences.
+
+    Analyzes outcome history to build a taste vector (which dimensions matter
+    most to this user), then scores the current goal's alignment.
+
+    Returns 0.0-1.0 where:
+    - 0.0 = no data or goal doesn't match taste
+    - 1.0 = goal perfectly aligns with user's demonstrated preferences
+    """
+    if not outcome_history:
+        return 0.0
+
+    # Build taste vector from kept outcomes
+    taste_vector: dict[str, float] = {}
+    total_kept = 0
+
+    for o in outcome_history:
+        if not o.get("kept", False):
+            continue
+        total_kept += 1
+        gv = o.get("goal_vector", {})
+        targets = gv.get("targets", {}) if isinstance(gv, dict) else {}
+        for dim, weight in targets.items():
+            taste_vector[dim] = taste_vector.get(dim, 0) + weight
+
+    if not taste_vector or total_kept == 0:
+        return 0.0
+
+    # Normalize taste vector
+    taste_total = sum(taste_vector.values())
+    if taste_total > 0:
+        taste_vector = {k: v / taste_total for k, v in taste_vector.items()}
+
+    # Score: how much does the current goal overlap with taste preferences?
+    # Dot product of normalized goal weights and taste weights
+    goal_targets = goal.targets
+    if not goal_targets:
+        return 0.0
+
+    goal_total = sum(goal_targets.values())
+    if goal_total <= 0:
+        return 0.0
+
+    overlap = 0.0
+    for dim, weight in goal_targets.items():
+        normalized_weight = weight / goal_total
+        taste_weight = taste_vector.get(dim, 0)
+        overlap += normalized_weight * taste_weight
+
+    # Scale: overlap is typically small (product of two normalized distributions)
+    # Amplify so that moderate overlap gives a meaningful score
+    return _clamp(overlap * 4.0)
+
+
+def get_taste_profile(outcome_history: list[dict]) -> dict:
+    """Build a full taste profile from outcome history.
+
+    Returns: {taste_vector, preferred_dimensions, avoided_dimensions,
+              keep_rate, sample_size}
+    """
+    analysis = analyze_outcome_history(outcome_history)
+    taste_vector = analysis.get("taste_vector", {})
+
+    # Identify preferred and avoided dimensions
+    preferred = sorted(taste_vector.items(), key=lambda x: -x[1])[:5]
+    avoided_dims: dict[str, float] = {}
+    for o in outcome_history:
+        if o.get("kept", False):
+            continue  # Only look at undone moves
+        gv = o.get("goal_vector", {})
+        targets = gv.get("targets", {}) if isinstance(gv, dict) else {}
+        for dim, weight in targets.items():
+            avoided_dims[dim] = avoided_dims.get(dim, 0) + weight
+
+    if avoided_dims:
+        avoid_total = sum(avoided_dims.values())
+        if avoid_total > 0:
+            avoided_dims = {k: v / avoid_total for k, v in avoided_dims.items()}
+
+    avoided = sorted(avoided_dims.items(), key=lambda x: -x[1])[:5]
+
+    return {
+        "taste_vector": taste_vector,
+        "preferred_dimensions": [{"dim": d, "weight": round(w, 3)} for d, w in preferred],
+        "avoided_dimensions": [{"dim": d, "weight": round(w, 3)} for d, w in avoided],
+        "keep_rate": analysis.get("keep_rate", 0),
+        "sample_size": analysis.get("total_outcomes", 0),
+        "notes": analysis.get("notes", []),
     }
 
 

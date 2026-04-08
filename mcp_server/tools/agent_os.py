@@ -337,3 +337,39 @@ def get_technique_card(
         "cards": cards,
         "count": len(cards),
     }
+
+
+# ── get_taste_profile (Round 4) ────────────────────────────────────
+
+
+@mcp.tool()
+def get_taste_profile(
+    ctx: Context,
+    limit: int = 50,
+) -> dict:
+    """Get the user's production taste profile from outcome history.
+
+    Analyzes kept vs undone moves to identify: preferred dimensions,
+    avoided dimensions, taste vector weights, and overall keep rate.
+    Use this to understand what this user values in production.
+
+    limit: how many outcomes to analyze (default: 50)
+
+    Returns: {taste_vector, preferred_dimensions, avoided_dimensions,
+              keep_rate, sample_size}
+    """
+    ableton = _get_ableton(ctx)
+
+    try:
+        memory_result = ableton.send_command("memory_list", {
+            "type": "outcome",
+            "limit": limit,
+            "sort_by": "updated_at",
+        })
+        techniques = memory_result.get("techniques", [])
+    except Exception:
+        techniques = []
+
+    outcomes = [t.get("payload", {}) for t in techniques if isinstance(t.get("payload"), dict)]
+
+    return engine.get_taste_profile(outcomes)

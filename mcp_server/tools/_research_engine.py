@@ -407,13 +407,11 @@ def deep_research(
     )
 
 
-# ── Style Tactics (Stub for Round 4) ────────────────────────────────
+# ── Style Tactics (Round 4) ──────────────────────────────────────────
 
 @dataclass
 class StyleTactic:
-    """Artist/genre reference study as a reusable composition tactic.
-    Full implementation in Round 4 (4.2).
-    """
+    """Artist/genre reference study as a reusable composition tactic."""
     artist_or_genre: str
     tactic_name: str
     arrangement_patterns: list[str] = field(default_factory=list)
@@ -423,3 +421,122 @@ class StyleTactic:
 
     def to_dict(self) -> dict:
         return asdict(self)
+
+
+# Built-in style tactic library — common production approaches by genre/artist
+STYLE_TACTIC_LIBRARY: list[StyleTactic] = [
+    StyleTactic(
+        artist_or_genre="burial",
+        tactic_name="ghostly_reverb_treatment",
+        arrangement_patterns=["sparse_intro", "gradual_buildup", "sudden_strip_back"],
+        device_chain=[
+            {"name": "Reverb", "params": {"Decay Time": 4.5, "Dry/Wet": 0.6}},
+            {"name": "Auto Filter", "params": {"Frequency": 800, "Resonance": 0.4}},
+            {"name": "Utility", "params": {"Width": 0.7}},
+        ],
+        automation_gestures=["conceal", "drift", "punctuate"],
+        verification=["Check reverb tail doesn't mud the low end", "Verify width feels intimate"],
+    ),
+    StyleTactic(
+        artist_or_genre="daft punk",
+        tactic_name="filter_disco_sweep",
+        arrangement_patterns=["4_bar_filter_open", "loop_with_variation", "energy_plateau"],
+        device_chain=[
+            {"name": "Auto Filter", "params": {"Frequency": 200, "Resonance": 0.6}},
+            {"name": "Saturator", "params": {"Drive": 8, "Dry/Wet": 0.4}},
+            {"name": "Compressor", "params": {"Ratio": 4, "Attack": 10}},
+        ],
+        automation_gestures=["reveal", "lift", "release"],
+        verification=["Filter sweep should feel musical, not mechanical", "Check groove isn't crushed"],
+    ),
+    StyleTactic(
+        artist_or_genre="techno",
+        tactic_name="rolling_hypnotic_groove",
+        arrangement_patterns=["long_intro_16bars", "minimal_variation", "subtle_addition_per_8bars"],
+        device_chain=[
+            {"name": "Compressor", "params": {"Attack": 0.1, "Release": 100, "Ratio": 6}},
+            {"name": "Delay", "params": {"Dry/Wet": 0.15, "Feedback": 0.3}},
+            {"name": "EQ Eight", "params": {}},
+        ],
+        automation_gestures=["drift", "inhale", "release"],
+        verification=["Groove should be hypnotic not boring", "Check low-end stays clean"],
+    ),
+    StyleTactic(
+        artist_or_genre="ambient",
+        tactic_name="evolving_texture_bed",
+        arrangement_patterns=["very_slow_reveal", "32bar_sections", "layered_textures"],
+        device_chain=[
+            {"name": "Reverb", "params": {"Decay Time": 8.0, "Dry/Wet": 0.8}},
+            {"name": "Chorus-Ensemble", "params": {"Rate 1": 0.3}},
+            {"name": "Delay", "params": {"Dry/Wet": 0.3, "Feedback": 0.5}},
+        ],
+        automation_gestures=["drift", "reveal", "sink"],
+        verification=["Texture should feel alive, not static", "Check nothing competes for attention"],
+    ),
+    StyleTactic(
+        artist_or_genre="trap",
+        tactic_name="808_bounce_pattern",
+        arrangement_patterns=["8bar_loop_base", "hihat_triplet_fills", "vocal_chop_hooks"],
+        device_chain=[
+            {"name": "Operator", "params": {}},
+            {"name": "Saturator", "params": {"Drive": 12}},
+            {"name": "Glue Compressor", "params": {"Ratio": 4, "Attack": 0.1}},
+        ],
+        automation_gestures=["punctuate", "release", "lift"],
+        verification=["808 should hit hard but not clip", "Hi-hats should groove not machine-gun"],
+    ),
+    StyleTactic(
+        artist_or_genre="lo-fi",
+        tactic_name="dusty_warmth",
+        arrangement_patterns=["simple_loop_structure", "minimal_sections", "fade_endings"],
+        device_chain=[
+            {"name": "Saturator", "params": {"Drive": 5, "Dry/Wet": 0.5}},
+            {"name": "EQ Eight", "params": {}},
+            {"name": "Auto Filter", "params": {"Frequency": 3000}},
+        ],
+        automation_gestures=["conceal", "drift", "sink"],
+        verification=["Should feel warm not muddy", "High-end roll-off should sound natural"],
+    ),
+]
+
+
+def get_style_tactics(
+    artist_or_genre: str,
+    memory_tactics: Optional[list[dict]] = None,
+) -> list[StyleTactic]:
+    """Find style tactics matching an artist or genre query.
+
+    Searches the built-in library and optionally user-saved tactics from memory.
+    """
+    query = artist_or_genre.lower().strip()
+    results: list[StyleTactic] = []
+
+    # Search built-in library
+    for tactic in STYLE_TACTIC_LIBRARY:
+        if query in tactic.artist_or_genre.lower() or query in tactic.tactic_name.lower():
+            results.append(tactic)
+
+    # Also partial match on arrangement patterns
+    if not results:
+        for tactic in STYLE_TACTIC_LIBRARY:
+            if any(query in p.lower() for p in tactic.arrangement_patterns):
+                results.append(tactic)
+
+    # Search user memory tactics
+    if memory_tactics:
+        for mem in memory_tactics:
+            payload = mem.get("payload", {})
+            if isinstance(payload, dict):
+                mem_genre = payload.get("artist_or_genre", "").lower()
+                mem_name = payload.get("tactic_name", "").lower()
+                if query in mem_genre or query in mem_name:
+                    results.append(StyleTactic(
+                        artist_or_genre=payload.get("artist_or_genre", ""),
+                        tactic_name=payload.get("tactic_name", ""),
+                        arrangement_patterns=payload.get("arrangement_patterns", []),
+                        device_chain=payload.get("device_chain", []),
+                        automation_gestures=payload.get("automation_gestures", []),
+                        verification=payload.get("verification", []),
+                    ))
+
+    return results

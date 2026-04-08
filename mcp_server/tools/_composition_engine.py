@@ -1365,3 +1365,166 @@ def run_emotional_arc_critic(
                 "reorder_sections", "save_hook_reveal_for_later",
             ],
         ))
+
+    return issues
+
+
+# ── Cross-Section Critic (Round 4) ──────────────────────────────────
+
+def run_cross_section_critic(
+    sections: list[SectionNode],
+    roles: list[RoleNode],
+    harmony_fields: Optional[list["HarmonyField"]] = None,
+    motif_count: int = 0,
+) -> list[CompositionIssue]:
+    """Reason across the entire arrangement for cross-section coherence.
+
+    Checks that the arrangement works as a whole, not just per-section:
+    - Clear reveal order (elements shouldn't all appear at once)
+    - Foreground voice rotation (same lead everywhere = fatigue)
+    - Harmonic pacing (rapid key changes everywhere = chaos)
+    - Element variety across sections
+    """
+    issues = []
+    if len(sections) < 3:
+        return issues
+
+    # 1. All elements appear from the start — no reveal order
+    if len(sections) >= 3:
+        first_active = set(sections[0].tracks_active)
+        second_active = set(sections[1].tracks_active)
+        third_active = set(sections[2].tracks_active)
+        if first_active == second_active == third_active and first_active:
+            issues.append(CompositionIssue(
+                issue_type="no_reveal_order",
+                critic="cross_section",
+                severity=0.6,
+                confidence=0.65,
+                evidence=f"First 3 sections all have same {len(first_active)} active tracks — no staggered reveal",
+                recommended_moves=[
+                    "defer_elements_to_later_sections", "strip_intro",
+                    "create_reveal_sequence", "mute_tracks_in_early_sections",
+                ],
+            ))
+
+    # 2. Same foreground voices in every section — no rotation
+    fg_by_section: list[set[int]] = []
+    for section in sections:
+        fg = {r.track_index for r in roles
+              if r.section_id == section.section_id and r.foreground}
+        fg_by_section.append(fg)
+
+    if len(fg_by_section) >= 3:
+        all_same = all(fg == fg_by_section[0] for fg in fg_by_section[1:])
+        if all_same and fg_by_section[0]:
+            issues.append(CompositionIssue(
+                issue_type="no_foreground_rotation",
+                critic="cross_section",
+                severity=0.5,
+                confidence=0.60,
+                evidence=f"Same foreground voices ({len(fg_by_section[0])} tracks) in all {len(sections)} sections",
+                recommended_moves=[
+                    "alternate_lead_voice", "handoff_gesture_between_sections",
+                    "mute_lead_in_bridge", "introduce_new_hook_element",
+                ],
+            ))
+
+    # 3. Harmonic monotony — same key across all sections
+    if harmony_fields:
+        keys = [hf.key for hf in harmony_fields if hf.key]
+        if len(keys) >= 3 and len(set(keys)) == 1:
+            issues.append(CompositionIssue(
+                issue_type="harmonic_monotony",
+                critic="cross_section",
+                severity=0.4,
+                confidence=0.50,
+                evidence=f"All {len(keys)} sections in same key ({keys[0]}) — consider modulation",
+                recommended_moves=[
+                    "modulate_for_bridge", "use_chromatic_mediant",
+                    "borrow_from_parallel_key", "transpose_final_chorus",
+                ],
+            ))
+
+        # 4. Harmonic chaos — different key in every section
+        unique_keys = set(keys)
+        if len(unique_keys) > len(keys) * 0.7 and len(keys) >= 4:
+            issues.append(CompositionIssue(
+                issue_type="harmonic_chaos",
+                critic="cross_section",
+                severity=0.5,
+                confidence=0.45,
+                evidence=f"{len(unique_keys)} different keys across {len(keys)} sections — hard to follow",
+                recommended_moves=[
+                    "consolidate_to_two_keys", "use_pivot_chords",
+                    "establish_home_key", "group_related_sections",
+                ],
+            ))
+
+    # 5. No motif development (if motifs exist but aren't varied)
+    if motif_count > 0:
+        # Check if sections have varying density (proxy for development)
+        densities = [s.density for s in sections]
+        unique_densities = len(set(round(d, 1) for d in densities))
+        if unique_densities <= 2 and len(sections) > 4:
+            issues.append(CompositionIssue(
+                issue_type="static_arrangement",
+                critic="cross_section",
+                severity=0.4,
+                confidence=0.50,
+                evidence=f"Only {unique_densities} distinct density levels across {len(sections)} sections with {motif_count} motifs",
+                recommended_moves=[
+                    "vary_motif_density_per_section", "fragment_motif_in_bridge",
+                    "augment_motif_in_outro", "register_shift_for_variety",
+                ],
+            ))
+
+    return issues
+
+
+# ── Composition Taste Model (Round 4) ───────────────────────────────
+
+def build_composition_taste_model(
+    section_outcomes: list[dict],
+) -> dict:
+    """Build per-section-type preferences from composition outcome history.
+
+    Aggregates section outcomes to learn: what density, foreground count,
+    and move types does this user prefer for each section type?
+
+    Returns: {section_type: {preferred_density, preferred_foreground_count,
+              top_moves, sample_size}}
+    """
+    if not section_outcomes:
+        return {"section_types": {}, "sample_size": 0}
+
+    by_type: dict[str, list[dict]] = {}
+    for o in section_outcomes:
+        stype = o.get("section_type", "unknown")
+        by_type.setdefault(stype, []).append(o)
+
+    preferences: dict[str, dict] = {}
+    for stype, outcomes in by_type.items():
+        kept = [o for o in outcomes if o.get("kept", False)]
+        densities = [o.get("density", 0.5) for o in kept if "density" in o]
+        fg_counts = [o.get("foreground_count", 1) for o in kept if "foreground_count" in o]
+
+        # Tally move types
+        move_counts: dict[str, int] = {}
+        for o in kept:
+            move = o.get("move_name", "unknown")
+            move_counts[move] = move_counts.get(move, 0) + 1
+
+        top_moves = sorted(move_counts.items(), key=lambda x: -x[1])[:3]
+
+        preferences[stype] = {
+            "preferred_density": round(sum(densities) / len(densities), 2) if densities else 0.5,
+            "preferred_foreground_count": round(sum(fg_counts) / len(fg_counts), 1) if fg_counts else 1.0,
+            "top_moves": [{"move": m, "count": c} for m, c in top_moves],
+            "keep_rate": round(len(kept) / len(outcomes), 3) if outcomes else 0,
+            "sample_size": len(outcomes),
+        }
+
+    return {
+        "section_types": preferences,
+        "sample_size": sum(len(v) for v in by_type.values()),
+    }

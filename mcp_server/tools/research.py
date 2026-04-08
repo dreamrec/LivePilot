@@ -171,3 +171,53 @@ def get_emotional_arc(ctx: Context) -> dict:
         "issue_count": len(issues),
         "section_count": len(sections),
     }
+
+
+# ── get_style_tactics (Round 4) ─────────────────────────────────────
+
+
+@mcp.tool()
+def get_style_tactics(
+    ctx: Context,
+    artist_or_genre: str,
+) -> dict:
+    """Get production tactics for a specific artist style or genre.
+
+    Returns structured recipe cards with device chains, arrangement patterns,
+    automation gestures, and verification steps.
+
+    artist_or_genre: e.g., "burial", "techno", "daft punk", "ambient", "trap"
+
+    Returns: list of StyleTactic cards with actionable production instructions.
+    """
+    if not artist_or_genre or not artist_or_genre.strip():
+        return {"error": "artist_or_genre cannot be empty"}
+
+    ableton = _get_ableton(ctx)
+
+    # Search user memory for saved tactics
+    memory_tactics = []
+    try:
+        mem = ableton.send_command("memory_list", {
+            "type": "style_tactic",
+            "limit": 10,
+        })
+        memory_tactics = mem.get("techniques", [])
+    except Exception:
+        pass
+
+    tactics = research_engine.get_style_tactics(artist_or_genre, memory_tactics)
+
+    if not tactics:
+        return {
+            "query": artist_or_genre,
+            "tactics": [],
+            "note": f"No tactics found for '{artist_or_genre}'. "
+                    f"Available built-in styles: burial, daft punk, techno, ambient, trap, lo-fi",
+        }
+
+    return {
+        "query": artist_or_genre,
+        "tactics": [t.to_dict() for t in tactics],
+        "tactic_count": len(tactics),
+    }
