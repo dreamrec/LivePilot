@@ -62,7 +62,9 @@ def _safe_output_path(directory: Path, filename: str) -> Path:
     if not safe_name:
         raise ValueError(f"Invalid filename: {filename!r}")
     out = (directory / safe_name).resolve()
-    if not str(out).startswith(str(directory.resolve())):
+    # Use os.sep suffix to prevent prefix collisions (e.g., /foo/bar vs /foo/barbaz)
+    parent = str(directory.resolve()) + os.sep
+    if not (str(out) + os.sep).startswith(parent):
         raise ValueError(f"Filename escapes output directory: {filename!r}")
     return out
 

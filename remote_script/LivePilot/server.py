@@ -162,12 +162,12 @@ class LivePilotServer(object):
                             pass
                         continue
                     self._client_connected = True
-                self._client_thread = threading.Thread(
-                    target=self._run_client_session,
-                    args=(client, addr),
-                )
-                self._client_thread.daemon = True
-                self._client_thread.start()
+                    self._client_thread = threading.Thread(
+                        target=self._run_client_session,
+                        args=(client, addr),
+                    )
+                    self._client_thread.daemon = True
+                    self._client_thread.start()
             except socket.timeout:
                 continue
             except OSError:

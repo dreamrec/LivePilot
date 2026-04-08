@@ -249,7 +249,8 @@ class TestConnectionContracts:
         result = _friendly_error("INDEX_ERROR", "Track 99 not found", "get_track_info")
         assert "[INDEX_ERROR]" in result
         assert "Track 99 not found" in result
-        assert "get_session_info" in result  # from INDEX_ERROR hint text (command_type param is unused)
+        assert "get_track_info" in result  # command_type is now included in output
+        assert "get_session_info" in result  # from INDEX_ERROR hint text
 
     def test_friendly_error_unknown_code(self):
         from mcp_server.connection import _friendly_error
@@ -284,19 +285,31 @@ class TestConnectionContracts:
 
 class TestDiagnosticsContracts:
     def test_default_name_detection(self):
-        """Test the name detection logic used by diagnostics (duplicated here
-        since remote_script can't be imported outside Ableton)."""
-        _DEFAULT_NAME_PATTERNS = frozenset(["MIDI", "Audio", "Inst", "Return"])
+        """Test the name detection logic from the production diagnostics module."""
+        import importlib.util, sys, types
+        from pathlib import Path
 
-        def _looks_default_name(name):
-            stripped = name.strip()
-            for part in stripped.split("-"):
-                part = part.strip()
-                if part.isdigit():
-                    continue
-                if part in _DEFAULT_NAME_PATTERNS:
-                    return True
-            return False
+        ROOT = Path(__file__).resolve().parents[1]
+        REMOTE_ROOT = ROOT / "remote_script" / "LivePilot"
+
+        # Load the production diagnostics module without the Ableton __init__
+        for name in ["remote_script.LivePilot.diagnostics", "remote_script.LivePilot", "remote_script"]:
+            sys.modules.pop(name, None)
+        remote_pkg = types.ModuleType("remote_script")
+        remote_pkg.__path__ = [str(ROOT / "remote_script")]
+        sys.modules["remote_script"] = remote_pkg
+        live_pkg = types.ModuleType("remote_script.LivePilot")
+        live_pkg.__path__ = [str(REMOTE_ROOT)]
+        sys.modules["remote_script.LivePilot"] = live_pkg
+
+        spec = importlib.util.spec_from_file_location(
+            "remote_script.LivePilot.diagnostics", REMOTE_ROOT / "diagnostics.py"
+        )
+        diagnostics = importlib.util.module_from_spec(spec)
+        sys.modules["remote_script.LivePilot.diagnostics"] = diagnostics
+        spec.loader.exec_module(diagnostics)
+
+        _looks_default_name = diagnostics._looks_default_name
 
         assert _looks_default_name("1-MIDI") is True
         assert _looks_default_name("2-Audio") is True

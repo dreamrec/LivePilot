@@ -134,7 +134,7 @@ def run_dynamics_critic(dynamics: DynamicsState) -> list[MixIssue]:
             recommended_moves=["bus_compression", "transient_shaping"],
         ))
 
-    if dynamics.crest_factor_db < 3.0 and dynamics.crest_factor_db > 0:
+    elif dynamics.crest_factor_db < 3.0 and dynamics.crest_factor_db > 0:
         issues.append(MixIssue(
             issue_type="flat_dynamics",
             critic="dynamics",

@@ -25,7 +25,7 @@ def _fetch_mix_data(ctx: Context) -> dict:
     ableton = ctx.lifespan_context["ableton"]
 
     session_info = ableton.send_command("get_session_info", {})
-    track_count = session_info.get("track_count", 0)
+    track_count = len(session_info.get("tracks", []))
 
     track_infos: list[dict] = []
     for i in range(track_count):

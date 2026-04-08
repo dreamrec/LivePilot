@@ -203,10 +203,11 @@ def build_capability_state(
     # ── Overall mode ────────────────────────────────────────────────
     if session_ok and analyzer_ok and analyzer_fresh:
         overall_mode = "normal"
-    elif session_ok and not analyzer_ok:
+    elif session_ok and analyzer_ok:
+        # Analyzer online but data is stale — degraded measurement
         overall_mode = "measured_degraded"
     elif session_ok:
-        # session_ok, analyzer_ok but not fresh
+        # Analyzer offline entirely — must rely on judgment alone
         overall_mode = "judgment_only"
     else:
         overall_mode = "read_only"

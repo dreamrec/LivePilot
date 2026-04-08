@@ -338,13 +338,15 @@ class M4LBridge:
         self.receiver = receiver
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._m4l_addr = ("127.0.0.1", 9881)
-        self._cmd_lock = asyncio.Lock()
+        self._cmd_lock: Optional[asyncio.Lock] = None
 
     async def send_command(self, command: str, *args: Any, timeout: float = 5.0) -> dict:
         """Send an OSC command to the M4L device and wait for the response."""
         if not self.cache.is_connected:
             return {"error": "LivePilot Analyzer not connected. Drop it on the master track."}
 
+        if self._cmd_lock is None:
+            self._cmd_lock = asyncio.Lock()
         async with self._cmd_lock:
             # Create a future for the response
             loop = asyncio.get_running_loop()
@@ -362,6 +364,10 @@ class M4LBridge:
                 result = await asyncio.wait_for(future, timeout=timeout)
                 return result
             except asyncio.TimeoutError:
+                # Clear the stale future so a delayed response doesn't resolve
+                # a future that no caller is waiting on
+                if self.receiver:
+                    self.receiver.set_response_future(None)
                 return {"error": "M4L bridge timeout — device may be busy or removed"}
 
     async def send_capture(self, command: str, *args: Any, timeout: float = 35.0) -> dict:
@@ -369,6 +375,8 @@ class M4LBridge:
         if not self.cache.is_connected:
             return {"error": "LivePilot Analyzer not connected. Drop it on the master track."}
 
+        if self._cmd_lock is None:
+            self._cmd_lock = asyncio.Lock()
         async with self._cmd_lock:
             # Cancel any stale capture future before creating a new one
             if self.receiver and self.receiver._capture_future and not self.receiver._capture_future.done():

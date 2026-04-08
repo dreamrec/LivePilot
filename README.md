@@ -448,7 +448,7 @@ Windsurf — `~/.codeium/windsurf/mcp_config.json`:
 
 Drag `LivePilot_Analyzer.amxd` onto the master track.
 
-Unlocks 32 additional tools: spectral analysis, key detection,
+Unlocks 29 additional tools: spectral analysis, key detection,
 sample manipulation, deep device introspection, plugin parameter mapping.
 
 > [!IMPORTANT]
