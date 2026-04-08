@@ -37,9 +37,10 @@ class ConductorPlan:
     routes: list[EngineRoute] = field(default_factory=list)
     capability_requirements: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+    budget: Optional[dict] = None
 
     def to_dict(self) -> dict:
-        return {
+        result = {
             "request": self.request,
             "request_type": self.request_type,
             "routes": [r.to_dict() for r in self.routes],
@@ -48,6 +49,9 @@ class ConductorPlan:
             "capability_requirements": self.capability_requirements,
             "notes": self.notes,
         }
+        if self.budget is not None:
+            result["budget"] = self.budget
+        return result
 
 
 # ── Request Classification ───────────────────────────────────────────
@@ -175,3 +179,21 @@ def classify_request(request: str) -> ConductorPlan:
         capability_requirements=caps,
         notes=notes,
     )
+
+
+def create_conductor_plan(
+    request: str,
+    mode: str = "improve",
+    aggression: float = 0.5,
+) -> ConductorPlan:
+    """Create a full ConductorPlan with routing + budget.
+
+    Combines classify_request (routing) with create_budget (resource limits)
+    into a single plan the agent can consume.
+    """
+    from . import _conductor_budgets as budgets
+
+    plan = classify_request(request)
+    budget = budgets.create_budget(mode=mode, aggression=aggression)
+    plan.budget = budget.to_dict()
+    return plan
