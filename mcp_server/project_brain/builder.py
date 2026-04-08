@@ -6,31 +6,48 @@ pre-fetched data from Ableton.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
 
-from .models import (
-    ArrangementGraph,
-    AutomationGraph,
-    CapabilityGraph,
-    ProjectState,
-    RoleGraph,
-    SectionNode,
-)
+from .arrangement_graph import build_arrangement_graph
+from .automation_graph import build_automation_graph
+from .capability_graph import build_capability_graph
+from .models import ProjectState
+from .role_graph import build_role_graph
 from .session_graph import build_session_graph
 
 
 def build_project_state_from_data(
     session_info: dict,
-    arrangement_clips: Optional[dict] = None,
+    scenes: Optional[list[dict]] = None,
+    clip_matrix: Optional[list[list[dict]]] = None,
     track_infos: Optional[list[dict]] = None,
+    notes_map: Optional[dict[str, dict[int, list[dict]]]] = None,
+    arrangement_clips: Optional[dict] = None,
+    analyzer_ok: bool = False,
+    flucoma_ok: bool = False,
+    plugin_health: Optional[dict[str, Any]] = None,
+    session_ok: bool = True,
+    memory_ok: bool = False,
+    web_ok: bool = False,
+    analyzer_fresh: bool = False,
     previous_revision: int = 0,
 ) -> ProjectState:
     """Build a full ProjectState from pre-fetched data.
 
     Args:
         session_info: raw get_session_info output.
-        arrangement_clips: optional dict of track_index -> clip list.
-        track_infos: optional list of per-track info dicts.
+        scenes: list of scene dicts for arrangement graph.
+        clip_matrix: [scene_index][track_index] clip slot dicts.
+        track_infos: list of per-track info dicts (devices, params).
+        notes_map: {section_id: {track_index: [notes]}} for role inference.
+        arrangement_clips: legacy dict of track_index -> clip list.
+        analyzer_ok: whether M4L analyzer bridge is responding.
+        flucoma_ok: whether FluCoMa is available.
+        plugin_health: dict of plugin_name -> health info.
+        session_ok: whether Ableton session is reachable.
+        memory_ok: whether technique memory is available.
+        web_ok: whether web research is available.
+        analyzer_fresh: whether analyzer data is fresh.
         previous_revision: last known revision number.
 
     Returns:
@@ -43,14 +60,19 @@ def build_project_state_from_data(
     state.session_graph = build_session_graph(session_info)
     state.session_graph.freshness.mark_fresh(state.revision)
 
-    # 2. Capability graph (placeholder — always built)
-    state.capability_graph = CapabilityGraph()
-    state.capability_graph.freshness.mark_fresh(state.revision)
+    # 2. Arrangement graph
+    track_count = len(session_info.get("tracks", []))
 
-    # 3. Arrangement graph (from clips if available)
-    arr = ArrangementGraph()
-    if arrangement_clips:
-        sections: list[SectionNode] = []
+    if scenes and clip_matrix:
+        # New path: real scene-based section inference
+        state.arrangement_graph = build_arrangement_graph(
+            scenes, clip_matrix, track_count,
+        )
+    elif arrangement_clips:
+        # Legacy path: arrangement clips from per-track fetch
+        from .models import ArrangementGraph, SectionNode
+        arr = ArrangementGraph()
+        sections = []
         for track_idx, clips in arrangement_clips.items():
             for clip in clips:
                 sections.append(SectionNode(
@@ -60,17 +82,42 @@ def build_project_state_from_data(
                     section_type=clip.get("name", "unknown"),
                 ))
         arr.sections = sections
-    arr.freshness.mark_fresh(state.revision)
-    state.arrangement_graph = arr
+        state.arrangement_graph = arr
+    # else: leave as default empty ArrangementGraph
 
-    # 4. Role graph (placeholder — needs deeper inference)
-    role_graph = RoleGraph()
-    role_graph.freshness.mark_fresh(state.revision)
-    state.role_graph = role_graph
+    state.arrangement_graph.freshness.mark_fresh(state.revision)
 
-    # 5. Automation graph (placeholder — needs deeper inference)
-    auto_graph = AutomationGraph()
-    auto_graph.freshness.mark_fresh(state.revision)
-    state.automation_graph = auto_graph
+    # 3. Role graph
+    if state.arrangement_graph.sections and track_infos:
+        section_dicts = [s.to_dict() for s in state.arrangement_graph.sections]
+        state.role_graph = build_role_graph(
+            sections=section_dicts,
+            track_data=track_infos,
+            notes_map=notes_map or {},
+        )
+    state.role_graph.freshness.mark_fresh(state.revision)
+
+    # 4. Automation graph
+    section_dicts_for_auto = (
+        [s.to_dict() for s in state.arrangement_graph.sections]
+        if state.arrangement_graph.sections else None
+    )
+    state.automation_graph = build_automation_graph(
+        track_infos=track_infos or [],
+        sections=section_dicts_for_auto,
+    )
+    state.automation_graph.freshness.mark_fresh(state.revision)
+
+    # 5. Capability graph
+    state.capability_graph = build_capability_graph(
+        analyzer_ok=analyzer_ok,
+        flucoma_ok=flucoma_ok,
+        plugin_health=plugin_health,
+        session_ok=session_ok,
+        memory_ok=memory_ok,
+        web_ok=web_ok,
+        analyzer_fresh=analyzer_fresh,
+    )
+    state.capability_graph.freshness.mark_fresh(state.revision)
 
     return state

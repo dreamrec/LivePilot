@@ -21,8 +21,9 @@ def _get_ableton(ctx: Context):
 def build_project_brain(ctx: Context) -> dict:
     """Build a full Project Brain snapshot from the current Ableton session.
 
-    Gathers session info, builds all five subgraphs (session, arrangement,
-    role, automation, capability), and returns the canonical project state.
+    Gathers session info, scenes, clip matrix, track infos with device data,
+    builds all five subgraphs (session, arrangement, role, automation,
+    capability), and returns the canonical project state.
 
     This is the primary entry point for engines that need a coherent view
     of the project. Call once at session start, then use scoped refreshes.
@@ -31,10 +32,41 @@ def build_project_brain(ctx: Context) -> dict:
 
     # 1. Get session info
     session_info = ableton.send_command("get_session_info")
-
-    # 2. Gather arrangement clips per track
-    arrangement_clips = {}
     tracks = session_info.get("tracks", [])
+
+    # 2. Get scenes info
+    scenes = []
+    try:
+        scenes_resp = ableton.send_command("get_scenes_info")
+        scenes = scenes_resp.get("scenes", [])
+    except Exception:
+        scenes = session_info.get("scenes", [])
+
+    # 3. Get clip matrix (scene_matrix)
+    clip_matrix = []
+    try:
+        matrix_resp = ableton.send_command("get_scene_matrix")
+        clip_matrix = matrix_resp.get("matrix", [])
+    except Exception:
+        pass
+
+    # 4. Gather per-track info with devices
+    track_infos = []
+    for track in tracks:
+        try:
+            info = ableton.send_command("get_track_info", {
+                "track_index": track["index"],
+            })
+            track_infos.append(info)
+        except Exception:
+            track_infos.append({
+                "index": track.get("index", 0),
+                "name": track.get("name", ""),
+                "devices": [],
+            })
+
+    # 5. Gather arrangement clips per track (legacy path)
+    arrangement_clips = {}
     for track in tracks:
         try:
             arr = ableton.send_command("get_arrangement_clips", {
@@ -46,10 +78,36 @@ def build_project_brain(ctx: Context) -> dict:
         except Exception:
             pass
 
-    # 3. Build state
+    # 6. Probe capabilities
+    analyzer_ok = False
+    analyzer_fresh = False
+    flucoma_ok = False
+    try:
+        # Check if M4L bridge is responding via spectral cache
+        bridge = ctx.lifespan_context.get("spectral_cache")
+        if bridge:
+            analyzer_ok = True
+            analyzer_fresh = not bridge.is_stale() if hasattr(bridge, "is_stale") else False
+    except Exception:
+        pass
+
+    try:
+        flucoma_resp = ableton.send_command("check_flucoma")
+        flucoma_ok = flucoma_resp.get("available", False)
+    except Exception:
+        pass
+
+    # 7. Build state
     state = build_project_state_from_data(
         session_info=session_info,
-        arrangement_clips=arrangement_clips,
+        scenes=scenes if scenes and clip_matrix else None,
+        clip_matrix=clip_matrix if clip_matrix else None,
+        track_infos=track_infos if track_infos else None,
+        arrangement_clips=arrangement_clips if arrangement_clips else None,
+        analyzer_ok=analyzer_ok,
+        flucoma_ok=flucoma_ok,
+        session_ok=True,
+        analyzer_fresh=analyzer_fresh,
         previous_revision=0,
     )
 
@@ -78,6 +136,8 @@ def get_project_brain_summary(ctx: Context) -> dict:
         "return_track_count": len(state.session_graph.return_tracks),
         "scene_count": len(state.session_graph.scenes),
         "section_count": len(state.arrangement_graph.sections),
+        "role_count": len(state.role_graph.roles),
+        "automated_param_count": len(state.automation_graph.automated_params),
         "tempo": state.session_graph.tempo,
         "time_signature": state.session_graph.time_signature,
         "is_stale": state.is_stale(),
