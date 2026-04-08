@@ -289,3 +289,51 @@ def analyze_outcomes(
             outcomes.append(payload)
 
     return engine.analyze_outcome_history(outcomes)
+
+
+# ── get_technique_card (Round 2) ──────────────────────────────────────
+
+
+@mcp.tool()
+def get_technique_card(
+    ctx: Context,
+    query: str,
+    limit: int = 5,
+) -> dict:
+    """Search for technique cards — structured production recipes.
+
+    Technique cards are reusable recipes saved from successful production
+    outcomes. Each card has: problem, context, devices, method, verification.
+
+    query: search term (e.g., "wider pad", "punchy kick", "sidechain bass")
+    limit: max results
+    """
+    ableton = _get_ableton(ctx)
+
+    try:
+        memory_result = ableton.send_command("memory_recall", {
+            "query": query,
+            "type": "technique_card",
+            "limit": limit,
+        })
+        techniques = memory_result.get("techniques", [])
+    except Exception:
+        techniques = []
+
+    cards = []
+    for t in techniques:
+        payload = t.get("payload", {})
+        if isinstance(payload, dict):
+            cards.append({
+                "id": t.get("id"),
+                "name": t.get("name"),
+                "card": payload,
+                "rating": t.get("rating", 0),
+                "replay_count": t.get("replay_count", 0),
+            })
+
+    return {
+        "query": query,
+        "cards": cards,
+        "count": len(cards),
+    }

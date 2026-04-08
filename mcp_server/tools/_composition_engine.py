@@ -806,6 +806,172 @@ def plan_gesture(
     )
 
 
+# ── Gesture Templates (Round 2) ───────────────────────────────────────
+
+# Compound gesture sequences for common arrangement patterns.
+# Each template is a list of gesture steps with relative offsets.
+GESTURE_TEMPLATES: dict[str, dict] = {
+    "pre_arrival_vacuum": {
+        "description": "Pull energy back before impact — classic build technique",
+        "steps": [
+            {"intent": "inhale", "offset_bars": -4, "duration_bars": 3},
+            {"intent": "release", "offset_bars": 0, "duration_bars": 1},
+        ],
+        "best_for": ["pre_drop", "pre_chorus", "turnaround"],
+    },
+    "sectional_width_bloom": {
+        "description": "Narrow then widen — creates sense of opening up",
+        "steps": [
+            {"intent": "conceal", "offset_bars": -2, "duration_bars": 2},
+            {"intent": "reveal", "offset_bars": 0, "duration_bars": 4},
+            {"intent": "drift", "offset_bars": 4, "duration_bars": 8},
+        ],
+        "best_for": ["chorus_entry", "verse_to_chorus", "section_expansion"],
+    },
+    "phrase_end_throw": {
+        "description": "Accent the end of a phrase with a dub throw",
+        "steps": [
+            {"intent": "punctuate", "offset_bars": -1, "duration_bars": 1},
+        ],
+        "best_for": ["phrase_cadence", "hook_accent", "transition"],
+    },
+    "turnaround_accent": {
+        "description": "Mark turnaround with lift then settle",
+        "steps": [
+            {"intent": "lift", "offset_bars": -2, "duration_bars": 2},
+            {"intent": "sink", "offset_bars": 0, "duration_bars": 2},
+        ],
+        "best_for": ["loop_turnaround", "phrase_repeat", "section_end"],
+    },
+    "outro_decay_dissolve": {
+        "description": "Gradual dissolution for endings",
+        "steps": [
+            {"intent": "conceal", "offset_bars": 0, "duration_bars": 8},
+            {"intent": "sink", "offset_bars": 4, "duration_bars": 8},
+        ],
+        "best_for": ["outro", "fade_out", "ending"],
+    },
+    "bass_tuck_before_kick": {
+        "description": "Duck bass before kick re-entry",
+        "steps": [
+            {"intent": "inhale", "offset_bars": -1, "duration_bars": 1},
+            {"intent": "release", "offset_bars": 0, "duration_bars": 1},
+        ],
+        "best_for": ["kick_reentry", "drop", "bass_return"],
+    },
+    "harmonic_tint_rise": {
+        "description": "Gradually introduce harmonic color via filter opening",
+        "steps": [
+            {"intent": "reveal", "offset_bars": 0, "duration_bars": 8},
+        ],
+        "best_for": ["verse_development", "pad_introduction", "harmonic_shift"],
+    },
+    "response_echo": {
+        "description": "Echo gesture — punctuate then drift the tail",
+        "steps": [
+            {"intent": "punctuate", "offset_bars": 0, "duration_bars": 1},
+            {"intent": "drift", "offset_bars": 1, "duration_bars": 4},
+        ],
+        "best_for": ["call_and_response", "hook_echo", "delay_throw"],
+    },
+    "texture_drift_bed": {
+        "description": "Subtle ongoing motion for background textures",
+        "steps": [
+            {"intent": "drift", "offset_bars": 0, "duration_bars": 16},
+        ],
+        "best_for": ["pad_movement", "background_texture", "atmosphere"],
+    },
+    "tension_ratchet": {
+        "description": "Stepped tension increase — reveal in stages",
+        "steps": [
+            {"intent": "reveal", "offset_bars": 0, "duration_bars": 4},
+            {"intent": "reveal", "offset_bars": 4, "duration_bars": 4},
+            {"intent": "lift", "offset_bars": 8, "duration_bars": 4},
+        ],
+        "best_for": ["long_build", "riser", "gradual_intensification"],
+    },
+    "re_entry_spotlight": {
+        "description": "Spotlight a returning element",
+        "steps": [
+            {"intent": "conceal", "offset_bars": -2, "duration_bars": 2},
+            {"intent": "release", "offset_bars": 0, "duration_bars": 1},
+        ],
+        "best_for": ["hook_return", "melody_reentry", "element_spotlight"],
+    },
+}
+
+
+def resolve_gesture_template(
+    template_name: str,
+    target_tracks: list[int],
+    anchor_bar: int,
+    foreground: bool = False,
+) -> list[GesturePlan]:
+    """Resolve a gesture template into a sequence of concrete GesturePlans.
+
+    anchor_bar: the reference point (e.g., section boundary bar number).
+    Steps with negative offsets happen before the anchor.
+    """
+    template = GESTURE_TEMPLATES.get(template_name)
+    if template is None:
+        valid = list(GESTURE_TEMPLATES.keys())
+        raise ValueError(f"Unknown template '{template_name}'. Valid: {valid}")
+
+    plans = []
+    for i, step in enumerate(template["steps"]):
+        intent = GestureIntent(step["intent"])
+        start = anchor_bar + step.get("offset_bars", 0)
+        duration = step.get("duration_bars", None)
+        gesture = plan_gesture(intent, target_tracks, start, duration, foreground)
+        gesture.gesture_id = f"{template_name}_{i:02d}_{start}"
+        plans.append(gesture)
+
+    return plans
+
+
+# ── Section Outcome Analysis (Round 2) ────────────────────────────────
+
+def analyze_section_outcomes(
+    outcomes: list[dict],
+) -> dict:
+    """Analyze composition outcomes grouped by section type.
+
+    outcomes: list of composition_outcome payloads
+    Returns: {section_type: {move_name: {avg_score, count, keep_rate}}}
+    """
+    by_section: dict[str, list[dict]] = {}
+
+    for o in outcomes:
+        section_type = o.get("section_type", "unknown")
+        by_section.setdefault(section_type, []).append(o)
+
+    result = {}
+    for stype, section_outcomes in by_section.items():
+        move_stats: dict[str, dict] = {}
+        for o in section_outcomes:
+            move = o.get("move_name", "unknown")
+            stats = move_stats.setdefault(move, {"scores": [], "kept": 0, "total": 0})
+            stats["scores"].append(o.get("score", 0))
+            stats["total"] += 1
+            if o.get("kept", False):
+                stats["kept"] += 1
+
+        result[stype] = {
+            move: {
+                "avg_score": round(sum(s["scores"]) / len(s["scores"]), 3) if s["scores"] else 0,
+                "count": s["total"],
+                "keep_rate": round(s["kept"] / s["total"], 3) if s["total"] > 0 else 0,
+            }
+            for move, s in move_stats.items()
+        }
+
+    return {
+        "section_types": list(result.keys()),
+        "outcomes_by_section": result,
+        "total_outcomes": sum(len(v) for v in by_section.values()),
+    }
+
+
 # ── Composition Evaluation ────────────────────────────────────────────
 
 COMPOSITION_DIMENSIONS = frozenset({

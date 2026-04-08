@@ -12,7 +12,7 @@ from typing import Any, Optional
 
 VALID_TYPES = frozenset(
     ["beat_pattern", "device_chain", "mix_template", "browser_pin", "preference",
-     "outcome", "composition_outcome"]
+     "outcome", "composition_outcome", "technique_card"]
 )
 
 VALID_SORT_FIELDS = frozenset(

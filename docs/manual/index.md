@@ -1,7 +1,7 @@
 # LivePilot Manual
 
 An agentic production system for Ableton Live 12.
-189 tools. 17 domains. Device atlas. Spectral perception. Technique memory.
+194 tools. 17 domains. Device atlas. Spectral perception. Technique memory.
 
 ---
 

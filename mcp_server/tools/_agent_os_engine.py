@@ -588,6 +588,76 @@ def compute_evaluation_score(
     }
 
 
+# ── Technique Cards (Round 2) ─────────────────────────────────────────
+
+@dataclass
+class TechniqueCard:
+    """A structured, reusable production recipe — not just text."""
+    problem: str
+    context: list[str] = field(default_factory=list)  # genre/style tags
+    devices: list[str] = field(default_factory=list)  # what to load
+    method: str = ""  # step-by-step instructions
+    verification: list[str] = field(default_factory=list)  # what to check after
+    evidence: dict = field(default_factory=dict)  # {sources, in_session_tested}
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    def to_memory_payload(self) -> dict:
+        """Convert to a payload suitable for memory_learn(type='technique_card')."""
+        return {
+            "problem": self.problem,
+            "context": self.context,
+            "devices": self.devices,
+            "method": self.method,
+            "verification": self.verification,
+            "evidence": self.evidence,
+        }
+
+
+def build_technique_card_from_outcome(outcome: dict) -> Optional[TechniqueCard]:
+    """Extract a technique card from a successful outcome.
+
+    Only produces a card if the outcome was kept and had meaningful improvement.
+    """
+    if not outcome.get("kept", False):
+        return None
+    if outcome.get("score", 0) < 0.6:
+        return None
+
+    gv = outcome.get("goal_vector", {})
+    move = outcome.get("move", {})
+    dim_changes = outcome.get("dimension_changes", {})
+
+    # Build problem description from goal
+    targets = gv.get("targets", {})
+    if not targets:
+        return None
+
+    top_dim = max(targets.items(), key=lambda x: x[1])[0] if targets else "general"
+    problem = f"Improve {top_dim} in production"
+
+    # Build method from move
+    method = move.get("name", "unknown technique")
+    if isinstance(move.get("actions"), list):
+        method = " → ".join(move["actions"])
+
+    # Build verification from dimension changes
+    verification = []
+    for dim, change in dim_changes.items():
+        if isinstance(change, dict) and change.get("delta", 0) > 0:
+            verification.append(f"{dim} should improve (was +{change['delta']:.3f})")
+
+    return TechniqueCard(
+        problem=problem,
+        context=list(gv.get("tags", [])) if isinstance(gv.get("tags"), list) else [],
+        devices=move.get("devices", []) if isinstance(move.get("devices"), list) else [],
+        method=method,
+        verification=verification,
+        evidence={"score": outcome.get("score", 0), "in_session_tested": True},
+    )
+
+
 # ── Outcome Memory Analysis (Round 1) ────────────────────────────────
 
 def analyze_outcome_history(outcomes: list[dict]) -> dict:
