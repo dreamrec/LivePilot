@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.9.2 — V2 Engine Architecture (April 2026)
+## 1.9.15 — V2 Engine Architecture (April 2026)
 
 ### New Engine Packages (12)
 - **Project Brain** — shared state substrate with 5 subgraphs (session, arrangement, role, automation, capability), freshness tracking, scoped refresh
