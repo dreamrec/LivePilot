@@ -207,10 +207,73 @@ After loading any instrument:
 - **For synths, use `search_browser` → `load_browser_item`** with exact URI
 - **After loading any effect**, set key parameters to non-default values
 
+## V2 Engine Intelligence
+
+Beyond the core Agent OS loop, you have access to specialized engines. Route requests to the right engine based on what the user asks for.
+
+### Request Routing
+
+| User says... | Engine to use | Entry tool |
+|-------------|---------------|------------|
+| "make this cleaner/wider/punchier" | **Mix Engine** | `analyze_mix` → `plan_mix_move` |
+| "turn this loop into a song" | **Composition** | `plan_arrangement` + `analyze_composition` |
+| "make this synth sound more haunted" | **Sound Design** | `analyze_sound_design` → `plan_sound_design_move` |
+| "make the drop feel earned" | **Transition Engine** | `analyze_transition` → `plan_transition` |
+| "make it sound like Burial" | **Reference Engine** | `build_reference_profile` → `plan_reference_moves` |
+| "will this translate to phone speakers?" | **Translation Engine** | `check_translation` |
+| "help me in my live set" | **Performance Engine** | `get_performance_state` → `get_performance_safe_moves` |
+| "research how to sidechain" | **Research** | `research_technique` |
+
+### Project Brain — Always Start Here
+
+For any complex task, call `build_project_brain` first. It gives you:
+- **SessionGraph**: tracks, devices, routing, scenes
+- **ArrangementGraph**: sections, boundaries, cue points
+- **RoleGraph**: who plays what in each section
+- **AutomationGraph**: what's automated where
+- **CapabilityGraph**: what tools/analysis are available
+
+This replaces ad-hoc `get_session_info` + `get_track_info` calls for complex tasks.
+
+### Capability Awareness
+
+Call `get_capability_state` to know what's trustworthy right now:
+- `normal`: full analyzer + evaluation loop available
+- `measured_degraded`: no analyzer — defer to musical judgment for keep/undo
+- `judgment_only`: minimal evidence — be conservative
+- `read_only`: can inspect but not mutate
+
+### Mix Engine Workflow
+1. `analyze_mix` → get balance, masking, dynamics, stereo, depth state + issues
+2. `plan_mix_move` → ranked move suggestions (smallest first)
+3. Execute the top move (EQ, compression, send adjustment, etc.)
+4. `evaluate_mix_move` with before/after snapshots → keep or undo
+
+### Sound Design Workflow
+1. `get_patch_model(track_index)` → understand the device chain
+2. `analyze_sound_design(track_index)` → issues from 5 timbral critics
+3. `plan_sound_design_move(track_index)` → suggested parameter/modulation changes
+4. Execute and evaluate
+
+### Transition Workflow
+1. `analyze_transition(from_section, to_section)` → boundary analysis + score
+2. `plan_transition(from_section, to_section)` → archetype selection + gesture plan
+3. Execute gestures with `apply_automation_shape`
+4. `score_transition` to verify improvement
+
+### Action Ledger
+
+Every move you make is tracked in the action ledger. Call `get_last_move` to review what you just did. Call `get_action_ledger_summary` to see your session history.
+
+### Anti-Memory
+
+The system tracks what the user dislikes. Call `get_anti_preferences` before planning — if the user has repeatedly undone brightness increases, don't suggest them.
+
 ## Rules
 
 - Always use the livepilot-core skill for tool usage guidance
-- Call `get_session_info` before making changes to understand current state
+- Use `build_project_brain` for complex tasks instead of ad-hoc state queries
+- Check `get_capability_state` before trusting analyzer data
 - **Verify every track produces sound** — non-negotiable
 - Verify after every write — re-read to confirm
 - Name everything clearly — tracks, clips, scenes
@@ -219,4 +282,5 @@ After loading any instrument:
 - Confirm before destructive operations
 - **Never batch unrelated changes** — one intervention per evaluation cycle
 - **Never execute without a verification plan** — know what you'll measure before acting
+- Check `get_anti_preferences` before repeating a move type the user dislikes
 - Keep it musical — think about rhythm, harmony, and arrangement
