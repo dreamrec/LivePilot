@@ -45,7 +45,13 @@ def _fetch_translation_data(ctx: Context) -> dict:
         session_info = ableton.send_command("get_session_info", {})
         tracks = session_info.get("tracks", [])
         if tracks:
-            pan_values = [abs(t.get("pan", 0.0)) for t in tracks if not t.get("muted", False)]
+            # Pan may be at top level or nested under mixer.panning
+            def _get_pan(t: dict) -> float:
+                mixer = t.get("mixer")
+                if isinstance(mixer, dict):
+                    return abs(mixer.get("panning", 0.0))
+                return abs(t.get("pan", 0.0))
+            pan_values = [_get_pan(t) for t in tracks if not t.get("muted", False)]
             if pan_values:
                 # Wider pans = more stereo width
                 stereo_width = min(1.0, sum(pan_values) / max(len(pan_values), 1))

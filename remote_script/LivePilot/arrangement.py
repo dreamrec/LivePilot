@@ -352,6 +352,12 @@ def modify_arrangement_notes(song, params):
             note.velocity = float(mod["velocity"])
         if "probability" in mod:
             note.probability = float(mod["probability"])
+        if "mute" in mod:
+            note.mute = bool(mod["mute"])
+        if "velocity_deviation" in mod:
+            note.velocity_deviation = float(mod["velocity_deviation"])
+        if "release_velocity" in mod:
+            note.release_velocity = float(mod["release_velocity"])
         modified_count += 1
 
     song.begin_undo_step()
@@ -557,7 +563,9 @@ def transpose_arrangement_notes(song, params):
     clip = arr_clips[clip_index]
 
     from_time = float(params.get("from_time", 0.0))
-    time_span = float(params.get("time_span", clip.length))
+    # Default span covers from from_time to end of clip, not the full clip length
+    default_span = max(0.0, clip.length - from_time) if clip.length > 0 else 32768.0
+    time_span = float(params.get("time_span", default_span))
 
     all_notes = clip.get_notes_extended(0, 128, from_time, time_span)
 

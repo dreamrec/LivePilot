@@ -314,7 +314,7 @@ def _perlin(duration: float, density: int, center: float = 0.5,
 
     def _hash_float(x: float, s: float) -> float:
         """Deterministic pseudo-random float from position + seed."""
-        h = hashlib.md5(f"{x:.6f}:{s:.6f}".encode()).hexdigest()
+        h = hashlib.md5(f"{x:.6f}:{s:.6f}".encode(), usedforsecurity=False).hexdigest()
         return (int(h[:8], 16) / 0xFFFFFFFF) * 2.0 - 1.0
 
     def _smoothstep(t: float) -> float:
@@ -363,7 +363,7 @@ def _brownian(duration: float, density: int, start: float = 0.5,
     import hashlib
 
     def _det_random(i: int, s: float) -> float:
-        h = hashlib.md5(f"{i}:{s:.6f}".encode()).hexdigest()
+        h = hashlib.md5(f"{i}:{s:.6f}".encode(), usedforsecurity=False).hexdigest()
         return (int(h[:8], 16) / 0xFFFFFFFF) * 2.0 - 1.0
 
     points = []
@@ -589,7 +589,7 @@ def _stochastic(duration: float, density: int, center: float = 0.5,
     import hashlib
 
     def _det_random(i: int, s: float) -> float:
-        h = hashlib.md5(f"{i}:{s:.6f}".encode()).hexdigest()
+        h = hashlib.md5(f"{i}:{s:.6f}".encode(), usedforsecurity=False).hexdigest()
         return (int(h[:8], 16) / 0xFFFFFFFF) * 2.0 - 1.0
 
     points = []

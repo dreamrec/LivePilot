@@ -41,18 +41,21 @@ BLOCKED_MOVE_TYPES: frozenset = frozenset({
 
 
 def classify_move_safety(move_type: str) -> str:
-    """Classify a move type as 'safe', 'caution', or 'blocked'.
+    """Classify a move type as 'safe', 'caution', 'blocked', or 'unknown'.
 
     Returns:
         'safe' if the move is in SAFE_MOVE_TYPES,
         'blocked' if in BLOCKED_MOVE_TYPES,
-        'caution' otherwise (unknown or caution-class moves).
+        'caution' if in CAUTION_MOVE_TYPES,
+        'unknown' for unrecognized move types.
     """
     if move_type in SAFE_MOVE_TYPES:
         return "safe"
     if move_type in BLOCKED_MOVE_TYPES:
         return "blocked"
-    return "caution"
+    if move_type in CAUTION_MOVE_TYPES:
+        return "caution"
+    return "unknown"
 
 
 # ── Safe move suggestions ─────────────────────────────────────────────

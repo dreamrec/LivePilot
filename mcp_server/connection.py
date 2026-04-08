@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import socket
@@ -40,6 +41,8 @@ def _friendly_error(code: str, message: str, command_type: str) -> str:
     """Format an error from the Remote Script into a user-friendly message."""
     hint = _ERROR_HINTS.get(code, "")
     parts = [f"[{code}] {message}"]
+    if command_type:
+        parts.append(f"(while running '{command_type}')")
     if hint:
         parts.append(hint)
     return " ".join(parts)
@@ -143,7 +146,9 @@ class AbletonConnection:
 
         Thread-safe: a lock serializes all TCP send/receive cycles to
         prevent socket corruption when multiple MCP tools fire concurrently.
-        Retries once on socket errors with a fresh connection.
+        Retries once on connection errors (command never reached Ableton).
+        Does NOT retry on timeouts — Ableton may have already processed the
+        command, and retrying would cause duplicate mutations.
         """
         with self._lock:
             # Ensure we have a connection
@@ -156,7 +161,15 @@ class AbletonConnection:
 
             try:
                 response = self._send_raw(command)
-            except (OSError, AbletonConnectionError):
+            except AbletonConnectionError as exc:
+                # Don't retry timeouts — Ableton may have processed the command
+                if "Timeout" in str(exc):
+                    raise
+                # Retry once with a fresh connection for non-timeout errors
+                self.disconnect()
+                self.connect()
+                response = self._send_raw(command)
+            except OSError:
                 # Retry once with a fresh connection
                 self.disconnect()
                 self.connect()
@@ -182,6 +195,15 @@ class AbletonConnection:
 
         self._command_log.append(log_entry)
         return response.get("result", {})
+
+    async def send_command_async(self, command_type: str, params: Optional[dict] = None) -> dict:
+        """Async wrapper around send_command that avoids blocking the event loop.
+
+        Runs the blocking TCP send/receive in a thread pool executor so the
+        asyncio event loop remains responsive to other concurrent MCP tools.
+        """
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self.send_command, command_type, params)
 
     # ------------------------------------------------------------------
     # Command log

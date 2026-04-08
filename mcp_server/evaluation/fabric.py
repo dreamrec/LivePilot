@@ -136,7 +136,7 @@ def evaluate_sonic_move(
     elif keep_change:
         decision_mode = "measured"
     else:
-        decision_mode = "measured"
+        decision_mode = "measured_reject"
 
     return EvaluationResult(
         engine=request.engine or "sonic",

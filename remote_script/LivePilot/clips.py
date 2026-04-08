@@ -50,6 +50,11 @@ def create_clip(song, params):
         raise ValueError("Clip length must be > 0")
 
     clip_slot = get_clip_slot(song, track_index, clip_index)
+    if clip_slot.has_clip:
+        raise ValueError(
+            "Clip slot %d on track %d already has a clip. "
+            "Delete it first with delete_clip." % (clip_index, track_index)
+        )
     clip_slot.create_clip(length)
     clip = clip_slot.clip
 
@@ -147,12 +152,23 @@ def set_clip_loop(song, params):
     clip_index = int(params["clip_index"])
     clip = get_clip(song, track_index, clip_index)
 
-    # Set end before start to avoid Live's loop_start < loop_end clamping.
-    # Expanding the window first ensures the left edge can move freely.
-    if "end" in params:
-        clip.loop_end = float(params["end"])
-    if "start" in params:
-        clip.loop_start = float(params["start"])
+    # Conditional ordering to avoid Live's loop_start < loop_end clamping.
+    # When expanding the window, set the expanding edge first.
+    # When shrinking, set the contracting edge first.
+    new_end = float(params["end"]) if "end" in params else None
+    new_start = float(params["start"]) if "start" in params else None
+
+    if new_end is not None and new_end > clip.loop_end:
+        # Expanding right — set end first so start can move freely
+        clip.loop_end = new_end
+        if new_start is not None:
+            clip.loop_start = new_start
+    else:
+        # Shrinking or only changing start — set start first
+        if new_start is not None:
+            clip.loop_start = new_start
+        if new_end is not None:
+            clip.loop_end = new_end
     if "enabled" in params:
         clip.looping = bool(params["enabled"])
 

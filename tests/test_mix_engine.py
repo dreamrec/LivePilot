@@ -237,10 +237,19 @@ class TestDynamicsCritic:
         assert "over_compressed" in types
 
     def test_flat_dynamics(self):
-        ds = DynamicsState(crest_factor_db=2.0, over_compressed=True, headroom=6.0)
+        """flat_dynamics fires when crest < 3.0 and not already over_compressed."""
+        ds = DynamicsState(crest_factor_db=2.0, over_compressed=False, headroom=6.0)
         issues = run_dynamics_critic(ds)
         types = [i.issue_type for i in issues]
         assert "flat_dynamics" in types
+
+    def test_over_compressed_does_not_double_count_flat(self):
+        """over_compressed and flat_dynamics should not both fire (no double-counting)."""
+        ds = DynamicsState(crest_factor_db=2.0, over_compressed=True, headroom=6.0)
+        issues = run_dynamics_critic(ds)
+        types = [i.issue_type for i in issues]
+        assert "over_compressed" in types
+        assert "flat_dynamics" not in types
 
     def test_headroom_risk(self):
         ds = DynamicsState(crest_factor_db=12.0, over_compressed=False, headroom=0.5)

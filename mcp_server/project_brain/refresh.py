@@ -6,6 +6,7 @@ Pure computation, zero I/O.
 from __future__ import annotations
 
 import copy
+import dataclasses
 from typing import Optional
 
 from .arrangement_graph import build_arrangement_graph
@@ -35,12 +36,15 @@ def refresh_tracks(
     new_state.session_graph = build_session_graph(session_info)
     new_state.session_graph.freshness.mark_fresh(new_state.revision)
 
-    # Mark role and automation graphs stale since tracks changed
+    # Mark role and automation graphs stale since tracks changed.
+    # Deep-copy freshness so mutations don't leak to the original state.
     new_state.role_graph = copy.copy(state.role_graph)
+    new_state.role_graph.freshness = copy.deepcopy(state.role_graph.freshness)
     new_state.role_graph.freshness.mark_stale(
         f"tracks refreshed: {track_indices}"
     )
     new_state.automation_graph = copy.copy(state.automation_graph)
+    new_state.automation_graph.freshness = copy.deepcopy(state.automation_graph.freshness)
     new_state.automation_graph.freshness.mark_stale(
         f"tracks refreshed: {track_indices}"
     )
@@ -73,8 +77,10 @@ def refresh_arrangement(
     )
     new_state.arrangement_graph.freshness.mark_fresh(new_state.revision)
 
-    # Mark role graph stale since arrangement changed
+    # Mark role graph stale since arrangement changed.
+    # Deep-copy freshness so mutations don't leak to the original state.
     new_state.role_graph = copy.copy(state.role_graph)
+    new_state.role_graph.freshness = copy.deepcopy(state.role_graph.freshness)
     new_state.role_graph.freshness.mark_stale("arrangement refreshed")
 
     return new_state

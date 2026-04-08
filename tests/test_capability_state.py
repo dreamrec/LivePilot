@@ -78,10 +78,17 @@ class TestCapabilityState:
         assert "web" in state.domains
         assert "research" in state.domains
 
-    def test_degraded_mode_without_analyzer(self):
+    def test_judgment_only_without_analyzer(self):
+        """Analyzer offline entirely → judgment_only (least capable measured mode)."""
         state = build_capability_state(session_ok=True, analyzer_ok=False)
-        assert state.overall_mode == "measured_degraded"
+        assert state.overall_mode == "judgment_only"
         assert state.domains["analyzer"].available is False
+
+    def test_measured_degraded_with_stale_analyzer(self):
+        """Analyzer online but stale → measured_degraded."""
+        state = build_capability_state(session_ok=True, analyzer_ok=True, analyzer_fresh=False)
+        assert state.overall_mode == "measured_degraded"
+        assert state.domains["analyzer"].available is False  # stale = not available
 
     def test_normal_mode_with_everything(self):
         state = build_capability_state(
@@ -165,15 +172,17 @@ class TestBuildCapabilityState:
         state = build_capability_state()
         assert state.overall_mode == "read_only"
 
-    def test_session_only_produces_measured_degraded(self):
+    def test_session_only_produces_judgment_only(self):
+        """Session up but analyzer offline → judgment_only."""
         state = build_capability_state(session_ok=True)
-        assert state.overall_mode == "measured_degraded"
+        assert state.overall_mode == "judgment_only"
 
-    def test_session_plus_analyzer_not_fresh_produces_judgment_only(self):
+    def test_session_plus_analyzer_not_fresh_produces_measured_degraded(self):
+        """Analyzer online but stale → measured_degraded (has some data)."""
         state = build_capability_state(
             session_ok=True, analyzer_ok=True, analyzer_fresh=False,
         )
-        assert state.overall_mode == "judgment_only"
+        assert state.overall_mode == "measured_degraded"
 
     def test_session_plus_fresh_analyzer_produces_normal(self):
         state = build_capability_state(

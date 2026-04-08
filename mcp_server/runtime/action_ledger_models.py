@@ -7,19 +7,26 @@ Classes:
 
 from __future__ import annotations
 
+import threading
 import time
+import uuid
 from dataclasses import dataclass, field
 from typing import Optional
 
 
-# Module-level counter for auto-generating IDs.
+# Thread-safe counter with UUID suffix to prevent collisions across
+# server restarts and concurrent processes.
 _counter: int = 0
+_counter_lock = threading.Lock()
+_session_id = uuid.uuid4().hex[:6]
 
 
 def _next_id() -> str:
     global _counter
-    _counter += 1
-    return f"move_{_counter:04d}"
+    with _counter_lock:
+        _counter += 1
+        seq = _counter
+    return f"move_{_session_id}_{seq:04d}"
 
 
 @dataclass

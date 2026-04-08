@@ -170,8 +170,9 @@ class TestSafetyClassification:
         for mt in BLOCKED_MOVE_TYPES:
             assert classify_move_safety(mt) == "blocked"
 
-    def test_unknown_is_caution(self):
-        assert classify_move_safety("something_unknown") == "caution"
+    def test_unknown_is_unknown(self):
+        """Unrecognized move types should return 'unknown', not 'caution'."""
+        assert classify_move_safety("something_unknown") == "unknown"
 
     def test_caution_moves(self):
         for mt in CAUTION_MOVE_TYPES:

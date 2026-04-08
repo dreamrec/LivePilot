@@ -145,11 +145,25 @@ def _postflight_loaded_device(ctx: Context, result: dict) -> dict:
     if match is None:
         match = devices[-1]
 
+    # get_track_info returns device summaries without a parameters list,
+    # so use the 'parameter_count' field if present, otherwise fetch
+    # the actual device info for an accurate count.
+    param_count = match.get("parameter_count", len(match.get("parameters", [])))
+    if param_count == 0 and match.get("index") is not None:
+        try:
+            full_info = _get_ableton(ctx).send_command("get_device_info", {
+                "track_index": int(track_index),
+                "device_index": int(match["index"]),
+            })
+            param_count = full_info.get("parameter_count", 0)
+        except Exception:
+            pass
+
     device_info = _annotate_device_info({
         "name": match.get("name"),
         "class_name": match.get("class_name"),
         "is_active": match.get("is_active"),
-        "parameter_count": len(match.get("parameters", [])),
+        "parameter_count": param_count,
     })
 
     merged = dict(annotated)

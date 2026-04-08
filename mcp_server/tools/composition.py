@@ -232,13 +232,16 @@ def get_phrase_grid(
 
     section = sections[section_index]
 
-    # Collect notes for active tracks
+    # Collect notes for active tracks — use the section's scene_index
+    # (which maps to the actual clip slot), not the section_index
+    # (which is a position in the section graph)
     notes_by_track: dict[int, list] = {}
+    scene_idx = section.scene_index if hasattr(section, "scene_index") else section_index
     for t_idx in section.tracks_active:
         try:
             result = ableton.send_command("get_notes", {
                 "track_index": t_idx,
-                "clip_index": section_index,
+                "clip_index": scene_idx,
             })
             notes_by_track[t_idx] = result.get("notes", [])
         except Exception:

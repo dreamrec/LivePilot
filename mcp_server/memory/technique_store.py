@@ -37,28 +37,35 @@ class TechniqueStore:
 
         Deferred so that a read-only HOME doesn't crash the entire MCP
         server at import time — memory tools just return errors instead.
+        Thread-safe: uses double-checked locking to prevent concurrent
+        callers from racing on initialization.
         """
         if self._initialized:
             return
-        try:
-            self._base_dir.mkdir(parents=True, exist_ok=True)
-        except OSError as exc:
-            raise RuntimeError(
-                f"Cannot create memory directory {self._base_dir}: {exc}. "
-                "Memory tools are unavailable."
-            ) from exc
-        if self._file.exists():
+        with self._lock:
+            # Double-check after acquiring lock — another thread may have
+            # initialized while we were waiting.
+            if self._initialized:
+                return
             try:
-                with open(self._file, "r") as f:
-                    self._data = json.load(f)
-            except (json.JSONDecodeError, ValueError):
-                corrupt = self._file.with_suffix(".json.corrupt")
-                self._file.rename(corrupt)
+                self._base_dir.mkdir(parents=True, exist_ok=True)
+            except OSError as exc:
+                raise RuntimeError(
+                    f"Cannot create memory directory {self._base_dir}: {exc}. "
+                    "Memory tools are unavailable."
+                ) from exc
+            if self._file.exists():
+                try:
+                    with open(self._file, "r") as f:
+                        self._data = json.load(f)
+                except (json.JSONDecodeError, ValueError):
+                    corrupt = self._file.with_suffix(".json.corrupt")
+                    self._file.rename(corrupt)
+                    self._data = {"version": 1, "techniques": []}
+            else:
                 self._data = {"version": 1, "techniques": []}
-        else:
-            self._data = {"version": 1, "techniques": []}
-            self._flush()
-        self._initialized = True
+                self._flush()
+            self._initialized = True
 
     # ── persistence ──────────────────────────────────────────────
 
@@ -263,6 +270,7 @@ class TechniqueStore:
 
     def increment_replay(self, technique_id: str) -> None:
         """Increment replay_count and set last_replayed_at."""
+        self._ensure_initialized()
         with self._lock:
             t = self._find(technique_id)
             t["replay_count"] = t.get("replay_count", 0) + 1

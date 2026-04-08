@@ -84,7 +84,7 @@ function anything() {
 function dispatch(cmd, args) {
     switch(cmd) {
         case "ping":
-            send_response({"ok": true, "version": "1.9.14"});
+            send_response({"ok": true, "version": "1.9.15"});
             break;
         case "get_params":
             cmd_get_params(args);
@@ -513,16 +513,17 @@ function cmd_get_selected() {
         appointed_device: null
     };
 
-    // Selected track
+    // Selected track — match by object ID (not name, which can be duplicated)
     try {
         cursor_b.goto("live_set view selected_track");
         result.selected_track_name = cursor_b.get("name").toString();
-        // Get track index by walking tracks
+        var selected_id = cursor_b.id;
+        // Get track index by walking tracks and comparing IDs
         cursor_a.goto("live_set");
         var tc = cursor_a.getcount("tracks");
         for (var i = 0; i < tc; i++) {
             cursor_a.goto("live_set tracks " + i);
-            if (cursor_a.get("name").toString() === result.selected_track_name) {
+            if (cursor_a.id === selected_id) {
                 result.selected_track = i;
                 break;
             }
@@ -533,7 +534,7 @@ function cmd_get_selected() {
             var rtc = cursor_a.getcount("return_tracks");
             for (var j = 0; j < rtc; j++) {
                 cursor_a.goto("live_set return_tracks " + j);
-                if (cursor_a.get("name").toString() === result.selected_track_name) {
+                if (cursor_a.id === selected_id) {
                     result.selected_track = -(j + 1);  // -1, -2, ... convention
                     break;
                 }
@@ -542,7 +543,7 @@ function cmd_get_selected() {
         // Check master track if still not found
         if (result.selected_track === -1) {
             cursor_a.goto("live_set master_track");
-            if (cursor_a.get("name").toString() === result.selected_track_name) {
+            if (cursor_a.id === selected_id) {
                 result.selected_track = -1000;  // master convention
             }
         }
@@ -743,7 +744,7 @@ function base64_decode(str) {
 
 function _utf8_decode(bytes) {
     // Convert a UTF-8 byte array back to a JavaScript string.
-    // Handles BMP codepoints which covers the text LivePilot exchanges.
+    // Handles BMP codepoints and 4-byte sequences (emoji/supplementary planes).
     var result = "";
     for (var i = 0; i < bytes.length;) {
         var b0 = bytes[i];
@@ -754,17 +755,30 @@ function _utf8_decode(bytes) {
             var b1 = bytes[i + 1];
             result += String.fromCharCode(((b0 & 0x1F) << 6) | (b1 & 0x3F));
             i += 2;
-        } else if (i + 2 < bytes.length) {
-            var b2 = bytes[i + 1];
-            var b3 = bytes[i + 2];
+        } else if ((b0 & 0xF0) === 0xE0 && i + 2 < bytes.length) {
+            // 3-byte sequence (U+0800..U+FFFF)
+            var b1_3 = bytes[i + 1];
+            var b2_3 = bytes[i + 2];
             result += String.fromCharCode(
                 ((b0 & 0x0F) << 12) |
-                ((b2 & 0x3F) << 6) |
-                (b3 & 0x3F)
+                ((b1_3 & 0x3F) << 6) |
+                (b2_3 & 0x3F)
             );
             i += 3;
+        } else if ((b0 & 0xF8) === 0xF0 && i + 3 < bytes.length) {
+            // 4-byte sequence (U+10000..U+10FFFF) — emoji and supplementary planes
+            var cp = ((b0 & 0x07) << 18) |
+                     ((bytes[i + 1] & 0x3F) << 12) |
+                     ((bytes[i + 2] & 0x3F) << 6) |
+                     (bytes[i + 3] & 0x3F);
+            // Encode as UTF-16 surrogate pair
+            cp -= 0x10000;
+            result += String.fromCharCode(0xD800 + (cp >> 10));
+            result += String.fromCharCode(0xDC00 + (cp & 0x3FF));
+            i += 4;
         } else {
-            break;
+            // Skip invalid byte
+            i += 1;
         }
     }
     return result;

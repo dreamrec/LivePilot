@@ -58,7 +58,7 @@ def research_technique(
     for device_name in query_info.get("likely_devices", [])[:5]:
         try:
             ref = ableton.send_command("search_browser", {
-                "path": "Instruments",
+                "path": "instruments",
                 "name_filter": device_name,
             })
             if ref and not ref.get("error"):
