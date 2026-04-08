@@ -1,4 +1,4 @@
-"""Verify all 202 MCP tools are registered across 22 domains."""
+"""Verify all 203 MCP tools are registered across 23 domains."""
 
 import asyncio
 import sys
@@ -355,6 +355,15 @@ def test_project_brain_tools_registered():
     assert not missing, f"Missing project_brain tools: {missing}"
 
 
+def test_capability_state_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "get_capability_state",
+    }
+    missing = expected - names
+    assert not missing, f"Missing capability_state tools: {missing}"
+
+
 def test_agent_os_taste_tool_registered():
     names = _get_tool_names()
     assert "get_taste_profile" in names, "Missing get_taste_profile tool"
@@ -363,7 +372,7 @@ def test_agent_os_taste_tool_registered():
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 202, f"Expected 202 tools, got {len(tools)}"
+    assert len(tools) == 203, f"Expected 203 tools, got {len(tools)}"
 
 
 def test_perception_tools_registered():
