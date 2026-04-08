@@ -11,7 +11,7 @@ Agentic production system for Ableton Live 12. 236 tools across 32 domains, thre
 - **M4L Analyzer** — Real-time audio analysis on the master bus (8-band spectrum, RMS/peak, key detection). Use it to verify mixing decisions, detect frequency problems, and find the key before writing harmonic content.
 - **Technique Memory** — Persistent storage for production decisions. Consult `memory_recall` before creative tasks to understand the user's taste. Save techniques when the user likes something. The memory shapes future decisions without constraining them.
 
-These layers sit on top of 178 deterministic tools across 32 domains: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, analyzer, automation, theory, generative, harmony, MIDI I/O, perception, agent_os, composition, motif, research, planner, project_brain, runtime, evaluation, memory_fabric, mix_engine, sound_design, transition_engine, reference_engine, translation_engine, and performance_engine.
+These layers sit on top of 236 deterministic tools across 32 domains: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, analyzer, automation, theory, generative, harmony, MIDI I/O, perception, agent_os, composition, motif, research, planner, project_brain, runtime, evaluation, memory_fabric, mix_engine, sound_design, transition_engine, reference_engine, translation_engine, and performance_engine.
 
 ## Golden Rules
 
@@ -35,7 +35,7 @@ These layers sit on top of 178 deterministic tools across 32 domains: transport,
 Not all tools respond instantly. Know the tiers and act accordingly.
 
 ### Instant (<1s) — Use freely, no warning needed
-All 178 core tools (transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, automation, theory, generative, harmony, midi_io, perception) plus Layer A perception tools (spectral shape, timbral profile, mel spectrum, chroma, onsets, harmonic/percussive, novelty, momentary loudness). These are the reflex tools — call them anytime without hesitation.
+All 236 core tools (transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, automation, theory, generative, harmony, midi_io, perception) plus Layer A perception tools (spectral shape, timbral profile, mel spectrum, chroma, onsets, harmonic/percussive, novelty, momentary loudness). These are the reflex tools — call them anytime without hesitation.
 
 ### Fast (1-5s) — Use freely, barely noticeable
 `analyze_loudness` · `analyze_dynamic_range` · `compare_loudness`
@@ -133,7 +133,7 @@ Never skip levels. The user's question determines the entry point, but always st
 - **Dead AU/VST plugin** — `parameter_count` <= 1 on a PluginDevice (plugin shell loaded, DSP engine crashed)
 - **Sample-dependent plugin with no sample** — granular synths, bare samplers, and sample players load "successfully" with many parameters but produce zero audio without source material. The sneakiest silent failure because `get_device_info` looks healthy.
 
-## Tool Domains (178 total)
+## Tool Domains (236 total)
 
 ### Transport (12)
 `get_session_info` · `set_tempo` · `set_time_signature` · `start_playback` · `stop_playback` · `continue_playback` · `toggle_metronome` · `set_session_loop` · `undo` · `redo` · `get_recent_actions` · `get_session_diagnostics`
@@ -248,6 +248,81 @@ MIDI file import/export — works with standard .mid files on disk.
 - `analyze_midi_file` performs offline analysis of any .mid file (tempo, notes, structure) — does not require Ableton connection
 - `extract_piano_roll` returns a 2D velocity matrix (pitch × time) from a .mid file for visualization or processing
 - Dependencies: midiutil (export), pretty-midi (import/analysis) — lazy-loaded, ~5 MB total
+
+### Agent OS (8)
+Goal-driven decision loop — compile goals, build world models, evaluate moves, learn from outcomes.
+
+**Tools:** `compile_goal_vector` · `build_world_model` · `evaluate_move` · `analyze_outcomes` · `get_technique_card` · `get_taste_profile` · `get_turn_budget` · `route_request`
+
+### Composition (9)
+Large-scale arrangement structure — sections, phrases, gestures, harmonic fields, transitions.
+
+**Tools:** `analyze_composition` · `get_section_graph` · `get_phrase_grid` · `plan_gesture` · `evaluate_composition_move` · `get_harmony_field` · `get_transition_analysis` · `apply_gesture_template` · `get_section_outcomes`
+
+### Motif (2)
+Recurring pattern detection and classical transformation.
+
+**Tools:** `get_motif_graph` · `transform_motif`
+
+### Research (3)
+Production technique lookup, emotional arc analysis, and genre-specific tactics.
+
+**Tools:** `research_technique` · `get_emotional_arc` · `get_style_tactics`
+
+### Planner (2)
+Arrangement planning — transform loops into full structures.
+
+**Tools:** `plan_arrangement` · `transform_section`
+
+### Project Brain (2)
+Comprehensive project model — tracks, sections, capabilities, staleness.
+
+**Tools:** `build_project_brain` · `get_project_brain_summary`
+
+### Runtime (4)
+Capability state, action ledger, and safety validation.
+
+**Tools:** `get_capability_state` · `get_action_ledger_summary` · `get_last_move` · `check_safety`
+
+### Evaluation (1)
+Unified move evaluation using the Evaluation Fabric.
+
+**Tools:** `evaluate_with_fabric`
+
+### Memory Fabric (6)
+Anti-preferences, session memory, taste dimensions, and promotion candidates.
+
+**Tools:** `get_anti_preferences` · `record_anti_preference` · `get_promotion_candidates` · `get_session_memory` · `add_session_memory` · `get_taste_dimensions`
+
+### Mix Engine (6)
+Spectral mix analysis, issue detection, move planning, and evaluation.
+
+**Tools:** `analyze_mix` · `get_mix_issues` · `plan_mix_move` · `evaluate_mix_move` · `get_masking_report` · `get_mix_summary`
+
+### Sound Design (4)
+Device chain analysis, issue detection, and move planning per track.
+
+**Tools:** `analyze_sound_design` · `get_sound_design_issues` · `plan_sound_design_move` · `get_patch_model`
+
+### Transition Engine (3)
+Section transition analysis, planning, and scoring.
+
+**Tools:** `analyze_transition` · `plan_transition` · `score_transition`
+
+### Reference Engine (3)
+Reference profile building, gap analysis, and move planning.
+
+**Tools:** `build_reference_profile` · `analyze_reference_gaps` · `plan_reference_moves`
+
+### Translation Engine (2)
+Playback robustness — mono safety, small speakers, harshness detection.
+
+**Tools:** `check_translation` · `get_translation_issues`
+
+### Performance Engine (3)
+Live performance support — scene state, safe moves, and handoffs.
+
+**Tools:** `get_performance_state` · `get_performance_safe_moves` · `plan_scene_handoff`
 
 ## Workflow: Building a Beat
 
