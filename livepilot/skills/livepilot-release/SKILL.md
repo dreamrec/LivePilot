@@ -28,21 +28,21 @@ Run this checklist EVERY time the user says "update everything", "push", "releas
 
 ## 2. Tool Count (must ALL match)
 
-Current: **200 tools across 21 domains**.
+Current: **230 tools across 32 domains**.
 Core (no M4L): **149**. Analyzer (M4L): **29**. Perception (offline): **4**.
 
 Verify: `grep -rc "@mcp.tool" mcp_server/tools/ | grep -v ":0" | awk -F: '{sum+=$2} END{print sum}'`
 
 Files that reference tool count:
 - [ ] `README.md` — header, PERCEPTION section ("149 core...29 analyzer"), Analyzer table header "(29)", Perception table header "(4)"
-- [ ] `package.json` → `"description"` (200 tools, 21 domains)
+- [ ] `package.json` → `"description"` (230 tools, 32 domains)
 - [ ] `server.json` → `"description"`
 - [ ] `livepilot/.Codex-plugin/plugin.json` → `"description"` (primary Codex manifest)
 - [ ] `livepilot/.claude-plugin/plugin.json` → `"description"` (must match Codex plugin)
 - [ ] `.claude-plugin/marketplace.json` → `"description"`
-- [ ] `CLAUDE.md` → "200 tools across 21 domains"
-- [ ] `livepilot/skills/livepilot-core/SKILL.md` — "200 tools across 21 domains", Analyzer (29), Perception (4)
-- [ ] `livepilot/skills/livepilot-core/references/overview.md` — "200 tools across 21 domains"
+- [ ] `CLAUDE.md` → "230 tools across 32 domains"
+- [ ] `livepilot/skills/livepilot-core/SKILL.md` — "230 tools across 32 domains", Analyzer (29), Perception (4)
+- [ ] `livepilot/skills/livepilot-core/references/overview.md` — "230 tools across 32 domains"
 - [ ] `docs/manual/index.md` — domain table: Analyzer (29), Perception (4)
 - [ ] `docs/manual/getting-started.md` — "149 core tools...29 analyzer"
 - [ ] `docs/manual/tool-reference.md` — all domains present with correct counts
@@ -56,10 +56,10 @@ Files that reference tool count:
 
 ## 3. Domain Count
 
-Current: **21 domains**: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, analyzer, automation, theory, generative, harmony, midi_io, perception.
+Current: **32 domains**: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, analyzer, automation, theory, generative, harmony, midi_io, perception, agent_os, composition, research, planner, project_brain, runtime, evaluation, memory_fabric, mix_engine, sound_design, transition_engine, reference_engine, translation_engine, performance_engine.
 
-- [ ] All files that mention domain count say "21 domains"
-- [ ] Domain lists include ALL 21 (especially perception — it's the newest and most often omitted)
+- [ ] All files that mention domain count say "32 domains"
+- [ ] Domain lists include ALL 32 (especially newer domains — they're the most often omitted)
 
 ## 4. npm Registry
 
@@ -89,8 +89,8 @@ Current: **21 domains**: transport, tracks, clips, notes, devices, scenes, mixin
 
 - [ ] `README.md` — features match current capabilities, "Coming" section is accurate
 - [ ] `docs/manual/getting-started.md` — install instructions current
-- [ ] `docs/manual/tool-reference.md` — all 21 domains listed, all 200 tools present
-- [ ] `docs/TOOL_REFERENCE.md` — all 21 domains present
+- [ ] `docs/manual/tool-reference.md` — all 32 domains listed, all 230 tools present
+- [ ] `docs/TOOL_REFERENCE.md` — all 32 domains present
 - [ ] `docs/M4L_BRIDGE.md` — architecture accurate, core tool count correct
 
 ## 9. Derived Artifacts

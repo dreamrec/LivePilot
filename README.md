@@ -17,7 +17,7 @@
 
 <p align="center">
   An agentic production system for Ableton Live 12.<br>
-  200 tools. Device atlas. Spectral perception. Technique memory.
+  230 tools. Device atlas. Spectral perception. Technique memory.
 </p>
 
 <br>
@@ -49,8 +49,8 @@
 │         └───────────────────┼───────────────────┘           │
 │                             ▼                               │
 │                    ┌─────────────────┐                      │
-│                    │   200 MCP Tools  │                      │
-│                    │   21 domains     │                      │
+│                    │   230 MCP Tools  │                      │
+│                    │   32 domains     │                      │
 │                    └────────┬────────┘                      │
 │                             │                               │
 │             Remote Script ──┤── TCP 9878                    │
@@ -79,7 +79,7 @@ All three feed into 178 deterministic tools that execute on Ableton's main threa
 
 ## Tools
 
-200 tools across 21 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
+230 tools across 32 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
 
 <br>
 
@@ -322,7 +322,7 @@ read_audio_metadata     Format, duration, sample rate, tags
 
 <br>
 
-> **[View all 200 tools →](docs/manual/tool-catalog.md)**
+> **[View all 230 tools →](docs/manual/tool-catalog.md)**
 
 <br>
 
