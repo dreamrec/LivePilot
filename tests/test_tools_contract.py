@@ -464,10 +464,19 @@ def test_performance_engine_tools_registered():
     assert not missing, f"Missing performance_engine tools: {missing}"
 
 
+def test_safety_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "check_safety",
+    }
+    missing = expected - names
+    assert not missing, f"Missing safety tools: {missing}"
+
+
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 231, f"Expected 231 tools, got {len(tools)}"
+    assert len(tools) == 232, f"Expected 232 tools, got {len(tools)}"
 
 
 def test_perception_tools_registered():
