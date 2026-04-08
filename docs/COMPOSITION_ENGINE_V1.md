@@ -32,6 +32,8 @@ This document is a companion to Agent OS, not a replacement for it. Agent OS def
 This proposal is designed to sit alongside the current repo architecture and documentation:
 
 - [AGENT_OS_V1.md](./AGENT_OS_V1.md)
+- [LIVEPILOT_SYSTEM_ARCHITECTURE_V1.md](./LIVEPILOT_SYSTEM_ARCHITECTURE_V1.md)
+- [LIVEPILOT_IMPLEMENTATION_ROADMAP_V1.md](./LIVEPILOT_IMPLEMENTATION_ROADMAP_V1.md)
 - [TOOL_REFERENCE.md](./TOOL_REFERENCE.md)
 - [M4L_BRIDGE.md](./M4L_BRIDGE.md)
 - [../livepilot/agents/livepilot-producer/AGENT.md](../livepilot/agents/livepilot-producer/AGENT.md)
