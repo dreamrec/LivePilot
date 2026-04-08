@@ -1,17 +1,17 @@
 ---
 name: livepilot-core
-description: Core discipline for LivePilot — agentic production system for Ableton Live 12. 194 tools across 17 domains. Device atlas (280+ devices), M4L analyzer (spectrum/RMS/key detection), technique memory, automation intelligence (16 curve types, 15 recipes), music theory (Krumhansl-Schmuckler, species counterpoint), generative algorithms (Euclidean rhythm, tintinnabuli, phase shift), neo-Riemannian harmony (PRL transforms, Tonnetz), MIDI file I/O. Use whenever working with Ableton Live through MCP tools.
+description: Core discipline for LivePilot — agentic production system for Ableton Live 12. 197 tools across 21 domains. Device atlas (280+ devices), M4L analyzer (spectrum/RMS/key detection), technique memory, automation intelligence (16 curve types, 15 recipes), music theory (Krumhansl-Schmuckler, species counterpoint), generative algorithms (Euclidean rhythm, tintinnabuli, phase shift), neo-Riemannian harmony (PRL transforms, Tonnetz), MIDI file I/O. Use whenever working with Ableton Live through MCP tools.
 ---
 
 # LivePilot Core — Ableton Live 12
 
-Agentic production system for Ableton Live 12. 194 tools across 17 domains, three layers:
+Agentic production system for Ableton Live 12. 197 tools across 21 domains, three layers:
 
 - **Device Atlas** — A structured knowledge corpus of 280+ instruments, 139 drum kits, and 350+ impulse responses. Consult the atlas before loading any device. It contains real browser URIs, preset names, and sonic descriptions. Never guess a device name — look it up.
 - **M4L Analyzer** — Real-time audio analysis on the master bus (8-band spectrum, RMS/peak, key detection). Use it to verify mixing decisions, detect frequency problems, and find the key before writing harmonic content.
 - **Technique Memory** — Persistent storage for production decisions. Consult `memory_recall` before creative tasks to understand the user's taste. Save techniques when the user likes something. The memory shapes future decisions without constraining them.
 
-These layers sit on top of 178 deterministic tools across 17 domains: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, analyzer, automation, theory, generative, harmony, MIDI I/O, and perception.
+These layers sit on top of 178 deterministic tools across 21 domains: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, analyzer, automation, theory, generative, harmony, MIDI I/O, and perception.
 
 ## Golden Rules
 
@@ -397,7 +397,7 @@ Deep production knowledge lives in `references/`. Consult these when making crea
 
 | File | What's inside | When to consult |
 |------|--------------|-----------------|
-| `references/overview.md` | All 194 tools mapped with params, units, ranges | Quick lookup for any tool |
+| `references/overview.md` | All 197 tools mapped with params, units, ranges | Quick lookup for any tool |
 | `references/midi-recipes.md` | Drum patterns by genre, chord voicings, scales, hi-hat techniques, humanization, polymetrics | Programming MIDI notes, building beats |
 | `references/sound-design.md` | Stock instruments/effects, parameter recipes for bass/pad/lead/pluck, device chain patterns | Loading and configuring devices |
 | `references/mixing-patterns.md` | Gain staging, parallel compression, sidechain, EQ by instrument, bus processing, stereo width | Setting volumes, panning, adding effects |
