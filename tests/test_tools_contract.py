@@ -1,4 +1,4 @@
-"""Verify all 225 MCP tools are registered across 30 domains."""
+"""Verify all 230 MCP tools are registered across 32 domains."""
 
 import asyncio
 import sys
@@ -443,10 +443,31 @@ def test_reference_engine_tools_registered():
     assert not missing, f"Missing reference_engine tools: {missing}"
 
 
+def test_translation_engine_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "check_translation",
+        "get_translation_issues",
+    }
+    missing = expected - names
+    assert not missing, f"Missing translation_engine tools: {missing}"
+
+
+def test_performance_engine_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "get_performance_state",
+        "get_performance_safe_moves",
+        "plan_scene_handoff",
+    }
+    missing = expected - names
+    assert not missing, f"Missing performance_engine tools: {missing}"
+
+
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 225, f"Expected 225 tools, got {len(tools)}"
+    assert len(tools) == 230, f"Expected 230 tools, got {len(tools)}"
 
 
 def test_perception_tools_registered():
