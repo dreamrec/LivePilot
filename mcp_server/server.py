@@ -113,6 +113,7 @@ from .runtime import tools as runtime_tools              # noqa: F401, E402
 from .runtime import action_tools as action_ledger_tools  # noqa: F401, E402
 from .evaluation import tools as evaluation_tools  # noqa: F401, E402
 from .memory import tools as memory_fabric_tools   # noqa: F401, E402
+from .mix_engine import tools as mix_engine_tools  # noqa: F401, E402
 
 
 # ---------------------------------------------------------------------------
