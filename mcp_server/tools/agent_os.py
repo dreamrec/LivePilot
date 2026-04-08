@@ -375,6 +375,46 @@ def get_taste_profile(
     return engine.get_taste_profile(outcomes)
 
 
+# ── get_turn_budget (Conductor Budget) ────────────────────────────
+
+
+@mcp.tool()
+def get_turn_budget(
+    ctx: Context,
+    mode: str = "improve",
+    aggression: float = 0.5,
+) -> dict:
+    """Get a resource budget for the current agent turn.
+
+    Returns six resource pools that prevent overcommitting:
+    - latency_ms: time budget for this turn
+    - risk_points: how much risk is allowed (0-1)
+    - novelty_points: how much novelty is allowed (0-1)
+    - change_count: max production moves this turn
+    - undo_count: max consecutive undos before switching to observe
+    - research_calls: max research lookups this turn
+
+    mode: observe | improve | explore | finish | diagnose | performance
+      - observe: very low risk, zero changes, read-only
+      - improve: balanced defaults
+      - explore: high novelty, high risk, more moves
+      - finish: conservative, low novelty, few changes
+      - diagnose: zero changes, research-focused
+      - performance: very low latency, minimal risk
+    aggression: 0.0 (subtle) to 1.0 (bold) — scales risk and change limits
+
+    Use spend functions via the conductor to track consumption during the turn.
+    """
+    from . import _conductor_budgets as budgets
+
+    budget = budgets.create_budget(mode=mode, aggression=float(aggression))
+    summary = budgets.get_budget_summary(budget)
+    summary["budget"] = budget.to_dict()
+    summary["mode"] = mode
+    summary["aggression"] = float(aggression)
+    return summary
+
+
 # ── route_request (Conductor) ──────────────────────────────────────
 
 
