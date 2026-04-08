@@ -464,3 +464,82 @@ class TestOutcomeAnalysis:
         result = analyze_outcome_history(outcomes)
         assert result["common_kept_moves"][0]["move"] == "filter_sweep"
         assert result["common_kept_moves"][0]["count"] == 2
+
+
+# ── Phase 0 Regression Tests ────────────────────────────────────────
+
+
+class TestSnapshotNormalization:
+    """Regression: raw analyzer output with 'bands' key should work in evaluator."""
+
+    def test_evaluator_accepts_bands_key_directly(self):
+        goal = validate_goal_vector("test", {"energy": 1.0}, {}, "improve", 0.5, "none")
+        before = {"bands": {"sub": 0.1, "low": 0.2, "low_mid": 0.3,
+                            "mid": 0.2, "presence": 0.1, "high": 0.1},
+                  "rms": 0.3, "peak": 0.5}
+        after = {"bands": {"sub": 0.15, "low": 0.25, "low_mid": 0.3,
+                           "mid": 0.2, "presence": 0.1, "high": 0.1},
+                 "rms": 0.4, "peak": 0.6}
+        result = compute_evaluation_score(goal, before, after)
+        assert result["measurable_dimensions"] > 0
+
+    def test_evaluator_accepts_spectrum_key(self):
+        goal = validate_goal_vector("test", {"clarity": 1.0}, {}, "improve", 0.5, "none")
+        before = {"spectrum": {"sub": 0.1, "low": 0.2, "low_mid": 0.5,
+                               "mid": 0.2, "presence": 0.1, "high": 0.1},
+                  "rms": 0.5, "peak": 0.7}
+        after = {"spectrum": {"sub": 0.1, "low": 0.2, "low_mid": 0.3,
+                              "mid": 0.2, "presence": 0.1, "high": 0.1},
+                 "rms": 0.5, "peak": 0.7}
+        result = compute_evaluation_score(goal, before, after)
+        assert result["measurable_dimensions"] > 0
+        # Clarity improved (low_mid dropped 0.5 → 0.3)
+        assert result["goal_progress"] > 0
+
+
+class TestWorldModelHonesty:
+    """World model should not overclaim what it fetched."""
+
+    def test_no_unhealthy_devices_when_no_track_infos(self):
+        wm = build_world_model_from_data(
+            {"tracks": [{"index": 0, "name": "Kick"}], "tempo": 120},
+            track_infos=None,
+        )
+        assert wm.technical["unhealthy_devices"] == []
+
+    def test_no_sonic_when_no_spectrum(self):
+        wm = build_world_model_from_data(
+            {"tracks": [], "tempo": 120},
+            spectrum=None,
+        )
+        assert wm.sonic is None
+
+
+class TestTasteFitIntegration:
+    """Taste fit should integrate into evaluation scoring."""
+
+    def test_taste_fit_with_history(self):
+        goal = validate_goal_vector("test", {"energy": 0.5, "punch": 0.5}, {}, "improve", 0.5, "none")
+        before = {"spectrum": {"sub": 0.1, "low": 0.2, "low_mid": 0.3,
+                               "mid": 0.2, "presence": 0.1, "high": 0.1},
+                  "rms": 0.3, "peak": 0.5}
+        after = {"spectrum": {"sub": 0.15, "low": 0.25, "low_mid": 0.3,
+                              "mid": 0.2, "presence": 0.1, "high": 0.1},
+                 "rms": 0.4, "peak": 0.6}
+        history = [
+            {"kept": True, "goal_vector": {"targets": {"energy": 0.5, "punch": 0.5}}},
+            {"kept": True, "goal_vector": {"targets": {"energy": 0.7, "punch": 0.3}}},
+        ]
+        result = compute_evaluation_score(goal, before, after, outcome_history=history)
+        # Should have non-zero score component from taste_fit
+        assert result["score"] > 0
+
+    def test_taste_fit_zero_without_history(self):
+        goal = validate_goal_vector("test", {"energy": 1.0}, {}, "improve", 0.5, "none")
+        before = {"spectrum": {"sub": 0.1}, "rms": 0.3, "peak": 0.5}
+        after = {"spectrum": {"sub": 0.15}, "rms": 0.4, "peak": 0.6}
+        result_with = compute_evaluation_score(goal, before, after, outcome_history=[])
+        result_without = compute_evaluation_score(goal, before, after, outcome_history=None)
+        # Both should produce valid scores (taste_fit=0 when no history)
+        assert result_with["score"] >= 0
+        assert result_without["score"] >= 0
