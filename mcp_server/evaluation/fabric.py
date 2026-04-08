@@ -1,7 +1,11 @@
-"""Evaluation Fabric — main entry point for unified evaluation.
+"""Evaluation Fabric — unified entry point for all engine evaluators.
 
-Provides evaluate_sonic_move() and evaluate_composition_move() which
-produce canonical EvaluationResult objects.
+Provides evaluate() as the single router, plus engine-specific evaluators:
+  - evaluate_sonic_move()       — spectral before/after
+  - evaluate_composition_move() — issue list before/after
+  - evaluate_mix_move()         — mix critic issues before/after
+  - evaluate_transition()       — transition score before/after
+  - evaluate_translation()      — translation report before/after
 
 Uses feature_extractors for dimension extraction, policy for hard rules,
 and the existing contracts from _evaluation_contracts.
@@ -222,3 +226,350 @@ def evaluate_composition_move(
         decision_mode="measured",
         memory_candidate=keep_change and severity_improvement > 0,
     )
+
+
+# ── Mix Evaluator ───────────────────────────────────────────────────
+
+
+def evaluate_mix_move(
+    before_issues: list[dict],
+    after_issues: list[dict],
+) -> EvaluationResult:
+    """Evaluate a mix move by comparing mix critic issue lists.
+
+    Scores masking reduction, punch change, headroom, stereo stability
+    and applies hard rules from policy.py.
+
+    Args:
+        before_issues: list of MixIssue dicts (from run_all_mix_critics).
+        after_issues: list of MixIssue dicts (from run_all_mix_critics).
+
+    Returns:
+        EvaluationResult with score, keep_change, dimension_changes.
+    """
+    notes: list[str] = []
+
+    # Severity helpers per critic category
+    def _severity_for(issues: list[dict], critic: str) -> float:
+        return sum(i.get("severity", 0.0) for i in issues if i.get("critic") == critic)
+
+    # Track four key dimensions
+    before_masking = _severity_for(before_issues, "masking")
+    after_masking = _severity_for(after_issues, "masking")
+    masking_delta = before_masking - after_masking  # positive = improvement
+
+    before_dynamics = _severity_for(before_issues, "dynamics")
+    after_dynamics = _severity_for(after_issues, "dynamics")
+    headroom_delta = before_dynamics - after_dynamics
+
+    before_stereo = _severity_for(before_issues, "stereo")
+    after_stereo = _severity_for(after_issues, "stereo")
+    stereo_delta = before_stereo - after_stereo
+
+    before_balance = _severity_for(before_issues, "balance")
+    after_balance = _severity_for(after_issues, "balance")
+    balance_delta = before_balance - after_balance
+
+    dimension_changes = {
+        "masking_reduction": round(masking_delta, 4),
+        "headroom_change": round(headroom_delta, 4),
+        "stereo_stability": round(stereo_delta, 4),
+        "balance_change": round(balance_delta, 4),
+    }
+
+    # Overall severity comparison
+    before_total = sum(i.get("severity", 0.0) for i in before_issues)
+    after_total = sum(i.get("severity", 0.0) for i in after_issues)
+    severity_improvement = before_total - after_total
+
+    before_count = len(before_issues)
+    after_count = len(after_issues)
+
+    if before_total > 0:
+        improvement_ratio = severity_improvement / max(before_total, 0.01)
+    else:
+        improvement_ratio = 0.0 if after_count == 0 else -0.5
+
+    score = _clamp(0.5 + improvement_ratio * 0.5)
+
+    # Hard-rule style checks
+    keep_change = True
+
+    if severity_improvement < 0:
+        keep_change = False
+        notes.append(
+            f"WORSE: total mix severity increased by {-severity_improvement:.2f}"
+        )
+
+    if after_count > before_count + 2:
+        keep_change = False
+        notes.append(
+            f"NEW ISSUES: {after_count - before_count} new mix issues introduced"
+        )
+
+    if score < 0.40:
+        keep_change = False
+        notes.append(f"SCORE: {score:.3f} below 0.40 threshold")
+
+    if keep_change and severity_improvement > 0:
+        notes.append(
+            f"IMPROVED: mix severity reduced by {severity_improvement:.2f} "
+            f"across {before_count - after_count} fewer issues"
+        )
+
+    hard_rule_failures = [
+        n for n in notes if n.startswith(("WORSE:", "NEW ISSUES:", "SCORE:"))
+    ]
+
+    return EvaluationResult(
+        engine="mix",
+        score=round(score, 4),
+        keep_change=keep_change,
+        goal_progress=round(severity_improvement, 4),
+        collateral_damage=0.0,
+        hard_rule_failures=hard_rule_failures,
+        dimension_changes=dimension_changes,
+        notes=notes,
+        decision_mode="measured",
+        memory_candidate=keep_change and severity_improvement > 0,
+    )
+
+
+# ── Transition Evaluator ────────────────────────────────────────────
+
+
+def evaluate_transition(
+    before_score: dict,
+    after_score: dict,
+) -> EvaluationResult:
+    """Evaluate a transition move by comparing TransitionScore dicts.
+
+    Compares boundary_clarity, payoff_strength, energy_redirection,
+    and overall_quality before and after the move.
+
+    Args:
+        before_score: dict with transition quality metrics.
+        after_score: dict with transition quality metrics.
+
+    Returns:
+        EvaluationResult with score, keep_change, dimension_changes.
+    """
+    notes: list[str] = []
+
+    # Key transition dimensions to compare
+    dims = ["boundary_clarity", "payoff_strength", "energy_redirection", "overall_quality"]
+    dimension_changes: dict[str, dict] = {}
+    total_improvement = 0.0
+    measured = 0
+
+    for dim in dims:
+        bv = before_score.get(dim)
+        av = after_score.get(dim)
+        if bv is not None and av is not None:
+            delta = av - bv
+            dimension_changes[dim] = {
+                "before": round(bv, 4),
+                "after": round(av, 4),
+                "delta": round(delta, 4),
+            }
+            total_improvement += delta
+            measured += 1
+
+    avg_improvement = total_improvement / max(measured, 1)
+    score = _clamp(0.5 + avg_improvement)
+
+    keep_change = True
+
+    if measured > 0 and total_improvement < 0:
+        keep_change = False
+        notes.append(
+            f"WORSE: transition quality decreased by {-total_improvement:.3f}"
+        )
+
+    if score < 0.40:
+        keep_change = False
+        notes.append(f"SCORE: {score:.3f} below 0.40 threshold")
+
+    if keep_change and total_improvement > 0:
+        notes.append(
+            f"IMPROVED: transition quality improved by {total_improvement:.3f} "
+            f"across {measured} dimensions"
+        )
+
+    hard_rule_failures = [
+        n for n in notes if n.startswith(("WORSE:", "SCORE:"))
+    ]
+
+    return EvaluationResult(
+        engine="transition",
+        score=round(score, 4),
+        keep_change=keep_change,
+        goal_progress=round(total_improvement, 4),
+        collateral_damage=0.0,
+        hard_rule_failures=hard_rule_failures,
+        dimension_changes=dimension_changes,
+        notes=notes,
+        decision_mode="measured",
+        memory_candidate=keep_change and total_improvement > 0,
+    )
+
+
+# ── Translation Evaluator ───────────────────────────────────────────
+
+
+def evaluate_translation(
+    before_report: dict,
+    after_report: dict,
+) -> EvaluationResult:
+    """Evaluate a translation move by comparing TranslationReport dicts.
+
+    Compares robustness booleans (mono_safe, small_speaker_safe,
+    low_end_stable, front_element_present) and harshness_risk.
+
+    Args:
+        before_report: dict from build_translation_report().to_dict().
+        after_report: dict from build_translation_report().to_dict().
+
+    Returns:
+        EvaluationResult with score, keep_change, dimension_changes.
+    """
+    notes: list[str] = []
+    dimension_changes: dict[str, dict] = {}
+
+    # Boolean robustness flags — True is good, False is bad
+    bool_dims = ["mono_safe", "small_speaker_safe", "low_end_stable", "front_element_present"]
+    improvements = 0
+    regressions = 0
+
+    for dim in bool_dims:
+        bv = before_report.get(dim)
+        av = after_report.get(dim)
+        if bv is not None and av is not None:
+            dimension_changes[dim] = {"before": bv, "after": av}
+            if not bv and av:
+                improvements += 1
+            elif bv and not av:
+                regressions += 1
+
+    # Harshness risk — lower is better
+    bh = before_report.get("harshness_risk", 0.0)
+    ah = after_report.get("harshness_risk", 0.0)
+    harshness_delta = bh - ah  # positive = improvement
+    dimension_changes["harshness_risk"] = {
+        "before": round(bh, 4),
+        "after": round(ah, 4),
+        "delta": round(harshness_delta, 4),
+    }
+
+    # Overall robustness classification
+    robustness_map = {"robust": 1.0, "fragile": 0.5, "critical": 0.0}
+    before_rob = robustness_map.get(before_report.get("overall_robustness", ""), 0.5)
+    after_rob = robustness_map.get(after_report.get("overall_robustness", ""), 0.5)
+    robustness_delta = after_rob - before_rob
+    dimension_changes["overall_robustness"] = {
+        "before": before_report.get("overall_robustness", "unknown"),
+        "after": after_report.get("overall_robustness", "unknown"),
+    }
+
+    # Composite score
+    flag_score = (improvements - regressions) / max(len(bool_dims), 1)
+    score = _clamp(
+        0.5
+        + flag_score * 0.3
+        + harshness_delta * 0.3
+        + robustness_delta * 0.4
+    )
+
+    total_improvement = flag_score + harshness_delta + robustness_delta
+
+    keep_change = True
+
+    if regressions > improvements:
+        keep_change = False
+        notes.append(
+            f"WORSE: {regressions} robustness flags regressed vs "
+            f"{improvements} improved"
+        )
+
+    if after_rob < before_rob:
+        keep_change = False
+        notes.append(
+            f"WORSE: overall robustness degraded from "
+            f"{before_report.get('overall_robustness')} to "
+            f"{after_report.get('overall_robustness')}"
+        )
+
+    if score < 0.40:
+        keep_change = False
+        notes.append(f"SCORE: {score:.3f} below 0.40 threshold")
+
+    if keep_change and total_improvement > 0:
+        notes.append(
+            f"IMPROVED: {improvements} robustness flags improved, "
+            f"harshness reduced by {harshness_delta:.3f}"
+        )
+
+    hard_rule_failures = [
+        n for n in notes if n.startswith(("WORSE:", "SCORE:"))
+    ]
+
+    return EvaluationResult(
+        engine="translation",
+        score=round(score, 4),
+        keep_change=keep_change,
+        goal_progress=round(total_improvement, 4),
+        collateral_damage=0.0,
+        hard_rule_failures=hard_rule_failures,
+        dimension_changes=dimension_changes,
+        notes=notes,
+        decision_mode="measured",
+        memory_candidate=keep_change and total_improvement > 0,
+    )
+
+
+# ── Unified Entry Point ─────────────────────────────────────────────
+
+
+def evaluate(request: EvaluationRequest) -> EvaluationResult:
+    """Unified evaluation entry point — routes to engine-specific evaluator.
+
+    Args:
+        request: EvaluationRequest with engine field determining routing:
+            - "sonic"       -> evaluate_sonic_move
+            - "composition" -> evaluate_composition_move
+            - "mix"         -> evaluate_mix_move
+            - "transition"  -> evaluate_transition
+            - "translation" -> evaluate_translation
+
+    Returns:
+        EvaluationResult from the appropriate engine evaluator.
+    """
+    engine = (request.engine or "sonic").lower()
+
+    if engine == "sonic":
+        return evaluate_sonic_move(request)
+
+    elif engine == "composition":
+        before_issues = request.before.get("issues", [])
+        after_issues = request.after.get("issues", [])
+        return evaluate_composition_move(before_issues, after_issues)
+
+    elif engine == "mix":
+        before_issues = request.before.get("issues", [])
+        after_issues = request.after.get("issues", [])
+        return evaluate_mix_move(before_issues, after_issues)
+
+    elif engine == "transition":
+        return evaluate_transition(request.before, request.after)
+
+    elif engine == "translation":
+        return evaluate_translation(request.before, request.after)
+
+    else:
+        return EvaluationResult(
+            engine=engine,
+            score=0.0,
+            keep_change=True,
+            decision_mode="deferred",
+            notes=[f"Unknown engine '{engine}' — deferring to agent judgment"],
+        )

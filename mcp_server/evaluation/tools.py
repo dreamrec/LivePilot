@@ -1,7 +1,7 @@
 """Evaluation Fabric MCP tools — unified evaluation entry points.
 
 Provides evaluate_with_fabric as a generic evaluation tool that routes
-to the appropriate engine-specific evaluator.
+to the appropriate engine-specific evaluator via fabric.evaluate().
 """
 
 from __future__ import annotations
@@ -25,13 +25,13 @@ async def evaluate_with_fabric(
 ) -> dict:
     """Evaluate a move using the unified Evaluation Fabric.
 
-    Routes to the appropriate engine-specific evaluator (sonic or composition).
+    Routes to the appropriate engine-specific evaluator.
 
     Args:
-        engine: "sonic" or "composition"
-        before_snapshot: State before the move (sonic spectrum or issue list)
-        after_snapshot: State after the move (sonic spectrum or issue list)
-        targets: Goal targets — for sonic: {dimension: weight}, ignored for composition
+        engine: "sonic", "composition", "mix", "transition", or "translation"
+        before_snapshot: State before the move (format depends on engine)
+        after_snapshot: State after the move (format depends on engine)
+        targets: Goal targets — for sonic: {dimension: weight}, ignored for others
         protect: Protected dimensions — for sonic: {dimension: threshold}
 
     Returns:
@@ -41,20 +41,13 @@ async def evaluate_with_fabric(
     targets = targets or {}
     protect = protect or {}
 
-    if engine == "composition":
-        # Composition engine: before/after are issue lists
-        before_issues = before_snapshot.get("issues", [])
-        after_issues = after_snapshot.get("issues", [])
-        result = fabric.evaluate_composition_move(before_issues, after_issues)
-    else:
-        # Sonic engine (default): before/after are spectral snapshots
-        request = EvaluationRequest(
-            engine=engine or "sonic",
-            goal={"targets": targets},
-            before=before_snapshot,
-            after=after_snapshot,
-            protect=protect,
-        )
-        result = fabric.evaluate_sonic_move(request)
+    request = EvaluationRequest(
+        engine=engine or "sonic",
+        goal={"targets": targets},
+        before=before_snapshot,
+        after=after_snapshot,
+        protect=protect,
+    )
 
+    result = fabric.evaluate(request)
     return result.to_dict()

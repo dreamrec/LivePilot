@@ -7,6 +7,10 @@ from mcp_server.evaluation.policy import apply_hard_rules
 from mcp_server.evaluation.fabric import (
     evaluate_sonic_move,
     evaluate_composition_move,
+    evaluate_mix_move,
+    evaluate_transition,
+    evaluate_translation,
+    evaluate,
 )
 from mcp_server.tools._evaluation_contracts import EvaluationRequest, EvaluationResult
 
@@ -244,3 +248,252 @@ class TestFabricCompositionEvaluation:
         result = evaluate_composition_move(before, after)
         assert isinstance(result, EvaluationResult)
         assert result.keep_change is False
+
+
+# ── TestFabricMixEvaluation ─────────────────────────────────────────
+
+
+class TestFabricMixEvaluation:
+    def test_mix_improvement_kept(self):
+        before = [
+            {"issue_type": "frequency_collision", "critic": "masking", "severity": 0.7},
+            {"issue_type": "low_headroom", "critic": "dynamics", "severity": 0.6},
+        ]
+        after = [
+            {"issue_type": "frequency_collision", "critic": "masking", "severity": 0.3},
+        ]
+        result = evaluate_mix_move(before, after)
+        assert isinstance(result, EvaluationResult)
+        assert result.engine == "mix"
+        assert result.keep_change is True
+        assert result.goal_progress > 0
+        assert result.score > 0.5
+
+    def test_mix_regression_undone(self):
+        before = [
+            {"issue_type": "frequency_collision", "critic": "masking", "severity": 0.3},
+        ]
+        after = [
+            {"issue_type": "frequency_collision", "critic": "masking", "severity": 0.7},
+            {"issue_type": "center_collapse", "critic": "stereo", "severity": 0.6},
+            {"issue_type": "low_headroom", "critic": "dynamics", "severity": 0.8},
+            {"issue_type": "over_compressed", "critic": "dynamics", "severity": 0.5},
+        ]
+        result = evaluate_mix_move(before, after)
+        assert isinstance(result, EvaluationResult)
+        assert result.keep_change is False
+
+    def test_mix_dimension_changes_reported(self):
+        before = [
+            {"issue_type": "frequency_collision", "critic": "masking", "severity": 0.8},
+            {"issue_type": "center_collapse", "critic": "stereo", "severity": 0.5},
+        ]
+        after = [
+            {"issue_type": "frequency_collision", "critic": "masking", "severity": 0.2},
+        ]
+        result = evaluate_mix_move(before, after)
+        assert "masking_reduction" in result.dimension_changes
+        assert result.dimension_changes["masking_reduction"] > 0
+        assert "stereo_stability" in result.dimension_changes
+
+
+# ── TestFabricTransitionEvaluation ──────────────────────────────────
+
+
+class TestFabricTransitionEvaluation:
+    def test_transition_improvement_kept(self):
+        before = {
+            "boundary_clarity": 0.3,
+            "payoff_strength": 0.2,
+            "energy_redirection": 0.4,
+            "overall_quality": 0.3,
+        }
+        after = {
+            "boundary_clarity": 0.7,
+            "payoff_strength": 0.6,
+            "energy_redirection": 0.7,
+            "overall_quality": 0.7,
+        }
+        result = evaluate_transition(before, after)
+        assert isinstance(result, EvaluationResult)
+        assert result.engine == "transition"
+        assert result.keep_change is True
+        assert result.goal_progress > 0
+
+    def test_transition_regression_undone(self):
+        before = {
+            "boundary_clarity": 0.8,
+            "payoff_strength": 0.7,
+            "energy_redirection": 0.7,
+            "overall_quality": 0.8,
+        }
+        after = {
+            "boundary_clarity": 0.3,
+            "payoff_strength": 0.2,
+            "energy_redirection": 0.3,
+            "overall_quality": 0.2,
+        }
+        result = evaluate_transition(before, after)
+        assert isinstance(result, EvaluationResult)
+        assert result.keep_change is False
+        assert result.goal_progress < 0
+
+    def test_transition_dimension_changes(self):
+        before = {"boundary_clarity": 0.5, "payoff_strength": 0.4}
+        after = {"boundary_clarity": 0.8, "payoff_strength": 0.7}
+        result = evaluate_transition(before, after)
+        assert "boundary_clarity" in result.dimension_changes
+        assert result.dimension_changes["boundary_clarity"]["delta"] > 0
+
+
+# ── TestFabricTranslationEvaluation ─────────────────────────────────
+
+
+class TestFabricTranslationEvaluation:
+    def test_translation_improvement_kept(self):
+        before = {
+            "mono_safe": False,
+            "small_speaker_safe": False,
+            "low_end_stable": True,
+            "front_element_present": True,
+            "harshness_risk": 0.7,
+            "overall_robustness": "fragile",
+        }
+        after = {
+            "mono_safe": True,
+            "small_speaker_safe": True,
+            "low_end_stable": True,
+            "front_element_present": True,
+            "harshness_risk": 0.2,
+            "overall_robustness": "robust",
+        }
+        result = evaluate_translation(before, after)
+        assert isinstance(result, EvaluationResult)
+        assert result.engine == "translation"
+        assert result.keep_change is True
+        assert result.goal_progress > 0
+
+    def test_translation_regression_undone(self):
+        before = {
+            "mono_safe": True,
+            "small_speaker_safe": True,
+            "low_end_stable": True,
+            "front_element_present": True,
+            "harshness_risk": 0.1,
+            "overall_robustness": "robust",
+        }
+        after = {
+            "mono_safe": False,
+            "small_speaker_safe": False,
+            "low_end_stable": False,
+            "front_element_present": True,
+            "harshness_risk": 0.8,
+            "overall_robustness": "critical",
+        }
+        result = evaluate_translation(before, after)
+        assert isinstance(result, EvaluationResult)
+        assert result.keep_change is False
+
+    def test_translation_harshness_tracked(self):
+        before = {
+            "mono_safe": True,
+            "small_speaker_safe": True,
+            "low_end_stable": True,
+            "front_element_present": True,
+            "harshness_risk": 0.8,
+            "overall_robustness": "fragile",
+        }
+        after = {
+            "mono_safe": True,
+            "small_speaker_safe": True,
+            "low_end_stable": True,
+            "front_element_present": True,
+            "harshness_risk": 0.2,
+            "overall_robustness": "robust",
+        }
+        result = evaluate_translation(before, after)
+        assert "harshness_risk" in result.dimension_changes
+        assert result.dimension_changes["harshness_risk"]["delta"] > 0
+
+
+# ── TestUnifiedEvaluate ─────────────────────────────────────────────
+
+
+class TestUnifiedEvaluate:
+    def test_routes_to_sonic(self):
+        before = _make_snapshot(high=0.3, presence=0.2)
+        after = _make_snapshot(high=0.6, presence=0.5)
+        req = EvaluationRequest(
+            engine="sonic",
+            goal={"targets": {"brightness": 1.0}},
+            before=before,
+            after=after,
+            protect={},
+        )
+        result = evaluate(req)
+        assert result.engine == "sonic"
+        assert result.keep_change is True
+
+    def test_routes_to_composition(self):
+        req = EvaluationRequest(
+            engine="composition",
+            before={"issues": [{"severity": 0.8}, {"severity": 0.6}]},
+            after={"issues": [{"severity": 0.3}]},
+        )
+        result = evaluate(req)
+        assert result.engine == "composition"
+        assert result.keep_change is True
+
+    def test_routes_to_mix(self):
+        req = EvaluationRequest(
+            engine="mix",
+            before={"issues": [
+                {"critic": "masking", "severity": 0.7},
+                {"critic": "dynamics", "severity": 0.6},
+            ]},
+            after={"issues": [
+                {"critic": "masking", "severity": 0.2},
+            ]},
+        )
+        result = evaluate(req)
+        assert result.engine == "mix"
+        assert result.keep_change is True
+
+    def test_routes_to_transition(self):
+        req = EvaluationRequest(
+            engine="transition",
+            before={"boundary_clarity": 0.3, "payoff_strength": 0.2},
+            after={"boundary_clarity": 0.8, "payoff_strength": 0.7},
+        )
+        result = evaluate(req)
+        assert result.engine == "transition"
+        assert result.keep_change is True
+
+    def test_routes_to_translation(self):
+        req = EvaluationRequest(
+            engine="translation",
+            before={
+                "mono_safe": False, "small_speaker_safe": False,
+                "harshness_risk": 0.7, "overall_robustness": "fragile",
+                "low_end_stable": True, "front_element_present": True,
+            },
+            after={
+                "mono_safe": True, "small_speaker_safe": True,
+                "harshness_risk": 0.2, "overall_robustness": "robust",
+                "low_end_stable": True, "front_element_present": True,
+            },
+        )
+        result = evaluate(req)
+        assert result.engine == "translation"
+        assert result.keep_change is True
+
+    def test_unknown_engine_defers(self):
+        req = EvaluationRequest(
+            engine="unknown_engine",
+            before={},
+            after={},
+        )
+        result = evaluate(req)
+        assert result.engine == "unknown_engine"
+        assert result.decision_mode == "deferred"
+        assert result.keep_change is True
