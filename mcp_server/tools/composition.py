@@ -19,7 +19,10 @@ from typing import Optional
 from fastmcp import Context
 
 from ..server import mcp
+from ..memory.technique_store import TechniqueStore
 from . import _composition_engine as engine
+
+_memory_store = TechniqueStore()
 
 
 def _get_ableton(ctx: Context):
@@ -377,6 +380,10 @@ def get_harmony_field(
     section = sections[section_index]
 
     # Find a track with notes to analyze harmony
+    # Use theory engine functions directly instead of TCP calls to MCP tools
+    from . import _theory_engine as theory_engine
+    from . import _harmony_engine as harmony_engine
+
     scale_info = None
     harmony_analysis = None
     progression_info = None
@@ -384,29 +391,97 @@ def get_harmony_field(
 
     for t_idx in section.tracks_active:
         try:
-            # Try identify_scale
-            si = ableton.send_command("identify_scale", {
-                "track_index": t_idx, "clip_index": section_index
+            # Get notes via TCP (valid Remote Script command)
+            result = ableton.send_command("get_notes", {
+                "track_index": t_idx, "clip_index": section_index,
             })
-            if si.get("top_match"):
-                scale_info = si
+            notes = result.get("notes", [])
+            if not notes:
+                continue
 
-            # Try analyze_harmony
-            ha = ableton.send_command("analyze_harmony", {
-                "track_index": t_idx, "clip_index": section_index
-            })
-            if ha.get("chords"):
-                harmony_analysis = ha
+            # identify_scale: run key detection directly
+            if not scale_info:
+                detected = theory_engine.detect_key(notes, mode_detection=True)
+                top = {
+                    "key": f"{detected['tonic_name']} {detected['mode'].replace('_', ' ')}",
+                    "confidence": detected["confidence"],
+                    "mode": detected["mode"].replace("_", " "),
+                    "mode_id": detected["mode"],
+                    "tonic": detected["tonic_name"],
+                }
+                scale_info = {"top_match": top}
 
-                # Classify progression if we have chords
-                chord_names = [c.get("chord_name", "") for c in ha.get("chords", []) if c.get("chord_name")]
-                if len(chord_names) >= 2:
-                    try:
-                        progression_info = ableton.send_command("classify_progression", {
-                            "chords": chord_names[:8]
+            # analyze_harmony: chordify + roman numeral analysis directly
+            if not harmony_analysis:
+                key_info = theory_engine.detect_key(notes)
+                tonic = key_info["tonic"]
+                mode = key_info["mode"]
+                chord_groups = theory_engine.chordify(notes)
+                if chord_groups:
+                    chords = []
+                    for group in chord_groups:
+                        pitches = group["pitches"]
+                        pcs = group["pitch_classes"]
+                        rn = theory_engine.roman_numeral(pcs, tonic, mode)
+                        cn = theory_engine.chord_name(pitches)
+                        chords.append({
+                            "beat": group["beat"],
+                            "duration": group["duration"],
+                            "chord_name": cn,
+                            "roman_numeral": rn["figure"],
+                            "figure": rn["figure"],
+                            "quality": rn["quality"],
                         })
-                    except Exception:
-                        pass
+                    if chords:
+                        harmony_analysis = {
+                            "key": f"{key_info['tonic_name']} {mode.replace('_', ' ')}",
+                            "chords": chords,
+                        }
+
+                        # classify_progression directly
+                        chord_names = [c["chord_name"] for c in chords if c.get("chord_name")]
+                        if len(chord_names) >= 2:
+                            try:
+                                parsed = [harmony_engine.parse_chord(c) for c in chord_names[:8]]
+                                transforms = harmony_engine.classify_transform_sequence(parsed)
+                                pattern = "".join(transforms)
+                                classification = "free neo-Riemannian progression"
+                                clean = pattern.replace("?", "")
+                                if len(clean) >= 2:
+                                    pair = clean[:2]
+                                    if pair in ("PL", "LP") and all(c in "PL" for c in clean):
+                                        classification = "hexatonic cycle fragment"
+                                    elif pair in ("PR", "RP") and all(c in "PR" for c in clean):
+                                        classification = "octatonic cycle fragment"
+                                    elif pair in ("LR", "RL") and all(c in "LR" for c in clean):
+                                        classification = "diatonic cycle fragment"
+                                progression_info = {
+                                    "chords": chord_names[:8],
+                                    "transforms": transforms,
+                                    "pattern": pattern,
+                                    "classification": classification,
+                                }
+                            except Exception:
+                                pass
+
+            # Populate voice_leading_info from chord groups
+            if harmony_analysis and not voice_leading_info:
+                try:
+                    chord_groups_vl = theory_engine.chordify(notes)
+                    if len(chord_groups_vl) >= 2:
+                        all_vl_issues = []
+                        for vi in range(1, min(len(chord_groups_vl), 9)):
+                            prev_p = chord_groups_vl[vi - 1]["pitches"]
+                            curr_p = chord_groups_vl[vi]["pitches"]
+                            issues = theory_engine.check_voice_leading(prev_p, curr_p)
+                            all_vl_issues.extend(issues)
+                        voice_leading_info = {
+                            "issues": all_vl_issues,
+                            "issue_count": len(all_vl_issues),
+                            "quality": "clean" if not all_vl_issues else "has_issues",
+                        }
+                except Exception:
+                    pass
 
             if scale_info and harmony_analysis:
                 break
@@ -540,19 +615,23 @@ def get_section_outcomes(
     section_type: filter to a specific type (intro, verse, chorus, etc.)
                   Leave empty for all types.
     """
-    ableton = _get_ableton(ctx)
-
+    # Fetch composition outcomes directly from TechniqueStore
     try:
-        memory_result = ableton.send_command("memory_list", {
-            "type": "composition_outcome",
-            "limit": limit,
-            "sort_by": "updated_at",
-        })
-        techniques = memory_result.get("techniques", [])
+        techniques = _memory_store.list_techniques(
+            type_filter="composition_outcome", sort_by="updated_at", limit=limit,
+        )
     except Exception:
         techniques = []
 
-    outcomes = [t.get("payload", {}) for t in techniques if isinstance(t.get("payload"), dict)]
+    outcomes = []
+    for t in techniques:
+        try:
+            full = _memory_store.get(t["id"])
+            payload = full.get("payload", {})
+            if isinstance(payload, dict):
+                outcomes.append(payload)
+        except Exception:
+            pass
 
     result = engine.analyze_section_outcomes(outcomes)
 

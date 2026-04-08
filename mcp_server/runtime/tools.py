@@ -9,7 +9,10 @@ from __future__ import annotations
 from fastmcp import Context
 
 from ..server import mcp
+from ..memory.technique_store import TechniqueStore
 from .capability_state import build_capability_state
+
+_memory_store = TechniqueStore()
 
 
 @mcp.tool()
@@ -40,11 +43,11 @@ def get_capability_state(ctx: Context) -> dict:
             snap = spectral.get("spectrum")
             analyzer_fresh = snap is not None
 
-    # ── Probe memory ────────────────────────────────────────────────
+    # ── Probe memory (direct TechniqueStore, not TCP) ────────────────
     memory_ok = False
     try:
-        mem_result = ableton.send_command("memory_list", {"type": "technique"})
-        memory_ok = isinstance(mem_result, dict) and "error" not in mem_result
+        _memory_store.list_techniques(limit=1)
+        memory_ok = True
     except Exception:
         memory_ok = False
 
