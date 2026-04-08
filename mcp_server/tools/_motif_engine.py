@@ -298,11 +298,23 @@ def transform_motif(
         # Transpose down an octave
         return _intervals_to_notes(intervals, reference_pitch - 12)
 
+    elif transformation == "orchestral_reassignment":
+        # Redistribute across a wider register — odd notes up, even notes down
+        # Creates an interleaved texture from a single-voice motif
+        notes = _intervals_to_notes(intervals, reference_pitch)
+        for i, note in enumerate(notes):
+            if i % 2 == 0:
+                note["pitch"] = max(0, min(127, note["pitch"] + 7))  # Up a fifth
+            else:
+                note["pitch"] = max(0, min(127, note["pitch"] - 5))  # Down a fourth
+            note["velocity"] = max(40, min(127, note["velocity"] + (10 if i % 2 == 0 else -10)))
+        return notes
+
     else:
         raise ValueError(
             f"Unknown transformation '{transformation}'. Valid: "
             "inversion, retrograde, augmentation, diminution, fragmentation, "
-            "register_shift_up, register_shift_down"
+            "register_shift_up, register_shift_down, orchestral_reassignment"
         )
 
 

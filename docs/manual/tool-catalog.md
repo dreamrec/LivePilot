@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog
 
-197 tools across 21 domains.
+200 tools across 21 domains.
 
 ---
 

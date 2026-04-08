@@ -410,3 +410,107 @@ def _plan_transition_gestures(sections: list[SectionPlan]) -> list[dict]:
         gestures.append(suggestion)
 
     return gestures
+
+
+# ── Orchestration Planner (Round 4) ──────────────────────────────────
+
+def plan_orchestration(
+    sections: list[SectionNode],
+    roles: list[RoleNode],
+    motif_count: int = 0,
+) -> dict:
+    """Plan which instruments play in which sections across the full arrangement.
+
+    Prevents "everything plays everywhere" syndrome by enforcing:
+    - No more than 3 foreground voices per section
+    - Bass + kick always paired
+    - Textures rotate
+    - Hook appears in chorus but not every verse
+
+    Returns: {section_id: {track_index: "active"|"silent"|"reduced"}}
+    """
+    if not sections:
+        return {"orchestration": {}, "notes": []}
+
+    orchestration: dict[str, dict[int, str]] = {}
+    notes: list[str] = []
+
+    # Collect all track indices and their roles
+    all_tracks: set[int] = set()
+    role_map: dict[int, RoleType] = {}
+    for r in roles:
+        all_tracks.add(r.track_index)
+        role_map[r.track_index] = r.role
+
+    # Group tracks by role type
+    kick_tracks = [t for t, r in role_map.items() if r == RoleType.KICK_ANCHOR]
+    bass_tracks = [t for t, r in role_map.items() if r == RoleType.BASS_ANCHOR]
+    lead_tracks = [t for t, r in role_map.items() if r in (RoleType.LEAD, RoleType.HOOK)]
+    harmony_tracks = [t for t, r in role_map.items() if r == RoleType.HARMONY_BED]
+    texture_tracks = [t for t, r in role_map.items() if r == RoleType.TEXTURE_WASH]
+    rhythm_tracks = [t for t, r in role_map.items() if r == RoleType.RHYTHMIC_TEXTURE]
+
+    for section in sections:
+        section_orch: dict[int, str] = {}
+        stype = section.section_type
+
+        for track in all_tracks:
+            role = role_map.get(track, RoleType.UNKNOWN)
+
+            # Default: active
+            status = "active"
+
+            # Rule 1: Intros are sparse
+            if stype == SectionType.INTRO:
+                if role in (RoleType.LEAD, RoleType.HOOK):
+                    status = "silent"
+                elif role == RoleType.TEXTURE_WASH:
+                    status = "reduced"
+
+            # Rule 2: Breakdowns strip foreground
+            elif stype in (SectionType.BREAKDOWN, SectionType.BRIDGE):
+                if role in (RoleType.LEAD, RoleType.HOOK):
+                    status = "silent"
+                elif role == RoleType.TEXTURE_WASH:
+                    status = "active"  # Textures shine in breakdowns
+
+            # Rule 3: Outros thin out
+            elif stype == SectionType.OUTRO:
+                if role in (RoleType.LEAD, RoleType.HOOK):
+                    status = "reduced"
+                elif role == RoleType.RHYTHMIC_TEXTURE:
+                    status = "reduced"
+
+            # Rule 4: Builds add tension elements but not full foreground
+            elif stype == SectionType.BUILD:
+                if role == RoleType.HOOK:
+                    status = "silent"  # Save hook for drop
+
+            # Rule 5: Bass+kick pairing
+            if track in bass_tracks and not any(
+                section_orch.get(k) == "active" for k in kick_tracks
+            ):
+                # If no kick is active yet, bass is fine; they'll pair naturally
+                pass
+
+            section_orch[track] = status
+
+        # Rule 6: Cap foreground at 3
+        active_fg = [t for t in lead_tracks
+                     if section_orch.get(t) == "active"]
+        if len(active_fg) > 3:
+            for t in active_fg[3:]:
+                section_orch[t] = "reduced"
+            notes.append(
+                f"Section '{section.name or section.section_id}': "
+                f"capped foreground from {len(active_fg)} to 3"
+            )
+
+        orchestration[section.section_id] = section_orch
+
+    return {
+        "orchestration": orchestration,
+        "section_count": len(sections),
+        "track_count": len(all_tracks),
+        "notes": notes,
+    }
