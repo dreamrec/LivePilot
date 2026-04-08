@@ -114,6 +114,9 @@ from .runtime import action_tools as action_ledger_tools  # noqa: F401, E402
 from .evaluation import tools as evaluation_tools  # noqa: F401, E402
 from .memory import tools as memory_fabric_tools   # noqa: F401, E402
 from .mix_engine import tools as mix_engine_tools  # noqa: F401, E402
+from .sound_design import tools as sound_design_tools      # noqa: F401, E402
+from .transition_engine import tools as transition_tools   # noqa: F401, E402
+from .reference_engine import tools as reference_tools     # noqa: F401, E402
 
 
 # ---------------------------------------------------------------------------
