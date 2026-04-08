@@ -71,7 +71,7 @@ via a Max for Live device.
 The **memory** gives it history — a searchable library of production decisions
 that persists across sessions.
 
-All three feed into 178 deterministic tools that execute on Ableton's main thread.
+All three feed into 236 deterministic tools that execute on Ableton's main thread.
 
 <br>
 
