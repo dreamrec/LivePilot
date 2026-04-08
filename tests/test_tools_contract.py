@@ -291,6 +291,7 @@ def test_agent_os_tools_registered():
         "build_world_model",
         "evaluate_move",
         "analyze_outcomes",
+        "get_technique_card",
     }
     missing = expected - names
     assert not missing, f"Missing agent_os tools: {missing}"
@@ -306,15 +307,27 @@ def test_composition_tools_registered():
         "evaluate_composition_move",
         "get_harmony_field",
         "get_transition_analysis",
+        "apply_gesture_template",
+        "get_section_outcomes",
     }
     missing = expected - names
     assert not missing, f"Missing composition tools: {missing}"
 
 
+def test_motif_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "get_motif_graph",
+        "transform_motif",
+    }
+    missing = expected - names
+    assert not missing, f"Missing motif tools: {missing}"
+
+
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 189, f"Expected 189 tools, got {len(tools)}"
+    assert len(tools) == 194, f"Expected 194 tools, got {len(tools)}"
 
 
 def test_perception_tools_registered():

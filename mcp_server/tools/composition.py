@@ -480,3 +480,84 @@ def get_transition_analysis(ctx: Context) -> dict:
         "issues": [i.to_dict() for i in issues],
         "issue_count": len(issues),
     }
+
+
+# ── apply_gesture_template (Round 2) ──────────────────────────────────
+
+
+@mcp.tool()
+def apply_gesture_template(
+    ctx: Context,
+    template_name: str,
+    target_tracks: list | str = "[]",
+    anchor_bar: int = 0,
+    foreground: bool = False,
+) -> dict:
+    """Apply a compound gesture template — multiple coordinated automation gestures.
+
+    template_name: pre_arrival_vacuum | sectional_width_bloom | phrase_end_throw |
+                   turnaround_accent | outro_decay_dissolve | bass_tuck_before_kick |
+                   harmonic_tint_rise | response_echo | texture_drift_bed |
+                   tension_ratchet | re_entry_spotlight
+    target_tracks: list of track indices
+    anchor_bar: reference point (section boundary bar number)
+    foreground: is this a focal point?
+
+    Returns: list of GesturePlans — execute each with apply_automation_shape.
+    """
+    if isinstance(target_tracks, str):
+        try:
+            target_tracks = json.loads(target_tracks)
+        except json.JSONDecodeError:
+            target_tracks = []
+
+    plans = engine.resolve_gesture_template(
+        template_name, target_tracks, anchor_bar, foreground,
+    )
+    return {
+        "template": template_name,
+        "description": engine.GESTURE_TEMPLATES[template_name]["description"],
+        "gesture_count": len(plans),
+        "gestures": [g.to_dict() for g in plans],
+    }
+
+
+# ── get_section_outcomes (Round 2) ────────────────────────────────────
+
+
+@mcp.tool()
+def get_section_outcomes(
+    ctx: Context,
+    section_type: str = "",
+    limit: int = 50,
+) -> dict:
+    """Get composition move success rates grouped by section type.
+
+    Analyzes stored composition outcomes to answer: which moves work
+    best in which section types? Use before making structural changes
+    to learn from past sessions.
+
+    section_type: filter to a specific type (intro, verse, chorus, etc.)
+                  Leave empty for all types.
+    """
+    ableton = _get_ableton(ctx)
+
+    try:
+        memory_result = ableton.send_command("memory_list", {
+            "type": "composition_outcome",
+            "limit": limit,
+            "sort_by": "updated_at",
+        })
+        techniques = memory_result.get("techniques", [])
+    except Exception:
+        techniques = []
+
+    outcomes = [t.get("payload", {}) for t in techniques if isinstance(t.get("payload"), dict)]
+
+    result = engine.analyze_section_outcomes(outcomes)
+
+    if section_type and section_type in result.get("outcomes_by_section", {}):
+        result["filtered_section"] = section_type
+        result["section_moves"] = result["outcomes_by_section"][section_type]
+
+    return result

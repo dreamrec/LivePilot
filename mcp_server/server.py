@@ -105,6 +105,7 @@ from .tools import midi_io      # noqa: F401, E402
 from .tools import perception   # noqa: F401, E402
 from .tools import agent_os     # noqa: F401, E402
 from .tools import composition  # noqa: F401, E402
+from .tools import motif         # noqa: F401, E402
 
 
 # ---------------------------------------------------------------------------
