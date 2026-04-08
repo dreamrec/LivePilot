@@ -43,4 +43,4 @@ When modifying .amxd attributes that Max editor won't persist (e.g., `openinpres
 4. Structure: 24-byte `ampf` header + `ptch` chunk + `mx@c` header + JSON patcher + frozen deps
 
 ## Tool Count
-Currently 194 tools. If adding/removing tools, update: README.md, package.json description, livepilot/.Codex-plugin/plugin.json, server.json, livepilot/skills/livepilot-core/SKILL.md, livepilot/skills/livepilot-core/references/overview.md, AGENTS.md, CHANGELOG.md, tests/test_tools_contract.py, docs/manual/index.md, docs/manual/tool-reference.md
+Currently 197 tools. If adding/removing tools, update: README.md, package.json description, livepilot/.Codex-plugin/plugin.json, server.json, livepilot/skills/livepilot-core/SKILL.md, livepilot/skills/livepilot-core/references/overview.md, AGENTS.md, CHANGELOG.md, tests/test_tools_contract.py, docs/manual/index.md, docs/manual/tool-reference.md
