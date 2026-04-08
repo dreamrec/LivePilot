@@ -13,6 +13,7 @@
   <a href="https://www.npmjs.com/package/livepilot"><img src="https://img.shields.io/npm/dm/livepilot?style=flat-square" alt="npm downloads"></a>
   <a href="https://github.com/dreamrec/LivePilot/blob/main/LICENSE"><img src="https://img.shields.io/github/license/dreamrec/LivePilot?style=flat-square" alt="License"></a>
   <a href="https://github.com/dreamrec/LivePilot/releases"><img src="https://img.shields.io/github/v/release/dreamrec/LivePilot?style=flat-square&label=release" alt="Latest Release"></a>
+[![SafeSkill 71/100](https://img.shields.io/badge/SafeSkill-71%2F100_Passes%20with%20Notes-yellow)](https://safeskill.dev/scan/dreamrec-livepilot)
 </p>
 
 <p align="center">
