@@ -1,4 +1,4 @@
-"""Verify all 209 MCP tools are registered across 26 domains."""
+"""Verify all 215 MCP tools are registered across 27 domains."""
 
 import asyncio
 import sys
@@ -395,10 +395,24 @@ def test_memory_fabric_tools_registered():
     assert not missing, f"Missing memory_fabric tools: {missing}"
 
 
+def test_mix_engine_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "analyze_mix",
+        "get_mix_issues",
+        "plan_mix_move",
+        "evaluate_mix_move",
+        "get_masking_report",
+        "get_mix_summary",
+    }
+    missing = expected - names
+    assert not missing, f"Missing mix_engine tools: {missing}"
+
+
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 209, f"Expected 209 tools, got {len(tools)}"
+    assert len(tools) == 215, f"Expected 215 tools, got {len(tools)}"
 
 
 def test_perception_tools_registered():
