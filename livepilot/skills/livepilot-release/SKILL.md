@@ -59,7 +59,7 @@ Files that reference tool count:
 Current: **21 domains**: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, analyzer, automation, theory, generative, harmony, midi_io, perception.
 
 - [ ] All files that mention domain count say "21 domains"
-- [ ] Domain lists include ALL 17 (especially perception — it's the newest and most often omitted)
+- [ ] Domain lists include ALL 21 (especially perception — it's the newest and most often omitted)
 
 ## 4. npm Registry
 
