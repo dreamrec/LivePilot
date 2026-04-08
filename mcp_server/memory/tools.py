@@ -55,7 +55,7 @@ def record_anti_preference(
 @mcp.tool()
 def get_promotion_candidates(ctx: Context, limit: int = 10) -> dict:
     """Check the session ledger for entries eligible for memory promotion."""
-    ledger = ctx.lifespan_context.get("session_ledger")
+    ledger = ctx.lifespan_context.get("action_ledger")
     if ledger is None:
         return {"candidates": [], "count": 0, "note": "no session ledger active"}
 

@@ -18,25 +18,17 @@ from .tactic_router import build_reference_plan
 # ── Helpers ────────────────────────────────────────────────────────
 
 
-async def _fetch_comparison_data(ctx: Context, reference_path: str) -> dict:
+def _fetch_comparison_data(ctx: Context, mix_path: str, reference_path: str) -> dict:
     """Run compare_to_reference via the perception engine."""
     from ..tools._perception_engine import compare_to_reference
 
-    ableton = ctx.lifespan_context["ableton"]
-
-    # Get the mix path from the current session's master export or a recent bounce
-    # For now, require the user to have a mix file — the tool will report error if missing
-    session_info = await ableton.send_command("get_session_info", {})
-
-    # Try to get a recent export path; fall back to requiring the user supplies one
-    mix_path = session_info.get("last_export_path", "")
     if not mix_path:
-        return {"error": "No mix export found — bounce your project first", "code": "STATE_ERROR"}
+        return {"error": "No mix_path provided — bounce your project first and pass the path", "code": "INVALID_PARAM"}
 
     return compare_to_reference(mix_path, reference_path, normalize=True)
 
 
-async def _fetch_project_snapshot(ctx: Context) -> dict:
+def _fetch_project_snapshot(ctx: Context) -> dict:
     """Build a lightweight project snapshot for gap analysis."""
     ableton = ctx.lifespan_context["ableton"]
 
@@ -51,7 +43,7 @@ async def _fetch_project_snapshot(ctx: Context) -> dict:
 
     # Try to get master RMS / loudness
     try:
-        rms_result = await ableton.send_command("get_master_rms", {})
+        rms_result = ableton.send_command("get_master_rms", {})
         rms = rms_result.get("rms", 0.0) if isinstance(rms_result, dict) else 0.0
         # Approximate LUFS from RMS (rough heuristic)
         if rms > 0:
@@ -62,7 +54,7 @@ async def _fetch_project_snapshot(ctx: Context) -> dict:
 
     # Try to get spectrum data
     try:
-        spectrum = await ableton.send_command("get_master_spectrum", {})
+        spectrum = ableton.send_command("get_master_spectrum", {})
         if isinstance(spectrum, dict):
             snapshot["spectral"] = spectrum
     except Exception:
@@ -70,7 +62,7 @@ async def _fetch_project_snapshot(ctx: Context) -> dict:
 
     # Try to get session info for pacing / density
     try:
-        session_info = await ableton.send_command("get_session_info", {})
+        session_info = ableton.send_command("get_session_info", {})
         track_count = session_info.get("track_count", 0)
         scene_count = session_info.get("scene_count", 0)
         # Rough density estimate
@@ -86,9 +78,10 @@ async def _fetch_project_snapshot(ctx: Context) -> dict:
 
 
 @mcp.tool()
-async def build_reference_profile(
+def build_reference_profile(
     ctx: Context,
     reference_path: str = "",
+    mix_path: str = "",
     style: str = "",
 ) -> dict:
     """Build a reference profile from an audio file or style/genre name.
@@ -98,6 +91,7 @@ async def build_reference_profile(
 
     Args:
         reference_path: Absolute path to a reference audio file (.wav, .flac, .aiff).
+        mix_path: Absolute path to your bounced mix file (required for audio comparison).
         style: Artist or genre name (e.g. "burial", "techno", "lo-fi").
 
     Returns:
@@ -106,7 +100,7 @@ async def build_reference_profile(
         harmonic_character, transition_tendencies.
     """
     if reference_path:
-        comparison = await _fetch_comparison_data(ctx, reference_path)
+        comparison = _fetch_comparison_data(ctx, mix_path, reference_path)
         if "error" in comparison:
             return comparison
         profile = build_audio_reference_profile(comparison)
@@ -130,9 +124,10 @@ async def build_reference_profile(
 
 
 @mcp.tool()
-async def analyze_reference_gaps(
+def analyze_reference_gaps(
     ctx: Context,
     reference_path: str = "",
+    mix_path: str = "",
     style: str = "",
     goal_dimensions: str = "",
 ) -> dict:
@@ -144,6 +139,7 @@ async def analyze_reference_gaps(
 
     Args:
         reference_path: Absolute path to a reference audio file.
+        mix_path: Absolute path to your bounced mix file (required for audio comparison).
         style: Artist or genre name for style-based comparison.
         goal_dimensions: Comma-separated domains to focus on
             (e.g. "spectral,width"). Empty = all domains.
@@ -154,7 +150,7 @@ async def analyze_reference_gaps(
     """
     # Build reference profile
     if reference_path:
-        comparison = await _fetch_comparison_data(ctx, reference_path)
+        comparison = _fetch_comparison_data(ctx, mix_path, reference_path)
         if "error" in comparison:
             return comparison
         profile = build_audio_reference_profile(comparison)
@@ -168,7 +164,7 @@ async def analyze_reference_gaps(
         return {"error": "Provide either reference_path or style", "code": "INVALID_PARAM"}
 
     # Build project snapshot
-    snapshot = await _fetch_project_snapshot(ctx)
+    snapshot = _fetch_project_snapshot(ctx)
 
     # Analyze gaps
     gap_report = analyze_gaps(snapshot, profile)
@@ -183,9 +179,10 @@ async def analyze_reference_gaps(
 
 
 @mcp.tool()
-async def plan_reference_moves(
+def plan_reference_moves(
     ctx: Context,
     reference_path: str = "",
+    mix_path: str = "",
     style: str = "",
     goal_dimensions: str = "",
 ) -> dict:
@@ -197,6 +194,7 @@ async def plan_reference_moves(
 
     Args:
         reference_path: Absolute path to a reference audio file.
+        mix_path: Absolute path to your bounced mix file (required for audio comparison).
         style: Artist or genre name for style-based comparison.
         goal_dimensions: Comma-separated domains to focus on.
 
@@ -206,7 +204,7 @@ async def plan_reference_moves(
     """
     # Build reference profile
     if reference_path:
-        comparison = await _fetch_comparison_data(ctx, reference_path)
+        comparison = _fetch_comparison_data(ctx, mix_path, reference_path)
         if "error" in comparison:
             return comparison
         profile = build_audio_reference_profile(comparison)
@@ -220,7 +218,7 @@ async def plan_reference_moves(
         return {"error": "Provide either reference_path or style", "code": "INVALID_PARAM"}
 
     # Build project snapshot
-    snapshot = await _fetch_project_snapshot(ctx)
+    snapshot = _fetch_project_snapshot(ctx)
 
     # Analyze gaps
     gap_report = analyze_gaps(snapshot, profile)

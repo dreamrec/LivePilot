@@ -15,14 +15,14 @@ from .critics import build_translation_report, run_all_translation_critics
 # ── Helpers ─────────────────────────────────────────────────────────
 
 
-async def _fetch_translation_data(ctx: Context) -> dict:
+def _fetch_translation_data(ctx: Context) -> dict:
     """Fetch mix snapshot data needed for translation analysis."""
     ableton = ctx.lifespan_context["ableton"]
 
     # Get mix snapshot — contains spectral and stereo info
     snapshot = {}
     try:
-        snapshot = await ableton.send_command("get_mix_snapshot", {})
+        snapshot = ableton.send_command("get_mix_snapshot", {})
     except Exception:
         pass
 
@@ -47,26 +47,26 @@ async def _fetch_translation_data(ctx: Context) -> dict:
 
 
 @mcp.tool()
-async def check_translation(ctx: Context) -> dict:
+def check_translation(ctx: Context) -> dict:
     """Check playback robustness — mono safety, small speakers, harshness.
 
     Returns a full translation report with robustness classification
     (robust/fragile/critical), boolean safety flags, and suggested
     corrective moves.
     """
-    mix_snapshot = await _fetch_translation_data(ctx)
+    mix_snapshot = _fetch_translation_data(ctx)
     report = build_translation_report(mix_snapshot)
     return report.to_dict()
 
 
 @mcp.tool()
-async def get_translation_issues(ctx: Context) -> dict:
+def get_translation_issues(ctx: Context) -> dict:
     """Get just the translation issues without the full report.
 
     Lighter than check_translation — returns only detected issues
     from the 5 playback robustness critics.
     """
-    mix_snapshot = await _fetch_translation_data(ctx)
+    mix_snapshot = _fetch_translation_data(ctx)
     issues = run_all_translation_critics(mix_snapshot)
     return {
         "issues": [i.to_dict() for i in issues],

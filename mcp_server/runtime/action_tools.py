@@ -21,7 +21,7 @@ def _get_ledger(ctx: Context) -> SessionLedger:
 
 
 @mcp.tool()
-async def get_action_ledger_summary(
+def get_action_ledger_summary(
     ctx: Context, limit: int = 10, engine: str = ""
 ) -> dict:
     """Return a summary of recent semantic moves from the action ledger.
@@ -44,7 +44,7 @@ async def get_action_ledger_summary(
 
 
 @mcp.tool()
-async def get_last_move(ctx: Context) -> dict:
+def get_last_move(ctx: Context) -> dict:
     """Return the most recent semantic move from the action ledger.
 
     Returns the full ledger entry including intent, scope, actions,

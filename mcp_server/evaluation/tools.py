@@ -15,7 +15,7 @@ from . import fabric
 
 
 @mcp.tool()
-async def evaluate_with_fabric(
+def evaluate_with_fabric(
     ctx: Context,
     engine: str,
     before_snapshot: dict,

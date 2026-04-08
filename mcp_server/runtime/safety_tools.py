@@ -15,7 +15,7 @@ from .safety_kernel import check_action_safety
 
 
 @mcp.tool()
-async def check_safety(ctx: Context, action: str, scope: str = "{}") -> dict:
+def check_safety(ctx: Context, action: str, scope: str = "{}") -> dict:
     """Validate a proposed action against safety policies before executing.
 
     Parameters

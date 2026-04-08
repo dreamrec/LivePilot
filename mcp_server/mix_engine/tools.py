@@ -20,17 +20,17 @@ from .planner import plan_mix_moves
 # ── Helpers ─────────────────────────────────────────────────────────
 
 
-async def _fetch_mix_data(ctx: Context) -> dict:
+def _fetch_mix_data(ctx: Context) -> dict:
     """Fetch all data needed to build a MixState from Ableton."""
     ableton = ctx.lifespan_context["ableton"]
 
-    session_info = await ableton.send_command("get_session_info", {})
+    session_info = ableton.send_command("get_session_info", {})
     track_count = session_info.get("track_count", 0)
 
     track_infos: list[dict] = []
     for i in range(track_count):
         try:
-            info = await ableton.send_command("get_track_info", {"track_index": i})
+            info = ableton.send_command("get_track_info", {"track_index": i})
             track_infos.append(info)
         except Exception:
             continue
@@ -39,11 +39,11 @@ async def _fetch_mix_data(ctx: Context) -> dict:
     spectrum = None
     rms_data = None
     try:
-        spectrum = await ableton.send_command("get_master_spectrum", {})
+        spectrum = ableton.send_command("get_master_spectrum", {})
     except Exception:
         pass
     try:
-        rms_result = await ableton.send_command("get_master_rms", {})
+        rms_result = ableton.send_command("get_master_rms", {})
         rms_data = rms_result.get("rms") if isinstance(rms_result, dict) else None
     except Exception:
         pass
@@ -60,13 +60,13 @@ async def _fetch_mix_data(ctx: Context) -> dict:
 
 
 @mcp.tool()
-async def analyze_mix(ctx: Context) -> dict:
+def analyze_mix(ctx: Context) -> dict:
     """Build full mix state and run all critics.
 
     Returns the complete mix analysis including all sub-states
     (balance, masking, dynamics, stereo, depth) and all detected issues.
     """
-    data = await _fetch_mix_data(ctx)
+    data = _fetch_mix_data(ctx)
     mix_state = build_mix_state(
         session_info=data["session_info"],
         track_infos=data["track_infos"],
@@ -86,12 +86,12 @@ async def analyze_mix(ctx: Context) -> dict:
 
 
 @mcp.tool()
-async def get_mix_issues(ctx: Context) -> dict:
+def get_mix_issues(ctx: Context) -> dict:
     """Run all mix critics and return detected issues only.
 
     Lighter than analyze_mix — skips move planning.
     """
-    data = await _fetch_mix_data(ctx)
+    data = _fetch_mix_data(ctx)
     mix_state = build_mix_state(
         session_info=data["session_info"],
         track_infos=data["track_infos"],
@@ -107,13 +107,13 @@ async def get_mix_issues(ctx: Context) -> dict:
 
 
 @mcp.tool()
-async def plan_mix_move(ctx: Context) -> dict:
+def plan_mix_move(ctx: Context) -> dict:
     """Get ranked move suggestions based on current mix issues.
 
     Runs critics and planner, returns sorted moves with
     estimated impact and risk scores.
     """
-    data = await _fetch_mix_data(ctx)
+    data = _fetch_mix_data(ctx)
     mix_state = build_mix_state(
         session_info=data["session_info"],
         track_infos=data["track_infos"],
@@ -131,7 +131,7 @@ async def plan_mix_move(ctx: Context) -> dict:
 
 
 @mcp.tool()
-async def evaluate_mix_move(
+def evaluate_mix_move(
     ctx: Context,
     before_snapshot: dict,
     after_snapshot: dict,
@@ -165,13 +165,13 @@ async def evaluate_mix_move(
 
 
 @mcp.tool()
-async def get_masking_report(ctx: Context) -> dict:
+def get_masking_report(ctx: Context) -> dict:
     """Get detailed frequency collision report.
 
     Shows all detected masking pairs, severity, and the
     worst collision pair.
     """
-    data = await _fetch_mix_data(ctx)
+    data = _fetch_mix_data(ctx)
     mix_state = build_mix_state(
         session_info=data["session_info"],
         track_infos=data["track_infos"],
@@ -188,12 +188,12 @@ async def get_masking_report(ctx: Context) -> dict:
 
 
 @mcp.tool()
-async def get_mix_summary(ctx: Context) -> dict:
+def get_mix_summary(ctx: Context) -> dict:
     """Lightweight mix overview — track count, issue count, dynamics state.
 
     Faster than full analysis for quick status checks.
     """
-    data = await _fetch_mix_data(ctx)
+    data = _fetch_mix_data(ctx)
     mix_state = build_mix_state(
         session_info=data["session_info"],
         track_infos=data["track_infos"],
