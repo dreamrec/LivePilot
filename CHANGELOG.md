@@ -1,5 +1,45 @@
 # Changelog
 
+## 1.9.16 — Comprehensive Bug Fix Audit (April 2026)
+
+### Critical Fixes
+- **connection.py** — Don't retry TCP commands after timeout (prevents duplicate mutations in Ableton)
+- **connection.py** — Add `send_command_async()` to avoid blocking the asyncio event loop
+- **technique_store.py** — Thread-safe initialization with double-checked locking; add missing `_ensure_initialized()` in `increment_replay`
+- **capability_state.py** — Fix inverted mode logic: offline analyzer is now correctly more restrictive than stale analyzer
+- **server.py** — Fix thread safety: assign `_client_thread` inside lock
+- **action_ledger_models.py** — Thread-safe unique IDs with UUID session suffix
+
+### High-Priority Fixes
+- **notes.py / arrangement.py** — `modify_notes` now applies `mute`, `velocity_deviation`, `release_velocity` (previously silently dropped)
+- **clips.py** — `create_clip` checks `has_clip` first; `set_clip_loop` uses conditional ordering for shrink vs expand
+- **notes.py / arrangement.py** — Fix `transpose_notes` default `time_span` when `from_time > 0`
+- **m4l_bridge.py** — Clear stale response future after timeout
+- **composition.py** — Fix `get_phrase_grid` using section_index as clip_index
+- **devices.py** — Fix `_postflight_loaded_device` always reporting plugins as failed
+- **tracks.py** — Correct input monitoring enum (0=Off, 1=In, 2=Auto); fix `set_group_fold` allowing return tracks
+- **research.py** — Fix browser path casing (`"Instruments"` → `"instruments"`)
+- **midi_io.py** — Fix path traversal check prefix collision
+- **fabric.py** — Distinguish `measured` vs `measured_reject` decision modes
+- **critics.py** — Fix dynamics critic double-counting `over_compressed` + `flat_dynamics`
+- **refresh.py** — Deep-copy freshness objects to prevent mutation leak
+- **mix_engine/tools.py** — Fix `track_count` key (always 0) → use `len(tracks)`
+- **safety.py** — Distinguish `unknown` from `caution` for unrecognized move types
+- **translation_engine** — Fix pan values always 0 (check nested `mixer.panning`)
+- **livepilot_bridge.js** — Track selection by LiveAPI ID (not name); 4-byte UTF-8 support (emoji)
+
+### Medium Fixes
+- Version strings bumped across all files
+- `hashlib.md5` calls use `usedforsecurity=False` (FIPS compat)
+- `.mcp.json` uses portable `node` command
+- README "32 additional tools" → "29"
+- Lazy `asyncio.Lock` creation in M4L bridge
+- `_friendly_error` now includes `command_type` in output
+
+### Test Improvements
+- Tests updated to match corrected capability_state, dynamics critic, and safety logic
+- `test_default_name_detection` now imports production function instead of local copy
+
 ## 1.9.15 — V2 Engine Architecture (April 2026)
 
 ### New Engine Packages (12)
