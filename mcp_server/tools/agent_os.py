@@ -373,3 +373,28 @@ def get_taste_profile(
     outcomes = [t.get("payload", {}) for t in techniques if isinstance(t.get("payload"), dict)]
 
     return engine.get_taste_profile(outcomes)
+
+
+# ── route_request (Conductor) ──────────────────────────────────────
+
+
+@mcp.tool()
+def route_request(
+    ctx: Context,
+    request: str,
+) -> dict:
+    """Route a production request to the right engine(s).
+
+    Analyzes natural language to determine which engines should handle
+    the request, in what priority order, with what entry tools.
+
+    request: what the user wants (e.g., "make this punchier", "turn the
+             loop into a song", "make it sound like Burial")
+
+    Returns: routing plan with engine priorities, entry tools, and
+    capability requirements.
+    """
+    from . import _conductor as conductor
+
+    plan = conductor.classify_request(request)
+    return plan.to_dict()
