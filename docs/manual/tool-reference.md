@@ -1814,7 +1814,7 @@ Removes a technique from the library. Creates a backup file first for safety.
 
 ## Analyzer
 
-These 29 tools require the LivePilot Analyzer Max for Live device on the master track. They provide real-time DSP analysis, FluCoMa spectral descriptors, audio capture, deep device introspection, sample manipulation, and warp marker control. All other 139 tools work without the device.
+These 29 tools require the LivePilot Analyzer Max for Live device on the master track. They provide real-time DSP analysis, FluCoMa spectral descriptors, audio capture, deep device introspection, sample manipulation, and warp marker control. All other 207 tools work without the device.
 
 ### get_master_spectrum
 
@@ -2266,6 +2266,768 @@ Returns a 2D velocity matrix (pitch × time grid) from a .mid file for visualiza
 | `resolution` | float | 0.25 | Time grid resolution in beats |
 
 **When to use:** "Give me the piano roll data from this .mid file."
+
+---
+
+## Agent OS
+
+The Agent OS layer gives the AI a structured decision-making loop: compile goals, build a world model, evaluate moves, learn from outcomes. These tools power the autonomous reasoning behind every production decision.
+
+### compile_goal_vector
+
+Compiles a user request into a validated GoalVector — a structured representation of what you want to achieve.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `request` | string | *(required)* | The production request in plain language |
+
+**When to use:** The AI calls this internally to understand your intent before acting.
+
+---
+
+### build_world_model
+
+Builds a WorldModel snapshot of the current Ableton session — tracks, devices, clips, mixer state, and analysis data combined into one coherent picture.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | | | |
+
+**When to use:** Before making complex decisions that need full session context.
+
+---
+
+### evaluate_move
+
+Evaluates whether a production move improved the mix toward the goal by comparing before/after state.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `goal_vector` | object | *(required)* | The goal to evaluate against |
+
+**When to use:** After every significant change to verify it was an improvement.
+
+---
+
+### analyze_outcomes
+
+Analyzes accumulated outcome memories to identify user taste patterns — what you tend to keep vs. undo.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | | | |
+
+**When to use:** "What patterns do you see in my production style?"
+
+---
+
+### get_technique_card
+
+Searches for technique cards — structured production recipes with step-by-step instructions.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `query` | string | *(required)* | Search query for technique cards |
+
+**When to use:** "How do I make a sidechain pump?" or "show me a tape stop technique."
+
+---
+
+### get_taste_profile
+
+Returns your production taste profile built from outcome history — preferred loudness, harmonic style, rhythmic density, etc.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | | | |
+
+**When to use:** "What are my production preferences?" or used internally to guide decisions.
+
+---
+
+### get_turn_budget
+
+Returns a resource budget for the current agent turn — how many tool calls, how much time, what priority.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | | | |
+
+**When to use:** Used internally by the AI to manage its own resource usage.
+
+---
+
+### route_request
+
+Routes a production request to the right engine(s) — composition, mix, sound design, etc.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `request` | string | *(required)* | The production request to route |
+
+**When to use:** Used internally to dispatch your request to the appropriate specialist engine.
+
+---
+
+## Composition
+
+Composition tools analyze and manipulate the large-scale structure of your arrangement: sections, phrases, gestures, harmonic fields, and transitions.
+
+### analyze_composition
+
+Runs full composition analysis on the current Ableton session — sections, phrases, harmony, transitions.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | | | |
+
+**When to use:** "Analyze the structure of my track" or "what sections do I have?"
+
+---
+
+### get_section_graph
+
+Returns a lightweight structural overview — just sections and their boundaries without full analysis.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | | | |
+
+**When to use:** Quick structural check without the overhead of full composition analysis.
+
+---
+
+### get_phrase_grid
+
+Returns phrase boundaries for a specific section — where musical phrases begin and end.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `section_index` | int | *(required)* | Which section to analyze |
+
+**When to use:** "Where are the phrases in the verse?"
+
+---
+
+### plan_gesture
+
+Plans a musical gesture — maps abstract intent (e.g., "build tension") to concrete automation curves.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `intent` | string | *(required)* | What you want the gesture to achieve |
+
+**When to use:** "Build tension leading into the drop" or "create a fadeout."
+
+---
+
+### evaluate_composition_move
+
+Evaluates whether a composition move improved the arrangement toward the goal.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `goal_vector` | object | *(required)* | The composition goal to evaluate against |
+
+**When to use:** After structural changes to verify improvement.
+
+---
+
+### get_harmony_field
+
+Analyzes the harmonic content of a section — key, chords, voice-leading quality, tension curve.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `section_index` | int | *(required)* | Which section to analyze |
+
+**When to use:** "What's the harmony doing in the chorus?" or "analyze the chord progression."
+
+---
+
+### get_transition_analysis
+
+Analyzes transition quality between all adjacent sections — energy delta, harmonic smoothness, rhythmic continuity.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | | | |
+
+**When to use:** "How smooth are my transitions?" or "which transitions need work?"
+
+---
+
+### apply_gesture_template
+
+Applies a compound gesture template — multiple coordinated automation gestures at once (e.g., a full build-up with filter sweep, volume rise, and reverb swell).
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `template_name` | string | *(required)* | Name of the gesture template to apply |
+
+**When to use:** "Apply a build-up template" or "add a breakdown gesture."
+
+---
+
+### get_section_outcomes
+
+Returns composition move success rates grouped by section type — which changes tend to work in intros vs. drops vs. breakdowns.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | | | |
+
+**When to use:** "What composition moves work best in my drops?"
+
+---
+
+## Motif
+
+Motif tools detect and transform recurring musical patterns across your session.
+
+### get_motif_graph
+
+Detects recurring melodic and rhythmic patterns across all tracks — finds shared motifs and variations.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | | | |
+
+**When to use:** "What motifs are in my track?" or "find recurring patterns."
+
+---
+
+### transform_motif
+
+Transforms a musical motif using classical composition techniques — inversion, retrograde, augmentation, diminution, transposition.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `motif_id` | string | *(required)* | ID of the motif to transform |
+| `transform` | string | *(required)* | Transformation type |
+
+**When to use:** "Invert the main melody motif" or "create a retrograde variation."
+
+---
+
+## Research
+
+Research tools look up production techniques, analyze emotional arcs, and retrieve genre-specific tactics.
+
+### research_technique
+
+Researches a production technique — searches the device atlas and technique memory for answers.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `query` | string | *(required)* | What technique to research |
+
+**When to use:** "How do I make a lo-fi beat?" or "what's the best way to layer synths?"
+
+---
+
+### get_emotional_arc
+
+Analyzes the emotional arc of the arrangement — tension, climax, resolution mapped across time.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | | | |
+
+**When to use:** "What's the emotional shape of my track?" or "where's the climax?"
+
+---
+
+### get_style_tactics
+
+Returns production tactics for a specific artist style or genre — specific device choices, parameter ranges, rhythmic patterns.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `style` | string | *(required)* | Artist name or genre |
+
+**When to use:** "How would Burial approach this?" or "give me techno production tactics."
+
+---
+
+## Planner
+
+Planner tools transform loops into full arrangements and apply structural transformations.
+
+### plan_arrangement
+
+Transforms the current loop/session into a full arrangement blueprint — suggests sections, transitions, and energy flow.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | | | |
+
+**When to use:** "Help me turn this loop into a full track" or "plan an arrangement."
+
+---
+
+### transform_section
+
+Applies a structural transformation to the arrangement — add, remove, extend, or reorder sections.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `section_index` | int | *(required)* | Which section to transform |
+| `transform` | string | *(required)* | Transformation to apply |
+
+**When to use:** "Extend the chorus" or "add a breakdown before the drop."
+
+---
+
+## Project Brain
+
+Project Brain builds a comprehensive model of your entire session — tracks, sections, capabilities, and staleness.
+
+### build_project_brain
+
+Builds a full Project Brain snapshot from the current Ableton session.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | | | |
+
+**When to use:** "Give me a full picture of this project" or used internally for complex decisions.
+
+---
+
+### get_project_brain_summary
+
+Returns a lightweight Project Brain summary — track count, section count, stale stats.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | | | |
+
+**When to use:** Quick project health check without full brain build.
+
+---
+
+## Runtime
+
+Runtime tools probe the system's capability state, review the action ledger, and validate safety.
+
+### get_capability_state
+
+Probes the runtime and returns a capability state snapshot — what's connected, what's available.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | | | |
+
+**When to use:** "What capabilities are available right now?"
+
+---
+
+### get_action_ledger_summary
+
+Returns a summary of recent semantic moves from the action ledger — what actions were taken and their outcomes.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | | | |
+
+**When to use:** "What have you done so far?" or "show me the action log."
+
+---
+
+### get_last_move
+
+Returns the most recent semantic move from the action ledger.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | | | |
+
+**When to use:** "What was the last thing you did?"
+
+---
+
+### check_safety
+
+Validates a proposed action against safety policies before executing — prevents destructive operations.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `action` | object | *(required)* | The proposed action to validate |
+
+**When to use:** Used internally before potentially destructive operations.
+
+---
+
+## Evaluation
+
+### evaluate_with_fabric
+
+Evaluates a move using the unified Evaluation Fabric — combines spectral, perceptual, and structural critics.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `move` | object | *(required)* | The move to evaluate |
+
+**When to use:** Used internally for rigorous before/after comparison of production moves.
+
+---
+
+## Memory Fabric
+
+Memory Fabric manages anti-preferences, session memory, taste dimensions, and promotion candidates.
+
+### get_anti_preferences
+
+Returns all recorded anti-preferences — dimensions the user has repeatedly disliked.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | | | |
+
+**When to use:** Used internally to avoid repeating moves the user dislikes.
+
+---
+
+### record_anti_preference
+
+Records a user dislike for a specific dimension and direction.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `dimension` | string | *(required)* | The dimension (e.g., "brightness", "density") |
+| `direction` | string | *(required)* | The direction disliked (e.g., "high", "low") |
+
+**When to use:** When you undo something and want the AI to remember the preference.
+
+---
+
+### get_promotion_candidates
+
+Checks the session ledger for entries eligible for memory promotion — moves worth saving permanently.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | | | |
+
+**When to use:** Used internally to identify techniques worth saving to long-term memory.
+
+---
+
+### get_session_memory
+
+Returns recent session memory entries — ephemeral observations, hypotheses, decisions, and issues.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | | | |
+
+**When to use:** "What do you remember from this session?"
+
+---
+
+### add_session_memory
+
+Adds an ephemeral session memory entry — observation, hypothesis, decision, or issue.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `kind` | string | *(required)* | Entry type: observation, hypothesis, decision, issue |
+| `content` | string | *(required)* | The memory content |
+
+**When to use:** Used internally to track reasoning and decisions during a session.
+
+---
+
+### get_taste_dimensions
+
+Returns all taste dimensions — user preferences inferred from kept/undone outcome history.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | | | |
+
+**When to use:** "What are my taste preferences?" or used internally to guide decisions.
+
+---
+
+## Mix Engine
+
+Mix Engine tools analyze, diagnose, plan, and evaluate mixing decisions using spectral critics.
+
+### analyze_mix
+
+Builds full mix state and runs all critics — levels, panning, frequency balance, masking, dynamics.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | | | |
+
+**When to use:** "Analyze my mix" or "what's wrong with my mix?"
+
+---
+
+### get_mix_issues
+
+Runs all mix critics and returns detected issues only — faster than full analysis.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | | | |
+
+**When to use:** "Any mix problems?" — quick issue scan.
+
+---
+
+### plan_mix_move
+
+Returns ranked move suggestions based on current mix issues — what to fix first and how.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | | | |
+
+**When to use:** "What should I fix next in the mix?"
+
+---
+
+### evaluate_mix_move
+
+Scores a mix change using the evaluation fabric — did it improve or degrade?
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `move` | object | *(required)* | The mix move to evaluate |
+
+**When to use:** After a mix change to verify improvement.
+
+---
+
+### get_masking_report
+
+Returns a detailed frequency collision report — which tracks are fighting for the same frequencies.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | | | |
+
+**When to use:** "Are any tracks masking each other?" or "frequency collision check."
+
+---
+
+### get_mix_summary
+
+Lightweight mix overview — track count, issue count, dynamics state. Faster than full analysis.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | | | |
+
+**When to use:** Quick mix health check.
+
+---
+
+## Sound Design
+
+Sound Design tools analyze device chains, detect issues, and plan parameter changes for a track.
+
+### analyze_sound_design
+
+Builds full sound design state and runs all critics for a specific track.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | *(required)* | Which track to analyze |
+
+**When to use:** "Analyze the sound on track 3" or "what's wrong with this synth patch?"
+
+---
+
+### get_sound_design_issues
+
+Runs all sound design critics and returns detected issues only.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | *(required)* | Which track to check |
+
+**When to use:** Quick sound design issue scan for a track.
+
+---
+
+### plan_sound_design_move
+
+Returns ranked move suggestions based on current sound design issues.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | *(required)* | Which track to plan for |
+
+**When to use:** "How should I improve this sound?"
+
+---
+
+### get_patch_model
+
+Returns the structural patch model for a track's device chain — signal flow, parameter relationships.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | *(required)* | Which track to model |
+
+**When to use:** "Show me the signal flow on this track."
+
+---
+
+## Transition Engine
+
+Transition Engine tools analyze, plan, and score transitions between arrangement sections.
+
+### analyze_transition
+
+Analyzes the transition boundary between two sections — energy delta, harmonic smoothness, rhythmic continuity.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `from_section` | int | *(required)* | Source section index |
+| `to_section` | int | *(required)* | Target section index |
+
+**When to use:** "How does the verse-to-chorus transition sound?"
+
+---
+
+### plan_transition
+
+Plans a transition between two sections with concrete gestures — filter sweeps, risers, fills, volume curves.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `from_section` | int | *(required)* | Source section index |
+| `to_section` | int | *(required)* | Target section index |
+
+**When to use:** "Plan a transition from the breakdown to the drop."
+
+---
+
+### score_transition
+
+Scores the transition quality between two sections on multiple dimensions.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `from_section` | int | *(required)* | Source section index |
+| `to_section` | int | *(required)* | Target section index |
+
+**When to use:** "Rate this transition" or "how smooth is the intro-to-verse transition?"
+
+---
+
+## Reference Engine
+
+Reference Engine tools build target profiles from reference tracks and plan moves to close gaps.
+
+### build_reference_profile
+
+Builds a reference profile from an audio file or a style/genre name.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `source` | string | *(required)* | Path to audio file or style/genre name |
+
+**When to use:** "Use this track as a reference" or "target a deep house sound."
+
+---
+
+### analyze_reference_gaps
+
+Analyzes gaps between your project and a reference profile.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `reference_id` | string | *(required)* | ID of the reference profile |
+
+**When to use:** "How does my track compare to the reference?"
+
+---
+
+### plan_reference_moves
+
+Plans concrete moves to close gaps between your project and a reference.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `reference_id` | string | *(required)* | ID of the reference profile |
+
+**When to use:** "What should I change to match the reference?"
+
+---
+
+## Translation Engine
+
+Translation Engine checks how your mix will sound on different playback systems.
+
+### check_translation
+
+Checks playback robustness — mono safety, small speaker simulation, harshness detection.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | | | |
+
+**When to use:** "Will this sound good on phone speakers?" or "check mono compatibility."
+
+---
+
+### get_translation_issues
+
+Returns just the translation issues without the full report.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | | | |
+
+**When to use:** Quick translation issue scan.
+
+---
+
+## Performance Engine
+
+Performance Engine tools support live performance — scene management, safe moves, and handoffs.
+
+### get_performance_state
+
+Returns current live performance overview — active scenes, energy level, available safe moves.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | | | |
+
+**When to use:** "What's happening in the live set?" or "show me the performance state."
+
+---
+
+### get_performance_safe_moves
+
+Returns available safe moves for live performance — changes that won't cause audio glitches or awkward silence.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | | | |
+
+**When to use:** "What can I safely change right now?"
+
+---
+
+### plan_scene_handoff
+
+Plans a safe transition between two scenes with timing and crossfade suggestions.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `from_scene` | int | *(required)* | Current scene index |
+| `to_scene` | int | *(required)* | Target scene index |
+
+**When to use:** "Plan a transition from scene 2 to scene 5."
 
 ---
 

@@ -1,6 +1,6 @@
 # LivePilot Tool Reference
 
-178 MCP tools across 17 domains. Tools marked with [M4L] require the LivePilot Analyzer device on the master track. Tools marked with [M4L*] use M4L data when available but work without it.
+236 MCP tools across 32 domains. Tools marked with [M4L] require the LivePilot Analyzer device on the master track. Tools marked with [M4L*] use M4L data when available but work without it.
 
 ## Transport (12 tools)
 
@@ -278,6 +278,139 @@ Offline audio analysis — no Ableton connection required.
 | `import_midi_to_clip` | Load .mid file into session clip | `file_path`, `track_index`, `clip_index` |
 | `analyze_midi_file` | Offline analysis of any .mid file | `file_path` |
 | `extract_piano_roll` | 2D velocity matrix from .mid file | `file_path` |
+
+## Agent OS (8 tools)
+
+| Tool | Description | Required Params |
+|------|-------------|-----------------|
+| `compile_goal_vector` | Compile a user request into a validated GoalVector | `request` |
+| `build_world_model` | Build a WorldModel snapshot of the current Ableton session | (none) |
+| `evaluate_move` | Evaluate whether a production move improved the mix toward the goal | `goal_vector` |
+| `analyze_outcomes` | Analyze accumulated outcome memories to identify user taste patterns | (none) |
+| `get_technique_card` | Search for technique cards — structured production recipes | `query` |
+| `get_taste_profile` | Get the user's production taste profile from outcome history | (none) |
+| `get_turn_budget` | Get a resource budget for the current agent turn | (none) |
+| `route_request` | Route a production request to the right engine(s) | `request` |
+
+## Composition (9 tools)
+
+| Tool | Description | Required Params |
+|------|-------------|-----------------|
+| `analyze_composition` | Run full composition analysis on the current Ableton session | (none) |
+| `get_section_graph` | Get just the section graph — lightweight structural overview | (none) |
+| `get_phrase_grid` | Get phrase boundaries for a specific section | `section_index` |
+| `plan_gesture` | Plan a musical gesture — map abstract intent to concrete automation | `intent` |
+| `evaluate_composition_move` | Evaluate whether a composition move improved the arrangement | `goal_vector` |
+| `get_harmony_field` | Analyze the harmonic content of a section | `section_index` |
+| `get_transition_analysis` | Analyze transition quality between all adjacent sections | (none) |
+| `apply_gesture_template` | Apply a compound gesture template — multiple coordinated automation gestures | `template_name` |
+| `get_section_outcomes` | Get composition move success rates grouped by section type | (none) |
+
+## Motif (2 tools)
+
+| Tool | Description | Required Params |
+|------|-------------|-----------------|
+| `get_motif_graph` | Detect recurring melodic and rhythmic patterns across all tracks | (none) |
+| `transform_motif` | Transform a musical motif using classical composition techniques | `motif_id`, `transform` |
+
+## Research (3 tools)
+
+| Tool | Description | Required Params |
+|------|-------------|-----------------|
+| `research_technique` | Research a production technique — search device atlas + memory | `query` |
+| `get_emotional_arc` | Analyze the emotional arc of the arrangement | (none) |
+| `get_style_tactics` | Get production tactics for a specific artist style or genre | `style` |
+
+## Planner (2 tools)
+
+| Tool | Description | Required Params |
+|------|-------------|-----------------|
+| `plan_arrangement` | Transform the current loop/session into a full arrangement blueprint | (none) |
+| `transform_section` | Apply a structural transformation to the arrangement | `section_index`, `transform` |
+
+## Project Brain (2 tools)
+
+| Tool | Description | Required Params |
+|------|-------------|-----------------|
+| `build_project_brain` | Build a full Project Brain snapshot from the current Ableton session | (none) |
+| `get_project_brain_summary` | Get a lightweight Project Brain summary | (none) |
+
+## Runtime (4 tools)
+
+| Tool | Description | Required Params |
+|------|-------------|-----------------|
+| `get_capability_state` | Probe the runtime and return a capability state snapshot | (none) |
+| `get_action_ledger_summary` | Return a summary of recent semantic moves from the action ledger | (none) |
+| `get_last_move` | Return the most recent semantic move from the action ledger | (none) |
+| `check_safety` | Validate a proposed action against safety policies before executing | `action` |
+
+## Evaluation (1 tool)
+
+| Tool | Description | Required Params |
+|------|-------------|-----------------|
+| `evaluate_with_fabric` | Evaluate a move using the unified Evaluation Fabric | `move` |
+
+## Memory Fabric (6 tools)
+
+| Tool | Description | Required Params |
+|------|-------------|-----------------|
+| `get_anti_preferences` | Return all recorded anti-preferences | (none) |
+| `record_anti_preference` | Record a user dislike for a dimension+direction | `dimension`, `direction` |
+| `get_promotion_candidates` | Check the session ledger for entries eligible for memory promotion | (none) |
+| `get_session_memory` | Return recent session memory entries | (none) |
+| `add_session_memory` | Add an ephemeral session memory entry | `kind`, `content` |
+| `get_taste_dimensions` | Return all taste dimensions — user preferences inferred from outcomes | (none) |
+
+## Mix Engine (6 tools)
+
+| Tool | Description | Required Params |
+|------|-------------|-----------------|
+| `analyze_mix` | Build full mix state and run all critics | (none) |
+| `get_mix_issues` | Run all mix critics and return detected issues only | (none) |
+| `plan_mix_move` | Get ranked move suggestions based on current mix issues | (none) |
+| `evaluate_mix_move` | Score a mix change using the evaluation fabric | `move` |
+| `get_masking_report` | Get detailed frequency collision report | (none) |
+| `get_mix_summary` | Lightweight mix overview — track count, issue count, dynamics state | (none) |
+
+## Sound Design (4 tools)
+
+| Tool | Description | Required Params |
+|------|-------------|-----------------|
+| `analyze_sound_design` | Build full sound design state and run all critics for a track | `track_index` |
+| `get_sound_design_issues` | Run all sound design critics and return detected issues only | `track_index` |
+| `plan_sound_design_move` | Get ranked move suggestions based on current sound design issues | `track_index` |
+| `get_patch_model` | Get the structural patch model for a track's device chain | `track_index` |
+
+## Transition Engine (3 tools)
+
+| Tool | Description | Required Params |
+|------|-------------|-----------------|
+| `analyze_transition` | Analyze the transition boundary between two sections | `from_section`, `to_section` |
+| `plan_transition` | Plan a transition between two sections with concrete gestures | `from_section`, `to_section` |
+| `score_transition` | Score the transition quality between two sections | `from_section`, `to_section` |
+
+## Reference Engine (3 tools)
+
+| Tool | Description | Required Params |
+|------|-------------|-----------------|
+| `build_reference_profile` | Build a reference profile from an audio file or style/genre name | `source` |
+| `analyze_reference_gaps` | Analyze gaps between your project and a reference | `reference_id` |
+| `plan_reference_moves` | Plan concrete moves to close reference gaps | `reference_id` |
+
+## Translation Engine (2 tools)
+
+| Tool | Description | Required Params |
+|------|-------------|-----------------|
+| `check_translation` | Check playback robustness — mono safety, small speakers, harshness | (none) |
+| `get_translation_issues` | Get just the translation issues without the full report | (none) |
+
+## Performance Engine (3 tools)
+
+| Tool | Description | Required Params |
+|------|-------------|-----------------|
+| `get_performance_state` | Get current live performance overview — scenes, energy, safe moves | (none) |
+| `get_performance_safe_moves` | Get available safe moves for live performance | (none) |
+| `plan_scene_handoff` | Plan a safe transition between two scenes | `from_scene`, `to_scene` |
 
 ## Track Index Convention
 

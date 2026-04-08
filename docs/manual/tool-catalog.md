@@ -271,3 +271,136 @@
 | `import_midi_to_clip` | Import .mid into session clip |
 | `analyze_midi_file` | Offline MIDI analysis |
 | `extract_piano_roll` | 2D velocity matrix extraction |
+
+## Agent OS (8)
+
+| Tool | Description |
+|------|-------------|
+| `compile_goal_vector` | Compile a user request into a validated GoalVector |
+| `build_world_model` | Build a WorldModel snapshot of the current Ableton session |
+| `evaluate_move` | Evaluate whether a production move improved the mix toward the goal |
+| `analyze_outcomes` | Analyze accumulated outcome memories to identify user taste patterns |
+| `get_technique_card` | Search for technique cards — structured production recipes |
+| `get_taste_profile` | Get the user's production taste profile from outcome history |
+| `get_turn_budget` | Get a resource budget for the current agent turn |
+| `route_request` | Route a production request to the right engine(s) |
+
+## Composition (9)
+
+| Tool | Description |
+|------|-------------|
+| `analyze_composition` | Run full composition analysis on the current session |
+| `get_section_graph` | Lightweight structural overview — sections and boundaries |
+| `get_phrase_grid` | Get phrase boundaries for a specific section |
+| `plan_gesture` | Map abstract intent to concrete automation gestures |
+| `evaluate_composition_move` | Evaluate whether a composition move improved the arrangement |
+| `get_harmony_field` | Analyze harmonic content — key, chords, voice-leading, tension |
+| `get_transition_analysis` | Analyze transition quality between adjacent sections |
+| `apply_gesture_template` | Apply a compound gesture template — coordinated automation |
+| `get_section_outcomes` | Composition move success rates grouped by section type |
+
+## Motif (2)
+
+| Tool | Description |
+|------|-------------|
+| `get_motif_graph` | Detect recurring melodic and rhythmic patterns across all tracks |
+| `transform_motif` | Transform a motif using classical composition techniques |
+
+## Research (3)
+
+| Tool | Description |
+|------|-------------|
+| `research_technique` | Research a production technique — search device atlas + memory |
+| `get_emotional_arc` | Analyze the emotional arc of the arrangement |
+| `get_style_tactics` | Get production tactics for a specific artist style or genre |
+
+## Planner (2)
+
+| Tool | Description |
+|------|-------------|
+| `plan_arrangement` | Transform the current loop/session into an arrangement blueprint |
+| `transform_section` | Apply a structural transformation to the arrangement |
+
+## Project Brain (2)
+
+| Tool | Description |
+|------|-------------|
+| `build_project_brain` | Build a full Project Brain snapshot from the current session |
+| `get_project_brain_summary` | Lightweight Project Brain summary — track count, sections, stale stats |
+
+## Runtime (4)
+
+| Tool | Description |
+|------|-------------|
+| `get_capability_state` | Probe the runtime and return a capability state snapshot |
+| `get_action_ledger_summary` | Summary of recent semantic moves from the action ledger |
+| `get_last_move` | Most recent semantic move from the action ledger |
+| `check_safety` | Validate a proposed action against safety policies |
+
+## Evaluation (1)
+
+| Tool | Description |
+|------|-------------|
+| `evaluate_with_fabric` | Evaluate a move using the unified Evaluation Fabric |
+
+## Memory Fabric (6)
+
+| Tool | Description |
+|------|-------------|
+| `get_anti_preferences` | Return all recorded anti-preferences |
+| `record_anti_preference` | Record a user dislike for a dimension+direction |
+| `get_promotion_candidates` | Check session ledger for entries eligible for memory promotion |
+| `get_session_memory` | Return recent session memory entries |
+| `add_session_memory` | Add an ephemeral session memory entry |
+| `get_taste_dimensions` | Return all taste dimensions — preferences inferred from outcomes |
+
+## Mix Engine (6)
+
+| Tool | Description |
+|------|-------------|
+| `analyze_mix` | Build full mix state and run all critics |
+| `get_mix_issues` | Run all mix critics and return detected issues only |
+| `plan_mix_move` | Get ranked move suggestions based on current mix issues |
+| `evaluate_mix_move` | Score a mix change using the evaluation fabric |
+| `get_masking_report` | Get detailed frequency collision report |
+| `get_mix_summary` | Lightweight mix overview — track count, issue count, dynamics |
+
+## Sound Design (4)
+
+| Tool | Description |
+|------|-------------|
+| `analyze_sound_design` | Build full sound design state and run all critics for a track |
+| `get_sound_design_issues` | Run all sound design critics and return detected issues |
+| `plan_sound_design_move` | Get ranked move suggestions for sound design issues |
+| `get_patch_model` | Get the structural patch model for a track's device chain |
+
+## Transition Engine (3)
+
+| Tool | Description |
+|------|-------------|
+| `analyze_transition` | Analyze the transition boundary between two sections |
+| `plan_transition` | Plan a transition with concrete gestures |
+| `score_transition` | Score the transition quality between two sections |
+
+## Reference Engine (3)
+
+| Tool | Description |
+|------|-------------|
+| `build_reference_profile` | Build a reference profile from audio file or style/genre name |
+| `analyze_reference_gaps` | Analyze gaps between your project and a reference |
+| `plan_reference_moves` | Plan concrete moves to close reference gaps |
+
+## Translation Engine (2)
+
+| Tool | Description |
+|------|-------------|
+| `check_translation` | Check playback robustness — mono safety, small speakers, harshness |
+| `get_translation_issues` | Get just the translation issues without the full report |
+
+## Performance Engine (3)
+
+| Tool | Description |
+|------|-------------|
+| `get_performance_state` | Current live performance overview — scenes, energy, safe moves |
+| `get_performance_safe_moves` | Available safe moves for live performance |
+| `plan_scene_handoff` | Plan a safe transition between two scenes |
