@@ -22,7 +22,7 @@
 ## Key Rules
 - ALL Live Object Model (LOM) calls must execute on Ableton's main thread via schedule_message queue
 - Live 12 minimum — use modern note API (add_new_notes, get_notes_extended, apply_note_modifications)
-- 194 tools across 17 domains: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, analyzer, automation, theory, generative, harmony, midi_io, perception
+- 197 tools across 21 domains: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, analyzer, automation, theory, generative, harmony, midi_io, perception
 - JSON over TCP, newline-delimited, port 9878
 - Structured errors with codes: INDEX_ERROR, NOT_FOUND, INVALID_PARAM, STATE_ERROR, TIMEOUT, INTERNAL
 

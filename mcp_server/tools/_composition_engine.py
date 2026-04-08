@@ -1247,3 +1247,121 @@ def run_transition_critic(
                 ))
 
     return issues
+
+
+# ── Emotional Arc Critic (Round 3) ──────────────────────────────────
+
+def run_emotional_arc_critic(
+    sections: list[SectionNode],
+    harmony_fields: Optional[list["HarmonyField"]] = None,
+) -> list[CompositionIssue]:
+    """Analyze whether the arrangement tells an emotional story.
+
+    Builds a tension curve from energy, harmonic instability, and density,
+    then checks for common arc problems: monotone, all-climax, build
+    without payoff, no resolution.
+    """
+    issues = []
+    if len(sections) < 3:
+        return issues  # Need enough sections to judge an arc
+
+    # Build tension curve: composite of energy, density, and harmonic instability
+    harmony_map = {}
+    if harmony_fields:
+        harmony_map = {hf.section_id: hf for hf in harmony_fields}
+
+    tension_curve: list[float] = []
+    for section in sections:
+        energy_component = section.energy
+        density_component = section.density
+
+        # Add harmonic instability if available
+        hf = harmony_map.get(section.section_id)
+        instability = hf.instability if hf else 0.3  # neutral default
+
+        tension = (energy_component * 0.5 + density_component * 0.3 + instability * 0.2)
+        tension_curve.append(round(tension, 3))
+
+    # 1. Monotone arc — tension doesn't vary enough
+    tension_range = max(tension_curve) - min(tension_curve)
+    if tension_range < 0.15:
+        issues.append(CompositionIssue(
+            issue_type="monotone_arc",
+            critic="emotional_arc",
+            severity=0.7,
+            confidence=0.70,
+            evidence=f"Tension range: {tension_range:.2f} — arrangement feels static",
+            recommended_moves=[
+                "add_breakdown_section", "create_energy_contrast",
+                "thin_one_section", "add_build_before_peak",
+            ],
+        ))
+
+    # 2. All-climax — high tension everywhere, no rest
+    high_tension_count = sum(1 for t in tension_curve if t > 0.7)
+    if high_tension_count > len(tension_curve) * 0.6:
+        issues.append(CompositionIssue(
+            issue_type="all_climax",
+            critic="emotional_arc",
+            severity=0.6,
+            confidence=0.65,
+            evidence=f"{high_tension_count}/{len(tension_curve)} sections have tension > 0.7 — no rest",
+            recommended_moves=[
+                "add_low_energy_section", "create_breakdown",
+                "reduce_density_in_verse", "strip_back_intro",
+            ],
+        ))
+
+    # 3. Build without payoff — tension rises then doesn't reach peak
+    peak_idx = tension_curve.index(max(tension_curve))
+    if peak_idx < len(tension_curve) - 1:
+        # Check if there's a build (rising tension) before the peak
+        has_build = False
+        for i in range(1, peak_idx + 1):
+            if tension_curve[i] > tension_curve[i - 1] + 0.1:
+                has_build = True
+                break
+
+        if not has_build and len(tension_curve) > 4:
+            issues.append(CompositionIssue(
+                issue_type="no_clear_build",
+                critic="emotional_arc",
+                severity=0.5,
+                confidence=0.55,
+                evidence="No gradual tension increase before peak — peak arrives without anticipation",
+                recommended_moves=[
+                    "add_build_section", "tension_ratchet_gesture",
+                    "gradual_element_addition", "harmonic_tint_rise",
+                ],
+            ))
+
+    # 4. No resolution — tension stays high at the end
+    if len(tension_curve) >= 3:
+        final_tension = tension_curve[-1]
+        peak_tension = max(tension_curve)
+        if final_tension > peak_tension * 0.8 and peak_tension > 0.5:
+            issues.append(CompositionIssue(
+                issue_type="no_resolution",
+                critic="emotional_arc",
+                severity=0.5,
+                confidence=0.60,
+                evidence=f"Final tension ({final_tension:.2f}) nearly as high as peak ({peak_tension:.2f}) — no release",
+                recommended_moves=[
+                    "add_outro", "create_energy_drop_at_end",
+                    "outro_decay_dissolve_gesture", "strip_elements_gradually",
+                ],
+            ))
+
+    # 5. Peak too early — climax in first third
+    if peak_idx < len(tension_curve) / 3 and len(tension_curve) > 4:
+        issues.append(CompositionIssue(
+            issue_type="peak_too_early",
+            critic="emotional_arc",
+            severity=0.5,
+            confidence=0.55,
+            evidence=f"Peak tension at section {peak_idx + 1}/{len(tension_curve)} — climax in first third",
+            recommended_moves=[
+                "move_peak_elements_later", "add_second_bigger_climax",
+                "reorder_sections", "save_hook_reveal_for_later",
+            ],
+        ))
