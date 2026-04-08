@@ -32,7 +32,7 @@ A flat tool list lets the AI press buttons. LivePilot's three layers give it con
 
 This turns "set EQ band 3 to -4 dB" into "cut 400 Hz by 4 dB, then read the spectrum to confirm the mud is actually reduced."
 
-## The 178 Tools — What Each One Does
+## The 236 Tools — What Each One Does
 
 ### Transport (12) — Playback, tempo, global state, diagnostics
 
