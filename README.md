@@ -105,7 +105,7 @@ The M4L Analyzer sits on the master track. UDP 9880 carries spectral data
 from Max to the server. OSC 9881 sends commands back.
 
 > [!TIP]
-> All 149 core tools work without the analyzer — it adds 29 more and closes the feedback loop.
+> All 207 core tools work without the analyzer — it adds 29 more and closes the feedback loop.
 
 ```
 SPECTRAL ─────── 8-band frequency decomposition (sub → air)
