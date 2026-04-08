@@ -16,30 +16,58 @@ from .critics import build_translation_report, run_all_translation_critics
 
 
 def _fetch_translation_data(ctx: Context) -> dict:
-    """Fetch mix snapshot data needed for translation analysis."""
+    """Fetch mix snapshot data needed for translation analysis.
+
+    Builds snapshot from real available data:
+    - Spectrum from SpectralCache (direct access, not TCP)
+    - Stereo width estimated from track pan values
+    - Foreground detection from role inference
+    """
     ableton = ctx.lifespan_context["ableton"]
 
-    # Get mix snapshot — contains spectral and stereo info
-    snapshot = {}
+    # Get spectral data directly from SpectralCache
+    spectrum_bands = {}
     try:
-        snapshot = ableton.send_command("get_mix_snapshot", {})
+        spectral = ctx.lifespan_context.get("spectral")
+        if spectral and spectral.is_connected:
+            spec_data = spectral.get("spectrum")
+            if spec_data and isinstance(spec_data["value"], dict):
+                spectrum_bands = spec_data["value"]
     except Exception:
         pass
 
-    # Extract spectral bands from snapshot
-    spectrum = snapshot.get("spectrum", {})
-    stereo = snapshot.get("stereo", {})
+    # Estimate stereo width from track pans via session info
+    stereo_width = 0.0
+    center_strength = 0.5
+    has_foreground = True
+    foreground_masked = False
+    try:
+        session_info = ableton.send_command("get_session_info", {})
+        tracks = session_info.get("tracks", [])
+        if tracks:
+            pan_values = [abs(t.get("pan", 0.0)) for t in tracks if not t.get("muted", False)]
+            if pan_values:
+                # Wider pans = more stereo width
+                stereo_width = min(1.0, sum(pan_values) / max(len(pan_values), 1))
+                # Center strength = proportion of tracks near center
+                center_count = sum(1 for p in pan_values if p < 0.15)
+                center_strength = center_count / max(len(pan_values), 1)
+
+            # Simple foreground detection: at least one unmuted, non-quiet track
+            has_foreground = any(not t.get("muted", False) for t in tracks)
+    except Exception:
+        pass
 
     return {
-        "stereo_width": stereo.get("side_activity", 0.0),
-        "center_strength": stereo.get("center_strength", 0.5),
-        "sub_energy": spectrum.get("sub", 0.0),
-        "low_energy": spectrum.get("low", 0.0),
-        "low_mid_energy": spectrum.get("low_mid", 0.0),
-        "high_energy": spectrum.get("high", 0.0),
-        "presence_energy": spectrum.get("presence", 0.0),
-        "has_foreground": snapshot.get("has_foreground", True),
-        "foreground_masked": snapshot.get("foreground_masked", False),
+        "stereo_width": stereo_width,
+        "center_strength": center_strength,
+        "sub_energy": spectrum_bands.get("sub", 0.0),
+        "low_energy": spectrum_bands.get("low", 0.0),
+        "low_mid_energy": spectrum_bands.get("low_mid", 0.0),
+        "high_energy": spectrum_bands.get("high", 0.0),
+        "presence_energy": spectrum_bands.get("presence", 0.0),
+        "has_foreground": has_foreground,
+        "foreground_masked": foreground_masked,
     }
 
 

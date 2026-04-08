@@ -15,7 +15,10 @@ from typing import Optional
 from fastmcp import Context
 
 from ..server import mcp
+from ..memory.technique_store import TechniqueStore
 from . import _research_engine as research_engine
+
+_memory_store = TechniqueStore()
 
 
 def _get_ableton(ctx: Context):
@@ -50,37 +53,33 @@ def research_technique(
     # 1. Analyze query to predict relevant devices
     query_info = research_engine.analyze_query(query)
 
-    # 2. Search device atlas for relevant devices
+    # 2. Search device atlas for relevant devices (Fix 2: correct params)
     device_atlas_results = []
     for device_name in query_info.get("likely_devices", [])[:5]:
         try:
-            ref = ableton.send_command("search_browser", {"query": device_name, "category": "instruments"})
+            ref = ableton.send_command("search_browser", {
+                "path": "Instruments",
+                "name_filter": device_name,
+            })
             if ref and not ref.get("error"):
                 device_atlas_results.append(ref)
         except Exception:
             pass
 
-    # 3. Search memory for related techniques
+    # 3. Search memory for related techniques (direct TechniqueStore)
     memory_results = []
     try:
-        # Search technique cards
-        mem = ableton.send_command("memory_list", {
-            "type": "technique_card",
-            "limit": 10,
-            "sort_by": "updated_at",
-        })
-        memory_results.extend(mem.get("techniques", []))
+        memory_results.extend(
+            _memory_store.list_techniques(type_filter="technique_card", sort_by="updated_at", limit=10)
+        )
     except Exception:
         pass
 
     try:
-        # Also search research memories
-        mem = ableton.send_command("memory_list", {
-            "type": "research",
-            "limit": 5,
-            "sort_by": "updated_at",
-        })
-        memory_results.extend(mem.get("techniques", []))
+        # "research" is not a valid type in TechniqueStore — search broadly
+        memory_results.extend(
+            _memory_store.search(query=query, limit=5)
+        )
     except Exception:
         pass
 
@@ -131,19 +130,24 @@ def get_emotional_arc(ctx: Context) -> dict:
         }
 
     # Try to build harmony fields for richer analysis
+    # Use theory engine directly instead of TCP call to MCP tool
+    from . import _theory_engine as theory_engine
+
     harmony_fields = []
     for i, section in enumerate(sections):
         hf = engine.HarmonyField(section_id=section.section_id)
-        # Try to get harmony data
+        # Try to get harmony data by fetching notes then running engine
         for t_idx in section.tracks_active[:3]:
             try:
-                si = ableton.send_command("identify_scale", {
+                result = ableton.send_command("get_notes", {
                     "track_index": t_idx, "clip_index": i,
                 })
-                if si.get("top_match"):
-                    hf.key = si["top_match"].get("tonic", "")
-                    hf.mode = si["top_match"].get("mode", "")
-                    hf.confidence = si["top_match"].get("confidence", 0.0)
+                notes = result.get("notes", [])
+                if notes:
+                    detected = theory_engine.detect_key(notes, mode_detection=True)
+                    hf.key = detected.get("tonic_name", "")
+                    hf.mode = detected.get("mode", "")
+                    hf.confidence = detected.get("confidence", 0.0)
                     break
             except Exception:
                 continue
@@ -193,16 +197,12 @@ def get_style_tactics(
     if not artist_or_genre or not artist_or_genre.strip():
         return {"error": "artist_or_genre cannot be empty"}
 
-    ableton = _get_ableton(ctx)
-
-    # Search user memory for saved tactics
+    # Search user memory for saved tactics (direct TechniqueStore)
     memory_tactics = []
     try:
-        mem = ableton.send_command("memory_list", {
-            "type": "style_tactic",
-            "limit": 10,
-        })
-        memory_tactics = mem.get("techniques", [])
+        memory_tactics = _memory_store.search(
+            query=artist_or_genre, limit=10,
+        )
     except Exception:
         pass
 

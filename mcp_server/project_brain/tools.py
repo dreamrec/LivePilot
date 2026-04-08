@@ -78,22 +78,22 @@ def build_project_brain(ctx: Context) -> dict:
         except Exception:
             pass
 
-    # 6. Probe capabilities
+    # 6. Probe capabilities (direct SpectralCache access, not TCP)
     analyzer_ok = False
     analyzer_fresh = False
     flucoma_ok = False
     try:
-        # Check if M4L bridge is responding via spectral cache
-        bridge = ctx.lifespan_context.get("spectral_cache")
-        if bridge:
-            analyzer_ok = True
-            analyzer_fresh = not bridge.is_stale() if hasattr(bridge, "is_stale") else False
-    except Exception:
-        pass
-
-    try:
-        flucoma_resp = ableton.send_command("check_flucoma")
-        flucoma_ok = flucoma_resp.get("available", False)
+        spectral = ctx.lifespan_context.get("spectral")
+        if spectral:
+            analyzer_ok = spectral.is_connected
+            if analyzer_ok:
+                snap = spectral.get("spectrum")
+                analyzer_fresh = snap is not None
+            # Check FluCoMa by looking for any FluCoMa stream data
+            for key in ("spectral_shape", "mel_bands", "chroma", "onset", "novelty", "loudness"):
+                if spectral.get(key) is not None:
+                    flucoma_ok = True
+                    break
     except Exception:
         pass
 

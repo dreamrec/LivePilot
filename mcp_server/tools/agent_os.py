@@ -15,7 +15,10 @@ from typing import Optional
 from fastmcp import Context
 
 from ..server import mcp
+from ..memory.technique_store import TechniqueStore
 from . import _agent_os_engine as engine
+
+_memory_store = TechniqueStore()
 
 
 def _get_ableton(ctx: Context):
@@ -268,25 +271,25 @@ def analyze_outcomes(
     The more outcomes stored (via memory_learn type="outcome"),
     the better the taste analysis becomes.
     """
-    ableton = _get_ableton(ctx)
-
-    # Fetch outcome memories
+    # Fetch outcome memories directly from TechniqueStore
     try:
-        memory_result = ableton.send_command("memory_list", {
-            "type": "outcome",
-            "limit": limit,
-            "sort_by": "updated_at",
-        })
-        techniques = memory_result.get("techniques", [])
+        techniques = _memory_store.list_techniques(
+            type_filter="outcome", sort_by="updated_at", limit=limit,
+        )
     except Exception:
         techniques = []
 
-    # Extract payloads from techniques
+    # Extract payloads from full technique records
     outcomes = []
     for t in techniques:
-        payload = t.get("payload", {})
-        if isinstance(payload, dict):
-            outcomes.append(payload)
+        # list_techniques returns compact summaries; get full record for payload
+        try:
+            full = _memory_store.get(t["id"])
+            payload = full.get("payload", {})
+            if isinstance(payload, dict):
+                outcomes.append(payload)
+        except Exception:
+            pass
 
     return engine.analyze_outcome_history(outcomes)
 
@@ -308,29 +311,30 @@ def get_technique_card(
     query: search term (e.g., "wider pad", "punchy kick", "sidechain bass")
     limit: max results
     """
-    ableton = _get_ableton(ctx)
-
+    # Search technique cards directly from TechniqueStore
     try:
-        memory_result = ableton.send_command("memory_recall", {
-            "query": query,
-            "type": "technique_card",
-            "limit": limit,
-        })
-        techniques = memory_result.get("techniques", [])
+        techniques = _memory_store.search(
+            query=query, type_filter="technique_card", limit=limit,
+        )
     except Exception:
         techniques = []
 
     cards = []
     for t in techniques:
-        payload = t.get("payload", {})
-        if isinstance(payload, dict):
-            cards.append({
-                "id": t.get("id"),
-                "name": t.get("name"),
-                "card": payload,
-                "rating": t.get("rating", 0),
-                "replay_count": t.get("replay_count", 0),
-            })
+        # search() returns summaries without payload; get full record
+        try:
+            full = _memory_store.get(t["id"])
+            payload = full.get("payload", {})
+            if isinstance(payload, dict):
+                cards.append({
+                    "id": t.get("id"),
+                    "name": t.get("name"),
+                    "card": payload,
+                    "rating": t.get("rating", 0),
+                    "replay_count": t.get("replay_count", 0),
+                })
+        except Exception:
+            pass
 
     return {
         "query": query,
@@ -358,19 +362,23 @@ def get_taste_profile(
     Returns: {taste_vector, preferred_dimensions, avoided_dimensions,
               keep_rate, sample_size}
     """
-    ableton = _get_ableton(ctx)
-
+    # Fetch outcome memories directly from TechniqueStore
     try:
-        memory_result = ableton.send_command("memory_list", {
-            "type": "outcome",
-            "limit": limit,
-            "sort_by": "updated_at",
-        })
-        techniques = memory_result.get("techniques", [])
+        techniques = _memory_store.list_techniques(
+            type_filter="outcome", sort_by="updated_at", limit=limit,
+        )
     except Exception:
         techniques = []
 
-    outcomes = [t.get("payload", {}) for t in techniques if isinstance(t.get("payload"), dict)]
+    outcomes = []
+    for t in techniques:
+        try:
+            full = _memory_store.get(t["id"])
+            payload = full.get("payload", {})
+            if isinstance(payload, dict):
+                outcomes.append(payload)
+        except Exception:
+            pass
 
     return engine.get_taste_profile(outcomes)
 

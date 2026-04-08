@@ -35,16 +35,22 @@ def _fetch_mix_data(ctx: Context) -> dict:
         except Exception:
             continue
 
-    # Try to get spectrum and RMS data
+    # Get spectrum and RMS data directly from SpectralCache (not TCP)
     spectrum = None
     rms_data = None
     try:
-        spectrum = ableton.send_command("get_master_spectrum", {})
-    except Exception:
-        pass
-    try:
-        rms_result = ableton.send_command("get_master_rms", {})
-        rms_data = rms_result.get("rms") if isinstance(rms_result, dict) else None
+        spectral = ctx.lifespan_context.get("spectral")
+        if spectral and spectral.is_connected:
+            spec_data = spectral.get("spectrum")
+            if spec_data:
+                spectrum = {"bands": spec_data["value"]}
+                key_data = spectral.get("key")
+                if key_data:
+                    spectrum["detected_key"] = key_data["value"]
+
+            rms_snap = spectral.get("rms")
+            if rms_snap:
+                rms_data = rms_snap["value"] if isinstance(rms_snap["value"], dict) else rms_snap["value"]
     except Exception:
         pass
 

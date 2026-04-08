@@ -41,22 +41,23 @@ def _fetch_project_snapshot(ctx: Context) -> dict:
         "harmonic_character": "",
     }
 
-    # Try to get master RMS / loudness
+    # Get master RMS / loudness and spectrum from SpectralCache directly
     try:
-        rms_result = ableton.send_command("get_master_rms", {})
-        rms = rms_result.get("rms", 0.0) if isinstance(rms_result, dict) else 0.0
-        # Approximate LUFS from RMS (rough heuristic)
-        if rms > 0:
-            import math
-            snapshot["loudness"] = round(20 * math.log10(max(rms, 1e-10)), 2)
-    except Exception:
-        pass
+        spectral = ctx.lifespan_context.get("spectral")
+        if spectral and spectral.is_connected:
+            rms_snap = spectral.get("rms")
+            if rms_snap:
+                rms = rms_snap["value"] if isinstance(rms_snap["value"], (int, float)) else 0.0
+                if rms > 0:
+                    import math
+                    snapshot["loudness"] = round(20 * math.log10(max(rms, 1e-10)), 2)
 
-    # Try to get spectrum data
-    try:
-        spectrum = ableton.send_command("get_master_spectrum", {})
-        if isinstance(spectrum, dict):
-            snapshot["spectral"] = spectrum
+            spec_data = spectral.get("spectrum")
+            if spec_data:
+                snapshot["spectral"] = {"bands": spec_data["value"]}
+                key_data = spectral.get("key")
+                if key_data:
+                    snapshot["spectral"]["detected_key"] = key_data["value"]
     except Exception:
         pass
 
