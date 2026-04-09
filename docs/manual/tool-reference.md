@@ -1,6 +1,6 @@
 # Tool Reference
 
-LivePilot gives you 237 tools that control every part of Ableton Live 12. You don't call these tools directly -- you describe what you want in plain language, and the AI picks the right tools behind the scenes. But knowing what's available helps you ask better questions and understand what's happening when the AI works on your session.
+LivePilot gives you 255 tools that control every part of Ableton Live 12. You don't call these tools directly -- you describe what you want in plain language, and the AI picks the right tools behind the scenes. But knowing what's available helps you ask better questions and understand what's happening when the AI works on your session.
 
 This chapter covers every tool, grouped by what it does. Each entry tells you the tool name, what it does in practice, what parameters it accepts, and when you'd want it.
 
