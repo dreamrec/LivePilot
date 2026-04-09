@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.9.22 — Skill & Command Overhaul (April 2026)
+
+### Skill Updates
+- **feat(beat):** Added Step 0 "Session Prep" — for fresh projects, deletes all tracks and loads M4L Analyzer on master before starting. Includes perception check (Step 11) with spectral balance verification.
+- **feat(mix):** Added analyzer auto-load (Step 2), spectral targets by genre (Step 6), mandatory meter verification after every change (Step 8), capture+analyze loop (Step 11)
+- **feat(sounddesign):** Added mandatory `value_string` verification (Step 5), perception check (Step 11), organic movement with perlin curves (Step 8)
+- **feat(arrange):** Added motif detection (Step 3), gesture template execution (Step 7), perlin organic movement (Step 8), emotional arc verification (Step 9), LRA check for dynamic range (Step 10)
+- **feat(evaluate):** Added analyzer auto-load (Step 2), full perception snapshot with track meters (Step 6), capture+analyze offline as ground truth option
+
 ## 1.9.21 — Verification Discipline Pass (April 2026)
 
 ### Systemic Fixes

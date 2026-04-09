@@ -1,4 +1,4 @@
-# LivePilot v1.9.21 — Ableton Live 12
+# LivePilot v1.9.22 — Ableton Live 12
 
 ## Project
 - **Repo:** This directory (LivePilot)
