@@ -77,7 +77,7 @@ Call the appropriate evaluator:
 - `evaluate_move(goal_vector, before_snapshot, after_snapshot)` — universal evaluator. `goal_vector` is the dict returned by `compile_goal_vector`. Snapshots should contain `spectrum` (8-band dict), `rms`, `peak`.
 - `evaluate_mix_move(before_snapshot, after_snapshot, targets, protect)` — mix-specific with protection constraints. `targets` and `protect` are dicts of dimension → weight/threshold.
 - `evaluate_composition_move(before_snapshot, after_snapshot, goal_vector)` — composition-specific
-- `evaluate_with_fabric(before_snapshot, after_snapshot, goal_vector)` — uses memory fabric for taste-aware judgment
+- `evaluate_with_fabric(engine, before_snapshot, after_snapshot, targets, protect)` — routes to the appropriate engine-specific evaluator. `engine` must be one of: `"sonic"`, `"composition"`, `"mix"`, `"transition"`, `"translation"`.
 
 ### Step 8 — Read the Verdict
 
@@ -135,8 +135,8 @@ Use the ledger to avoid repeating failed approaches. If a move type has been und
 Successful moves can be promoted to persistent memory for future sessions.
 
 - `get_promotion_candidates` — list moves from this session that scored > 0.7 and are eligible for saving
-- `memory_learn(type, data)` — save a technique to memory (mix_template, sound_design, composition, etc.)
-- `record_anti_preference(dimension, direction)` — record something the user explicitly rejected. `dimension` is the quality axis (e.g., "brightness", "width"), `direction` is "more" or "less". This ensures the rejected direction is never suggested again.
+- `memory_learn(name, type, qualities, payload, tags)` — save a technique to memory. `type` must be one of: `beat_pattern`, `device_chain`, `mix_template`, `browser_pin`, `preference`. `qualities` must include a `summary` field. `payload` contains the technique data.
+- `record_anti_preference(dimension, direction)` — record something the user explicitly rejected. `dimension` is the quality axis (e.g., "brightness", "width"), `direction` must be `"increase"` or `"decrease"`. This ensures the rejected direction is never suggested again.
 
 ### Promotion Rules
 

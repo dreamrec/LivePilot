@@ -181,7 +181,7 @@
 | `memory_favorite` | Toggle favorite |
 | `memory_replay` | Replay saved technique |
 
-## Analyzer (29) `[M4L]`
+## Analyzer (30) `[M4L]`
 
 | Tool | Description |
 |------|-------------|
