@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog
 
-237 tools across 32 domains.
+241 tools across 33 domains.
 
 ---
 
@@ -405,3 +405,18 @@
 | `get_performance_state` | Current live performance overview — scenes, energy, safe moves |
 | `get_performance_safe_moves` | Available safe moves for live performance |
 | `plan_scene_handoff` | Plan a safe transition between two scenes |
+
+## Runtime (2)
+
+| Tool | Description |
+|------|-------------|
+| `get_capability_state` | Probe runtime capabilities — analyzer, memory, session |
+| `get_session_kernel` | Build unified V2 turn snapshot — session + capabilities + memory + taste |
+
+## Semantic Moves (3)
+
+| Tool | Description |
+|------|-------------|
+| `list_semantic_moves` | Discover available high-level musical intents by domain |
+| `preview_semantic_move` | See what a move will do before applying — full compile plan |
+| `propose_next_best_move` | AI-ranked suggestions for a natural language request |

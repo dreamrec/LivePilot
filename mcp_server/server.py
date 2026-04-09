@@ -130,6 +130,7 @@ from .reference_engine import tools as reference_tools     # noqa: F401, E402
 from .translation_engine import tools as translation_tools  # noqa: F401, E402
 from .performance_engine import tools as performance_tools  # noqa: F401, E402
 from .runtime import safety_tools  # noqa: F401, E402
+from .semantic_moves import tools as semantic_move_tools  # noqa: F401, E402
 
 
 # ---------------------------------------------------------------------------
