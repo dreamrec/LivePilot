@@ -1,7 +1,7 @@
 # LivePilot Manual
 
 An agentic production system for Ableton Live 12.
-236 tools. 31 domains. Device atlas. Spectral perception. Technique memory.
+237 tools. 32 domains. Device atlas. Spectral perception. Technique memory.
 
 ---
 
@@ -16,7 +16,7 @@ AI Client  ──MCP──►  FastMCP Server  ──TCP/9878──►  Remote S
                             └── Technique Memory (~/.livepilot/memory/)
 ```
 
-The atlas resolves device names and browser URIs — the AI never hallucinates a preset. The analyzer feeds back spectral data from the master bus so the AI hears the result of its own changes. The memory persists production decisions across sessions as searchable, replayable data structures. All three layers feed into 236 deterministic LOM calls on Ableton's main thread. Everything is reversible with undo.
+The atlas resolves device names and browser URIs — the AI never hallucinates a preset. The analyzer feeds back spectral data from the master bus so the AI hears the result of its own changes. The memory persists production decisions across sessions as searchable, replayable data structures. All three layers feed into 237 deterministic LOM calls on Ableton's main thread. Everything is reversible with undo.
 
 ---
 

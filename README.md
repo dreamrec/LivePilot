@@ -17,7 +17,7 @@
 
 <p align="center">
   An agentic production system for Ableton Live 12.<br>
-  236 tools. Device atlas. Spectral perception. Technique memory.
+  237 tools. Device atlas. Spectral perception. Technique memory.
 </p>
 
 <br>
@@ -49,8 +49,8 @@
 │         └───────────────────┼───────────────────┘           │
 │                             ▼                               │
 │                    ┌─────────────────┐                      │
-│                    │   236 MCP Tools  │                      │
-│                    │   31 domains     │                      │
+│                    │   237 MCP Tools  │                      │
+│                    │   32 domains     │                      │
 │                    └────────┬────────┘                      │
 │                             │                               │
 │             Remote Script ──┤── TCP 9878                    │
@@ -71,7 +71,7 @@ via a Max for Live device.
 The **memory** gives it history — a searchable library of production decisions
 that persists across sessions.
 
-All three feed into 236 deterministic tools that execute on Ableton's main thread.
+All three feed into 237 deterministic tools that execute on Ableton's main thread.
 
 <br>
 
@@ -99,7 +99,7 @@ All three feed into 236 deterministic tools that execute on Ableton's main threa
 
 <br>
 
-### Perception — 29 tools `[M4L]`
+### Perception — 30 tools `[M4L]`
 
 The M4L Analyzer sits on the master track. UDP 9880 carries spectral data
 from Max to the server. OSC 9881 sends commands back.
@@ -322,7 +322,7 @@ read_audio_metadata     Format, duration, sample rate, tags
 
 <br>
 
-> **[View all 236 tools →](docs/manual/tool-catalog.md)**
+> **[View all 237 tools →](docs/manual/tool-catalog.md)**
 
 <br>
 
