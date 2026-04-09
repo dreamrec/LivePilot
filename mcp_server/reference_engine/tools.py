@@ -6,7 +6,7 @@ then delegates to pure-computation modules.
 
 from __future__ import annotations
 
-from mcp.server.fastmcp import Context
+from fastmcp import Context
 
 from ..server import mcp
 from ..tools._research_engine import get_style_tactics

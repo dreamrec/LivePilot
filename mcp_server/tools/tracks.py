@@ -176,10 +176,10 @@ def set_group_fold(ctx: Context, track_index: int, folded: bool) -> dict:
 
 @mcp.tool()
 def set_track_input_monitoring(ctx: Context, track_index: int, state: int) -> dict:
-    """Set input monitoring (0=Off, 1=In, 2=Auto). Only for regular tracks, not return tracks."""
-    _validate_track_index(track_index)
+    """Set input monitoring (0=In, 1=Auto, 2=Off). Only for regular tracks, not return tracks."""
+    _validate_track_index(track_index, allow_return=False)
     if state not in (0, 1, 2):
-        raise ValueError("Monitoring state must be 0=Off, 1=In, or 2=Auto")
+        raise ValueError("Monitoring state must be 0=In, 1=Auto, or 2=Off")
     return _get_ableton(ctx).send_command("set_track_input_monitoring", {
         "track_index": track_index,
         "state": state,

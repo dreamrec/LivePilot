@@ -1,11 +1,11 @@
 ---
 name: livepilot-core
-description: Core discipline for LivePilot — agentic production system for Ableton Live 12. 236 tools across 32 domains. This skill should be used whenever working with Ableton Live through MCP tools. Provides golden rules, tool speed tiers, error handling protocol, and pointers to domain and engine skills.
+description: Core discipline for LivePilot — agentic production system for Ableton Live 12. 236 tools across 31 domains. This skill should be used whenever working with Ableton Live through MCP tools. Provides golden rules, tool speed tiers, error handling protocol, and pointers to domain and engine skills.
 ---
 
 # LivePilot Core — Ableton Live 12
 
-Agentic production system for Ableton Live 12. 236 tools across 32 domains, three layers:
+Agentic production system for Ableton Live 12. 236 tools across 31 domains, three layers:
 
 - **Device Atlas** — 280+ instruments, 139 drum kits, 350+ impulse responses. Consult `references/device-atlas/` before loading any device. Never guess a device name.
 - **M4L Analyzer** — Real-time audio analysis on the master bus (8-band spectrum, RMS/peak, key detection). Optional — all core tools work without it.
@@ -34,20 +34,16 @@ Agentic production system for Ableton Live 12. 236 tools across 32 domains, thre
 All 236 core tools plus M4L perception tools.
 
 ### Fast (1-5s) — Use freely
-`analyze_loudness` · `analyze_dynamic_range` · `compare_loudness`
+`analyze_loudness` · `analyze_mix` · `analyze_sound_design`
 
 ### Slow (5-15s) — Tell the user first
-`analyze_spectral_evolution` · `compare_to_reference` · `transcribe_to_midi`
-
-### Heavy (30-120s) — ALWAYS ask first
-`separate_stems` · `diagnose_mix` — GPU-intensive. Never call speculatively.
+`compare_to_reference` · `analyze_spectrum_offline` · `read_audio_metadata`
 
 **Escalation pattern:** Start fast, escalate only with consent:
 ```
 Level 1 (instant):  get_master_spectrum + get_track_meters
-Level 2 (fast):     analyze_loudness + analyze_dynamic_range
-Level 3 (slow):     analyze_spectral_evolution + compare_to_reference
-Level 4 (heavy):    separate_stems → diagnose_mix
+Level 2 (fast):     analyze_loudness + analyze_mix
+Level 3 (slow):     compare_to_reference + analyze_spectrum_offline
 ```
 
 ## Error Handling Protocol

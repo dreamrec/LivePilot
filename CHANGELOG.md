@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.9.18 — Deep Audit Fix Pass (April 2026)
+
+### Critical Fixes
+- **fix(tracks):** monitoring enum mismatch — MCP advertised `0=Off,1=In,2=Auto` but Remote Script uses `0=In,1=Auto,2=Off`; clients deterministically chose wrong mode
+- **fix(connection):** retry logic could replay mutating commands after `sendall` succeeded — added `_send_completed` flag to prevent double mutations
+- **fix(m4l_bridge):** `capture_stop` cancelled in-flight capture future instead of resolving it — callers got `CancelledError` instead of partial result
+
+### Medium Fixes
+- **fix(skills):** removed 6 phantom tool names from speed tiers (`analyze_dynamic_range`, `analyze_spectral_evolution`, `separate_stems`, `diagnose_mix`, `transcribe_to_midi`, `compare_loudness`)
+- **fix(clip_automation):** added `int()` casts to `send_index`, `device_index`, `parameter_index` — prevented TypeError when MCP sends strings
+- **fix(arrangement):** `add_arrangement_notes` now supports `probability`, `velocity_deviation`, `release_velocity` (parity with session `add_notes`)
+- **fix(devices/browser):** reset `_iterations` counter per category in URI search — prevented premature cutoff for devices in later categories
+- **fix(imports):** standardized 6 engine files from `mcp.server.fastmcp` to `fastmcp` import path
+- **fix(docs):** corrected domain count from 32 to 31 (`memory_fabric` is an alias for `memory`) across 17 files
+- **fix(server.json):** added missing `, MIDI I/O` to description to match package.json
+
+### Low Fixes
+- **fix(clips):** `delete_clip` now checks `has_clip` before deleting
+- **fix(arrangement):** `back_to_arranger` no longer reads write-only trigger property
+- **fix(utils):** return track error message no longer shows `(0..-1)` when none exist
+- **fix(connection):** removed dead `send_command_async` and unused `asyncio` import
+
 ## 1.9.17 — Skills Architecture V2 (April 2026)
 
 ### Skills (9 new, 1 slimmed)
@@ -106,7 +128,7 @@
 - Fix(Med): Ledger key mismatch — memory promotion now reads correct 'action_ledger' key
 
 ### Stats
-- 236 tools across 32 domains (was 194)
+- 236 tools across 31 domains (was 194)
 - 1,014 tests passing (was ~400)
 - 12 new engine packages
 - 36 new MCP tools

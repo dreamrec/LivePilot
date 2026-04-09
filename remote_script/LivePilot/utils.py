@@ -54,8 +54,8 @@ def get_track(song, track_index):
         ri = abs(track_index) - 1
         if ri >= len(return_tracks):
             raise IndexError(
-                "Return track index %d out of range (0..%d)"
-                % (ri, len(return_tracks) - 1)
+                "Return track index %d out of range — %d return tracks available"
+                % (ri, len(return_tracks))
             )
         return return_tracks[ri]
     if track_index >= len(tracks):

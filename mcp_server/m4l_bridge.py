@@ -400,15 +400,18 @@ class M4LBridge:
                 return {"error": "M4L capture timeout — device may be busy or removed"}
 
     async def cancel_capture_future(self) -> None:
-        """Cancel any in-progress capture future (called by capture_stop).
+        """Resolve any in-progress capture future with a stopped result.
 
         Does NOT acquire _cmd_lock — send_capture holds it during recording.
-        Cancelling the future causes send_capture's wait_for to raise
-        CancelledError, which releases the lock naturally.
+        Resolving (not cancelling) the future lets send_capture return a
+        clean partial-result dict instead of raising CancelledError.
         """
         if self.receiver and self.receiver._capture_future \
                 and not self.receiver._capture_future.done():
-            self.receiver._capture_future.cancel()
+            self.receiver._capture_future.set_result({
+                "ok": True,
+                "stopped_early": True,
+            })
             self.receiver._capture_future = None
 
     def _build_osc(self, address: str, args: tuple) -> bytes:

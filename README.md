@@ -50,7 +50,7 @@
 │                             ▼                               │
 │                    ┌─────────────────┐                      │
 │                    │   236 MCP Tools  │                      │
-│                    │   32 domains     │                      │
+│                    │   31 domains     │                      │
 │                    └────────┬────────┘                      │
 │                             │                               │
 │             Remote Script ──┤── TCP 9878                    │
@@ -79,7 +79,7 @@ All three feed into 236 deterministic tools that execute on Ableton's main threa
 
 ## Tools
 
-236 tools across 32 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
+236 tools across 31 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
 
 <br>
 

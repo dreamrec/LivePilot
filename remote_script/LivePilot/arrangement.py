@@ -190,13 +190,20 @@ def add_arrangement_notes(song, params):
     try:
         note_specs = []
         for note in notes:
-            spec = Live.Clip.MidiNoteSpecification(
+            kwargs = dict(
                 pitch=int(note["pitch"]),
                 start_time=float(note["start_time"]),
                 duration=float(note["duration"]),
                 velocity=float(note.get("velocity", 100)),
                 mute=bool(note.get("mute", False)),
             )
+            if "probability" in note:
+                kwargs["probability"] = float(note["probability"])
+            if "velocity_deviation" in note:
+                kwargs["velocity_deviation"] = float(note["velocity_deviation"])
+            if "release_velocity" in note:
+                kwargs["release_velocity"] = float(note["release_velocity"])
+            spec = Live.Clip.MidiNoteSpecification(**kwargs)
             note_specs.append(spec)
         clip.add_new_notes(tuple(note_specs))
     finally:
@@ -703,4 +710,4 @@ def toggle_cue_point(song, params):
 def back_to_arranger(song, params):
     """Switch playback from session clips back to the arrangement timeline."""
     song.back_to_arranger = True
-    return {"back_to_arranger": song.back_to_arranger}
+    return {"back_to_arranger": True}

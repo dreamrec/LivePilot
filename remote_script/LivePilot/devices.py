@@ -270,6 +270,7 @@ def load_device_by_uri(song, params):
         return None
 
     for category in categories:
+        _iterations[0] = 0  # Reset counter per category to avoid premature cutoff
         found = find_by_uri(category, uri)
         if found is not None:
             song.view.selected_track = track

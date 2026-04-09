@@ -104,7 +104,7 @@ Call `get_capability_state` at the start of any evaluation session. The response
 {
   "mode": "normal",
   "analyzer_connected": true,
-  "bridge_version": "1.9.17",
+  "bridge_version": "1.9.18",
   "spectral_cache_age_ms": 1200,
   "flucoma_available": false,
   "session_connected": true

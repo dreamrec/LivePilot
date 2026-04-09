@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "dreamrec-LivePilot",
-  "description": "Agentic MCP production system for Ableton Live 12 — 236 tools, 32 domains",
+  "description": "Agentic MCP production system for Ableton Live 12 — 236 tools, 31 domains",
   "owner": {
     "name": "dreamrec",
     "email": "dreamrec@users.noreply.github.com"
@@ -9,8 +9,8 @@
   "plugins": [
     {
       "name": "livepilot",
-      "description": "Agentic production system for Ableton Live 12 — 236 tools, 32 domains, device atlas, spectral perception, technique memory, neo-Riemannian harmony, Euclidean rhythm, species counterpoint, MIDI I/O",
-      "version": "1.9.17",
+      "description": "Agentic production system for Ableton Live 12 — 236 tools, 31 domains, device atlas, spectral perception, technique memory, neo-Riemannian harmony, Euclidean rhythm, species counterpoint, MIDI I/O",
+      "version": "1.9.18",
       "author": {
         "name": "Pilot Studio"
       },
