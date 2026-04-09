@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog (Generated)
 
-255 tools across 35 domains.
+257 tools across 35 domains.
 
 > Auto-generated from `mcp.list_tools()`. Do not hand-edit.
 > Regenerate: `python3 scripts/generate_tool_catalog.py`
@@ -257,10 +257,12 @@
 | `get_motif_graph` | Detect recurring melodic and rhythmic patterns across all tracks. |
 | `transform_motif` | Transform a musical motif using classical composition techniques. |
 
-## Musical Intelligence (4)
+## Musical Intelligence (6)
 
 | Tool | Description |
 |------|-------------|
+| `analyze_phrase_arc` | Analyze a captured audio phrase for musical quality. |
+| `compare_phrase_renders` | Compare multiple audio captures and rank by musical quality. |
 | `detect_repetition_fatigue` | Detect repetition fatigue — are patterns overused? |
 | `detect_role_conflicts` | Detect role conflicts — are tracks fighting for the same musical space? |
 | `infer_section_purposes` | Infer what each section/scene is trying to do musically. |
@@ -438,4 +440,4 @@
 | `undo` | Undo the last action in Ableton. |
 
 ---
-*Generated from 255 registered tools.*
+*Generated from 257 registered tools.*

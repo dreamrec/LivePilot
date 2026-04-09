@@ -3,28 +3,40 @@ name: perform
 description: Performance mode — enter a safety-constrained live performance context with energy tracking and safe moves
 ---
 
-Enter performance mode for live set support. All actions are constrained to safe and caution-level moves only.
+Enter performance mode with safety constraints and energy tracking.
 
-1. **Get performance state** — `get_performance_state` to see scene roles, energy levels, and current position
-2. **Show the dashboard** — present: current scene, energy level, energy direction (up/down/hold), available safe moves
-3. **Get safe moves** — `get_performance_safe_moves` for what can be done right now
-4. **Check before acting** — `check_safety(move_type)` before every action. Only execute safe or caution moves. Caution moves require user confirmation.
+## Orchestration Flow
 
-**BLOCKED during performance** (never execute, warn if requested):
-- Creating or deleting tracks, clips, or scenes
-- Editing notes or arrangement
-- Adding or removing devices (device chain surgery)
+1. **Session kernel** — `get_session_kernel(request_text="live performance", mode="improve")`
+2. **Route** — `route_request("live performance")` → workflow_mode should be `performance_safe`
+3. **Performance state** — `get_performance_state` for current scene, energy level, and safe moves
 
-**SAFE moves** (execute freely):
-- Scene launches, mute/unmute, volume nudges, send adjustments, macro tweaks, filter sweeps
+## Safety-First Rules
 
-**Scene transitions:**
-- `plan_scene_handoff(from_scene, to_scene)` — generates an energy path and gesture sequence
-- Follow the energy path: if going up, suggest high-energy scenes; if going down, suggest breakdowns
+- **NEVER** execute moves rated "high risk" during performance
+- **ALWAYS** use `get_performance_safe_moves` before ANY change
+- Only fire scenes, adjust volumes, and trigger safe effects
+- No device loading, track creation, or destructive operations
 
-**Always show:**
-- Current energy level and direction
-- What moves are available
-- What moves are blocked and why
+## Performance Tools
 
-Use the livepilot-performance-engine skill for safety classification and move suggestions.
+4. **Safe moves** — `get_performance_safe_moves` for available actions
+5. **Scene handoff** — `plan_scene_handoff` for safe transitions between scenes
+6. **Energy tracking** — monitor energy level across scene transitions
+7. **Semantic moves** — only performance-safe semantic moves:
+   - `smooth_scene_handoff` — safe transition between scenes
+   - Gesture templates: `pre_arrival_vacuum`, `re_entry_spotlight`
+
+## Live Dashboard
+
+8. **Monitor** — `get_track_meters(include_stereo=true)` for real-time levels
+9. **Spectrum** — `get_master_spectrum` for frequency balance during performance
+10. **Playing clips** — `get_playing_clips` to see what's active
+
+## Recovery
+
+11. **If something goes wrong** — `undo` immediately
+12. **Emergency** — `stop_all_clips` if audio goes haywire
+13. **Check safety** — `check_safety` to verify constraints are holding
+
+Keep the user informed of what's happening. Never make surprise changes during a live set.

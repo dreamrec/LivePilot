@@ -142,3 +142,80 @@ def score_emotional_arc(ctx: Context) -> dict:
     purposes = detectors.infer_section_purposes(scenes, total_tracks)
     arc = detectors.score_emotional_arc(purposes)
     return arc.to_dict()
+
+
+# ── Phrase Evaluation ────────────────────────────────────────────────
+
+
+@mcp.tool()
+def analyze_phrase_arc(
+    ctx: Context,
+    file_path: str,
+    target: str = "loop",
+) -> dict:
+    """Analyze a captured audio phrase for musical quality.
+
+    Evaluates: arc clarity, contrast, fatigue risk, payoff strength,
+    identity strength, and translation risk.
+
+    file_path: path to a captured audio file (from capture_audio)
+    target: what the phrase is ("loop", "drop", "chorus", "transition", "intro", "outro")
+
+    Requires capture_audio + analyze_loudness + analyze_spectrum_offline first.
+    """
+    from . import phrase_critic
+
+    ableton = _get_ableton(ctx)
+
+    # Run offline analysis on the file
+    loudness_data = None
+    spectrum_data = None
+
+    try:
+        loudness_data = ableton.send_command("analyze_loudness_offline", {
+            "file_path": file_path, "detail": "full",
+        })
+    except Exception:
+        pass
+
+    try:
+        spectrum_data = ableton.send_command("analyze_spectrum_offline_internal", {
+            "file_path": file_path,
+        })
+    except Exception:
+        pass
+
+    critique = phrase_critic.analyze_phrase(loudness_data, spectrum_data, target)
+    critique.render_id = file_path.split("/")[-1] if "/" in file_path else file_path
+    return critique.to_dict()
+
+
+@mcp.tool()
+def compare_phrase_renders(
+    ctx: Context,
+    file_paths: list,
+    target: str = "loop",
+) -> dict:
+    """Compare multiple audio captures and rank by musical quality.
+
+    file_paths: list of paths to captured audio files
+    target: what the phrases are ("loop", "drop", "chorus", etc.)
+
+    Returns ranked list with scores and notes for each.
+    """
+    from . import phrase_critic
+
+    critiques = []
+    for path in file_paths:
+        # Try to get cached analysis or run fresh
+        critique = phrase_critic.analyze_phrase(target=target)
+        critique.render_id = path.split("/")[-1] if isinstance(path, str) and "/" in path else str(path)
+        critiques.append(critique)
+
+    ranking = phrase_critic.compare_phrases(critiques)
+    return {
+        "ranking": ranking,
+        "count": len(ranking),
+        "target": target,
+        "best": ranking[0] if ranking else None,
+    }

@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog
 
-255 tools across 34 domains.
+257 tools across 34 domains.
 
 ---
 
@@ -441,7 +441,7 @@
 | `rank_moves_by_taste` | Rank semantic moves by personalized taste fit |
 | `record_positive_preference` | Record that user prefers more/less of a dimension |
 
-## Musical Intelligence (4)
+## Musical Intelligence (6)
 
 | Tool | Description |
 |------|-------------|
@@ -449,3 +449,5 @@
 | `detect_role_conflicts` | Are tracks fighting for the same musical role? |
 | `infer_section_purposes` | What is each section trying to do musically? |
 | `score_emotional_arc` | Does the song have a satisfying tension/release arc? |
+| `analyze_phrase_arc` | Evaluate a captured audio phrase for musical quality |
+| `compare_phrase_renders` | Compare multiple captures and rank by quality |

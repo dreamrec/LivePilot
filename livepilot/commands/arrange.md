@@ -3,26 +3,45 @@ name: arrange
 description: Guided arrangement — build song structure with sections, transitions, and energy flow
 ---
 
-Guide the user through arranging their session into a full song structure.
+Guide the user through arranging their session using the V2 orchestration pipeline.
 
-1. **Read the session** — `get_session_info` to see all tracks and clips. `get_scene_matrix` for the full clip grid.
-2. **Analyze current structure** — `get_section_graph` to see inferred sections from scene names. `get_emotional_arc` to understand current energy flow.
-3. **Detect motifs** — `get_motif_graph` to find recurring patterns, fatigue risk, and suggested developments (inversion, augmentation, fragmentation).
-4. **Ask about the target structure** — what form? (verse-chorus, AABA, build-drop, through-composed). What energy arc? (gradual build, peaks and valleys, flat)
-5. **Plan the arrangement** — `plan_arrangement` with the target bar count and style. Review the proposed section order, transitions, and gesture templates.
-6. **Build sections** — for each section, create or duplicate scenes, set scene names and colors. Use `duplicate_scene` for variations. Use `transform_motif` for melodic development (inversion, retrograde, diminution, augmentation).
-7. **Apply gesture templates** — for each transition, use `apply_gesture_template` with the planned template:
-   - `pre_arrival_vacuum` — pull energy back before a drop
-   - `harmonic_tint_rise` — gradually open filters for intro/build sections
-   - `re_entry_spotlight` — darken then snap back to highlight returning elements
-   - `tension_ratchet` — stepped build in 4-bar stages
-   - `outro_decay_dissolve` — gradual dissolution for endings
-   - `phrase_end_throw` — reverb/delay throw at section boundaries
-   Then execute each gesture plan using `apply_automation_shape` with the suggested curve_family.
-8. **Add organic movement** — use `apply_automation_shape` with `curve_type="perlin"` on filter/send/effect parameters so nothing repeats exactly the same each cycle.
-9. **Check emotional arc** — `get_emotional_arc` to verify the energy flow matches the target. Address any issues flagged (no_clear_build, peak_too_early, no_resolution).
-10. **Verify with perception** — `get_master_spectrum` during each section to confirm spectral differentiation. `capture_audio` + `analyze_loudness` to check LRA (should be >2 LU for dynamic arrangements).
-11. **Translation check** — `check_translation` to verify mono compatibility and spectral consistency across sections.
-12. **Record to arrangement** — when satisfied, use `create_arrangement_clip` to lay out clips on the timeline, or guide the user through `back_to_arranger` and recording the session performance.
+## Orchestration Flow
 
-Use the livepilot-composition-engine skill for section analysis and transition planning. Present the arrangement as a visual timeline to the user.
+1. **Session kernel** — `get_session_kernel(request_text=<user's request>, mode="improve")`
+2. **Route** — `route_request(<user's request>)` for engine routes + semantic moves
+
+## Analysis Phase
+
+3. **Scene matrix** — `get_scene_matrix` for the full clip grid
+4. **Section purposes** — `infer_section_purposes` to understand what each scene is doing
+5. **Emotional arc** — `score_emotional_arc` — does the song have build → climax → resolve?
+6. **Repetition check** — `detect_repetition_fatigue` — are patterns overused?
+7. **Motif analysis** — `get_motif_graph` for recurring patterns and fatigue risk
+8. **Role conflicts** — `detect_role_conflicts` to find competing tracks
+
+## Planning Phase
+
+9. **Ask about target** — what form? (verse-chorus, build-drop, through-composed). What energy arc?
+10. **Plan arrangement** — `plan_arrangement(target_bars, style)` for section blueprint
+11. **Propose moves** — `propose_next_best_move(request_text)` for arrangement semantic moves (e.g., `create_buildup_tension`, `smooth_scene_handoff`)
+12. **Preview** — `preview_semantic_move(move_id)` to see the gesture plan
+
+## Execution Phase
+
+13. **Build sections** — duplicate scenes, set names/colors, use `transform_motif` for melodic development
+14. **Apply gestures** — `apply_gesture_template` for transitions:
+    - `pre_arrival_vacuum` — energy suck before drops
+    - `harmonic_tint_rise` — filter opening for intros
+    - `re_entry_spotlight` — highlight returning elements
+    - `tension_ratchet` — stepped energy build
+    - `outro_decay_dissolve` — gradual dissolution
+15. **Add organic movement** — `apply_automation_shape(curve_type="perlin")` on filters/sends
+16. **Verify arc** — `score_emotional_arc` again to confirm improvement
+17. **Perception check** — `capture_audio` + `analyze_loudness` to verify LRA > 2 LU
+
+## Summary
+
+18. **Report** — "What I did / what improved / what I protected / what remains"
+19. **Session memory** — `add_session_memory` for arrangement decisions
+
+For exploratory arrangement, use `create_experiment` to try multiple section orderings.
