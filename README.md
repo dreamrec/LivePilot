@@ -79,7 +79,7 @@ All three feed into 236 deterministic tools that execute on Ableton's main threa
 
 ## Tools
 
-236 tools across 31 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
+237 tools across 32 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
 
 <br>
 
@@ -330,7 +330,30 @@ read_audio_metadata     Format, duration, sample rate, tags
 
 ## Install
 
-### 1. Remote Script
+### Easiest: Claude Desktop Extension (1 click)
+
+Download [`livepilot.mcpb`](https://github.com/dreamrec/LivePilot/releases/latest) and double-click it.
+Claude Desktop installs everything automatically. Then:
+
+1. Open Ableton Live 12
+2. Preferences → Link, Tempo & MIDI → Control Surface → **LivePilot**
+3. Start chatting
+
+> [!TIP]
+> The Desktop Extension auto-installs the Remote Script and M4L Analyzer on first launch.
+
+### Quick: One Command Setup
+
+```bash
+npx livepilot --setup
+```
+
+This runs the full setup wizard: checks Python, installs the Remote Script, creates the Python environment, copies the M4L Analyzer, and tests the Ableton connection.
+
+### Manual: Step by Step
+
+<details>
+<summary><strong>1. Remote Script</strong></summary>
 
 ```bash
 npx livepilot --install
@@ -338,115 +361,67 @@ npx livepilot --install
 
 Restart Ableton → Preferences → Link, Tempo & MIDI → Control Surface → **LivePilot**
 
-### 2. MCP Client
-
-<details open>
-<summary><strong>Claude Code</strong></summary>
-
-```bash
-claude mcp add LivePilot -- npx livepilot
-```
-
-Plugin (adds skills, slash commands, producer agent):
-
-```bash
-claude plugin add github:dreamrec/LivePilot/plugin
-```
-
 </details>
 
 <details>
-<summary><strong>Claude Desktop (macOS)</strong></summary>
+<summary><strong>2. MCP Client</strong></summary>
 
-`~/Library/Application Support/Claude/claude_desktop_config.json`:
+**Claude Code:**
+```bash
+claude mcp add LivePilot -- npx livepilot
+claude plugin add github:dreamrec/LivePilot/plugin
+```
 
+**Claude Desktop (macOS)** — `~/Library/Application Support/Claude/claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "LivePilot": {
-      "command": "npx",
-      "args": ["livepilot"]
-    }
+    "LivePilot": { "command": "npx", "args": ["livepilot"] }
   }
 }
 ```
 
-</details>
-
-<details>
-<summary><strong>Claude Desktop (Windows)</strong></summary>
-
+**Claude Desktop (Windows):**
 ```cmd
 npm install -g livepilot
 livepilot --install
 ```
-
 `%APPDATA%\Claude\claude_desktop_config.json`:
-
 ```json
 {
   "mcpServers": {
-    "LivePilot": {
-      "command": "livepilot"
-    }
+    "LivePilot": { "command": "livepilot" }
   }
 }
 ```
 
-</details>
-
-<details>
-<summary><strong>Cursor</strong></summary>
-
-`.cursor/mcp.json`:
-
+**Cursor** — `.cursor/mcp.json`:
 ```json
 {
   "mcpServers": {
-    "LivePilot": {
-      "command": "npx",
-      "args": ["livepilot"]
-    }
+    "LivePilot": { "command": "npx", "args": ["livepilot"] }
   }
 }
 ```
 
-</details>
-
-<details>
-<summary><strong>VS Code / Windsurf</strong></summary>
-
-VS Code — `.vscode/mcp.json`:
-
+**VS Code** — `.vscode/mcp.json`:
 ```json
 {
   "servers": {
-    "LivePilot": {
-      "command": "npx",
-      "args": ["livepilot"]
-    }
-  }
-}
-```
-
-Windsurf — `~/.codeium/windsurf/mcp_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "LivePilot": {
-      "command": "npx",
-      "args": ["livepilot"]
-    }
+    "LivePilot": { "command": "npx", "args": ["livepilot"] }
   }
 }
 ```
 
 </details>
 
-### 3. M4L Analyzer (optional)
+<details>
+<summary><strong>3. M4L Analyzer (optional)</strong></summary>
 
-Drag `LivePilot_Analyzer.amxd` onto the master track.
+Drag `LivePilot_Analyzer.amxd` onto the master track for real-time spectral analysis.
+The `--setup` wizard and Desktop Extension do this automatically.
+
+</details>
 
 Unlocks 29 additional tools: spectral analysis, key detection,
 sample manipulation, deep device introspection, plugin parameter mapping.

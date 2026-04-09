@@ -1,0 +1,40 @@
+# Development files
+.git
+.git-backup-full
+.github
+.claude
+.playwright-mcp
+.pytest_cache
+.venv
+__pycache__
+
+# Test and CI
+tests/
+scripts/
+.github/
+
+# Build artifacts
+*.pyc
+.DS_Store
+*.egg-info
+
+# Credentials and tokens
+.mcpregistry_*
+.env
+.npmrc
+
+# Docs and marketing (not needed at runtime)
+docs/specs/
+docs/social-banner.*
+docs/screenshots/
+
+# Large binary already in User Library after install
+# m4l_device/LivePilot_Analyzer.amxd
+
+# Dev config
+.mcp.json
+.npmignore
+.editorconfig
+CODE_OF_CONDUCT.md
+CONTRIBUTING.md
+SECURITY.md

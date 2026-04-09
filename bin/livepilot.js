@@ -486,6 +486,109 @@ async function setupFlucoma() {
 }
 
 // ---------------------------------------------------------------------------
+// Setup wizard — unified installer
+// ---------------------------------------------------------------------------
+
+async function setup() {
+  console.log("LivePilot Setup Wizard v%s", PKG.version);
+  console.log("═".repeat(50));
+  console.log("");
+
+  let ok = true;
+
+  // 1. Python
+  console.log("Step 1/5: Checking Python...");
+  const pyInfo = findPython();
+  if (pyInfo) {
+    console.log("  ✓ %s", pyInfo.version);
+  } else {
+    console.log("  ✗ Python >= 3.9 not found");
+    console.log("    Install: brew install python@3.12 (macOS) or python.org (Windows)");
+    ok = false;
+  }
+
+  // 2. Install Remote Script
+  console.log("");
+  console.log("Step 2/5: Installing Remote Script...");
+  try {
+    const { install } = require(path.join(ROOT, "installer", "install.js"));
+    install();
+    console.log("  ✓ Remote Script installed");
+  } catch (err) {
+    console.log("  ✗ Failed: %s", err.message);
+    ok = false;
+  }
+
+  // 3. Bootstrap Python venv
+  console.log("");
+  console.log("Step 3/5: Setting up Python environment...");
+  if (pyInfo) {
+    try {
+      ensureVenv(pyInfo.cmd, pyInfo.prefixArgs);
+      console.log("  ✓ Virtual environment ready");
+    } catch (err) {
+      console.log("  ✗ Failed: %s", err.message);
+      ok = false;
+    }
+  } else {
+    console.log("  ⊘ Skipped (no Python)");
+  }
+
+  // 4. Copy M4L Analyzer to User Library
+  console.log("");
+  console.log("Step 4/5: Installing M4L Analyzer...");
+  const analyzerSrc = path.join(ROOT, "m4l_device", "LivePilot_Analyzer.amxd");
+  if (fs.existsSync(analyzerSrc)) {
+    const home = require("os").homedir();
+    let dest;
+    if (process.platform === "darwin") {
+      dest = path.join(home, "Music", "Ableton", "User Library", "Presets",
+                        "Audio Effects", "Max Audio Effect");
+    } else {
+      dest = path.join(home, "Documents", "Ableton", "User Library", "Presets",
+                        "Audio Effects", "Max Audio Effect");
+    }
+    try {
+      fs.mkdirSync(dest, { recursive: true });
+      fs.copyFileSync(analyzerSrc, path.join(dest, "LivePilot_Analyzer.amxd"));
+      console.log("  ✓ Analyzer copied to %s", dest);
+    } catch (err) {
+      console.log("  ✗ Failed: %s", err.message);
+    }
+  } else {
+    console.log("  ⊘ Analyzer not found in package (optional)");
+  }
+
+  // 5. Connection test
+  console.log("");
+  console.log("Step 5/5: Testing Ableton connection...");
+  const reachable = await checkStatus();
+  if (reachable) {
+    console.log("  ✓ Ableton Live is running and reachable");
+  } else {
+    console.log("  ⊘ Ableton not running (start it and select LivePilot as Control Surface)");
+  }
+
+  // Summary
+  console.log("");
+  console.log("═".repeat(50));
+  if (ok) {
+    console.log("✓ Setup complete! Next steps:");
+    console.log("");
+    console.log("  1. Open Ableton Live 12");
+    console.log("  2. Go to Preferences → Link, Tempo & MIDI");
+    console.log("  3. Set Control Surface to 'LivePilot'");
+    console.log("  4. Start making music with AI!");
+    console.log("");
+    console.log("  Claude Code:    claude mcp add LivePilot -- npx livepilot");
+    console.log("  Claude Desktop: Already configured if using Desktop Extension");
+  } else {
+    console.log("⚠ Setup completed with issues. Run 'npx livepilot --doctor' for details.");
+  }
+}
+
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
@@ -507,6 +610,7 @@ async function main() {
     console.log("");
     console.log("Commands:");
     console.log("  (none)        Start the MCP server");
+    console.log("  --setup       Full setup wizard (install + configure + test)");
     console.log("  --install     Install Remote Script into Ableton Live");
     console.log("  --uninstall   Remove Remote Script from Ableton Live");
     console.log("  --status      Check if Ableton Live is reachable");
@@ -551,6 +655,37 @@ async function main() {
   if (flag === "--doctor") {
     const passed = await doctor();
     process.exit(passed ? 0 : 1);
+  }
+
+  // --setup (unified installer wizard)
+  if (flag === "--setup") {
+    await setup();
+    return;
+  }
+
+  // Auto-install Remote Script when launched from Desktop Extension
+  if (process.env.LIVEPILOT_AUTO_INSTALL === "true") {
+    try {
+      const { install } = require(path.join(ROOT, "installer", "install.js"));
+      const { findAbletonPaths } = require(path.join(ROOT, "installer", "paths.js"));
+      const candidates = findAbletonPaths();
+      if (candidates.length > 0) {
+        // Check if already installed
+        const target = path.join(candidates[0].path, "LivePilot");
+        if (!fs.existsSync(target)) {
+          console.error("LivePilot: auto-installing Remote Script to %s", candidates[0].path);
+          install();
+          console.error("LivePilot: Remote Script installed. Select 'LivePilot' in Ableton > Preferences > Link, Tempo & MIDI > Control Surface.");
+        }
+      }
+    } catch (err) {
+      console.error("LivePilot: auto-install skipped (%s)", err.message);
+    }
+  }
+
+  // Custom TCP port from Desktop Extension config
+  if (process.env.LIVEPILOT_TCP_PORT && process.env.LIVEPILOT_TCP_PORT !== "9878") {
+    process.env.LIVE_MCP_PORT = process.env.LIVEPILOT_TCP_PORT;
   }
 
   // Default: start MCP server

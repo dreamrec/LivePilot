@@ -1,0 +1,94 @@
+{
+  "manifest_version": "0.3",
+  "name": "livepilot",
+  "display_name": "LivePilot — AI for Ableton Live",
+  "version": "1.9.22",
+  "description": "Agentic production system for Ableton Live 12. Make beats, mix tracks, design sounds, and arrange songs with 237 AI-powered tools.",
+  "long_description": "LivePilot is an AI production assistant that connects directly to Ableton Live 12. It can create drum patterns, program basslines, write chord progressions, design sounds, mix your tracks, analyze your audio, and arrange full songs — all through natural language.\n\n**What it does:**\n- Creates MIDI clips with notes, chords, and rhythms\n- Loads instruments and effects from Ableton's browser\n- Shapes sounds by adjusting device parameters\n- Mixes with volume, panning, sends, and automation\n- Analyzes your mix with real-time spectral data\n- Remembers your production style across sessions\n\n**How it works:**\nLivePilot installs a Remote Script in Ableton that communicates with the AI over a local TCP connection. Everything runs on your machine — no audio leaves your computer.",
+  "author": {
+    "name": "Pilot Studio",
+    "url": "https://github.com/dreamrec/LivePilot"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dreamrec/LivePilot"
+  },
+  "homepage": "https://github.com/dreamrec/LivePilot",
+  "documentation": "https://github.com/dreamrec/LivePilot#readme",
+  "support": "https://github.com/dreamrec/LivePilot/issues",
+
+  "server": {
+    "type": "node",
+    "entry_point": "bin/livepilot.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/bin/livepilot.js"],
+      "env": {
+        "LIVEPILOT_AUTO_INSTALL": "${user_config.auto_install_remote_script}",
+        "LIVEPILOT_TCP_PORT": "${user_config.ableton_port}"
+      }
+    }
+  },
+
+  "user_config": {
+    "auto_install_remote_script": {
+      "type": "boolean",
+      "title": "Auto-install Remote Script",
+      "description": "Automatically install the LivePilot Remote Script into Ableton Live's Remote Scripts folder on first launch. You'll still need to select 'LivePilot' in Ableton's Preferences > Link, Tempo & MIDI > Control Surface.",
+      "default": true
+    },
+    "ableton_port": {
+      "type": "number",
+      "title": "Ableton TCP Port",
+      "description": "TCP port for communication with Ableton Live. Only change this if you have a port conflict. Default: 9878.",
+      "default": 9878,
+      "min": 1024,
+      "max": 65535
+    }
+  },
+
+  "tools_generated": true,
+
+  "tools": [
+    {"name": "get_session_info", "description": "Get comprehensive session state: tempo, tracks, scenes, transport"},
+    {"name": "set_tempo", "description": "Set the song tempo (20-999 BPM)"},
+    {"name": "create_midi_track", "description": "Create a new MIDI track with optional name and color"},
+    {"name": "add_notes", "description": "Add MIDI notes to a clip with pitch, timing, velocity, probability"},
+    {"name": "search_browser", "description": "Search Ableton's browser for instruments, effects, drums, samples"},
+    {"name": "find_and_load_device", "description": "Find a device by name and load it onto a track"},
+    {"name": "set_device_parameter", "description": "Set any device parameter by name with value verification"},
+    {"name": "fire_scene", "description": "Launch a scene, triggering all its clips"},
+    {"name": "analyze_harmony", "description": "Analyze chord progression with Roman numeral analysis"},
+    {"name": "get_master_spectrum", "description": "Real-time 8-band frequency analysis of the master bus"},
+    {"name": "memory_learn", "description": "Save a production technique for future recall"},
+    {"name": "plan_arrangement", "description": "Generate a full arrangement blueprint with sections and transitions"}
+  ],
+
+  "keywords": [
+    "ableton",
+    "ableton-live",
+    "music-production",
+    "daw",
+    "midi",
+    "audio",
+    "mixing",
+    "mastering",
+    "beat-making",
+    "sound-design",
+    "music-theory",
+    "ai-music"
+  ],
+
+  "compatibility": {
+    "platforms": ["darwin", "win32"],
+    "runtimes": {
+      "python": ">=3.9"
+    }
+  },
+
+  "screenshots": [
+    "docs/screenshots/session-overview.png",
+    "docs/screenshots/beat-creation.png"
+  ]
+}
