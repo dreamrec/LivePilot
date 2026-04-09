@@ -27,6 +27,13 @@ Agentic production system for Ableton Live 12. 237 tools across 32 domains, thre
 12. **ALWAYS report tool errors** — never silently swallow errors. Include: tool name, error message, fallback plan
 13. **Verify plugin health after loading** — check `health_flags`, `mcp_sound_design_ready`, `plugin_host_status`. If `parameter_count` <= 1 on AU/VST → dead plugin, delete and replace
 14. **Use `C hijaz` for Hijaz/Phrygian Dominant keys** — avoids false out-of-key warnings
+15. **VERIFY AFTER EVERY WRITE** — mandatory, non-negotiable:
+    - After `set_device_parameter` or `batch_set_parameters`: read `value_string` in the response to confirm the actual Hz/dB/% value makes sense
+    - After any filter, EQ, or effect parameter change: call `get_track_meters(include_stereo=true)` and verify the target track has non-zero left AND right levels
+    - After `apply_automation_recipe`: check that the recipe didn't push the parameter to an extreme that kills audio
+    - If a track's stereo output drops to 0: the effect is killing the signal — check `get_device_parameters` for `value_string`, fix, re-verify
+    - **Parameter ranges are NOT always 0-1.** Auto Filter Frequency is 20-135. Bit Depth is 1-16. Always read `value_string` to see actual units.
+16. **NEVER apply automation recipes without understanding the target parameter's range** — recipes generate 0-1 curves that get auto-scaled for device parameters, but always verify the result
 
 ## Tool Speed Tiers
 

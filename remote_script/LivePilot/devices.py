@@ -104,7 +104,13 @@ def set_device_parameter(song, params):
         raise ValueError("Must provide parameter_name or parameter_index")
 
     param.value = value
-    return {"name": param.name, "value": param.value}
+    return {
+        "name": param.name,
+        "value": param.value,
+        "value_string": param.str_for_value(param.value),
+        "min": param.min,
+        "max": param.max,
+    }
 
 
 @register("batch_set_parameters")
@@ -157,7 +163,11 @@ def batch_set_parameters(song, params):
                 )
 
         param.value = value
-        results.append({"name": param.name, "value": param.value})
+        results.append({
+            "name": param.name,
+            "value": param.value,
+            "value_string": param.str_for_value(param.value),
+        })
 
     return {"parameters": results}
 
