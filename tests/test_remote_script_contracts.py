@@ -119,7 +119,7 @@ def test_arrangement_automation_unsupported_returns_outer_error():
     )
 
     assert response["ok"] is False
-    assert response["error"]["code"] == "INVALID_PARAM"
+    assert response["error"]["code"] == "STATE_ERROR"
     assert "Cannot create automation envelope" in response["error"]["message"]
 
 

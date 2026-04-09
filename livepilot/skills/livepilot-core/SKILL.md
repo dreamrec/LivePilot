@@ -1,11 +1,11 @@
 ---
 name: livepilot-core
-description: Core discipline for LivePilot — agentic production system for Ableton Live 12. 236 tools across 32 domains. This skill should be used whenever working with Ableton Live through MCP tools. Provides golden rules, tool speed tiers, error handling protocol, and pointers to domain and engine skills.
+description: Core discipline for LivePilot — agentic production system for Ableton Live 12. 237 tools across 32 domains. This skill should be used whenever working with Ableton Live through MCP tools. Provides golden rules, tool speed tiers, error handling protocol, and pointers to domain and engine skills.
 ---
 
 # LivePilot Core — Ableton Live 12
 
-Agentic production system for Ableton Live 12. 236 tools across 32 domains, three layers:
+Agentic production system for Ableton Live 12. 237 tools across 32 domains, three layers:
 
 - **Device Atlas** — 280+ instruments, 139 drum kits, 350+ impulse responses. Consult `references/device-atlas/` before loading any device. Never guess a device name.
 - **M4L Analyzer** — Real-time audio analysis on the master bus (8-band spectrum, RMS/peak, key detection). Optional — all core tools work without it.
@@ -54,6 +54,8 @@ Report ALL errors to the user immediately. Common failure modes:
 - **Empty Drum Rack** — bare rack = silence → always load a kit preset
 - **M4L bridge timeout** — device may be busy or removed → retry or skip analyzer features
 - **Connection timeout** — Ableton unresponsive → check if session is heavy
+- **Volume reset on scene fire** — Ableton restores mixer state when firing scenes. Always re-apply `set_track_volume`/`set_track_pan` after `fire_scene` if your mix settings differ from what was stored in the clips
+- **M4L Analyzer not connected** — if `get_master_spectrum` errors with "Analyzer not detected", auto-load it: `find_and_load_device(track_index=-1000, device_name="LivePilot_Analyzer")`. If it errors with "UDP bridge not connected", try `reconnect_bridge` first
 
 ## Technique Memory
 
@@ -91,7 +93,7 @@ Deep production knowledge in `references/`:
 
 | File | Content |
 |------|---------|
-| `references/overview.md` | All 236 tools with params and ranges |
+| `references/overview.md` | All 237 tools with params and ranges |
 | `references/device-atlas/` | 280+ device corpus with URIs and presets |
 | `references/midi-recipes.md` | Drum patterns, chord voicings, humanization |
 | `references/sound-design.md` | Synth recipes, device chain patterns |

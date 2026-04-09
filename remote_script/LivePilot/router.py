@@ -11,6 +11,7 @@ from .utils import (
     INDEX_ERROR,
     INVALID_PARAM,
     NOT_FOUND,
+    STATE_ERROR,
     INTERNAL,
 )
 
@@ -92,5 +93,7 @@ def dispatch(song, command):
         return error_response(request_id, str(exc), INDEX_ERROR)
     except ValueError as exc:
         return error_response(request_id, str(exc), INVALID_PARAM)
+    except RuntimeError as exc:
+        return error_response(request_id, str(exc), STATE_ERROR)
     except Exception as exc:
         return error_response(request_id, str(exc), INTERNAL)

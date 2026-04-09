@@ -543,13 +543,15 @@ def set_arrangement_automation(song, params):
     # arming the track and playing back with parameter changes,
     # or use session-clip automation (set_clip_automation) and then
     # record the session performance to arrangement.
-    raise ValueError(
+    raise RuntimeError(
         "Cannot create automation envelope for parameter '%s' on this "
-        "arrangement clip. This is a known Live API limitation for "
-        "programmatically-created arrangement clips. Workarounds: "
-        "(1) use set_clip_automation on a session clip instead, "
-        "(2) record automation by arming the track during playback, "
-        "or (3) use the M4L bridge for deeper LOM envelope access."
+        "arrangement clip. Direct envelope access is not supported for "
+        "programmatically-created arrangement clips (known Live API limitation). "
+        "Workarounds: "
+        "(1) use set_clip_automation on a session clip instead, then fire "
+        "the scene and record to arrangement; "
+        "(2) use arrangement-level volume/pan fades by creating separate "
+        "clips at different volumes for each section."
         % parameter.name
     )
 

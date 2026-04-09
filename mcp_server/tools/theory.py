@@ -161,8 +161,9 @@ def suggest_next_chord(
     last_rn = engine.roman_numeral(last_group["pitch_classes"], tonic, mode)
     last_figure = last_rn["figure"]
 
-    # Progression maps by style
-    _progressions = {
+    # Progression maps by style — separate major/minor variants where needed.
+    # Minor key maps use lowercase i for tonic and scale-derived numerals.
+    _progressions_major = {
         "common_practice": {
             "I": ["IV", "V", "vi", "ii"],
             "ii": ["V", "vii\u00b0", "IV"],
@@ -173,10 +174,10 @@ def suggest_next_chord(
             "vii\u00b0": ["I", "iii"],
         },
         "jazz": {
-            "I": ["IV7", "ii7", "vi7", "bVII7"],
-            "ii7": ["V7", "bII7"],
-            "IV7": ["V7", "#ivo7", "bVII7"],
-            "V7": ["I", "vi", "bVI"],
+            "I": ["IV7", "ii7", "vi7", "V7"],
+            "ii7": ["V7", "IV7"],
+            "IV7": ["V7", "I", "ii7"],
+            "V7": ["I", "vi", "IV"],
             "vi7": ["ii7", "IV7"],
         },
         "modal": {
@@ -194,8 +195,47 @@ def suggest_next_chord(
             "vi": ["IV", "V", "I"],
         },
     }
+    _progressions_minor = {
+        "common_practice": {
+            "i": ["iv", "v", "VI", "III"],
+            "ii\u00b0": ["v", "VII", "iv"],
+            "III": ["VI", "iv", "VII"],
+            "iv": ["v", "i", "VII"],
+            "v": ["i", "VI", "iv"],
+            "VI": ["iv", "ii\u00b0", "v", "VII"],
+            "VII": ["III", "i"],
+        },
+        "jazz": {
+            "i": ["iv7", "v", "VI7", "VII7"],
+            "i7": ["iv7", "v", "VI7", "VII7"],
+            "ii\u00b07": ["v", "VII7"],
+            "iv7": ["VII7", "v", "i"],
+            "v": ["i", "VI", "iv"],
+            "VI7": ["ii\u00b07", "iv7", "VII7"],
+            "VImaj7": ["ii\u00b07", "iv7", "VII7"],
+            "VII7": ["III", "i", "VI"],
+        },
+        "modal": {
+            "i": ["VII", "iv", "v", "III"],
+            "iv": ["i", "VII", "v"],
+            "v": ["VII", "iv", "i"],
+            "VII": ["i", "iv", "v"],
+            "III": ["iv", "VII"],
+        },
+        "pop": {
+            "i": ["VII", "VI", "iv"],
+            "iv": ["i", "VII", "VI"],
+            "v": ["i", "VI", "iv"],
+            "VI": ["iv", "VII", "i"],
+            "VII": ["i", "VI", "III"],
+        },
+    }
 
-    style_map = _progressions.get(style, _progressions["common_practice"])
+    # Select the right map based on mode
+    is_minor = mode in ("minor", "dorian", "phrygian", "aeolian",
+                        "phrygian_dominant")
+    prog_set = _progressions_minor if is_minor else _progressions_major
+    style_map = prog_set.get(style, prog_set.get("common_practice", {}))
 
     # Match the last chord to the closest key in the map
     candidates = style_map.get(last_figure)

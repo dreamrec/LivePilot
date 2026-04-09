@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.9.20 — Deep Production Test Pass (April 2026)
+
+### New Tool
+- **feat(analyzer):** `reconnect_bridge` — rebind UDP 9880 mid-session after port conflict clears, without restarting the MCP server
+
+### Bug Fixes
+- **fix(arrangement):** `set_arrangement_automation` now returns `STATE_ERROR` (not `INVALID_PARAM`) with clear workaround suggestions for the known Live API limitation
+- **fix(router):** added `RuntimeError` → `STATE_ERROR` mapping so state-related errors don't masquerade as parameter validation failures
+- **fix(browser):** `load_browser_item` now accepts negative track_index (-1/-2 for returns, -1000 for master) — was incorrectly rejected by MCP-side validator
+- **fix(tracks):** `set_track_name` on return tracks strips auto-prefix letter to prevent doubling (e.g. "C-Resonators" stays as-is, not "C-C-Resonators")
+- **fix(theory):** `suggest_next_chord` now uses mode-aware progression maps — separate major/minor chord tables for common_practice, jazz, modal, and pop styles
+- **fix(research):** `research_technique` now searches instruments, audio_effects, AND drums categories (was instruments-only); deep scope notes that web search is agent-layer responsibility
+- **fix(server):** improved port competition error messages — directs users to `reconnect_bridge` tool instead of requiring server restart
+- **fix(analyzer):** M4L Analyzer User Library copy synced to latest version (presentation mode enabled, bridge JS updated)
+
+### Documentation
+- **docs(skill):** added "Volume reset on scene fire" and "M4L Analyzer auto-load" to error handling protocol in livepilot-core skill
+- **docs(CLAUDE.md):** tool count updated from 236 to 237
+
 ## 1.9.19 — Theory Engine & Meters Fix Pass (April 2026)
 
 ### Bug Fixes

@@ -1,17 +1,17 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.dreamrec/livepilot",
-  "description": "Agentic production system for Ableton Live 12 — 236 tools, 32 domains, device atlas, spectral perception, technique memory, neo-Riemannian harmony, Euclidean rhythm, species counterpoint, MIDI I/O",
+  "description": "Agentic production system for Ableton Live 12 — 237 tools, 32 domains, device atlas, spectral perception, technique memory, neo-Riemannian harmony, Euclidean rhythm, species counterpoint, MIDI I/O",
   "repository": {
     "url": "https://github.com/dreamrec/LivePilot",
     "source": "github"
   },
-  "version": "1.9.19",
+  "version": "1.9.20",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "livepilot",
-      "version": "1.9.19",
+      "version": "1.9.20",
       "transport": {
         "type": "stdio"
       }

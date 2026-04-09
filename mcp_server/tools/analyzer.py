@@ -78,6 +78,42 @@ def _require_analyzer(cache) -> None:
 
 
 @mcp.tool()
+async def reconnect_bridge(ctx: Context) -> dict:
+    """Attempt to reconnect the M4L UDP bridge (port 9880).
+
+    Use this when the bridge was unavailable at server startup (port
+    conflict) but is now free. Binds the UDP listener so spectral
+    analysis and bridge commands become available without restarting
+    the MCP server.
+    """
+    import asyncio
+
+    bridge_state = ctx.lifespan_context.get("_bridge_state")
+    if not bridge_state:
+        return {"error": "Bridge state not available — restart the MCP server"}
+
+    if bridge_state["transport"] is not None:
+        return {"ok": True, "message": "Bridge already connected on UDP 9880"}
+
+    loop = bridge_state["loop"]
+    receiver = bridge_state["receiver"]
+    try:
+        transport, _ = await loop.create_datagram_endpoint(
+            lambda: receiver,
+            local_addr=('127.0.0.1', 9880),
+        )
+        bridge_state["transport"] = transport
+        return {"ok": True, "message": "Bridge reconnected on UDP 9880"}
+    except OSError:
+        holder = _identify_port_holder(9880)
+        return {
+            "ok": False,
+            "error": f"UDP port 9880 still in use{f' (PID {holder})' if holder else ''}. "
+                     "Close the other LivePilot instance first.",
+        }
+
+
+@mcp.tool()
 def get_master_spectrum(ctx: Context) -> dict:
     """Get 8-band frequency analysis of the master bus.
 

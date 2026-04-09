@@ -5,7 +5,7 @@ Entry point for the ControlSurface. Ableton calls create_instance(c_instance)
 when this script is selected in Preferences > Link, Tempo & MIDI.
 """
 
-__version__ = "1.9.19"
+__version__ = "1.9.20"
 
 from _Framework.ControlSurface import ControlSurface
 from .server import LivePilotServer
