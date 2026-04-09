@@ -10,7 +10,7 @@
 
 ### Arpeggiator
 - **Type:** Native
-- **Load via:** `find_and_load_device("Arpeggiator")`
+- **Load via:** `find_and_load_device(track_index, "Arpeggiator")`
 - **What it does:** Takes held notes/chords and plays them as a rhythmic pattern, cycling through pitches in the chosen style at the set rate.
 - **Key parameters:**
   - **Style** — Up, Down, UpDown, DownUp, Converge, Diverge, Con+Diverge, PinkyUp, PinkyUpDown, ThumbUp, ThumbUpDown, Play Order, Chord Trigger, Random, Random Other, Random Once. Sweet spot: *Random Other* for melodies that don't repeat until all notes are used; *Converge* for cinematic builds.
@@ -32,7 +32,7 @@
 
 ### Chord
 - **Type:** Native
-- **Load via:** `find_and_load_device("Chord")`
+- **Load via:** `find_and_load_device(track_index, "Chord")`
 - **What it does:** Adds up to 6 parallel notes (intervals) to every incoming MIDI note, instantly building chords from single keys.
 - **Key parameters:**
   - **Shift 1-6** — Each adds a note at +/-36 semitones (or scale degrees with Use Current Scale). Set to +4, +7 for major triads; +3, +7 for minor.
@@ -51,7 +51,7 @@
 
 ### Note Echo
 - **Type:** Native
-- **Load via:** `find_and_load_device("Note Echo")`
+- **Load via:** `find_and_load_device(track_index, "Note Echo")`
 - **What it does:** Creates MIDI note echoes (delays) with pitch transposition and velocity decay per repeat. The MIDI equivalent of a delay effect.
 - **Key parameters:**
   - **Input** — Thru (original + echoes) or Mute (echoes only).
@@ -69,7 +69,7 @@
 
 ### Note Length
 - **Type:** Native
-- **Load via:** `find_and_load_device("Note Length")`
+- **Load via:** `find_and_load_device(track_index, "Note Length")`
 - **What it does:** Forces all MIDI notes to a specific duration regardless of how long keys are held, or triggers on note-off events.
 - **Key parameters:**
   - **Trigger** — Note On or Note Off. Note Off mode enables release-based triggering (useful for ghost notes, percussion).
@@ -89,7 +89,7 @@
 
 ### Pitch
 - **Type:** Native
-- **Load via:** `find_and_load_device("Pitch")`
+- **Load via:** `find_and_load_device(track_index, "Pitch")`
 - **What it does:** Transposes all incoming MIDI notes by a fixed interval. Simplest pitch-shifting tool.
 - **Key parameters:**
   - **Pitch** — +/-128 semitones (or +/-30 scale degrees with Use Current Scale). +12 = octave up, +7 = fifth up.
@@ -106,7 +106,7 @@
 
 ### Random
 - **Type:** Native
-- **Load via:** `find_and_load_device("Random")`
+- **Load via:** `find_and_load_device(track_index, "Random")`
 - **What it does:** Randomly alters pitch of incoming MIDI notes within a defined range and probability.
 - **Key parameters:**
   - **Chance** — 0-100% probability of randomization. 0% = pass-through, 100% = every note randomized. Sweet spot: 30-60% for subtle variation.
@@ -124,7 +124,7 @@
 
 ### Scale
 - **Type:** Native
-- **Load via:** `find_and_load_device("Scale")`
+- **Load via:** `find_and_load_device(track_index, "Scale")`
 - **What it does:** Forces all incoming MIDI notes into a specific musical scale by remapping out-of-scale notes to the nearest in-scale pitch.
 - **Key parameters:**
   - **Base** — Root note of the scale (C through B).
@@ -142,7 +142,7 @@
 
 ### Velocity
 - **Type:** Native
-- **Load via:** `find_and_load_device("Velocity")`
+- **Load via:** `find_and_load_device(track_index, "Velocity")`
 - **What it does:** Reshapes MIDI velocity values through curve manipulation, compression, expansion, randomization, and range limiting.
 - **Key parameters:**
   - **Operation** — Process Note On, Note Off, or both.
@@ -161,7 +161,7 @@
 
 ### CC Control
 - **Type:** Native (Live 12+)
-- **Load via:** `find_and_load_device("CC Control")`
+- **Load via:** `find_and_load_device(track_index, "CC Control")`
 - **What it does:** Sends and automates MIDI CC messages to hardware synths, software instruments, or other MIDI devices. A dedicated CC automation surface.
 - **Key parameters:**
   - **Mod Wheel** — CC 1 control.
@@ -181,7 +181,7 @@
 
 ### Expression Control
 - **Type:** Native (Live 12+)
-- **Load via:** `find_and_load_device("Expression Control")`
+- **Load via:** `find_and_load_device(track_index, "Expression Control")`
 - **What it does:** Maps incoming MIDI expression data (velocity, mod wheel, pitch bend, aftertouch, keytrack) to any parameter in your Live set with custom transformation curves.
 - **Key parameters:**
   - **Input Sources** — Velocity, Modwheel, Pitchbend, Pressure (aftertouch), Keytrack, Expression, Random, Increment, Slide, Sustain.
@@ -200,7 +200,7 @@
 
 ### Shaper MIDI
 - **Type:** Native (Live 12+)
-- **Load via:** `find_and_load_device("Shaper MIDI")`
+- **Load via:** `find_and_load_device(track_index, "Shaper MIDI")`
 - **What it does:** Generates custom multi-breakpoint modulation envelopes that can be mapped to up to 8 parameters. Triggered by MIDI notes or free-running.
 - **Key parameters:**
   - **Breakpoint display** — Click to add points, Shift-click to delete, Alt/Option-drag for curves.
@@ -221,7 +221,7 @@
 
 ### Envelope MIDI
 - **Type:** Native (Live 12+)
-- **Load via:** `find_and_load_device("Envelope MIDI")`
+- **Load via:** `find_and_load_device(track_index, "Envelope MIDI")`
 - **What it does:** Generates ADSR-style or custom envelopes triggered by MIDI notes, outputting modulation data to mapped parameters. Velocity-sensitive envelope shaping.
 - **Key parameters:**
   - **Attack / Decay / Sustain / Release** — Standard ADSR envelope controls.
@@ -239,7 +239,7 @@
 
 ### MIDI Monitor
 - **Type:** Native (M4L, included with Suite)
-- **Load via:** `find_and_load_device("MIDI Monitor")`
+- **Load via:** `find_and_load_device(track_index, "MIDI Monitor")`
 - **What it does:** Displays incoming MIDI data in real time for debugging. Shows notes, velocities, CCs, pitch bend, aftertouch, and MPE data.
 - **Key parameters:**
   - **Note Display** — Keyboard layout showing incoming notes, root note, and chord detection.

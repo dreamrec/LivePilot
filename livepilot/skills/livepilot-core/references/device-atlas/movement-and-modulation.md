@@ -39,7 +39,7 @@ Duplicates the incoming signal, applies time-modulated delays with subtle pitch 
 
 ### LivePilot Usage
 ```
-find_and_load_device("Chorus-Ensemble")
+find_and_load_device(track_index, "Chorus-Ensemble")
 set_device_parameter(track_index, device_index, "Rate", 1.2)
 set_device_parameter(track_index, device_index, "D/W", 40)
 ```
@@ -103,7 +103,7 @@ Combines phaser (allpass-filter notches), flanger (short modulated delay), and d
 
 ### LivePilot Usage
 ```
-find_and_load_device("Phaser-Flanger")
+find_and_load_device(track_index, "Phaser-Flanger")
 set_device_parameter(track_index, device_index, "Mode", "Flanger")
 set_device_parameter(track_index, device_index, "Feedback", 60)
 ```
@@ -163,7 +163,7 @@ Real-time pitch/frequency shifting with built-in LFO, envelope follower, delay w
 
 ### LivePilot Usage
 ```
-find_and_load_device("Shifter")
+find_and_load_device(track_index, "Shifter")
 set_device_parameter(track_index, device_index, "Coarse", 7)  # shift up a fifth
 set_device_parameter(track_index, device_index, "D/W", 50)
 ```
@@ -218,7 +218,7 @@ LFO-driven amplitude modulation for stereo panning and tremolo effects with mult
 
 ### LivePilot Usage
 ```
-find_and_load_device("Auto Pan")
+find_and_load_device(track_index, "Auto Pan")
 set_device_parameter(track_index, device_index, "Amount", 80)
 set_device_parameter(track_index, device_index, "Shape", -60)  # pumping gate
 ```
@@ -386,7 +386,7 @@ Real-time audio looper with overdub, speed/pitch manipulation, reverse playback,
 
 ### LivePilot Usage
 ```
-find_and_load_device("Looper")
+find_and_load_device(track_index, "Looper")
 # Looper transport is best controlled via MIDI mapping or foot controller
 # API access to Looper state is limited
 ```

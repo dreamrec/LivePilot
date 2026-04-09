@@ -134,4 +134,5 @@ For deeper compositional analysis beyond basic arrangement:
 
 ## Reference
 
-Consult `references/ableton-workflow-patterns.md` in the livepilot-core skill for session/arrangement workflow patterns, song structures by genre, follow action configurations, clip launch modes, and export settings.
+Supporting references live in the `livepilot-core` skill's `references/` directory:
+- `livepilot-core/references/ableton-workflow-patterns.md` — session/arrangement workflows, song structures by genre, follow actions, clip launch modes, export settings

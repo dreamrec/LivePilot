@@ -12,9 +12,9 @@ Ableton's browser is the source for all devices, presets, and samples. The `sear
 |----------|---------|-------------------|
 | **Sounds** | Instrument presets organized by character (Bass, Keys, Lead, Pad, etc.) | `search_browser("warm pad")` |
 | **Drums** | Drum Rack presets (kits, single hits, percussion) | `search_browser("808 kit")` |
-| **Instruments** | Raw instruments without presets (Analog, Wavetable, Operator, etc.) | `find_and_load_device("Wavetable")` |
-| **Audio Effects** | All audio effects (Compressor, Reverb, EQ Eight, etc.) | `find_and_load_device("Compressor")` |
-| **MIDI Effects** | MIDI processors (Arpeggiator, Chord, Scale, etc.) | `find_and_load_device("Arpeggiator")` |
+| **Instruments** | Raw instruments without presets (Analog, Wavetable, Operator, etc.) | `find_and_load_device(track_index, "Wavetable")` |
+| **Audio Effects** | All audio effects (Compressor, Reverb, EQ Eight, etc.) | `find_and_load_device(track_index, "Compressor")` |
+| **MIDI Effects** | MIDI processors (Arpeggiator, Chord, Scale, etc.) | `find_and_load_device(track_index, "Arpeggiator")` |
 | **Max for Live** | M4L instruments, effects, and tools | `search_browser("LFO max")` |
 | **Plug-ins** | VST/AU plugins installed on the system | `search_browser("Serum")` |
 | **Clips** | Pre-made clips (MIDI patterns, audio loops) | `search_browser("house beat")` |

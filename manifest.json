@@ -87,8 +87,5 @@
     }
   },
 
-  "screenshots": [
-    "docs/screenshots/session-overview.png",
-    "docs/screenshots/beat-creation.png"
-  ]
+  "screenshots": []
 }

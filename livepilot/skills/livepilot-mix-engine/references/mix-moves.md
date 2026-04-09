@@ -35,7 +35,7 @@ Apply or adjust glue compression on groups, return tracks, or master bus.
 - Always capture before/after RMS to verify loudness is maintained
 - On master bus, prefer ratio <= 2:1 and attack >= 10 ms
 
-**Tools:** `set_device_parameter`, `find_and_load_device("Compressor")`
+**Tools:** `set_device_parameter`, `find_and_load_device(track_index, "Compressor")`
 
 ## transient_shaping
 
@@ -68,7 +68,7 @@ Subtractive EQ to clear masking, remove resonances, or fix spectral balance.
 - Cut on the less important track in a masking pair
 - Verify after cut that the track still sounds full — over-cutting kills body
 
-**Tools:** `set_device_parameter`, `find_and_load_device("EQ Eight")`
+**Tools:** `set_device_parameter`, `find_and_load_device(track_index, "EQ Eight")`
 
 ## eq_boost
 

@@ -10,7 +10,7 @@ A filter or noise sweep that builds energy into the next section.
 - Duration: 2-8 bars
 - Implementation: ascending automation on filter cutoff (20% to 100%) plus optional white noise riser
 - Best for: verse-to-chorus, breakdown-to-drop
-- Tools: `set_clip_automation`, `apply_automation_shape(shape="exponential_rise")`
+- Tools: `set_clip_automation`, `apply_automation_shape(track_index, clip_index, parameter_type="device", curve_type="exponential", start=0, end=1)`
 
 ### drum_build
 Progressive addition of percussion layers leading to the downbeat.
@@ -52,7 +52,7 @@ Low-pass filter sweep closing down to muffle the sound.
 - Duration: 2-4 bars
 - Implementation: descending automation on master or bus filter cutoff (100% to 20-30%)
 - Best for: section endings, transitions to breakdowns
-- Tools: `set_clip_automation`, `apply_automation_shape(shape="exponential_fall")`
+- Tools: `set_clip_automation`, `apply_automation_shape(track_index, clip_index, parameter_type="device", curve_type="exponential", start=1, end=0)`
 
 ### reverb_wash
 Increase reverb wet level to blur the previous section into the next.

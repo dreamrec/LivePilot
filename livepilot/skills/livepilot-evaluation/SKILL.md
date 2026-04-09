@@ -13,9 +13,13 @@ Every production move follows this loop regardless of which engine initiated it.
 
 ### Step 1 — Compile Goal Vector
 
-Call `compile_goal_vector(goal, mode)` to establish what you are trying to achieve.
+Call `compile_goal_vector(request_text, targets, protect, mode, aggression)` to establish what you are trying to achieve.
 
-**Goal**: a plain-text description of the intended improvement (e.g., "reduce masking between bass and kick in 100-200 Hz range").
+**request_text**: a plain-text description of the intended improvement (e.g., "reduce masking between bass and kick in 100-200 Hz range").
+
+**targets**: dict of dimension → weight (e.g., `{"punch": 0.4, "weight": 0.3, "clarity": 0.3}`). Weights are normalized to sum to 1.0. Valid dimensions: energy, punch, weight, density, brightness, warmth, width, depth, motion, contrast, clarity, cohesion, groove, tension, novelty, polish, emotion.
+
+**protect**: dict of dimension → minimum threshold (e.g., `{"clarity": 0.7}`). If a dimension drops below this value after a move, the move is undone.
 
 **Modes** control how aggressively you act:
 
@@ -70,10 +74,10 @@ Repeat the same measurements from Step 4. Use identical tool calls to ensure com
 
 Call the appropriate evaluator:
 
-- `evaluate_move(before_snapshot, after_snapshot, goal)` — universal evaluator, works for any engine
-- `evaluate_mix_move(before_snapshot, after_snapshot, targets, protect)` — mix-specific with protection constraints
-- `evaluate_composition_move(before_snapshot, after_snapshot, goal)` — composition-specific
-- `evaluate_with_fabric(before_snapshot, after_snapshot, goal)` — uses memory fabric for taste-aware judgment
+- `evaluate_move(goal_vector, before_snapshot, after_snapshot)` — universal evaluator. `goal_vector` is the dict returned by `compile_goal_vector`. Snapshots should contain `spectrum` (8-band dict), `rms`, `peak`.
+- `evaluate_mix_move(before_snapshot, after_snapshot, targets, protect)` — mix-specific with protection constraints. `targets` and `protect` are dicts of dimension → weight/threshold.
+- `evaluate_composition_move(before_snapshot, after_snapshot, goal_vector)` — composition-specific
+- `evaluate_with_fabric(before_snapshot, after_snapshot, goal_vector)` — uses memory fabric for taste-aware judgment
 
 ### Step 8 — Read the Verdict
 
@@ -132,7 +136,7 @@ Successful moves can be promoted to persistent memory for future sessions.
 
 - `get_promotion_candidates` — list moves from this session that scored > 0.7 and are eligible for saving
 - `memory_learn(type, data)` — save a technique to memory (mix_template, sound_design, composition, etc.)
-- `record_anti_preference(description)` — record something the user explicitly rejected, so it is never suggested again
+- `record_anti_preference(dimension, direction)` — record something the user explicitly rejected. `dimension` is the quality axis (e.g., "brightness", "width"), `direction` is "more" or "less". This ensures the rejected direction is never suggested again.
 
 ### Promotion Rules
 

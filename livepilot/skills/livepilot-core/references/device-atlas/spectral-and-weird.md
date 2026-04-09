@@ -12,7 +12,7 @@
 ### Spectral Time
 
 - **Type:** Native (Live 11+, Suite only)
-- **Load via:** `find_and_load_device("Spectral Time")`
+- **Load via:** `find_and_load_device(track_index, "Spectral Time")`
 - **What it does:** FFT-based effect combining a spectral freeze engine and a spectral delay. Freeze captures and sustains incoming audio as a spectral snapshot; Delay applies per-frequency delay times with pitch shift, tilt, spray, and masking. Sections run independently or in series (Freeze into Delay or Delay into Freeze). Built-in sonogram display shows dry (yellow) and wet (blue) signals.
 - **Signal flow:** Input → Pre Gain → [Freezer ↔ Delay (order switchable)] → Mix → Output
 - **Key parameters:**
@@ -52,7 +52,7 @@
 ### Spectral Resonator
 
 - **Type:** Native (Live 11+, Suite only)
-- **Load via:** `find_and_load_device("Spectral Resonator")`
+- **Load via:** `find_and_load_device(track_index, "Spectral Resonator")`
 - **What it does:** FFT-based pitched resonance processor. Breaks incoming audio into spectral partials, then resonates them at a tuned frequency with harmonic stretching, shifting, and modulation. Can be driven by internal frequency or external MIDI for pitched spectral effects. Turns any audio into a resonant, tonal instrument.
 - **Signal flow:** Input → FFT analysis → Partial generation (Harmonics + Stretch + Shift) → Decay/Damping → Modulation (Chorus/Wander/Granular) → Unison → Dry/Wet Output
 - **Key parameters:**
@@ -90,7 +90,7 @@
 ### Corpus
 
 - **Type:** Native (all Live editions)
-- **Load via:** `find_and_load_device("Corpus")`
+- **Load via:** `find_and_load_device(track_index, "Corpus")`
 - **What it does:** Physical modeling resonator simulating 7 types of resonant objects. Developed with Applied Acoustics Systems. Adds the acoustic character of beams, strings, membranes, plates, pipes, and tubes to any input signal. Turns percussive hits into tuned metal, wood, or membrane sounds; turns sustained audio into vibrating physical objects.
 - **Signal flow:** Input → Band-pass Filter (optional) → Resonator body (selected type) → LFO modulation → Bleed mix → Gain/Limiter → Dry/Wet Output. MIDI sidechain can control tuning and decay.
 - **Key parameters:**
@@ -148,7 +148,7 @@
 ### Grain Delay
 
 - **Type:** Native (all Live editions)
-- **Load via:** `find_and_load_device("Grain Delay")`
+- **Load via:** `find_and_load_device(track_index, "Grain Delay")`
 - **What it does:** Granular delay that chops incoming audio into tiny grains and replays them with delay, pitch shift, and randomization. Sits between a delay and a granular processor -- capable of subtle chorus-like effects, dramatic pitch-shifted textures, and complete signal destruction depending on settings.
 - **Signal flow:** Input → Grain engine (Frequency sets grain rate) → Pitch shift → Spray (time randomization) → Random Pitch → Feedback → Dry/Wet Output
 - **Key parameters:**
@@ -175,7 +175,7 @@
 ### Beat Repeat
 
 - **Type:** Native (all Live editions)
-- **Load via:** `find_and_load_device("Beat Repeat")`
+- **Load via:** `find_and_load_device(track_index, "Beat Repeat")`
 - **What it does:** Real-time audio buffer capture and loop effect. Grabs chunks of audio at configurable intervals and repeats them with grid slicing, pitch decay, filtering, and volume decay. The definitive glitch/stutter tool in Live -- can produce everything from subtle fills to extreme rhythmic destruction.
 - **Signal flow:** Incoming audio → Interval-triggered capture → Gate-length repetition → Grid slicing → Variation (random grid) → Pitch shifting → Filter (HP + LP) → Volume Decay → Mix/Insert/Gate output
 - **Key parameters:**
@@ -221,7 +221,7 @@
 ### Confetti: Analysis
 
 - **Type:** M4L Audio Effect (FluCoMa-powered)
-- **Load via:** `find_and_load_device("M4L_Confetti Analysis")`
+- **Load via:** `find_and_load_device(track_index, "M4L_Confetti Analysis")`
 - **What it does:** Real-time audio descriptor analysis engine. Extracts onset detection, loudness, spectral centroid, and spectral flatness from incoming audio. Outputs continuous signal-rate streams or sample-and-hold values triggered by onset detection. Use as a modulation source for other Confetti devices or parameter mapping.
 - **Key parameters:** Onset sensitivity, descriptor selection (loudness / centroid / flatness), output mode (continuous / sample-and-hold), smoothing
 - **Reach for this when:** you need audio-reactive modulation, feature extraction for driving other effects, or analytical monitoring of spectral content
@@ -231,7 +231,7 @@
 ### Confetti: Chopper
 
 - **Type:** M4L Audio Effect
-- **Load via:** `find_and_load_device("M4L_Confetti Chopper")`
+- **Load via:** `find_and_load_device(track_index, "M4L_Confetti Chopper")`
 - **What it does:** Time-domain granular analysis/resynthesis. Segments incoming audio at zero-crossings (wavesets) and stores them, then plays back stored segments in various orders. Creates waveset-based effects from subtle timbral shifts to complete reconstruction of audio from individual waveform cycles.
 - **Key parameters:** Segment size, playback order, waveset selection, mix
 - **Reach for this when:** you need waveset manipulation, zero-crossing granular effects, or timbral deconstruction at the waveform level
@@ -241,7 +241,7 @@
 ### Confetti: Chorus
 
 - **Type:** M4L Audio Effect
-- **Load via:** `find_and_load_device("M4L_Confetti Chorus")`
+- **Load via:** `find_and_load_device(track_index, "M4L_Confetti Chorus")`
 - **What it does:** Multi-mode modulation effect with three distinct algorithms: Digital (8-stage chorus), Analog (sine LFO), and LoFi (triangle LFO with wow/flutter). Includes saturation processing stage. More character-driven than Live's native Chorus-Ensemble.
 - **Key parameters:** Mode (Digital / Analog / LoFi), rate, depth, saturation amount, mix
 - **Reach for this when:** you want characterful chorus with lo-fi or analog flavor, wow/flutter tape effects, or saturated modulation
@@ -251,7 +251,7 @@
 ### Confetti: Cloud
 
 - **Type:** M4L Audio Effect (FluCoMa-powered)
-- **Load via:** `find_and_load_device("M4L_Confetti Cloud")`
+- **Load via:** `find_and_load_device(track_index, "M4L_Confetti Cloud")`
 - **What it does:** Real-time granulator that writes incoming audio to a buffer while simultaneously reading back grains. Uses FluCoMa harmonic/percussive/transient decomposition to balance spectral components before granulation. The core granular texture engine of the Confetti suite.
 - **Key parameters:** Grain size, grain density, position, pitch, harmonic/percussive/transient balance (FluCoMa), spray, feedback, mix
 - **Reach for this when:** you need real-time granular processing with spectral decomposition, textural clouds from any audio, or harmonic/percussive separation before granulation
@@ -261,7 +261,7 @@
 ### Confetti: Dirt
 
 - **Type:** M4L Audio Effect
-- **Load via:** `find_and_load_device("M4L_Confetti Dirt")`
+- **Load via:** `find_and_load_device(track_index, "M4L_Confetti Dirt")`
 - **What it does:** Dual-algorithm distortion combining cubic nonlinear distortion and variable-hardness clipping. Both algorithms 4x oversampled to minimize aliasing. Includes post-distortion EQ for tonal shaping.
 - **Key parameters:** Algorithm selection, drive, hardness (clip algorithm), post-EQ, mix
 - **Reach for this when:** you need clean-aliasing distortion, variable clipping character, or post-EQ-shaped saturation
@@ -271,7 +271,7 @@
 ### Confetti: Dub
 
 - **Type:** M4L Audio Effect
-- **Load via:** `find_and_load_device("M4L_Confetti Dub")`
+- **Load via:** `find_and_load_device(track_index, "M4L_Confetti Dub")`
 - **What it does:** Dirty delay that responds to audio onsets for dub-style processing. Multiple delay modes with onset-triggered behavior create dub snare slapbacks and Karplus-Strong-like resonant string effects from transient material.
 - **Key parameters:** Delay time, feedback, onset sensitivity, mode selection, filter, mix
 - **Reach for this when:** you need onset-reactive delay, dub-style processing, or Karplus-Strong string synthesis from percussive input
@@ -281,7 +281,7 @@
 ### Confetti: Filter
 
 - **Type:** M4L Audio Effect
-- **Load via:** `find_and_load_device("M4L_Confetti Filter")`
+- **Load via:** `find_and_load_device(track_index, "M4L_Confetti Filter")`
 - **What it does:** Multi-mode filter combining 4 classic filter topologies: MS-20, Sallen-Key, Moog Ladder, and Butterworth. Each offers lowpass/highpass modes with adjustable character parameters unique to each topology. More colorful and aggressive than Live's Auto Filter.
 - **Key parameters:** Topology (MS-20 / Sallen-Key / Moog / Butterworth), mode (LP / HP), cutoff, resonance, character/drive, mix
 - **Reach for this when:** you need specific analog filter character, aggressive self-oscillating resonance (MS-20), or filter topology comparison
@@ -291,7 +291,7 @@
 ### Confetti: Lofi
 
 - **Type:** M4L Audio Effect
-- **Load via:** `find_and_load_device("M4L_Confetti Lofi")`
+- **Load via:** `find_and_load_device(track_index, "M4L_Confetti Lofi")`
 - **What it does:** Combines bit depth reduction, sample rate reduction, audio-rate bitwise manipulation, and MP3-style compression artifacts. More destructive and flexible than Live's Redux.
 - **Key parameters:** Bit depth, sample rate, bitwise mode, compression quality, mix
 - **Reach for this when:** you need deep bit-crushing, codec artifacts, bitwise audio manipulation, or layered lo-fi degradation beyond Redux
@@ -301,7 +301,7 @@
 ### Confetti: Octaver
 
 - **Type:** M4L Audio Effect
-- **Load via:** `find_and_load_device("M4L_Confetti Octaver")`
+- **Load via:** `find_and_load_device(track_index, "M4L_Confetti Octaver")`
 - **What it does:** Lo-fi analog octave effect roughly modeled on the Boss OC-2 pedal. Generates sub-octave from input with added drive and filtering for fuzz-like character. Monophonic tracking like the hardware original.
 - **Key parameters:** Octave level (-1, -2), drive, filter, direct signal level, mix
 - **Reach for this when:** you need analog-style sub-octave, lo-fi bass fattening, or OC-2 pedal character in the box
@@ -311,7 +311,7 @@
 ### Confetti: Pitch
 
 - **Type:** M4L Audio Effect
-- **Load via:** `find_and_load_device("M4L_Confetti Pitch")`
+- **Load via:** `find_and_load_device(track_index, "M4L_Confetti Pitch")`
 - **What it does:** Pitch shifting using PSOLA (pitch-synchronous overlap-add) algorithm, modeled on the character of the Digitech Whammy pedal. Four modes: Clean, Dirty, Automatic, and Random. Glitchy artifacts are a feature, not a bug.
 - **Key parameters:** Pitch interval (semitones), mode (Clean / Dirty / Auto / Random), glide, mix
 - **Reach for this when:** you need Whammy-style pitch effects, glitchy PSOLA pitch shifting, or random pitch chaos
@@ -321,7 +321,7 @@
 ### Confetti: Resonator
 
 - **Type:** M4L Audio Effect
-- **Load via:** `find_and_load_device("M4L_Confetti Resonator")`
+- **Load via:** `find_and_load_device(track_index, "M4L_Confetti Resonator")`
 - **What it does:** Onset-triggered oscillator bank with pitch detection. Detects incoming transients, analyzes pitch, then triggers a bank of oscillators with randomized partial frequencies that fade out over time. Creates harmonic ghosts from percussive input.
 - **Key parameters:** Onset sensitivity, partial count, frequency randomization, decay time, pitch tracking, mix
 - **Reach for this when:** you need harmonic resonance from percussion, pitched ghost tones from transients, or oscillator-bank effects driven by audio input
@@ -331,7 +331,7 @@
 ### Confetti: Skipper
 
 - **Type:** M4L Audio Effect
-- **Load via:** `find_and_load_device("M4L_Confetti Skipper")`
+- **Load via:** `find_and_load_device(track_index, "M4L_Confetti Skipper")`
 - **What it does:** Models a skipping CD player. Attack detection causes the virtual disc to skip, creating buffer-repeat and stutter effects. Multiple Sony Discman models available with different skip characteristics. Nostalgia as an effect.
 - **Key parameters:** Discman model, skip sensitivity, repeat length, attack threshold, mix
 - **Reach for this when:** you need CD-skip glitch effects, nostalgic digital artifacts, or onset-triggered buffer stutters
@@ -341,7 +341,7 @@
 ### Confetti: Tremolo
 
 - **Type:** M4L Audio Effect
-- **Load via:** `find_and_load_device("M4L_Confetti Tremolo")`
+- **Load via:** `find_and_load_device(track_index, "M4L_Confetti Tremolo")`
 - **What it does:** VCA and low-pass gate (LPG) based tremolo with waveshaping LFOs. Optional stereo panning mode. More organic and characterful than simple volume modulation due to LPG filtering behavior.
 - **Key parameters:** Rate, depth, LFO waveshape, VCA/LPG mode, stereo pan mode, mix
 - **Reach for this when:** you need LPG-colored tremolo, waveshaped modulation, or organic volume/filter movement
@@ -351,7 +351,7 @@
 ### Confetti: Wavefolder
 
 - **Type:** M4L Audio Effect
-- **Load via:** `find_and_load_device("M4L_Confetti Wavefolder")`
+- **Load via:** `find_and_load_device(track_index, "M4L_Confetti Wavefolder")`
 - **What it does:** Multiple wavefolder algorithms inspired by Buchla, Madrona Labs Aalto, and Whimsical Raps Cold Mac, combined with sigmoid saturation. Creates complex harmonic overtones by folding waveforms back on themselves. Rich, aggressive, and unpredictable.
 - **Key parameters:** Algorithm (Buchla / Aalto / Cold Mac), fold amount, symmetry, saturation, mix
 - **Reach for this when:** you need complex harmonic generation, wavefolding distortion, or aggressive timbral transformation
@@ -367,7 +367,7 @@
 ### blubb 0.0
 
 - **Type:** M4L Instrument
-- **Load via:** `find_and_load_device("blubb")`
+- **Load via:** `find_and_load_device(track_index, "blubb")`
 - **What it does:** Generates bubbly water-drop sounds and circular oscilloscope visuals. Uses sin/cos equations to draw circles; applies pitch and volume envelopes for short rising-frequency tones; jumps randomly between positions. Includes automatic sequencer.
 - **Key parameters:** Pitch envelope, volume envelope, position randomization, sequencer rate
 - **Reach for this when:** you need bubbly/water synthesis, circular oscilloscope patterns, or generative percussive textures
@@ -377,7 +377,7 @@
 ### boing 1.1
 
 - **Type:** M4L Instrument
-- **Load via:** `find_and_load_device("boing")`
+- **Load via:** `find_and_load_device(track_index, "boing")`
 - **What it does:** Renders bouncing-ball animation on oscilloscope with corresponding audio. Draws horizontal circles, moves them vertically to form spirals, adjusts width for ball appearance. Envelopes and LFOs control spiral density, rotation, and 3D depth.
 - **Key parameters:** Bounce height, spiral density, rotation speed, 3D depth, LFO rate
 - **Reach for this when:** you need bouncy percussive synthesis, spiral oscilloscope visuals, or physics-inspired sound generation
@@ -387,7 +387,7 @@
 ### butterfly 0.1
 
 - **Type:** M4L Instrument
-- **Load via:** `find_and_load_device("butterfly")`
+- **Load via:** `find_and_load_device(track_index, "butterfly")`
 - **What it does:** Generates butterfly-shaped patterns on oscilloscope based on the transcendental butterfly curve equation. Blends three different mathematical shapes together for visual and sonic complexity.
 - **Key parameters:** Shape blend (3 shapes), curve parameters, morphing speed
 - **Reach for this when:** you need mathematical curve synthesis, organic visual patterns, or transcendental function-based sound design
@@ -397,7 +397,7 @@
 ### fractal spiral 1.8
 
 - **Type:** M4L Instrument
-- **Load via:** `find_and_load_device("fractal spiral")`
+- **Load via:** `find_and_load_device(track_index, "fractal spiral")`
 - **What it does:** Creates fractal spiral patterns with continuous zoom capability. Draws circles moved along spiral lines with seamless zooming by blending spiral stages. Controls for spiral density, width, rotation, zoom speed, and 3D depth via envelopes and LFOs. The most versatile and visually complex of the oscilloscope instruments.
 - **Key parameters:** Spiral density, width, rotation, zoom speed, 3D depth, envelope/LFO assignments
 - **Reach for this when:** you need fractal visual synthesis, zooming spiral patterns, or complex evolving oscilloscope visuals
@@ -407,7 +407,7 @@
 ### Kepler-Bouwkamp 0.4
 
 - **Type:** M4L Instrument
-- **Load via:** `find_and_load_device("Kepler-Bouwkamp")`
+- **Load via:** `find_and_load_device(track_index, "Kepler-Bouwkamp")`
 - **What it does:** Renders interlocking polygons and inscribed circles based on the Kepler-Bouwkamp constant (nested polygon geometry). Draws and rotates lines to form polygons with circles inserted between them. Adjustable shape, polygon count, direction, and rotation.
 - **Key parameters:** Polygon count, rotation speed, direction, shape morphing, nesting depth
 - **Reach for this when:** you need geometric oscilloscope patterns, mathematical polygon synthesis, or sacred-geometry-inspired visuals
@@ -417,7 +417,7 @@
 ### line horizon 0.1
 
 - **Type:** M4L Instrument
-- **Load via:** `find_and_load_device("line horizon")`
+- **Load via:** `find_and_load_device(track_index, "line horizon")`
 - **What it does:** Displays horizontal line arrays creating perspective depth effect with Minecraft-style sunrise visuals. Lines compress near zero for perspective illusion. Creates circle/square shapes in center with bow and squeeze distribution functions for line spacing.
 - **Key parameters:** Line count, perspective depth, beat sync, center shape, bow/squeeze distribution
 - **Reach for this when:** you need horizon/landscape oscilloscope visuals, perspective-based synthesis, or beat-synced visual patterns
@@ -427,7 +427,7 @@
 ### mushrooms 0.3
 
 - **Type:** M4L Instrument
-- **Load via:** `find_and_load_device("mushrooms")`
+- **Load via:** `find_and_load_device(track_index, "mushrooms")`
 - **What it does:** Draws mushroom shapes on oscilloscope via sin/cos circle generation, ellipses through unequal channel volumes, spirals through vertical movement. Width modulation shapes stems and heads. Includes rotation and bending controls.
 - **Key parameters:** Stem width, head size, rotation, bending, channel volume ratio
 - **Reach for this when:** you need organic mushroom-shaped oscilloscope visuals, or creative stereo-field synthesis
@@ -437,7 +437,7 @@
 ### Nyquist-Shannon 0.1
 
 - **Type:** M4L Instrument
-- **Load via:** `find_and_load_device("Nyquist-Shannon")`
+- **Load via:** `find_and_load_device(track_index, "Nyquist-Shannon")`
 - **What it does:** Educational tool demonstrating sampling rate, aliasing effects, and signal reconstruction on oscilloscope. Visualizes sine waves with sampling point indicators, includes phase shift control, demonstrates aliasing artifacts. Primarily instructional.
 - **Key parameters:** Sampling rate, frequency, phase shift, reconstruction display
 - **Reach for this when:** you need aliasing demonstration, sampling theory visualization, or educational oscilloscope content
@@ -447,7 +447,7 @@
 ### Oscilloscope 2.0
 
 - **Type:** M4L Audio Effect
-- **Load via:** `find_and_load_device("Oscilloscope 2.0")`
+- **Load via:** `find_and_load_device(track_index, "Oscilloscope 2.0")`
 - **What it does:** Lissajous pattern oscilloscope visualization using stereo audio input. Routes left channel to horizontal deflection, right channel to vertical. Multiple drawing modes and color options. This is a visualizer/monitor, not a synthesizer -- put it at the end of a chain to see what your audio looks like on a scope.
 - **Key parameters:** Drawing mode, color, persistence, zoom, trigger
 - **Reach for this when:** you need to monitor oscilloscope patterns from other devices, visualize stereo audio as Lissajous figures, or verify XY output of other oscilloscope instruments
@@ -457,7 +457,7 @@
 ### radar 1.3
 
 - **Type:** M4L Instrument
-- **Load via:** `find_and_load_device("radar")`
+- **Load via:** `find_and_load_device(track_index, "radar")`
 - **What it does:** Versatile pattern generator for spirals, tunnels, radar screens, and percussion synthesis. Draws circles along lines forming spirals with phasing for direction/shape variation. Includes 3D rotation, bending, fading effects. Multiple trigger modes for varied sound synthesis. The most sonically useful oscilloscope instrument due to extensive preset library.
 - **Key parameters:** Pattern type, spiral phase, 3D rotation, bending, fade, trigger mode, preset selection
 - **Reach for this when:** you need versatile oscilloscope synthesis, radar/tunnel visuals, or percussion synthesis with visual feedback
@@ -467,7 +467,7 @@
 ### sincos 4001
 
 - **Type:** M4L Instrument
-- **Load via:** `find_and_load_device("sincos 4001")`
+- **Load via:** `find_and_load_device(track_index, "sincos 4001")`
 - **What it does:** Harmonic Lissajous pattern generator through additive synthesis. Creates circles with x=sin(t), y=cos(t) and combines up to 8 harmonic frequencies (each multiplied by harmonic number). Includes volume randomization, fine frequency control, and pattern animation. Produces the most complex and musically rich oscilloscope patterns.
 - **Key parameters:** Harmonic count (up to 8), harmonic levels, fine frequency, volume randomization, animation speed
 - **Reach for this when:** you need additive oscilloscope synthesis, complex Lissajous patterns, or harmonically rich visual-audio generation
@@ -483,7 +483,7 @@
 ### SpectroGlitch
 
 - **Type:** M4L Audio Effect
-- **Load via:** `find_and_load_device("SpectroGlitch")`
+- **Load via:** `find_and_load_device(track_index, "SpectroGlitch")`
 - **What it does:** Randomly suppresses or inverts the magnitude or phase of the incoming signal's spectrum. FFT-based destruction that operates on individual frequency bins, creating spectral holes, phase inversions, and unpredictable timbral mutations. The most immediately destructive spectral effect in the collection.
 - **Key parameters:** Magnitude suppression probability, phase inversion probability, FFT size, randomization rate, mix
 - **Reach for this when:** you need spectral destruction, random frequency-bin manipulation, glitchy timbral mutation, or unpredictable spectral effects
@@ -494,7 +494,7 @@
 ### SpectroSynth
 
 - **Type:** M4L Instrument
-- **Load via:** `find_and_load_device("SpectroSynth")`
+- **Load via:** `find_and_load_device(track_index, "SpectroSynth")`
 - **What it does:** Compact polyphonic synthesizer that creates sounds from a wide and complex spectral timbre. Generates dense spectral content ideal for rich atmospheres, drones, and evolving pads. Designed for abstract/ambient sound creation.
 - **Key parameters:** Spectral complexity, timbre control, polyphony, envelope, filter, mix
 - **Reach for this when:** you need dense spectral atmospheres, abstract polyphonic pads, or complex-timbre synthesis for ambient/experimental music
@@ -504,7 +504,7 @@
 ### BrokenDelays
 
 - **Type:** M4L Audio Effect
-- **Load via:** `find_and_load_device("BrokenDelays")`
+- **Load via:** `find_and_load_device(track_index, "BrokenDelays")`
 - **What it does:** Delay effect featuring up to 16 delay lines that abruptly change their lengths and playback probability on rhythmic intervals. Creates never-repeating bizarre delay patterns from mundane audio input. Each delay line has independent chance-to-play, creating probabilistic rhythmic delay textures.
 - **Key parameters:** Delay line count (up to 16), length range, change rate (rhythmic), probability per line, feedback, mix
 - **Reach for this when:** you need chaotic multi-delay textures, probabilistic rhythmic delays, never-repeating echo patterns, or controlled delay-line randomization
@@ -515,7 +515,7 @@
 ### Disturbances
 
 - **Type:** M4L Audio Effect / Generator
-- **Load via:** `find_and_load_device("Disturbances")`
+- **Load via:** `find_and_load_device(track_index, "Disturbances")`
 - **What it does:** Generator of stutters and noise interference applied to incoming audio. Injects controlled disruptions -- buffer stutters, noise bursts, signal interruptions -- into the audio stream. Creates the sound of a malfunctioning system, broken transmission, or corrupted playback.
 - **Key parameters:** Stutter rate, noise intensity, interference type, probability, mix
 - **Reach for this when:** you need transmission-error aesthetics, controlled signal disruption, noise interference, or stutter generation layered onto existing audio
@@ -543,7 +543,7 @@
 ### GrainTable v0.6.1
 
 - **Type:** M4L Instrument
-- **Load via:** `find_and_load_device("GrainTable_AoW")`
+- **Load via:** `find_and_load_device(track_index, "GrainTable_AoW")`
 - **What it does:** Recreates the Access Virus TI/TI2 graintable synthesis mode in Max for Live. Uses wavetable carrier modulated by slave wavetables with pulse-width compression for sync-like sounds. Historically significant in psytrance production. Supports up to 256 wavetable files per folder, drag-and-drop loading, and custom waveform drawing.
 - **Key parameters:**
   - **Slave Wavetable:** wavetable file/folder, wavetable size, wave number, note-dependent randomization, two alternating oscillators with independent pitch detuning
@@ -559,7 +559,7 @@
 ### AUTOGLITCH v1.1
 
 - **Type:** M4L Audio Effect
-- **Load via:** `find_and_load_device("AUTOGLITCH_AoW")`
+- **Load via:** `find_and_load_device(track_index, "AUTOGLITCH_AoW")`
 - **What it does:** Random multi-effect glitch generator built around a step sequencer engine (borrowed from AutoPlay). The sequencer controls not just volume but an entire chain of effects. At its heart is a stutter engine that decomposes each step into up to 32 sub-glitches played forward or backward at up to 8x speed. After stuttering: repanning, bitcrush/downsample, pitch/frequency shifting (±48 semitones), comb filter, multimode filter, and a delayed feedback loop that can feed back into 3 different sections.
 - **Key parameters:**
   - **Step Sequencer:** step count, step length, random parameter section per step
@@ -580,7 +580,7 @@
 ### AUTOGRID4 v1.8
 
 - **Type:** M4L Audio Effect
-- **Load via:** `find_and_load_device("AUTOGRID4_AoW")`
+- **Load via:** `find_and_load_device(track_index, "AUTOGRID4_AoW")`
 - **What it does:** Random grid pattern generator that creates stutter patterns from up to 4 incoming audio tracks mixed with the current track. Generates complex FM-style patterns, sequenced arpeggios, and basslines from multiple sources, ensuring sounds never overlap. Used by major psytrance artists (Tristan, Jumpstreet).
 - **Key parameters:**
   - **Input Sources:** up to 4 incoming tracks (AutoGrid8 variant handles 8)
@@ -604,7 +604,7 @@
 ### Grain Forest (Dillon Bastan / Isotonik)
 
 - **Type:** M4L Audio Effect / Instrument
-- **Load via:** `find_and_load_device("Grain Forest")`
+- **Load via:** `find_and_load_device(track_index, "Grain Forest")`
 - **What it does:** Granular synthesizer/effect driven by a simulated forest ecosystem. Each "tree" is an independent grain/voice with its own DNA that modulates playback and FX parameters. Trees cross-pollinate, mix DNA, and create new seeds with optional mutations, causing the sound to evolve organically over time. Supports up to 4 audio source mixes (Soil) that trees sample from.
 - **Key parameters:**
   - **Soil (Audio Sources):** up to 4 mixes from: direct audio input, routed track audio, dropped audio file (repitchable)
@@ -623,7 +623,7 @@
 ### Particle-Reverb 7.0 (Kentaro Suzuki)
 
 - **Type:** M4L Audio Effect (also available as VST3/AU)
-- **Load via:** `find_and_load_device("Particle-Reverb")`
+- **Load via:** `find_and_load_device(track_index, "Particle-Reverb")`
 - **What it does:** Granular network reverb built on 4 discrete granular units with distinct characteristics. Operates entirely in time-domain using granular synthesis (no FFT or conventional delay trains). Internal feedback logic tracks size and pitch adjustments with near-instantaneous response. Four units mapped to dual pitch-shift coordinates generate complex non-linear resonance. Includes 4 built-in modulator modules.
 - **Key parameters:**
   - **4 Granular Units:** each with independent size, pitch, density, character
@@ -644,7 +644,7 @@
 ### GrainFreeze 2.0 (Robert Henke / Monolake)
 
 - **Type:** M4L Audio Effect
-- **Load via:** `find_and_load_device("GrainFreeze")`
+- **Load via:** `find_and_load_device(track_index, "GrainFreeze")`
 - **What it does:** Granular audio freezer that captures audio in real time and scrubs through the captured buffer using granular playback. Press "Ready" to capture a 3-second buffer, then manipulate position, grain size, and other parameters to create textures from rhythmic deconstruction to massive static sound smears. CPU-efficient, simple interface, hackable.
 - **Key parameters:**
   - **Ready** (toggle) → arm/capture audio buffer (3-second default)

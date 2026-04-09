@@ -58,7 +58,7 @@ Anti-preferences are the inverse of promotion — they record moves the user exp
 
 ### Recording
 
-Call `record_anti_preference(description)` when:
+Call `record_anti_preference(dimension, direction)` when:
 - The user says "I hate that", "never do that again", "that's wrong"
 - A move is undone and the user expresses displeasure (not just neutral undo)
 - The user explicitly states a preference against a technique

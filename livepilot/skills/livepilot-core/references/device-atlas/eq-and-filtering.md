@@ -12,7 +12,7 @@
 ### EQ Eight
 
 - **Type:** Native
-- **Load via:** `find_and_load_device("EQ Eight")`
+- **Load via:** `find_and_load_device(track_index, "EQ Eight")`
 - **What it does:** Surgical 8-band parametric EQ with real-time spectrum analyzer. Clean, transparent, and precise. The workhorse EQ for mixing and sound design. Supports stereo, L/R, and Mid/Side processing modes.
 - **Signal flow:** Input -> 8 independent filter bands (series) -> Spectrum Analyzer -> Output. Each band has its own filter type, frequency, gain, and Q. In M/S mode the signal is encoded to mid+side, processed separately, then decoded back to stereo.
 - **Key parameters:**
@@ -37,7 +37,7 @@
 ### EQ Three
 
 - **Type:** Native
-- **Load via:** `find_and_load_device("EQ Three")`
+- **Load via:** `find_and_load_device(track_index, "EQ Three")`
 - **What it does:** Simple 3-band DJ-style EQ with kill switches. Modeled on mixer circuitry -- even at default settings it imparts a slight color. The gain knobs go to negative infinity (full kill). Designed for live performance, not surgical mixing.
 - **Signal flow:** Input -> 3-band crossover (split at FreqLow and FreqHi) -> independent gain per band -> sum -> Output. Each band has a kill switch that fully mutes that range.
 - **Key parameters:**
@@ -59,7 +59,7 @@
 ### Channel EQ
 
 - **Type:** Native
-- **Load via:** `find_and_load_device("Channel EQ")`
+- **Load via:** `find_and_load_device(track_index, "Channel EQ")`
 - **What it does:** Simple, musical 3-band EQ inspired by classic analog mixing consoles. Quick tonal shaping with minimal parameters. Built-in spectrum display. Very low CPU. Introduced in Live 10.
 - **Signal flow:** Input -> HP 80 Hz filter (optional) -> Low shelf (100 Hz) -> Mid peak (sweepable 120 Hz - 7.5 kHz) -> High shelf (with built-in LP rolloff when attenuating) -> Output gain -> Output.
 - **Key parameters:**
@@ -81,7 +81,7 @@
 ### Auto Filter
 
 - **Type:** Native
-- **Load via:** `find_and_load_device("Auto Filter")`
+- **Load via:** `find_and_load_device(track_index, "Auto Filter")`
 - **What it does:** Feature-rich resonant filter with envelope follower, LFO, and sidechain modulation. Models multiple analog circuit types. Massive sonic range from subtle warmth to aggressive screaming sweeps. Completely overhauled in Live 12.2 with new filter types and circuit models.
 - **Signal flow:** Input -> Drive/Saturation -> Filter (type + circuit model) -> Envelope Follower & LFO modulate cutoff -> Sidechain input (optional) -> Mix -> Output.
 
@@ -131,7 +131,7 @@
 ### Spectral Resonator
 
 - **Type:** Native (Live 11+ Suite only)
-- **Load via:** `find_and_load_device("Spectral Resonator")`
+- **Load via:** `find_and_load_device(track_index, "Spectral Resonator")`
 - **What it does:** Decomposes audio into spectral partials via FFT, then applies pitched resonance, stretching, and modulation in the frequency domain. Creates everything from shimmering harmonics to metallic drones to vocoder-like pitched effects. Can be played via MIDI sidechain for melodic control of the resonance.
 - **Signal flow:** Input -> FFT analysis -> Spectral processing (resonance at Freq/MIDI pitch, with Decay, Stretch, Shift applied to partials) -> Modulation (Chorus/Wander/Granular) -> IFFT resynthesis -> Dry/Wet mix -> Output.
 - **Key parameters:**
@@ -157,7 +157,7 @@
 ### Corpus
 
 - **Type:** Native
-- **Load via:** `find_and_load_device("Corpus")`
+- **Load via:** `find_and_load_device(track_index, "Corpus")`
 - **What it does:** Physical modeling resonator that simulates the acoustic behavior of resonant bodies. Excites a virtual physical object (beam, string, membrane, plate, pipe, tube, marimba bar) with the input signal. Adds tuned resonant character -- from subtle wooden warmth to full metallic ringing.
 - **Signal flow:** Input -> Band-pass filter (optional) -> Physical model resonator (left + right with independent listening positions) -> LFO modulation -> Bleed (dry signal mixed back) -> Gain/Limiter -> Dry/Wet -> Output.
 - **Key parameters:**
@@ -212,7 +212,7 @@
 ### Resonators
 
 - **Type:** Native
-- **Load via:** `find_and_load_device("Resonators")`
+- **Load via:** `find_and_load_device(track_index, "Resonators")`
 - **What it does:** Five parallel tuned delay lines that ring at set pitches, creating tonal resonance from any input. The input passes through a multi-mode filter first, then feeds all five resonators simultaneously. Each resonator is tuned relative to the first, making it easy to set up chord voicings. Turns noise, drums, and speech into pitched, ringing tones.
 - **Signal flow:** Input -> Multi-mode filter (LP/HP/BP/Notch) -> Resonator I (stereo) + Resonator II (left) + Resonator III (right) + Resonator IV (left) + Resonator V (right) in parallel -> Width control -> Output.
 - **Key parameters:**
@@ -248,7 +248,7 @@
 ### Vocoder
 
 - **Type:** Native
-- **Load via:** `find_and_load_device("Vocoder")`
+- **Load via:** `find_and_load_device(track_index, "Vocoder")`
 - **What it does:** Classic vocoder effect using parallel filter banks. Analyzes the modulator signal's spectral envelope and imposes it onto the carrier signal. The modulator provides the rhythm and articulation (typically voice or drums); the carrier provides the pitch and timbre (typically a synth). Creates robotic speech, harmonic rhythms, and spectral blending effects.
 - **Signal flow:** Modulator input -> Analysis filter bank (4-40 bands) -> Envelope followers extract amplitude per band -> Carrier input (Noise/External/Modulator/Pitch Tracking) -> Synthesis filter bank (same band count) -> Envelope followers control synthesis band levels -> Sum -> Formant shift -> Output.
 - **Key parameters:**
@@ -294,7 +294,7 @@
 ### 3-Band EQ (M4L by TheM)
 
 - **Type:** M4L User
-- **Load via:** `find_and_load_device("3-Band EQ")` (search user library)
+- **Load via:** `find_and_load_device(track_index, "3-Band EQ")` (search user library)
 - **What it does:** Zero-latency 3-band equalizer designed specifically for DJing. Fixes the phase distortion issues present in Ableton's native EQ Three (which can cause unwanted signal peaks at crossover points). Cleaner crossover behavior with adjustable frequency points.
 - **Signal flow:** Input -> 3-band crossover (adjustable FreqLow and FreqHi) -> independent gain per band -> Volume fader with adjustable curve -> Output.
 - **Key parameters:**
@@ -312,7 +312,7 @@
 ### GMaudio VSEQ 1.0 (M4L by groovmekanik)
 
 - **Type:** M4L User
-- **Load via:** `find_and_load_device("VSEQ")` or `find_and_load_device("GMaudio VSEQ")` (search user library)
+- **Load via:** `find_and_load_device(track_index, "VSEQ")` or `find_and_load_device(track_index, "GMaudio VSEQ")` (search user library)
 - **What it does:** Combines a dual-shelf EQ (the "V-Filter") with a 3-band multiband saturation engine. The V-Filter uses two first-order shelving filters centered at 700 Hz with automatic volume compensation. The saturation splits the signal into 3 bands, each feeding a separate wave-shaper to generate distinct overtones. Includes 4x oversampling to minimize aliasing. Designed as a "tone + harmonics" channel strip tool.
 - **Signal flow:** Input -> V-Filter (low shelf + high shelf at 700 Hz pivot, with auto-gain compensation) -> [EQ Mode switch: filter can apply to original signal OR to saturation input only] -> 3-band multiband saturation (3 independent wave-shapers) -> Colour control (harmonic balance) -> Output.
 - **Key parameters:**
@@ -330,7 +330,7 @@
 ### REW EQ by Iftah (M4L)
 
 - **Type:** M4L User
-- **Load via:** `find_and_load_device("REW EQ")` (search user library)
+- **Load via:** `find_and_load_device(track_index, "REW EQ")` (search user library)
 - **What it does:** Imports filter settings from Room EQ Wizard (.txt export files) and applies them as parametric EQ corrections inside Ableton. Visualizes the imported EQ curve. Designed for studio monitoring correction -- measure your room with REW, export the correction filters, import into this device on your master bus to hear a corrected response while mixing.
 - **Signal flow:** Import REW .txt filter file -> Parse PK (peak) filter parameters -> Apply as parametric EQ bands -> Output with corrected frequency response.
 - **Key parameters:**
@@ -347,7 +347,7 @@
 ### Cat Growl Filter (M4L by Nick Holiday)
 
 - **Type:** M4L User
-- **Load via:** `find_and_load_device("Cat Growl Filter")` (search user library)
+- **Load via:** `find_and_load_device(track_index, "Cat Growl Filter")` (search user library)
 - **What it does:** Multi-purpose FX rack designed for aggressive, characterful filter sweeps. Features a custom dual-channel filter (independent L/R) with 8 interchangeable filter types per channel. The channels can move in sync or independently. Built for bass music, dubstep growls, and aggressive sound design. Includes 10 pre-mapped macros for quick performance control.
 - **Signal flow:** Input -> Dual-channel filter (L and R processed independently or synced) -> FX modules (series of carefully tuned processors that enhance the "growl" character) -> Macro-controlled parameters -> Output.
 - **Key parameters:**
@@ -365,7 +365,7 @@
 ### Stretta Filter Sequencer (M4L by Matthew Davidson / stretta)
 
 - **Type:** M4L User
-- **Load via:** `find_and_load_device("Filter Sequencer")` or `find_and_load_device("Step Filter")` (search user library)
+- **Load via:** `find_and_load_device(track_index, "Filter Sequencer")` or `find_and_load_device(track_index, "Step Filter")` (search user library)
 - **What it does:** Eight independent step sequencers, each controlling a bandpass filter. Originally designed as a monome controller app for a Doepfer vocoder filter bank, now has the filter bank built-in. Each of the 8 bandpass filters can have a different loop length, creating polymetric rhythmic filtering patterns. Essentially a rhythmic vocoder-like effect driven by step sequencing rather than a modulator signal.
 - **Signal flow:** Input -> 8 parallel bandpass filters -> each filter's amplitude is sequenced by its own step sequencer (independent loop lengths) -> Sum of filtered outputs -> Output.
 - **Key parameters:**

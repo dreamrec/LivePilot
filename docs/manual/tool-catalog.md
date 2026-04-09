@@ -188,6 +188,7 @@
 | `get_master_spectrum` | 8-band frequency analysis |
 | `get_master_rms` | RMS and peak levels |
 | `get_detected_key` | Krumhansl-Schmuckler key detection |
+| `reconnect_bridge` | Rebind M4L UDP bridge mid-session |
 | `get_hidden_parameters` | All params including hidden ones |
 | `get_automation_state` | Automation state per parameter |
 | `walk_device_tree` | Recursive device chain tree (6 levels) |

@@ -152,4 +152,6 @@ Never skip levels. Start at the lowest appropriate level and offer to go deeper.
 
 ## Reference
 
-Consult `references/mixing-patterns.md` in the livepilot-core skill for gain staging recipes, parallel compression setups, sidechain configurations, EQ by instrument type, bus processing chains, and stereo width techniques. Consult `references/automation-atlas.md` for curve theory, genre-specific automation recipes, diagnostic filter technique, and cross-track spectral mapping.
+Supporting references live in the `livepilot-core` skill's `references/` directory:
+- `livepilot-core/references/mixing-patterns.md` — gain staging, parallel compression, sidechain, EQ by instrument, bus processing, stereo width
+- `livepilot-core/references/automation-atlas.md` — curve theory, genre-specific recipes, diagnostic filter, cross-track spectral mapping

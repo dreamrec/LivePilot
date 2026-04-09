@@ -12,7 +12,7 @@
 ### Compressor
 
 - **Type:** Native
-- **Load via:** `find_and_load_device("Compressor")`
+- **Load via:** `find_and_load_device(track_index, "Compressor")`
 - **What it does:** General-purpose dynamics processor that attenuates signals above a threshold. Extremely versatile — can be transparent glue or aggressive pumping depending on settings. Clean, digital character with no inherent coloration.
 - **Signal flow:** Input -> Sidechain EQ (optional) -> Envelope Follower (Peak/RMS/Expand) -> Gain Reduction -> Makeup/Output -> Dry/Wet
 - **Key parameters:**
@@ -38,7 +38,7 @@
 ### Glue Compressor
 
 - **Type:** Native
-- **Load via:** `find_and_load_device("Glue Compressor")`
+- **Load via:** `find_and_load_device(track_index, "Glue Compressor")`
 - **What it does:** SSL 4000 G Bus Compressor emulation by Cytomic. Adds analog warmth, glues elements together on buses. Has inherent musical character — slightly rounds transients and adds subtle harmonic content. The "gel" compressor.
 - **Signal flow:** Input -> Sidechain EQ (optional) -> VCA-style Compression -> Soft Clip (optional) -> Makeup -> Dry/Wet
 - **Key parameters:**
@@ -63,7 +63,7 @@
 ### Limiter
 
 - **Type:** Native
-- **Load via:** `find_and_load_device("Limiter")`
+- **Load via:** `find_and_load_device(track_index, "Limiter")`
 - **What it does:** Brickwall limiter — no signal passes above the ceiling. Completely redesigned in Live 12.1 with True Peak, Soft Clip, and Maximize modes. The safety net. Ensures nothing clips, or pushes loudness when used as a maximizer.
 - **Signal flow:** Input -> Gain -> Lookahead Peak Detection -> Gain Reduction -> Ceiling -> Output
 - **Key parameters:**
@@ -85,7 +85,7 @@
 ### Gate
 
 - **Type:** Native
-- **Load via:** `find_and_load_device("Gate")`
+- **Load via:** `find_and_load_device(track_index, "Gate")`
 - **What it does:** Noise gate that silences audio below a threshold. Cleans up recordings, shapes drum tails, creates rhythmic effects via sidechain. The "bouncer" — only lets loud enough signals through.
 - **Signal flow:** Input -> Sidechain EQ (optional) -> Envelope Follower -> Gate Open/Close -> Floor Attenuation -> Output
 - **Key parameters:**
@@ -109,7 +109,7 @@
 ### Multiband Dynamics
 
 - **Type:** Native
-- **Load via:** `find_and_load_device("Multiband Dynamics")`
+- **Load via:** `find_and_load_device(track_index, "Multiband Dynamics")`
 - **What it does:** Three-band dynamics processor that can independently compress, expand, or gate each frequency band. The Swiss Army knife of dynamics — can do OTT, multiband compression, frequency-selective gating, and upward/downward processing. Home of the legendary OTT preset.
 - **Signal flow:** Input -> 3-Band Crossover -> Per-Band Above/Below Threshold Processing -> Per-Band Output Gain -> Output
 - **Key parameters:**
@@ -137,7 +137,7 @@
 ### Drum Buss
 
 - **Type:** Native
-- **Load via:** `find_and_load_device("Drum Buss")`
+- **Load via:** `find_and_load_device(track_index, "Drum Buss")`
 - **What it does:** All-in-one drum processor combining compression, distortion, transient shaping, and low-end enhancement. Designed to add body, punch, and character to drum groups. The "instant drums sound better" device. Analog-modeled throughout.
 - **Signal flow:** Input -> Trim -> Fixed Compressor (optional) -> Distortion (Soft/Medium/Hard) -> Drive -> Crunch (mid-high distortion) -> Damp (LP filter) -> Transients (above 100 Hz) -> Boom (resonant LP filter below 100 Hz) -> Dry/Wet -> Output
 - **Key parameters:**
@@ -170,7 +170,7 @@
 ### Color Limiter
 
 - **Type:** M4L Stock (Creative Extensions pack — free with Live Suite)
-- **Load via:** `find_and_load_device("Color Limiter")` or `search_browser("Color Limiter", category="Audio Effects")`
+- **Load via:** `find_and_load_device(track_index, "Color Limiter")` or `search_browser(path="audio_effects", name_filter="Color Limiter")`
 - **What it does:** Hardware-inspired limiter that adds saturation and harmonic coloration while limiting. Unlike the clean native Limiter, Color Limiter is designed to add grit, pressure, and vintage character. Think: tube limiter behavior in a digital box.
 - **Signal flow:** Input -> Loudness (input gain) -> Lookahead Detection -> Ceiling Limiting + Saturation/Color Processing -> Release Recovery -> Output
 - **Key parameters:**
@@ -191,7 +191,7 @@
 ### Re-Enveloper
 
 - **Type:** M4L Stock (Creative Extensions pack — free with Live Suite)
-- **Load via:** `find_and_load_device("Re-Enveloper")` or `search_browser("Re-Enveloper", category="Audio Effects")`
+- **Load via:** `find_and_load_device(track_index, "Re-Enveloper")` or `search_browser(path="audio_effects", name_filter="Re-Enveloper")`
 - **What it does:** Multiband envelope reshaper. Splits audio into three adjustable frequency bands and lets you compress OR expand the amplitude envelope of each independently. Goes far beyond gating — it literally redraws the volume shape of the sound per frequency band. Can highlight transients, extend sustain, destroy dynamics, or surgically carve elements.
 - **Signal flow:** Input -> 3-Band Frequency Split -> Per-Band Envelope Detection -> Per-Band C/E (Compression/Expansion) Processing -> Per-Band Gain -> Output
 - **Key parameters:**
@@ -216,7 +216,7 @@
 ### Crack
 
 - **Type:** M4L (Transient Machines pack by Surreal Machines)
-- **Load via:** `find_and_load_device("Crack")` or `search_browser("Crack", category="Audio Effects")`
+- **Load via:** `find_and_load_device(track_index, "Crack")` or `search_browser(path="audio_effects", name_filter="Crack")`
 - **What it does:** Compact single-band transient shaper designed for individual sounds and loops. The "contrast dial for your sound" — makes transients pop or fade, and tails extend or shrink. Includes analog-modeled output processing (limiter, soft clip, maximizer) tuned specifically for transient material.
 - **Signal flow:** Input -> Transient Detection -> Attack/Sustain Shaping -> Dry/Wet Mix -> Output Stage (Clipper/Limiter/Maximizer selectable)
 - **Key parameters:**
@@ -234,7 +234,7 @@
 ### Impact
 
 - **Type:** M4L (Transient Machines pack by Surreal Machines)
-- **Load via:** `find_and_load_device("Impact")` or `search_browser("Impact", category="Audio Effects")`
+- **Load via:** `find_and_load_device(track_index, "Impact")` or `search_browser(path="audio_effects", name_filter="Impact")`
 - **What it does:** Multi-band drum processing channel strip combining up to 3 bands of transient shaping, 4-band EQ, 4 saturation types, and output processing (clipper/limiter/maximizer). The "big brother" of Crack — a complete drum dynamics workstation in one device.
 - **Signal flow:** Input -> 1/2/3 Band Split -> Per-Band Attack + Sustain Shaping -> 4-Band EQ -> Saturation (4 types) -> Output Stage (Clipper/Limiter/Maximizer)
 - **Key parameters:**
@@ -258,7 +258,7 @@
 ### doomCompressor_v1.0
 
 - **Type:** M4L User (CLX_02) — by poulhoi
-- **Load via:** `search_browser("doomCompressor", category="Audio Effects")`
+- **Load via:** `search_browser(path="audio_effects", name_filter="doomCompressor")`
 - **What it does:** Extreme upward compressor inspired by Mick Gordon's DOOM soundtrack technique. Instead of reducing loud signals, it amplifies quiet ones to near 0 dBFS. Makes everything audible — even the faintest noise floor becomes as loud as the transients. Creates a hyper-compressed, "everything is at maximum volume" effect. Used for aggressive sound design, industrial textures, and extreme effects.
 - **Signal flow:** Input -> Envelope Follower -> Compare to Threshold -> Calculate normalization factor -> Apply multiplication to bring signal to 0 dBFS -> Attack/Release Smoothing -> Output
 - **Key parameters:**
@@ -276,7 +276,7 @@
 ### RawDoomCompressor_v1.0.0
 
 - **Type:** M4L User (CLX_02) — by geoffreyday
-- **Load via:** `search_browser("RawDoomCompressor", category="Audio Effects")`
+- **Load via:** `search_browser(path="audio_effects", name_filter="RawDoomCompressor")`
 - **What it does:** Stripped-down DOOM compressor with hard-coded attack/release. Single-band extreme upward compressor designed as a building block for creating custom multiband doom compression chains. The raw, no-frills version.
 - **Signal flow:** Input -> Hard-coded Envelope Detection -> Upward Normalization -> Floor Gate -> Output Level
 - **Key parameters:**
@@ -293,7 +293,7 @@
 ### Carver 1.2
 
 - **Type:** M4L User (CLX_02) — by Noir Labs
-- **Load via:** `search_browser("Carver", category="Audio Effects")`
+- **Load via:** `search_browser(path="audio_effects", name_filter="Carver")`
 - **What it does:** Advanced transient shaper with the most accurate real-time transient detection on the market. Shapes attacks and sustain without changing perceived volume. Features three curve types, M/S processing, and the unique ability to apply distortion only to the transient or only to the body of the sound. Shows detected transient in real-time waveform display.
 - **Signal flow:** Input -> Transient Detection (with Sensitivity control) -> Attack/Sustain Shaping (with Curve selection) -> Distortion (routable to full/transient/body) -> Input/Output Clipping (anti-aliased) -> Output
 - **Key parameters:**
@@ -317,7 +317,7 @@
 ### Gain Rider
 
 - **Type:** M4L User (CLX_02) — by John Darque
-- **Load via:** `search_browser("Gain Rider", category="Audio Effects")`
+- **Load via:** `search_browser(path="audio_effects", name_filter="Gain Rider")`
 - **What it does:** Automatic gain riding plugin that continuously adjusts volume to maintain a target level. Like having an assistant moving the fader in real-time. Unlike compression, it uses slower, more natural-sounding level adjustment — no attack/release artifacts, no transient modification. Just smooth, consistent level.
 - **Signal flow:** Input -> Level Detection (LUFS or Peak) -> Calculate Compensation -> Apply Gain Adjustment -> Output
 - **Key parameters:**
@@ -337,7 +337,7 @@
 ### GMaudio Ducker 1.2
 
 - **Type:** M4L User (CLX_02) — by Groov Mekanik / Fixation Studios
-- **Load via:** `search_browser("GMaudio Ducker", category="Audio Effects")`
+- **Load via:** `search_browser(path="audio_effects", name_filter="GMaudio Ducker")`
 - **What it does:** Sample-accurate sidechain ducking tool specifically designed for bass/kick interaction. Uses transient detection (not traditional sidechain compression) to trigger an envelope that ducks bass during kick hits. Completely mutes bass during the kick transient for maximum clarity, then crossfades back. The precision tool for low-end management.
 - **Signal flow:** Input (Bass) -> Transient Detection (from Kick via sidechain or self) -> Envelope Generation -> Volume Duck with Adjustable Curve -> Release Crossfade -> Output
 - **Key parameters:**
@@ -358,7 +358,7 @@
 ### GMaudio PentaComp 1.0
 
 - **Type:** M4L User (CLX_02) — by Groov Mekanik / Fixation Studios
-- **Load via:** `search_browser("GMaudio PentaComp", category="Audio Effects")`
+- **Load via:** `search_browser(path="audio_effects", name_filter="GMaudio PentaComp")`
 - **What it does:** 5-band adaptive multiband compressor with 24 dB Linkwitz-Riley crossover network. Program-dependent algorithm automatically adjusts attack/release based on signal dynamics. Designed for transparent gain reduction across the full frequency spectrum. The precision multiband tool for mixing and mastering.
 - **Signal flow:** Input -> 5-Band Linkwitz-Riley Crossover (160 Hz, 800 Hz, 4 kHz, 11 kHz) -> Per-Band Program-Dependent Compression -> Per-Band Output Gain -> Sum -> Output
 - **Key parameters:**
@@ -380,7 +380,7 @@
 ### GMaudio Squeeze 1.1
 
 - **Type:** M4L User (CLX_02) — by Groov Mekanik / Fixation Studios
-- **Load via:** `search_browser("GMaudio Squeeze", category="Audio Effects")`
+- **Load via:** `search_browser(path="audio_effects", name_filter="GMaudio Squeeze")`
 - **What it does:** Multiband upward compressor/limiter. Normalizes audio by dividing incoming signals by detected peak levels. Ranges from subtle loudness enhancement to complete sonic destruction. Uses 6 dB dynamic phase crossovers for in-phase parallel processing. The "detail enhancer" — reveals hidden textures and micro-dynamics in any source.
 - **Signal flow:** Input -> 3-Band Split (6 dB crossovers at 300 Hz and 5 kHz) -> Per-Band Peak Detection -> Per-Band Upward Normalization (Floor to Ceiling) -> Style blending (single vs multiband) -> Mix (dry/wet) -> Output
 - **Key parameters:**
@@ -401,7 +401,7 @@
 ### jL3v3ll3r v1.2
 
 - **Type:** M4L User (CLX_02) — by jaspermarsalis (based on Dan Worrall's L3V3LL3R)
-- **Load via:** `search_browser("jL3v3ll3r", category="Audio Effects")`
+- **Load via:** `search_browser(path="audio_effects", name_filter="jL3v3ll3r")`
 - **What it does:** Recreation of a rare 1960s "Leveller" compressor. A leveling amplifier that works nearly all the time — not just when a threshold is reached. Offers two distinct response curves: logarithmic (standard) and opto/vactrol (photo-resistor simulation). Produces smooth, musical compression with vintage character. The "always-on, always-smoothing" compressor.
 - **Signal flow:** Input -> Highpass Filter (optional) -> Level Detection -> Response Curve (Log or Opto) -> Gain Reduction -> Output
 - **Key parameters:**
@@ -421,7 +421,7 @@
 ### LA2A
 
 - **Type:** M4L User (CLX_02) — by OspreyInstruments
-- **Load via:** `search_browser("LA2A", category="Audio Effects")`
+- **Load via:** `search_browser(path="audio_effects", name_filter="LA2A")`
 - **What it does:** M4L wrapper for the BPB Dirty LA optical compressor VST3 plugin. Emulates the classic Teletronix LA-2A leveling amplifier with its program-dependent opto compression behavior. Includes an approximate VU meter with realistic ballistics and deliberate harmonic distortion. Requires the free BPB Dirty LA plugin to be installed separately.
 - **Signal flow:** Input -> BPB Dirty LA VST3 (opto compression + tube saturation) -> Approximate VU Metering -> Output
 - **Key parameters:**
@@ -440,7 +440,7 @@
 ### N-CLIP
 
 - **Type:** M4L User (CLX_02) — by Nasko
-- **Load via:** `search_browser("N-CLIP", category="Audio Effects")`
+- **Load via:** `search_browser(path="audio_effects", name_filter="N-CLIP")`
 - **What it does:** Lightweight variable soft clipper with adjustable ceiling. Shaves off transient peaks using soft clipping rather than limiting — faster than a limiter, more transparent on transients, adds subtle harmonic content. The "invisible loudness" tool that lets you clip peaks before they hit a limiter, reducing the limiter's workload and preserving transient punch.
 - **Signal flow:** Input -> Drive -> Soft Clipping at Ceiling Threshold (variable knee) -> Output
 - **Key parameters:**
@@ -458,7 +458,7 @@
 ### Thomash Amplitude Receiver/Sender
 
 - **Type:** M4L User (CLX_02) — by voodoohop (thomash)
-- **Load via:** `search_browser("Thomash Amplitude", category="Audio Effects")` (load both Sender and Receiver)
+- **Load via:** `search_browser(path="audio_effects", name_filter="Thomash Amplitude")` (load both Sender and Receiver)
 - **What it does:** Two-device system that preserves the original amplitude envelope across an effects chain. The Sender captures the volume at one point; the Receiver (placed downstream after effects) adjusts gain to match the original level. Eliminates volume changes caused by effects — you can process audio through filters, delays, and EQs while maintaining the original dynamics. Like having an automatic "undo" for volume changes from effects.
 - **Signal flow:** [Sender captures level] -> Effects Chain (any number of effects) -> [Receiver restores original level with 512-sample latency]
 - **Key parameters:**

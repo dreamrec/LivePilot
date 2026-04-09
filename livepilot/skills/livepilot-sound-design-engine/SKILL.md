@@ -76,7 +76,7 @@ Repeat the same measurements:
 
 ### Step 7 — Evaluate
 
-Call `evaluate_move(engine="sound_design")` with the before and after snapshots. Read:
+Call `evaluate_move(goal_vector, before_snapshot, after_snapshot)` where `goal_vector` is the compiled goal from Step 1 and snapshots contain `{spectrum: {...}, rms: float, peak: float}`. Read:
 
 - `keep_change` (bool): whether the change improved the sound
 - `score` (0.0-1.0): quality improvement magnitude

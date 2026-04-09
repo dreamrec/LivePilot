@@ -11,7 +11,7 @@ Complete sonic atlas for every distortion, saturation, and coloration device ava
 ### Saturator
 
 - **Type:** Native (all editions)
-- **Load via:** `find_and_load_device("Saturator")`
+- **Load via:** `find_and_load_device(track_index, "Saturator")`
 - **What it does:** General-purpose waveshaping distortion. Pushes audio through a transfer curve that reshapes the waveform, adding harmonics. Ranges from imperceptible warmth to aggressive folding distortion depending on curve and drive. The most versatile single distortion device in Live.
 
 - **Signal flow:** Input -> Drive (gain stage) -> Waveshaper (selected curve) -> Color section (2-band post-EQ) -> Soft Clip (optional) -> Output gain -> Dry/Wet mix
@@ -50,7 +50,7 @@ Complete sonic atlas for every distortion, saturation, and coloration device ava
 ### Overdrive
 
 - **Type:** Native (all editions)
-- **Load via:** `find_and_load_device("Overdrive")`
+- **Load via:** `find_and_load_device(track_index, "Overdrive")`
 - **What it does:** Warm overdrive effect with a built-in bandpass filter that shapes the frequency range being distorted. Models the behavior of a guitar overdrive pedal: the bandpass focuses the distortion on the mids, preventing fizzy highs and muddy lows. Less versatile than Saturator but more immediately musical on guitars, bass, and keys.
 
 - **Signal flow:** Input -> Bandpass Filter (pre-distortion frequency focus) -> Distortion stage -> Tone control (post-distortion brightness) -> Dynamics control -> Output -> Dry/Wet
@@ -79,7 +79,7 @@ Complete sonic atlas for every distortion, saturation, and coloration device ava
 ### Erosion
 
 - **Type:** Native (all editions)
-- **Load via:** `find_and_load_device("Erosion")`
+- **Load via:** `find_and_load_device(track_index, "Erosion")`
 - **What it does:** Digital degradation effect. Modulates the audio signal with noise or a sine wave to create aliasing, digital artifacts, and high-frequency grit. Unlike analog-modeled distortion, Erosion sounds intentionally digital and broken. It creates artifacts that don't exist in the analog domain -- frequency-shifted noise clouds, aliasing products, digital "fuzz."
 
 - **Signal flow:** Input signal is ring-modulated/multiplied with a noise source or sine oscillator, creating sum-and-difference frequencies (aliasing artifacts). The result is mixed with the dry signal.
@@ -107,7 +107,7 @@ Complete sonic atlas for every distortion, saturation, and coloration device ava
 ### Redux
 
 - **Type:** Native (all editions, updated in Live 12)
-- **Load via:** `find_and_load_device("Redux")`
+- **Load via:** `find_and_load_device(track_index, "Redux")`
 - **What it does:** Bit crusher and sample rate reducer. Reduces the bit depth (fewer amplitude steps = quantization noise) and/or sample rate (fewer samples per second = aliasing) of the audio signal. The Live 12 update added new filter modes, jitter controls, and a modernized interface that makes it significantly more musical than the old version.
 
 - **Signal flow:** Input -> Downsample (sample rate reduction with selectable filter/interpolation) -> Bit Reduction (bit depth quantization) -> Output
@@ -138,7 +138,7 @@ Complete sonic atlas for every distortion, saturation, and coloration device ava
 ### Pedal
 
 - **Type:** Native (Standard/Suite, or as add-on)
-- **Load via:** `find_and_load_device("Pedal")`
+- **Load via:** `find_and_load_device(track_index, "Pedal")`
 - **What it does:** Guitar pedal emulation with three distinct distortion voicings. Designed to feel like stepping on a real stompbox. Each mode models a different class of guitar pedal circuit. More aggressive than Overdrive, more focused than Saturator, with a musical 3-band EQ.
 
 - **Signal flow:** Input -> Sub switch (optional low shelf boost) -> Gain stage (mode-dependent clipping circuit) -> 3-band EQ (Bass/Mid/Treble) -> Output gain -> Dry/Wet
@@ -172,7 +172,7 @@ Complete sonic atlas for every distortion, saturation, and coloration device ava
 ### Amp
 
 - **Type:** Native (Standard/Suite, or as add-on, developed with Softube)
-- **Load via:** `find_and_load_device("Amp")`
+- **Load via:** `find_and_load_device(track_index, "Amp")`
 - **What it does:** Physical modeling of seven classic guitar amplifier circuits. Each model captures the nonlinear behavior, EQ voicing, and breakup character of a real amp. Unlike Pedal (which is a pre-amp stompbox), Amp models the full amplifier including preamp gain stage, tone stack, and power amp saturation.
 
 - **Signal flow:** Input -> Gain (preamp drive) -> Tone Stack (Bass/Middle/Treble - interactive like real amps) -> Power Amp (Volume - controls power amp saturation) -> Presence (post-power-amp HF control) -> Output -> Dry/Wet
@@ -210,7 +210,7 @@ Complete sonic atlas for every distortion, saturation, and coloration device ava
 ### Cabinet
 
 - **Type:** Native (Standard/Suite, or as add-on, developed with Softube)
-- **Load via:** `find_and_load_device("Cabinet")`
+- **Load via:** `find_and_load_device(track_index, "Cabinet")`
 - **What it does:** Convolution-based speaker cabinet emulation. Models the frequency response and resonance of classic guitar/bass speaker cabinets with selectable virtual microphones and mic positions. Transforms the raw, harsh output of Amp into a natural, speaker-shaped tone. Essential companion to Amp.
 
 - **Signal flow:** Input -> Cabinet impulse response (convolution) -> Microphone model -> Mic Position -> Output -> Dry/Wet
@@ -241,7 +241,7 @@ Complete sonic atlas for every distortion, saturation, and coloration device ava
 ### Dynamic Tube
 
 - **Type:** Native (Standard/Suite)
-- **Load via:** `find_and_load_device("Dynamic Tube")`
+- **Load via:** `find_and_load_device(track_index, "Dynamic Tube")`
 - **What it does:** Tube saturation with an input-following envelope. The distortion amount responds dynamically to the signal level -- louder passages get more saturation, quiet passages stay cleaner. This mimics how real tube circuits behave: they saturate progressively as the signal increases. Three tube models offer different saturation colors.
 
 - **Signal flow:** Input -> Envelope Follower (detects input level) -> Tube saturation stage (model-dependent, amount modulated by envelope) -> Tone control -> Output -> Dry/Wet
@@ -274,7 +274,7 @@ Complete sonic atlas for every distortion, saturation, and coloration device ava
 ### Vinyl Distortion
 
 - **Type:** Native (Standard/Suite)
-- **Load via:** `find_and_load_device("Vinyl Distortion")`
+- **Load via:** `find_and_load_device(track_index, "Vinyl Distortion")`
 - **What it does:** Emulates the physical artifacts of vinyl record playback. Two independent distortion models (Tracing and Pinch) simulate different aspects of needle-on-groove behavior, plus a Crackle generator for surface noise. Creates that "sampled from vinyl" character heard in lo-fi hip-hop, downtempo, and sample-based production.
 
 - **Signal flow:** Input -> Tracing Model (simulates needle tracking distortion) + Pinch Effect (simulates pinch distortion) -> Crackle generator (added noise) -> Output -> Dry/Wet
@@ -306,7 +306,7 @@ Complete sonic atlas for every distortion, saturation, and coloration device ava
 ### Roar
 
 - **Type:** Native (Live 12 add-on, EUR 99)
-- **Load via:** `find_and_load_device("Roar")`
+- **Load via:** `find_and_load_device(track_index, "Roar")`
 - **What it does:** Live 12's flagship distortion -- a multi-stage distortion synthesizer with flexible routing, feedback loops, modulation, and compression. Three independent gain stages (each with its own shaper and filter), six routing topologies, four modulation sources, and a feedback section with delay. Roar can do everything from subtle tape warming to screaming feedback distortion to multi-band destruction. It is a distortion design environment, not just an effect.
 
 - **Signal flow:** Input -> Drive/Tone (global input shaping) -> Routing topology (distributes signal to gain stages) -> Gain Stage(s) (each: shaper + pre/post filter) -> Feedback section (delay with compressor) -> Global Compressor -> Output -> Dry/Wet
@@ -376,7 +376,7 @@ Complete sonic atlas for every distortion, saturation, and coloration device ava
 ### Drum Buss (Distortion Aspect)
 
 - **Type:** Native (Standard/Suite)
-- **Load via:** `find_and_load_device("Drum Buss")`
+- **Load via:** `find_and_load_device(track_index, "Drum Buss")`
 - **What it does:** All-in-one drum processing combining drive/distortion, transient shaping, bass enhancement, and damping. The distortion section specifically adds harmonic density and aggression to drum buses. While it's a multi-function device, the Drive section alone makes it worth including here.
 
 - **Signal flow:** Input -> Trim -> Drive section (distortion with 3 types) -> Crunch (compressive distortion) -> Transients -> Boom (resonant bass boost) -> Damping (HF control) -> Output -> Dry/Wet

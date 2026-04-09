@@ -12,7 +12,7 @@
 ### Reverb
 
 - **Type:** Native
-- **Load via:** `find_and_load_device("Reverb")`
+- **Load via:** `find_and_load_device(track_index, "Reverb")`
 - **What it does:** Algorithmic reverb with separate early-reflections and diffusion-network stages. Warm, slightly dark character; good general-purpose verb that sits well in a mix without eating headroom. Not the most realistic room sim, but flexible and low-CPU.
 - **Signal flow:** Input → Lo/Hi Cut filters → Early Reflections (with Spin modulation) → Diffusion Network (with Chorus modulation) → Reflect/Diffuse level mix → Dry/Wet output
 - **Key parameters:**
@@ -42,7 +42,7 @@
 ### Hybrid Reverb
 
 - **Type:** Native (Live 11+, Suite only)
-- **Load via:** `find_and_load_device("Hybrid Reverb")`
+- **Load via:** `find_and_load_device(track_index, "Hybrid Reverb")`
 - **What it does:** Dual-engine reverb combining a convolution engine (real-space IRs) with an algorithmic engine (5 creative algorithms). Can run engines independently, in serial, or in parallel. The most versatile reverb in Live.
 - **Signal flow:** Input → Send gain → Convolution Engine + Algorithmic Engine (routed Serial/Parallel/Blend) → 4-band EQ → Stereo / Vintage / Bass Mono → Dry/Wet output
 - **Key parameters:**
@@ -75,7 +75,7 @@
 ### Delay
 
 - **Type:** Native (updated in Live 12)
-- **Load via:** `find_and_load_device("Delay")`
+- **Load via:** `find_and_load_device(track_index, "Delay")`
 - **What it does:** Clean stereo delay with tempo sync, band-pass filter, LFO modulation, and three transition modes. The workhorse delay — transparent, precise, and flexible.
 - **Signal flow:** Input → Band-pass filter → Dual delay lines (L/R, linkable) → LFO modulation (filter + time) → Ping Pong option → Dry/Wet output
 - **Key parameters:**
@@ -106,7 +106,7 @@
 ### Echo
 
 - **Type:** Native (Live 10+)
-- **Load via:** `find_and_load_device("Echo")`
+- **Load via:** `find_and_load_device(track_index, "Echo")`
 - **What it does:** Character delay with deep modulation, noise/wobble for analog flavor, built-in reverb, gate, and ducking. Ableton's most feature-rich delay — it can go from subtle tape echo to self-oscillating chaos.
 - **Signal flow:** Input (with optional distortion) → Dual delay lines (L/R or Mid/Side) → HP/LP filters with resonance → LFO/Envelope modulation → Character processing (Noise, Wobble, Gate, Ducking) → Reverb (Pre/Post/Feedback) → Stereo/Output → Dry/Wet
 - **Key parameters:**
@@ -145,7 +145,7 @@
 ### Filter Delay
 
 - **Type:** Native
-- **Load via:** `find_and_load_device("Filter Delay")`
+- **Load via:** `find_and_load_device(track_index, "Filter Delay")`
 - **What it does:** Three independent filtered delay lines — one for Left input, one for Right input, one for L+R (stereo sum). Each line has its own band-pass filter, delay time, feedback, pan, and volume. Creates rich, frequency-separated delay textures.
 - **Signal flow:** Input splits into 3 channels (L / L+R / R) → per-channel Band-pass Filter → per-channel Delay Line → per-channel Pan/Volume → Feedback routing (Individual or Sum) → Output mix
 - **Key parameters:**
@@ -171,7 +171,7 @@
 ### Grain Delay
 
 - **Type:** Native
-- **Load via:** `find_and_load_device("Grain Delay")`
+- **Load via:** `find_and_load_device(track_index, "Grain Delay")`
 - **What it does:** Granular delay that chops incoming audio into tiny grains, applies pitch shifting and randomization, then delays the grains. Creates textures ranging from subtle shimmer to total sonic destruction.
 - **Signal flow:** Input → Grain slicing (at Frequency rate) → Pitch shift per grain → Spray (time randomization) + Random Pitch → Delay line with Feedback → Dry/Wet output
 - **Key parameters:**
@@ -193,7 +193,7 @@
 ### Beat Repeat
 
 - **Type:** Native
-- **Load via:** `find_and_load_device("Beat Repeat")`
+- **Load via:** `find_and_load_device(track_index, "Beat Repeat")`
 - **What it does:** Rhythmic buffer repeat/stutter effect synchronized to song tempo. Captures audio slices and repeats them with optional pitch decay and filtering. Not a traditional delay — it is a performance/glitch tool.
 - **Signal flow:** Input → Buffer capture (at Interval + Offset) → Grid slicing → Repetition (for Gate length) → Pitch processing → Filter → Mix mode output
 - **Key parameters:**
@@ -222,7 +222,7 @@
 ### Corpus
 
 - **Type:** Native
-- **Load via:** `find_and_load_device("Corpus")`
+- **Load via:** `find_and_load_device(track_index, "Corpus")`
 - **What it does:** Physical modeling resonator that simulates vibrating objects (beams, strings, membranes, plates, pipes, tubes). Excites the audio input through a modeled resonant body. Adds pitched, metallic, or woody resonance to any sound.
 - **Signal flow:** Input → Band-pass Filter → Resonance Type modeling → LFO modulation on frequency → Bleed mix → Gain/Limiter → Dry/Wet output. Optional MIDI sidechain controls pitch.
 - **Key parameters:**
@@ -256,7 +256,7 @@
 ### Resonators
 
 - **Type:** Native
-- **Load via:** `find_and_load_device("Resonators")`
+- **Load via:** `find_and_load_device(track_index, "Resonators")`
 - **What it does:** Five parallel resonators tuned to musical intervals. Turns any input (noise, drums, speech) into pitched, chord-like resonance. The full stereo signal feeds Resonator I; II--V alternate between L and R channels.
 - **Signal flow:** Input → Multimode Filter → 5 parallel resonators (I = stereo, II--V = alternating L/R) → Width control → Dry/Wet output
 - **Key parameters:**
@@ -281,7 +281,7 @@
 ### Spectral Resonator
 
 - **Type:** Native (Live 11+, Suite only)
-- **Load via:** `find_and_load_device("Spectral Resonator")`
+- **Load via:** `find_and_load_device(track_index, "Spectral Resonator")`
 - **What it does:** FFT-based spectral processor that decomposes audio into partials, then resonates, stretches, shifts, and blurs them. Can be controlled by internal frequency or external MIDI for melodic spectral effects. Creates metallic delays, boxy reverbs, pitched spectral textures, and alien harmonics.
 - **Signal flow:** Input → FFT analysis → Spectral processing (frequency shift, stretch, blur) → Unison voicing → IFFT resynthesis → Dry/Wet output. Optional MIDI sidechain for pitch control.
 - **Key parameters:**
@@ -307,7 +307,7 @@
 ### Spectral Time
 
 - **Type:** Native (Live 11+, Suite only)
-- **Load via:** `find_and_load_device("Spectral Time")`
+- **Load via:** `find_and_load_device(track_index, "Spectral Time")`
 - **What it does:** Spectral delay with freeze capability. Decomposes audio via FFT, then applies frequency-dependent delay, pitch shifting, and spectral freeze. Two independent sections (Freeze + Delay) that can be used separately or combined.
 - **Signal flow:** Input → FFT analysis → Freeze section (capture/hold/retrigger) → Spectral Delay (frequency-dependent delay lines with pitch shift) → IFFT resynthesis → Dry/Wet output
 - **Key parameters:**
@@ -339,7 +339,7 @@
 ### Align Delay
 
 - **Type:** M4L Stock (Max for Live Essentials)
-- **Load via:** `find_and_load_device("Align Delay")`
+- **Load via:** `find_and_load_device(track_index, "Align Delay")`
 - **What it does:** Utility delay for phase alignment and time correction. Not a creative effect — it is a mixing tool for correcting timing/phase issues between tracks, compensating for latency, or aligning PA systems.
 - **Signal flow:** Input → Per-channel delay (L/R independent or linked) → Output
 - **Key parameters:**
@@ -364,7 +364,7 @@
 ### Diffuse
 
 - **Type:** M4L User (CLX_02 / Dub Machines by Surreal Machines)
-- **Load via:** `find_and_load_device("Diffuse")`
+- **Load via:** `find_and_load_device(track_index, "Diffuse")`
 - **What it does:** Lush feedback-network reverb/smear effect with a sophisticated delay network under the hood. Creates short virtual spaces, long atmospheric swells, and everything between. All audio passes through a tape-tone preamp for warmth. Sounds like a cross between a reverb and a multi-tap delay.
 - **Signal flow:** Input → Tape-tone preamp → Feedback delay network (multiple delay lines with size/diffusion/phase control) → Damping → Modulation → Rectify/Pump processing → Output mix
 - **Key parameters:**
@@ -389,7 +389,7 @@
 ### Magnetic
 
 - **Type:** M4L User (CLX_02 / Dub Machines by Surreal Machines)
-- **Load via:** `find_and_load_device("Magnetic")`
+- **Load via:** `find_and_load_device(track_index, "Magnetic")`
 - **What it does:** Tape delay modeled after a beloved 1970s tape echo unit. Multiple gain stages, tape hysteresis, capstan wobble, and 3 virtual tape heads. Includes a high-quality convolution reverb with spring, plate, and hall IRs. All signal passes through a custom tape-tone preamp.
 - **Signal flow:** Input → Tape-tone preamp → 3 playback heads (selectable via Mode) → Tape modeling (hysteresis, wobble, saturation) → Convolution reverb (optional, routed Pre/Post/Parallel) → Bass/Treble tone → Mix output
 - **Key parameters:**
@@ -421,7 +421,7 @@
 ### Gated Delay
 
 - **Type:** M4L Stock (Creative Extensions, free with Suite)
-- **Load via:** `find_and_load_device("Gated Delay")`
+- **Load via:** `find_and_load_device(track_index, "Gated Delay")`
 - **What it does:** Gate sequencer that rhythmically sends signal to a delay line on activated steps. Like a tempo-synced send to a delay that turns on/off in a pattern. Creates rhythmic, sequenced delay patterns impossible with standard delays.
 - **Signal flow:** Input → Step sequencer gate → Delay line (rate-multiplied) → Feedback → Volume/Ducking → Mix mode output
 - **Key parameters:**
@@ -445,7 +445,7 @@
 ### Spectral Blur
 
 - **Type:** M4L Stock (Creative Extensions, free with Suite)
-- **Load via:** `find_and_load_device("Spectral Blur")`
+- **Load via:** `find_and_load_device(track_index, "Spectral Blur")`
 - **What it does:** Spectral smearing effect that grabs grains from a defined frequency range and extends/blurs them into a dense cloud. Creates reverb-like textures through spectral processing rather than traditional reflections. Has a Freeze mode for infinite sustain.
 - **Signal flow:** Input → FFT analysis → Frequency band selection (Freq1/Freq2) → Grain extension/blurring → Residual mix → Halo decay → Delay Compensation → Dry/Wet output
 - **Key parameters:**

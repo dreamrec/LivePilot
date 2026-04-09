@@ -126,4 +126,5 @@ Before playing any clip with melodic or harmonic content:
 
 ## Reference
 
-Consult `references/midi-recipes.md` in the livepilot-core skill for drum patterns by genre, chord voicings by style, scale lookup tables, hi-hat articulation techniques, humanization recipes, and polymetric layering patterns.
+Supporting references live in the `livepilot-core` skill's `references/` directory:
+- `livepilot-core/references/midi-recipes.md` — drum patterns by genre, chord voicings, scale tables, hi-hat articulations, humanization, polymetric layering
