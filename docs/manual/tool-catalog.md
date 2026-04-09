@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog
 
-251 tools across 34 domains.
+255 tools across 34 domains.
 
 ---
 
@@ -440,3 +440,12 @@
 | `explain_taste_inference` | Human-readable explanation of inferred preferences |
 | `rank_moves_by_taste` | Rank semantic moves by personalized taste fit |
 | `record_positive_preference` | Record that user prefers more/less of a dimension |
+
+## Musical Intelligence (4)
+
+| Tool | Description |
+|------|-------------|
+| `detect_repetition_fatigue` | Is the arrangement getting stale? |
+| `detect_role_conflicts` | Are tracks fighting for the same musical role? |
+| `infer_section_purposes` | What is each section trying to do musically? |
+| `score_emotional_arc` | Does the song have a satisfying tension/release arc? |
