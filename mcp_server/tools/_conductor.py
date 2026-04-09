@@ -39,6 +39,12 @@ class ConductorPlan:
     notes: list[str] = field(default_factory=list)
     budget: Optional[dict] = None
 
+    # V2 additions
+    semantic_moves: list[dict] = field(default_factory=list)
+    workflow_mode: str = "guided_workflow"  # quick_fix | guided_workflow | agentic_loop | creative_search | performance_safe
+    use_session_kernel: bool = True
+    experiment_recommended: bool = False
+
     def to_dict(self) -> dict:
         result = {
             "request": self.request,
@@ -48,6 +54,10 @@ class ConductorPlan:
             "primary_engine": self.routes[0].engine if self.routes else None,
             "capability_requirements": self.capability_requirements,
             "notes": self.notes,
+            "semantic_moves": self.semantic_moves,
+            "workflow_mode": self.workflow_mode,
+            "use_session_kernel": self.use_session_kernel,
+            "experiment_recommended": self.experiment_recommended,
         }
         if self.budget is not None:
             result["budget"] = self.budget
@@ -103,6 +113,65 @@ _ROUTING_PATTERNS: list[tuple[str, str, str, str, list[str]]] = [
 ]
 
 
+def _find_matching_semantic_moves(request_lower: str) -> list[dict]:
+    """Search the semantic move registry for moves matching the request."""
+    try:
+        from ..semantic_moves.registry import _REGISTRY
+    except ImportError:
+        return []
+
+    matches = []
+    request_words = set(request_lower.split())
+
+    for move in _REGISTRY.values():
+        score = 0.0
+        move_words = set(move.move_id.replace("_", " ").split())
+        intent_words = set(move.intent.lower().split())
+
+        # Word overlap
+        overlap = request_words & (move_words | intent_words)
+        score += len(overlap) * 0.3
+
+        # Dimension keyword matching
+        for dim in move.targets:
+            if dim in request_lower:
+                score += 0.2
+
+        # Direct ID match
+        if move.move_id.replace("_", " ") in request_lower:
+            score += 1.0
+
+        if score > 0.1:
+            d = move.to_dict()
+            d["match_score"] = round(score, 3)
+            matches.append(d)
+
+    matches.sort(key=lambda x: -x["match_score"])
+    return matches[:3]
+
+
+def _infer_workflow_mode(request_lower: str) -> str:
+    """Infer the appropriate workflow mode from request language."""
+    # Performance-safe keywords
+    if re.search(r"live|perform|safe|set\b|show\b|gig", request_lower):
+        return "performance_safe"
+
+    # Creative search keywords
+    if re.search(r"try|experiment|explore|surprise|option|variant|idea|branch", request_lower):
+        return "creative_search"
+
+    # Quick fix keywords
+    if re.search(r"fix|quick|just|only|undo|revert|simple", request_lower):
+        return "quick_fix"
+
+    # Agentic loop keywords (full autonomous)
+    if re.search(r"autonomous|auto|full|everything|deep|polish|finish", request_lower):
+        return "agentic_loop"
+
+    # Default
+    return "guided_workflow"
+
+
 def classify_request(request: str) -> ConductorPlan:
     """Analyze a production request and route to the right engines.
 
@@ -126,7 +195,15 @@ def classify_request(request: str) -> ConductorPlan:
             engine_scores[engine]["score"] += 1
 
     if not engine_scores:
-        # Default: try Agent OS core loop (general "make it better")
+        # No engine matched — but semantic moves might still apply
+        semantic_moves = _find_matching_semantic_moves(lower)
+        workflow_mode = _infer_workflow_mode(lower)
+        notes = ["General request — Agent OS core loop with goal vector"]
+        if semantic_moves:
+            notes.append(
+                f"Semantic moves available: {', '.join(m['move_id'] for m in semantic_moves[:3])}. "
+                "Use apply_semantic_move for intent-level execution."
+            )
         return ConductorPlan(
             request=request,
             request_type="general",
@@ -134,11 +211,14 @@ def classify_request(request: str) -> ConductorPlan:
                 engine="agent_os",
                 priority=1,
                 reason="No specific engine matched — using core Agent OS loop",
-                entry_tool="build_world_model",
-                follow_up_tools=["evaluate_move"],
+                entry_tool="get_session_kernel",
+                follow_up_tools=["propose_next_best_move", "evaluate_move"],
             )],
             capability_requirements=["session_access"],
-            notes=["General request — Agent OS core loop with goal vector"],
+            notes=notes,
+            semantic_moves=semantic_moves,
+            workflow_mode=workflow_mode,
+            experiment_recommended=(workflow_mode == "creative_search"),
         )
 
     # Sort engines by score (most matches = primary)
@@ -165,12 +245,27 @@ def classify_request(request: str) -> ConductorPlan:
     if any(r.engine == "performance_engine" for r in routes):
         caps.append("live_performance_safe")
 
-    # Always suggest starting with Project Brain for complex multi-engine tasks
+    # Notes and guidance
     notes = []
     if len(routes) > 1:
-        notes.append("Multi-engine task — call build_project_brain first for shared state")
+        notes.append("Multi-engine task — start with get_session_kernel for shared state")
     if any(r.engine == "mix_engine" for r in routes):
         notes.append("Mix engine works best with analyzer data — check get_capability_state")
+
+    # V2: Search semantic moves for matching intents
+    semantic_moves = _find_matching_semantic_moves(lower)
+
+    # V2: Infer workflow mode from request language
+    workflow_mode = _infer_workflow_mode(lower)
+
+    # V2: Recommend experiments for exploratory/creative requests
+    experiment_recommended = workflow_mode == "creative_search"
+
+    if semantic_moves:
+        notes.append(
+            f"Semantic moves available: {', '.join(m['move_id'] for m in semantic_moves[:3])}. "
+            "Use apply_semantic_move for intent-level execution."
+        )
 
     return ConductorPlan(
         request=request,
@@ -178,6 +273,9 @@ def classify_request(request: str) -> ConductorPlan:
         routes=routes,
         capability_requirements=caps,
         notes=notes,
+        semantic_moves=semantic_moves,
+        workflow_mode=workflow_mode,
+        experiment_recommended=experiment_recommended,
     )
 
 

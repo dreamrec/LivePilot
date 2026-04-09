@@ -81,7 +81,8 @@ class TestClassifyRequest:
     def test_multi_engine_gets_brain_note(self):
         plan = classify_request("clean up the mix and fix the transition into the drop")
         if len(plan.routes) > 1:
-            assert any("build_project_brain" in n for n in plan.notes)
+            assert any("session_kernel" in n.lower() or "shared state" in n.lower()
+                       for n in plan.notes)
 
     def test_mix_requests_analyzer_capability(self):
         plan = classify_request("make the drums punchier")
@@ -115,3 +116,55 @@ class TestEngineRoute:
         d = route.to_dict()
         assert d["engine"] == "mix_engine"
         assert d["priority"] == 1
+
+
+class TestConductorV2:
+    """Tests for V2 conductor extensions: semantic moves, workflow modes."""
+
+    def test_punchier_finds_semantic_move(self):
+        plan = classify_request("make this punchier")
+        assert len(plan.semantic_moves) > 0
+        assert any(m["move_id"] == "make_punchier" for m in plan.semantic_moves)
+
+    def test_widen_finds_semantic_move(self):
+        plan = classify_request("make the stereo image wider")
+        assert len(plan.semantic_moves) > 0
+        assert any(m["move_id"] == "widen_stereo" for m in plan.semantic_moves)
+
+    def test_tighten_low_end_move(self):
+        plan = classify_request("tighten the low end")
+        assert len(plan.semantic_moves) > 0
+        assert any(m["move_id"] == "tighten_low_end" for m in plan.semantic_moves)
+
+    def test_plan_includes_semantic_moves_in_dict(self):
+        plan = classify_request("make it punchier")
+        d = plan.to_dict()
+        assert "semantic_moves" in d
+        assert "workflow_mode" in d
+        assert "experiment_recommended" in d
+
+    def test_experiment_recommended_for_creative_search(self):
+        plan = classify_request("try some different ideas for the transition")
+        assert plan.workflow_mode == "creative_search"
+        assert plan.experiment_recommended is True
+
+    def test_performance_safe_mode(self):
+        plan = classify_request("help me in my live set")
+        assert plan.workflow_mode == "performance_safe"
+
+    def test_quick_fix_mode(self):
+        plan = classify_request("just fix the low end quickly")
+        assert plan.workflow_mode == "quick_fix"
+
+    def test_guided_workflow_default(self):
+        plan = classify_request("improve the mix balance")
+        assert plan.workflow_mode == "guided_workflow"
+
+    def test_use_session_kernel_always_true(self):
+        plan = classify_request("anything")
+        assert plan.use_session_kernel is True
+
+    def test_semantic_move_note_added_when_moves_found(self):
+        plan = classify_request("make this punchier")
+        if plan.semantic_moves:
+            assert any("semantic move" in n.lower() for n in plan.notes)
