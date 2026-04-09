@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog
 
-242 tools across 33 domains.
+247 tools across 34 domains.
 
 ---
 
@@ -421,3 +421,13 @@
 | `preview_semantic_move` | See what a move will do before applying — full compile plan |
 | `propose_next_best_move` | AI-ranked suggestions for a natural language request |
 | `apply_semantic_move` | Compile and execute a move against current session state |
+
+## Experiments (5)
+
+| Tool | Description |
+|------|-------------|
+| `create_experiment` | Set up branches from semantic moves for comparison |
+| `run_experiment` | Trial each branch (apply → capture → undo) |
+| `compare_experiments` | Rank branches by evaluation score |
+| `commit_experiment` | Re-apply the winning branch permanently |
+| `discard_experiment` | Throw away all branches |
