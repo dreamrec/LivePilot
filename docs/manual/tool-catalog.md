@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog
 
-247 tools across 34 domains.
+251 tools across 34 domains.
 
 ---
 
@@ -431,3 +431,12 @@
 | `compare_experiments` | Rank branches by evaluation score |
 | `commit_experiment` | Re-apply the winning branch permanently |
 | `discard_experiment` | Throw away all branches |
+
+## Taste Graph (4)
+
+| Tool | Description |
+|------|-------------|
+| `get_taste_graph` | Full taste model — dimensions, move families, device affinities |
+| `explain_taste_inference` | Human-readable explanation of inferred preferences |
+| `rank_moves_by_taste` | Rank semantic moves by personalized taste fit |
+| `record_positive_preference` | Record that user prefers more/less of a dimension |

@@ -110,3 +110,91 @@ def get_taste_dimensions(ctx: Context) -> dict:
     """Return all taste dimensions — user preferences inferred from kept/undone outcomes."""
     store = _get_taste_memory(ctx)
     return store.to_dict()
+
+
+# ── Taste Graph (V2) ────────────────────────────────────────────────
+
+
+@mcp.tool()
+def get_taste_graph(ctx: Context) -> dict:
+    """Get the full TasteGraph — extended preferences including move families,
+    device affinities, novelty tolerance, and dimension weights.
+
+    The TasteGraph combines taste dimensions, anti-preferences, and
+    move/device tracking into a single model for personalized ranking.
+    """
+    from .taste_graph import build_taste_graph
+
+    taste_store = _get_taste_memory(ctx)
+    anti_store = _get_anti_memory(ctx)
+    graph = build_taste_graph(taste_store=taste_store, anti_store=anti_store)
+    return graph.to_dict()
+
+
+@mcp.tool()
+def explain_taste_inference(ctx: Context) -> dict:
+    """Explain why the system thinks the user prefers certain approaches.
+
+    Returns human-readable explanations of inferred taste based on
+    evidence from kept moves, undone moves, device usage, and anti-preferences.
+    """
+    from .taste_graph import build_taste_graph
+
+    taste_store = _get_taste_memory(ctx)
+    anti_store = _get_anti_memory(ctx)
+    graph = build_taste_graph(taste_store=taste_store, anti_store=anti_store)
+    return graph.explain()
+
+
+@mcp.tool()
+def rank_moves_by_taste(
+    ctx: Context,
+    move_specs: list,
+) -> dict:
+    """Rank semantic moves by taste fit for the current user.
+
+    move_specs: list of dicts with {move_id, family, targets, risk_level}
+    Returns: the same moves sorted by taste_score (descending).
+
+    Use this after propose_next_best_move to personalize the ranking.
+    """
+    from .taste_graph import build_taste_graph
+
+    taste_store = _get_taste_memory(ctx)
+    anti_store = _get_anti_memory(ctx)
+    graph = build_taste_graph(taste_store=taste_store, anti_store=anti_store)
+
+    if isinstance(move_specs, str):
+        import json
+        move_specs = json.loads(move_specs)
+
+    ranked = graph.rank_moves(move_specs)
+    return {"ranked_moves": ranked, "count": len(ranked)}
+
+
+@mcp.tool()
+def record_positive_preference(
+    ctx: Context,
+    dimension: str,
+    direction: str,
+    evidence: str = "",
+) -> dict:
+    """Record a user preference for more/less of a dimension.
+
+    dimension: quality axis (e.g., "warmth", "width", "punch")
+    direction: "increase" or "decrease"
+    evidence: optional note about what triggered this preference
+
+    Complements record_anti_preference — this records what users LIKE,
+    not just what they dislike.
+    """
+    taste_store = _get_taste_memory(ctx)
+    # Map to outcome signal
+    signal = f"{dimension}_{direction}_kept"
+    taste_store.update_from_outcome({"signal": signal})
+    return {
+        "recorded": True,
+        "dimension": dimension,
+        "direction": direction,
+        "evidence": evidence,
+    }
