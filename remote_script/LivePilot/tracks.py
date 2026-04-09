@@ -193,10 +193,29 @@ def duplicate_track(song, params):
 
 @register("set_track_name")
 def set_track_name(song, params):
-    """Rename a track."""
+    """Rename a track.
+
+    For return tracks, Ableton auto-prefixes with a letter (A-, B-, C-).
+    If the requested name already starts with that prefix, strip it to
+    avoid doubling (e.g. "C-Resonators" stays as "C-Resonators" not
+    "C-C-Resonators").
+    """
     track_index = int(params["track_index"])
     track = get_track(song, track_index)
-    track.name = str(params["name"])
+    new_name = str(params["name"])
+
+    # For return tracks, strip auto-prefix from user's name if it matches
+    if track_index < 0 and track_index != -1000:
+        return_tracks = list(song.return_tracks)
+        ri = abs(track_index) - 1
+        if ri < len(return_tracks):
+            # Return tracks have letter prefixes: "A-", "B-", "C-", etc.
+            letter = chr(ord('A') + ri)
+            prefix = letter + "-"
+            if new_name.startswith(prefix):
+                new_name = new_name[len(prefix):]
+
+    track.name = new_name
     return {"index": track_index, "name": track.name}
 
 

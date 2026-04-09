@@ -58,27 +58,37 @@ async def lifespan(server):
         )
     except OSError:
         # Port 9880 already bound — another LivePilot instance is running.
-        # Do NOT kill the holder; degrade gracefully instead.
+        # Degrade gracefully. The reconnect_bridge tool can retry later
+        # if the other instance is stopped.
         import sys
         holder_info = _identify_port_holder(9880)
         print(
             "LivePilot: UDP port 9880 already in use%s — "
-            "analyzer/bridge tools will be unavailable. "
-            "Stop the other LivePilot instance to enable them."
+            "analyzer/bridge tools unavailable at startup. "
+            "Use the reconnect_bridge tool after stopping the other instance, "
+            "or restart this server."
             % (f" (PID {holder_info})" if holder_info else ""),
             file=sys.stderr,
         )
         transport = None
+
+    # Store transport + loop so tools can attempt reconnection mid-session
+    bridge_state = {
+        "transport": transport,
+        "loop": loop,
+        "receiver": receiver,
+    }
 
     try:
         yield {
             "ableton": ableton,
             "spectral": spectral,
             "m4l": m4l,
+            "_bridge_state": bridge_state,
         }
     finally:
-        if transport:
-            transport.close()
+        if bridge_state["transport"]:
+            bridge_state["transport"].close()
         m4l.close()
         ableton.disconnect()
 

@@ -53,18 +53,21 @@ def research_technique(
     # 1. Analyze query to predict relevant devices
     query_info = research_engine.analyze_query(query)
 
-    # 2. Search device atlas for relevant devices (Fix 2: correct params)
+    # 2. Search device atlas for relevant devices across all categories
     device_atlas_results = []
     for device_name in query_info.get("likely_devices", [])[:5]:
-        try:
-            ref = ableton.send_command("search_browser", {
-                "path": "instruments",
-                "name_filter": device_name,
-            })
-            if ref and not ref.get("error"):
-                device_atlas_results.append(ref)
-        except Exception:
-            pass
+        for search_path in ("instruments", "audio_effects", "drums"):
+            try:
+                ref = ableton.send_command("search_browser", {
+                    "path": search_path,
+                    "name_filter": device_name,
+                    "max_results": 5,
+                })
+                if ref and not ref.get("error") and ref.get("count", 0) > 0:
+                    device_atlas_results.append(ref)
+                    break  # Found in this category, skip others
+            except Exception:
+                pass
 
     # 3. Search memory for related techniques (direct TechniqueStore)
     memory_results = []
@@ -88,13 +91,20 @@ def research_technique(
             query, device_atlas_results, memory_results,
         )
     else:
-        # Deep research — try to get web results
-        # Note: web search requires external integration (graceful degradation)
+        # Deep research — web search is delegated to the agent (LLM) layer.
+        # The MCP server cannot perform web searches directly. When scope
+        # is "deep", we still return device atlas + memory results and flag
+        # that the agent should supplement with its own web search.
         result = research_engine.deep_research(
             query,
-            web_results=[],  # Web search injected by agent if available
+            web_results=[],  # Agent supplements with WebSearch tool
             device_atlas_results=device_atlas_results,
             memory_results=memory_results,
+        )
+        # Flag to the caller that web results should be sourced externally
+        result.web_search_note = (
+            "Deep scope requested but web search is handled by the agent layer. "
+            "Use WebSearch or web browsing tools to supplement these device atlas findings."
         )
 
     return result.to_dict()

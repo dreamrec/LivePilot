@@ -18,9 +18,16 @@ def _get_ableton(ctx: Context):
 
 
 def _validate_track_index(track_index: int):
-    """Validate track index. Must be >= 0 for regular tracks."""
-    if track_index < 0:
-        raise ValueError("track_index must be >= 0")
+    """Validate track index.
+
+    0+ for regular tracks, -1/-2/... for return tracks (A/B/...),
+    -1000 for master track.
+    """
+    if track_index < 0 and track_index != -1000 and track_index < -20:
+        raise ValueError(
+            "track_index must be >= 0 for regular tracks, "
+            "-1/-2/... for return tracks, or -1000 for master"
+        )
 
 
 @mcp.tool()
