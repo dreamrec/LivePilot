@@ -231,33 +231,73 @@ def chord_name(midi_pitches: list[int]) -> str:
 
 
 def roman_numeral(chord_pcs: list[int], tonic: int, mode: str) -> dict:
-    """Match chord pitch classes -> Roman numeral figure."""
+    """Match chord pitch classes -> Roman numeral figure.
+
+    Recognizes triads and 7th chords by checking if the input contains
+    a scale-degree triad, then detecting the 7th (if any).
+    """
     pcs_set = set(pc % 12 for pc in chord_pcs)
     bass_pc = chord_pcs[0] % 12 if chord_pcs else 0
 
     best = {"figure": "?", "quality": "unknown", "degree": 0,
             "inversion": 0, "root_name": NOTE_NAMES[tonic]}
+    best_score = -1
 
     for degree in range(7):
         triad = build_chord(degree, tonic, mode)
         triad_set = set(triad["pitch_classes"])
-        if pcs_set == triad_set or pcs_set.issubset(triad_set):
-            quality = triad["quality"]
-            label = ROMAN_LABELS[degree]
-            if quality in ("minor", "diminished"):
-                label = label.lower()
-            if quality == "diminished":
-                label += "\u00b0"
-            # Detect inversion
-            inv = 0
-            if bass_pc != triad["root_pc"]:
-                if bass_pc == triad["pitch_classes"][1]:
-                    inv = 1
-                elif bass_pc == triad["pitch_classes"][2]:
-                    inv = 2
-            best = {"figure": label, "quality": quality, "degree": degree,
-                    "inversion": inv, "root_name": triad["root_name"]}
-            break
+        # Match: exact triad, triad is subset of input (7th chord),
+        # or input is subset of triad (power chord / omitted note)
+        if not (pcs_set == triad_set or triad_set.issubset(pcs_set)
+                or pcs_set.issubset(triad_set)):
+            continue
+
+        # Score: prefer matches with more overlap and bass-note match
+        overlap = len(pcs_set & triad_set)
+        score = overlap * 10
+        if bass_pc == triad["root_pc"]:
+            score += 5  # root position bonus
+
+        if score <= best_score:
+            continue
+
+        quality = triad["quality"]
+        label = ROMAN_LABELS[degree]
+        if quality in ("minor", "diminished"):
+            label = label.lower()
+        if quality == "diminished":
+            label += "\u00b0"
+
+        # Detect 7th: extra pitch class beyond the triad
+        extra_pcs = pcs_set - triad_set
+        if extra_pcs:
+            seventh_interval = (list(extra_pcs)[0] - triad["root_pc"]) % 12
+            if seventh_interval == 10:  # minor/dominant 7th
+                label += "7"
+                if quality == "diminished":
+                    quality = "half-diminished seventh"
+                elif quality == "minor":
+                    quality = "minor seventh"
+                else:
+                    quality = "dominant seventh"
+            elif seventh_interval == 11:  # major 7th
+                label += "maj7"
+                quality = "major seventh"
+            elif seventh_interval == 9:  # diminished 7th
+                label += "o7"
+                quality = "diminished seventh"
+
+        # Detect inversion
+        inv = 0
+        if bass_pc != triad["root_pc"]:
+            if bass_pc == triad["pitch_classes"][1]:
+                inv = 1
+            elif bass_pc == triad["pitch_classes"][2]:
+                inv = 2
+
+        best = {"figure": label, "quality": quality, "degree": degree,
+                "inversion": inv, "root_name": triad["root_name"]}
+        best_score = score
 
     return best
 
@@ -302,31 +342,48 @@ def roman_figure_to_pitches(figure: str, tonic: int, mode: str) -> dict:
     chord = build_chord(degree, tonic, mode)
     root_pc = (chord["root_pc"] + chromatic_shift) % 12
 
-    # Build pitch classes based on quality
-    if is_minor_quality:
-        pcs = [root_pc, (root_pc + 3) % 12, (root_pc + 7) % 12]
+    # Build pitch classes based on quality.
+    # When there's no chromatic alteration, use scale-derived quality so
+    # that e.g. "vi7" in D minor correctly yields Bb major 7th, not Bb minor.
+    # Only force minor from case when there's an explicit accidental.
+    if chromatic_shift != 0 and is_minor_quality:
         quality = "minor"
+    elif chromatic_shift != 0 and not is_minor_quality:
+        quality = "major"
     else:
-        # Use scale-derived quality
         quality = chord["quality"]
-        if quality == "minor":
-            pcs = [root_pc, (root_pc + 3) % 12, (root_pc + 7) % 12]
-        elif quality == "diminished":
-            pcs = [root_pc, (root_pc + 3) % 12, (root_pc + 6) % 12]
-        elif quality == "augmented":
-            pcs = [root_pc, (root_pc + 4) % 12, (root_pc + 8) % 12]
-        else:
-            pcs = [root_pc, (root_pc + 4) % 12, (root_pc + 7) % 12]
 
-    # Handle suffix
+    if quality == "minor":
+        pcs = [root_pc, (root_pc + 3) % 12, (root_pc + 7) % 12]
+    elif quality == "diminished":
+        pcs = [root_pc, (root_pc + 3) % 12, (root_pc + 6) % 12]
+    elif quality == "augmented":
+        pcs = [root_pc, (root_pc + 4) % 12, (root_pc + 8) % 12]
+    else:
+        pcs = [root_pc, (root_pc + 4) % 12, (root_pc + 7) % 12]
+
+    # Handle suffix — derive 7th from the scale when possible
     suffix = remaining.lower()
     if suffix == "7":
-        seventh = (root_pc + 10) % 12  # dominant/minor 7th
+        # Use scale-derived 7th: pitch class a diatonic 7th above the root
+        scale = get_scale_pitches(tonic, mode)
+        seventh_degree = (degree + 6) % 7  # 7th of the chord = 6 steps up
+        seventh = scale[seventh_degree]
+        seventh_interval = (seventh - root_pc) % 12
         pcs.append(seventh)
-        if quality == "minor":
-            quality = "minor seventh"
+        if seventh_interval == 11:
+            quality = "major seventh"
+        elif seventh_interval == 10:
+            if quality == "diminished":
+                quality = "half-diminished seventh"
+            elif quality == "minor":
+                quality = "minor seventh"
+            else:
+                quality = "dominant seventh"
+        elif seventh_interval == 9:
+            quality = "diminished seventh"
         else:
-            quality = "dominant seventh"
+            quality = "minor seventh" if quality == "minor" else "dominant seventh"
     elif suffix == "o7":
         seventh = (root_pc + 9) % 12  # diminished 7th
         pcs.append(seventh)

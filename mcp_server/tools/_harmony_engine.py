@@ -29,8 +29,26 @@ def chord_to_str(root_pc: int, quality: str) -> str:
 def parse_chord(chord_str: str) -> tuple[int, str]:
     """Parse 'C major' → (0, 'major'), 'F# minor' → (6, 'minor').
 
-    Uses _theory_engine.parse_key() internally — check what it returns!
+    Also handles 7th chord qualities by reducing to base triad:
+    'D minor seventh' → (2, 'minor'), 'G dominant seventh' → (7, 'major').
+    Neo-Riemannian transforms operate on triads, so we strip extensions.
     """
+    # Normalize extended chord quality names to base triad
+    s = chord_str.strip()
+    _QUALITY_MAP = {
+        "minor seventh": "minor", "minor 7th": "minor", "minor7": "minor",
+        "major seventh": "major", "major 7th": "major", "major7": "major",
+        "dominant seventh": "major", "dominant 7th": "major", "dominant7": "major",
+        "diminished seventh": "minor", "diminished 7th": "minor",
+        "half-diminished seventh": "minor", "half-diminished": "minor",
+    }
+    for ext, base in _QUALITY_MAP.items():
+        if ext in s.lower():
+            # Extract root (everything before the quality)
+            idx = s.lower().index(ext)
+            root = s[:idx].strip() or s.split()[0]
+            return (engine.parse_key(f"{root} {base}")["tonic"], base)
+
     parsed = engine.parse_key(chord_str)
     mode = parsed["mode"]
     if mode not in ("major", "minor"):
@@ -177,14 +195,30 @@ def find_shortest_path(
 # ---------------------------------------------------------------------------
 
 def classify_transform_sequence(chords: list[tuple[int, str]]) -> list[str]:
-    """Identify the PRL transform between each consecutive pair of chords."""
+    """Identify the PRL transform between each consecutive pair of chords.
+
+    Tries single transforms (P, L, R) first, then 2-step compound
+    transforms (PL, PR, LP, LR, RP, RL) for richer classification.
+    """
+    _COMPOUNDS = ["PL", "PR", "LP", "LR", "RP", "RL",
+                  "PP", "LL", "RR"]
     result = []
     for i in range(len(chords) - 1):
         found = "?"
+        # Try single transforms first
         for label, fn in TRANSFORMS.items():
             if fn(*chords[i]) == chords[i + 1]:
                 found = label
                 break
+        # Try 2-step compound transforms
+        if found == "?":
+            for compound in _COMPOUNDS:
+                try:
+                    if apply_transforms(*chords[i], compound) == chords[i + 1]:
+                        found = compound
+                        break
+                except (ValueError, KeyError):
+                    continue
         result.append(found)
     return result
 

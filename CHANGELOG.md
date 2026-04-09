@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.9.19 — Theory Engine & Meters Fix Pass (April 2026)
+
+### Bug Fixes
+- **fix(mixing):** `get_track_meters` crashed on tracks with MIDI-only output — now guards `output_meter_*` with `has_audio_output` check
+- **fix(mixing):** `get_mix_snapshot` same crash on MIDI-output tracks — same guard applied
+- **fix(tracks):** `create_midi_track` / `create_audio_track` left newly created tracks armed — now auto-disarms unless `arm=true` param is passed
+- **fix(theory):** `roman_numeral()` failed to recognize 7th chords (Dm7, Gm7, Bbmaj7) — now detects 7th intervals via triad-subset matching with scored best-match selection
+- **fix(theory):** `roman_figure_to_pitches()` produced out-of-key pitches (C#, G#) for jazz figures in minor keys — now uses scale-derived chord quality and scale-derived 7th intervals instead of forcing quality from Roman numeral case
+- **fix(harmony):** `parse_chord()` rejected "minor seventh", "dominant seventh" and other extended chord qualities — now normalizes to base triad for neo-Riemannian analysis
+- **fix(harmony):** `classify_transform_sequence()` only detected single P/L/R transforms — now tries 2-step compound transforms (PL, PR, RL, etc.)
+- **fix(theory):** `roman_numeral()` picked wrong chord when 7th created ambiguity (Bbmaj7 matched as Dm instead of Bb) — scoring prefers highest overlap + root-position bonus
+
 ## 1.9.18 — Deep Audit Fix Pass (April 2026)
 
 ### Critical Fixes
