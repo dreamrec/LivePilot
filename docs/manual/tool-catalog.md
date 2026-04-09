@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog
 
-241 tools across 33 domains.
+242 tools across 33 domains.
 
 ---
 
@@ -413,10 +413,11 @@
 | `get_capability_state` | Probe runtime capabilities — analyzer, memory, session |
 | `get_session_kernel` | Build unified V2 turn snapshot — session + capabilities + memory + taste |
 
-## Semantic Moves (3)
+## Semantic Moves (4)
 
 | Tool | Description |
 |------|-------------|
 | `list_semantic_moves` | Discover available high-level musical intents by domain |
 | `preview_semantic_move` | See what a move will do before applying — full compile plan |
 | `propose_next_best_move` | AI-ranked suggestions for a natural language request |
+| `apply_semantic_move` | Compile and execute a move against current session state |

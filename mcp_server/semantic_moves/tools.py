@@ -121,3 +121,84 @@ def propose_next_best_move(
         "suggestions": suggestions,
         "count": len(suggestions),
     }
+
+
+@mcp.tool()
+def apply_semantic_move(
+    ctx: Context,
+    move_id: str,
+    mode: str = "improve",
+) -> dict:
+    """Compile and optionally execute a semantic move against the current session.
+
+    Resolves the move's intent into concrete, parameterized tool calls based
+    on the current session topology (track names, roles, devices).
+
+    mode controls behavior:
+    - "improve" / "finish": compile and RETURN the plan for user approval.
+      The agent should present the steps and ask "Shall I do it?"
+    - "explore": compile and EXECUTE immediately, capturing before/after.
+    - "observe" / "diagnose": compile only, never execute. Return the plan.
+
+    Returns: CompiledPlan with concrete steps, summary, and execution status.
+    """
+    from . import compiler
+
+    move = registry.get_move(move_id)
+    if not move:
+        return {"error": f"Unknown move_id: {move_id}"}
+
+    # Build a lightweight kernel from session info
+    ableton = ctx.lifespan_context["ableton"]
+    session_info = ableton.send_command("get_session_info")
+    kernel = {
+        "session_info": session_info,
+        "mode": mode,
+        "capability_state": {},
+    }
+
+    # Compile the move
+    plan = compiler.compile(move, kernel)
+
+    if not plan.executable:
+        result = plan.to_dict()
+        result["executed"] = False
+        return result
+
+    if mode in ("observe", "diagnose"):
+        result = plan.to_dict()
+        result["executed"] = False
+        result["note"] = f"Mode '{mode}' — plan compiled but not executed"
+        return result
+
+    if mode in ("improve", "finish"):
+        result = plan.to_dict()
+        result["executed"] = False
+        result["note"] = "Awaiting approval — present the plan to the user, then execute steps individually"
+        return result
+
+    # explore mode — execute immediately
+    executed_steps = []
+    for step in plan.steps:
+        try:
+            tool_result = ableton.send_command(step.tool, step.params)
+            executed_steps.append({
+                "tool": step.tool,
+                "description": step.description,
+                "result": tool_result,
+                "ok": True,
+            })
+        except Exception as exc:
+            executed_steps.append({
+                "tool": step.tool,
+                "description": step.description,
+                "error": str(exc),
+                "ok": False,
+            })
+
+    result = plan.to_dict()
+    result["executed"] = True
+    result["execution_results"] = executed_steps
+    result["success_count"] = sum(1 for s in executed_steps if s["ok"])
+    result["failure_count"] = sum(1 for s in executed_steps if not s["ok"])
+    return result
