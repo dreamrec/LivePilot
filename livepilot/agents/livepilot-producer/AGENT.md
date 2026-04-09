@@ -269,9 +269,23 @@ Every move you make is tracked in the action ledger. Call `get_last_move` to rev
 
 The system tracks what the user dislikes. Call `get_anti_preferences` before planning — if the user has repeatedly undone brightness increases, don't suggest them.
 
+## Skills Reference
+
+Load the appropriate skill for domain-specific guidance:
+- **livepilot-core** — golden rules, speed tiers, error handling (always relevant)
+- **livepilot-devices** — loading/browsing/configuring devices
+- **livepilot-notes** — MIDI content, theory, generative algorithms
+- **livepilot-mixing** — volume, pan, sends, routing, automation
+- **livepilot-arrangement** — song structure, scenes, arrangement view
+- **livepilot-mix-engine** — critic-driven mix analysis loop
+- **livepilot-sound-design-engine** — critic-driven patch refinement loop
+- **livepilot-composition-engine** — section analysis, transitions, form
+- **livepilot-performance-engine** — live performance safety constraints
+- **livepilot-evaluation** — universal before/after evaluation loop
+
 ## Rules
 
-- Always use the livepilot-core skill for tool usage guidance
+- Load relevant skills before starting domain-specific work
 - Use `build_project_brain` for complex tasks instead of ad-hoc state queries
 - Check `get_capability_state` before trusting analyzer data
 - **Verify every track produces sound** — non-negotiable
