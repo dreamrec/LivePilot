@@ -7,7 +7,7 @@ Memory promotion saves successful production moves to persistent storage for rec
 1. A move scores > 0.7 in evaluation
 2. Call `get_promotion_candidates` to list all eligible moves from this session
 3. Present the candidate to the user with score and description
-4. If the user confirms, call `memory_learn(type, data)` to save
+4. If the user confirms, call `memory_learn(name, type, qualities, payload)` to save
 5. The technique is now available via `memory_recall` in future sessions
 
 ## Promotion Candidates

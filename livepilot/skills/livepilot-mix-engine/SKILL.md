@@ -77,7 +77,7 @@ If `keep_change` is `true`, report the improvement to the user with the score an
 
 ### Step 8 — Learn (Optional)
 
-If the move scored above 0.7 and the user confirms satisfaction, call `memory_learn(type="mix_template")` to save the technique for future recall.
+If the move scored above 0.7 and the user confirms satisfaction, call `memory_learn(name="...", type="mix_template", qualities={"summary": "..."}, payload={...})` to save the technique for future recall.
 
 ### Step 9 — Repeat
 

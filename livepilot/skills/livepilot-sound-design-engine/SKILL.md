@@ -87,7 +87,7 @@ Call `evaluate_move(goal_vector, before_snapshot, after_snapshot)` where `goal_v
 
 If `keep_change` is `false`, call `undo()`. Explain what was tried and why it did not improve the sound.
 
-If `keep_change` is `true`, report the improvement. If score > 0.7, consider calling `memory_learn(type="sound_design")` to save the technique.
+If `keep_change` is `true`, report the improvement. If score > 0.7, consider calling `memory_learn(name="...", type="device_chain", qualities={"summary": "..."}, payload={...})` to save the technique.
 
 ### Step 9 — Repeat
 

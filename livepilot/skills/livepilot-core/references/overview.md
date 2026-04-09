@@ -202,7 +202,7 @@ This turns "set EQ band 3 to -4 dB" into "cut 400 Hz by 4 dB, then read the spec
 | `memory_update` | Updates name, tags, or qualities | `technique_id`, `name`, `tags`, `qualities` |
 | `memory_delete` | Removes technique (backs up first) | `technique_id` |
 
-### Analyzer (29) — Real-time DSP analysis (requires LivePilot Analyzer M4L device on master track)
+### Analyzer (30) — Real-time DSP analysis (requires LivePilot Analyzer M4L device on master track)
 
 | Tool | What it does | Key params |
 |------|-------------|------------|

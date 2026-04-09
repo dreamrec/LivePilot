@@ -41,9 +41,9 @@ Files that reference tool count:
 - [ ] `livepilot/.claude-plugin/plugin.json` → `"description"` (must match Codex plugin)
 - [ ] `.claude-plugin/marketplace.json` → `"description"`
 - [ ] `CLAUDE.md` → "237 tools across 32 domains"
-- [ ] `livepilot/skills/livepilot-core/SKILL.md` — "237 tools across 32 domains", Analyzer (29), Perception (4)
+- [ ] `livepilot/skills/livepilot-core/SKILL.md` — "237 tools across 32 domains", Analyzer (30), Perception (4)
 - [ ] `livepilot/skills/livepilot-core/references/overview.md` — "237 tools across 32 domains"
-- [ ] `docs/manual/index.md` — domain table: Analyzer (29), Perception (4)
+- [ ] `docs/manual/index.md` — domain table: Analyzer (30), Perception (4)
 - [ ] `docs/manual/getting-started.md` — "207 core tools...30 analyzer"
 - [ ] `docs/manual/tool-reference.md` — all domains present with correct counts
 - [ ] `docs/TOOL_REFERENCE.md` — all domains present
