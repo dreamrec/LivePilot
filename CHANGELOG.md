@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.9.21 — Verification Discipline Pass (April 2026)
+
+### Systemic Fixes
+- **fix(devices):** `set_device_parameter` and `batch_set_parameters` now return `value_string`, `min`, `max` in response — the agent can immediately see "26.0 Hz" instead of just "75" and catch nonsensical values
+- **fix(automation):** `apply_automation_recipe` now auto-scales 0-1 recipe curves to the target parameter's actual native range (e.g., Auto Filter 20-135, Bit Depth 1-16). Previously, a "0.3 center" vinyl_crackle on a 20-135 range wrote 0.3 literally, killing audio
+- **fix(automation):** `auto_pan` recipe pan values now clamped to ±0.6 to prevent full L/R swing that makes tracks disappear from one channel
+- **docs(skill):** Added Golden Rules 15-16 — mandatory post-write verification protocol: always read `value_string`, always check track meters after filter/effect changes, never apply automation recipes without understanding the target parameter's range
+
 ## 1.9.20 — Deep Production Test Pass (April 2026)
 
 ### New Tool

@@ -341,6 +341,32 @@ def apply_automation_recipe(
 
     points = generate_from_recipe(recipe, duration=duration, density=density)
 
+    # Scale recipe's 0.0-1.0 curves to the parameter's actual native range.
+    # Without this, a "0.3" center on a 20-135 range parameter writes 0.3
+    # literally instead of scaling to the 20-135 range — killing the signal.
+    if parameter_type == "device" and device_index is not None and parameter_index is not None:
+        try:
+            dev_info = _get_ableton(ctx).send_command("get_device_parameters", {
+                "track_index": track_index,
+                "device_index": device_index,
+            })
+            params_list = dev_info.get("parameters", [])
+            if parameter_index < len(params_list):
+                p_info = params_list[parameter_index]
+                p_min = float(p_info.get("min", 0))
+                p_max = float(p_info.get("max", 1))
+                # Only scale if the range is NOT already 0-1
+                if abs(p_max - p_min) > 1.5 or p_min < -0.5:
+                    for pt in points:
+                        pt["value"] = p_min + pt["value"] * (p_max - p_min)
+        except Exception:
+            pass  # Fail open — write values as-is if we can't read the range
+
+    # Safety clamp: auto_pan amplitude should be limited to avoid full L/R swing
+    if recipe == "auto_pan" and parameter_type == "panning":
+        for pt in points:
+            pt["value"] = max(-0.6, min(0.6, pt["value"]))
+
     if time_offset > 0:
         for p in points:
             p["time"] += time_offset
