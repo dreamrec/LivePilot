@@ -122,6 +122,9 @@ def create_midi_track(song, params):
         track.name = str(params["name"])
     if "color_index" in params:
         track.color_index = int(params["color_index"])
+    # Ableton auto-arms newly created tracks — disarm to avoid surprises
+    if track.arm and not params.get("arm", False):
+        track.arm = False
     return {"index": new_index, "name": track.name}
 
 
@@ -139,6 +142,9 @@ def create_audio_track(song, params):
         track.name = str(params["name"])
     if "color_index" in params:
         track.color_index = int(params["color_index"])
+    # Ableton auto-arms newly created tracks — disarm to avoid surprises
+    if track.arm and not params.get("arm", False):
+        track.arm = False
     return {"index": new_index, "name": track.name}
 
 

@@ -132,11 +132,18 @@ def get_track_meters(song, params):
         entry = {
             "index": idx,
             "name": track.name,
-            "level": track.output_meter_level,
         }
-        if include_stereo:
-            entry["left"] = track.output_meter_left
-            entry["right"] = track.output_meter_right
+        if track.has_audio_output:
+            entry["level"] = track.output_meter_level
+            if include_stereo:
+                entry["left"] = track.output_meter_left
+                entry["right"] = track.output_meter_right
+        else:
+            entry["level"] = 0.0
+            entry["has_audio_output"] = False
+            if include_stereo:
+                entry["left"] = 0.0
+                entry["right"] = 0.0
         return entry
 
     if track_index is not None:
@@ -170,7 +177,7 @@ def get_mix_snapshot(song, params):
         tracks.append({
             "index": i,
             "name": track.name,
-            "meter_level": track.output_meter_level,
+            "meter_level": track.output_meter_level if track.has_audio_output else 0.0,
             "volume": track.mixer_device.volume.value,
             "pan": track.mixer_device.panning.value,
             "mute": track.mute,
