@@ -1,5 +1,34 @@
 # Changelog
 
+## 1.9.17 — Skills Architecture V2 (April 2026)
+
+### Skills (9 new, 1 slimmed)
+- **livepilot-core** — slimmed from 900 to ~150 lines. Golden rules, speed tiers, error protocol. Domain content moved to dedicated skills.
+- **livepilot-devices** — NEW: device loading, browser workflow, plugin health, rack introspection
+- **livepilot-notes** — NEW: MIDI content, theory integration, generative algorithms, harmony tools
+- **livepilot-mixing** — NEW: volume/pan/sends, routing, metering, automation patterns
+- **livepilot-arrangement** — NEW: song structure, scenes, arrangement view, navigation
+- **livepilot-mix-engine** — NEW: critic-driven mix analysis loop (masking, dynamics, stereo, headroom)
+- **livepilot-sound-design-engine** — NEW: critic-driven patch refinement loop (static timbre, modulation, filtering)
+- **livepilot-composition-engine** — NEW: section analysis, transitions, motifs, form, translation checking
+- **livepilot-performance-engine** — NEW: safety-first live performance with energy tracking and move classification
+- **livepilot-evaluation** — NEW: universal before/after evaluation loop with capability-aware scoring
+
+### Commands (3 new, 2 updated)
+- `/arrange` — NEW: guided arrangement using composition engine
+- `/perform` — NEW: safety-constrained performance mode
+- `/evaluate` — NEW: before/after evaluation loop
+- `/mix` — updated to use mix engine critics
+- `/sounddesign` — updated to use sound design engine critics
+
+### Agent
+- **livepilot-producer** — updated to reference all 10 skills instead of inline loop definitions
+
+### Plugin Stats
+- 11 skills (was 2), 8 commands (was 5), 1 agent, 10 reference files for engine skills
+- Total plugin skill metadata: ~1100 words always-in-context (lean triggers)
+- Progressive disclosure: SKILL.md bodies ≤2000 words each, detailed content in references/
+
 ## 1.9.16 — Comprehensive Bug Fix Audit (April 2026)
 
 ### Critical Fixes
