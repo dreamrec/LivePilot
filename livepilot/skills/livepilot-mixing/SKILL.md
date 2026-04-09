@@ -145,9 +145,8 @@ Use the mix engine when the user wants a critical evaluation of their mix, not j
 Follow this progression — start fast, go deeper only when needed:
 
 1. **Instant:** `get_master_spectrum` + `get_track_meters` — frequency balance + levels. Answers 80% of mix questions.
-2. **Fast (1-5s):** `analyze_loudness` + `analyze_dynamic_range` — LUFS, true peak, LRA, crest factor. For mastering prep.
-3. **Slow (5-15s):** `analyze_spectral_evolution` + `compare_to_reference` — timbral trends, reference matching. Ask the user first.
-4. **Heavy (30-120s):** `separate_stems` + `diagnose_mix` — full diagnostic. Requires explicit user consent.
+2. **Fast (1-5s):** `analyze_loudness` + `analyze_mix` — LUFS, true peak, and full mix analysis. For mastering prep.
+3. **Slow (5-15s):** `compare_to_reference` + `analyze_spectrum_offline` — reference matching, offline spectral analysis. Ask the user first.
 
 Never skip levels. Start at the lowest appropriate level and offer to go deeper.
 

@@ -8,7 +8,7 @@
 
 ## Problem
 
-LivePilot has 236 tools across 32 domains but only 2 skills:
+LivePilot has 236 tools across 31 domains but only 2 skills:
 - `livepilot-core` — 900+ line monolith covering everything (golden rules, device atlas, recipes, theory, mixing, all in one)
 - `livepilot-release` — internal release checklist
 

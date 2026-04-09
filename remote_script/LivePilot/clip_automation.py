@@ -100,6 +100,7 @@ def set_clip_automation(song, params):
     elif parameter_type == "send":
         if send_index is None:
             raise ValueError("send_index required for send automation")
+        send_index = int(send_index)
         sends = list(track.mixer_device.sends)
         if send_index < 0 or send_index >= len(sends):
             raise IndexError("send_index %d out of range" % send_index)
@@ -107,6 +108,8 @@ def set_clip_automation(song, params):
     elif parameter_type == "device":
         if device_index is None or parameter_index is None:
             raise ValueError("device_index and parameter_index required")
+        device_index = int(device_index)
+        parameter_index = int(parameter_index)
         devices = list(track.devices)
         if device_index < 0 or device_index >= len(devices):
             raise IndexError("device_index %d out of range" % device_index)
@@ -180,6 +183,7 @@ def clear_clip_automation(song, params):
             send_index = params.get("send_index")
             if send_index is None:
                 raise ValueError("send_index required for send automation")
+            send_index = int(send_index)
             sends = list(track.mixer_device.sends)
             if send_index < 0 or send_index >= len(sends):
                 raise IndexError("send_index %d out of range" % send_index)
@@ -189,6 +193,8 @@ def clear_clip_automation(song, params):
             parameter_index = params.get("parameter_index")
             if device_index is None or parameter_index is None:
                 raise ValueError("device_index and parameter_index required")
+            device_index = int(device_index)
+            parameter_index = int(parameter_index)
             devices = list(track.devices)
             if device_index < 0 or device_index >= len(devices):
                 raise IndexError("device_index %d out of range" % device_index)

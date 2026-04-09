@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 import os
 import socket
@@ -162,15 +161,20 @@ class AbletonConnection:
             try:
                 response = self._send_raw(command)
             except AbletonConnectionError as exc:
-                # Don't retry timeouts — Ableton may have processed the command
+                # If the send phase succeeded (data left this process),
+                # Ableton may have already applied the command.  Never
+                # replay — the duplicate mutation is worse than the error.
+                if getattr(exc, '_send_completed', False):
+                    raise
+                # Don't retry timeouts either
                 if "Timeout" in str(exc):
                     raise
-                # Retry once with a fresh connection for non-timeout errors
+                # Send itself failed — safe to retry with a fresh connection
                 self.disconnect()
                 self.connect()
                 response = self._send_raw(command)
             except OSError:
-                # Retry once with a fresh connection
+                # Socket error before send — safe to retry
                 self.disconnect()
                 self.connect()
                 response = self._send_raw(command)
@@ -195,15 +199,6 @@ class AbletonConnection:
 
         self._command_log.append(log_entry)
         return response.get("result", {})
-
-    async def send_command_async(self, command_type: str, params: Optional[dict] = None) -> dict:
-        """Async wrapper around send_command that avoids blocking the event loop.
-
-        Runs the blocking TCP send/receive in a thread pool executor so the
-        asyncio event loop remains responsive to other concurrent MCP tools.
-        """
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, self.send_command, command_type, params)
 
     # ------------------------------------------------------------------
     # Command log
@@ -234,7 +229,9 @@ class AbletonConnection:
             self.disconnect()
             raise AbletonConnectionError(f"Failed to send command: {exc}") from exc
 
-        # Read until newline, preserving any trailing bytes in _recv_buf
+        # Read until newline, preserving any trailing bytes in _recv_buf.
+        # Any error past this point means the send already reached Ableton,
+        # so callers must NOT retry the command (it may have been applied).
         buf = self._recv_buf
         try:
             while b"\n" not in buf:
@@ -242,31 +239,41 @@ class AbletonConnection:
                 if not chunk:
                     self._recv_buf = b""
                     self.disconnect()
-                    raise AbletonConnectionError("Connection closed by Ableton")
+                    err = AbletonConnectionError("Connection closed by Ableton")
+                    err._send_completed = True
+                    raise err
                 buf += chunk
                 if len(buf) > 10 * 1024 * 1024:  # 10 MB
                     self._recv_buf = b""
                     self.disconnect()
-                    raise AbletonConnectionError("Response too large (>10 MB)")
+                    err = AbletonConnectionError("Response too large (>10 MB)")
+                    err._send_completed = True
+                    raise err
         except socket.timeout as exc:
             self._recv_buf = buf
             self.disconnect()
             other_client = _identify_other_tcp_client(self.host, self.port)
             if other_client:
-                raise AbletonConnectionError(
+                err = AbletonConnectionError(
                     "Timeout waiting for response from Ableton. "
                     f"Another LivePilot client appears to be connected on {self.host}:{self.port} "
                     f"({other_client}). Disconnect the other client and retry."
-                ) from exc
-            raise AbletonConnectionError(
+                )
+                err._send_completed = True
+                raise err from exc
+            err = AbletonConnectionError(
                 f"Timeout waiting for response from Ableton ({RECV_TIMEOUT}s)"
-            ) from exc
+            )
+            err._send_completed = True
+            raise err from exc
         except OSError as exc:
             self._recv_buf = b""
             self.disconnect()
-            raise AbletonConnectionError(
+            err = AbletonConnectionError(
                 f"Socket error reading response: {exc}"
-            ) from exc
+            )
+            err._send_completed = True
+            raise err from exc
 
         line, remainder = buf.split(b"\n", 1)
         self._recv_buf = remainder

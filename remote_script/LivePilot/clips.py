@@ -72,6 +72,8 @@ def delete_clip(song, params):
     track_index = int(params["track_index"])
     clip_index = int(params["clip_index"])
     clip_slot = get_clip_slot(song, track_index, clip_index)
+    if not clip_slot.has_clip:
+        raise ValueError("No clip in slot %d on track %d" % (clip_index, track_index))
     clip_slot.delete_clip()
     return {"track_index": track_index, "clip_index": clip_index, "deleted": True}
 

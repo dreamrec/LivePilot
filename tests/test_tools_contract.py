@@ -1,4 +1,4 @@
-"""Verify all 236 MCP tools are registered across 32 domains."""
+"""Verify all 236 MCP tools are registered across 31 domains."""
 
 import asyncio
 import sys

@@ -1,6 +1,6 @@
 # LivePilot Tool Reference
 
-236 MCP tools across 32 domains. Tools marked with [M4L] require the LivePilot Analyzer device on the master track. Tools marked with [M4L*] use M4L data when available but work without it.
+236 MCP tools across 31 domains. Tools marked with [M4L] require the LivePilot Analyzer device on the master track. Tools marked with [M4L*] use M4L data when available but work without it.
 
 ## Transport (12 tools)
 

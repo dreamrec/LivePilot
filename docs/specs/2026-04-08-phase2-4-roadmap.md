@@ -9,7 +9,7 @@
 
 ## Current State (Rounds 1-4 Complete)
 
-- **236 tools** across 32 domains
+- **236 tools** across 31 domains
 - **Agent OS V1**: GoalVector (17 quality dims), WorldModel, SonicCritic (6 heuristics), TechnicalCritic, evaluation scorer with hard-rule keep/undo
 - **Composition Engine V1**: SectionGraph, PhraseGrid, RoleGraph (section-aware), FormCritic, SectionIdentityCritic, PhraseCritic, GesturePlanner (9 intents)
 - **Round 1 (complete)**: HarmonyField, TransitionCritic, OutcomeAnalyzer, structural critic wiring

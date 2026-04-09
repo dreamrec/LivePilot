@@ -6,7 +6,7 @@ then delegates to pure-computation critics.
 
 from __future__ import annotations
 
-from mcp.server.fastmcp import Context
+from fastmcp import Context
 
 from ..server import mcp
 from .critics import build_translation_report, run_all_translation_critics

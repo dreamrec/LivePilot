@@ -634,14 +634,15 @@ async def capture_audio(
 async def capture_stop(ctx: Context) -> dict:
     """Stop an in-progress audio capture early.
 
-    Cancels the running buffer~ recording and returns whatever audio has
-    been captured so far. The partial file is still written to disk.
+    Tells the M4L bridge to stop buffer~ recording and resolves the
+    in-flight capture_audio call with a partial result (stopped_early=True).
+    The partial file is still written to disk by the bridge.
     Requires LivePilot Analyzer on master track.
     """
     cache = _get_spectral(ctx)
     _require_analyzer(cache)
     bridge = _get_m4l(ctx)
-    # Cancel the capture future so send_capture doesn't hang forever
+    # Resolve the capture future so send_capture returns cleanly
     await bridge.cancel_capture_future()
     return await bridge.send_command("capture_stop")
 
