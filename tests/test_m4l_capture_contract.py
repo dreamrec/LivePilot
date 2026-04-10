@@ -19,7 +19,7 @@ def test_capture_js_reports_absolute_file_path_and_stop_signal():
 
 
 def test_maxpat_contains_real_capture_recording_chain():
-    data = json.loads(MAXPAT.read_text())
+    data = json.loads(MAXPAT.read_text(encoding="utf-8"))
     boxes = {box["box"]["id"]: box["box"] for box in data["patcher"]["boxes"]}
     lines = [line["patchline"] for line in data["patcher"]["lines"]]
 

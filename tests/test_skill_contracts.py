@@ -37,7 +37,7 @@ def _get_live_tools() -> dict[str, set[str]]:
 
 def _extract_tool_calls_from_markdown(path: Path) -> list[dict]:
     """Extract backticked tool calls like `tool_name(arg1, arg2)` from markdown."""
-    text = path.read_text()
+    text = path.read_text(encoding="utf-8")
     pattern = r"`(\w+)\(([^`]*)\)`"
     calls = []
     for match in re.finditer(pattern, text):
@@ -92,7 +92,7 @@ def test_tool_catalog_matches_live_registry():
     if not catalog_path.exists():
         pytest.skip("Tool catalog not found")
 
-    catalog_text = catalog_path.read_text()
+    catalog_text = catalog_path.read_text(encoding="utf-8")
     missing = []
     for name in sorted(live_tools):
         if f"`{name}`" not in catalog_text:

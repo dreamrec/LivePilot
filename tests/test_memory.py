@@ -321,7 +321,7 @@ class TestDelete:
         store.delete(tid)
         backups = list((tmp_path / "backups").glob("*.json"))
         assert len(backups) == 1
-        backup_data = json.loads(backups[0].read_text())
+        backup_data = json.loads(backups[0].read_text(encoding="utf-8"))
         assert backup_data["id"] == tid
 
     def test_nonexistent_raises(self, store):
