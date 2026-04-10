@@ -184,10 +184,13 @@ def search_browser(song, params):
     _search_recursive(item, name_filter, loadable_only, results, 0, max_depth,
                       max_results)
     truncated = len(results) >= max_results
-    result = {"path": path, "results": results, "count": len(results)}
+    result = {"path": path, "items": results, "total_results": len(results)}
     if truncated:
         result["truncated"] = True
         result["max_results"] = max_results
+    # Legacy alias for backward compatibility
+    result["results"] = results
+    result["count"] = len(results)
     return result
 
 

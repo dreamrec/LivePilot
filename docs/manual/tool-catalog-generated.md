@@ -1,443 +1,296 @@
-# LivePilot — Full Tool Catalog (Generated)
-
-257 tools across 35 domains.
-
-> Auto-generated from `mcp.list_tools()`. Do not hand-edit.
-> Regenerate: `python3 scripts/generate_tool_catalog.py`
-
----
-
-## Agent Os (8)
-
-| Tool | Description |
-|------|-------------|
-| `analyze_outcomes` | Analyze accumulated outcome memories to identify user taste patterns. |
-| `build_world_model` | Build a WorldModel snapshot of the current Ableton session. |
-| `compile_goal_vector` | Compile a user request into a validated GoalVector. |
-| `evaluate_move` | Evaluate whether a production move improved the mix toward the goal. |
-| `get_taste_profile` | Get the user's production taste profile from outcome history. |
-| `get_technique_card` | Search for technique cards — structured production recipes. |
-| `get_turn_budget` | Get a resource budget for the current agent turn. |
-| `route_request` | Route a production request to the right engine(s). |
-
-## Analyzer (30)
-
-| Tool | Description |
-|------|-------------|
-| `add_warp_marker` | Add a warp marker to an audio clip at the specified beat position. |
-| `capture_audio` | Capture audio from Ableton Live to a WAV file on disk. |
-| `capture_stop` | Stop an in-progress audio capture early. |
-| `check_flucoma` | Check if FluCoMa is installed and sending data. |
-| `crop_simpler` | Crop a Simpler's sample to the currently active region. |
-| `get_automation_state` | Get automation state for all parameters on a device. |
-| `get_chroma` | Get 12 pitch class energies from FluCoMa for real-time chord detection. |
-| `get_clip_file_path` | Get the audio file path of a clip on disk. |
-| `get_detected_key` | Get the detected musical key and scale of the current session. |
-| `get_display_values` | Get human-readable display values for all device parameters. |
-| `get_hidden_parameters` | Get ALL parameters for a device, including hidden ones not accessible |
-| `get_master_rms` | Get real-time RMS and peak levels from the master bus. |
-| `get_master_spectrum` | Get 8-band frequency analysis of the master bus. |
-| `get_mel_spectrum` | Get 40-band mel spectrum from FluCoMa (5x resolution of get_master_spectrum). |
-| `get_momentary_loudness` | Get EBU R128 momentary LUFS + true peak from FluCoMa. |
-| `get_novelty` | Get real-time spectral novelty for section boundary detection from FluCoMa. |
-| `get_onsets` | Get real-time onset/transient detection from FluCoMa. |
-| `get_simpler_slices` | Get slice point positions from a Simpler device. |
-| `get_spectral_shape` | Get 7 real-time spectral descriptors from FluCoMa. |
-| `get_warp_markers` | Get all warp markers from an audio clip. |
-| `load_sample_to_simpler` | Load an audio file into a NEW Simpler device on a track. |
-| `move_warp_marker` | Move a warp marker from one beat position to another. |
-| `reconnect_bridge` | Attempt to reconnect the M4L UDP bridge (port 9880). |
-| `remove_warp_marker` | Remove a warp marker from an audio clip at the specified beat. |
-| `replace_simpler_sample` | Load an audio file into a Simpler device by absolute file path. |
-| `reverse_simpler` | Reverse the sample loaded in a Simpler device. |
-| `scrub_clip` | Scrub/preview a clip at a specific beat position. |
-| `stop_scrub` | Stop scrubbing a clip. Call after scrub_clip to stop preview. |
-| `walk_device_tree` | Walk the full device chain tree including nested racks, drum pads, |
-| `warp_simpler` | Warp a Simpler's sample to fit the specified number of beats. |
-
-## Arrangement (19)
-
-| Tool | Description |
-|------|-------------|
-| `add_arrangement_notes` | Add MIDI notes to an arrangement clip. |
-| `back_to_arranger` | Switch playback from session clips back to the arrangement timeline. |
-| `capture_midi` | Capture recently played MIDI notes into a new clip. |
-| `create_arrangement_clip` | Duplicate a session clip into Arrangement View at a specific beat position. |
-| `duplicate_arrangement_notes` | Duplicate specific notes in an arrangement clip by ID, with optional time offset (beats). |
-| `get_arrangement_clips` | Get all arrangement clips on a track. |
-| `get_arrangement_notes` | Get MIDI notes from an arrangement clip. Returns note_id, pitch, start_time, |
-| `get_cue_points` | Get all cue points in the arrangement. |
-| `jump_to_cue` | Jump to a cue point by index. |
-| `jump_to_time` | Jump to a specific beat time in the arrangement. |
-| `modify_arrangement_notes` | Modify existing MIDI notes in an arrangement clip by ID. modifications is a JSON array: |
-| `remove_arrangement_notes` | Remove all MIDI notes in a pitch/time region of an arrangement clip. Defaults remove ALL notes. |
-| `remove_arrangement_notes_by_id` | Remove specific MIDI notes from an arrangement clip by their IDs. |
-| `set_arrangement_automation` | Write automation envelope points into an arrangement clip. |
-| `set_arrangement_clip_name` | Rename an arrangement clip by its index in the track's arrangement_clips list. |
-| `start_recording` | Start recording. arrangement=True for arrangement, False for session. |
-| `stop_recording` | Stop all recording (both session and arrangement). |
-| `toggle_cue_point` | Set or delete a cue point at the current playback position. |
-| `transpose_arrangement_notes` | Transpose notes in an arrangement clip by semitones (positive=up, negative=down). |
-
-## Automation (8)
-
-| Tool | Description |
-|------|-------------|
-| `analyze_for_automation` | Analyze a track's spectrum and suggest automation targets. |
-| `apply_automation_recipe` | Apply a named automation recipe to a session clip. |
-| `apply_automation_shape` | Generate and apply an automation curve to a session clip. |
-| `clear_clip_automation` | Clear automation envelopes from a session clip. |
-| `generate_automation_curve` | Generate automation curve points WITHOUT writing them. |
-| `get_automation_recipes` | List all available automation recipes with descriptions. |
-| `get_clip_automation` | List all automation envelopes on a session clip. |
-| `set_clip_automation` | Write automation points to a session clip envelope. |
-
-## Browser (4)
-
-| Tool | Description |
-|------|-------------|
-| `get_browser_items` | List items at a browser path (e.g., 'instruments/Analog'). |
-| `get_browser_tree` | Get an overview of browser categories and their children. |
-| `load_browser_item` | Load a browser item (instrument/effect) onto a track by URI. |
-| `search_browser` | Search the browser tree under a path, optionally filtering by name. |
-
-## Clips (11)
-
-| Tool | Description |
-|------|-------------|
-| `create_clip` | Create an empty MIDI clip in a clip slot (length in beats). |
-| `delete_clip` | Delete a clip from a clip slot. This removes all notes and automation. Use undo to revert. |
-| `duplicate_clip` | Duplicate a clip from one slot to another. |
-| `fire_clip` | Launch/fire a clip slot. |
-| `get_clip_info` | Get detailed info about a clip: name, length, loop, launch settings. |
-| `set_clip_color` | Set clip color (0-69, Ableton's color palette). |
-| `set_clip_launch` | Set clip launch mode (0=Trigger, 1=Gate, 2=Toggle, 3=Repeat) and optional quantization. |
-| `set_clip_loop` | Enable/disable clip looping and optionally set loop start/end (in beats). |
-| `set_clip_name` | Rename a clip. |
-| `set_clip_warp_mode` | Set warp mode for an audio clip (0=Beats, 1=Tones, 2=Texture, 3=Re-Pitch, 4=Complex, 6=Complex Pro). |
-| `stop_clip` | Stop a playing clip. |
-
-## Composition (9)
-
-| Tool | Description |
-|------|-------------|
-| `analyze_composition` | Run full composition analysis on the current Ableton session. |
-| `apply_gesture_template` | Apply a compound gesture template — multiple coordinated automation gestures. |
-| `evaluate_composition_move` | Evaluate whether a composition move improved the arrangement. |
-| `get_harmony_field` | Analyze the harmonic content of a section — key, chords, voice-leading, tension. |
-| `get_phrase_grid` | Get phrase boundaries for a specific section. |
-| `get_section_graph` | Get just the section graph — lightweight structural overview. |
-| `get_section_outcomes` | Get composition move success rates grouped by section type. |
-| `get_transition_analysis` | Analyze transition quality between all adjacent sections. |
-| `plan_gesture` | Plan a musical gesture — map abstract intent to concrete automation. |
-
-## Devices (15)
-
-| Tool | Description |
-|------|-------------|
-| `batch_set_parameters` | Set multiple device parameters in one call. parameters is a JSON array of objects: [{"name_or_index": "Dry/Wet", "value" |
-| `delete_device` | Delete a device from a track. Use undo to revert if needed. |
-| `find_and_load_device` | Search the browser for a device by name and load it onto a track. |
-| `get_device_info` | Get info about a device: name, class, type, active state, parameter count. |
-| `get_device_parameters` | Get all parameters for a device with names, values, and ranges. |
-| `get_device_presets` | List available presets for an Ableton device (e.g. 'Corpus', 'Drum Buss', 'Wavetable'). |
-| `get_plugin_parameters` | Get ALL parameters from a VST/AU plugin including unconfigured ones. |
-| `get_plugin_presets` | List a VST/AU plugin's internal presets and banks. |
-| `get_rack_chains` | Get all chains in a rack device with volume, pan, mute, solo. |
-| `load_device_by_uri` | Load a device onto a track using a browser URI string. |
-| `map_plugin_parameter` | Add a plugin parameter to Ableton's Configure list for automation. |
-| `set_chain_volume` | Set volume and/or pan for a chain in a rack device. |
-| `set_device_parameter` | Set a device parameter by name or index. |
-| `set_simpler_playback_mode` | Set Simpler's playback mode. playback_mode: 0=Classic, 1=One-Shot, 2=Slice. slice_by (Slice only): 0=Transient, 1=Beat, |
-| `toggle_device` | Enable or disable a device. |
-
-## Evaluation (1)
-
-| Tool | Description |
-|------|-------------|
-| `evaluate_with_fabric` | Evaluate a move using the unified Evaluation Fabric. |
-
-## Experiments (5)
-
-| Tool | Description |
-|------|-------------|
-| `commit_experiment` | Commit the winning branch — re-apply its moves permanently. |
-| `compare_experiments` | Compare and rank all evaluated branches in an experiment. |
-| `create_experiment` | Create an experiment set to compare multiple approaches. |
-| `discard_experiment` | Discard an entire experiment — no changes are kept. |
-| `run_experiment` | Run all pending branches in an experiment. |
-
-## Generative (5)
-
-| Tool | Description |
-|------|-------------|
-| `generate_additive_process` | Generate an additive process (Philip Glass technique). |
-| `generate_euclidean_rhythm` | Generate a Euclidean rhythm using the Bjorklund algorithm. |
-| `generate_phase_shift` | Generate a phase-shifted canon (Steve Reich technique). |
-| `generate_tintinnabuli` | Generate a tintinnabuli voice (Arvo Pärt technique). |
-| `layer_euclidean_rhythms` | Stack multiple Euclidean rhythms for polyrhythmic textures. |
-
-## Harmony (4)
-
-| Tool | Description |
-|------|-------------|
-| `classify_progression` | Classify a chord progression by its neo-Riemannian transform pattern. |
-| `find_voice_leading_path` | Find the shortest neo-Riemannian path between two chords. |
-| `navigate_tonnetz` | Show neo-Riemannian neighbors of a chord on the Tonnetz. |
-| `suggest_chromatic_mediants` | Suggest all chromatic mediant relations for a chord. |
-
-## Memory (8)
-
-| Tool | Description |
-|------|-------------|
-| `memory_delete` | Delete a technique from the library (creates backup first). |
-| `memory_favorite` | Star and/or rate a technique (rating 0-5). |
-| `memory_get` | Fetch a full technique by ID, including payload for replay. |
-| `memory_learn` | Save a new technique to the memory library with stylistic qualities. type must be one of: beat_pattern, device_chain, mi |
-| `memory_list` | Browse the technique library with optional filtering. |
-| `memory_recall` | Search the technique library by text query and/or filters. Returns summaries (no payload). |
-| `memory_replay` | Retrieve a technique with a replay plan for the agent to execute. adapt=false: returns step-by-step replay plan for exac |
-| `memory_update` | Update name, tags, or qualities on an existing technique. Qualities are merged (lists replace). |
-
-## Memory Fabric (10)
-
-| Tool | Description |
-|------|-------------|
-| `add_session_memory` | Add an ephemeral session memory entry (observation, hypothesis, decision, issue). |
-| `explain_taste_inference` | Explain why the system thinks the user prefers certain approaches. |
-| `get_anti_preferences` | Return all recorded anti-preferences — dimensions the user has repeatedly disliked. |
-| `get_promotion_candidates` | Check the session ledger for entries eligible for memory promotion. |
-| `get_session_memory` | Return recent session memory entries — ephemeral observations, hypotheses, decisions. |
-| `get_taste_dimensions` | Return all taste dimensions — user preferences inferred from kept/undone outcomes. |
-| `get_taste_graph` | Get the full TasteGraph — extended preferences including move families, |
-| `rank_moves_by_taste` | Rank semantic moves by taste fit for the current user. |
-| `record_anti_preference` | Record a user dislike for a dimension+direction. direction must be 'increase' or 'decrease'. |
-| `record_positive_preference` | Record a user preference for more/less of a dimension. |
-
-## Midi Io (4)
-
-| Tool | Description |
-|------|-------------|
-| `analyze_midi_file` | Analyze a .mid file — works offline, no Ableton needed. |
-| `export_clip_midi` | Export a session clip's notes to a .mid file. |
-| `extract_piano_roll` | Extract a 2D piano roll matrix from a .mid file. Offline-capable. |
-| `import_midi_to_clip` | Load a .mid file into a session clip. |
-
-## Mix Engine (6)
-
-| Tool | Description |
-|------|-------------|
-| `analyze_mix` | Build full mix state and run all critics. |
-| `evaluate_mix_move` | Score a mix change using the evaluation fabric. |
-| `get_masking_report` | Get detailed frequency collision report. |
-| `get_mix_issues` | Run all mix critics and return detected issues only. |
-| `get_mix_summary` | Lightweight mix overview — track count, issue count, dynamics state. |
-| `plan_mix_move` | Get ranked move suggestions based on current mix issues. |
-
-## Mixing (11)
-
-| Tool | Description |
-|------|-------------|
-| `get_master_meters` | Read real-time output meter levels for the master track (left, right, peak). |
-| `get_master_track` | Get master track info: volume, panning, devices. |
-| `get_mix_snapshot` | Get a complete mix snapshot: all track meters, volumes, pans, mute/solo, |
-| `get_return_tracks` | Get info about all return tracks: name, volume, panning. |
-| `get_track_meters` | Read real-time output meter levels for tracks. |
-| `get_track_routing` | Get input/output routing info for a track. Use negative track_index for return tracks (-1=A, -2=B). |
-| `set_master_volume` | Set the master track volume (0.0-1.0). |
-| `set_track_pan` | Set a track's panning (-1.0 left to 1.0 right). Use negative track_index for return tracks (-1=A, -2=B). |
-| `set_track_routing` | Set input/output routing for a track by display name. Use negative track_index for return tracks (-1=A, -2=B). |
-| `set_track_send` | Set a send level on a track (0.0-1.0). |
-| `set_track_volume` | Set a track's volume (0.0-1.0). Use negative track_index for return tracks (-1=A, -2=B). |
-
-## Motif (2)
-
-| Tool | Description |
-|------|-------------|
-| `get_motif_graph` | Detect recurring melodic and rhythmic patterns across all tracks. |
-| `transform_motif` | Transform a musical motif using classical composition techniques. |
-
-## Musical Intelligence (6)
-
-| Tool | Description |
-|------|-------------|
-| `analyze_phrase_arc` | Analyze a captured audio phrase for musical quality. |
-| `compare_phrase_renders` | Compare multiple audio captures and rank by musical quality. |
-| `detect_repetition_fatigue` | Detect repetition fatigue — are patterns overused? |
-| `detect_role_conflicts` | Detect role conflicts — are tracks fighting for the same musical space? |
-| `infer_section_purposes` | Infer what each section/scene is trying to do musically. |
-| `score_emotional_arc` | Score the emotional arc of the arrangement. |
-
-## Notes (8)
-
-| Tool | Description |
-|------|-------------|
-| `add_notes` | Add MIDI notes to a clip. notes is a JSON array: [{pitch, start_time, duration, velocity?, probability?, velocity_deviat |
-| `duplicate_notes` | Duplicate specific notes by ID (JSON array of ints), with optional time offset (in beats). |
-| `get_notes` | Get MIDI notes from a clip region. Returns note_id, pitch, start_time, duration, velocity, mute, probability. |
-| `modify_notes` | Modify existing MIDI notes by ID. modifications is a JSON array: [{note_id, pitch?, start_time?, duration?, velocity?, p |
-| `quantize_clip` | Quantize a clip's notes to a grid. grid is a RecordQuantization enum: 0=None, 1=1/4, 2=1/8, 3=1/8T, 4=1/8+T, 5=1/16, 6=1 |
-| `remove_notes` | Remove all MIDI notes in a pitch/time region. Use undo to revert. Defaults remove ALL notes in the clip. |
-| `remove_notes_by_id` | Remove specific MIDI notes by their IDs (JSON array of ints). Use undo to revert. |
-| `transpose_notes` | Transpose notes in a time range by semitones (positive=up, negative=down). |
-
-## Perception (4)
-
-| Tool | Description |
-|------|-------------|
-| `analyze_loudness` | Analyze the integrated loudness of an audio file (offline — no Ableton needed). |
-| `analyze_spectrum_offline` | Analyze the frequency spectrum of an audio file (offline — no Ableton needed). |
-| `compare_to_reference` | Compare a mix to a reference track (offline — no Ableton needed). |
-| `read_audio_metadata` | Read metadata from an audio file (offline — no Ableton needed). |
-
-## Performance Engine (3)
-
-| Tool | Description |
-|------|-------------|
-| `get_performance_safe_moves` | Get available safe moves for live performance. |
-| `get_performance_state` | Get current live performance overview — scenes, energy, safe moves. |
-| `plan_scene_handoff` | Plan a safe transition between two scenes. |
-
-## Planner (2)
-
-| Tool | Description |
-|------|-------------|
-| `plan_arrangement` | Transform the current loop/session into a full arrangement blueprint. |
-| `transform_section` | Apply a structural transformation to the arrangement. |
-
-## Project Brain (2)
-
-| Tool | Description |
-|------|-------------|
-| `build_project_brain` | Build a full Project Brain snapshot from the current Ableton session. |
-| `get_project_brain_summary` | Get a lightweight Project Brain summary — track count, section count, stale status. |
-
-## Reference Engine (3)
-
-| Tool | Description |
-|------|-------------|
-| `analyze_reference_gaps` | Analyze gaps between your project and a reference. |
-| `build_reference_profile` | Build a reference profile from an audio file or style/genre name. |
-| `plan_reference_moves` | Plan concrete moves to close reference gaps. |
-
-## Research (3)
-
-| Tool | Description |
-|------|-------------|
-| `get_emotional_arc` | Analyze the emotional arc of the arrangement — tension, climax, resolution. |
-| `get_style_tactics` | Get production tactics for a specific artist style or genre. |
-| `research_technique` | Research a production technique — search device atlas + memory for answers. |
-
-## Runtime (5)
-
-| Tool | Description |
-|------|-------------|
-| `check_safety` | Validate a proposed action against safety policies before executing. |
-| `get_action_ledger_summary` | Return a summary of recent semantic moves from the action ledger. |
-| `get_capability_state` | Probe the runtime and return a capability state snapshot. |
-| `get_last_move` | Return the most recent semantic move from the action ledger. |
-| `get_session_kernel` | Build the unified turn snapshot for V2 orchestration. |
-
-## Scenes (12)
-
-| Tool | Description |
-|------|-------------|
-| `create_scene` | Create a new scene. index=-1 appends at end. |
-| `delete_scene` | Delete a scene by index. Use undo to revert if needed. |
-| `duplicate_scene` | Duplicate a scene (copies all clip slots). |
-| `fire_scene` | Fire (launch) a scene, triggering all its clips. |
-| `fire_scene_clips` | Fire a scene, optionally filtering to specific tracks. |
-| `get_playing_clips` | Get all currently playing or triggered clips. |
-| `get_scene_matrix` | Get the full session clip grid: every track x every scene. |
-| `get_scenes_info` | Get info for all scenes: name, tempo, color. |
-| `set_scene_color` | Set scene color (0-69, Ableton's color palette). |
-| `set_scene_name` | Rename a scene. Pass empty string to clear the name. |
-| `set_scene_tempo` | Set scene tempo in BPM (20-999). Fires when the scene launches. |
-| `stop_all_clips` | Stop all playing clips in the session. Panic button. |
-
-## Semantic Moves (4)
-
-| Tool | Description |
-|------|-------------|
-| `apply_semantic_move` | Compile and optionally execute a semantic move against the current session. |
-| `list_semantic_moves` | List available semantic moves — high-level musical intents. |
-| `preview_semantic_move` | Preview what a semantic move will do before applying it. |
-| `propose_next_best_move` | Propose the best semantic moves for a natural language request. |
-
-## Sound Design (4)
-
-| Tool | Description |
-|------|-------------|
-| `analyze_sound_design` | Build full sound design state and run all critics for a track. |
-| `get_patch_model` | Get the structural patch model for a track's device chain. |
-| `get_sound_design_issues` | Run all sound design critics and return detected issues only. |
-| `plan_sound_design_move` | Get ranked move suggestions based on current sound design issues. |
-
-## Theory (7)
-
-| Tool | Description |
-|------|-------------|
-| `analyze_harmony` | Analyze harmony of a MIDI clip: chords, Roman numerals, progression. |
-| `detect_theory_issues` | Detect music theory issues: parallel fifths/octaves, out-of-key notes, |
-| `generate_countermelody` | Generate a countermelody using species counterpoint rules. |
-| `harmonize_melody` | Generate a multi-voice harmonization of a melody from a MIDI clip. |
-| `identify_scale` | Identify the scale/mode of a MIDI clip beyond basic major/minor. |
-| `suggest_next_chord` | Suggest the next chord based on the current progression. |
-| `transpose_smart` | Transpose a MIDI clip to a new key with musical intelligence. |
-
-## Tracks (17)
-
-| Tool | Description |
-|------|-------------|
-| `create_audio_track` | Create a new audio track. index=-1 appends at end. |
-| `create_midi_track` | Create a new MIDI track. index=-1 appends at end. |
-| `create_return_track` | Create a new return track. |
-| `delete_track` | Delete a track by index. Use undo to revert if needed. |
-| `duplicate_track` | Duplicate a track (copies all clips, devices, and settings). |
-| `flatten_track` | Flatten a frozen track — commit rendered audio permanently. |
-| `freeze_track` | Freeze a track — render all devices to audio for CPU savings. |
-| `get_freeze_status` | Check if a track is frozen. |
-| `get_track_info` | Get detailed info about a track: clips, devices, mixer state. |
-| `set_group_fold` | Fold or unfold a group track to show/hide its children. |
-| `set_track_arm` | Arm or disarm a track for recording. |
-| `set_track_color` | Set track color (0-69, Ableton's color palette). |
-| `set_track_input_monitoring` | Set input monitoring (0=In, 1=Auto, 2=Off). Only for regular tracks, not return tracks. |
-| `set_track_mute` | Mute or unmute a track. |
-| `set_track_name` | Rename a track. |
-| `set_track_solo` | Solo or unsolo a track. |
-| `stop_track_clips` | Stop all playing clips on a track. |
-
-## Transition Engine (3)
-
-| Tool | Description |
-|------|-------------|
-| `analyze_transition` | Analyze the transition boundary between two sections. |
-| `plan_transition` | Plan a transition between two sections with concrete gestures. |
-| `score_transition` | Score the transition quality between two sections. |
-
-## Translation Engine (2)
-
-| Tool | Description |
-|------|-------------|
-| `check_translation` | Check playback robustness — mono safety, small speakers, harshness. |
-| `get_translation_issues` | Get just the translation issues without the full report. |
-
-## Transport (12)
-
-| Tool | Description |
-|------|-------------|
-| `continue_playback` | Continue playback from the current position. |
-| `get_recent_actions` | Get a log of recent commands sent to Ableton (newest first). Useful for reviewing what was changed. |
-| `get_session_diagnostics` | Analyze the session for potential issues: armed tracks, solo/mute leftovers, unnamed tracks, empty clips/scenes, MIDI tr |
-| `get_session_info` | Get comprehensive Ableton session state: tempo, tracks, scenes, transport. |
-| `redo` | Redo the last undone action in Ableton. |
-| `set_session_loop` | Set loop on/off and optional loop region (start beat, length in beats). |
-| `set_tempo` | Set the song tempo in BPM (20-999). |
-| `set_time_signature` | Set the time signature (e.g., 4/4, 3/4, 6/8). |
-| `start_playback` | Start playback from the beginning. |
-| `stop_playback` | Stop playback. |
-| `toggle_metronome` | Enable or disable the metronome click. |
-| `undo` | Undo the last action in Ableton. |
-
----
-*Generated from 257 registered tools.*
+# LivePilot Tool Catalog (Auto-Generated)
+
+290 tools across 39+ domains.
+
+- **add_arrangement_notes** — Add MIDI notes to an arrangement clip.
+- **add_notes** — Add MIDI notes to a clip. notes is a JSON array: [{pitch, start_time, duration, velocity?, probabili
+- **add_session_memory** — Add an ephemeral session memory entry (observation, hypothesis, decision, issue).
+- **add_warp_marker** — Add a warp marker to an audio clip at the specified beat position.
+- **analyze_composition** — Run full composition analysis on the current Ableton session.
+- **analyze_for_automation** — Analyze a track's spectrum and suggest automation targets.
+- **analyze_harmony** — Analyze harmony of a MIDI clip: chords, Roman numerals, progression.
+- **analyze_loudness** — Analyze the integrated loudness of an audio file (offline — no Ableton needed).
+- **analyze_midi_file** — Analyze a .mid file — works offline, no Ableton needed.
+- **analyze_mix** — Build full mix state and run all critics.
+- **analyze_outcomes** — Analyze accumulated outcome memories to identify user taste patterns.
+- **analyze_phrase_arc** — Analyze a captured audio phrase for musical quality.
+- **analyze_reference_gaps** — Analyze gaps between your project and a reference.
+- **analyze_sound_design** — Build full sound design state and run all critics for a track.
+- **analyze_spectrum_offline** — Analyze the frequency spectrum of an audio file (offline — no Ableton needed).
+- **analyze_transition** — Analyze the transition boundary between two sections.
+- **apply_automation_recipe** — Apply a named automation recipe to a session clip.
+- **apply_automation_shape** — Generate and apply an automation curve to a session clip.
+- **apply_gesture_template** — Apply a compound gesture template — multiple coordinated automation gestures.
+- **apply_semantic_move** — Compile and optionally execute a semantic move against the current session.
+- **back_to_arranger** — Switch playback from session clips back to the arrangement timeline.
+- **batch_set_parameters** — Set multiple device parameters in one call. parameters is a JSON array of objects: [{"name_or_index"
+- **build_project_brain** — Build a full Project Brain snapshot from the current Ableton session.
+- **build_reference_profile** — Build a reference profile from an audio file or style/genre name.
+- **build_session_reference** — Build a reference profile from the current session's own identity.
+- **build_world_model** — Build a WorldModel snapshot of the current Ableton session.
+- **capture_audio** — Capture audio from Ableton Live to a WAV file on disk.
+- **capture_midi** — Capture recently played MIDI notes into a new clip.
+- **capture_stop** — Stop an in-progress audio capture early.
+- **check_flucoma** — Check if FluCoMa is installed and sending data.
+- **check_safety** — Validate a proposed action against safety policies before executing.
+- **check_translation** — Check playback robustness — mono safety, small speakers, harshness.
+- **classify_progression** — Classify a chord progression by its neo-Riemannian transform pattern.
+- **clear_clip_automation** — Clear automation envelopes from a session clip.
+- **commit_experiment** — Commit the winning branch — re-apply its moves permanently.
+- **compare_branch_previews** — Compare rendered branch previews using phrase-level evaluation.
+- **compare_experiments** — Compare and rank all evaluated branches in an experiment.
+- **compare_phrase_renders** — Compare multiple audio captures and rank by musical quality.
+- **compare_to_reference** — Compare a mix to a reference track (offline — no Ableton needed).
+- **compile_goal_vector** — Compile a user request into a validated GoalVector.
+- **continue_playback** — Continue playback from the current position.
+- **create_arrangement_clip** — Duplicate a session clip into Arrangement View at a specific beat position.
+- **create_audio_track** — Create a new audio track. index=-1 appends at end.
+- **create_clip** — Create an empty MIDI clip in a clip slot (length in beats).
+- **create_experiment** — Create an experiment set to compare multiple approaches.
+- **create_midi_track** — Create a new MIDI track. index=-1 appends at end.
+- **create_return_track** — Create a new return track.
+- **create_scene** — Create a new scene. index=-1 appends at end.
+- **crop_simpler** — Crop a Simpler's sample to the currently active region.
+- **delete_clip** — Delete a clip from a clip slot. This removes all notes and automation. Use undo to revert.
+- **delete_device** — Delete a device from a track. Use undo to revert if needed.
+- **delete_scene** — Delete a scene by index. Use undo to revert if needed.
+- **delete_track** — Delete a track by index. Use undo to revert if needed.
+- **detect_call_response_patterns** — Detect call-and-response patterns between tracks.
+- **detect_motif_salience** — Assess motif salience and overuse — which motifs are prominent vs fatigued?
+- **detect_repetition_fatigue** — Detect repetition fatigue — are patterns overused?
+- **detect_role_conflicts** — Detect role conflicts — are tracks fighting for the same musical space?
+- **detect_theory_issues** — Detect music theory issues: parallel fifths/octaves, out-of-key notes,
+- **discard_experiment** — Discard an entire experiment — no changes are kept.
+- **duplicate_arrangement_notes** — Duplicate specific notes in an arrangement clip by ID, with optional time offset (beats).
+- **duplicate_clip** — Duplicate a clip from one slot to another.
+- **duplicate_notes** — Duplicate specific notes by ID (JSON array of ints), with optional time offset (in beats).
+- **duplicate_scene** — Duplicate a scene (copies all clip slots).
+- **duplicate_track** — Duplicate a track (copies all clips, devices, and settings).
+- **evaluate_composition_move** — Evaluate whether a composition move improved the arrangement.
+- **evaluate_mix_move** — Score a mix change using the evaluation fabric.
+- **evaluate_move** — Evaluate whether a production move improved the mix toward the goal.
+- **evaluate_with_fabric** — Evaluate a move using the unified Evaluation Fabric.
+- **explain_taste_inference** — Explain why the system thinks the user prefers certain approaches.
+- **export_clip_midi** — Export a session clip's notes to a .mid file.
+- **extract_piano_roll** — Extract a 2D piano roll matrix from a .mid file. Offline-capable.
+- **find_and_load_device** — Search the browser for a device by name and load it onto a track.
+- **find_voice_leading_path** — Find the shortest neo-Riemannian path between two chords.
+- **fire_clip** — Launch/fire a clip slot.
+- **fire_scene** — Fire (launch) a scene, triggering all its clips.
+- **fire_scene_clips** — Fire a scene, optionally filtering to specific tracks.
+- **flatten_track** — Flatten a frozen track — commit rendered audio permanently.
+- **freeze_track** — Freeze a track — render all devices to audio for CPU savings.
+- **generate_additive_process** — Generate an additive process (Philip Glass technique).
+- **generate_automation_curve** — Generate automation curve points WITHOUT writing them.
+- **generate_countermelody** — Generate a countermelody using species counterpoint rules.
+- **generate_euclidean_rhythm** — Generate a Euclidean rhythm using the Bjorklund algorithm.
+- **generate_phase_shift** — Generate a phase-shifted canon (Steve Reich technique).
+- **generate_tintinnabuli** — Generate a tintinnabuli voice (Arvo Pärt technique).
+- **get_action_ledger_summary** — Return a summary of recent semantic moves from the action ledger.
+- **get_anti_preferences** — Return all recorded anti-preferences — dimensions the user has repeatedly disliked.
+- **get_arrangement_clips** — Get all arrangement clips on a track.
+- **get_arrangement_notes** — Get MIDI notes from an arrangement clip. Returns note_id, pitch, start_time,
+- **get_automation_recipes** — List all available automation recipes with descriptions.
+- **get_automation_state** — Get automation state for all parameters on a device.
+- **get_browser_items** — List items at a browser path (e.g., 'instruments/Analog').
+- **get_browser_tree** — Get an overview of browser categories and their children.
+- **get_capability_state** — Probe the runtime and return a capability state snapshot.
+- **get_chroma** — Get 12 pitch class energies from FluCoMa for real-time chord detection.
+- **get_clip_automation** — List all automation envelopes on a session clip.
+- **get_clip_file_path** — Get the audio file path of a clip on disk.
+- **get_clip_info** — Get detailed info about a clip: name, length, loop, launch settings.
+- **get_cue_points** — Get all cue points in the arrangement.
+- **get_detected_key** — Get the detected musical key and scale of the current session.
+- **get_device_info** — Get info about a device: name, class, type, active state, parameter count.
+- **get_device_parameters** — Get all parameters for a device with names, values, and ranges.
+- **get_device_presets** — List available presets for an Ableton device (e.g. 'Corpus', 'Drum Buss', 'Wavetable').
+- **get_display_values** — Get human-readable display values for all device parameters.
+- **get_emotional_arc** — Analyze the emotional arc of the arrangement — tension, climax, resolution.
+- **get_freeze_status** — Check if a track is frozen.
+- **get_harmony_field** — Analyze the harmonic content of a section — key, chords, voice-leading, tension.
+- **get_hidden_parameters** — Get ALL parameters for a device, including hidden ones not accessible
+- **get_last_move** — Return the most recent semantic move from the action ledger.
+- **get_masking_report** — Get detailed frequency collision report.
+- **get_master_meters** — Read real-time output meter levels for the master track (left, right, peak).
+- **get_master_rms** — Get real-time RMS and peak levels from the master bus.
+- **get_master_spectrum** — Get 8-band frequency analysis of the master bus.
+- **get_master_track** — Get master track info: volume, panning, devices.
+- **get_mel_spectrum** — Get 40-band mel spectrum from FluCoMa (5x resolution of get_master_spectrum).
+- **get_mix_issues** — Run all mix critics and return detected issues only.
+- **get_mix_snapshot** — Get a complete mix snapshot: all track meters, volumes, pans, mute/solo,
+- **get_mix_summary** — Lightweight mix overview — track count, issue count, dynamics state.
+- **get_momentary_loudness** — Get EBU R128 momentary LUFS + true peak from FluCoMa.
+- **get_motif_graph** — Detect recurring melodic and rhythmic patterns across all tracks.
+- **get_notes** — Get MIDI notes from a clip region. Returns note_id, pitch, start_time, duration, velocity, mute, pro
+- **get_novelty** — Get real-time spectral novelty for section boundary detection from FluCoMa.
+- **get_onsets** — Get real-time onset/transient detection from FluCoMa.
+- **get_patch_model** — Get the structural patch model for a track's device chain.
+- **get_performance_safe_moves** — Get available safe moves for live performance.
+- **get_performance_state** — Get current live performance overview — scenes, energy, safe moves.
+- **get_phrase_grid** — Get phrase boundaries for a specific section.
+- **get_playing_clips** — Get all currently playing or triggered clips.
+- **get_plugin_parameters** — Get ALL parameters from a VST/AU plugin including unconfigured ones.
+- **get_plugin_presets** — List a VST/AU plugin's internal presets and banks.
+- **get_project_brain_summary** — Get a lightweight Project Brain summary — track count, section count, stale status.
+- **get_promotion_candidates** — Check the session ledger for entries eligible for memory promotion.
+- **get_rack_chains** — Get all chains in a rack device with volume, pan, mute, solo.
+- **get_recent_actions** — Get a log of recent commands sent to Ableton (newest first). Useful for reviewing what was changed.
+- **get_return_tracks** — Get info about all return tracks: name, volume, panning.
+- **get_scene_matrix** — Get the full session clip grid: every track x every scene.
+- **get_scenes_info** — Get info for all scenes: name, tempo, color.
+- **get_section_graph** — Get just the section graph — lightweight structural overview.
+- **get_section_outcomes** — Get composition move success rates grouped by section type.
+- **get_session_diagnostics** — Analyze the session for potential issues: armed tracks, solo/mute leftovers, unnamed tracks, empty c
+- **get_session_info** — Get comprehensive Ableton session state: tempo, tracks, scenes, transport.
+- **get_session_kernel** — Build the unified turn snapshot for V2 orchestration.
+- **get_session_memory** — Return recent session memory entries — ephemeral observations, hypotheses, decisions.
+- **get_simpler_slices** — Get slice point positions from a Simpler device.
+- **get_sound_design_issues** — Run all sound design critics and return detected issues only.
+- **get_spectral_shape** — Get 7 real-time spectral descriptors from FluCoMa.
+- **get_style_tactics** — Get production tactics for a specific artist style or genre.
+- **get_taste_dimensions** — Return all taste dimensions — user preferences inferred from kept/undone outcomes.
+- **get_taste_graph** — Get the full TasteGraph — extended preferences including move families,
+- **get_taste_profile** — Get the user's production taste profile from outcome history.
+- **get_technique_card** — Search for technique cards — structured production recipes.
+- **get_track_info** — Get detailed info about a track: clips, devices, mixer state.
+- **get_track_meters** — Read real-time output meter levels for tracks.
+- **get_track_routing** — Get input/output routing info for a track. Use negative track_index for return tracks (-1=A, -2=B).
+- **get_transition_analysis** — Analyze transition quality between all adjacent sections.
+- **get_translation_issues** — Get just the translation issues without the full report.
+- **get_turn_budget** — Get a resource budget for the current agent turn.
+- **get_warp_markers** — Get all warp markers from an audio clip.
+- **harmonize_melody** — Generate a multi-voice harmonization of a melody from a MIDI clip.
+- **identify_scale** — Identify the scale/mode of a MIDI clip beyond basic major/minor.
+- **import_midi_to_clip** — Load a .mid file into a session clip.
+- **infer_section_purposes** — Infer what each section/scene is trying to do musically.
+- **jump_to_cue** — Jump to a cue point by index.
+- **jump_to_time** — Jump to a specific beat time in the arrangement.
+- **layer_euclidean_rhythms** — Stack multiple Euclidean rhythms for polyrhythmic textures.
+- **list_semantic_moves** — List available semantic moves — high-level musical intents.
+- **load_browser_item** — Load a browser item (instrument/effect) onto a track by URI.
+- **load_device_by_uri** — Load a device onto a track using a browser URI string.
+- **load_sample_to_simpler** — Load an audio file into a NEW Simpler device on a track.
+- **map_plugin_parameter** — Add a plugin parameter to Ableton's Configure list for automation.
+- **memory_delete** — Delete a technique from the library (creates backup first).
+- **memory_favorite** — Star and/or rate a technique (rating 0-5).
+- **memory_get** — Fetch a full technique by ID, including payload for replay.
+- **memory_learn** — Save a new technique to the memory library with stylistic qualities. type must be one of: beat_patte
+- **memory_list** — Browse the technique library with optional filtering.
+- **memory_recall** — Search the technique library by text query and/or filters. Returns summaries (no payload).
+- **memory_replay** — Retrieve a technique with a replay plan for the agent to execute. adapt=false: returns step-by-step 
+- **memory_update** — Update name, tags, or qualities on an existing technique. Qualities are merged (lists replace).
+- **modify_arrangement_notes** — Modify existing MIDI notes in an arrangement clip by ID. modifications is a JSON array:
+- **modify_notes** — Modify existing MIDI notes by ID. modifications is a JSON array: [{note_id, pitch?, start_time?, dur
+- **move_warp_marker** — Move a warp marker from one beat position to another.
+- **navigate_tonnetz** — Show neo-Riemannian neighbors of a chord on the Tonnetz.
+- **plan_arrangement** — Transform the current loop/session into a full arrangement blueprint.
+- **plan_gesture** — Plan a musical gesture — map abstract intent to concrete automation.
+- **plan_mix_move** — Get ranked move suggestions based on current mix issues.
+- **plan_reference_moves** — Plan concrete moves to close reference gaps.
+- **plan_scene_handoff** — Plan a safe transition between two scenes.
+- **plan_sound_design_move** — Get ranked move suggestions based on current sound design issues.
+- **plan_transition** — Plan a transition between two sections with concrete gestures.
+- **preview_semantic_move** — Preview what a semantic move will do before applying it.
+- **propose_next_best_move** — Propose the best semantic moves for a natural language request.
+- **quantize_clip** — Quantize a clip's notes to a grid. grid is a RecordQuantization enum: 0=None, 1=1/4, 2=1/8, 3=1/8T, 
+- **rank_moves_by_taste** — Rank semantic moves by taste fit for the current user.
+- **read_audio_metadata** — Read metadata from an audio file (offline — no Ableton needed).
+- **reconnect_bridge** — Attempt to reconnect the M4L UDP bridge (port 9880).
+- **record_anti_preference** — Record a user dislike for a dimension+direction. direction must be 'increase' or 'decrease'.
+- **record_positive_preference** — Record a user preference for more/less of a dimension.
+- **redo** — Redo the last undone action in Ableton.
+- **remove_arrangement_notes** — Remove all MIDI notes in a pitch/time region of an arrangement clip. Defaults remove ALL notes.
+- **remove_arrangement_notes_by_id** — Remove specific MIDI notes from an arrangement clip by their IDs.
+- **remove_notes** — Remove all MIDI notes in a pitch/time region. Use undo to revert. Defaults remove ALL notes in the c
+- **remove_notes_by_id** — Remove specific MIDI notes by their IDs (JSON array of ints). Use undo to revert.
+- **remove_warp_marker** — Remove a warp marker from an audio clip at the specified beat.
+- **render_branch_preview** — Render a short audio preview of a branch's changes for A/B comparison.
+- **render_phrase_snapshot** — Capture a bounded musical phrase for evaluation.
+- **replace_simpler_sample** — Load an audio file into a Simpler device by absolute file path.
+- **research_technique** — Research a production technique — search device atlas + memory for answers.
+- **reverse_simpler** — Reverse the sample loaded in a Simpler device.
+- **route_request** — Route a production request to the right engine(s).
+- **run_experiment** — Run all pending branches in an experiment.
+- **score_emotional_arc** — Score the emotional arc of the arrangement.
+- **score_phrase_payoff** — Score how well a phrase delivers on its promise for a specific target type.
+- **score_transition** — Score the transition quality between two sections.
+- **scrub_clip** — Scrub/preview a clip at a specific beat position.
+- **search_browser** — Search the browser tree under a path, optionally filtering by name.
+- **set_arrangement_automation** — Write automation envelope points into an arrangement clip.
+- **set_arrangement_clip_name** — Rename an arrangement clip by its index in the track's arrangement_clips list.
+- **set_chain_volume** — Set volume and/or pan for a chain in a rack device.
+- **set_clip_automation** — Write automation points to a session clip envelope.
+- **set_clip_color** — Set clip color (0-69, Ableton's color palette).
+- **set_clip_launch** — Set clip launch mode (0=Trigger, 1=Gate, 2=Toggle, 3=Repeat) and optional quantization.
+- **set_clip_loop** — Enable/disable clip looping and optionally set loop start/end (in beats).
+- **set_clip_name** — Rename a clip.
+- **set_clip_warp_mode** — Set warp mode for an audio clip (0=Beats, 1=Tones, 2=Texture, 3=Re-Pitch, 4=Complex, 6=Complex Pro).
+- **set_device_parameter** — Set a device parameter by name or index.
+- **set_group_fold** — Fold or unfold a group track to show/hide its children.
+- **set_master_volume** — Set the master track volume (0.0-1.0).
+- **set_scene_color** — Set scene color (0-69, Ableton's color palette).
+- **set_scene_name** — Rename a scene. Pass empty string to clear the name.
+- **set_scene_tempo** — Set scene tempo in BPM (20-999). Fires when the scene launches.
+- **set_session_loop** — Set loop on/off and optional loop region (start beat, length in beats).
+- **set_simpler_playback_mode** — Set Simpler's playback mode. playback_mode: 0=Classic, 1=One-Shot, 2=Slice. slice_by (Slice only): 0
+- **set_tempo** — Set the song tempo in BPM (20-999).
+- **set_time_signature** — Set the time signature (e.g., 4/4, 3/4, 6/8).
+- **set_track_arm** — Arm or disarm a track for recording.
+- **set_track_color** — Set track color (0-69, Ableton's color palette).
+- **set_track_input_monitoring** — Set input monitoring (0=In, 1=Auto, 2=Off). Only for regular tracks, not return tracks.
+- **set_track_mute** — Mute or unmute a track.
+- **set_track_name** — Rename a track.
+- **set_track_pan** — Set a track's panning (-1.0 left to 1.0 right). Use negative track_index for return tracks (-1=A, -2
+- **set_track_routing** — Set input/output routing for a track by display name. Use negative track_index for return tracks (-1
+- **set_track_send** — Set a send level on a track (0.0-1.0).
+- **set_track_solo** — Solo or unsolo a track.
+- **set_track_volume** — Set a track's volume (0.0-1.0). Use negative track_index for return tracks (-1=A, -2=B).
+- **start_playback** — Start playback from the beginning.
+- **start_recording** — Start recording. arrangement=True for arrangement, False for session.
+- **stop_all_clips** — Stop all playing clips in the session. Panic button.
+- **stop_clip** — Stop a playing clip.
+- **stop_playback** — Stop playback.
+- **stop_recording** — Stop all recording (both session and arrangement).
+- **stop_scrub** — Stop scrubbing a clip. Call after scrub_clip to stop preview.
+- **stop_track_clips** — Stop all playing clips on a track.
+- **suggest_chromatic_mediants** — Suggest all chromatic mediant relations for a chord.
+- **suggest_next_chord** — Suggest the next chord based on the current progression.
+- **toggle_cue_point** — Set or delete a cue point at the current playback position.
+- **toggle_device** — Enable or disable a device.
+- **toggle_metronome** — Enable or disable the metronome click.
+- **transform_motif** — Transform a musical motif using classical composition techniques.
+- **transform_section** — Apply a structural transformation to the arrangement.
+- **transpose_arrangement_notes** — Transpose notes in an arrangement clip by semitones (positive=up, negative=down).
+- **transpose_notes** — Transpose notes in a time range by semitones (positive=up, negative=down).
+- **transpose_smart** — Transpose a MIDI clip to a new key with musical intelligence.
+- **undo** — Undo the last action in Ableton.
+- **walk_device_tree** — Walk the full device chain tree including nested racks, drum pads,
+- **warp_simpler** — Warp a Simpler's sample to fit the specified number of beats.
+
+- **apply_creative_constraint_set** — Apply creative constraints to focus suggestions.
+- **build_song_brain** — Build the musical identity model for the current song.
+- **commit_preview_variant** — Apply the chosen variant from a preview set.
+- **compare_preview_variants** — Compare and rank variants in a preview set.
+- **create_preview_set** — Generate safe/strong/unexpected creative variants.
+- **detect_identity_drift** — Detect whether recent changes damaged the song's identity.
+- **detect_payoff_failure** — Find where the song should deliver but doesn't.
+- **detect_stuckness** — Identify whether the session is losing momentum.
+- **develop_hook** — Suggest development strategies for a hook.
+- **discard_preview_set** — Discard an entire preview set.
+- **distill_reference_principles** — Learn musical principles from a reference.
+- **enter_wonder_mode** — Activate wonder mode for controlled surprise.
+- **explain_song_identity** — Human-readable summary of the song's identity.
+- **find_primary_hook** — Detect the most salient hook in the session.
+- **generate_wonder_variants** — Generate surprise-oriented creative variants.
+- **get_session_story** — Narrative of the session — identity, turns, open threads.
+- **map_reference_principles_to_song** — Translate reference principles to current song.
+- **measure_hook_salience** — Score a specific hook's salience.
+- **rank_by_taste_and_identity** — Rank candidates with separated taste/identity scoring.
+- **rank_hook_candidates** — List and rank all hook candidates.
+- **record_turn_resolution** — Log what happened in a creative turn.
+- **resume_last_intent** — Pick up the most recent unresolved creative intent.
+- **score_phrase_impact** — Score a section's emotional impact.
+- **suggest_momentum_rescue** — Get strategic rescue suggestions.
+- **suggest_payoff_repair** — Generate repair strategies for payoff failures.
+
+*Generated from 289 registered tools.*

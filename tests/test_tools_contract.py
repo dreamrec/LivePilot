@@ -1,4 +1,4 @@
-"""Verify all 237 MCP tools are registered across 32 domains."""
+"""Verify all 289 MCP tools are registered across 39 domains."""
 
 import asyncio
 import sys
@@ -476,7 +476,7 @@ def test_safety_tools_registered():
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 257, f"Expected 257 tools, got {len(tools)}"
+    assert len(tools) == 290, f"Expected 290 tools, got {len(tools)}"
 
 
 def test_perception_tools_registered():
@@ -526,3 +526,169 @@ def test_midi_io_tools_registered():
     }
     missing = expected - names
     assert not missing, f"Missing MIDI I/O tools: {missing}"
+
+
+# ── V2 Domain Contract Tests ────────────────────────────────────────
+
+
+def test_semantic_move_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "list_semantic_moves",
+        "preview_semantic_move",
+        "propose_next_best_move",
+        "apply_semantic_move",
+    }
+    missing = expected - names
+    assert not missing, f"Missing semantic move tools: {missing}"
+
+
+def test_experiment_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "create_experiment",
+        "run_experiment",
+        "compare_experiments",
+        "commit_experiment",
+        "discard_experiment",
+        "render_branch_preview",
+        "compare_branch_previews",
+    }
+    missing = expected - names
+    assert not missing, f"Missing experiment tools: {missing}"
+
+
+def test_musical_intelligence_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "detect_repetition_fatigue",
+        "detect_role_conflicts",
+        "infer_section_purposes",
+        "score_emotional_arc",
+        "detect_motif_salience",
+        "detect_call_response_patterns",
+        "analyze_phrase_arc",
+        "compare_phrase_renders",
+        "render_phrase_snapshot",
+        "score_phrase_payoff",
+    }
+    missing = expected - names
+    assert not missing, f"Missing musical intelligence tools: {missing}"
+
+
+def test_reference_engine_v2_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "build_reference_profile",
+        "analyze_reference_gaps",
+        "plan_reference_moves",
+        "build_session_reference",
+    }
+    missing = expected - names
+    assert not missing, f"Missing reference engine tools: {missing}"
+
+
+def test_session_kernel_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "get_session_kernel",
+        "get_capability_state",
+    }
+    missing = expected - names
+    assert not missing, f"Missing session kernel tools: {missing}"
+
+
+def test_taste_graph_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "get_taste_graph",
+        "explain_taste_inference",
+        "rank_moves_by_taste",
+        "record_positive_preference",
+    }
+    missing = expected - names
+    assert not missing, f"Missing taste graph tools: {missing}"
+
+
+# ── Stage 2: The Magic Layer ──────────────────────────────────────
+
+
+def test_song_brain_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "build_song_brain",
+        "explain_song_identity",
+        "detect_identity_drift",
+    }
+    missing = expected - names
+    assert not missing, f"Missing song brain tools: {missing}"
+
+
+def test_preview_studio_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "create_preview_set",
+        "compare_preview_variants",
+        "commit_preview_variant",
+        "discard_preview_set",
+    }
+    missing = expected - names
+    assert not missing, f"Missing preview studio tools: {missing}"
+
+
+def test_hook_hunter_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "find_primary_hook",
+        "rank_hook_candidates",
+        "develop_hook",
+        "measure_hook_salience",
+        "score_phrase_impact",
+        "detect_payoff_failure",
+        "suggest_payoff_repair",
+    }
+    missing = expected - names
+    assert not missing, f"Missing hook hunter tools: {missing}"
+
+
+def test_stuckness_detector_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "detect_stuckness",
+        "suggest_momentum_rescue",
+    }
+    missing = expected - names
+    assert not missing, f"Missing stuckness detector tools: {missing}"
+
+
+def test_wonder_mode_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "enter_wonder_mode",
+        "generate_wonder_variants",
+    }
+    missing = expected - names
+    assert not missing, f"Missing wonder mode tools: {missing}"
+
+
+def test_session_continuity_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "get_session_story",
+        "resume_last_intent",
+        "record_turn_resolution",
+        "rank_by_taste_and_identity",
+    }
+    missing = expected - names
+    assert not missing, f"Missing session continuity tools: {missing}"
+
+
+def test_creative_constraints_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "apply_creative_constraint_set",
+        "distill_reference_principles",
+        "map_reference_principles_to_song",
+    }
+    missing = expected - names
+    assert not missing, f"Missing creative constraints tools: {missing}"

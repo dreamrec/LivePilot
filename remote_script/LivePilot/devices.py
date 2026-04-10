@@ -209,6 +209,35 @@ def delete_device(song, params):
     return {"deleted": device_index}
 
 
+@register("move_device")
+def move_device(song, params):
+    """Move a device to a new position on the same or different track.
+
+    Uses Song.move_device(device, target_track, target_index).
+    """
+    track_index = int(params["track_index"])
+    device_index = int(params["device_index"])
+    target_index = int(params.get("target_index", device_index))
+    target_track_index = params.get("target_track_index", None)
+
+    track = get_track(song, track_index)
+    device = get_device(track, device_index)
+
+    if target_track_index is not None:
+        target_track = get_track(song, int(target_track_index))
+    else:
+        target_track = track
+
+    song.move_device(device, target_track, target_index)
+    return {
+        "moved": device.name,
+        "from_track": track_index,
+        "from_index": device_index,
+        "to_track": int(target_track_index) if target_track_index is not None else track_index,
+        "to_index": target_index,
+    }
+
+
 @register("load_device_by_uri")
 def load_device_by_uri(song, params):
     """Load a device onto a track using a browser URI.

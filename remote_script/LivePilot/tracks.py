@@ -120,8 +120,9 @@ def create_midi_track(song, params):
     track = list(song.tracks)[new_index]
     if "name" in params:
         track.name = str(params["name"])
-    if "color_index" in params:
-        track.color_index = int(params["color_index"])
+    color = params.get("color_index", params.get("color", None))
+    if color is not None:
+        track.color_index = int(color)
     # Ableton auto-arms newly created tracks — disarm to avoid surprises
     if track.arm and not params.get("arm", False):
         track.arm = False
@@ -140,8 +141,9 @@ def create_audio_track(song, params):
     track = list(song.tracks)[new_index]
     if "name" in params:
         track.name = str(params["name"])
-    if "color_index" in params:
-        track.color_index = int(params["color_index"])
+    color = params.get("color_index", params.get("color", None))
+    if color is not None:
+        track.color_index = int(color)
     # Ableton auto-arms newly created tracks — disarm to avoid surprises
     if track.arm and not params.get("arm", False):
         track.arm = False
@@ -155,6 +157,11 @@ def create_return_track(song, params):
     return_tracks = list(song.return_tracks)
     new_index = len(return_tracks) - 1
     return {"index": new_index, "name": return_tracks[new_index].name}
+
+
+# NOTE: move_track is not supported by the Live Object Model.
+# Tracks can only be created, deleted, and duplicated — not reordered.
+# Users must reorder tracks manually in Ableton's GUI.
 
 
 @register("delete_track")

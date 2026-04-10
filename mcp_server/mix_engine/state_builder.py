@@ -170,7 +170,7 @@ def build_dynamics_state(
         peak: master peak level in linear (0-1) or dB.
     """
     if rms is None or peak is None or rms <= 0:
-        return DynamicsState(crest_factor_db=0.0, over_compressed=False, headroom=0.0)
+        return DynamicsState(crest_factor_db=0.0, over_compressed=False, headroom=None)
 
     # If values look like they're in dB (negative), convert to linear
     if rms < 0:
@@ -181,7 +181,7 @@ def build_dynamics_state(
         peak_linear = peak if peak else rms
 
     if rms_linear <= 0:
-        return DynamicsState(crest_factor_db=0.0, over_compressed=False, headroom=0.0)
+        return DynamicsState(crest_factor_db=0.0, over_compressed=False, headroom=None)
 
     crest = 20 * math.log10(max(peak_linear, 1e-10) / max(rms_linear, 1e-10))
 

@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog
 
-257 tools across 34 domains.
+290 tools across 39 domains.
 
 ---
 
@@ -82,6 +82,7 @@
 | `batch_set_parameters` | Set multiple params in one call |
 | `toggle_device` | Enable/disable |
 | `delete_device` | Remove from chain |
+| `move_device` | Reorder device on track or move between tracks |
 | `load_device_by_uri` | Load by browser URI |
 | `find_and_load_device` | Search and load by name |
 | `get_rack_chains` | Get chains in a rack |
@@ -383,13 +384,14 @@
 | `plan_transition` | Plan a transition with concrete gestures |
 | `score_transition` | Score the transition quality between two sections |
 
-## Reference Engine (3)
+## Reference Engine (4)
 
 | Tool | Description |
 |------|-------------|
 | `build_reference_profile` | Build a reference profile from audio file or style/genre name |
 | `analyze_reference_gaps` | Analyze gaps between your project and a reference |
 | `plan_reference_moves` | Plan concrete moves to close reference gaps |
+| `build_session_reference` | Build a self-reference from current session identity |
 
 ## Translation Engine (2)
 
@@ -422,7 +424,7 @@
 | `propose_next_best_move` | AI-ranked suggestions for a natural language request |
 | `apply_semantic_move` | Compile and execute a move against current session state |
 
-## Experiments (5)
+## Experiments (7)
 
 | Tool | Description |
 |------|-------------|
@@ -431,6 +433,8 @@
 | `compare_experiments` | Rank branches by evaluation score |
 | `commit_experiment` | Re-apply the winning branch permanently |
 | `discard_experiment` | Throw away all branches |
+| `render_branch_preview` | Capture audio preview of a branch's changes |
+| `compare_branch_previews` | Compare rendered branch previews by phrase quality |
 
 ## Taste Graph (4)
 
@@ -441,7 +445,7 @@
 | `rank_moves_by_taste` | Rank semantic moves by personalized taste fit |
 | `record_positive_preference` | Record that user prefers more/less of a dimension |
 
-## Musical Intelligence (6)
+## Musical Intelligence (10)
 
 | Tool | Description |
 |------|-------------|
@@ -449,5 +453,83 @@
 | `detect_role_conflicts` | Are tracks fighting for the same musical role? |
 | `infer_section_purposes` | What is each section trying to do musically? |
 | `score_emotional_arc` | Does the song have a satisfying tension/release arc? |
+| `detect_motif_salience` | Which motifs are prominent vs overused? |
+| `detect_call_response_patterns` | Find alternating track dialogues |
 | `analyze_phrase_arc` | Evaluate a captured audio phrase for musical quality |
 | `compare_phrase_renders` | Compare multiple captures and rank by quality |
+| `render_phrase_snapshot` | Capture a bounded musical phrase for evaluation |
+| `score_phrase_payoff` | Score how well a phrase delivers on its promise |
+
+---
+
+## Song Brain (3)
+
+| Tool | Description |
+|------|-------------|
+| `build_song_brain` | Build the musical identity model for the current song |
+| `explain_song_identity` | Human-readable summary of the song's identity |
+| `detect_identity_drift` | Detect whether recent changes damaged the song's identity |
+
+---
+
+## Preview Studio (4)
+
+| Tool | Description |
+|------|-------------|
+| `create_preview_set` | Generate safe/strong/unexpected creative variants |
+| `compare_preview_variants` | Rank variants by taste + identity + impact |
+| `commit_preview_variant` | Apply the chosen variant |
+| `discard_preview_set` | Throw away all variants |
+
+---
+
+## Hook Hunter (7)
+
+| Tool | Description |
+|------|-------------|
+| `find_primary_hook` | Detect the most salient hook in the session |
+| `rank_hook_candidates` | List and rank all hook candidates |
+| `develop_hook` | Suggest development strategies for a hook |
+| `measure_hook_salience` | Score a specific hook's salience |
+| `score_phrase_impact` | Score a section's emotional impact |
+| `detect_payoff_failure` | Find where the song should deliver but doesn't |
+| `suggest_payoff_repair` | Generate repair strategies for payoff failures |
+
+---
+
+## Stuckness Detector (2)
+
+| Tool | Description |
+|------|-------------|
+| `detect_stuckness` | Identify whether the session is losing momentum |
+| `suggest_momentum_rescue` | Get strategic rescue suggestions |
+
+---
+
+## Wonder Mode (2)
+
+| Tool | Description |
+|------|-------------|
+| `enter_wonder_mode` | Activate wonder mode for controlled surprise |
+| `generate_wonder_variants` | Generate surprise-oriented creative variants |
+
+---
+
+## Session Continuity (4)
+
+| Tool | Description |
+|------|-------------|
+| `get_session_story` | Narrative of the session — identity, turns, open threads |
+| `resume_last_intent` | Pick up the most recent unresolved creative intent |
+| `record_turn_resolution` | Log what happened in a creative turn |
+| `rank_by_taste_and_identity` | Rank candidates with separated taste/identity scoring |
+
+---
+
+## Creative Constraints (3)
+
+| Tool | Description |
+|------|-------------|
+| `apply_creative_constraint_set` | Activate creative constraints for focused suggestions |
+| `distill_reference_principles` | Learn musical principles from a reference |
+| `map_reference_principles_to_song` | Translate reference principles to current song |

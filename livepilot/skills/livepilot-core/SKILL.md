@@ -1,11 +1,11 @@
 ---
 name: livepilot-core
-description: Core discipline for LivePilot — agentic production system for Ableton Live 12. 257 tools across 32 domains. This skill should be used whenever working with Ableton Live through MCP tools. Provides golden rules, tool speed tiers, error handling protocol, and pointers to domain and engine skills.
+description: Core discipline for LivePilot — agentic production system for Ableton Live 12. 290 tools across 39 domains. This skill should be used whenever working with Ableton Live through MCP tools. Provides golden rules, tool speed tiers, error handling protocol, and pointers to domain and engine skills.
 ---
 
 # LivePilot Core — Ableton Live 12
 
-Agentic production system for Ableton Live 12. 257 tools across 32 domains, three layers:
+Agentic production system for Ableton Live 12. 290 tools across 39 domains, three layers:
 
 - **Device Atlas** — 280+ instruments, 139 drum kits, 350+ impulse responses. Consult `references/device-atlas/` before loading any device. Never guess a device name.
 - **M4L Analyzer** — Real-time audio analysis on the master bus (8-band spectrum, RMS/peak, key detection). Optional — all core tools work without it.
@@ -34,6 +34,7 @@ Agentic production system for Ableton Live 12. 257 tools across 32 domains, thre
     - If a track's stereo output drops to 0: the effect is killing the signal — check `get_device_parameters` for `value_string`, fix, re-verify
     - **Parameter ranges are NOT always 0-1.** Auto Filter Frequency is 20-135. Bit Depth is 1-16. Always read `value_string` to see actual units.
 16. **NEVER apply automation recipes without understanding the target parameter's range** — recipes generate 0-1 curves that get auto-scaled for device parameters, but always verify the result
+17. **LivePilot_Analyzer must be LAST on master chain** — always place after ALL effects (EQ, Compressor, Utility, etc.) so it measures the final post-processing output, not the raw signal. When loading effects on master, either load them before the analyzer or move the analyzer to end afterward
 
 ## Tool Speed Tiers
 
@@ -63,6 +64,7 @@ Report ALL errors to the user immediately. Common failure modes:
 - **Connection timeout** — Ableton unresponsive → check if session is heavy
 - **Volume reset on scene fire** — Ableton restores mixer state when firing scenes. Always re-apply `set_track_volume`/`set_track_pan` after `fire_scene` if your mix settings differ from what was stored in the clips
 - **M4L Analyzer not connected** — if `get_master_spectrum` errors with "Analyzer not detected", auto-load it: `find_and_load_device(track_index=-1000, device_name="LivePilot_Analyzer")`. If it errors with "UDP bridge not connected", try `reconnect_bridge` first
+- **Another client connected** — Remote Script only accepts one TCP client on port 9878. If you see this error, the MCP server is already connected. Use MCP tools instead of raw TCP
 
 ## Technique Memory
 
@@ -100,7 +102,7 @@ Deep production knowledge in `references/`:
 
 | File | Content |
 |------|---------|
-| `references/overview.md` | All 257 tools with params and ranges |
+| `references/overview.md` | All 290 tools with params and ranges |
 | `references/device-atlas/` | 280+ device corpus with URIs and presets |
 | `references/midi-recipes.md` | Drum patterns, chord voicings, humanization |
 | `references/sound-design.md` | Synth recipes, device chain patterns |
@@ -109,3 +111,49 @@ Deep production knowledge in `references/`:
 | `references/ableton-workflow-patterns.md` | Session/arrangement workflows |
 | `references/memory-guide.md` | Technique memory usage and quality templates |
 | `references/m4l-devices.md` | M4L bridge command reference |
+
+## V2 Orchestration Layer
+
+For complex requests, use the V2 orchestration flow instead of ad-hoc tool calls:
+
+### Standard V2 Flow
+1. **`route_request`** — classify the request, get recommended engines and workflow mode
+2. **`get_session_kernel`** — build the unified turn snapshot (session, capabilities, taste, memory)
+3. **`propose_next_best_move`** — get ranked semantic move suggestions (taste-aware)
+4. **`preview_semantic_move`** — see what a move will do before committing
+5. **`apply_semantic_move`** — compile and execute the move (mode-dependent)
+6. **Evaluate** — use the appropriate evaluator to check the result
+
+### Semantic Moves
+High-level musical intents that compile to deterministic tool sequences. 5 families:
+- **mix** — `tighten_low_end`, `widen_stereo`, `make_punchier`, `darken_without_losing_width`, `reduce_repetition_fatigue`, `make_kick_bass_lock`, `reduce_foreground_competition`
+- **arrangement** — `create_buildup_tension`, `smooth_scene_handoff`, `increase_contrast_before_payoff`, `refresh_repeated_section`
+- **transition** — `increase_forward_motion`, `open_chorus`, `create_breakdown`, `bridge_sections`
+- **sound_design** — `add_warmth`, `add_texture`, `shape_transients`, `add_space`
+- **performance** — `recover_energy`, `decompress_tension`, `safe_spotlight`, `emergency_simplify`
+
+Use `list_semantic_moves(domain="mix")` to discover available moves.
+
+### Experiment Branching
+For creative exploration, use experiment branching to compare multiple approaches:
+1. `create_experiment(request_text="make it punchier")` — auto-proposes branches
+2. `run_experiment(experiment_id)` — trials each branch (apply → capture → undo)
+3. `compare_experiments(experiment_id)` — rank branches by score
+4. `commit_experiment(experiment_id, branch_id)` — apply winner permanently
+
+### Taste-Aware Ranking
+The system learns user preferences from kept/undone moves:
+- `get_taste_graph()` — current taste model
+- `explain_taste_inference()` — human-readable explanation
+- `rank_moves_by_taste(move_specs)` — sort options by preference fit
+- `propose_next_best_move` automatically applies taste ranking when evidence exists
+
+### Musical Intelligence
+Song-level analysis beyond parameters:
+- `detect_repetition_fatigue()` — clip overuse, section staleness
+- `detect_role_conflicts()` — tracks fighting for the same space
+- `infer_section_purposes()` — label sections as setup/tension/payoff/contrast/release
+- `score_emotional_arc()` — does the song have a satisfying build→climax→resolve?
+- `detect_call_response_patterns()` — find alternating track dialogues
+- `render_phrase_snapshot()` → `analyze_phrase_arc()` — capture and evaluate musical phrases
+- `score_phrase_payoff()` — does the drop/chorus/transition deliver?

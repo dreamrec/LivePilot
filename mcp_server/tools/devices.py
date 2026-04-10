@@ -329,12 +329,46 @@ def load_device_by_uri(ctx: Context, track_index: int, uri: str) -> dict:
 
 
 @mcp.tool()
+def move_device(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+    target_index: int,
+    target_track_index: Optional[int] = None,
+) -> dict:
+    """Move a device to a new position on the same or different track.
+    track_index: 0+ for regular tracks, -1/-2/... for return tracks, -1000 for master."""
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    params: dict = {
+        "track_index": track_index,
+        "device_index": device_index,
+        "target_index": target_index,
+    }
+    if target_track_index is not None:
+        _validate_track_index(target_track_index)
+        params["target_track_index"] = target_track_index
+    return _get_ableton(ctx).send_command("move_device", params)
+
+
+@mcp.tool()
 def find_and_load_device(ctx: Context, track_index: int, device_name: str) -> dict:
     """Search the browser for a device by name and load it onto a track.
     track_index: 0+ for regular tracks, -1/-2/... for return tracks (A/B/...), -1000 for master."""
     _validate_track_index(track_index)
     if not device_name.strip():
         raise ValueError("device_name cannot be empty")
+
+    # Guardrail: bare Drum Rack produces silence (no samples loaded)
+    if device_name.strip().lower() == "drum rack":
+        raise ValueError(
+            "Loading a bare 'Drum Rack' creates an empty rack that produces silence. "
+            "Instead, use search_browser(path='drums') to find a kit preset "
+            "(e.g., '808 Core Kit'), then load it with load_browser_item(). "
+            "Or use DS drum synths (DS Kick, DS Snare, DS HH, DS Tom, DS Clap, "
+            "DS Cymbal) which are self-contained."
+        )
+
     result = _get_ableton(ctx).send_command("find_and_load_device", {
         "track_index": track_index,
         "device_name": device_name,

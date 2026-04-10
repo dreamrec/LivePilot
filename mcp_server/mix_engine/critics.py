@@ -148,7 +148,7 @@ def run_dynamics_critic(dynamics: DynamicsState) -> list[MixIssue]:
             recommended_moves=["transient_shaping", "gain_staging"],
         ))
 
-    if dynamics.headroom < 1.0:
+    if dynamics.headroom is not None and dynamics.headroom < 1.0:
         issues.append(MixIssue(
             issue_type="low_headroom",
             critic="dynamics",
@@ -266,7 +266,7 @@ def run_translation_critic(
         ))
 
     # Harshness risk: over-compressed + low headroom
-    if dynamics.over_compressed and dynamics.headroom < 3.0:
+    if dynamics.over_compressed and dynamics.headroom is not None and dynamics.headroom < 3.0:
         issues.append(MixIssue(
             issue_type="harshness_risk",
             critic="translation",

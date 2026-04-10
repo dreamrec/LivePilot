@@ -93,7 +93,7 @@ class DynamicsState:
 
     crest_factor_db: float = 0.0
     over_compressed: bool = False
-    headroom: float = 0.0
+    headroom: Optional[float] = None
 
     def to_dict(self) -> dict:
         return asdict(self)
