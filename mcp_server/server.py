@@ -133,6 +133,13 @@ from .runtime import safety_tools  # noqa: F401, E402
 from .semantic_moves import tools as semantic_move_tools  # noqa: F401, E402
 from .experiment import tools as experiment_tools         # noqa: F401, E402
 from .musical_intelligence import tools as musical_intel_tools  # noqa: F401, E402
+from .song_brain import tools as song_brain_tools              # noqa: F401, E402
+from .preview_studio import tools as preview_studio_tools      # noqa: F401, E402
+from .hook_hunter import tools as hook_hunter_tools            # noqa: F401, E402
+from .stuckness_detector import tools as stuckness_tools       # noqa: F401, E402
+from .wonder_mode import tools as wonder_mode_tools            # noqa: F401, E402
+from .session_continuity import tools as session_cont_tools    # noqa: F401, E402
+from .creative_constraints import tools as constraints_tools   # noqa: F401, E402
 
 
 # ---------------------------------------------------------------------------

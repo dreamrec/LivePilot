@@ -154,6 +154,5 @@ Song-level analysis beyond parameters:
 - `detect_role_conflicts()` — tracks fighting for the same space
 - `infer_section_purposes()` — label sections as setup/tension/payoff/contrast/release
 - `score_emotional_arc()` — does the song have a satisfying build→climax→resolve?
-- `detect_call_response_patterns()` — find alternating track dialogues
-- `render_phrase_snapshot()` → `analyze_phrase_arc()` — capture and evaluate musical phrases
-- `score_phrase_payoff()` — does the drop/chorus/transition deliver?
+- `analyze_phrase_arc()` — capture and evaluate musical phrases
+- `compare_phrase_renders()` — compare phrase variants side by side

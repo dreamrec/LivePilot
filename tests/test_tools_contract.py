@@ -476,7 +476,7 @@ def test_safety_tools_registered():
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 290, f"Expected 290 tools, got {len(tools)}"
+    assert len(tools) == 283, f"Expected 283 tools, got {len(tools)}"
 
 
 def test_perception_tools_registered():
@@ -551,8 +551,6 @@ def test_experiment_tools_registered():
         "compare_experiments",
         "commit_experiment",
         "discard_experiment",
-        "render_branch_preview",
-        "compare_branch_previews",
     }
     missing = expected - names
     assert not missing, f"Missing experiment tools: {missing}"
@@ -565,12 +563,8 @@ def test_musical_intelligence_tools_registered():
         "detect_role_conflicts",
         "infer_section_purposes",
         "score_emotional_arc",
-        "detect_motif_salience",
-        "detect_call_response_patterns",
         "analyze_phrase_arc",
         "compare_phrase_renders",
-        "render_phrase_snapshot",
-        "score_phrase_payoff",
     }
     missing = expected - names
     assert not missing, f"Missing musical intelligence tools: {missing}"
@@ -582,7 +576,6 @@ def test_reference_engine_v2_tools_registered():
         "build_reference_profile",
         "analyze_reference_gaps",
         "plan_reference_moves",
-        "build_session_reference",
     }
     missing = expected - names
     assert not missing, f"Missing reference engine tools: {missing}"
