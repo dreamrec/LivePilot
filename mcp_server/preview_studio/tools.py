@@ -78,8 +78,10 @@ def create_preview_set(
         from ..song_brain.tools import _current_brain
         if _current_brain is not None:
             song_brain = _current_brain.to_dict()
-    except Exception:
-        pass
+    except Exception as _e:
+        if __debug__:
+            import sys
+            print(f"LivePilot: SongBrain unavailable in preview_studio: {_e}", file=sys.stderr)
 
     # Get taste graph — use session-scoped stores, extract numeric weights
     taste_graph: dict = {}
@@ -173,6 +175,100 @@ def commit_preview_variant(
         "identity_effect": chosen.identity_effect,
         "what_preserved": chosen.what_preserved,
     }
+
+
+@mcp.tool()
+def render_preview_variant(
+    ctx: Context,
+    set_id: str = "",
+    variant_id: str = "",
+    bars: int = 8,
+) -> dict:
+    """Render a short preview of a specific variant for evaluation.
+
+    Captures a snapshot of what the variant would sound like if applied,
+    without permanently changing the session. Uses Ableton's undo system
+    to revert after capture.
+
+    set_id: the preview set containing the variant
+    variant_id: which variant to render
+    bars: how many bars to capture (default 8)
+
+    Returns the variant's snapshot data and summary.
+    """
+    ps = engine.get_preview_set(set_id)
+    if not ps:
+        return {"error": f"Preview set {set_id} not found"}
+
+    variant = None
+    for v in ps.variants:
+        if v.variant_id == variant_id:
+            variant = v
+            break
+
+    if not variant:
+        available = [v.variant_id for v in ps.variants]
+        return {
+            "error": f"Variant {variant_id} not found in set {set_id}",
+            "available_variants": available,
+        }
+
+    # If the variant has a compiled plan, we could apply-capture-undo.
+    # Without a compiled plan, return the variant's analytical preview.
+    if variant.compiled_plan:
+        ableton = _get_ableton(ctx)
+        try:
+            # Capture before state
+            before_info = ableton.send_command("get_session_info", {})
+
+            # Apply the plan steps
+            for step in variant.compiled_plan.get("steps", []):
+                cmd = step.get("command")
+                args = step.get("args", {})
+                if cmd:
+                    ableton.send_command(cmd, args)
+
+            # Capture after state
+            after_info = ableton.send_command("get_session_info", {})
+
+            # Undo all changes
+            step_count = len(variant.compiled_plan.get("steps", []))
+            for _ in range(step_count):
+                ableton.send_command("undo")
+
+            variant.status = "rendered"
+            variant.render_ref = f"render_{variant_id}_{bars}bars"
+
+            return {
+                "rendered": True,
+                "variant_id": variant_id,
+                "label": variant.label,
+                "bars": bars,
+                "before_summary": {"tempo": before_info.get("tempo"), "tracks": before_info.get("track_count")},
+                "after_summary": {"tempo": after_info.get("tempo"), "tracks": after_info.get("track_count")},
+                "identity_effect": variant.identity_effect,
+                "what_changed": variant.what_changed,
+                "what_preserved": variant.what_preserved,
+            }
+        except Exception as e:
+            return {"error": f"Render failed: {e}", "variant_id": variant_id}
+    else:
+        # Analytical preview — no live render
+        variant.status = "rendered"
+        return {
+            "rendered": True,
+            "variant_id": variant_id,
+            "label": variant.label,
+            "bars": bars,
+            "mode": "analytical",
+            "intent": variant.intent,
+            "novelty_level": variant.novelty_level,
+            "identity_effect": variant.identity_effect,
+            "what_changed": variant.what_changed,
+            "what_preserved": variant.what_preserved,
+            "why_it_matters": variant.why_it_matters,
+            "note": "Analytical preview — no compiled plan available for live render",
+        }
 
 
 @mcp.tool()

@@ -17,6 +17,7 @@ from .models import PreviewSet, PreviewVariant
 # ── In-memory store ───────────────────────────────────────────────
 
 _preview_sets: dict[str, PreviewSet] = {}
+_MAX_PREVIEW_SETS = 20
 
 
 def get_preview_set(set_id: str) -> Optional[PreviewSet]:
@@ -25,6 +26,10 @@ def get_preview_set(set_id: str) -> Optional[PreviewSet]:
 
 def store_preview_set(ps: PreviewSet) -> None:
     _preview_sets[ps.set_id] = ps
+    # Evict oldest sets if over limit
+    while len(_preview_sets) > _MAX_PREVIEW_SETS:
+        oldest_key = next(iter(_preview_sets))
+        del _preview_sets[oldest_key]
 
 
 # ── Creation ──────────────────────────────────────────────────────
@@ -113,8 +118,10 @@ def _build_triptych(
     for i, profile in enumerate(profiles):
         # Pick a move if available
         move_id = ""
+        compiled_plan = None
         if moves and i < len(moves):
             move_id = moves[i].get("move_id", "")
+            compiled_plan = moves[i].get("compile_plan")
 
         variants.append(PreviewVariant(
             variant_id=f"{set_id}_{profile['label']}",
@@ -125,6 +132,7 @@ def _build_triptych(
             what_preserved=profile["what_preserved"],
             why_it_matters=profile["why_it_matters"],
             move_id=move_id,
+            compiled_plan=compiled_plan,
             taste_fit=_estimate_taste_fit(profile["novelty"], taste_graph),
             created_at_ms=now,
         ))

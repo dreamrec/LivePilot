@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.9.23 — Stage 2: The Magic Layer (April 2026)
+
+### Wonder Mode Rebuild (292→291 tools)
+- **feat(wonder_mode):** Full engine rebuild — variants now built from real semantic moves matched by keyword+taste scoring, not templates
+- **feat(wonder_mode):** Ranking uses bell-curve novelty centered on user's novelty_band, sacred element penalty, and coherence scoring
+- **feat(wonder_mode):** Taste fit uses full TasteGraph (family preference, dimension alignment, anti-preferences, risk alignment)
+- **feat(wonder_mode):** Each variant carries `targets_snapshot`, `compiled_plan`, and `score_breakdown` with all 4 component scores
+- **breaking(wonder_mode):** Removed `generate_wonder_variants` tool (redundant with `enter_wonder_mode`)
+
+### New Tools (9 tools, 283→292, then -1 from wonder rebuild = 291 total)
+- **feat(preview_studio):** `render_preview_variant` — render a short preview of a variant using Ableton's undo system
+- **feat(hook_hunter):** `detect_hook_neglect` — check if a strong hook is underused across sections
+- **feat(hook_hunter):** `compare_phrase_impact` — compare emotional impact across multiple sections
+- **feat(stuckness_detector):** `start_rescue_workflow` — structured step-by-step rescue plan for a specific stuckness type
+- **feat(wonder_mode):** `rank_wonder_variants` — rank wonder variants by taste + identity + phrase impact
+- **feat(session_continuity):** `list_open_creative_threads` — list all open non-stale creative threads
+- **feat(session_continuity):** `explain_preference_vs_identity` — explain taste vs identity tension for a candidate
+- **feat(creative_constraints):** `generate_constrained_variants` — generate triptych variants under active constraints
+- **feat(creative_constraints):** `generate_reference_inspired_variants` — generate variants inspired by distilled reference principles
+
+### Fixes
+- **fix(wonder_mode):** Fixed taste graph access to use session-scoped lifespan context instead of creating fresh stores
+- **fix(session_continuity):** Fixed taste graph access to match preview_studio pattern
+
 ## 1.9.22 — Skill & Command Overhaul (April 2026)
 
 ### Skill Updates

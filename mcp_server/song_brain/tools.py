@@ -14,8 +14,31 @@ from . import builder
 from .models import SongBrain
 
 
-# Module-level cache for the most recent SongBrain
+# Module-level fallback for consumers without ctx.
+# Prefer ctx.lifespan_context["current_brain"] when ctx is available.
 _current_brain: SongBrain | None = None
+
+# Snapshot store: brain_id -> SongBrain, max 10 snapshots
+_brain_snapshots: dict[str, SongBrain] = {}
+_MAX_SNAPSHOTS = 10
+
+
+def _set_brain(ctx: Context, brain: SongBrain) -> None:
+    """Store brain in lifespan_context, module fallback, and snapshot store."""
+    global _current_brain
+    _current_brain = brain
+    ctx.lifespan_context["current_brain"] = brain
+    # Save snapshot for later drift comparison
+    _brain_snapshots[brain.brain_id] = brain
+    # Evict oldest if over limit
+    while len(_brain_snapshots) > _MAX_SNAPSHOTS:
+        oldest_key = next(iter(_brain_snapshots))
+        del _brain_snapshots[oldest_key]
+
+
+def _get_snapshot(brain_id: str) -> SongBrain | None:
+    """Retrieve a past brain snapshot by ID."""
+    return _brain_snapshots.get(brain_id)
 
 
 def _get_ableton(ctx: Context):
@@ -123,8 +146,6 @@ def build_song_brain(ctx: Context) -> dict:
     Call this at the start of complex creative workflows.
     Returns the full SongBrain as a dict.
     """
-    global _current_brain
-
     data = _fetch_session_data(ctx)
     brain = builder.build_song_brain(
         session_info=data["session_info"],
@@ -135,7 +156,7 @@ def build_song_brain(ctx: Context) -> dict:
         role_graph=data["role_graph"],
         recent_moves=data["recent_moves"],
     )
-    _current_brain = brain
+    _set_brain(ctx, brain)
 
     return {
         **brain.to_dict(),
@@ -150,11 +171,9 @@ def explain_song_identity(ctx: Context) -> dict:
     If no SongBrain exists yet, builds one first. Returns a structured
     explanation suitable for the agent to talk about the song naturally.
     """
-    global _current_brain
-
     if _current_brain is None:
         data = _fetch_session_data(ctx)
-        _current_brain = builder.build_song_brain(
+        brain = builder.build_song_brain(
             session_info=data["session_info"],
             scenes=data["scenes"],
             tracks=data["tracks"],
@@ -163,6 +182,7 @@ def explain_song_identity(ctx: Context) -> dict:
             role_graph=data["role_graph"],
             recent_moves=data["recent_moves"],
         )
+        _set_brain(ctx, brain)
 
     brain = _current_brain
     explanation: dict = {
@@ -222,16 +242,26 @@ def detect_identity_drift(
 ) -> dict:
     """Detect whether recent changes have damaged the song's identity.
 
-    Compares the current state against the cached SongBrain.
-    If no previous brain exists, builds both and reports baseline.
+    Compares the current state against a previous SongBrain snapshot.
+    If before_brain_id is provided, looks up that specific snapshot.
+    If empty, uses the last cached brain.
+    If no previous brain exists, builds baseline and reports no drift.
 
-    before_brain_id: optional — if empty, uses the last cached brain.
+    before_brain_id: optional brain_id from a previous build_song_brain call.
 
     Returns drift score, changed elements, sacred damage, and recommendation.
     """
-    global _current_brain
-
-    before = _current_brain
+    # Look up the "before" brain — by ID if provided, else use last cached
+    if before_brain_id:
+        before = _get_snapshot(before_brain_id)
+        if before is None:
+            available = list(_brain_snapshots.keys())
+            return {
+                "error": f"No snapshot found for brain_id '{before_brain_id}'",
+                "available_snapshots": available,
+            }
+    else:
+        before = _current_brain
 
     # Build fresh brain from current state
     data = _fetch_session_data(ctx)
@@ -246,7 +276,7 @@ def detect_identity_drift(
     )
 
     if before is None:
-        _current_brain = after
+        _set_brain(ctx, after)
         return {
             "drift_score": 0.0,
             "note": "No previous brain to compare — this is the baseline",
@@ -255,7 +285,7 @@ def detect_identity_drift(
         }
 
     drift = builder.detect_identity_drift(before, after)
-    _current_brain = after
+    _set_brain(ctx, after)
 
     return {
         **drift.to_dict(),

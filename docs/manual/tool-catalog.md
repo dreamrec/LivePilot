@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog
 
-290 tools across 39 domains.
+292 tools across 39 domains.
 
 ---
 
@@ -472,18 +472,19 @@
 
 ---
 
-## Preview Studio (4)
+## Preview Studio (5)
 
 | Tool | Description |
 |------|-------------|
 | `create_preview_set` | Generate safe/strong/unexpected creative variants |
+| `render_preview_variant` | Render a short preview of a variant for evaluation |
 | `compare_preview_variants` | Rank variants by taste + identity + impact |
 | `commit_preview_variant` | Apply the chosen variant |
 | `discard_preview_set` | Throw away all variants |
 
 ---
 
-## Hook Hunter (7)
+## Hook Hunter (9)
 
 | Tool | Description |
 |------|-------------|
@@ -494,15 +495,18 @@
 | `score_phrase_impact` | Score a section's emotional impact |
 | `detect_payoff_failure` | Find where the song should deliver but doesn't |
 | `suggest_payoff_repair` | Generate repair strategies for payoff failures |
+| `detect_hook_neglect` | Check if a strong hook is underused across sections |
+| `compare_phrase_impact` | Compare emotional impact across multiple sections |
 
 ---
 
-## Stuckness Detector (2)
+## Stuckness Detector (3)
 
 | Tool | Description |
 |------|-------------|
 | `detect_stuckness` | Identify whether the session is losing momentum |
 | `suggest_momentum_rescue` | Get strategic rescue suggestions |
+| `start_rescue_workflow` | Start a structured rescue plan for a specific stuckness type |
 
 ---
 
@@ -510,12 +514,12 @@
 
 | Tool | Description |
 |------|-------------|
-| `enter_wonder_mode` | Activate wonder mode for controlled surprise |
-| `generate_wonder_variants` | Generate surprise-oriented creative variants |
+| `enter_wonder_mode` | Full pipeline: discover moves, build variants, rank by taste + identity + novelty + coherence |
+| `rank_wonder_variants` | Standalone re-ranker for any variant list with score breakdowns |
 
 ---
 
-## Session Continuity (4)
+## Session Continuity (7)
 
 | Tool | Description |
 |------|-------------|
@@ -523,13 +527,18 @@
 | `resume_last_intent` | Pick up the most recent unresolved creative intent |
 | `record_turn_resolution` | Log what happened in a creative turn |
 | `rank_by_taste_and_identity` | Rank candidates with separated taste/identity scoring |
+| `open_creative_thread` | Open a new creative thread — track unresolved goals |
+| `list_open_creative_threads` | List all open non-stale creative threads |
+| `explain_preference_vs_identity` | Explain taste vs identity tension for a candidate |
 
 ---
 
-## Creative Constraints (3)
+## Creative Constraints (5)
 
 | Tool | Description |
 |------|-------------|
 | `apply_creative_constraint_set` | Activate creative constraints for focused suggestions |
 | `distill_reference_principles` | Learn musical principles from a reference |
 | `map_reference_principles_to_song` | Translate reference principles to current song |
+| `generate_constrained_variants` | Generate triptych variants under active constraints |
+| `generate_reference_inspired_variants` | Generate variants inspired by distilled reference principles |

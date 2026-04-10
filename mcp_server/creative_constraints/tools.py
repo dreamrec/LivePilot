@@ -159,6 +159,139 @@ def map_reference_principles_to_song(
     }
 
 
+@mcp.tool()
+def generate_constrained_variants(
+    ctx: Context,
+    request_text: str,
+    constraints: list[str] | None = None,
+    kernel_id: str = "",
+) -> dict:
+    """Generate creative variants under active constraints.
+
+    Combines constraint filtering with the Preview Studio's triptych.
+    Each variant respects the constraint set — e.g., "subtraction_only"
+    means no variant adds new elements.
+
+    request_text: what the user wants
+    constraints: list of constraint names to apply (or uses currently active)
+    kernel_id: optional session kernel reference
+    """
+    if not request_text.strip():
+        return {"error": "request_text cannot be empty"}
+
+    # Apply constraints
+    active = _active_constraints
+    if constraints:
+        active = engine.build_constraint_set(constraints)
+
+    if not active or not active.constraints:
+        return {
+            "error": "No constraints active — call apply_creative_constraint_set first or provide constraints",
+            "available": CONSTRAINT_MODES,
+        }
+
+    # Generate variants via preview studio
+    try:
+        from ..preview_studio import engine as ps_engine
+        song_brain = _get_song_brain_dict()
+        taste_graph = {}
+        try:
+            from ..memory.taste_graph import build_taste_graph
+            from ..memory.taste_memory import TasteMemoryStore
+            from ..memory.anti_memory import AntiMemoryStore
+            taste_store = ctx.lifespan_context.setdefault("taste_memory", TasteMemoryStore())
+            anti_store = ctx.lifespan_context.setdefault("anti_memory", AntiMemoryStore())
+            taste_graph = build_taste_graph(taste_store=taste_store, anti_store=anti_store).to_dict()
+        except Exception:
+            pass
+
+        ps = ps_engine.create_preview_set(
+            request_text=f"[Constrained: {', '.join(active.constraints)}] {request_text}",
+            kernel_id=kernel_id,
+            strategy="creative_triptych",
+            song_brain=song_brain,
+            taste_graph=taste_graph,
+        )
+
+        # Validate each variant's compiled_plan against constraints
+        for v in ps.variants:
+            v.what_preserved = f"{v.what_preserved} | Constraints: {', '.join(active.constraints)}"
+            if v.compiled_plan:
+                plan = {"steps": [
+                    {"action": step.get("tool", ""), **step}
+                    for step in v.compiled_plan
+                ]}
+                validation = engine.validate_plan_against_constraints(plan, active)
+                if not validation["valid"]:
+                    v.compiled_plan = None
+                    v.what_changed = f"[FILTERED] {v.what_changed} — violates {', '.join(active.constraints)}"
+
+        return {
+            "preview_set": ps.to_dict(),
+            "constraints_applied": active.constraints,
+            "note": "Variants with violating plans have been filtered",
+        }
+    except Exception as e:
+        return {"error": f"Failed to generate constrained variants: {e}"}
+
+
+@mcp.tool()
+def generate_reference_inspired_variants(
+    ctx: Context,
+    request_text: str = "",
+    kernel_id: str = "",
+) -> dict:
+    """Generate creative variants inspired by a distilled reference.
+
+    Requires a prior call to distill_reference_principles.
+    Uses the distilled principles (not surface traits) to shape
+    each variant through the current song's identity.
+
+    request_text: optional extra context for what the user wants
+    kernel_id: optional session kernel reference
+    """
+    if _cached_distillation is None:
+        return {"error": "No reference distilled yet — call distill_reference_principles first"}
+
+    # Build request text from reference principles
+    principles_text = ", ".join(
+        p.principle for p in _cached_distillation.principles[:3]
+    )
+    full_request = (
+        f"Inspired by: {_cached_distillation.reference_description}. "
+        f"Key principles: {principles_text}. "
+        f"{request_text}"
+    ).strip()
+
+    # Generate variants via preview studio
+    try:
+        from ..preview_studio import engine as ps_engine
+        song_brain = _get_song_brain_dict()
+
+        ps = ps_engine.create_preview_set(
+            request_text=full_request,
+            kernel_id=kernel_id,
+            strategy="creative_triptych",
+            song_brain=song_brain,
+        )
+
+        # Annotate variants with reference info
+        for v in ps.variants:
+            v.why_it_matters = (
+                f"Reference-inspired: {_cached_distillation.reference_description}. "
+                f"{v.why_it_matters}"
+            )
+
+        return {
+            "preview_set": ps.to_dict(),
+            "reference": _cached_distillation.reference_description,
+            "principles_applied": [p.to_dict() for p in _cached_distillation.principles[:5]],
+            "note": "Variants are shaped by reference principles, not surface imitation",
+        }
+    except Exception as e:
+        return {"error": f"Failed to generate reference-inspired variants: {e}"}
+
+
 # ── Helpers ───────────────────────────────────────────────────────
 
 
@@ -167,8 +300,10 @@ def _get_song_brain_dict() -> dict:
         from ..song_brain.tools import _current_brain
         if _current_brain is not None:
             return _current_brain.to_dict()
-    except Exception:
-        pass
+    except Exception as _e:
+        if __debug__:
+            import sys
+            print(f"LivePilot: SongBrain unavailable in creative_constraints: {_e}", file=sys.stderr)
     return {}
 
 
