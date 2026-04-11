@@ -121,3 +121,48 @@ When adding processing blocks, prefer native Ableton devices for controllability
 - **Saturator** — waveshaping with multiple curve types
 
 Always `search_browser` before loading — never guess device names.
+
+## Deep Sound Design Reference
+
+Consult `references/sound-design-deep.md` for advanced techniques when working on creative requests. Key principles:
+
+### Making Sounds Breathe
+Every static sound can become alive with modulation below conscious perception:
+- **Filter breathing:** LFO at 0.1-0.5 Hz on filter cutoff, 5-15% depth
+- **Oscillator drift:** ±1-3 cent detune with very slow LFO (0.05-0.2 Hz)
+- **Amplitude micro-variation:** Perlin/brownian noise on volume, ±1-3 dB
+- **Rule:** If the listener can hear the modulation, it's too much. The best modulation is felt, not heard.
+
+### Space as Composition
+Reverb and delay are not decorations — in dub/minimal they ARE the composition:
+- **Dub chord:** Short stab → long delay (70-80% feedback) + filter on the delay return
+- **Delay throws:** Momentary send spikes (0→70% for half a beat) — the echo IS the event
+- **Sidechain reverb:** Dry drums trigger sidechain compression on reverb returns — the room pulses
+- **Feedback modulation:** Delay feedback at 75-85% + modulate delay time ±5-10% for warped echoes
+
+### Creative Sidechain (Beyond Pump)
+Sidechain compression is a modulation source, not just a mix tool:
+- **Sidechain filter:** Envelope follower from kick modulates pad filter cutoff — pad brightens between kicks
+- **Ghost sidechain:** Muted kick as sidechain source for textures — phantom groove on non-rhythmic elements
+- **Multiband sidechain:** Only duck sub frequencies from pad — shimmer stays, sub clears for kick
+
+### Effects as Instruments
+- **Self-oscillating filter:** Push resonance until it rings, play notes by changing cutoff
+- **Feedback loops:** Route output back to input through effects + compressor to control
+- **Convolution as synthesis:** Load non-IR files (speech, drum break) into convolution reverb — imprints spectral character
+- **Granular reverb:** Very short reverb (0.1-0.3s) high diffusion on percussion — smears transient into tonal cloud
+
+### The Frequency Dance
+At any moment, each frequency band should have one primary element. When one opens up, another pulls back:
+- Chord filter opens into highs → pull hi-hat back
+- Bass drops → kick shortens
+- Reverb tail fills → dry elements duck
+This is mix engineering as composition.
+
+### When to Apply These
+- User says "make it breathe" or "it sounds static" → micro-modulation
+- User says "more space" or "deeper" → dub techniques (delay throws, reverb composition)
+- User says "more groove" or "make it pump" → creative sidechain
+- User says "more texture" or "more complex" → textural layering
+- User says "surprise me" or "WTF moment" → brief textural disruption (2-8 beats max)
+- User says "warmer" or "more analog" → oscillator drift + subtle saturation + filter breathing
