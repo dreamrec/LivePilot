@@ -47,7 +47,7 @@ def _find_send_command_targets() -> list[tuple[str, int, str]]:
         if not scan_dir.exists():
             continue
         for py_file in scan_dir.glob("*.py"):
-            source = py_file.read_text()
+            source = py_file.read_text(encoding="utf-8")
             for i, line in enumerate(source.splitlines(), 1):
                 match = _SEND_CMD_RE.search(line)
                 if match:

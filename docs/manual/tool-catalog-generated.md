@@ -293,4 +293,4 @@
 - **suggest_momentum_rescue** — Get strategic rescue suggestions.
 - **suggest_payoff_repair** — Generate repair strategies for payoff failures.
 
-*Generated from 289 registered tools.*
+*Generated from 293 registered tools.*
