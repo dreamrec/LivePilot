@@ -349,18 +349,17 @@ def render_preview_variant(
         # compiled_plan may be a list (from semantic moves) or a dict with "steps" key
         plan = variant.compiled_plan
         steps = plan if isinstance(plan, list) else plan.get("steps", [])
+
+        from ..runtime.execution_router import execute_plan_steps
+
         applied_count = 0
         try:
             # Capture before state
             before_info = ableton.send_command("get_session_info", {})
 
-            # Apply the plan steps, tracking how many succeed
-            for step in steps:
-                cmd = step.get("tool") or step.get("command")
-                args = step.get("params") or step.get("args", {})
-                if cmd:
-                    ableton.send_command(cmd, args)
-                    applied_count += 1
+            # Execute through unified router
+            exec_results = execute_plan_steps(steps, ableton=ableton, ctx=ctx)
+            applied_count = sum(1 for r in exec_results if r.ok)
 
             # Capture after state
             after_info = ableton.send_command("get_session_info", {})

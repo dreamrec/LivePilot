@@ -177,24 +177,25 @@ def apply_semantic_move(
         result["note"] = "Awaiting approval — present the plan to the user, then execute steps individually"
         return result
 
-    # explore mode — execute immediately
+    # explore mode — execute through unified router
+    from ..runtime.execution_router import execute_plan_steps
+
+    step_dicts = [
+        {"tool": step.tool, "params": step.params, "description": step.description}
+        for step in plan.steps
+    ]
+    exec_results = execute_plan_steps(step_dicts, ableton=ableton, ctx=ctx)
+
     executed_steps = []
-    for step in plan.steps:
-        try:
-            tool_result = ableton.send_command(step.tool, step.params)
-            executed_steps.append({
-                "tool": step.tool,
-                "description": step.description,
-                "result": tool_result,
-                "ok": True,
-            })
-        except Exception as exc:
-            executed_steps.append({
-                "tool": step.tool,
-                "description": step.description,
-                "error": str(exc),
-                "ok": False,
-            })
+    for i, er in enumerate(exec_results):
+        executed_steps.append({
+            "tool": er.tool,
+            "backend": er.backend,
+            "description": step_dicts[i].get("description", ""),
+            "result": er.result if er.ok else None,
+            "error": er.error if not er.ok else None,
+            "ok": er.ok,
+        })
 
     result = plan.to_dict()
     result["executed"] = True
