@@ -20,6 +20,7 @@ def discover_moves(
     request_text: str,
     taste_graph: object = None,
     active_constraints: object = None,
+    candidate_domains: list[str] | None = None,
 ) -> list[dict]:
     """Find semantic moves relevant to the request.
 
@@ -52,6 +53,12 @@ def discover_moves(
 
     if not scored:
         return []
+
+    # Domain filtering if provided (fall back to full list if filtering removes all)
+    if candidate_domains:
+        domain_filtered = [(m, s) for m, s in scored if m.get("family") in candidate_domains]
+        if domain_filtered:
+            scored = domain_filtered
 
     # Taste-based reranking if available
     if (
@@ -479,6 +486,98 @@ def generate_and_rank(
         "identity_confidence": song_brain.get("identity_confidence", 0.0),
         "move_count_matched": len(moves),
     }
+
+
+def generate_wonder_variants(
+    request_text: str,
+    diagnosis: dict | None = None,
+    kernel_id: str = "",
+    song_brain: dict | None = None,
+    taste_graph: object = None,
+    active_constraints: object = None,
+) -> dict:
+    """Full wonder mode pipeline: discover -> select distinct -> build -> taste -> rank."""
+    song_brain = song_brain or {}
+    diagnosis = diagnosis or {}
+    set_prefix = _wonder_id(request_text, kernel_id)
+
+    candidate_domains = diagnosis.get("candidate_domains") or None
+    moves = discover_moves(request_text, taste_graph, active_constraints, candidate_domains)
+    distinct = select_distinct_variants(moves)
+
+    labels = ["safe", "strong", "unexpected"]
+    variants = []
+
+    # Build executable variants from distinct moves
+    for i, move in enumerate(distinct):
+        label = labels[i]
+        move_with_envelope = _with_envelope(move, label)
+        v = build_variant(
+            label=label,
+            move_dict=move_with_envelope,
+            song_brain=song_brain,
+            novelty_level=_NOVELTY_LEVELS.get(label, 0.5),
+            variant_id=f"{set_prefix}_{label}",
+        )
+        if taste_graph is not None:
+            v["taste_fit"] = compute_taste_fit(move, taste_graph)
+        v["distinctness_reason"] = _explain_distinctness(move, distinct, i)
+        variants.append(v)
+
+    executable_count = len(variants)
+
+    # Pad with analytical variants
+    while len(variants) < 3:
+        idx = len(variants)
+        v = build_analytical_variant(
+            label=labels[idx],
+            request_text=request_text,
+            novelty_level=_NOVELTY_LEVELS.get(labels[idx], 0.5),
+            variant_id=f"{set_prefix}_{labels[idx]}",
+        )
+        variants.append(v)
+
+    novelty_band = 0.5
+    taste_evidence = 0
+    if taste_graph is not None and hasattr(taste_graph, "novelty_band"):
+        novelty_band = taste_graph.novelty_band
+        taste_evidence = getattr(taste_graph, "evidence_count", 0)
+
+    ranked = rank_variants(
+        variants,
+        song_brain=song_brain,
+        novelty_band=novelty_band,
+        taste_evidence=taste_evidence,
+    )
+
+    degraded_reason = ""
+    if executable_count == 0:
+        degraded_reason = "No matching executable moves found"
+    elif executable_count == 1:
+        degraded_reason = "Only 1 distinct executable move found"
+
+    return {
+        "mode": "wonder",
+        "request": request_text,
+        "variants": ranked,
+        "recommended": ranked[0]["variant_id"] if ranked else "",
+        "taste_evidence": taste_evidence,
+        "identity_confidence": song_brain.get("identity_confidence", 0.0),
+        "move_count_matched": len(moves),
+        "variant_count_actual": executable_count,
+        "degraded_reason": degraded_reason,
+    }
+
+
+def _explain_distinctness(move: dict, all_moves: list[dict], index: int) -> str:
+    """Explain why this variant is different from the others."""
+    family = move.get("family", "")
+    other_families = {m.get("family", "") for i, m in enumerate(all_moves) if i != index}
+
+    if family not in other_families:
+        return f"Different family: {family}"
+    shape = _compile_plan_shape(move)
+    return f"Different approach: {', '.join(sorted(shape))}"
 
 
 def _wonder_id(request_text: str, kernel_id: str) -> str:
