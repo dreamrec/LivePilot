@@ -1,0 +1,73 @@
+"""Tests for the bundled Codex plugin installer."""
+
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+
+import pytest
+
+
+NODE = shutil.which("node")
+
+
+pytestmark = pytest.mark.skipif(NODE is None, reason="node not available")
+
+
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[1]
+
+
+def _run_node(args: list[str], *, env: dict[str, str]) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [NODE, *args],
+        cwd=_repo_root(),
+        env=env,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+
+
+def test_install_codex_plugin_updates_temp_marketplace(tmp_path: Path):
+    plugin_dir = tmp_path / "plugins" / "livepilot"
+    marketplace = tmp_path / ".agents" / "plugins" / "marketplace.json"
+    env = os.environ.copy()
+    env["LIVEPILOT_CODEX_PLUGIN_PATH"] = str(plugin_dir)
+    env["LIVEPILOT_CODEX_MARKETPLACE_PATH"] = str(marketplace)
+
+    _run_node(["-e", "require('./installer/codex.js').installCodexPlugin()"], env=env)
+
+    expected_manifest = json.loads((_repo_root() / "livepilot" / ".Codex-plugin" / "plugin.json").read_text())
+    manifest = json.loads((plugin_dir / ".Codex-plugin" / "plugin.json").read_text())
+    assert manifest["name"] == expected_manifest["name"]
+    assert manifest["version"] == expected_manifest["version"]
+
+    marketplace_data = json.loads(marketplace.read_text())
+    entry = next(plugin for plugin in marketplace_data["plugins"] if plugin["name"] == "livepilot")
+    assert entry["source"]["path"] == "./plugins/livepilot"
+    assert entry["policy"]["installation"] == "AVAILABLE"
+    assert entry["policy"]["authentication"] == "ON_INSTALL"
+
+
+def test_uninstall_codex_plugin_removes_plugin_and_marketplace_entry(tmp_path: Path):
+    plugin_dir = tmp_path / "plugins" / "livepilot"
+    marketplace = tmp_path / ".agents" / "plugins" / "marketplace.json"
+    env = os.environ.copy()
+    env["LIVEPILOT_CODEX_PLUGIN_PATH"] = str(plugin_dir)
+    env["LIVEPILOT_CODEX_MARKETPLACE_PATH"] = str(marketplace)
+
+    _run_node(["-e", "const m = require('./installer/codex.js'); m.installCodexPlugin(); m.uninstallCodexPlugin();"], env=env)
+
+    assert not plugin_dir.exists()
+    marketplace_data = json.loads(marketplace.read_text())
+    assert all(plugin["name"] != "livepilot" for plugin in marketplace_data["plugins"])
+
+
+def test_help_mentions_codex_plugin_installer():
+    result = _run_node(["bin/livepilot.js", "--help"], env=os.environ.copy())
+    assert "--install-codex-plugin" in result.stdout
+    assert "--uninstall-codex-plugin" in result.stdout

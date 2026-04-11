@@ -124,6 +124,7 @@ class SpectralCache:
             return result
 
 
+
 class SpectralReceiver(asyncio.DatagramProtocol):
     """Receives OSC-formatted UDP packets from the M4L device.
 

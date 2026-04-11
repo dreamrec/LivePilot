@@ -40,6 +40,40 @@ def _identify_port_holder(port: int) -> str | None:
         return None
 
 
+def _master_has_livepilot_analyzer(ableton: AbletonConnection) -> bool:
+    """Check whether the analyzer device is currently on the master track."""
+    try:
+        track = ableton.send_command("get_master_track")
+    except Exception:
+        return False
+
+    devices = track.get("devices", []) if isinstance(track, dict) else []
+    for device in devices:
+        normalized = " ".join(
+            str(device.get("name") or "").replace("_", " ").replace("-", " ").lower().split()
+        )
+        if normalized == "livepilot analyzer":
+            return True
+    return False
+
+
+async def _warm_analyzer_bridge(
+    ableton: AbletonConnection,
+    spectral: SpectralCache,
+    timeout: float = 3.0,
+) -> None:
+    """Give the analyzer stream a short startup window before first use."""
+    if not _master_has_livepilot_analyzer(ableton):
+        return
+
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + max(timeout, 0.0)
+    while loop.time() < deadline:
+        if spectral.is_connected:
+            return
+        await asyncio.sleep(0.05)
+
+
 @asynccontextmanager
 async def lifespan(server):
     """Create and yield the shared AbletonConnection + M4L bridge."""
@@ -80,6 +114,8 @@ async def lifespan(server):
     }
 
     try:
+        if bridge_state["transport"] is not None:
+            await _warm_analyzer_bridge(ableton, spectral)
         yield {
             "ableton": ableton,
             "spectral": spectral,

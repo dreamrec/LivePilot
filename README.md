@@ -466,6 +466,11 @@ claude mcp add LivePilot -- npx livepilot
 claude plugin add github:dreamrec/LivePilot/plugin
 ```
 
+**Codex App:**
+```bash
+npx livepilot --install-codex-plugin
+```
+
 **Claude Desktop (macOS)** — `~/Library/Application Support/Claude/claude_desktop_config.json`:
 ```json
 {
@@ -535,6 +540,17 @@ npx livepilot --status
 
 ## Plugin
 
+**Codex App**
+
+```bash
+npx livepilot --install-codex-plugin
+```
+
+Installs the bundled plugin into `~/plugins/livepilot` and registers it in
+`~/.agents/plugins/marketplace.json`.
+
+**Claude Code**
+
 ```bash
 claude plugin add github:dreamrec/LivePilot/plugin
 ```
@@ -565,6 +581,8 @@ Check memory before creative decisions. Verify every mutation.
 npx livepilot              # Start MCP server (stdio)
 npx livepilot --install    # Install Remote Script
 npx livepilot --uninstall  # Remove Remote Script
+npx livepilot --install-codex-plugin   # Install bundled Codex plugin
+npx livepilot --uninstall-codex-plugin # Remove bundled Codex plugin
 npx livepilot --status     # Check Ableton connection
 npx livepilot --doctor     # Full diagnostic check
 npx livepilot --version    # Show version

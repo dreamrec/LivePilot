@@ -94,14 +94,19 @@ def get_session_kernel(
 
     # Core: session info + capability state
     session_info = ableton.send_command("get_session_info")
+    session_ok = isinstance(session_info, dict) and "error" not in session_info
 
     analyzer_ok = False
+    analyzer_fresh = False
     if spectral is not None:
         analyzer_ok = spectral.is_connected
+        if analyzer_ok:
+            analyzer_fresh = spectral.get("spectrum") is not None
 
     state = build_capability_state(
-        session_ok=True,
+        session_ok=session_ok,
         analyzer_ok=analyzer_ok,
+        analyzer_fresh=analyzer_fresh,
         memory_ok=True,
     )
 

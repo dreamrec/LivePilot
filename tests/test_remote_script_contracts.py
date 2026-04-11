@@ -46,6 +46,37 @@ def _load_remote_modules():
     return router, arrangement, diagnostics
 
 
+def _load_remote_mixing():
+    for name in [
+        "remote_script.LivePilot.mixing",
+        "remote_script.LivePilot.router",
+        "remote_script.LivePilot.utils",
+        "remote_script.LivePilot",
+        "remote_script",
+    ]:
+        sys.modules.pop(name, None)
+
+    remote_pkg = types.ModuleType("remote_script")
+    remote_pkg.__path__ = [str(ROOT / "remote_script")]
+    sys.modules["remote_script"] = remote_pkg
+
+    live_pkg = types.ModuleType("remote_script.LivePilot")
+    live_pkg.__path__ = [str(REMOTE_ROOT)]
+    sys.modules["remote_script.LivePilot"] = live_pkg
+
+    def _load(name: str, path: Path):
+        spec = importlib.util.spec_from_file_location(name, path)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[name] = module
+        assert spec.loader is not None
+        spec.loader.exec_module(module)
+        return module
+
+    _load("remote_script.LivePilot.utils", REMOTE_ROOT / "utils.py")
+    _load("remote_script.LivePilot.router", REMOTE_ROOT / "router.py")
+    return _load("remote_script.LivePilot.mixing", REMOTE_ROOT / "mixing.py")
+
+
 def test_router_missing_required_param_maps_to_invalid_param():
     router, _arrangement, _diagnostics = _load_remote_modules()
 
@@ -201,3 +232,26 @@ def test_session_diagnostics_skips_missing_track_properties():
     result = diagnostics.get_session_diagnostics(_Song(), {})
     assert isinstance(result, dict)
     assert "healthy" in result
+
+
+def test_get_track_meters_zeroes_muted_tracks():
+    mixing = _load_remote_mixing()
+
+    class _Track:
+        def __init__(self, name: str, mute: bool, level: float):
+            self.name = name
+            self.mute = mute
+            self.has_audio_output = True
+            self.output_meter_level = level
+            self.output_meter_left = level
+            self.output_meter_right = level
+
+    class _Song:
+        tracks = [_Track("Open", False, 0.42), _Track("Muted", True, 0.77)]
+
+    result = mixing.get_track_meters(_Song(), {"include_stereo": True})
+
+    assert result["tracks"][0]["level"] == 0.42
+    assert result["tracks"][1]["level"] == 0.0
+    assert result["tracks"][1]["left"] == 0.0
+    assert result["tracks"][1]["right"] == 0.0

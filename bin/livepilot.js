@@ -211,6 +211,45 @@ function checkStatus() {
   });
 }
 
+function probeAnalyzer(venvPy) {
+  const probeCode = `
+import asyncio
+import json
+import sys
+from types import SimpleNamespace
+
+sys.path.insert(0, ${JSON.stringify(ROOT)})
+
+from mcp_server.server import lifespan, _master_has_livepilot_analyzer
+from mcp_server.runtime.capability_probe import probe_capabilities
+
+async def main():
+    async with lifespan(None) as ctx:
+        loaded = _master_has_livepilot_analyzer(ctx["ableton"])
+        report = probe_capabilities(
+            ableton=ctx["ableton"],
+            ctx=SimpleNamespace(lifespan_context=ctx),
+        )
+        print(json.dumps({
+            "loaded_on_master": loaded,
+            "m4l_bridge": report["m4l_bridge"],
+            "tier": report["tier"]["active"],
+        }))
+
+asyncio.run(main())
+`;
+
+  const out = execFileSync(venvPy, ["-c", probeCode], {
+    cwd: ROOT,
+    encoding: "utf-8",
+    timeout: 15000,
+    stdio: ["pipe", "pipe", "pipe"],
+  }).trim();
+
+  const lines = out.split(/\r?\n/).filter(Boolean);
+  return JSON.parse(lines[lines.length - 1]);
+}
+
 // ---------------------------------------------------------------------------
 // Doctor — comprehensive diagnostic
 // ---------------------------------------------------------------------------
@@ -310,6 +349,37 @@ async function doctor() {
   const connected = await checkStatus();
   if (!connected) {
     ok = false;
+  }
+
+  // 9. Analyzer / bridge capability
+  if (connected && fs.existsSync(venvPy)) {
+    const HOST = process.env.LIVE_MCP_HOST || "127.0.0.1";
+    const PORT = parseInt(process.env.LIVE_MCP_PORT || "9878", 10);
+    const otherClient = findOtherLiveClient(HOST, PORT);
+
+    if (otherClient) {
+      console.log("  Analyzer: skipped (another LivePilot client is connected: %s)", otherClient);
+    } else {
+      try {
+        const analyzer = probeAnalyzer(venvPy);
+        if (analyzer.loaded_on_master) {
+          console.log(
+            "  Analyzer: %s",
+            analyzer.m4l_bridge.status === "ok"
+              ? "loaded on master and bridge is active"
+              : `loaded on master but bridge unavailable (${analyzer.m4l_bridge.detail})`,
+          );
+          if (analyzer.m4l_bridge.status !== "ok") {
+            ok = false;
+          }
+        } else {
+          console.log("  Analyzer: not detected on master track (optional)");
+        }
+      } catch (err) {
+        console.log("  Analyzer: could not probe (%s)", err.message || String(err));
+        ok = false;
+      }
+    }
   }
 
   // Summary
@@ -580,6 +650,7 @@ async function setup() {
     console.log("  3. Set Control Surface to 'LivePilot'");
     console.log("  4. Start making music with AI!");
     console.log("");
+    console.log("  Codex App:      npx livepilot --install-codex-plugin");
     console.log("  Claude Code:    claude mcp add LivePilot -- npx livepilot");
     console.log("  Claude Desktop: Already configured if using Desktop Extension");
   } else {
@@ -613,6 +684,8 @@ async function main() {
     console.log("  --setup       Full setup wizard (install + configure + test)");
     console.log("  --install     Install Remote Script into Ableton Live");
     console.log("  --uninstall   Remove Remote Script from Ableton Live");
+    console.log("  --install-codex-plugin   Install the bundled Codex plugin locally");
+    console.log("  --uninstall-codex-plugin Remove the locally installed Codex plugin");
     console.log("  --status      Check if Ableton Live is reachable");
     console.log("  --doctor      Run diagnostics (Python, deps, connection)");
     console.log("  --version     Show version");
@@ -636,6 +709,20 @@ async function main() {
   if (flag === "--uninstall") {
     const { uninstall } = require(path.join(ROOT, "installer", "install.js"));
     uninstall();
+    return;
+  }
+
+  // --install-codex-plugin
+  if (flag === "--install-codex-plugin") {
+    const { installCodexPlugin } = require(path.join(ROOT, "installer", "codex.js"));
+    installCodexPlugin();
+    return;
+  }
+
+  // --uninstall-codex-plugin
+  if (flag === "--uninstall-codex-plugin") {
+    const { uninstallCodexPlugin } = require(path.join(ROOT, "installer", "codex.js"));
+    uninstallCodexPlugin();
     return;
   }
 

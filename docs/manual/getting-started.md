@@ -40,6 +40,15 @@ If you don't see LivePilot in the dropdown, the Remote Script wasn't copied to t
 claude mcp add LivePilot -- npx livepilot
 ```
 
+### Codex App
+
+```bash
+npx livepilot --install-codex-plugin
+```
+
+This installs the bundled LivePilot plugin into `~/plugins/livepilot` and
+registers it in `~/.agents/plugins/marketplace.json`.
+
 ### Claude Desktop
 
 Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
@@ -151,7 +160,18 @@ Every destructive operation can be undone. The AI has access to `undo` and `redo
 
 Good practice: after creating or modifying something, the AI should read back the state to confirm it worked. This is built into LivePilot's design — the AI is taught to verify after every write operation.
 
-## The Claude Code plugin
+## Plugin install
+
+### Codex App
+
+```bash
+npx livepilot --install-codex-plugin
+```
+
+This gives Codex the bundled LivePilot plugin surfaces from the repo without
+manually copying files into `~/plugins`.
+
+### Claude Code
 
 If you're using Claude Code, install the plugin for an enhanced experience:
 

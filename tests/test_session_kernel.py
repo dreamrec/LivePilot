@@ -115,3 +115,34 @@ def test_get_session_kernel_includes_action_ledger_summary():
     assert result["ledger_summary"]["total_moves"] == 1
     assert result["ledger_summary"]["memory_candidate_count"] == 1
     assert result["ledger_summary"]["last_move"]["intent"] == "tighten low end"
+
+
+def test_get_session_kernel_marks_analyzer_available_when_fresh():
+    from mcp_server.runtime.tools import get_session_kernel
+
+    class _Ableton:
+        def send_command(self, cmd, params=None):
+            assert cmd == "get_session_info"
+            return {"tempo": 120, "track_count": 2, "tracks": []}
+
+    class _Spectral:
+        is_connected = True
+
+        def get(self, key):
+            assert key == "spectrum"
+            return {"value": {"sub": 0.1}}
+
+    ctx = SimpleNamespace(
+        lifespan_context={
+            "ableton": _Ableton(),
+            "spectral": _Spectral(),
+            "action_ledger": SessionLedger(),
+        }
+    )
+
+    result = get_session_kernel(ctx, request_text="make it drift")
+    analyzer = result["capability_state"]["capability_state"]["domains"]["analyzer"]
+
+    assert analyzer["available"] is True
+    assert analyzer["mode"] == "measured"
+    assert analyzer["reasons"] == []
