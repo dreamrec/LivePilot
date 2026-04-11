@@ -713,3 +713,49 @@ def back_to_arranger(song, params):
     """Switch playback from session clips back to the arrangement timeline."""
     song.back_to_arranger = True
     return {"back_to_arranger": True}
+
+
+@register("force_arrangement")
+def force_arrangement(song, params):
+    """Force ALL tracks to follow the arrangement timeline.
+
+    Stops all session clips, releases every track from session override,
+    sets back_to_arranger, and optionally jumps to a start position.
+
+    This is the atomic "play the arrangement from the top" command.
+    """
+    # 1. Stop playback
+    was_playing = song.is_playing
+    if was_playing:
+        song.stop_playing()
+
+    # 2. Stop every clip slot on every track to release session overrides
+    for track in song.tracks:
+        track.stop_all_clips()
+    for track in song.return_tracks:
+        track.stop_all_clips()
+
+    # 3. Global back-to-arranger
+    song.back_to_arranger = True
+
+    # 4. Jump to position (default: start)
+    beat_time = float(params.get("beat_time", 0))
+    song.current_song_time = max(0, beat_time)
+
+    # 5. Set loop if requested
+    if "loop_length" in params:
+        song.loop_start = float(params.get("loop_start", 0))
+        song.loop_length = float(params["loop_length"])
+        song.loop = True
+
+    # 6. Start playback if requested (default: yes)
+    play = params.get("play", True)
+    if play:
+        song.start_playing()
+
+    return {
+        "arrangement_active": True,
+        "position": song.current_song_time,
+        "is_playing": song.is_playing,
+        "loop": song.loop,
+    }

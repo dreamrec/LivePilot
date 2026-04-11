@@ -57,7 +57,7 @@ REMOTE_COMMANDS: frozenset[str] = frozenset({
     "set_arrangement_clip_name", "jump_to_time",
     "capture_midi", "start_recording", "stop_recording",
     "get_cue_points", "jump_to_cue", "toggle_cue_point",
-    "back_to_arranger",
+    "back_to_arranger", "force_arrangement",
     # diagnostics (1)
     "get_session_diagnostics",
     # ping (built-in)

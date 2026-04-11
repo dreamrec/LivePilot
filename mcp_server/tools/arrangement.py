@@ -289,6 +289,33 @@ def back_to_arranger(ctx: Context) -> dict:
 
 
 @mcp.tool()
+def force_arrangement(
+    ctx: Context,
+    beat_time: float = 0,
+    loop_start: float = 0,
+    loop_length: float = 0,
+    play: bool = True,
+) -> dict:
+    """Force ALL tracks to follow the arrangement and start playback.
+
+    Atomically: stops all session clips, releases every track from
+    session override, sets back-to-arranger, jumps to position, and
+    starts playing. This is the "play my arrangement from the top"
+    command.
+
+    beat_time: position to start from (default 0 = beginning)
+    loop_start: loop region start in beats (default 0)
+    loop_length: loop region length in beats (0 = no loop change)
+    play: whether to start playback (default True)
+    """
+    params: dict = {"beat_time": beat_time, "play": play}
+    if loop_length > 0:
+        params["loop_start"] = loop_start
+        params["loop_length"] = loop_length
+    return _get_ableton(ctx).send_command("force_arrangement", params)
+
+
+@mcp.tool()
 def get_arrangement_notes(
     ctx: Context,
     track_index: int,

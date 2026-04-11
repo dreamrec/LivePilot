@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog
 
-293 tools across 39 domains.
+294 tools across 39 domains.
 
 ---
 
@@ -148,6 +148,7 @@
 | `set_arrangement_clip_name` | Rename arrangement clip |
 | `set_arrangement_automation` | Write arrangement automation |
 | `back_to_arranger` | Switch to arrangement view |
+| `force_arrangement` | Force ALL tracks to follow arrangement — stops session clips, releases overrides, starts playback |
 | `jump_to_time` | Seek to beat position |
 | `capture_midi` | Capture played MIDI |
 | `start_recording` | Start recording |
