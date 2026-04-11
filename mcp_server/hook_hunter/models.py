@@ -19,6 +19,7 @@ class HookCandidate:
     contrast_potential: float = 0.0  # 0-1 how well it stands out
     development_potential: float = 0.0  # 0-1 how much room to develop
     salience: float = 0.0  # composite score
+    evidence_sources: list[str] = field(default_factory=list)  # what data informed this
 
     def to_dict(self) -> dict:
         return asdict(self)
