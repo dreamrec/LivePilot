@@ -2,326 +2,115 @@
 
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make "across sessions" and "return to a project" actually true — persist taste graph inputs, session continuity state, and Wonder session outcomes so they survive server restart.
+**Goal:** Make "across sessions" and "return to a project" actually true — persist taste graph inputs, session continuity state, and project context so they survive server restart.
 
-**Architecture:** Follow the TechniqueStore pattern (atomic JSON write, lazy init, corruption recovery, threading.Lock) for three new stores: TasteStore, ContinuityStore, and ProjectStore. Define four memory layers: session (ephemeral), project (per-song), global taste (cross-session), and techniques (reusable knowledge).
+**Architecture:** Follow the TechniqueStore pattern (atomic JSON write, lazy init, corruption recovery, threading.Lock). Create a `persistence/` package with a base store class and two concrete stores: taste and project state. Define four memory layers explicitly.
 
 **Tech Stack:** Python 3.10+, JSON files at `~/.livepilot/`, threading.Lock, atomic tmp+rename.
 
-**Depends on:** Nothing — independent lane, can run in parallel with A+B.
+**Depends on:** PR1 (capability contract — persistence state feeds into capability reporting).
 **Blocks:** Lane E (docs must not claim persistence until it exists).
 
----
-
-## File Structure
-
-| File | Responsibility | Change |
-|------|---------------|--------|
-| `mcp_server/memory/persistent_store.py` | **New** — base class for persistent JSON stores with atomic write + recovery |
-| `mcp_server/memory/taste_store.py` | **New** — persistent taste: move outcomes, novelty pref, device affinity, anti-prefs |
-| `mcp_server/memory/taste_memory.py` | **Modify** — wire into persistent taste store |
-| `mcp_server/memory/anti_memory.py` | **Modify** — wire into persistent taste store |
-| `mcp_server/memory/taste_graph.py` | **Modify** — `build_taste_graph` reads from persistent store; `record_move_outcome` writes back |
-| `mcp_server/memory/tools.py` | **Modify** — fix record_positive_preference (if not done in Lane A) |
-| `mcp_server/session_continuity/persistence.py` | **New** — persist threads/turns per project |
-| `mcp_server/session_continuity/tracker.py` | **Modify** — wire persistence on write operations |
-| `tests/test_persistent_store.py` | **New** — base store tests |
-| `tests/test_taste_persistence.py` | **New** — taste survives restart |
-| `tests/test_continuity_persistence.py` | **New** — threads/turns survive restart |
+**PR sequence in this plan:** PR6 (after PR1), PR7 (after PR6).
 
 ---
 
-## Chunk 1: Persistent Store Base + Taste Persistence (C1, C3, C4)
+## PR6: Persistent Taste State
 
-### Task 1: Build the persistent store base class
+**Goal:** Taste learning survives restart. Move outcomes, novelty preference, device affinity, and anti-preferences are persisted.
+
+**Depends on:** PR1 (capability contract).
 
 **Files:**
-- Create: `mcp_server/memory/persistent_store.py`
-- Test: `tests/test_persistent_store.py`
+- Create: `mcp_server/persistence/__init__.py`
+- Create: `mcp_server/persistence/base_store.py` — atomic JSON store base class
+- Create: `mcp_server/persistence/taste_store.py` — persistent taste state
+- Modify: `mcp_server/memory/taste_graph.py` — `build_taste_graph` reads from persistent store; mutations write back
+- Modify: `mcp_server/memory/taste_memory.py` — wire `update_from_outcome` to persistent backing
+- Modify: `mcp_server/memory/anti_memory.py` — wire `record_dislike` to persistent backing
+- Modify: `mcp_server/memory/tools.py:194` — fix `record_positive_preference` (if not done in PR4)
+- Modify: `mcp_server/preview_studio/tools.py:272-293` — commit writes to persistent taste, not throwaway graph
+- Modify: `mcp_server/wonder_mode/tools.py:259-271` — discard writes to persistent taste
+- Create: `tests/test_persistent_base.py` — base store tests
+- Create: `tests/test_taste_persistence.py` — taste survives restart
 
-The base class follows the TechniqueStore pattern exactly: lazy init, atomic tmp+rename with fsync, corruption recovery, threading.Lock.
+**Acceptance criteria:**
+- [ ] `PersistentJsonStore` base class: atomic write (tmp+rename+fsync), lazy init, corruption recovery (.corrupt rename), threading.Lock
+- [ ] `PersistentTasteStore` stores: move outcomes (per move_id: family, kept_count, undone_count), novelty_band, device affinities, anti-preferences, dimension weights, evidence_count
+- [ ] Storage location: `~/.livepilot/taste.json`
+- [ ] `build_taste_graph()` accepts optional `persistent_store` and hydrates graph from it
+- [ ] `TasteGraph.record_move_outcome()` writes through to persistent store
+- [ ] Preview commit path writes to persistent store (not throwaway graph)
+- [ ] Wonder discard path writes to persistent store
+- [ ] New store instance reads same file → data survives
+- [ ] Corrupt file → renamed to `.corrupt`, fresh store started
+- [ ] Tests: write+restart round trip, novelty persistence, device affinity persistence, anti-preference persistence, corruption recovery
+- [ ] All existing tests pass
 
-- [ ] **Step 1: Write tests for the base store**
-
-```python
-"""Tests for the persistent JSON store base class."""
-
-import json
-import os
-import tempfile
-from pathlib import Path
-
-from mcp_server.memory.persistent_store import PersistentJsonStore
-
-
-def test_write_and_read_round_trip():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        store = PersistentJsonStore(Path(tmpdir) / "test.json")
-        store.write({"key": "value", "count": 42})
-        data = store.read()
-        assert data == {"key": "value", "count": 42}
-
-
-def test_read_nonexistent_returns_default():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        store = PersistentJsonStore(Path(tmpdir) / "missing.json")
-        data = store.read()
-        assert data == {}
-
-
-def test_corrupt_file_recovers():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        path = Path(tmpdir) / "corrupt.json"
-        path.write_text("not valid json {{{")
-        store = PersistentJsonStore(path)
-        data = store.read()
-        assert data == {}
-        # Corrupt file should be renamed
-        assert (Path(tmpdir) / "corrupt.json.corrupt").exists()
-
-
-def test_atomic_write_survives_content():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        store = PersistentJsonStore(Path(tmpdir) / "atomic.json")
-        store.write({"first": True})
-        store.write({"second": True})
-        data = store.read()
-        assert data == {"second": True}
-        # No .tmp file should remain
-        assert not (Path(tmpdir) / "atomic.tmp").exists()
-```
-
-- [ ] **Step 2: Implement the base store**
-
-```python
-"""Persistent JSON store with atomic writes and corruption recovery.
-
-Follows the TechniqueStore pattern: lazy init, atomic tmp+rename,
-fsync to disk, corruption recovery via .corrupt rename.
-"""
-
-from __future__ import annotations
-
-import json
-import os
-import threading
-from pathlib import Path
-from typing import Any
-
-
-class PersistentJsonStore:
-    """Thread-safe, crash-safe JSON file store."""
-
-    def __init__(self, path: Path):
-        self._path = path
-        self._lock = threading.Lock()
-
-    def read(self) -> dict:
-        """Read the store. Returns {} if missing or corrupt."""
-        with self._lock:
-            if not self._path.exists():
-                return {}
-            try:
-                return json.loads(self._path.read_text(encoding="utf-8"))
-            except (json.JSONDecodeError, OSError):
-                # Corruption recovery — rename and start fresh
-                corrupt = self._path.with_suffix(".json.corrupt")
-                try:
-                    self._path.rename(corrupt)
-                except OSError:
-                    pass
-                return {}
-
-    def write(self, data: dict) -> None:
-        """Atomically write data to disk."""
-        with self._lock:
-            self._path.parent.mkdir(parents=True, exist_ok=True)
-            tmp = self._path.with_suffix(".tmp")
-            try:
-                with open(tmp, "w", encoding="utf-8") as f:
-                    json.dump(data, f, indent=2, default=str)
-                    f.flush()
-                    os.fsync(f.fileno())
-                os.replace(str(tmp), str(self._path))
-            except OSError:
-                try:
-                    tmp.unlink(missing_ok=True)
-                except OSError:
-                    pass
-                raise
-```
-
-- [ ] **Step 3: Run tests**
-
-- [ ] **Step 4: Commit**
+**Implementation notes:**
+- Follow `technique_store.py` pattern exactly: `_flush()` with `os.fsync` + `os.replace`
+- The key change: `build_taste_graph` currently creates a new `TasteGraph()` and copies data one-way from stores. After this PR, it also loads `move_family_scores` and `device_affinities` from the persistent file.
+- `TasteGraph.record_move_outcome()` currently mutates the in-memory object only. After this PR, it also calls `persistent_store.record_move_outcome()` which flushes to disk.
+- The `ctx.lifespan_context` stores (`taste_memory`, `anti_memory`) remain as fast in-session caches. The persistent store is the durable backing.
 
 ---
 
-### Task 2: Build persistent taste store (C3)
+## PR7: Project and Session Continuity Persistence
+
+**Goal:** "Return to this project" restores open threads, prior exploration, and unresolved creative context.
+
+**Depends on:** PR6 (persistent store base class).
 
 **Files:**
-- Create: `mcp_server/memory/taste_store.py`
-- Test: `tests/test_taste_persistence.py`
+- Create: `mcp_server/persistence/project_store.py` — per-project state
+- Create: `mcp_server/runtime/project_identity.py` — project fingerprinting from session info
+- Modify: `mcp_server/session_continuity/tracker.py` — flush threads/turns to project store on write
+- Modify: `mcp_server/session_continuity/models.py` — add `from_dict` class methods for deserialization
+- Modify: `mcp_server/wonder_mode/session.py` — optionally persist WonderSession outcomes per project
+- Modify: `mcp_server/memory/session_memory.py` — project-scoped persistence option
+- Create: `tests/test_project_identity.py`
+- Create: `tests/test_continuity_persistence.py`
+- Create: `tests/test_wonder_persistence.py`
 
-- [ ] **Step 1: Write tests**
+**Acceptance criteria:**
+- [ ] `ProjectIdentity` from session info: uses set file path hash if available, falls back to `(tempo, track_count, track_names_hash)` fingerprint
+- [ ] `PersistentProjectStore` stores per-project: open threads, recent turns (last 50), wonder session outcomes (last 10), session memory entries
+- [ ] Storage location: `~/.livepilot/projects/<project_hash>/state.json`
+- [ ] `tracker.py`: `record_turn_resolution` and `open_thread` flush to project store
+- [ ] `tracker.py`: on init, loads existing project state if project hash matches
+- [ ] `CreativeThread.from_dict()` and `TurnResolution.from_dict()` for deserialization
+- [ ] WonderSession outcomes (committed/rejected with variant info) persisted per project
+- [ ] Session memory entries with `expires_with_session: False` persisted per project
+- [ ] Tests: thread persistence across restart, turn persistence, project identity stability, different projects get different stores
+- [ ] All existing tests pass
 
-```python
-"""Tests for persistent taste state."""
-
-import tempfile
-from pathlib import Path
-
-from mcp_server.memory.taste_store import PersistentTasteStore
-
-
-def test_move_outcome_persists():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        store = PersistentTasteStore(Path(tmpdir) / "taste.json")
-        store.record_move_outcome("make_punchier", "mix", kept=True, score=0.8)
-        
-        # Create a new store instance reading from same file
-        store2 = PersistentTasteStore(Path(tmpdir) / "taste.json")
-        data = store2.get_all()
-        assert data["move_outcomes"]["make_punchier"]["kept_count"] == 1
-
-
-def test_novelty_preference_persists():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        store = PersistentTasteStore(Path(tmpdir) / "taste.json")
-        store.update_novelty(chose_bold=True)
-        store.update_novelty(chose_bold=True)
-        
-        store2 = PersistentTasteStore(Path(tmpdir) / "taste.json")
-        data = store2.get_all()
-        assert data["novelty_band"] > 0.5
-
-
-def test_device_affinity_persists():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        store = PersistentTasteStore(Path(tmpdir) / "taste.json")
-        store.record_device_use("Wavetable", positive=True)
-        
-        store2 = PersistentTasteStore(Path(tmpdir) / "taste.json")
-        data = store2.get_all()
-        assert "Wavetable" in data["device_affinities"]
-
-
-def test_anti_preference_persists():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        store = PersistentTasteStore(Path(tmpdir) / "taste.json")
-        store.record_anti_preference("width", "increase")
-        
-        store2 = PersistentTasteStore(Path(tmpdir) / "taste.json")
-        data = store2.get_all()
-        assert ("width", "increase") in [
-            (a["dimension"], a["direction"]) for a in data["anti_preferences"]
-        ]
-```
-
-- [ ] **Step 2: Implement PersistentTasteStore**
-
-Wraps `PersistentJsonStore`. Schema:
-```json
-{
-  "version": 1,
-  "move_outcomes": { "move_id": { "family": "...", "kept_count": N, "undone_count": N, "score": 0.0 } },
-  "novelty_band": 0.5,
-  "device_affinities": { "device_name": { "affinity": 0.0, "use_count": N } },
-  "anti_preferences": [ { "dimension": "...", "direction": "...", "strength": 0.0, "count": N } ],
-  "dimension_weights": { "dim_name": 0.0 },
-  "evidence_count": 0
-}
-```
-
-- [ ] **Step 3: Wire into TasteGraph build**
-
-Modify `mcp_server/memory/taste_graph.py` `build_taste_graph` to accept an optional `persistent_store` and hydrate the graph from it. Modify `TasteGraph.record_move_outcome` to write back to the persistent store.
-
-- [ ] **Step 4: Wire into Wonder/Preview commit paths**
-
-In `wonder_mode/tools.py` and `preview_studio/tools.py`, when calling `graph.record_move_outcome()`, ensure the persistent store is passed through so the update persists.
-
-- [ ] **Step 5: Run tests**
-
-- [ ] **Step 6: Commit**
+**Implementation notes:**
+- Project identity is tricky without Ableton connection. Use a two-phase approach:
+  1. At server start (no Ableton yet): use empty/default project hash
+  2. On first `get_session_info` call: compute real project hash, load matching state
+- Session continuity `tracker.py` currently uses module-level globals. This PR should migrate them to a class instance scoped to the project, with the persistent store as backing.
+- Keep the module-level interface (`open_thread`, `record_turn_resolution`) working — they delegate to the class instance internally.
+- Only persist the last 50 turns and last 10 Wonder outcomes per project to prevent unbounded growth.
 
 ---
 
-### Task 3: Persist session continuity per project (C5, C6)
+## Memory Layer Architecture (Reference)
 
-**Files:**
-- Create: `mcp_server/session_continuity/persistence.py`
-- Modify: `mcp_server/session_continuity/tracker.py`
-- Test: `tests/test_continuity_persistence.py`
+After PR6 and PR7, the four memory layers are:
 
-- [ ] **Step 1: Write tests**
+| Layer | Scope | Storage | Survives restart? | What it stores |
+|-------|-------|---------|-------------------|----------------|
+| **Session** | Current MCP process | `ctx.lifespan_context` | No | Fast caches, capability state, current kernel |
+| **Project** | Per Ableton set | `~/.livepilot/projects/<hash>/state.json` | Yes | Open threads, turn history, Wonder outcomes, session memory |
+| **Global Taste** | Cross-session | `~/.livepilot/taste.json` | Yes | Move outcomes, novelty band, device affinity, anti-preferences |
+| **Techniques** | Reusable knowledge | `~/.livepilot/memory/techniques.json` | Yes | Beat patterns, device chains, mix templates (already works) |
 
-```python
-"""Tests for persistent session continuity."""
+---
 
-import tempfile
-from pathlib import Path
+## Dependency Map
 
-from mcp_server.session_continuity.persistence import ContinuityStore
-
-
-def test_thread_persists():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        store = ContinuityStore(Path(tmpdir) / "continuity.json")
-        store.save_thread({"thread_id": "t1", "description": "Make chorus bigger", "status": "open"})
-        
-        store2 = ContinuityStore(Path(tmpdir) / "continuity.json")
-        threads = store2.get_threads()
-        assert any(t["thread_id"] == "t1" for t in threads)
-
-
-def test_turn_persists():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        store = ContinuityStore(Path(tmpdir) / "continuity.json")
-        store.save_turn({"turn_id": "tr1", "outcome": "accepted"})
-        
-        store2 = ContinuityStore(Path(tmpdir) / "continuity.json")
-        turns = store2.get_turns()
-        assert any(t["turn_id"] == "tr1" for t in turns)
+```
+PR1 (Capability) ──► PR6 (Persistent Taste) ──► PR7 (Project Continuity)
 ```
 
-- [ ] **Step 2: Implement ContinuityStore**
-
-- [ ] **Step 3: Wire into tracker.py**
-
-Modify `record_turn_resolution` and `open_thread` to flush to persistent store.
-
-- [ ] **Step 4: Run tests**
-
-- [ ] **Step 5: Commit**
-
----
-
-## Chunk 2: Memory Layer Definitions (C2)
-
-### Task 4: Document and enforce memory layers
-
-- [ ] **Step 1: Add a memory architecture reference**
-
-Define the four layers in a reference file:
-
-| Layer | Scope | Storage | Survives restart? |
-|-------|-------|---------|-------------------|
-| Session | Current MCP process | `ctx.lifespan_context` | No |
-| Project | Per Ableton set | `~/.livepilot/projects/<hash>/` | Yes |
-| Global Taste | Cross-session | `~/.livepilot/taste.json` | Yes |
-| Techniques | Reusable knowledge | `~/.livepilot/memory/techniques.json` | Yes (already works) |
-
-- [ ] **Step 2: Run full test suite**
-
-- [ ] **Step 3: Commit**
-
----
-
-## What This Plan Does NOT Cover
-
-| Deferred | Why | Plan |
-|----------|-----|------|
-| Project identity from set path | Requires Ableton connection to read set file path — deferred to Lane E integration | Plan 4 |
-| Full Wonder session persistence | Wonder sessions are short-lived; taste+continuity persistence covers the meaningful state | Follow-up |
-| Preview set persistence | Preview sets are ephemeral by design — commit/discard resolves them | N/A |
+PR6 can start as soon as PR1 is merged. PR7 depends on PR6 (reuses the base store).
