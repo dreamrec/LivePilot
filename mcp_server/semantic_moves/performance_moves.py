@@ -16,12 +16,12 @@ RECOVER_ENERGY = SemanticMove(
     risk_level="low",
     required_capabilities=["session"],
     compile_plan=[
-        {"tool": "set_track_volume", "params": {"description": "Gradually restore drum volume"}, "description": "Bring drums back"},
-        {"tool": "set_track_volume", "params": {"description": "Restore bass volume"}, "description": "Bring bass back"},
-        {"tool": "set_track_send", "params": {"description": "Reduce reverb send to tighten mix"}, "description": "Tighten reverb"},
+        {"tool": "set_track_volume", "params": {"description": "Gradually restore drum volume"}, "description": "Bring drums back", "backend": "remote_command"},
+        {"tool": "set_track_volume", "params": {"description": "Restore bass volume"}, "description": "Bring bass back", "backend": "remote_command"},
+        {"tool": "set_track_send", "params": {"description": "Reduce reverb send to tighten mix"}, "description": "Tighten reverb", "backend": "remote_command"},
     ],
     verification_plan=[
-        {"tool": "get_track_meters", "check": "drum and bass tracks producing audio"},
+        {"tool": "get_track_meters", "check": "drum and bass tracks producing audio", "backend": "remote_command"},
     ],
 )
 
@@ -34,11 +34,11 @@ DECOMPRESS_TENSION = SemanticMove(
     risk_level="low",
     required_capabilities=["session"],
     compile_plan=[
-        {"tool": "set_track_volume", "params": {"description": "Pull back high-energy elements 15-20%"}, "description": "Pull energy down"},
-        {"tool": "set_track_send", "params": {"description": "Increase reverb for spaciousness"}, "description": "Open space"},
+        {"tool": "set_track_volume", "params": {"description": "Pull back high-energy elements 15-20%"}, "description": "Pull energy down", "backend": "remote_command"},
+        {"tool": "set_track_send", "params": {"description": "Increase reverb for spaciousness"}, "description": "Open space", "backend": "remote_command"},
     ],
     verification_plan=[
-        {"tool": "get_track_meters", "check": "all tracks still alive, overall energy decreased"},
+        {"tool": "get_track_meters", "check": "all tracks still alive, overall energy decreased", "backend": "remote_command"},
     ],
 )
 
@@ -51,11 +51,11 @@ SAFE_SPOTLIGHT = SemanticMove(
     risk_level="low",
     required_capabilities=["session"],
     compile_plan=[
-        {"tool": "set_track_volume", "params": {"description": "Pull non-spotlight tracks to 30-40%"}, "description": "Pull background"},
-        {"tool": "set_track_volume", "params": {"description": "Push spotlight track to 80-85%"}, "description": "Push spotlight"},
+        {"tool": "set_track_volume", "params": {"description": "Pull non-spotlight tracks to 30-40%"}, "description": "Pull background", "backend": "remote_command"},
+        {"tool": "set_track_volume", "params": {"description": "Push spotlight track to 80-85%"}, "description": "Push spotlight", "backend": "remote_command"},
     ],
     verification_plan=[
-        {"tool": "get_track_meters", "check": "spotlight track clearly dominant, others still audible"},
+        {"tool": "get_track_meters", "check": "spotlight track clearly dominant, others still audible", "backend": "remote_command"},
     ],
 )
 
@@ -68,11 +68,11 @@ EMERGENCY_SIMPLIFY = SemanticMove(
     risk_level="low",
     required_capabilities=["session"],
     compile_plan=[
-        {"tool": "set_track_volume", "params": {"description": "Pull all non-rhythm tracks to 10-15%"}, "description": "Strip to essentials"},
-        {"tool": "set_track_volume", "params": {"description": "Keep drums at current level"}, "description": "Maintain rhythm"},
+        {"tool": "set_track_volume", "params": {"description": "Pull all non-rhythm tracks to 10-15%"}, "description": "Strip to essentials", "backend": "remote_command"},
+        {"tool": "set_track_volume", "params": {"description": "Keep drums at current level"}, "description": "Maintain rhythm", "backend": "remote_command"},
     ],
     verification_plan=[
-        {"tool": "get_track_meters", "check": "drums producing audio, other tracks at low but nonzero level"},
+        {"tool": "get_track_meters", "check": "drums producing audio, other tracks at low but nonzero level", "backend": "remote_command"},
     ],
 )
 

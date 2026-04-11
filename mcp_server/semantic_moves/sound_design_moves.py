@@ -14,12 +14,12 @@ ADD_WARMTH = SemanticMove(
     protect={"clarity": 0.6, "punch": 0.5},
     risk_level="low",
     compile_plan=[
-        {"tool": "set_device_parameter", "params": {"description": "Add Saturator drive +2-4dB for harmonic warmth"}, "description": "Add saturation"},
-        {"tool": "set_device_parameter", "params": {"description": "Boost EQ low-mid shelf +1-2dB"}, "description": "Low-mid warmth"},
+        {"tool": "set_device_parameter", "params": {"description": "Add Saturator drive +2-4dB for harmonic warmth"}, "description": "Add saturation", "backend": "remote_command"},
+        {"tool": "set_device_parameter", "params": {"description": "Boost EQ low-mid shelf +1-2dB"}, "description": "Low-mid warmth", "backend": "remote_command"},
     ],
     verification_plan=[
-        {"tool": "get_master_spectrum", "check": "low-mid energy increased, high-mid stable"},
-        {"tool": "get_track_meters", "check": "target track producing audio"},
+        {"tool": "get_master_spectrum", "check": "low-mid energy increased, high-mid stable", "backend": "mcp_tool"},
+        {"tool": "get_track_meters", "check": "target track producing audio", "backend": "remote_command"},
     ],
 )
 
@@ -31,11 +31,11 @@ ADD_TEXTURE = SemanticMove(
     protect={"clarity": 0.6},
     risk_level="medium",
     compile_plan=[
-        {"tool": "apply_automation_shape", "params": {"curve_type": "perlin", "description": "Perlin noise on filter cutoff for organic texture"}, "description": "Organic filter motion"},
-        {"tool": "set_track_send", "params": {"description": "Increase delay send for spatial texture"}, "description": "Spatial texture via delay"},
+        {"tool": "apply_automation_shape", "params": {"curve_type": "perlin", "description": "Perlin noise on filter cutoff for organic texture"}, "description": "Organic filter motion", "backend": "mcp_tool"},
+        {"tool": "set_track_send", "params": {"description": "Increase delay send for spatial texture"}, "description": "Spatial texture via delay", "backend": "remote_command"},
     ],
     verification_plan=[
-        {"tool": "get_track_meters", "check": "track producing audio with variation"},
+        {"tool": "get_track_meters", "check": "track producing audio with variation", "backend": "remote_command"},
     ],
 )
 
@@ -47,11 +47,11 @@ SHAPE_TRANSIENTS = SemanticMove(
     protect={"warmth": 0.5},
     risk_level="low",
     compile_plan=[
-        {"tool": "set_device_parameter", "params": {"description": "Adjust Compressor attack time (faster = sharper transients, slower = rounder)"}, "description": "Shape attack"},
-        {"tool": "set_device_parameter", "params": {"description": "Adjust Compressor release for rhythmic pumping"}, "description": "Shape release"},
+        {"tool": "set_device_parameter", "params": {"description": "Adjust Compressor attack time (faster = sharper transients, slower = rounder)"}, "description": "Shape attack", "backend": "remote_command"},
+        {"tool": "set_device_parameter", "params": {"description": "Adjust Compressor release for rhythmic pumping"}, "description": "Shape release", "backend": "remote_command"},
     ],
     verification_plan=[
-        {"tool": "get_track_meters", "check": "track producing audio with expected transient character"},
+        {"tool": "get_track_meters", "check": "track producing audio with expected transient character", "backend": "remote_command"},
     ],
 )
 
@@ -63,13 +63,13 @@ ADD_SPACE = SemanticMove(
     protect={"punch": 0.6, "clarity": 0.5},
     risk_level="low",
     compile_plan=[
-        {"tool": "set_track_send", "params": {"description": "Increase reverb send to 25-35%"}, "description": "Add reverb depth"},
-        {"tool": "set_track_send", "params": {"description": "Add subtle delay send 10-15%"}, "description": "Add delay texture"},
-        {"tool": "set_track_pan", "params": {"description": "Widen pan slightly for spatial presence"}, "description": "Widen spatial field"},
+        {"tool": "set_track_send", "params": {"description": "Increase reverb send to 25-35%"}, "description": "Add reverb depth", "backend": "remote_command"},
+        {"tool": "set_track_send", "params": {"description": "Add subtle delay send 10-15%"}, "description": "Add delay texture", "backend": "remote_command"},
+        {"tool": "set_track_pan", "params": {"description": "Widen pan slightly for spatial presence"}, "description": "Widen spatial field", "backend": "remote_command"},
     ],
     verification_plan=[
-        {"tool": "get_track_meters", "check": "stereo output present, no phase cancellation"},
-        {"tool": "analyze_mix", "check": "stereo.mono_risk is false"},
+        {"tool": "get_track_meters", "check": "stereo output present, no phase cancellation", "backend": "remote_command"},
+        {"tool": "analyze_mix", "check": "stereo.mono_risk is false", "backend": "mcp_tool"},
     ],
 )
 

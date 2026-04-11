@@ -117,6 +117,8 @@ def execute_plan_steps(
     for step in steps:
         tool = step.get("tool") or step.get("command", "")
         params = step.get("params") or step.get("args", {})
+        # Prefer declared backend from step annotations (PR5)
+        declared_backend = step.get("backend")
 
         if not tool:
             results.append(ExecutionResult(
