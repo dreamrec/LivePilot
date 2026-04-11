@@ -115,42 +115,6 @@ def discover_moves(
 _RISK_NUMERIC = {"low": 0.2, "medium": 0.5, "high": 0.8}
 
 
-def assign_moves_to_tiers(scored_moves: list[dict]) -> dict[str, dict]:
-    """Assign moves to safe / strong / unexpected by risk profile.
-
-    Returns dict with keys "safe", "strong", "unexpected", each
-    containing a move dict with targets possibly scaled by envelope.
-    Returns empty dict when no moves provided (analytical fallback).
-    """
-    if not scored_moves:
-        return {}
-
-    sorted_moves = sorted(
-        scored_moves,
-        key=lambda m: _RISK_NUMERIC.get(m.get("risk_level", "low"), 0.5),
-    )
-
-    n = len(sorted_moves)
-
-    if n >= 3:
-        return {
-            "safe": _with_envelope(sorted_moves[0], "safe"),
-            "strong": _with_envelope(sorted_moves[n // 2], "strong"),
-            "unexpected": _with_envelope(sorted_moves[-1], "unexpected"),
-        }
-    elif n == 2:
-        return {
-            "safe": _with_envelope(sorted_moves[0], "safe"),
-            "strong": _with_envelope(sorted_moves[0], "strong"),
-            "unexpected": _with_envelope(sorted_moves[1], "unexpected"),
-        }
-    else:  # n == 1
-        return {
-            "safe": _with_envelope(sorted_moves[0], "safe"),
-            "strong": _with_envelope(sorted_moves[0], "strong"),
-            "unexpected": _with_envelope(sorted_moves[0], "unexpected"),
-        }
-
 
 def _with_envelope(move: dict, tier: str) -> dict:
     """Apply novelty envelope to a move's targets and protect."""
@@ -428,64 +392,6 @@ def _all_same_family(variants: list[dict]) -> bool:
 
 # ── Pipeline orchestrator ────────────────────────────────────────
 
-
-def generate_and_rank(
-    request_text: str,
-    kernel_id: str = "",
-    song_brain: Optional[dict] = None,
-    taste_graph: object = None,
-    active_constraints: object = None,
-) -> dict:
-    """Full wonder mode pipeline: discover -> assign -> build -> taste -> rank."""
-    song_brain = song_brain or {}
-    set_prefix = _wonder_id(request_text, kernel_id)
-
-    moves = discover_moves(request_text, taste_graph, active_constraints)
-    tiers = assign_moves_to_tiers(moves)
-
-    if tiers:
-        variants = []
-        for label, nov in [("safe", 0.25), ("strong", 0.55), ("unexpected", 0.85)]:
-            move = tiers[label]
-            v = build_variant(
-                label=label,
-                move_dict=move,
-                song_brain=song_brain,
-                novelty_level=nov,
-                variant_id=f"{set_prefix}_{label}",
-            )
-            if taste_graph is not None:
-                v["taste_fit"] = compute_taste_fit(move, taste_graph)
-            variants.append(v)
-    else:
-        variants = [
-            build_analytical_variant("safe", request_text, 0.25, f"{set_prefix}_safe"),
-            build_analytical_variant("strong", request_text, 0.55, f"{set_prefix}_strong"),
-            build_analytical_variant("unexpected", request_text, 0.85, f"{set_prefix}_unexpected"),
-        ]
-
-    novelty_band = 0.5
-    taste_evidence = 0
-    if taste_graph is not None and hasattr(taste_graph, "novelty_band"):
-        novelty_band = taste_graph.novelty_band
-        taste_evidence = getattr(taste_graph, "evidence_count", 0)
-
-    ranked = rank_variants(
-        variants,
-        song_brain=song_brain,
-        novelty_band=novelty_band,
-        taste_evidence=taste_evidence,
-    )
-
-    return {
-        "mode": "wonder",
-        "request": request_text,
-        "variants": ranked,
-        "recommended": ranked[0]["variant_id"] if ranked else "",
-        "taste_evidence": taste_evidence,
-        "identity_confidence": song_brain.get("identity_confidence", 0.0),
-        "move_count_matched": len(moves),
-    }
 
 
 def generate_wonder_variants(

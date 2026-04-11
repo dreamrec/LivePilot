@@ -3,13 +3,13 @@
 import math
 
 from mcp_server.wonder_mode.engine import (
-    assign_moves_to_tiers,
     build_analytical_variant,
     build_variant,
     compute_taste_fit,
     discover_moves,
-    generate_and_rank,
+    generate_wonder_variants,
     rank_variants,
+    select_distinct_variants,
 )
 from mcp_server.memory.taste_graph import TasteGraph
 
@@ -99,47 +99,32 @@ def test_discover_includes_compile_plan():
         assert isinstance(m.get("compile_plan"), list)
 
 
-# ── Tier assignment ──────────────────────────────────────────────
+# ── Distinctness selection ───────────────────────────────────────
 
 
-def test_moves_assigned_by_risk_tier():
+def test_distinct_selects_different_families():
     moves = [
-        {"move_id": "a", "risk_level": "low", "targets": {"x": 0.5}, "protect": {}, "compile_plan": []},
-        {"move_id": "b", "risk_level": "medium", "targets": {"y": 0.5}, "protect": {}, "compile_plan": []},
-        {"move_id": "c", "risk_level": "high", "targets": {"z": 0.5}, "protect": {}, "compile_plan": []},
+        {"move_id": "a", "family": "mix", "risk_level": "low", "targets": {"x": 0.5}, "protect": {}, "compile_plan": [{"tool": "set_track_volume"}]},
+        {"move_id": "b", "family": "arrangement", "risk_level": "medium", "targets": {"y": 0.5}, "protect": {}, "compile_plan": [{"tool": "create_clip"}]},
+        {"move_id": "c", "family": "transition", "risk_level": "high", "targets": {"z": 0.5}, "protect": {}, "compile_plan": [{"tool": "set_tempo"}]},
     ]
-    tiers = assign_moves_to_tiers(moves)
-    assert tiers["safe"]["move_id"] == "a"
-    assert tiers["unexpected"]["move_id"] == "c"
+    result = select_distinct_variants(moves)
+    assert len(result) == 3
+    assert {m["move_id"] for m in result} == {"a", "b", "c"}
 
 
-def test_novelty_envelopes_when_one_move():
+def test_distinct_deduplicates_same_family_same_shape():
     moves = [
-        {"move_id": "only", "risk_level": "low", "targets": {"punch": 0.5},
-         "protect": {"warmth": 0.6}, "compile_plan": [{"tool": "x"}]},
+        {"move_id": "a", "family": "mix", "compile_plan": [{"tool": "set_track_volume"}]},
+        {"move_id": "b", "family": "mix", "compile_plan": [{"tool": "set_track_volume"}]},
     ]
-    tiers = assign_moves_to_tiers(moves)
-    assert tiers["safe"]["targets"]["punch"] < 0.5
-    assert tiers["strong"]["targets"]["punch"] == 0.5
-    assert tiers["unexpected"]["targets"]["punch"] > 0.5
-    for label in ("safe", "strong", "unexpected"):
-        assert tiers[label]["compile_plan"] == [{"tool": "x"}]
-
-
-def test_two_moves_fills_three_tiers():
-    moves = [
-        {"move_id": "a", "risk_level": "low", "targets": {"x": 0.4}, "protect": {}, "compile_plan": []},
-        {"move_id": "b", "risk_level": "medium", "targets": {"y": 0.6}, "protect": {}, "compile_plan": []},
-    ]
-    tiers = assign_moves_to_tiers(moves)
-    assert tiers["safe"]["move_id"] == "a"
-    assert tiers["strong"]["move_id"] == "a"
-    assert tiers["unexpected"]["move_id"] == "b"
+    result = select_distinct_variants(moves)
+    assert len(result) == 1
 
 
 def test_zero_moves_returns_empty():
-    tiers = assign_moves_to_tiers([])
-    assert tiers == {}
+    result = select_distinct_variants([])
+    assert result == []
 
 
 # ── Variant building ─────────────────────────────────────────────
@@ -189,6 +174,12 @@ def test_analytical_fallback_has_none_plan():
     v = build_analytical_variant("safe", "test", 0.25)
     assert v["compiled_plan"] is None
     assert v["what_changed"]
+    assert v["analytical_only"] is True
+
+
+def test_build_variant_not_analytical():
+    v = build_variant("safe", _sample_move(), {}, 0.25)
+    assert v["analytical_only"] is False
 
 
 # ── Taste fit ────────────────────────────────────────────────────
@@ -330,21 +321,29 @@ def test_score_breakdown_returned():
 
 
 def test_full_pipeline_with_matching_request():
-    result = generate_and_rank("make it punchier")
+    result = generate_wonder_variants("make it punchier")
     assert result["mode"] == "wonder"
     assert len(result["variants"]) == 3
     assert result["recommended"]
     assert result["move_count_matched"] >= 1
+    assert "variant_count_actual" in result
+    assert result["variant_count_actual"] >= 1
     labels = {v["label"] for v in result["variants"]}
     assert labels == {"safe", "strong", "unexpected"}
+    # Check analytical_only field on all variants
+    for v in result["variants"]:
+        assert "analytical_only" in v
 
 
 def test_full_pipeline_no_matches():
-    result = generate_and_rank("quantum entanglement vibes")
+    result = generate_wonder_variants("quantum entanglement vibes")
     assert len(result["variants"]) == 3
     assert result["move_count_matched"] == 0
+    assert result["variant_count_actual"] == 0
+    assert result["degraded_reason"] != ""
     for v in result["variants"]:
         assert v["compiled_plan"] is None
+        assert v["analytical_only"] is True
 
 
 def test_rank_preserves_all_fields():
