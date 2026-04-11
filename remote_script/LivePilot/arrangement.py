@@ -731,9 +731,15 @@ def force_arrangement(song, params):
 
     # 2. Stop every clip slot on every track to release session overrides
     for track in song.tracks:
-        track.stop_all_clips()
+        try:
+            track.stop_all_clips()
+        except Exception:
+            pass  # Track may have no clip slots or no playing clips
     for track in song.return_tracks:
-        track.stop_all_clips()
+        try:
+            track.stop_all_clips()
+        except Exception:
+            pass
 
     # 3. Global back-to-arranger
     song.back_to_arranger = True
