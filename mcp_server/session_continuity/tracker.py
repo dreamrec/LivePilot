@@ -23,14 +23,22 @@ from .models import (
 _story = SessionStory()
 _threads: dict[str, CreativeThread] = {}
 _turns: list[TurnResolution] = []
+_project_store = None  # Optional PersistentProjectStore
+
+
+def set_project_store(store) -> None:
+    """Attach a persistent project store for flush-on-write."""
+    global _project_store
+    _project_store = store
 
 
 def reset_story() -> None:
     """Reset session story (for testing)."""
-    global _story, _threads, _turns
+    global _story, _threads, _turns, _project_store
     _story = SessionStory()
     _threads = {}
     _turns = []
+    _project_store = None
 
 
 # ── Session story ─────────────────────────────────────────────────
@@ -117,6 +125,13 @@ def record_turn_resolution(
     else:
         _story.mood_arc.append("neutral")
 
+    # Flush to persistent store
+    if _project_store is not None:
+        try:
+            _project_store.save_turn(turn.to_dict())
+        except Exception:
+            pass
+
     return turn
 
 
@@ -138,6 +153,14 @@ def open_thread(description: str, domain: str = "", priority: float = 0.5) -> Cr
         last_touched_ms=now,
     )
     _threads[thread_id] = thread
+
+    # Flush to persistent store
+    if _project_store is not None:
+        try:
+            _project_store.save_thread(thread.to_dict())
+        except Exception:
+            pass
+
     return thread
 
 
@@ -147,6 +170,11 @@ def resolve_thread(thread_id: str) -> Optional[CreativeThread]:
     if thread:
         thread.status = "resolved"
         thread.last_touched_ms = int(time.time() * 1000)
+        if _project_store is not None:
+            try:
+                _project_store.save_thread(thread.to_dict())
+            except Exception:
+                pass
     return thread
 
 
