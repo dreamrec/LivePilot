@@ -1,7 +1,8 @@
-"""Wonder Mode MCP tools — 2 tools for controlled surprise.
+"""Wonder Mode MCP tools — 3 tools for stuck-rescue workflow.
 
-  enter_wonder_mode — full pipeline: discover, build, rank creative variants
+  enter_wonder_mode — diagnose + generate distinct variants + open thread
   rank_wonder_variants — standalone re-ranker for any variant list
+  discard_wonder_session — reject all variants, keep thread open
 """
 
 from __future__ import annotations
@@ -45,64 +46,122 @@ def _get_active_constraints():
         return None
 
 
+def _get_ledger_entries(ctx: Context) -> list[dict]:
+    """Get recent action ledger entries as dicts."""
+    try:
+        from ..runtime.action_ledger import SessionLedger
+        ledger: SessionLedger = ctx.lifespan_context.setdefault(
+            "action_ledger", SessionLedger()
+        )
+        entries = ledger.get_recent_moves(limit=20)
+        return [e.to_dict() for e in entries]
+    except Exception:
+        return []
+
+
+def _get_stuckness_report(ctx: Context, song_brain: dict) -> dict | None:
+    """Run stuckness detection on recent actions if available."""
+    try:
+        from ..stuckness_detector.detector import detect_stuckness
+        action_ledger = _get_ledger_entries(ctx)
+        if not action_ledger:
+            return None
+        report = detect_stuckness(
+            action_history=action_ledger,
+            song_brain=song_brain,
+        )
+        return report.to_dict()
+    except Exception:
+        return None
+
+
 @mcp.tool()
 def enter_wonder_mode(
     ctx: Context,
     request_text: str,
     kernel_id: str = "",
 ) -> dict:
-    """Activate Wonder Mode for a creative request.
+    """Activate Wonder Mode — stuck-rescue workflow with real diagnosis.
 
-    Discovers relevant semantic moves, assigns them to safe / strong /
-    unexpected tiers by risk profile, scores by taste fit, and ranks
-    by identity + novelty + coherence.
+    Diagnoses why the session needs creative rescue, generates 1-3
+    genuinely distinct executable variants (plus honest analytical
+    fallbacks), and opens a creative thread for tracking.
 
-    Each variant is conceptually distinct — built from a different move
-    or a different novelty envelope. Sacred elements are respected
-    unless the variant explicitly contrasts them.
+    Returns wonder_session_id for use with create_preview_set,
+    commit_preview_variant, and discard_wonder_session.
 
-    Trigger for: "surprise me," "make it magical," "give me options,"
-    "take it somewhere," or "what if."
-
-    request_text: the creative request
+    request_text: the creative request or description of being stuck
     kernel_id: optional session kernel reference
-
-    Returns ranked variants with score breakdowns and a recommendation.
     """
     if not request_text.strip():
         return {"error": "request_text cannot be empty"}
 
+    from .diagnosis import build_diagnosis
+    from .session import WonderSession, store_wonder_session
+
     song_brain = _get_song_brain_dict()
     taste_graph = _get_taste_graph(ctx)
     active_constraints = _get_active_constraints()
+    action_ledger = _get_ledger_entries(ctx)
+    stuckness_report = _get_stuckness_report(ctx, song_brain)
 
-    result = engine.generate_and_rank(
+    # 1. Build diagnosis
+    diagnosis = build_diagnosis(
+        stuckness_report=stuckness_report,
+        song_brain=song_brain,
+        action_ledger=action_ledger,
+    )
+
+    # 2. Generate variants
+    result = engine.generate_wonder_variants(
         request_text=request_text,
+        diagnosis=diagnosis.to_dict(),
         kernel_id=kernel_id,
         song_brain=song_brain,
         taste_graph=taste_graph,
         active_constraints=active_constraints,
     )
 
-    # Auto-record this creative turn for session continuity
-    try:
-        from ..session_continuity.tracker import record_turn_resolution
-        recommended = result.get("recommended", "")
-        rec_variant = next(
-            (v for v in result.get("variants", []) if v.get("variant_id") == recommended),
-            {},
-        )
-        record_turn_resolution(
-            request_text=request_text,
-            outcome="proposed",
-            move_applied=rec_variant.get("move_id", ""),
-            identity_effect=rec_variant.get("identity_effect", ""),
-            user_sentiment="neutral",
-        )
-    except Exception:
-        pass  # session continuity is optional
+    # 3. Create WonderSession
+    session_id = engine._wonder_id(request_text, kernel_id)
+    ws = WonderSession(
+        session_id=session_id,
+        request_text=request_text,
+        kernel_id=kernel_id,
+        diagnosis=diagnosis,
+        variants=result["variants"],
+        recommended=result.get("recommended", ""),
+        variant_count_actual=result.get("variant_count_actual", 0),
+        degraded_reason=result.get("degraded_reason", ""),
+        status="variants_ready",
+    )
 
-    return result
+    # 4. Open creative thread (exploration, NOT turn resolution)
+    try:
+        from ..session_continuity.tracker import open_thread
+        thread_domain = diagnosis.candidate_domains[0] if diagnosis.candidate_domains else "exploration"
+        thread = open_thread(
+            description=f"Wonder: {request_text}",
+            domain=thread_domain,
+        )
+        ws.creative_thread_id = thread.thread_id
+    except Exception:
+        pass
+
+    # 5. Store session
+    store_wonder_session(ws)
+
+    # 6. Return full response (NO turn resolution recorded here)
+    return {
+        "wonder_session_id": ws.session_id,
+        "creative_thread_id": ws.creative_thread_id,
+        "diagnosis": diagnosis.to_dict(),
+        "variants": result["variants"],
+        "recommended": result.get("recommended", ""),
+        "variant_count_actual": result.get("variant_count_actual", 0),
+        "degraded_reason": ws.degraded_reason,
+        "mode": "wonder",
+    }
 
 
 @mcp.tool()
