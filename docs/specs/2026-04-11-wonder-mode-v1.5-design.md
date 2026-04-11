@@ -43,7 +43,7 @@ Modules remain independently testable and usable outside Wonder.
 
 ### WonderSession (`wonder_mode/session.py`)
 
-A thin runtime object that ties the lifecycle together. Stored in-memory with eviction like `PreviewSet`.
+A thin runtime object that ties the lifecycle together. Stored in-memory with FIFO eviction at `_MAX_WONDER_SESSIONS = 10` (lower than PreviewSet's 20, since Wonder sessions carry more context).
 
 ```python
 @dataclass
@@ -74,21 +74,39 @@ class WonderSession:
     status: str = "diagnosing"  # diagnosing, variants_ready, previewing, resolved
 ```
 
+**Status transitions (state machine):**
+
+| From | To | Trigger |
+|---|---|---|
+| `diagnosing` | `variants_ready` | `enter_wonder_mode` finishes generating variants |
+| `variants_ready` | `previewing` | `create_preview_set` called with `wonder_session_id` |
+| `previewing` | `resolved` | `commit_preview_variant` or `discard_wonder_session` |
+| `variants_ready` | `resolved` | `discard_wonder_session` (user rejects without previewing) |
+
+Invalid transitions (must be rejected or ignored): commit after discard, double-commit, commit on `diagnosing` status.
+
+`outcome` values: `pending`, `committed`, `rejected_all`, `abandoned` (abandoned = session evicted before resolution).
+
 ### WonderDiagnosis (`wonder_mode/session.py`)
 
 ```python
 @dataclass
 class WonderDiagnosis:
     trigger_reason: str          # "user_request", "stuckness_detected", "repeated_undos"
-    problem_class: str           # from stuckness rescue types, or "exploration"
+    problem_class: str           # from RESCUE_TYPES in stuckness_detector/models.py, plus "exploration"
     current_identity: str        # from SongBrain.identity_core
-    sacred_elements: list[dict]  # from SongBrain
+    sacred_elements: list[dict]  # from SongBrain.to_dict()["sacred_elements"] (always serialized dicts)
     blocked_dimensions: list[str]  # dimensions that aren't progressing
-    candidate_domains: list[str]   # which move families to search
+    candidate_domains: list[str]   # SemanticMove.family values: mix, arrangement, transition, sound_design
     variant_budget: int = 3
     confidence: float = 0.0
     degraded_capabilities: list[str] = field(default_factory=list)
 ```
+
+**Type notes:**
+- `sacred_elements` is always `list[dict]`, read from `SongBrain.to_dict()`, never raw `SacredElement` dataclass instances. This keeps WonderDiagnosis a pure data transfer object.
+- `problem_class` values are drawn from `stuckness_detector.models.RESCUE_TYPES` plus `"exploration"`. No other values are valid.
+- `candidate_domains` values must match `SemanticMove.family` values exactly: `mix`, `arrangement`, `transition`, `sound_design`. `performance` is excluded from Wonder's domain set (performance moves are only used via explicit user request, not stuck-rescue).
 
 ### Diagnosis builder (`wonder_mode/diagnosis.py`)
 
@@ -116,7 +134,18 @@ Builds a `WonderDiagnosis` from available session state. Each input is optional 
 
 ### Changes to `wonder_mode/engine.py`
 
-**`discover_moves`** — accepts optional `candidate_domains` from diagnosis to narrow search by move family.
+**`discover_moves`** — new signature:
+
+```python
+def discover_moves(
+    request_text: str,
+    taste_graph=None,
+    active_constraints=None,
+    candidate_domains: list[str] | None = None,  # NEW
+) -> list[dict]:
+```
+
+Domain filtering happens **after** keyword scoring but **before** taste reranking. This means keyword matches outside the diagnosed domains are discarded, but if domain filtering removes all matches, the function falls back to the full scored list (no domain restriction). This prevents the "0 moves" degradation path when the diagnosis is too narrow.
 
 **`assign_moves_to_tiers` replaced by `select_distinct_variants`:**
 
@@ -153,6 +182,8 @@ def select_distinct_variants(
 
 **`generate_and_rank` renamed to `generate_wonder_variants`:**
 
+The old name `generate_and_rank` is removed (no alias). The only caller is `wonder_mode/tools.py` line 79. The `rank_wonder_variants` tool calls `engine.rank_variants` directly, which is unchanged. Implementer should grep for `generate_and_rank` to confirm no other callers.
+
 Takes diagnosis as input. Builds executable variants from distinct moves, pads with analytical variants (honestly labeled) up to 3, ranks all.
 
 Returns:
@@ -180,7 +211,7 @@ The tool becomes the lifecycle entry point:
 5. Store session
 6. Return `wonder_session_id`, `creative_thread_id`, `diagnosis`, `variants`, `recommended`, `variant_count_actual`, `degraded_reason`
 
-**Critical:** No `record_turn_resolution` at generation time.
+**Critical:** No `record_turn_resolution` at generation time. This removes the existing `outcome: "proposed"` turn event (tools.py lines 88-103). This is a **breaking change** for any downstream consumer that relies on "proposed" events in the turn history. Since turn history is only consumed internally (session story, taste inference), this is acceptable — "proposed" events were noise, not signal.
 
 ### Preview Studio integration
 
@@ -188,7 +219,32 @@ Preview Studio stays independent but gains Wonder-awareness at the tool boundary
 
 **`create_preview_set`** — accepts optional `wonder_session_id`. When provided, reads executable variants from WonderSession and creates PreviewVariant objects from them. Updates WonderSession status to `"previewing"`.
 
-**`render_preview_variant`** — refuses variants with `compiled_plan is None` (analytical-only), returning an explicit error with `analytical_only: true`.
+**Wonder dict -> PreviewVariant adapter mapping:**
+
+| Wonder variant dict field | PreviewVariant field | Notes |
+|---|---|---|
+| `variant_id` | `variant_id` | Direct |
+| `label` | `label` | Direct |
+| `intent` | `intent` | Direct |
+| `novelty_level` | `novelty_level` | Direct |
+| `identity_effect` | `identity_effect` | Direct |
+| `what_changed` | `what_changed` | Direct |
+| `what_preserved` | `what_preserved` | Direct |
+| `why_it_matters` | `why_it_matters` | Direct |
+| `move_id` | `move_id` | Direct |
+| `compiled_plan` | `compiled_plan` | Note: `SemanticMove.compile_plan` (list) is stored as `compiled_plan` in both Wonder dicts and PreviewVariant |
+| `taste_fit` | `taste_fit` | Direct |
+| `score` | `score` | Direct |
+| `family` | *(not on PreviewVariant)* | Stored on WonderSession's variant list; looked up by `variant_id` at commit time for `record_move_outcome` |
+| `analytical_only` | *(not on PreviewVariant)* | Filtered out before adapter runs — only executable variants become PreviewVariants |
+| `distinctness_reason` | `summary` | Repurposed into the summary field |
+| `targets_snapshot` | *(not on PreviewVariant)* | Not needed for preview; stays on WonderSession's variant list |
+
+The `family` field is NOT added to PreviewVariant. At commit time, `commit_preview_variant` looks up the committed variant's `family` from the WonderSession's canonical variant list by `variant_id`. This avoids modifying the PreviewVariant dataclass for Wonder-specific needs.
+
+**`render_preview_variant`** — behavior depends on context:
+- **When linked to a WonderSession** (variant was created via `wonder_session_id`): refuses variants with `compiled_plan is None`, returns `{"error": "analytical-only variant", "analytical_only": true}`. This enforces the Wonder contract that analytical variants are not previewable.
+- **When used independently** (no WonderSession): preserves existing behavior — returns an analytical preview with `mode: "analytical"`. This avoids breaking Preview Studio's standalone usage.
 
 **`commit_preview_variant`** — when linked to a WonderSession:
 - Records turn resolution with `outcome: "accepted"`
@@ -310,8 +366,20 @@ Behavior: diagnosis first, song language not tool language, commit only after pr
 ### Updates to existing tests
 
 - `test_tools_contract.py` — tool count 292 -> 293
-- `test_wonder_engine.py` — renamed pipeline, new distinctness function, `analytical_only` field
-- `test_preview_studio.py` — analytical variant refused by render
+- `test_wonder_engine.py` — specific changes:
+  - Remove tests for `assign_moves_to_tiers` (function is replaced by `select_distinct_variants`)
+  - Rename `generate_and_rank` calls to `generate_wonder_variants`
+  - Add `analytical_only` field assertions to existing variant creation tests
+  - Update envelope tests: `_with_envelope` still exists but is no longer tested as a distinctness mechanism
+- `test_preview_studio.py` — add test that Wonder-linked analytical variant is refused by render (independent analytical preview still works)
+
+### Naming note: `compile_plan` vs `compiled_plan`
+
+This is a pre-existing naming split in the codebase:
+- `SemanticMove.compile_plan` — the field name on the source model (list of `{tool, params, description}`)
+- `compiled_plan` — the field name on Wonder variant dicts, PreviewVariant, and Experiment models
+
+The convention: `compile_plan` is the source field, `compiled_plan` is the consumed field. Both are `list[dict]` with the same schema. This spec uses `compiled_plan` consistently for variant-side references and `compile_plan` when referring to the SemanticMove source.
 
 ## Degradation Behavior
 
@@ -352,7 +420,7 @@ Behavior: diagnosis first, song language not tool language, commit only after pr
 | `tests/test_wonder_engine.py` | **Modify** |
 | `tests/test_preview_studio.py` | **Modify** |
 | `tests/test_tools_contract.py` | **Modify** — 292 -> 293 |
-| 14+ manifest/doc files | **Modify** — tool count |
+| Tool count files (per CLAUDE.md checklist) | **Modify** — 292 -> 293 in: README.md, package.json, `livepilot/.Codex-plugin/plugin.json`, `livepilot/.claude-plugin/plugin.json`, server.json, `livepilot/skills/livepilot-core/SKILL.md`, `livepilot/skills/livepilot-core/references/overview.md`, CLAUDE.md, CHANGELOG.md, `tests/test_tools_contract.py`, `docs/manual/index.md`, `docs/manual/tool-reference.md` |
 
 ## Out of Scope
 
