@@ -729,15 +729,13 @@ def force_arrangement(song, params):
     if was_playing:
         song.stop_playing()
 
-    # 2. Stop every clip slot on every track to release session overrides
-    for track in song.tracks:
+    # 2. Stop playing clip slots individually to release session overrides
+    #    (track.stop_all_clips() throws STATE_ERROR when tracks have no clips)
+    for track in list(song.tracks) + list(song.return_tracks):
         try:
-            track.stop_all_clips()
-        except Exception:
-            pass  # Track may have no clip slots or no playing clips
-    for track in song.return_tracks:
-        try:
-            track.stop_all_clips()
+            for slot in track.clip_slots:
+                if slot.has_clip and slot.is_playing:
+                    slot.clip.stop()
         except Exception:
             pass
 
