@@ -73,6 +73,15 @@ Three modes:
 - **Fresh:** Skip memory when user wants something new ("ignore my history", "surprise me")
 - **Explicit recall:** `memory_recall` → `memory_get` → `memory_replay` when user references a saved technique
 
+## Wonder Mode — Stuck-Rescue Routing
+
+- Use Wonder (`enter_wonder_mode`) for creative ambiguity and session rescue
+- Do not fabricate three variants when only one real option exists
+- Do not describe a branch as previewable unless it has a valid `compiled_plan`
+- Prefer Wonder when `detect_stuckness` confidence > 0.5
+- Prefer Wonder when the user's request is emotionally-shaped, not parametric
+- Load `livepilot-wonder` skill for full workflow guidance
+
 ## Domain Skills
 
 For domain-specific workflows, load the appropriate skill:
