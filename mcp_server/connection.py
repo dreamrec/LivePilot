@@ -14,6 +14,11 @@ from typing import Optional
 
 CONNECT_TIMEOUT = 5
 RECV_TIMEOUT = 20
+SINGLE_CLIENT_RETRY_DELAY = 0.25
+COMMAND_RECV_TIMEOUTS = {
+    # Server-side slow write window is 35s; give the client a small buffer.
+    "freeze_track": 40,
+}
 
 
 class AbletonConnectionError(Exception):
@@ -45,6 +50,19 @@ def _friendly_error(code: str, message: str, command_type: str) -> str:
     if hint:
         parts.append(hint)
     return " ".join(parts)
+
+
+def _is_single_client_state_error(response: dict) -> bool:
+    """Return True when the server rejected a fresh connection due to single-client guard."""
+    if response.get("ok") is not False:
+        return False
+    err = response.get("error", {})
+    if not isinstance(err, dict):
+        return False
+    return (
+        err.get("code") == "STATE_ERROR"
+        and "Another client is already connected" in str(err.get("message", ""))
+    )
 
 
 def _identify_other_tcp_client(host: str, port: int) -> str | None:
@@ -134,9 +152,7 @@ class AbletonConnection:
     def ping(self) -> bool:
         """Send a ping and return True if a pong is received."""
         try:
-            with self._lock:
-                resp = self._send_raw({"type": "ping"})
-            return resp.get("result", {}).get("pong") is True
+            return self.send_command("ping").get("pong") is True
         except Exception:
             return False
 
@@ -151,7 +167,8 @@ class AbletonConnection:
         """
         with self._lock:
             # Ensure we have a connection
-            if not self.is_connected():
+            fresh_connect = not self.is_connected()
+            if fresh_connect:
                 self.connect()
 
             command: dict = {"type": command_type}
@@ -159,7 +176,10 @@ class AbletonConnection:
                 command["params"] = params
 
             try:
-                response = self._send_raw(command)
+                response = self._send_raw(
+                    command,
+                    recv_timeout=COMMAND_RECV_TIMEOUTS.get(command_type, RECV_TIMEOUT),
+                )
             except AbletonConnectionError as exc:
                 # If the send phase succeeded (data left this process),
                 # Ableton may have already applied the command.  Never
@@ -172,12 +192,30 @@ class AbletonConnection:
                 # Send itself failed — safe to retry with a fresh connection
                 self.disconnect()
                 self.connect()
-                response = self._send_raw(command)
+                response = self._send_raw(
+                    command,
+                    recv_timeout=COMMAND_RECV_TIMEOUTS.get(command_type, RECV_TIMEOUT),
+                )
             except OSError:
                 # Socket error before send — safe to retry
                 self.disconnect()
                 self.connect()
-                response = self._send_raw(command)
+                response = self._send_raw(
+                    command,
+                    recv_timeout=COMMAND_RECV_TIMEOUTS.get(command_type, RECV_TIMEOUT),
+                )
+
+            # The single-client guard can briefly reject an immediate reconnect
+            # after this process closes a previous socket. Retry once after a
+            # short delay when the command was rejected before execution.
+            if fresh_connect and _is_single_client_state_error(response):
+                self.disconnect()
+                time.sleep(SINGLE_CLIENT_RETRY_DELAY)
+                self.connect()
+                response = self._send_raw(
+                    command,
+                    recv_timeout=COMMAND_RECV_TIMEOUTS.get(command_type, RECV_TIMEOUT),
+                )
 
         # Log and error handling outside the lock (no socket access needed)
         log_entry = {
@@ -214,7 +252,7 @@ class AbletonConnection:
     # Low-level transport
     # ------------------------------------------------------------------
 
-    def _send_raw(self, command: dict) -> dict:
+    def _send_raw(self, command: dict, recv_timeout: int = RECV_TIMEOUT) -> dict:
         """Send a JSON command (with request_id) and read the response."""
         if self._socket is None:
             raise AbletonConnectionError("Not connected to Ableton Live")
@@ -222,6 +260,7 @@ class AbletonConnection:
         # Don't mutate the caller's dict
         envelope = {**command, "id": str(uuid.uuid4())[:8]}
         payload = json.dumps(envelope) + "\n"
+        self._socket.settimeout(recv_timeout)
 
         try:
             self._socket.sendall(payload.encode("utf-8"))
@@ -283,3 +322,9 @@ class AbletonConnection:
             raise AbletonConnectionError(
                 f"Invalid JSON from Ableton: {line[:200]}"
             ) from exc
+        finally:
+            if self._socket is not None:
+                try:
+                    self._socket.settimeout(RECV_TIMEOUT)
+                except OSError:
+                    pass

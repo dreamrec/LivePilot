@@ -112,10 +112,19 @@ def get_session_kernel(
     session_mem = []
 
     try:
-        from .action_ledger import ActionLedger
-        ledger = ActionLedger.instance()
+        from .action_ledger import SessionLedger
+        ledger = ctx.lifespan_context.get("action_ledger")
+        if ledger is None:
+            ledger = SessionLedger()
+            ctx.lifespan_context["action_ledger"] = ledger
         if ledger:
-            ledger_summary = ledger.summary()
+            recent = ledger.get_recent_moves(limit=10)
+            ledger_summary = {
+                "total_moves": len(ledger._entries),
+                "memory_candidate_count": len(ledger.get_memory_candidates()),
+                "last_move": ledger.get_last_move().to_dict() if ledger.get_last_move() else None,
+                "recent_moves": [entry.to_dict() for entry in recent],
+            }
     except Exception:
         pass
 

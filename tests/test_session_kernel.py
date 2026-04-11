@@ -1,5 +1,12 @@
 """Tests for SessionKernel — the unified turn snapshot."""
 
+import os
+import sys
+from types import SimpleNamespace
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from mcp_server.runtime.action_ledger import SessionLedger
 from mcp_server.runtime.session_kernel import SessionKernel, build_session_kernel
 
 
@@ -87,3 +94,24 @@ def test_kernel_with_full_context():
     assert len(kernel.anti_preferences) == 1
     assert kernel.protected_dimensions["clarity"] == 0.7
     assert kernel.ledger_summary["action_count"] == 5
+
+
+def test_get_session_kernel_includes_action_ledger_summary():
+    from mcp_server.runtime.tools import get_session_kernel
+
+    class _Ableton:
+        def send_command(self, cmd, params=None):
+            assert cmd == "get_session_info"
+            return {"tempo": 120, "track_count": 2, "tracks": []}
+
+    ledger = SessionLedger()
+    entry_id = ledger.start_move(engine="mix", move_class="balance", intent="tighten low end")
+    ledger.append_action(entry_id, "set_track_volume", "Lower bass track by 1 dB")
+    ledger.finalize_move(entry_id, kept=True, score=0.8, memory_candidate=True)
+
+    ctx = SimpleNamespace(lifespan_context={"ableton": _Ableton(), "action_ledger": ledger})
+    result = get_session_kernel(ctx, request_text="make it tighter")
+
+    assert result["ledger_summary"]["total_moves"] == 1
+    assert result["ledger_summary"]["memory_candidate_count"] == 1
+    assert result["ledger_summary"]["last_move"]["intent"] == "tighten low end"

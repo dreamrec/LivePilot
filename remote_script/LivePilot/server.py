@@ -255,7 +255,11 @@ class LivePilotServer(object):
         except AssertionError:
             # ControlSurface is disconnecting — return error instead of
             # running LOM calls on the TCP thread (which would be unsafe)
-            response_queue.put({
+            try:
+                self._command_queue.get_nowait()
+            except queue.Empty:
+                pass
+            self._send(client, {
                 "id": request_id,
                 "ok": False,
                 "error": {"code": "STATE_ERROR", "message": "Script is disconnecting"},

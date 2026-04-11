@@ -218,3 +218,62 @@ def test_timeout_mentions_other_connected_client(monkeypatch, mock_server):
 
     with pytest.raises(AbletonConnectionError, match="Another LivePilot client appears to be connected"):
         conn._send_raw({"type": "ping"})
+
+
+def test_freeze_track_uses_extended_receive_timeout():
+    class _Socket:
+        def __init__(self):
+            self.timeouts = []
+
+        def sendall(self, _payload):
+            return None
+
+        def recv(self, _size):
+            return b'{"ok": true, "result": {"frozen": true}}\n'
+
+        def close(self):
+            return None
+
+        def settimeout(self, timeout):
+            self.timeouts.append(timeout)
+
+    conn = AbletonConnection(host="127.0.0.1", port=19999)
+    conn._socket = _Socket()
+
+    result = conn.send_command("freeze_track", {"track_index": 0})
+
+    assert result["frozen"] is True
+    assert conn._socket.timeouts == [40, 20]
+
+
+def test_fresh_connect_retries_single_client_guard(monkeypatch):
+    conn = AbletonConnection(host="127.0.0.1", port=19999)
+    attempts = {"count": 0}
+
+    def fake_connect():
+        conn._socket = object()
+
+    def fake_disconnect():
+        conn._socket = None
+
+    def fake_send_raw(command, recv_timeout=20):
+        attempts["count"] += 1
+        if attempts["count"] == 1:
+            return {
+                "ok": False,
+                "error": {
+                    "code": "STATE_ERROR",
+                    "message": "Another client is already connected. LivePilot accepts one client at a time. Disconnect the current client first.",
+                },
+            }
+        return {"ok": True, "result": {"pong": True}}
+
+    monkeypatch.setattr(conn, "connect", fake_connect)
+    monkeypatch.setattr(conn, "disconnect", fake_disconnect)
+    monkeypatch.setattr(conn, "_send_raw", fake_send_raw)
+    monkeypatch.setattr(connection_mod.time, "sleep", lambda _seconds: None)
+
+    result = conn.send_command("ping")
+
+    assert result == {"pong": True}
+    assert attempts["count"] == 2

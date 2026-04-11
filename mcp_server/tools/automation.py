@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from fastmcp import Context
+from pydantic import BaseModel, Field
 
 from ..curves import generate_curve, generate_from_recipe, list_recipes
 from ..server import mcp
@@ -27,8 +28,20 @@ def _ensure_list(v: Any) -> list:
         except json.JSONDecodeError as exc:
             raise ValueError(f"Invalid JSON in parameter: {exc}") from exc
     if isinstance(v, list):
-        return v
+        normalized = []
+        for item in v:
+            if isinstance(item, BaseModel):
+                normalized.append(item.model_dump(exclude_none=True))
+            else:
+                normalized.append(item)
+        return normalized
     return [v]
+
+
+class AutomationPoint(BaseModel):
+    time: float
+    value: float
+    duration: Optional[float] = Field(default=None, ge=0.0)
 
 
 @mcp.tool()
@@ -62,7 +75,7 @@ def set_clip_automation(
     track_index: int,
     clip_index: int,
     parameter_type: str,
-    points: Any,
+    points: list[AutomationPoint] | str,
     device_index: Optional[int] = None,
     parameter_index: Optional[int] = None,
     send_index: Optional[int] = None,

@@ -1,5 +1,12 @@
 """Unit tests for Preview Studio engine — pure computation, no Ableton needed."""
 
+import os
+import sys
+from types import SimpleNamespace
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from mcp_server.m4l_bridge import SpectralCache
 from mcp_server.preview_studio.engine import (
     commit_variant,
     compare_variants,
@@ -202,3 +209,41 @@ def test_analytical_refusal_in_wonder_context():
     assert _should_refuse_analytical(compiled_plan=None, wonder_linked=False) is False
     assert _should_refuse_analytical(compiled_plan=[{"tool": "x"}], wonder_linked=True) is False
     assert _should_refuse_analytical(compiled_plan=[{"tool": "x"}], wonder_linked=False) is False
+
+
+def test_render_variant_uses_lifespan_spectral_cache_for_audible_preview(monkeypatch):
+    """Audible preview should use the shared spectral cache from lifespan_context."""
+    from mcp_server.preview_studio.tools import render_preview_variant
+    import mcp_server.runtime.execution_router as execution_router
+
+    ps = create_preview_set(
+        request_text="test render",
+        kernel_id="test_kern_render",
+        available_moves=[{"move_id": "m1", "compile_plan": [{"tool": "set_track_volume", "params": {}}]}],
+    )
+    variant_id = ps.variants[0].variant_id
+
+    class _Ableton:
+        def __init__(self):
+            self.calls = []
+
+        def send_command(self, cmd, params=None):
+            self.calls.append(cmd)
+            if cmd == "get_session_info":
+                return {"tempo": 120, "track_count": 4}
+            return {"ok": True}
+
+    cache = SpectralCache()
+    cache.update("spectrum", {"sub": 0.1})
+    monkeypatch.setattr(
+        execution_router,
+        "execute_plan_steps",
+        lambda steps, ableton=None, ctx=None, stop_on_failure=True: [SimpleNamespace(ok=True, tool="set_track_volume", backend="remote_command", result={"ok": True}, error="")],
+    )
+    monkeypatch.setattr("time.sleep", lambda _seconds: None)
+
+    ctx = SimpleNamespace(lifespan_context={"ableton": _Ableton(), "spectral": cache})
+    result = render_preview_variant(ctx, set_id=ps.set_id, variant_id=variant_id, bars=2)
+
+    assert result["preview_mode"] == "audible_preview"
+    assert "spectral_comparison" in result

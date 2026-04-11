@@ -45,8 +45,10 @@ def probe_capabilities(
     # 3. M4L bridge
     bridge_ok = False
     if ctx is not None:
-        bridge = getattr(ctx, "lifespan_context", {}).get("m4l_bridge") if hasattr(ctx, "lifespan_context") else None
-        bridge_ok = bridge is not None
+        lifespan_context = getattr(ctx, "lifespan_context", {}) if hasattr(ctx, "lifespan_context") else {}
+        bridge = lifespan_context.get("m4l")
+        spectral = lifespan_context.get("spectral")
+        bridge_ok = bridge is not None and spectral is not None and getattr(spectral, "is_connected", False)
     report["m4l_bridge"] = {
         "status": "ok" if bridge_ok else "unavailable",
         "detail": "UDP 9880 / OSC 9881 active" if bridge_ok else "Not connected — 30 analyzer tools unavailable",

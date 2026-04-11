@@ -9,6 +9,7 @@ import json
 from typing import Any, Optional
 
 from fastmcp import Context
+from pydantic import BaseModel, Field
 
 from ..server import mcp
 
@@ -25,7 +26,34 @@ def _ensure_list(value: Any) -> list:
             return json.loads(value)
         except json.JSONDecodeError as exc:
             raise ValueError(f"Invalid JSON in parameter: {exc}") from exc
+    if isinstance(value, list):
+        normalized = []
+        for item in value:
+            if isinstance(item, BaseModel):
+                normalized.append(item.model_dump(exclude_none=True))
+            else:
+                normalized.append(item)
+        return normalized
     return value
+
+
+class NoteSpec(BaseModel):
+    pitch: int = Field(ge=0, le=127)
+    start_time: float
+    duration: float = Field(gt=0)
+    velocity: Optional[float] = Field(default=None, ge=0.0, le=127.0)
+    probability: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    velocity_deviation: Optional[float] = Field(default=None, ge=-127.0, le=127.0)
+    release_velocity: Optional[float] = Field(default=None, ge=0.0, le=127.0)
+
+
+class NoteModification(BaseModel):
+    note_id: int
+    pitch: Optional[int] = Field(default=None, ge=0, le=127)
+    start_time: Optional[float] = None
+    duration: Optional[float] = Field(default=None, gt=0)
+    velocity: Optional[float] = Field(default=None, ge=0.0, le=127.0)
+    probability: Optional[float] = Field(default=None, ge=0.0, le=1.0)
 
 
 def _validate_track_index(track_index: int):
@@ -78,7 +106,7 @@ def _validate_note(note: dict):
 
 
 @mcp.tool()
-def add_notes(ctx: Context, track_index: int, clip_index: int, notes: Any) -> dict:
+def add_notes(ctx: Context, track_index: int, clip_index: int, notes: list[NoteSpec] | str) -> dict:
     """Add MIDI notes to a clip. notes is a JSON array: [{pitch, start_time, duration, velocity?, probability?, velocity_deviation?, release_velocity?}]."""
     _validate_track_index(track_index)
     _validate_clip_index(clip_index)
@@ -157,7 +185,7 @@ def remove_notes(
 
 
 @mcp.tool()
-def remove_notes_by_id(ctx: Context, track_index: int, clip_index: int, note_ids: Any) -> dict:
+def remove_notes_by_id(ctx: Context, track_index: int, clip_index: int, note_ids: list[int] | str) -> dict:
     """Remove specific MIDI notes by their IDs (JSON array of ints). Use undo to revert."""
     _validate_track_index(track_index)
     _validate_clip_index(clip_index)
@@ -172,7 +200,12 @@ def remove_notes_by_id(ctx: Context, track_index: int, clip_index: int, note_ids
 
 
 @mcp.tool()
-def modify_notes(ctx: Context, track_index: int, clip_index: int, modifications: Any) -> dict:
+def modify_notes(
+    ctx: Context,
+    track_index: int,
+    clip_index: int,
+    modifications: list[NoteModification] | str,
+) -> dict:
     """Modify existing MIDI notes by ID. modifications is a JSON array: [{note_id, pitch?, start_time?, duration?, velocity?, probability?}]."""
     _validate_track_index(track_index)
     _validate_clip_index(clip_index)
@@ -202,7 +235,7 @@ def duplicate_notes(
     ctx: Context,
     track_index: int,
     clip_index: int,
-    note_ids: Any,
+    note_ids: list[int] | str,
     time_offset: float = 0.0,
 ) -> dict:
     """Duplicate specific notes by ID (JSON array of ints), with optional time offset (in beats)."""

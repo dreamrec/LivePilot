@@ -102,3 +102,30 @@ def test_second_client_gets_explicit_state_error():
             second.close()
         server.stop()
 
+
+def test_schedule_message_disconnect_sends_state_error():
+    server_mod = _load_server_module()
+
+    class _DisconnectingControlSurface:
+        def schedule_message(self, _delay, _func):
+            raise AssertionError("disconnecting")
+
+        def log_message(self, _message):
+            return None
+
+    class _FakeClient:
+        def __init__(self):
+            self.payloads = []
+
+        def sendall(self, payload):
+            self.payloads.append(payload.decode("utf-8"))
+
+    server = server_mod.LivePilotServer(_DisconnectingControlSurface(), port=0)
+    client = _FakeClient()
+
+    server._process_line(client, json.dumps({"id": "abc", "type": "ping"}))
+
+    assert client.payloads, "disconnect path should send a response to the client"
+    response = json.loads(client.payloads[0].strip())
+    assert response["ok"] is False
+    assert response["error"]["code"] == "STATE_ERROR"

@@ -170,6 +170,14 @@ def _coerce_schema_property(prop: dict) -> None:
     # Recurse into array items so list[int]/list[float] params also accept strings
     if "items" in prop and isinstance(prop["items"], dict):
         _coerce_schema_property(prop["items"])
+    if "properties" in prop and isinstance(prop["properties"], dict):
+        for nested in prop["properties"].values():
+            if isinstance(nested, dict):
+                _coerce_schema_property(nested)
+    if "$defs" in prop and isinstance(prop["$defs"], dict):
+        for nested in prop["$defs"].values():
+            if isinstance(nested, dict):
+                _coerce_schema_property(nested)
 
 
 def _get_all_tools():
@@ -202,6 +210,9 @@ def _patch_tool_schemas() -> None:
             if name == "ctx":
                 continue  # skip the Context parameter
             _coerce_schema_property(prop)
+        for definition in tool.parameters.get("$defs", {}).values():
+            if isinstance(definition, dict):
+                _coerce_schema_property(definition)
 
 
 _patch_tool_schemas()
