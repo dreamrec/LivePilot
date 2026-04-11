@@ -206,3 +206,55 @@ def rank_wonder_variants(
         "rankings": ranked,
         "recommended": ranked[0]["variant_id"] if ranked else "",
     }
+
+
+@mcp.tool()
+def discard_wonder_session(
+    ctx: Context,
+    wonder_session_id: str,
+) -> dict:
+    """Reject all Wonder variants and close the session.
+
+    The creative thread stays open — the problem isn't solved.
+    Records a rejected turn resolution and updates taste.
+
+    wonder_session_id: the session to discard
+    """
+    from .session import get_wonder_session
+
+    ws = get_wonder_session(wonder_session_id)
+    if not ws:
+        return {"error": "Wonder session not found", "wonder_session_id": wonder_session_id}
+
+    if ws.status == "resolved":
+        return {"error": "Session already resolved", "wonder_session_id": wonder_session_id}
+
+    ws.outcome = "rejected_all"
+    ws.status = "resolved"
+
+    # Record rejected turn
+    try:
+        from ..session_continuity.tracker import record_turn_resolution
+        record_turn_resolution(
+            request_text=ws.request_text,
+            outcome="rejected",
+            move_applied="",
+            identity_effect="",
+            user_sentiment="disliked",
+        )
+    except Exception:
+        pass
+
+    # Discard linked preview set
+    if ws.preview_set_id:
+        try:
+            from ..preview_studio.engine import discard_set
+            discard_set(ws.preview_set_id)
+        except Exception:
+            pass
+
+    return {
+        "discarded": True,
+        "wonder_session_id": wonder_session_id,
+        "thread_still_open": bool(ws.creative_thread_id),
+    }
