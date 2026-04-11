@@ -98,7 +98,7 @@ Prefix with `fix:`, `feat:`, `docs:`, `refactor:`, `test:`, or `chore:`.
 
 ## Tool Count Discipline
 
-Currently **257 tools**. If you add or remove a `@mcp.tool()` decorator, update all of these files:
+Currently **293 tools**. If you add or remove a `@mcp.tool()` decorator, update all of these files:
 
 - `README.md`
 - `CLAUDE.md`
