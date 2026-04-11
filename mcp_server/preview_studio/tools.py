@@ -388,18 +388,19 @@ def render_preview_variant(
         spectral_before = None
         spectral_after = None
 
-        # Try audible preview — capture spectrum via M4L bridge
+        # Try audible preview — capture spectrum via M4L spectral cache
         try:
-            bridge = ctx.lifespan_context.get("m4l_bridge")
-            if bridge:
-                spectral_before = ableton.send_command("get_master_spectrum")
+            from ..m4l_bridge import SpectralCache
+            cache = ctx.lifespan_context.get("spectral_cache")
+            if cache and isinstance(cache, SpectralCache) and cache.has_data():
+                spectral_before = cache.get_snapshot()
                 # Play for the requested bar count
                 tempo = before_info.get("tempo", 120)
                 play_seconds = bars * (60.0 / tempo) * 4  # bars * beat_duration * 4 beats
                 ableton.send_command("start_playback", {})
                 import time as _time
                 _time.sleep(min(play_seconds, 8.0))  # cap at 8 seconds
-                spectral_after = ableton.send_command("get_master_spectrum")
+                spectral_after = cache.get_snapshot()
                 ableton.send_command("stop_playback", {})
                 preview_mode = "audible_preview"
         except Exception:

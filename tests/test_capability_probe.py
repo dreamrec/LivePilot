@@ -1,0 +1,33 @@
+"""Tests for runtime capability probe."""
+
+from mcp_server.runtime.capability_probe import probe_capabilities, format_doctor_report
+
+
+def test_probe_without_ableton():
+    report = probe_capabilities(ableton=None, ctx=None)
+    assert report["ableton"]["status"] == "unavailable"
+    assert report["m4l_bridge"]["status"] == "unavailable"
+    assert report["remote_script"]["command_count"] >= 80
+    assert report["tier"]["active"] == "core_control"
+    # core_control requires ableton, so it should be False without connection
+    assert report["tier"]["levels"]["core_control"] is False
+
+
+def test_probe_persistence():
+    report = probe_capabilities()
+    # ~/.livepilot/ should exist from earlier taste persistence work
+    assert report["persistence"]["status"] in ("ok", "unavailable")
+
+
+def test_format_doctor_report():
+    report = probe_capabilities()
+    text = format_doctor_report(report)
+    assert "LivePilot Capability Report" in text
+    assert "ableton" in text
+    assert "persistence" in text
+
+
+def test_probe_has_all_areas():
+    report = probe_capabilities()
+    expected = {"ableton", "remote_script", "m4l_bridge", "offline_perception", "persistence", "tier"}
+    assert expected.issubset(set(report.keys()))
