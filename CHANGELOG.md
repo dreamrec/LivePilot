@@ -1,5 +1,51 @@
 # Changelog
 
+## 1.9.24 — Stability & Intelligence Upgrade (April 2026)
+
+### Truth and Boundaries (Wave 1)
+- **feat(runtime):** Capability contract — every advanced tool reports `full/fallback/analytical_only/unavailable` with confidence scores
+- **feat(runtime):** Command boundary audit — CI catches any `send_command()` targeting a non-existent Remote Script command
+- **fix(song_brain):** `get_motif_graph` now uses pure-Python engine instead of invalid TCP call
+- **fix(hook_hunter):** Same motif routing fix
+- **fix(musical_intelligence):** Same motif routing fix + `analyze_phrase_arc` now calls perception engine directly
+- **fix(memory):** `record_positive_preference` actually updates taste dimensions (was a silent no-op due to key mismatch)
+- **fix(metadata):** AGENTS.md synced to v1.9.23/293 tools, test docstring corrected
+
+### Unified Execution Layer (Wave 2)
+- **feat(runtime):** Execution router — classifies steps as `remote_command/bridge_command/mcp_tool/unknown`, dispatches correctly
+- **feat(semantic_moves):** `apply_semantic_move` explore mode uses execution router
+- **feat(preview_studio):** `render_preview_variant` uses execution router
+
+### Persistent Memory (Waves 2-3)
+- **feat(persistence):** Base persistent JSON store (atomic write, corruption recovery, thread-safe)
+- **feat(persistence):** Taste store at `~/.livepilot/taste.json` — move outcomes, novelty band, device affinity, anti-preferences survive restart
+- **feat(persistence):** Project store at `~/.livepilot/projects/<hash>/state.json` — threads, turns, Wonder outcomes per song
+- **feat(memory):** TasteGraph.record_move_outcome writes to persistent backing
+- **feat(session_continuity):** tracker flushes threads and turns to project store on write
+
+### Move Annotations (Wave 3)
+- **feat(semantic_moves):** All 20 moves annotated with explicit `backend` per compile_plan step
+- **test:** Static audit verifies all annotations match the execution router classifier
+
+### Intelligence Upgrade (Waves 3-4)
+- **feat(services):** Shared motif service — one entry point consumed by SongBrain, HookHunter, musical_intelligence
+- **feat(song_brain):** Evidence-weighted identity confidence (motif=0.4, composition=0.2, roles=0.15, scenes=0.15, moves=0.1)
+- **feat(song_brain):** `evidence_breakdown` field shows per-source contributions
+- **feat(hook_hunter):** Hooks carry `evidence_sources` (motif_recurrence, track_name, clip_reuse)
+- **feat(hook_hunter):** Section-placement analysis boosts hooks recurring across sections
+- **feat(detectors):** Motif appearing in >60% of sections triggers fatigue signal
+
+### Preview and Doctor (Wave 4)
+- **feat(preview_studio):** Three explicit preview modes: `audible_preview` (M4L+spectrum), `metadata_only_preview`, `analytical_preview`
+- **feat(preview_studio):** `bars` parameter used for audible preview playback duration
+- **feat(preview_studio):** `preview_mode` field in response — no ambiguity about what was measured
+- **feat(runtime):** Capability probe — 6-area runtime detection (Ableton, Remote Script, M4L, numpy, persistence, tier)
+
+### Release Infrastructure (Wave 5)
+- **feat(scripts):** `sync_metadata.py` — single source of truth for version and tool count, CI-checkable
+- **docs:** README Intelligence Layer section with all 12 engines described
+- **docs:** Manual index rewritten with three-layer architecture and 39-domain map
+
 ## 1.9.23-wonder-v1.5 — Wonder Mode V1.5: Stuck-Rescue Workflow (April 2026)
 
 ### Wonder Mode Redesign (292->293 tools)

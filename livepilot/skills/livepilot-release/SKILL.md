@@ -105,6 +105,20 @@ Current: **39 domains**: transport, tracks, clips, notes, devices, scenes, mixin
 - [ ] Remote script version matches MCP server version
 - [ ] All tests pass: `python3 -m pytest tests/ -v`
 
+## 11. Automated Checks
+
+- [ ] `python scripts/sync_metadata.py --check` — all metadata in sync
+- [ ] `python -m pytest tests/test_command_boundary_audit.py` — no invalid TCP targets
+- [ ] `python -m pytest tests/test_move_annotations.py` — all moves annotated
+- [ ] `python -m pytest tests/test_capability.py` — capability contract works
+- [ ] `python -m pytest tests/test_capability_probe.py` — doctor probe works
+
+## 12. Release Smoke Board
+
+- [ ] Run through `docs/manual/release-smoke-board.md` scenarios against real Ableton session
+- [ ] All preview modes correctly labeled (audible/metadata/analytical)
+- [ ] Persistence survives server restart
+
 ## Quick Verify Command
 
 ```bash

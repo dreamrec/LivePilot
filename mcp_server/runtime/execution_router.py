@@ -67,9 +67,10 @@ def execute_step(
     params: dict,
     ableton: Any = None,
     ctx: Any = None,
+    declared_backend: str | None = None,
 ) -> ExecutionResult:
     """Execute a single plan step through the correct backend."""
-    backend = classify_step(tool)
+    backend = declared_backend if declared_backend in ("remote_command", "bridge_command", "mcp_tool") else classify_step(tool)
 
     if backend in ("remote_command", "bridge_command"):
         if ableton is None:
@@ -117,7 +118,7 @@ def execute_plan_steps(
     for step in steps:
         tool = step.get("tool") or step.get("command", "")
         params = step.get("params") or step.get("args", {})
-        # Prefer declared backend from step annotations (PR5)
+        # Honor declared backend from step annotations (PR5) if present
         declared_backend = step.get("backend")
 
         if not tool:
@@ -129,7 +130,7 @@ def execute_plan_steps(
                 break
             continue
 
-        result = execute_step(tool, params, ableton=ableton, ctx=ctx)
+        result = execute_step(tool, params, ableton=ableton, ctx=ctx, declared_backend=declared_backend)
         results.append(result)
 
         if not result.ok and stop_on_failure:

@@ -17,7 +17,7 @@ class PersistentJsonStore:
 
     def __init__(self, path: Path):
         self._path = Path(path)
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
 
     @property
     def path(self) -> Path:
