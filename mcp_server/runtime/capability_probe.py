@@ -76,21 +76,21 @@ def probe_capabilities(
         "technique_store": techniques_exists,
     }
 
-    # 6. Capability tier
-    tier = "core_control"
+    # 6. Capability tier — highest active tier
     if ableton_ok and bridge_ok:
         tier = "analyzer_enhanced"
     elif ableton_ok:
         tier = "core_control"
-    if numpy_ok:
-        tier = tier  # offline adds to any tier
+    else:
+        tier = "creative_intelligence"  # heuristic-only, no Ableton connection
+
     report["tier"] = {
         "active": tier,
         "levels": {
             "core_control": ableton_ok,
             "analyzer_enhanced": ableton_ok and bridge_ok,
             "offline_analysis": numpy_ok,
-            "creative_intelligence": True,  # always available (heuristic without analyzer)
+            "creative_intelligence": True,  # always available
             "persistent_memory": persistence_ok,
         },
     }

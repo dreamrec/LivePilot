@@ -8,9 +8,10 @@ def test_probe_without_ableton():
     assert report["ableton"]["status"] == "unavailable"
     assert report["m4l_bridge"]["status"] == "unavailable"
     assert report["remote_script"]["command_count"] >= 80
-    assert report["tier"]["active"] == "core_control"
-    # core_control requires ableton, so it should be False without connection
+    # Without Ableton, active tier is creative_intelligence (heuristic-only)
+    assert report["tier"]["active"] == "creative_intelligence"
     assert report["tier"]["levels"]["core_control"] is False
+    assert report["tier"]["levels"]["creative_intelligence"] is True
 
 
 def test_probe_persistence():
