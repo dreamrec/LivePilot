@@ -32,9 +32,11 @@ def build_diagnosis(
     stuckness_report: Optional[dict] = None,
     song_brain: Optional[dict] = None,
     action_ledger: Optional[list[dict]] = None,
-    open_threads: Optional[list[dict]] = None,
 ) -> WonderDiagnosis:
-    """Build a WonderDiagnosis from available session state."""
+    """Build a WonderDiagnosis from available session state.
+
+    Note: open_threads domain prioritization is deferred — not yet implemented.
+    """
     degraded: list[str] = []
 
     # 1. Determine trigger reason and problem class from stuckness

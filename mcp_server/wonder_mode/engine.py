@@ -426,7 +426,8 @@ def generate_wonder_variants(
             variant_id=f"{set_prefix}_{label}",
         )
         if taste_graph is not None:
-            v["taste_fit"] = compute_taste_fit(move, taste_graph)
+            # Score taste on envelope-adjusted move for consistency with targets_snapshot
+            v["taste_fit"] = compute_taste_fit(move_with_envelope, taste_graph)
         v["distinctness_reason"] = _explain_distinctness(move, distinct, i)
         variants.append(v)
 

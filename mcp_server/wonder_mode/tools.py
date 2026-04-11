@@ -66,8 +66,17 @@ def _get_stuckness_report(ctx: Context, song_brain: dict) -> dict | None:
         action_ledger = _get_ledger_entries(ctx)
         if not action_ledger:
             return None
+        # Pass session_info if available for better accuracy
+        session_info = {}
+        try:
+            ableton = ctx.lifespan_context.get("ableton")
+            if ableton:
+                session_info = ableton.send_command("get_session_info", {})
+        except Exception:
+            pass
         report = detect_stuckness(
             action_history=action_ledger,
+            session_info=session_info,
             song_brain=song_brain,
         )
         return report.to_dict()
@@ -122,8 +131,10 @@ def enter_wonder_mode(
         active_constraints=active_constraints,
     )
 
-    # 3. Create WonderSession
-    session_id = engine._wonder_id(request_text, kernel_id)
+    # 3. Create WonderSession (unique per invocation, not deterministic)
+    import hashlib, time
+    _seed = f"{request_text}:{kernel_id}:{time.time()}"
+    session_id = "ws_" + hashlib.sha256(_seed.encode()).hexdigest()[:12]
     ws = WonderSession(
         session_id=session_id,
         request_text=request_text,
@@ -133,8 +144,9 @@ def enter_wonder_mode(
         recommended=result.get("recommended", ""),
         variant_count_actual=result.get("variant_count_actual", 0),
         degraded_reason=result.get("degraded_reason", ""),
-        status="variants_ready",
+        status="diagnosing",  # will transition below
     )
+    ws.transition_to("variants_ready")
 
     # 4. Open creative thread (exploration, NOT turn resolution)
     try:
@@ -226,11 +238,10 @@ def discard_wonder_session(
     if not ws:
         return {"error": "Wonder session not found", "wonder_session_id": wonder_session_id}
 
-    if ws.status == "resolved":
-        return {"error": "Session already resolved", "wonder_session_id": wonder_session_id}
+    if not ws.transition_to("resolved"):
+        return {"error": f"Cannot discard session in '{ws.status}' state", "wonder_session_id": wonder_session_id}
 
     ws.outcome = "rejected_all"
-    ws.status = "resolved"
 
     # Record rejected turn
     try:
@@ -242,6 +253,20 @@ def discard_wonder_session(
             identity_effect="",
             user_sentiment="disliked",
         )
+    except Exception:
+        pass
+
+    # Update taste graph — rejection is a negative signal for all executable variants
+    try:
+        taste_graph = _get_taste_graph(ctx)
+        if taste_graph:
+            for v in ws.variants:
+                if not v.get("analytical_only") and v.get("move_id") and v.get("family"):
+                    taste_graph.record_move_outcome(
+                        move_id=v["move_id"],
+                        family=v["family"],
+                        kept=False,
+                    )
     except Exception:
         pass
 

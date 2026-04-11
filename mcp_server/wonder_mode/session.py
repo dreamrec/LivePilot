@@ -63,6 +63,22 @@ class WonderSession:
 
     status: str = "diagnosing"  # diagnosing, variants_ready, previewing, resolved
 
+    # Valid state transitions
+    _VALID_TRANSITIONS: dict = field(default_factory=lambda: {
+        "diagnosing": {"variants_ready"},
+        "variants_ready": {"previewing", "resolved"},
+        "previewing": {"resolved"},
+        "resolved": set(),  # terminal
+    }, repr=False)
+
+    def transition_to(self, new_status: str) -> bool:
+        """Attempt a state transition. Returns False if invalid."""
+        valid = self._VALID_TRANSITIONS.get(self.status, set())
+        if new_status not in valid:
+            return False
+        self.status = new_status
+        return True
+
     def to_dict(self) -> dict:
         d = asdict(self)
         if self.diagnosis:
@@ -88,3 +104,11 @@ def store_wonder_session(ws: WonderSession) -> None:
 def get_wonder_session(session_id: str) -> Optional[WonderSession]:
     """Retrieve a WonderSession by ID."""
     return _wonder_sessions.get(session_id)
+
+
+def find_session_by_preview_set(set_id: str) -> Optional[WonderSession]:
+    """Find a WonderSession linked to a preview set ID."""
+    for ws in _wonder_sessions.values():
+        if ws.preview_set_id == set_id:
+            return ws
+    return None

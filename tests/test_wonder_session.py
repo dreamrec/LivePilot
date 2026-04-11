@@ -57,13 +57,33 @@ def test_status_defaults_to_diagnosing():
     assert ws.status == "diagnosing"
 
 
-def test_status_transitions():
+def test_valid_transitions():
     ws = WonderSession(session_id="ws_t", request_text="test")
-    ws.status = "variants_ready"
+    assert ws.transition_to("variants_ready") is True
     assert ws.status == "variants_ready"
-    ws.status = "previewing"
+    assert ws.transition_to("previewing") is True
     assert ws.status == "previewing"
-    ws.status = "resolved"
+    assert ws.transition_to("resolved") is True
+    assert ws.status == "resolved"
+
+
+def test_invalid_transitions_rejected():
+    ws = WonderSession(session_id="ws_inv", request_text="test")
+    # Can't go from diagnosing to resolved directly
+    assert ws.transition_to("resolved") is False
+    assert ws.status == "diagnosing"
+    # Can't go from diagnosing to previewing
+    assert ws.transition_to("previewing") is False
+    assert ws.status == "diagnosing"
+
+
+def test_resolved_is_terminal():
+    ws = WonderSession(session_id="ws_term", request_text="test")
+    ws.transition_to("variants_ready")
+    ws.transition_to("resolved")
+    # Can't transition from resolved
+    assert ws.transition_to("diagnosing") is False
+    assert ws.transition_to("variants_ready") is False
     assert ws.status == "resolved"
 
 

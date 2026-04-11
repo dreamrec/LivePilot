@@ -29,13 +29,10 @@ def _should_refuse_analytical(compiled_plan, wonder_linked: bool) -> bool:
 def _find_wonder_session_by_preview(set_id: str):
     """Find a WonderSession linked to this preview set."""
     try:
-        from ..wonder_mode.session import _wonder_sessions
-        for ws in _wonder_sessions.values():
-            if ws.preview_set_id == set_id:
-                return ws
+        from ..wonder_mode.session import find_session_by_preview_set
+        return find_session_by_preview_set(set_id)
     except Exception:
-        pass
-    return None
+        return None
 
 
 @mcp.tool()
@@ -64,53 +61,57 @@ def create_preview_set(
 
     # Wonder-aware path: use variants from WonderSession
     if wonder_session_id:
-        try:
-            from ..wonder_mode.session import get_wonder_session
-            ws = get_wonder_session(wonder_session_id)
-            if ws and ws.variants:
-                from .models import PreviewVariant, PreviewSet
-                import time
+        from ..wonder_mode.session import get_wonder_session
+        ws = get_wonder_session(wonder_session_id)
+        if not ws:
+            return {"error": f"Wonder session {wonder_session_id} not found"}
+        if not ws.variants:
+            return {"error": f"Wonder session {wonder_session_id} has no variants"}
 
-                # Filter to executable variants only
-                exec_variants = [v for v in ws.variants if not v.get("analytical_only")]
-                now = int(time.time() * 1000)
-                preview_variants = []
-                for v in exec_variants:
-                    preview_variants.append(PreviewVariant(
-                        variant_id=v.get("variant_id", ""),
-                        label=v.get("label", ""),
-                        intent=v.get("intent", ""),
-                        novelty_level=v.get("novelty_level", 0.5),
-                        identity_effect=v.get("identity_effect", "preserves"),
-                        what_changed=v.get("what_changed", ""),
-                        what_preserved=v.get("what_preserved", ""),
-                        why_it_matters=v.get("why_it_matters", ""),
-                        move_id=v.get("move_id", ""),
-                        compiled_plan=v.get("compiled_plan"),
-                        taste_fit=v.get("taste_fit", 0.5),
-                        score=v.get("score", 0.0),
-                        summary=v.get("distinctness_reason", ""),
-                        created_at_ms=now,
-                    ))
+        from .models import PreviewVariant, PreviewSet
+        import time
 
-                set_id = f"ps_wonder_{wonder_session_id[:10]}"
-                ps = PreviewSet(
-                    set_id=set_id,
-                    request_text=request_text,
-                    strategy="wonder",
-                    source_kernel_id=kernel_id,
-                    variants=preview_variants,
-                    created_at_ms=now,
-                )
-                engine.store_preview_set(ps)
+        # Filter to executable variants only
+        exec_variants = [v for v in ws.variants if not v.get("analytical_only")]
+        if not exec_variants:
+            return {"error": "No executable variants in Wonder session — all are analytical-only"}
 
-                # Update WonderSession
-                ws.preview_set_id = set_id
-                ws.status = "previewing"
+        now = int(time.time() * 1000)
+        preview_variants = []
+        for v in exec_variants:
+            preview_variants.append(PreviewVariant(
+                variant_id=v.get("variant_id", ""),
+                label=v.get("label", ""),
+                intent=v.get("intent", ""),
+                novelty_level=v.get("novelty_level", 0.5),
+                identity_effect=v.get("identity_effect", "preserves"),
+                what_changed=v.get("what_changed", ""),
+                what_preserved=v.get("what_preserved", ""),
+                why_it_matters=v.get("why_it_matters", ""),
+                move_id=v.get("move_id", ""),
+                compiled_plan=v.get("compiled_plan"),
+                taste_fit=v.get("taste_fit", 0.5),
+                score=v.get("score", 0.0),
+                summary=v.get("distinctness_reason", ""),
+                created_at_ms=now,
+            ))
 
-                return ps.to_dict()
-        except Exception:
-            pass  # Fall through to normal path
+        set_id = f"ps_wonder_{wonder_session_id[:12]}"
+        ps = PreviewSet(
+            set_id=set_id,
+            request_text=request_text,
+            strategy="wonder",
+            source_kernel_id=kernel_id,
+            variants=preview_variants,
+            created_at_ms=now,
+        )
+        engine.store_preview_set(ps)
+
+        # Update WonderSession
+        ws.preview_set_id = set_id
+        ws.transition_to("previewing")
+
+        return ps.to_dict()
 
     # Get request-aware moves via propose_next_best_move logic
     # instead of arbitrary registry order
@@ -251,7 +252,7 @@ def commit_preview_variant(
     if ws:
         ws.selected_variant_id = variant_id
         ws.outcome = "committed"
-        ws.status = "resolved"
+        ws.transition_to("resolved")
 
         # Record accepted turn resolution
         try:
