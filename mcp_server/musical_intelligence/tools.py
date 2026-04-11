@@ -45,22 +45,14 @@ def detect_repetition_fatigue(ctx: Context) -> dict:
             "clips": row,
         })
 
-    # Motif data — pure-Python engine, not TCP
+    # Motif data — via shared motif service
     motif_graph = None
     try:
-        from ..tools.motif import _motif_engine
-        tracks = matrix.get("scenes", [])
-        notes_by_track = {}
-        for i in range(len(scenes)):
-            try:
-                notes = ableton.send_command("get_notes", {"track_index": i, "clip_index": 0})
-                if notes and notes.get("notes"):
-                    notes_by_track[i] = notes
-            except Exception:
-                pass
-        if notes_by_track:
-            session_info = ableton.send_command("get_session_info", {})
-            motif_graph = _motif_engine.detect_motifs(session_info, notes_by_track)
+        from ..services.motif_service import get_motif_data, fetch_notes_from_ableton
+        session_info = ableton.send_command("get_session_info", {})
+        track_list = session_info.get("tracks", [])
+        notes_by_track = fetch_notes_from_ableton(ableton, track_list)
+        motif_graph = get_motif_data(notes_by_track)
     except Exception:
         pass
 

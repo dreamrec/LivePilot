@@ -88,21 +88,11 @@ def _fetch_session_data(ctx: Context) -> dict:
     except Exception:
         pass
 
-    # Motif data — from the motif engine if notes exist (pure-Python, not TCP)
+    # Motif data — via shared motif service (pure-Python, not TCP)
     try:
-        from ..tools.motif import _motif_engine
-        notes_by_track = {}
-        for i, t in enumerate(data.get("tracks", [])):
-            try:
-                notes = ableton.send_command("get_notes", {"track_index": i, "clip_index": 0})
-                if notes and notes.get("notes"):
-                    notes_by_track[i] = notes
-            except Exception:
-                pass
-        if notes_by_track:
-            data["motif_data"] = _motif_engine.detect_motifs(
-                data.get("session_info", {}), notes_by_track
-            )
+        from ..services.motif_service import get_motif_data, fetch_notes_from_ableton
+        notes_by_track = fetch_notes_from_ableton(ableton, data.get("tracks", []))
+        data["motif_data"] = get_motif_data(notes_by_track)
     except Exception:
         pass  # Motif graph requires notes in clips; empty is valid
 

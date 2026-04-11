@@ -84,6 +84,9 @@ class SongBrain:
     # Open questions the song has not resolved
     open_questions: list[OpenQuestion] = field(default_factory=list)
 
+    # Evidence breakdown — what data informed each inference
+    evidence_breakdown: dict = field(default_factory=dict)
+
     # Metadata
     built_from: dict = field(default_factory=dict)  # what data sources contributed
 
@@ -98,6 +101,7 @@ class SongBrain:
             "identity_drift_risk": self.identity_drift_risk,
             "payoff_targets": self.payoff_targets,
             "open_questions": [q.to_dict() for q in self.open_questions],
+            "evidence_breakdown": self.evidence_breakdown,
             "built_from": self.built_from,
         }
 

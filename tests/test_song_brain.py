@@ -22,7 +22,9 @@ def test_identity_core_prefers_high_salience_motif():
         },
     )
     assert "arpeggio" in brain.identity_core.lower() or "motif" in brain.identity_core.lower()
-    assert brain.identity_confidence >= 0.7
+    # Evidence-weighted: with only motif+tracks (no composition/roles/scenes),
+    # adjusted confidence = raw * (0.4 + 0.6 * evidence_score)
+    assert brain.identity_confidence >= 0.4
 
 
 def test_identity_core_fallback_to_genre_cues():
