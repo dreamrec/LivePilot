@@ -79,12 +79,15 @@ def test_second_client_gets_explicit_state_error():
     try:
         server.start()
         assert _wait_until(lambda: server._server_socket is not None)
-        port = server._server_socket.getsockname()[1]
+        # Use the actual bound address (may be IPv4 or IPv6 depending on OS)
+        host, port = server._server_socket.getsockname()[:2]
+        if host == "" or host == "0.0.0.0" or host == "::":
+            host = "127.0.0.1"
 
-        first = socket.create_connection(("127.0.0.1", port), timeout=1.0)
+        first = socket.create_connection((host, port), timeout=2.0)
         assert _wait_until(lambda: server._client_connected)
 
-        second = socket.create_connection(("127.0.0.1", port), timeout=1.0)
+        second = socket.create_connection((host, port), timeout=2.0)
         second.settimeout(2.0)
         payload = second.recv(4096).decode("utf-8").strip()
         response = json.loads(payload)
