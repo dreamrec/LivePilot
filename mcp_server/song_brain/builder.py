@@ -74,16 +74,43 @@ def build_song_brain(
 
     drift_risk = _estimate_drift_risk(recent_moves, sacred)
 
+    # Evidence-weighted confidence adjustment
+    # Weights: motif=0.4, composition=0.2, role_graph=0.15, scenes=0.15, recent_moves=0.1
+    evidence_weights = {
+        "motif_data": 0.4,
+        "composition_analysis": 0.2,
+        "role_graph": 0.15,
+        "scenes": 0.15,
+        "recent_moves": 0.1,
+    }
+    evidence_score = sum(
+        weight for source, weight in evidence_weights.items()
+        if built_from.get(source, False)
+    )
+    # Adjust identity confidence by evidence availability
+    adjusted_confidence = round(identity_confidence * (0.4 + 0.6 * evidence_score), 3)
+
+    evidence_breakdown = {
+        "raw_confidence": identity_confidence,
+        "evidence_score": round(evidence_score, 3),
+        "adjusted_confidence": adjusted_confidence,
+        "sources": {
+            source: {"available": built_from.get(source, False), "weight": weight}
+            for source, weight in evidence_weights.items()
+        },
+    }
+
     return SongBrain(
         brain_id=brain_id,
         identity_core=identity_core,
-        identity_confidence=identity_confidence,
+        identity_confidence=adjusted_confidence,
         sacred_elements=sacred,
         section_purposes=sections,
         energy_arc=energy_arc,
         identity_drift_risk=drift_risk,
         payoff_targets=payoff_targets,
         open_questions=open_questions,
+        evidence_breakdown=evidence_breakdown,
         built_from=built_from,
     )
 
