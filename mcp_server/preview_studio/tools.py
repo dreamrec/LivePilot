@@ -154,15 +154,20 @@ def create_preview_set(
             import sys
             print(f"LivePilot: SongBrain unavailable in preview_studio: {_e}", file=sys.stderr)
 
-    # Get taste graph — use session-scoped stores, extract numeric weights
+    # Get taste graph — session + persistent stores
     taste_graph: dict = {}
     try:
         from ..memory.taste_graph import build_taste_graph
         from ..memory.taste_memory import TasteMemoryStore
         from ..memory.anti_memory import AntiMemoryStore
+        from ..persistence.taste_store import PersistentTasteStore
         taste_store = ctx.lifespan_context.setdefault("taste_memory", TasteMemoryStore())
         anti_store = ctx.lifespan_context.setdefault("anti_memory", AntiMemoryStore())
-        graph = build_taste_graph(taste_store=taste_store, anti_store=anti_store)
+        persistent = ctx.lifespan_context.setdefault("persistent_taste", PersistentTasteStore())
+        graph = build_taste_graph(
+            taste_store=taste_store, anti_store=anti_store,
+            persistent_store=persistent,
+        )
         taste_graph = graph.to_dict()
     except Exception:
         pass
@@ -269,14 +274,19 @@ def commit_preview_variant(
         except Exception:
             pass
 
-        # Update taste graph
+        # Update taste graph (with persistent backing)
         try:
             from ..memory.taste_graph import build_taste_graph
             from ..memory.taste_memory import TasteMemoryStore
             from ..memory.anti_memory import AntiMemoryStore
+            from ..persistence.taste_store import PersistentTasteStore
             taste_store = ctx.lifespan_context.setdefault("taste_memory", TasteMemoryStore())
             anti_store = ctx.lifespan_context.setdefault("anti_memory", AntiMemoryStore())
-            graph = build_taste_graph(taste_store=taste_store, anti_store=anti_store)
+            persistent = ctx.lifespan_context.setdefault("persistent_taste", PersistentTasteStore())
+            graph = build_taste_graph(
+                taste_store=taste_store, anti_store=anti_store,
+                persistent_store=persistent,
+            )
             # Look up family from WonderSession's variant list
             family = ""
             for v in ws.variants:
