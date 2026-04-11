@@ -29,9 +29,14 @@ def _get_taste_graph(ctx: Context):
         from ..memory.taste_graph import build_taste_graph
         from ..memory.taste_memory import TasteMemoryStore
         from ..memory.anti_memory import AntiMemoryStore
+        from ..persistence.taste_store import PersistentTasteStore
         taste_store = ctx.lifespan_context.setdefault("taste_memory", TasteMemoryStore())
         anti_store = ctx.lifespan_context.setdefault("anti_memory", AntiMemoryStore())
-        return build_taste_graph(taste_store=taste_store, anti_store=anti_store)
+        persistent = ctx.lifespan_context.setdefault("persistent_taste", PersistentTasteStore())
+        return build_taste_graph(
+            taste_store=taste_store, anti_store=anti_store,
+            persistent_store=persistent,
+        )
     except Exception:
         pass
     return None

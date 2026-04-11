@@ -99,6 +99,9 @@ class TasteGraph:
 
     # ── Update methods ───────────────────────────────────────────────
 
+    # Persistent store reference (set by build_taste_graph when available)
+    _persistent_store: object = None
+
     def record_move_outcome(
         self, move_id: str, family: str, kept: bool, score: float = 0.0
     ) -> None:
@@ -119,6 +122,13 @@ class TasteGraph:
 
         self.evidence_count += 1
         self.last_updated_ms = now
+
+        # Write-back to persistent store
+        if self._persistent_store is not None:
+            try:
+                self._persistent_store.record_move_outcome(move_id, family, kept, score)
+            except Exception:
+                pass  # persistence is best-effort
 
     def record_device_use(self, device_name: str, positive: bool = True) -> None:
         """Update device affinity from usage."""
@@ -245,10 +255,17 @@ class TasteGraph:
 def build_taste_graph(
     taste_store=None,   # TasteMemoryStore
     anti_store=None,    # AntiMemoryStore
+    persistent_store=None,  # PersistentTasteStore (optional)
 ) -> TasteGraph:
-    """Build a TasteGraph from existing memory stores."""
+    """Build a TasteGraph from existing memory stores.
+
+    When persistent_store is provided, hydrates move_family_scores,
+    device_affinities, and novelty_band from disk — these survive
+    server restart.
+    """
     graph = TasteGraph()
 
+    # Session-scoped dimensions (in-memory)
     if taste_store:
         for dim in taste_store.get_taste_dimensions():
             if dim.evidence_count > 0:
@@ -257,5 +274,55 @@ def build_taste_graph(
     if anti_store:
         for pref in anti_store.get_anti_preferences():
             graph.dimension_avoidances[pref.dimension] = pref.direction
+
+    # Persistent state (from disk)
+    if persistent_store is not None:
+        persisted = persistent_store.get_all()
+
+        # Move family scores
+        for move_id, outcome in persisted.get("move_outcomes", {}).items():
+            family = outcome.get("family", "")
+            if family and family not in graph.move_family_scores:
+                from .taste_graph import MoveFamilyScore
+                graph.move_family_scores[family] = MoveFamilyScore(family=family)
+            if family:
+                fam = graph.move_family_scores[family]
+                fam.kept_count += outcome.get("kept_count", 0)
+                fam.undone_count += outcome.get("undone_count", 0)
+                total = fam.kept_count + fam.undone_count
+                if total > 0:
+                    fam.score = round((fam.kept_count - fam.undone_count) / total, 3)
+
+        # Novelty band
+        graph.novelty_band = persisted.get("novelty_band", 0.5)
+
+        # Device affinities
+        for dev_name, dev_data in persisted.get("device_affinities", {}).items():
+            from .taste_graph import DeviceAffinity
+            graph.device_affinities[dev_name] = DeviceAffinity(
+                device_name=dev_name,
+                affinity=dev_data.get("affinity", 0.0),
+                use_count=dev_data.get("use_count", 0),
+            )
+
+        # Evidence count
+        graph.evidence_count = max(
+            graph.evidence_count, persisted.get("evidence_count", 0)
+        )
+
+        # Dimension weights from persistent store (merged, session takes precedence)
+        for dim, val in persisted.get("dimension_weights", {}).items():
+            if dim not in graph.dimension_weights:
+                graph.dimension_weights[dim] = val
+
+        # Anti-preferences from persistent store
+        for anti in persisted.get("anti_preferences", []):
+            dim = anti.get("dimension", "")
+            direction = anti.get("direction", "")
+            if dim and dim not in graph.dimension_avoidances:
+                graph.dimension_avoidances[dim] = direction
+
+    # Attach persistent store for write-back
+    graph._persistent_store = persistent_store
 
     return graph
