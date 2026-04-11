@@ -57,7 +57,7 @@ livepilot/skills/livepilot-sample-engine/
 
 | Layer | Module | Role |
 |-------|--------|------|
-| Perception | `analyzer.py`, `sources.py` | Discover, fetch, classify, extract metadata |
+| Perception | `analyzer.py` (state-builder equivalent), `sources.py` | Discover, fetch, classify, extract metadata |
 | Intelligence | `critics.py`, `planner.py`, `techniques.py` | Score fitness, select technique, compile plan |
 | Action | `tools.py`, `moves.py`, `sample_compilers.py` | MCP tools, Wonder Mode moves, compiled plans |
 
@@ -133,6 +133,15 @@ class SampleIntent:
 ### SampleFitReport
 
 Output of the 6-critic battery — the intelligence verdict.
+
+**Pattern note:** Existing critics (`mix_engine`, `sound_design`) use an issue-detection
+pattern — they return `list[Issue]` objects. The sample engine intentionally diverges:
+critics return scored results (0.0-1.0) because sample fitness is a continuous spectrum,
+not a binary issue. The `SampleFitReport.warnings` field bridges the gap — each critic
+with score < 0.5 emits a warning string consumable by downstream systems (Wonder Mode,
+planner) in the same way issues are consumed. The planner converts low-scoring critics
+into actionable adjustments (the `adjustments` field), preserving the "detect → fix"
+pattern of existing engines.
 
 ```python
 @dataclass
@@ -469,18 +478,35 @@ technique_score = (
 
 ### Stuckness Detector — Sample Patterns
 
-New patterns added to `stuckness_detector/detector.py`:
+**Important:** The current stuckness detector analyzes `action_history` (undos, repeated
+tweaks, oscillation). The sample patterns below are **session-state analyses**, not
+action-history signals. Implementation requires new signal-detection functions that read
+`session_info` and `song_brain` rather than the action log. These run alongside existing
+action-history analysis as a second signal source.
 
-| Pattern | Signal | Confidence |
-|---------|--------|------------|
-| `no_organic_texture` | All tracks are synthesized, no sampled content | 0.6 |
-| `stale_drums` | Same drum pattern for 16+ bars, no variation | 0.5 |
-| `vocal_processing_monotony` | Vocal track present, no processing variety | 0.4 |
-| `dense_but_static` | Mix dense with sustained elements, low movement | 0.5 |
+New session-state patterns added to `stuckness_detector/detector.py`:
+
+| Pattern | Signal Source | Detection Method | Confidence |
+|---------|-------------|------------------|------------|
+| `no_organic_texture` | `session_info` tracks + `song_brain` | Check if all track devices are synths/drum machines, no Simpler/Sampler with loaded samples | 0.6 |
+| `stale_drums` | `song_brain` section analysis | Compare drum clip note hashes across 16+ bar span — identical = stale | 0.5 |
+| `vocal_processing_monotony` | `session_info` device chains | Vocal-role track with <2 active effects | 0.4 |
+| `dense_but_static` | `get_mix_snapshot` + `get_spectral_shape` | High track count + low spectral variation over time | 0.5 |
 
 ### Wonder Mode Diagnosis
 
-`wonder_mode/diagnosis.py` gains `"sample"` as a candidate domain. When sample patterns are detected, diagnosis includes sample-specific context:
+`wonder_mode/diagnosis.py` gains `"sample"` as a candidate domain. This requires adding
+entries to the `_DOMAIN_MAP` dict that maps problem classes to domains:
+
+```python
+# New entries in _DOMAIN_MAP
+"no_organic_texture": "sample",
+"stale_drums": "sample",          # also maps to "arrangement"
+"vocal_processing_monotony": "sample",  # also maps to "sound_design"
+"dense_but_static": "sample",     # also maps to "mix"
+```
+
+When sample patterns are detected, diagnosis includes sample-specific context:
 
 ```python
 {
@@ -552,6 +578,11 @@ Build a SampleProfile from a file path or clip reference.
 **Returns:** SampleProfile dict with all detected properties.
 
 **Requires:** M4L Analyzer for spectral analysis. Falls back to filename-only analysis without it.
+
+**Graceful degradation without M4L bridge:**
+- `analyze_sample`: filename parsing only — key/BPM from name, material_type from keywords, no spectral data. Confidence scores capped at 0.5.
+- `evaluate_sample_fit`: key_fit and tempo_fit work from filename metadata. frequency_fit returns score=0.5 with warning "No spectral data — verify frequency fit by ear." role_fit and intent_fit work from material_type. vibe_fit returns 0.5.
+- Freesound samples degrade less — AudioCommons descriptors provide brightness/depth even without local spectral analysis.
 
 ### `evaluate_sample_fit`
 
