@@ -189,12 +189,23 @@ def record_positive_preference(
     not just what they dislike.
     """
     taste_store = _get_taste_memory(ctx)
-    # Map to outcome signal
-    signal = f"{dimension}_{direction}_kept"
-    taste_store.update_from_outcome({"signal": signal})
+    # Find matching outcome signals for this dimension+direction
+    from ..memory.taste_memory import _OUTCOME_SIGNALS
+    matching_signals = []
+    dim_signals = _OUTCOME_SIGNALS.get(dimension, {})
+    for sig_name, adjustment in dim_signals.items():
+        # "increase" preference → match positive-adjustment signals (kept)
+        # "decrease" preference → match negative-adjustment signals (undone/less)
+        if direction == "increase" and adjustment > 0:
+            matching_signals.append(sig_name)
+        elif direction == "decrease" and adjustment < 0:
+            matching_signals.append(sig_name)
+    if matching_signals:
+        taste_store.update_from_outcome({"signals": matching_signals})
     return {
-        "recorded": True,
+        "recorded": bool(matching_signals),
         "dimension": dimension,
         "direction": direction,
+        "signals_matched": matching_signals,
         "evidence": evidence,
     }

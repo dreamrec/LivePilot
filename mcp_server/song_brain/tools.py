@@ -88,9 +88,21 @@ def _fetch_session_data(ctx: Context) -> dict:
     except Exception:
         pass
 
-    # Motif data — from the motif engine if notes exist
+    # Motif data — from the motif engine if notes exist (pure-Python, not TCP)
     try:
-        data["motif_data"] = ableton.send_command("get_motif_graph")
+        from ..tools.motif import _motif_engine
+        notes_by_track = {}
+        for i, t in enumerate(data.get("tracks", [])):
+            try:
+                notes = ableton.send_command("get_notes", {"track_index": i, "clip_index": 0})
+                if notes and notes.get("notes"):
+                    notes_by_track[i] = notes
+            except Exception:
+                pass
+        if notes_by_track:
+            data["motif_data"] = _motif_engine.detect_motifs(
+                data.get("session_info", {}), notes_by_track
+            )
     except Exception:
         pass  # Motif graph requires notes in clips; empty is valid
 
@@ -147,6 +159,21 @@ def build_song_brain(ctx: Context) -> dict:
     Returns the full SongBrain as a dict.
     """
     data = _fetch_session_data(ctx)
+
+    # Capability reporting — what data was actually available
+    from ..runtime.capability import build_capability
+    cap = build_capability(
+        required=["session_info", "scenes", "tracks", "motif_data", "composition_analysis", "role_graph"],
+        available={
+            "session_info": bool(data.get("session_info", {}).get("tempo")),
+            "scenes": bool(data.get("scenes")),
+            "tracks": bool(data.get("tracks")),
+            "motif_data": bool(data.get("motif_data")),
+            "composition_analysis": bool(data.get("composition_analysis")),
+            "role_graph": bool(data.get("role_graph")),
+        },
+    )
+
     brain = builder.build_song_brain(
         session_info=data["session_info"],
         scenes=data["scenes"],
@@ -161,6 +188,7 @@ def build_song_brain(ctx: Context) -> dict:
     return {
         **brain.to_dict(),
         "summary": brain.summary,
+        "capability": cap.to_dict(),
     }
 
 

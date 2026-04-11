@@ -45,10 +45,22 @@ def detect_repetition_fatigue(ctx: Context) -> dict:
             "clips": row,
         })
 
-    # Try to get motif graph for deeper analysis
+    # Motif data — pure-Python engine, not TCP
     motif_graph = None
     try:
-        motif_graph = ableton.send_command("get_motif_graph")
+        from ..tools.motif import _motif_engine
+        tracks = matrix.get("scenes", [])
+        notes_by_track = {}
+        for i in range(len(scenes)):
+            try:
+                notes = ableton.send_command("get_notes", {"track_index": i, "clip_index": 0})
+                if notes and notes.get("notes"):
+                    notes_by_track[i] = notes
+            except Exception:
+                pass
+        if notes_by_track:
+            session_info = ableton.send_command("get_session_info", {})
+            motif_graph = _motif_engine.detect_motifs(session_info, notes_by_track)
     except Exception:
         pass
 
@@ -171,17 +183,16 @@ def analyze_phrase_arc(
     loudness_data = None
     spectrum_data = None
 
+    # Direct Python calls to perception engine — not TCP
     try:
-        loudness_data = ableton.send_command("analyze_loudness_offline", {
-            "file_path": file_path, "detail": "full",
-        })
+        from ..tools._perception_engine import compute_loudness
+        loudness_data = compute_loudness(file_path, detail="full")
     except Exception:
         pass
 
     try:
-        spectrum_data = ableton.send_command("analyze_spectrum_offline_internal", {
-            "file_path": file_path,
-        })
+        from ..tools._perception_engine import compute_spectral
+        spectrum_data = compute_spectral(file_path)
     except Exception:
         pass
 
