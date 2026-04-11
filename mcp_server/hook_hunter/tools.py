@@ -1,4 +1,4 @@
-"""Hook Hunter MCP tools — 7 tools for hook and phrase intelligence.
+"""Hook Hunter MCP tools — 9 tools for hook and phrase intelligence.
 
   find_primary_hook — detect the most salient hook in the session
   rank_hook_candidates — list and rank all hook candidates
@@ -7,6 +7,8 @@
   score_phrase_impact — score a section's emotional landing
   detect_payoff_failure — find where the song should deliver but doesn't
   suggest_payoff_repair — generate repair strategies for payoff failures
+  detect_hook_neglect — check if a strong hook is underused across sections
+  compare_phrase_impact — compare emotional impact across multiple sections
 """
 
 from __future__ import annotations

@@ -1,9 +1,12 @@
-"""Session Continuity MCP tools — 4 tools for collaborative memory.
+"""Session Continuity MCP tools — 7 tools for collaborative memory.
 
   get_session_story — what the track was becoming, what changed, what's open
   resume_last_intent — pick up where you left off
   record_turn_resolution — log what happened in a creative turn
   rank_by_taste_and_identity — rank candidates with separated taste/identity
+  open_creative_thread — open a new creative thread for exploration
+  list_open_creative_threads — list all open non-stale creative threads
+  explain_preference_vs_identity — explain taste vs identity tension
 """
 
 from __future__ import annotations

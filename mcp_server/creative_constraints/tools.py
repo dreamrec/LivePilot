@@ -1,9 +1,11 @@
-"""Creative Constraints MCP tools — 3 tools for constrained creativity
+"""Creative Constraints MCP tools — 5 tools for constrained creativity
 and reference distillation.
 
   apply_creative_constraint_set — activate creative constraints
   distill_reference_principles — learn principles from a reference
   map_reference_principles_to_song — translate reference into current song
+  generate_constrained_variants — generate triptych variants under constraints
+  generate_reference_inspired_variants — variants from reference principles
 """
 
 from __future__ import annotations

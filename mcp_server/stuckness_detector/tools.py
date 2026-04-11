@@ -1,7 +1,8 @@
-"""Stuckness Detector MCP tools — 2 tools for momentum rescue.
+"""Stuckness Detector MCP tools — 3 tools for momentum rescue.
 
   detect_stuckness — identify whether the session is losing momentum
   suggest_momentum_rescue — get strategic rescue suggestions
+  start_rescue_workflow — structured step-by-step rescue for a stuckness type
 """
 
 from __future__ import annotations
