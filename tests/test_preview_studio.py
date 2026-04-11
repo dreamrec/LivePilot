@@ -190,3 +190,15 @@ def test_set_id_deterministic():
         kernel_id="kern_fixed",
     )
     assert ps1.set_id == ps2.set_id
+
+
+# ── Wonder-awareness ─────────────────────────────────────────────
+
+
+def test_analytical_refusal_in_wonder_context():
+    """Wonder-linked analytical variant should be refused by render."""
+    from mcp_server.preview_studio.tools import _should_refuse_analytical
+    assert _should_refuse_analytical(compiled_plan=None, wonder_linked=True) is True
+    assert _should_refuse_analytical(compiled_plan=None, wonder_linked=False) is False
+    assert _should_refuse_analytical(compiled_plan=[{"tool": "x"}], wonder_linked=True) is False
+    assert _should_refuse_analytical(compiled_plan=[{"tool": "x"}], wonder_linked=False) is False

@@ -516,6 +516,7 @@
 |------|-------------|
 | `enter_wonder_mode` | Full pipeline: discover moves, build variants, rank by taste + identity + novelty + coherence |
 | `rank_wonder_variants` | Standalone re-ranker for any variant list with score breakdowns |
+| `discard_wonder_session` | Reject all Wonder variants, keep creative thread open |
 
 ---
 
