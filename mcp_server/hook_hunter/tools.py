@@ -53,9 +53,20 @@ def _fetch_tracks_and_scenes(ctx: Context) -> tuple[list[dict], list[dict], dict
     except Exception:
         pass
 
-    # Fetch motif data from the motif engine for salience-based hook discovery
+    # Fetch motif data — pure-Python engine, not TCP
     try:
-        motif_data = ableton.send_command("get_motif_graph")
+        from ..tools.motif import _motif_engine
+        notes_by_track = {}
+        for i, t in enumerate(tracks):
+            try:
+                notes = ableton.send_command("get_notes", {"track_index": i, "clip_index": 0})
+                if notes and notes.get("notes"):
+                    notes_by_track[i] = notes
+            except Exception:
+                pass
+        if notes_by_track:
+            session_info = ableton.send_command("get_session_info", {})
+            motif_data = _motif_engine.detect_motifs(session_info, notes_by_track)
     except Exception:
         pass  # Motif graph requires notes in clips; empty dict is valid fallback
 
