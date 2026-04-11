@@ -1,7 +1,8 @@
-"""Stuckness Detector MCP tools — 2 tools for momentum rescue.
+"""Stuckness Detector MCP tools — 3 tools for momentum rescue.
 
   detect_stuckness — identify whether the session is losing momentum
   suggest_momentum_rescue — get strategic rescue suggestions
+  start_rescue_workflow — structured step-by-step rescue for a stuckness type
 """
 
 from __future__ import annotations
@@ -51,8 +52,10 @@ def _get_session_and_brain(ctx: Context) -> tuple[dict, dict, int]:
         from ..song_brain.tools import _current_brain
         if _current_brain is not None:
             song_brain = _current_brain.to_dict()
-    except Exception:
-        pass
+    except Exception as _e:
+        if __debug__:
+            import sys
+            print(f"LivePilot: SongBrain unavailable in stuckness_detector: {_e}", file=sys.stderr)
 
     return session_info, song_brain, section_count
 
@@ -126,4 +129,67 @@ def suggest_momentum_rescue(
         "stuckness": report.to_dict(),
         "suggestions": [s.to_dict() for s in suggestions],
         "suggestion_count": len(suggestions),
+    }
+
+
+@mcp.tool()
+def start_rescue_workflow(
+    ctx: Context,
+    rescue_type: str = "",
+    kernel_id: str = "",
+) -> dict:
+    """Start a structured rescue workflow for a specific stuckness type.
+
+    Provides a step-by-step action plan to restore session momentum.
+    Each rescue type has targeted strategies with identity-preserving defaults.
+
+    rescue_type: one of "contrast_needed", "section_missing",
+                 "hook_underdeveloped", "transition_not_earned",
+                 "overpolished_loop", "identity_unclear",
+                 "too_dense_to_progress", "too_safe_to_progress"
+    kernel_id: optional session kernel reference
+    """
+    from .models import RESCUE_TYPES
+
+    if not rescue_type:
+        return {
+            "error": "rescue_type is required",
+            "available_types": RESCUE_TYPES,
+        }
+
+    if rescue_type not in RESCUE_TYPES:
+        return {
+            "error": f"Unknown rescue type: {rescue_type}",
+            "available_types": RESCUE_TYPES,
+        }
+
+    # Build a rescue suggestion for this specific type
+    from .models import StucknessReport
+    report = StucknessReport(
+        confidence=0.6,
+        level="stuck",
+        primary_rescue_type=rescue_type,
+        secondary_rescue_types=[],
+    )
+    suggestions = detector.suggest_rescue(report, mode="direct")
+
+    if not suggestions:
+        return {"error": f"No rescue strategies available for {rescue_type}"}
+
+    rescue = suggestions[0]
+
+    # Build workflow steps from strategies
+    steps = [
+        {"step": i + 1, "action": strategy, "done": False}
+        for i, strategy in enumerate(rescue.strategies)
+    ]
+
+    return {
+        "rescue_type": rescue_type,
+        "title": rescue.title,
+        "description": rescue.description,
+        "steps": steps,
+        "identity_effect": rescue.identity_effect,
+        "urgency": rescue.urgency,
+        "note": "Complete steps in order. Each step should be followed by evaluation.",
     }

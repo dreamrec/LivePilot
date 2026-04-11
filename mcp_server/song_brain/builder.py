@@ -118,11 +118,17 @@ def _infer_identity_core(
         candidates.append((f"Emotional arc: {arc_type}", 0.6))
 
     # From role graph — dominant texture
-    roles = role_graph.get("roles", {})
-    if roles:
-        dominant = max(roles.items(), key=lambda kv: kv[1].get("weight", 0), default=None)
-        if dominant:
-            candidates.append((f"Dominant texture: {dominant[0]}", 0.5))
+    # role_graph format: {track_name: {index: int, role: str}}
+    if role_graph:
+        role_counts = Counter(
+            info.get("role", "unknown")
+            for info in role_graph.values()
+            if isinstance(info, dict)
+        )
+        role_counts.pop("unknown", None)
+        if role_counts:
+            dominant_role = role_counts.most_common(1)[0]
+            candidates.append((f"Dominant texture: {dominant_role[0]}", 0.5))
 
     # From track analysis — genre/style cues
     track_names = [t.get("name", "").lower() for t in tracks]
@@ -193,12 +199,16 @@ def _detect_sacred_elements(
             ))
 
     # Lead/hook tracks from role graph
-    for role_name, role_info in role_graph.get("roles", {}).items():
-        if role_info.get("is_lead") or role_info.get("is_hook"):
+    # role_graph format: {track_name: {index: int, role: str}}
+    for track_name, role_info in role_graph.items():
+        if not isinstance(role_info, dict):
+            continue
+        role = role_info.get("role", "")
+        if role in ("lead",):
             sacred.append(SacredElement(
                 element_type="texture",
-                description=f"{role_name} (lead/hook role)",
-                location=role_info.get("track", ""),
+                description=f"{track_name} (lead role)",
+                location=track_name,
                 salience=0.7,
                 confidence=0.6,
             ))
@@ -370,25 +380,41 @@ def _estimate_drift_risk(
     recent_moves: list[dict],
     sacred: list[SacredElement],
 ) -> float:
-    """Estimate how much recent edits are moving the song away from itself."""
+    """Estimate how much recent edits are moving the song away from itself.
+
+    Checks two signals:
+    1. Moves that touch sacred element locations (scope.track matches)
+    2. Moves that were undone (kept=False) — instability signal
+    """
     if not recent_moves:
         return 0.0
 
     sacred_locations = {e.location.lower() for e in sacred if e.location}
+    sacred_types = {e.element_type.lower() for e in sacred if e.element_type}
     drift_signals = 0
     total_moves = len(recent_moves)
 
     for move in recent_moves:
-        targets = move.get("targets", [])
-        if isinstance(targets, str):
-            targets = [targets]
-        for target in targets:
-            if target.lower() in sacred_locations:
+        # Check if the move's scope touches a sacred track
+        scope_track = move.get("scope", {}).get("track", "")
+        if scope_track and scope_track.lower() in sacred_locations:
+            drift_signals += 1
+            continue
+
+        # Check if move engine/intent relates to sacred element types
+        intent = move.get("intent", "").lower()
+        for stype in sacred_types:
+            if stype in intent:
                 drift_signals += 1
+                break
+
+        # Undone moves are a mild drift signal (instability)
+        if move.get("kept") is False:
+            drift_signals += 0.5
 
     if total_moves == 0:
         return 0.0
-    return min(1.0, drift_signals / max(total_moves, 1) * 2)
+    return min(1.0, drift_signals / max(total_moves, 1) * 1.5)
 
 
 # ── Identity drift detection ─────────────────────────────────────

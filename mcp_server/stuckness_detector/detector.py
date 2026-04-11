@@ -64,7 +64,12 @@ def detect_stuckness(
     if not signals:
         return StucknessReport(confidence=0.0, level="flowing")
 
-    confidence = min(1.0, sum(s.strength for s in signals) / max(len(signals), 1))
+    # Compound: strongest signal + 0.15 per additional signal (don't average)
+    strengths = sorted((s.strength for s in signals), reverse=True)
+    confidence = strengths[0]
+    for extra in strengths[1:]:
+        confidence += extra * 0.15
+    confidence = min(1.0, round(confidence, 3))
 
     # Determine level
     if confidence > 0.7:
@@ -94,15 +99,15 @@ def detect_stuckness(
 
 
 def _check_repeated_undos(history: list[dict]) -> Optional[StucknessSignal]:
-    """Check for repeated undo actions."""
+    """Check for repeated undone moves (kept=False in ledger entries)."""
     recent = history[-20:] if len(history) > 20 else history
-    undo_count = sum(1 for a in recent if a.get("action") == "undo")
+    undo_count = sum(1 for a in recent if a.get("kept") is False)
 
     if undo_count >= 4:
         return StucknessSignal(
             signal_type="repeated_undo",
             strength=min(0.8, undo_count * 0.15),
-            evidence=f"{undo_count} undos in last {len(recent)} actions",
+            evidence=f"{undo_count} undone moves in last {len(recent)} entries",
         )
     return None
 
@@ -110,21 +115,25 @@ def _check_repeated_undos(history: list[dict]) -> Optional[StucknessSignal]:
 def _check_local_tweaking(history: list[dict]) -> Optional[StucknessSignal]:
     """Check for many small parameter changes in one local area."""
     recent = history[-15:] if len(history) > 15 else history
-    param_changes = [
-        a for a in recent
-        if a.get("action") in ("set_device_parameter", "set_track_volume", "set_track_pan",
-                                "set_send_level", "set_clip_loop")
-    ]
+    param_tools = {"set_device_parameter", "set_track_volume", "set_track_pan",
+                   "set_send_level", "set_clip_loop", "batch_set_parameters"}
+    param_entries = []
+    for entry in recent:
+        tools_used = [a.get("tool", "") for a in entry.get("actions", [])]
+        if any(t in param_tools for t in tools_used):
+            param_entries.append(entry)
 
-    if len(param_changes) >= 6:
-        # Check if they're in the same area
-        targets = Counter(a.get("target", "") for a in param_changes)
-        most_common = targets.most_common(1)
+    if len(param_entries) >= 6:
+        scopes = Counter(
+            entry.get("scope", {}).get("track", entry.get("intent", ""))
+            for entry in param_entries
+        )
+        most_common = scopes.most_common(1)
         if most_common and most_common[0][1] >= 4:
             return StucknessSignal(
                 signal_type="local_tweaking",
-                strength=min(0.7, len(param_changes) * 0.1),
-                evidence=f"{len(param_changes)} parameter tweaks, mostly on {most_common[0][0]}",
+                strength=min(0.7, len(param_entries) * 0.1),
+                evidence=f"{len(param_entries)} parameter tweaks, mostly on {most_common[0][0]}",
             )
     return None
 
@@ -134,15 +143,19 @@ def _check_loop_without_structure(
 ) -> Optional[StucknessSignal]:
     """Check for long work without structural changes."""
     recent = history[-30:] if len(history) > 30 else history
-    structural_actions = {"create_clip", "delete_clip", "create_midi_track",
-                          "create_audio_track", "delete_track", "duplicate_clip"}
-    structural = sum(1 for a in recent if a.get("action") in structural_actions)
+    structural_tools = {"create_clip", "delete_clip", "create_midi_track",
+                        "create_audio_track", "delete_track", "duplicate_clip"}
+    structural = 0
+    for entry in recent:
+        tools_used = {a.get("tool", "") for a in entry.get("actions", [])}
+        if tools_used & structural_tools:
+            structural += 1
 
     if len(recent) >= 15 and structural == 0:
         return StucknessSignal(
             signal_type="long_loop_no_structure",
             strength=0.5,
-            evidence=f"{len(recent)} actions without any structural changes",
+            evidence=f"{len(recent)} moves without any structural changes",
         )
 
     if section_count <= 1 and len(recent) > 20:
@@ -156,15 +169,14 @@ def _check_loop_without_structure(
 
 
 def _check_repeated_requests(history: list[dict]) -> Optional[StucknessSignal]:
-    """Check for repeated similar requests without acceptance."""
+    """Check for repeated similar intents without acceptance."""
     recent = history[-10:] if len(history) > 10 else history
-    requests = [a.get("request", "").lower() for a in recent if a.get("request")]
+    intents = [a.get("intent", "").lower() for a in recent if a.get("intent")]
 
-    if len(requests) >= 3:
-        # Check for repetitive keywords
+    if len(intents) >= 3:
         words = Counter()
-        for req in requests:
-            for word in req.split():
+        for intent in intents:
+            for word in intent.split():
                 if len(word) > 3:
                     words[word] += 1
 
@@ -173,7 +185,7 @@ def _check_repeated_requests(history: list[dict]) -> Optional[StucknessSignal]:
             return StucknessSignal(
                 signal_type="repeated_requests",
                 strength=0.5,
-                evidence=f"Repeated keywords: {', '.join(repeated.keys())}",
+                evidence=f"Repeated intent keywords: {', '.join(repeated.keys())}",
             )
     return None
 

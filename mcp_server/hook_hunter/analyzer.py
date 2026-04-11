@@ -229,8 +229,8 @@ def detect_payoff_failures(
                 suggestion="Increase energy contrast — try subtracting before the payoff section",
             ))
 
-        # Check for weak contrast
-        if i > 0 and abs(energy - prev_energy) < 0.05:
+        # Check for weak contrast (only if flat_arrival didn't already fire)
+        elif i > 0 and abs(energy - prev_energy) < 0.05:
             failures.append(PayoffFailure(
                 section_id=section_id,
                 expected_target=label or "payoff",

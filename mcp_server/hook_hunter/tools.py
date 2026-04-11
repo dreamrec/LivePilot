@@ -1,4 +1,4 @@
-"""Hook Hunter MCP tools — 7 tools for hook and phrase intelligence.
+"""Hook Hunter MCP tools — 9 tools for hook and phrase intelligence.
 
   find_primary_hook — detect the most salient hook in the session
   rank_hook_candidates — list and rank all hook candidates
@@ -7,6 +7,8 @@
   score_phrase_impact — score a section's emotional landing
   detect_payoff_failure — find where the song should deliver but doesn't
   suggest_payoff_repair — generate repair strategies for payoff failures
+  detect_hook_neglect — check if a strong hook is underused across sections
+  compare_phrase_impact — compare emotional impact across multiple sections
 """
 
 from __future__ import annotations
@@ -115,48 +117,71 @@ def develop_hook(
 ) -> dict:
     """Suggest development strategies for a hook.
 
-    hook_id: the hook to develop (from rank_hook_candidates)
+    hook_id: the hook to develop (from rank_hook_candidates).
+             If provided, strategies are adapted to the hook's type
+             (melodic, rhythmic, timbral, harmonic, textural).
     mode: development style — "chorus" (lift/strengthen), "variation"
           (melodic variation), "counterline" (complementary line),
           "breakdown" (stripped version), "fill" (ornamental version)
 
     Returns development strategies with musical explanations.
     """
+    # Look up the actual hook to adapt strategies by type
+    hook_type = "melodic"  # default
+    hook_description = "the hook"
+    if hook_id:
+        tracks, scenes, motif_data = _fetch_tracks_and_scenes(ctx)
+        candidates = analyzer.find_hook_candidates(tracks, motif_data, scenes)
+        match = [c for c in candidates if c.hook_id == hook_id]
+        if match:
+            hook_type = match[0].hook_type
+            hook_description = match[0].description
+
+    # Type-specific focus areas
+    _type_focus = {
+        "melodic": {"dimension": "melodic contour and pitch", "double": "octave or harmony", "strip": "melodic core", "ornament": "grace notes and embellishments"},
+        "rhythmic": {"dimension": "rhythmic pattern and groove", "double": "layered percussion or polyrhythm", "strip": "rhythmic skeleton", "ornament": "ghost notes and syncopation"},
+        "timbral": {"dimension": "timbre and texture", "double": "parallel processing or layered timbres", "strip": "raw unprocessed sound", "ornament": "modulation and movement"},
+        "harmonic": {"dimension": "harmonic movement and voicing", "double": "extended voicings or inversions", "strip": "root notes only", "ornament": "passing tones and suspensions"},
+        "textural": {"dimension": "spatial and textural quality", "double": "stereo widening or reverb layers", "strip": "dry mono version", "ornament": "granular or delay effects"},
+    }
+    focus = _type_focus.get(hook_type, _type_focus["melodic"])
+
     strategies = {
         "chorus": {
-            "approach": "Lift and strengthen the hook for maximum impact",
+            "approach": f"Lift and strengthen the {hook_type} hook for maximum impact",
             "tactics": [
-                "Double the hook with an octave or harmony",
-                "Add supporting harmonic movement underneath",
-                "Increase rhythmic density around the hook",
-                "Layer complementary textures that frame the hook",
+                f"Double {hook_description} with {focus['double']}",
+                f"Add supporting harmonic movement underneath the {focus['dimension']}",
+                f"Increase rhythmic density around {hook_description}",
+                f"Layer complementary textures that frame the {focus['dimension']}",
             ],
             "identity_effect": "preserves — amplifies the core idea",
         },
         "variation": {
-            "approach": "Create melodic or rhythmic variations of the hook",
+            "approach": f"Create {hook_type} variations of {hook_description}",
             "tactics": [
-                "Transpose the hook to a different register",
-                "Invert or retrograde the melodic contour",
+                f"Transpose or shift the {focus['dimension']} to a different register",
+                f"Invert or retrograde the {focus['dimension']}",
                 "Apply rhythmic displacement (shift by 1/8 or 1/16)",
-                "Fragment the hook — use only the first half or last half",
+                f"Fragment {hook_description} — use only the first half or last half",
             ],
             "identity_effect": "evolves — develops the idea further",
         },
         "counterline": {
-            "approach": "Write a complementary line that dialogues with the hook",
+            "approach": f"Write a complementary line that dialogues with the {hook_type} hook",
             "tactics": [
-                "Use contrary motion — when hook goes up, counter goes down",
-                "Fill rhythmic gaps in the hook with the counterline",
-                "Match the harmonic context but use different intervals",
-                "Use a different timbre to distinguish the counterline",
+                f"Use contrary motion against the {focus['dimension']}",
+                f"Fill rhythmic gaps in {hook_description} with the counterline",
+                "Match the harmonic context but use different intervals or timbre",
+                f"Use a contrasting {hook_type} character to distinguish the counter",
             ],
             "identity_effect": "evolves — adds depth without replacing the core",
         },
         "breakdown": {
-            "approach": "Create a stripped-down version for contrast sections",
+            "approach": f"Create a stripped-down version of {hook_description} for contrast",
             "tactics": [
-                "Remove harmony and rhythm — isolate the melodic core",
+                f"Isolate the {focus['strip']} — remove everything else",
                 "Use a different instrument/timbre for the stripped version",
                 "Slow down or halve the rhythmic density",
                 "Add space and reverb to create distance",
@@ -164,12 +189,12 @@ def develop_hook(
             "identity_effect": "preserves — the hook is still recognizable in reduced form",
         },
         "fill": {
-            "approach": "Create ornamental variations for transitions and fills",
+            "approach": f"Create ornamental variations of {hook_description} for transitions",
             "tactics": [
-                "Add grace notes and embellishments",
+                f"Add {focus['ornament']}",
                 "Create a call-and-response pattern",
-                "Use the hook's rhythm with new pitch material",
-                "Build a riser or fill from hook fragments",
+                f"Use the hook's rhythm with new {focus['dimension']} material",
+                f"Build a riser or fill from {hook_description} fragments",
             ],
             "identity_effect": "evolves — decorates without replacing",
         },
@@ -184,6 +209,8 @@ def develop_hook(
     strategy = strategies[mode]
     return {
         "hook_id": hook_id,
+        "hook_type": hook_type,
+        "hook_description": hook_description,
         "mode": mode,
         **strategy,
     }
@@ -301,22 +328,51 @@ def suggest_payoff_repair(ctx: Context) -> dict:
 
 
 def _get_section_data(ableton) -> list[dict]:
-    """Build section data from Ableton scenes."""
+    """Build section data from Ableton scenes with real energy/density/has_drums."""
     sections: list[dict] = []
     try:
         matrix = ableton.send_command("get_scene_matrix")
-        for i, scene in enumerate(matrix.get("scenes", [])):
-            row = matrix.get("matrix", [[]])[i] if i < len(matrix.get("matrix", [])) else []
-            clip_count = sum(1 for c in row if c) if isinstance(row, list) else 0
-            total_tracks = len(row) if isinstance(row, list) else 1
+        scenes_list = matrix.get("scenes", [])
+        matrix_rows = matrix.get("matrix", [])
+
+        # Detect drum track indices by name
+        drum_keywords = {"drum", "beat", "kick", "hat", "perc", "snare"}
+        track_names = []
+        # tracks may be in matrix metadata or session_info
+        for ti, row_entry in enumerate(matrix_rows[0] if matrix_rows else []):
+            track_names.append("")  # placeholder — we'll use scenes_list tracks if available
+        # Use scene matrix track info if available
+        track_info = matrix.get("tracks", [])
+        drum_indices = set()
+        for ti, track in enumerate(track_info):
+            name_lower = track.get("name", "").lower() if isinstance(track, dict) else ""
+            if any(kw in name_lower for kw in drum_keywords):
+                drum_indices.add(ti)
+
+        for i, scene in enumerate(scenes_list):
+            row = matrix_rows[i] if i < len(matrix_rows) else []
+            if not isinstance(row, list):
+                row = []
+            clip_count = sum(1 for c in row if c)
+            total_tracks = max(len(row), 1)
+
+            # has_drums: check if any drum track has a clip in this scene
+            has_drums = any(
+                di < len(row) and row[di]
+                for di in drum_indices
+            ) if drum_indices else False
+
+            density = min(1.0, clip_count / total_tracks)
+            # energy: density + drum bonus
+            energy = min(1.0, density + (0.1 if has_drums else 0.0))
 
             sections.append({
                 "id": f"scene_{i}",
                 "name": scene.get("name", f"Scene {i}"),
                 "label": scene.get("name", "").lower(),
-                "energy": min(1.0, clip_count / max(total_tracks, 1)),
-                "density": min(1.0, clip_count / max(total_tracks, 1)),
-                "has_drums": True,  # assume drums present
+                "energy": round(energy, 3),
+                "density": round(density, 3),
+                "has_drums": has_drums,
             })
     except Exception:
         pass
@@ -330,9 +386,192 @@ def _get_song_brain_dict() -> dict:
         from ..song_brain.tools import _current_brain
         if _current_brain is not None:
             return _current_brain.to_dict()
-    except Exception:
-        pass
+    except Exception as _e:
+        if __debug__:
+            import sys
+            print(f"LivePilot: SongBrain unavailable in hook_hunter: {_e}", file=sys.stderr)
     return {}
+
+
+@mcp.tool()
+def detect_hook_neglect(ctx: Context) -> dict:
+    """Detect if a strong hook exists but is underused across sections.
+
+    Checks whether the primary hook appears in enough sections to
+    create adequate repetition and memorability. A hook that only
+    appears in one section is "neglected" — it needs to recur.
+
+    Returns neglect analysis with underused sections and suggestions.
+    """
+    tracks, scenes, motif_data = _fetch_tracks_and_scenes(ctx)
+
+    hook = analyzer.find_primary_hook(tracks, motif_data, scenes)
+    if not hook:
+        return {
+            "neglected": False,
+            "note": "No primary hook detected — hook neglect N/A",
+            "suggestion": "Create a defining hook before checking for neglect",
+        }
+
+    # Check per-track hook presence across scenes using scene matrix
+    hook_location = hook.location if hook.location else ""
+    ableton = _get_ableton(ctx)
+
+    try:
+        matrix = ableton.send_command("get_scene_matrix")
+    except Exception:
+        return {
+            "neglected": False,
+            "hook": hook.to_dict(),
+            "note": "Could not fetch scene matrix to assess neglect",
+        }
+
+    scenes_list = matrix.get("scenes", [])
+    matrix_rows = matrix.get("matrix", [])
+    track_info = matrix.get("tracks", [])
+
+    if not scenes_list or not hook_location:
+        return {
+            "neglected": False,
+            "hook": hook.to_dict(),
+            "note": "Insufficient section data to assess neglect",
+        }
+
+    # Find the hook's track index by matching location to track names
+    hook_track_idx = None
+    hook_loc_lower = hook_location.lower()
+    for ti, track in enumerate(track_info):
+        track_name = track.get("name", "") if isinstance(track, dict) else ""
+        if track_name.lower() == hook_loc_lower or hook_loc_lower in track_name.lower():
+            hook_track_idx = ti
+            break
+
+    if hook_track_idx is None:
+        # Fallback: can't find the track, use density proxy
+        sections = _get_section_data(ableton)
+        present_count = sum(1 for s in sections if s.get("density", 0) > 0.3)
+        total = max(len(sections), 1)
+        return {
+            "neglected": present_count / total < 0.5 and hook.salience > 0.3,
+            "hook": hook.to_dict(),
+            "presence_ratio": round(present_count / total, 2),
+            "note": f"Could not find track '{hook_location}' — used density fallback",
+        }
+
+    # Check each scene for hook track clip presence
+    present_count = 0
+    absent_sections = []
+    for i, scene in enumerate(scenes_list):
+        scene_name = scene.get("name", f"Scene {i}")
+        # Skip intro — hook absence there is normal
+        if i == 0 and "intro" in scene_name.lower():
+            continue
+
+        row = matrix_rows[i] if i < len(matrix_rows) else []
+        if isinstance(row, list) and hook_track_idx < len(row) and row[hook_track_idx]:
+            present_count += 1
+        else:
+            absent_sections.append(scene_name)
+
+    total_eligible = max(len(scenes_list) - 1, 1)  # exclude first intro
+    presence_ratio = present_count / total_eligible
+
+    neglected = presence_ratio < 0.5 and hook.salience > 0.3
+
+    return {
+        "neglected": neglected,
+        "hook": hook.to_dict(),
+        "hook_track": hook_location,
+        "hook_track_index": hook_track_idx,
+        "presence_ratio": round(presence_ratio, 2),
+        "present_in_sections": present_count,
+        "absent_from": absent_sections,
+        "suggestion": (
+            f"The hook ({hook.description}) on track '{hook_location}' only has clips in "
+            f"{presence_ratio:.0%} of sections. Consider adding variations in: {', '.join(absent_sections)}"
+        ) if neglected else "Hook track has clips in most sections — well-distributed",
+    }
+
+
+@mcp.tool()
+def compare_phrase_impact(
+    ctx: Context,
+    section_indices: list[int] | None = None,
+    target: str = "hook",
+) -> dict:
+    """Compare phrase-level emotional impact across multiple sections.
+
+    Runs score_phrase_impact for each section and returns a ranked
+    comparison with delta analysis between the strongest and weakest.
+
+    section_indices: list of 0-based section indices to compare
+    target: what the sections should function as — "hook", "drop",
+            "chorus", "transition", or "loop"
+    """
+    if not section_indices or len(section_indices) < 2:
+        return {"error": "Provide at least 2 section_indices to compare"}
+
+    ableton = _get_ableton(ctx)
+    sections = _get_section_data(ableton)
+    song_brain = _get_song_brain_dict()
+
+    results = []
+    for idx in section_indices:
+        if idx >= len(sections):
+            results.append({
+                "section_index": idx,
+                "error": f"Index {idx} out of range (have {len(sections)} sections)",
+            })
+            continue
+
+        section = sections[idx]
+        prev_section = sections[idx - 1] if idx > 0 else {}
+        impact = analyzer.score_phrase_impact(section, target, song_brain, prev_section)
+        results.append({
+            "section_index": idx,
+            "section_name": section.get("name", f"Section {idx}"),
+            **impact.to_dict(),
+        })
+
+    # Rank by composite impact
+    valid = [r for r in results if "composite_impact" in r]
+    valid.sort(key=lambda r: r.get("composite_impact", 0), reverse=True)
+
+    # Delta analysis between best and worst
+    delta = {}
+    if len(valid) >= 2:
+        best, worst = valid[0], valid[-1]
+        delta = {
+            "strongest": best["section_name"],
+            "weakest": worst["section_name"],
+            "composite_delta": round(
+                best.get("composite_impact", 0) - worst.get("composite_impact", 0), 3
+            ),
+            "biggest_gap_dimension": _find_biggest_gap(best, worst),
+        }
+
+    return {
+        "target": target,
+        "rankings": valid,
+        "delta_analysis": delta,
+        "section_count": len(section_indices),
+    }
+
+
+def _find_biggest_gap(best: dict, worst: dict) -> str:
+    """Find which impact dimension has the biggest gap between best and worst."""
+    dimensions = [
+        "arrival_strength", "anticipation_strength", "contrast_quality",
+        "groove_continuity", "payoff_balance", "section_clarity",
+    ]
+    max_gap = 0.0
+    max_dim = ""
+    for dim in dimensions:
+        gap = abs(best.get(dim, 0) - worst.get(dim, 0))
+        if gap > max_gap:
+            max_gap = gap
+            max_dim = dim
+    return max_dim
 
 
 def _interpret_salience(hook) -> str:

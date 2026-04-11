@@ -94,7 +94,7 @@ def validate_plan_against_constraints(
                           "set_send_level"}
             for step in steps:
                 if step.get("action", "") in mix_actions:
-                    warnings.append(f"Step modifies mix ({step['action']}) — arrangement_only prefers structural changes")
+                    violations.append(f"Step modifies mix ({step['action']}) — violates arrangement_only")
 
     return {
         "valid": len(violations) == 0,

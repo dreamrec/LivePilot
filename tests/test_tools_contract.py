@@ -476,7 +476,7 @@ def test_safety_tools_registered():
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 283, f"Expected 283 tools, got {len(tools)}"
+    assert len(tools) == 293, f"Expected 293 tools, got {len(tools)}"
 
 
 def test_perception_tools_registered():
@@ -624,6 +624,7 @@ def test_preview_studio_tools_registered():
         "compare_preview_variants",
         "commit_preview_variant",
         "discard_preview_set",
+        "render_preview_variant",
     }
     missing = expected - names
     assert not missing, f"Missing preview studio tools: {missing}"
@@ -639,6 +640,8 @@ def test_hook_hunter_tools_registered():
         "score_phrase_impact",
         "detect_payoff_failure",
         "suggest_payoff_repair",
+        "detect_hook_neglect",
+        "compare_phrase_impact",
     }
     missing = expected - names
     assert not missing, f"Missing hook hunter tools: {missing}"
@@ -649,6 +652,7 @@ def test_stuckness_detector_tools_registered():
     expected = {
         "detect_stuckness",
         "suggest_momentum_rescue",
+        "start_rescue_workflow",
     }
     missing = expected - names
     assert not missing, f"Missing stuckness detector tools: {missing}"
@@ -658,7 +662,7 @@ def test_wonder_mode_tools_registered():
     names = _get_tool_names()
     expected = {
         "enter_wonder_mode",
-        "generate_wonder_variants",
+        "rank_wonder_variants",
     }
     missing = expected - names
     assert not missing, f"Missing wonder mode tools: {missing}"
@@ -671,6 +675,9 @@ def test_session_continuity_tools_registered():
         "resume_last_intent",
         "record_turn_resolution",
         "rank_by_taste_and_identity",
+        "list_open_creative_threads",
+        "explain_preference_vs_identity",
+        "open_creative_thread",
     }
     missing = expected - names
     assert not missing, f"Missing session continuity tools: {missing}"
@@ -682,6 +689,8 @@ def test_creative_constraints_tools_registered():
         "apply_creative_constraint_set",
         "distill_reference_principles",
         "map_reference_principles_to_song",
+        "generate_constrained_variants",
+        "generate_reference_inspired_variants",
     }
     missing = expected - names
     assert not missing, f"Missing creative constraints tools: {missing}"

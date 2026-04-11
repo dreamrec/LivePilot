@@ -195,6 +195,17 @@ def rank_by_taste_and_identity(
         }
         identity_score = identity_scores.get(identity_effect, 0.5)
 
+        # Sacred element penalty — penalize non-preserving candidates
+        # that target sacred dimensions
+        sacred = song_brain.get("sacred_elements", [])
+        targets = candidate.get("targets_snapshot", {})
+        sacred_penalty = sum(
+            s.get("salience", 0.5) * 0.15
+            for s in sacred
+            if s.get("element_type") in targets and identity_effect != "preserves"
+        )
+        identity_score = max(0.0, identity_score - sacred_penalty)
+
         # Composite: identity weighted more heavily within a session
         composite = taste_score * 0.35 + identity_score * 0.65
 

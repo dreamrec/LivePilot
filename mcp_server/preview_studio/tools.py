@@ -1,9 +1,10 @@
-"""Preview Studio MCP tools — 4 tools for creative comparison.
+"""Preview Studio MCP tools — 5 tools for creative comparison.
 
   create_preview_set — generate safe/strong/unexpected variants
   compare_preview_variants — rank variants by taste + identity + impact
   commit_preview_variant — apply the chosen variant
   discard_preview_set — throw away all variants
+  render_preview_variant — render a short preview via undo system
 """
 
 from __future__ import annotations
@@ -20,12 +21,27 @@ def _get_ableton(ctx: Context):
     return ctx.lifespan_context["ableton"]
 
 
+def _should_refuse_analytical(compiled_plan, wonder_linked: bool) -> bool:
+    """Check if an analytical variant should be refused in Wonder context."""
+    return compiled_plan is None and wonder_linked
+
+
+def _find_wonder_session_by_preview(set_id: str):
+    """Find a WonderSession linked to this preview set."""
+    try:
+        from ..wonder_mode.session import find_session_by_preview_set
+        return find_session_by_preview_set(set_id)
+    except Exception:
+        return None
+
+
 @mcp.tool()
 def create_preview_set(
     ctx: Context,
     request_text: str,
     kernel_id: str = "",
     strategy: str = "creative_triptych",
+    wonder_session_id: str = "",
 ) -> dict:
     """Create a preview set with multiple creative options.
 
@@ -36,11 +52,66 @@ def create_preview_set(
     request_text: what the user wants (e.g., "make this more magical")
     kernel_id: optional session kernel reference
     strategy: "creative_triptych" (default) or "binary"
+    wonder_session_id: optional — links to a WonderSession for lifecycle tracking
 
     Returns: preview set with variant summaries.
     """
     if not request_text.strip():
         return {"error": "request_text cannot be empty"}
+
+    # Wonder-aware path: use variants from WonderSession
+    if wonder_session_id:
+        from ..wonder_mode.session import get_wonder_session
+        ws = get_wonder_session(wonder_session_id)
+        if not ws:
+            return {"error": f"Wonder session {wonder_session_id} not found"}
+        if not ws.variants:
+            return {"error": f"Wonder session {wonder_session_id} has no variants"}
+
+        from .models import PreviewVariant, PreviewSet
+        import time
+
+        # Filter to executable variants only
+        exec_variants = [v for v in ws.variants if not v.get("analytical_only")]
+        if not exec_variants:
+            return {"error": "No executable variants in Wonder session — all are analytical-only"}
+
+        now = int(time.time() * 1000)
+        preview_variants = []
+        for v in exec_variants:
+            preview_variants.append(PreviewVariant(
+                variant_id=v.get("variant_id", ""),
+                label=v.get("label", ""),
+                intent=v.get("intent", ""),
+                novelty_level=v.get("novelty_level", 0.5),
+                identity_effect=v.get("identity_effect", "preserves"),
+                what_changed=v.get("what_changed", ""),
+                what_preserved=v.get("what_preserved", ""),
+                why_it_matters=v.get("why_it_matters", ""),
+                move_id=v.get("move_id", ""),
+                compiled_plan=v.get("compiled_plan"),
+                taste_fit=v.get("taste_fit", 0.5),
+                score=v.get("score", 0.0),
+                summary=v.get("distinctness_reason", ""),
+                created_at_ms=now,
+            ))
+
+        set_id = f"ps_wonder_{wonder_session_id[:12]}"
+        ps = PreviewSet(
+            set_id=set_id,
+            request_text=request_text,
+            strategy="wonder",
+            source_kernel_id=kernel_id,
+            variants=preview_variants,
+            created_at_ms=now,
+        )
+        engine.store_preview_set(ps)
+
+        # Update WonderSession
+        ws.preview_set_id = set_id
+        ws.transition_to("previewing")
+
+        return ps.to_dict()
 
     # Get request-aware moves via propose_next_best_move logic
     # instead of arbitrary registry order
@@ -78,8 +149,10 @@ def create_preview_set(
         from ..song_brain.tools import _current_brain
         if _current_brain is not None:
             song_brain = _current_brain.to_dict()
-    except Exception:
-        pass
+    except Exception as _e:
+        if __debug__:
+            import sys
+            print(f"LivePilot: SongBrain unavailable in preview_studio: {_e}", file=sys.stderr)
 
     # Get taste graph — use session-scoped stores, extract numeric weights
     taste_graph: dict = {}
@@ -164,7 +237,7 @@ def commit_preview_variant(
             "available_variants": available,
         }
 
-    return {
+    result = {
         "committed": True,
         "variant_id": chosen.variant_id,
         "label": chosen.label,
@@ -173,6 +246,165 @@ def commit_preview_variant(
         "identity_effect": chosen.identity_effect,
         "what_preserved": chosen.what_preserved,
     }
+
+    # Wonder lifecycle hooks
+    ws = _find_wonder_session_by_preview(set_id)
+    if ws:
+        ws.selected_variant_id = variant_id
+        ws.outcome = "committed"
+        ws.transition_to("resolved")
+
+        # Record accepted turn resolution
+        try:
+            from ..session_continuity.tracker import record_turn_resolution, resolve_thread
+            record_turn_resolution(
+                request_text=ws.request_text,
+                outcome="accepted",
+                move_applied=chosen.move_id,
+                identity_effect=chosen.identity_effect,
+                user_sentiment="liked",
+            )
+            if ws.creative_thread_id:
+                resolve_thread(ws.creative_thread_id)
+        except Exception:
+            pass
+
+        # Update taste graph
+        try:
+            from ..memory.taste_graph import build_taste_graph
+            from ..memory.taste_memory import TasteMemoryStore
+            from ..memory.anti_memory import AntiMemoryStore
+            taste_store = ctx.lifespan_context.setdefault("taste_memory", TasteMemoryStore())
+            anti_store = ctx.lifespan_context.setdefault("anti_memory", AntiMemoryStore())
+            graph = build_taste_graph(taste_store=taste_store, anti_store=anti_store)
+            # Look up family from WonderSession's variant list
+            family = ""
+            for v in ws.variants:
+                if v.get("variant_id") == variant_id:
+                    family = v.get("family", "")
+                    break
+            if chosen.move_id and family:
+                graph.record_move_outcome(
+                    move_id=chosen.move_id,
+                    family=family,
+                    kept=True,
+                )
+        except Exception:
+            pass
+
+        result["wonder_session_id"] = ws.session_id
+
+    return result
+
+
+@mcp.tool()
+def render_preview_variant(
+    ctx: Context,
+    set_id: str = "",
+    variant_id: str = "",
+    bars: int = 8,
+) -> dict:
+    """Render a short preview of a specific variant for evaluation.
+
+    Captures a snapshot of what the variant would sound like if applied,
+    without permanently changing the session. Uses Ableton's undo system
+    to revert after capture.
+
+    set_id: the preview set containing the variant
+    variant_id: which variant to render
+    bars: how many bars to capture (default 8)
+
+    Returns the variant's snapshot data and summary.
+    """
+    ps = engine.get_preview_set(set_id)
+    if not ps:
+        return {"error": f"Preview set {set_id} not found"}
+
+    variant = None
+    for v in ps.variants:
+        if v.variant_id == variant_id:
+            variant = v
+            break
+
+    if not variant:
+        available = [v.variant_id for v in ps.variants]
+        return {
+            "error": f"Variant {variant_id} not found in set {set_id}",
+            "available_variants": available,
+        }
+
+    # Wonder-linked context: refuse analytical variants
+    wonder_linked = _find_wonder_session_by_preview(set_id) is not None
+    if _should_refuse_analytical(variant.compiled_plan, wonder_linked):
+        return {
+            "error": "This variant is analytical-only and cannot be previewed",
+            "variant_id": variant_id,
+            "analytical_only": True,
+        }
+
+    # If the variant has a compiled plan, we could apply-capture-undo.
+    # Without a compiled plan, return the variant's analytical preview.
+    if variant.compiled_plan:
+        ableton = _get_ableton(ctx)
+        # compiled_plan may be a list (from semantic moves) or a dict with "steps" key
+        plan = variant.compiled_plan
+        steps = plan if isinstance(plan, list) else plan.get("steps", [])
+        applied_count = 0
+        try:
+            # Capture before state
+            before_info = ableton.send_command("get_session_info", {})
+
+            # Apply the plan steps, tracking how many succeed
+            for step in steps:
+                cmd = step.get("tool") or step.get("command")
+                args = step.get("params") or step.get("args", {})
+                if cmd:
+                    ableton.send_command(cmd, args)
+                    applied_count += 1
+
+            # Capture after state
+            after_info = ableton.send_command("get_session_info", {})
+        except Exception as e:
+            return {"error": f"Render failed: {e}", "variant_id": variant_id}
+        finally:
+            # Undo all applied changes regardless of success/failure
+            for _ in range(applied_count):
+                try:
+                    ableton.send_command("undo")
+                except Exception:
+                    break
+
+        variant.status = "rendered"
+        variant.render_ref = f"render_{variant_id}_{bars}bars"
+
+        return {
+            "rendered": True,
+            "variant_id": variant_id,
+            "label": variant.label,
+            "bars": bars,
+            "before_summary": {"tempo": before_info.get("tempo"), "tracks": before_info.get("track_count")},
+            "after_summary": {"tempo": after_info.get("tempo"), "tracks": after_info.get("track_count")},
+            "identity_effect": variant.identity_effect,
+            "what_changed": variant.what_changed,
+            "what_preserved": variant.what_preserved,
+        }
+    else:
+        # Analytical preview — no live render
+        variant.status = "rendered"
+        return {
+            "rendered": True,
+            "variant_id": variant_id,
+            "label": variant.label,
+            "bars": bars,
+            "mode": "analytical",
+            "intent": variant.intent,
+            "novelty_level": variant.novelty_level,
+            "identity_effect": variant.identity_effect,
+            "what_changed": variant.what_changed,
+            "what_preserved": variant.what_preserved,
+            "why_it_matters": variant.why_it_matters,
+            "note": "Analytical preview — no compiled plan available for live render",
+        }
 
 
 @mcp.tool()

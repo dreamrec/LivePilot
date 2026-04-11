@@ -28,21 +28,21 @@ Run this checklist EVERY time the user says "update everything", "push", "releas
 
 ## 2. Tool Count (must ALL match)
 
-Current: **290 tools across 39 domains**.
+Current: **292 tools across 39 domains**.
 Core (no M4L): **149**. Analyzer (M4L): **29**. Perception (offline): **4**. V2 engines: **86+**.
 
 Verify: `grep -rc "@mcp.tool" mcp_server/tools/ | grep -v ":0" | awk -F: '{sum+=$2} END{print sum}'`
 
 Files that reference tool count:
 - [ ] `README.md` — header, PERCEPTION section ("207 core...30 analyzer"), Analyzer table header "(29)", Perception table header "(4)"
-- [ ] `package.json` → `"description"` (290 tools, 39 domains)
+- [ ] `package.json` → `"description"` (292 tools, 39 domains)
 - [ ] `server.json` → `"description"`
 - [ ] `livepilot/.Codex-plugin/plugin.json` → `"description"` (primary Codex manifest)
 - [ ] `livepilot/.claude-plugin/plugin.json` → `"description"` (must match Codex plugin)
 - [ ] `.claude-plugin/marketplace.json` → `"description"`
-- [ ] `CLAUDE.md` → "290 tools across 39 domains"
-- [ ] `livepilot/skills/livepilot-core/SKILL.md` — "290 tools across 39 domains", Analyzer (30), Perception (4)
-- [ ] `livepilot/skills/livepilot-core/references/overview.md` — "290 tools across 39 domains"
+- [ ] `CLAUDE.md` → "292 tools across 39 domains"
+- [ ] `livepilot/skills/livepilot-core/SKILL.md` — "292 tools across 39 domains", Analyzer (30), Perception (4)
+- [ ] `livepilot/skills/livepilot-core/references/overview.md` — "292 tools across 39 domains"
 - [ ] `docs/manual/index.md` — domain table: Analyzer (30), Perception (4)
 - [ ] `docs/manual/getting-started.md` — "207 core tools...30 analyzer"
 - [ ] `docs/manual/tool-reference.md` — all domains present with correct counts
@@ -89,7 +89,7 @@ Current: **39 domains**: transport, tracks, clips, notes, devices, scenes, mixin
 
 - [ ] `README.md` — features match current capabilities, "Coming" section is accurate
 - [ ] `docs/manual/getting-started.md` — install instructions current
-- [ ] `docs/manual/tool-reference.md` — all 39 domains listed, all 290 tools present
+- [ ] `docs/manual/tool-reference.md` — all 39 domains listed, all 292 tools present
 - [ ] `docs/TOOL_REFERENCE.md` — all 39 domains present
 - [ ] `docs/M4L_BRIDGE.md` — architecture accurate, core tool count correct
 

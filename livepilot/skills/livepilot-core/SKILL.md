@@ -1,11 +1,11 @@
 ---
 name: livepilot-core
-description: Core discipline for LivePilot — agentic production system for Ableton Live 12. 283 tools across 39 domains. This skill should be used whenever working with Ableton Live through MCP tools. Provides golden rules, tool speed tiers, error handling protocol, and pointers to domain and engine skills.
+description: Core discipline for LivePilot — agentic production system for Ableton Live 12. 293 tools across 39 domains. This skill should be used whenever working with Ableton Live through MCP tools. Provides golden rules, tool speed tiers, error handling protocol, and pointers to domain and engine skills.
 ---
 
 # LivePilot Core — Ableton Live 12
 
-Agentic production system for Ableton Live 12. 283 tools across 39 domains, three layers:
+Agentic production system for Ableton Live 12. 293 tools across 39 domains, three layers:
 
 - **Device Atlas** — 280+ instruments, 139 drum kits, 350+ impulse responses. Consult `references/device-atlas/` before loading any device. Never guess a device name.
 - **M4L Analyzer** — Real-time audio analysis on the master bus (8-band spectrum, RMS/peak, key detection). Optional — all core tools work without it.
@@ -39,7 +39,7 @@ Agentic production system for Ableton Live 12. 283 tools across 39 domains, thre
 ## Tool Speed Tiers
 
 ### Instant (<1s) — Use freely
-All 283 tools plus M4L perception tools.
+All 293 tools plus M4L perception tools.
 
 ### Fast (1-5s) — Use freely
 `analyze_loudness` · `analyze_mix` · `analyze_sound_design`
@@ -73,6 +73,15 @@ Three modes:
 - **Fresh:** Skip memory when user wants something new ("ignore my history", "surprise me")
 - **Explicit recall:** `memory_recall` → `memory_get` → `memory_replay` when user references a saved technique
 
+## Wonder Mode — Stuck-Rescue Routing
+
+- Use Wonder (`enter_wonder_mode`) for creative ambiguity and session rescue
+- Do not fabricate three variants when only one real option exists
+- Do not describe a branch as previewable unless it has a valid `compiled_plan`
+- Prefer Wonder when `detect_stuckness` confidence > 0.5
+- Prefer Wonder when the user's request is emotionally-shaped, not parametric
+- Load `livepilot-wonder` skill for full workflow guidance
+
 ## Domain Skills
 
 For domain-specific workflows, load the appropriate skill:
@@ -102,7 +111,7 @@ Deep production knowledge in `references/`:
 
 | File | Content |
 |------|---------|
-| `references/overview.md` | All 283 tools with params and ranges |
+| `references/overview.md` | All 293 tools with params and ranges |
 | `references/device-atlas/` | 280+ device corpus with URIs and presets |
 | `references/midi-recipes.md` | Drum patterns, chord voicings, humanization |
 | `references/sound-design.md` | Synth recipes, device chain patterns |

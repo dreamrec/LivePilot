@@ -1,6 +1,6 @@
-"""Wonder Mode — controlled surprise for Stage 2.
+"""Wonder Mode — controlled surprise for creative exploration.
 
-Optimizes for inspired options rather than only safe correctness.
-Generates safe / strong / unexpected branches with elevated novelty
-within user taste limits.
+Discovers relevant semantic moves, generates safe / strong / unexpected
+variants with real move differentiation, and ranks by taste + identity +
+novelty + coherence.
 """
