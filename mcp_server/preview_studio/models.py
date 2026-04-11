@@ -35,6 +35,7 @@ class PreviewVariant:
 
     # State
     status: str = "pending"  # pending, rendered, committed, discarded
+    preview_mode: str = ""  # audible_preview, metadata_only_preview, analytical_preview
     created_at_ms: int = 0
 
     def to_dict(self) -> dict:

@@ -383,29 +383,63 @@ def render_preview_variant(
                 except Exception:
                     break
 
+        # Determine preview mode: audible (M4L available) or metadata-only
+        preview_mode = "metadata_only_preview"
+        spectral_before = None
+        spectral_after = None
+
+        # Try audible preview — capture spectrum via M4L spectral cache
+        try:
+            from ..m4l_bridge import SpectralCache
+            cache = ctx.lifespan_context.get("spectral_cache")
+            if cache and isinstance(cache, SpectralCache) and cache.has_data():
+                spectral_before = cache.get_snapshot()
+                # Play for the requested bar count
+                tempo = before_info.get("tempo", 120)
+                play_seconds = bars * (60.0 / tempo) * 4  # bars * beat_duration * 4 beats
+                ableton.send_command("start_playback", {})
+                import time as _time
+                _time.sleep(min(play_seconds, 8.0))  # cap at 8 seconds
+                spectral_after = cache.get_snapshot()
+                ableton.send_command("stop_playback", {})
+                preview_mode = "audible_preview"
+        except Exception:
+            pass  # fall back to metadata_only
+
         variant.status = "rendered"
+        variant.preview_mode = preview_mode
         variant.render_ref = f"render_{variant_id}_{bars}bars"
 
-        return {
+        result = {
             "rendered": True,
             "variant_id": variant_id,
             "label": variant.label,
             "bars": bars,
+            "preview_mode": preview_mode,
             "before_summary": {"tempo": before_info.get("tempo"), "tracks": before_info.get("track_count")},
             "after_summary": {"tempo": after_info.get("tempo"), "tracks": after_info.get("track_count")},
             "identity_effect": variant.identity_effect,
             "what_changed": variant.what_changed,
             "what_preserved": variant.what_preserved,
         }
+
+        if spectral_before and spectral_after:
+            result["spectral_comparison"] = {
+                "before": spectral_before,
+                "after": spectral_after,
+            }
+
+        return result
     else:
         # Analytical preview — no live render
         variant.status = "rendered"
+        variant.preview_mode = "analytical_preview"
         return {
             "rendered": True,
             "variant_id": variant_id,
             "label": variant.label,
             "bars": bars,
-            "mode": "analytical",
+            "preview_mode": "analytical_preview",
             "intent": variant.intent,
             "novelty_level": variant.novelty_level,
             "identity_effect": variant.identity_effect,

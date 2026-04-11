@@ -96,9 +96,22 @@ def detect_repetition_fatigue(
     # 3. Motif fatigue from motif_graph
     if motif_graph:
         motifs = motif_graph.get("motifs", [])
+        num_sections = max(1, len(scenes))
         for motif in motifs:
             fatigue_risk = motif.get("fatigue_risk", 0)
-            if fatigue_risk > 0.6:
+            recurrence = motif.get("recurrence", 0)
+
+            # Motif appearing in >60% of sections = fatigue signal
+            if recurrence > 0.6 and num_sections >= 3:
+                adjusted_fatigue = max(fatigue_risk, recurrence * 0.8)
+                report.issues.append({
+                    "type": "motif_overuse",
+                    "severity": round(adjusted_fatigue, 3),
+                    "detail": f"Motif {motif.get('name', motif.get('motif_id', '?'))} appears in {recurrence:.0%} of sections",
+                    "motif_id": motif.get("motif_id", motif.get("name", "")),
+                    "evidence": "motif_recurrence",
+                })
+            elif fatigue_risk > 0.6:
                 report.issues.append({
                     "type": "motif_overuse",
                     "severity": fatigue_risk,

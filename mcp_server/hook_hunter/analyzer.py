@@ -82,9 +82,32 @@ def find_hook_candidates(
                 development_potential=0.5,
             ))
 
+    # 4. Section-placement analysis: boost hooks that appear in payoff sections
+    payoff_sections = {
+        s.get("label", "").lower()
+        for s in (composition.get("sections", []) if composition else [])
+        if s.get("is_payoff")
+    } or {"chorus", "drop", "hook"}
+
+    for c in candidates:
+        # Check if hook is present in payoff sections (via motif locations)
+        if c.hook_type == "melodic" and motif_data:
+            for motif in motif_data.get("motifs", []):
+                if motif.get("name", "") in c.hook_id:
+                    # Motif with high recurrence across sections = stronger hook
+                    c.memorability = min(1.0, c.memorability + motif.get("recurrence", 0) * 0.2)
+
     # Score all candidates
     for c in candidates:
         c.salience = _compute_salience(c)
+        # Add evidence sources
+        c.evidence_sources = []
+        if "motif_" in c.hook_id:
+            c.evidence_sources.append("motif_recurrence")
+        if "track_" in c.hook_id:
+            c.evidence_sources.append("track_name")
+        if "groove" in c.hook_id:
+            c.evidence_sources.append("clip_reuse")
 
     # Sort by salience
     candidates.sort(key=lambda c: c.salience, reverse=True)
