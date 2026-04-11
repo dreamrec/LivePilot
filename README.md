@@ -77,6 +77,77 @@ All three feed into 293 deterministic tools that execute on Ableton's main threa
 
 ---
 
+## The Intelligence Layer
+
+Most MCP servers are tool collections — they execute commands. LivePilot is an **agentic production system** — it understands what a song is becoming, diagnoses when a session is stuck, generates real creative options, learns from your decisions, and tracks its own impact.
+
+This is the V2 intelligence layer: 12 engines that sit on top of the 293 tools and give the AI musical judgment, not just musical execution.
+
+### SongBrain — What the Song Is
+
+SongBrain builds a real-time model of the current session: what the defining idea is (identity core), what elements must not be casually damaged (sacred elements), what each section is trying to do emotionally (section purposes), and where the energy arc is heading. It answers the question every producer asks: *"What is this track?"*
+
+It detects when the song's identity is drifting — when recent edits are pulling the track away from what made it work. When identity confidence is high, the system makes bolder suggestions. When it's fragile, it protects what's there.
+
+### Taste Graph — What You Like
+
+The Taste Graph learns your production preferences across sessions. Not just "prefers reverb" — it tracks which move families you keep vs. undo (mix moves? arrangement moves?), which devices you gravitate toward, how experimental you want suggestions to be (your novelty band), and which dimensions you actively avoid.
+
+Every time you accept or reject a suggestion, the graph updates. Over time, it personalizes which creative options are offered and how they're ranked. Two producers using the same tools get different recommendations.
+
+### Semantic Moves — Musical Actions, Not Parameters
+
+A semantic move is a high-level musical intent — "add contrast," "tighten the low end," "build tension toward the chorus" — that compiles into a specific sequence of tool calls. The system has 20 moves across 4 families (mix, arrangement, transition, sound design), each with an executable plan.
+
+Moves carry risk levels, target dimensions, and protection thresholds. "Add a filter sweep build" targets energy and tension while protecting clarity. The AI doesn't just know what to do — it knows what it's risking.
+
+### Wonder Mode — Stuck-Rescue Workflow
+
+When a session is stuck — too many undos, polishing the same loop, no structural progress — Wonder Mode activates. It's not "surprise me." It's a structured diagnosis-and-rescue workflow:
+
+1. **Diagnose** — Why is the session stuck? Repeated undos? Overpolished loop? Missing contrast? Identity unclear? The stuckness detector analyzes the action history and classifies the problem.
+
+2. **Generate** — Based on the diagnosis, Wonder searches for semantic moves that address the specific problem. It enforces real distinctness — each variant must differ by move family or execution approach. If only one real option exists, it says so honestly instead of relabeling the same idea three times.
+
+3. **Preview** — Each executable variant can be applied, captured, and undone using Ableton's undo system. You hear what each option would actually sound like before committing.
+
+4. **Commit or Reject** — Choose one, and the system records it into taste and session continuity. Reject all, and the creative thread stays open for another attempt. No fake outcomes are recorded.
+
+### Creative Engines
+
+Six specialized engines handle different aspects of production intelligence:
+
+| Engine | What it does |
+|--------|-------------|
+| **Mix Engine** | Critic-driven mix analysis. Identifies masking, headroom issues, stereo problems. Plans corrective moves with before/after evaluation. |
+| **Sound Design Engine** | Analyzes patches for static timbre, missing modulation, weak transients. Suggests parameter moves and evaluates the result. |
+| **Transition Engine** | Classifies transition types (drop, build, breakdown). Scores transition quality and plans improvements using archetypes. |
+| **Composition Engine** | Analyzes song structure, detects motifs, infers section purposes, scores emotional arcs. Plans arrangement moves. |
+| **Performance Engine** | Safety-constrained suggestions for live performance. Knows which moves are safe during playback and which risk audio dropouts. |
+| **Reference Engine** | Distills principles from reference tracks. Maps those principles to your current session as concrete, actionable moves. |
+
+### Hook Hunter — Finding What Matters
+
+The Hook Hunter identifies the most salient musical idea in a session — the element listeners would remember. It ranks candidates by rhythmic distinctiveness, melodic contour, and repetition. Then it tracks whether hooks are being developed, neglected, or undermined by arrangement choices.
+
+When the hook is strong but underused, it flags it. When a transition fails to deliver the expected payoff, it diagnoses why.
+
+### Session Continuity — The Story of Your Session
+
+Session Continuity tracks what happened, what changed, and what's still unresolved. It maintains creative threads (open questions like "the chorus needs more lift") and records turn resolutions (what you tried, whether you kept it, how it affected identity).
+
+When you return to a project, the session story tells the AI: *"Last time, you were working on making the bridge darker. You tried three approaches and kept the filter sweep. The chorus lift thread is still open."*
+
+### Evaluation Loop — Verify Before Claiming Success
+
+Every creative engine follows the same discipline: **measure before, act, measure after, compare**. The evaluation system captures session state snapshots, runs the change, captures again, and scores the difference. If the change made things worse — more masking, lost headroom, identity drift — the system flags it before you move on.
+
+This closes the gap between "the AI did something" and "the AI did something that actually helped."
+
+<br>
+
+---
+
 ## Tools
 
 293 tools across 39 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
@@ -321,6 +392,29 @@ read_audio_metadata     Format, duration, sample rate, tags
 </details>
 
 <br>
+
+### Agentic Intelligence — 83 tools
+
+The V2 intelligence layer. These tools don't just execute commands — they analyze, diagnose, plan, evaluate, and learn.
+
+| Domain | # | What it does |
+|--------|:-:|-------------|
+| Agent OS | 8 | session kernel, action ledger, capability state, routing, turn budget |
+| Composition | 9 | section analysis, motif detection, emotional arc, form planning, section transforms |
+| Evaluation | 1 | before/after evaluation with structured scoring |
+| Mix Engine | 6 | critic-driven mix analysis, issue detection, move planning, masking reports |
+| Sound Design | 5 | patch analysis, modulation planning, timbre scoring |
+| Transition Engine | 5 | transition classification, scoring, archetype-based planning |
+| Reference Engine | 5 | reference profiling, principle distillation, gap analysis, move mapping |
+| Translation Engine | 3 | cross-domain translation, issue detection |
+| Performance Engine | 5 | safety-constrained suggestions, safe move lists, scene handoff planning |
+| Song Brain | 4 | identity inference, sacred element detection, drift monitoring, section purposes |
+| Hook Hunter | 9 | hook detection, salience scoring, development strategies, neglect detection, phrase impact |
+| Stuckness Detector | 3 | momentum analysis, rescue classification, structured rescue workflows |
+| Wonder Mode | 3 | diagnosis-driven variant generation, taste-aware ranking, session discard |
+| Session Continuity | 7 | creative threads, turn resolution, taste vs identity ranking, session story |
+| Creative Constraints | 5 | constraint activation, reference-inspired variants, constrained generation |
+| Preview Studio | 5 | variant creation, preview rendering, comparison, commit, discard |
 
 > **[View all 293 tools →](docs/manual/tool-catalog.md)**
 
