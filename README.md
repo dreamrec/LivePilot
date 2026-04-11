@@ -17,7 +17,7 @@
 
 <p align="center">
   An agentic production system for Ableton Live 12.<br>
-  292 tools. Device atlas. Spectral perception. Technique memory.
+  293 tools. Device atlas. Spectral perception. Technique memory.
 </p>
 
 <br>
@@ -49,7 +49,7 @@
 │         └───────────────────┼───────────────────┘           │
 │                             ▼                               │
 │                    ┌─────────────────┐                      │
-│                    │   292 MCP Tools  │                      │
+│                    │   293 MCP Tools  │                      │
 │                    │   39 domains     │                      │
 │                    └────────┬────────┘                      │
 │                             │                               │
@@ -71,7 +71,7 @@ via a Max for Live device.
 The **memory** gives it history — a searchable library of production decisions
 that persists across sessions.
 
-All three feed into 292 deterministic tools that execute on Ableton's main thread.
+All three feed into 293 deterministic tools that execute on Ableton's main thread.
 
 <br>
 
@@ -79,7 +79,7 @@ All three feed into 292 deterministic tools that execute on Ableton's main threa
 
 ## Tools
 
-292 tools across 39 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
+293 tools across 39 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
 
 <br>
 
@@ -322,7 +322,7 @@ read_audio_metadata     Format, duration, sample rate, tags
 
 <br>
 
-> **[View all 292 tools →](docs/manual/tool-catalog.md)**
+> **[View all 293 tools →](docs/manual/tool-catalog.md)**
 
 <br>
 
