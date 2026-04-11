@@ -163,6 +163,56 @@ def _with_envelope(move: dict, tier: str) -> dict:
     return result
 
 
+# ── Distinctness selection ───────────────────────────────────────
+
+
+def _compile_plan_shape(move: dict) -> frozenset[str]:
+    """Extract the set of tool names from a move's compile_plan."""
+    plan = move.get("compile_plan") or []
+    return frozenset(step.get("tool", "") for step in plan if step.get("tool"))
+
+
+def select_distinct_variants(scored_moves: list[dict]) -> list[dict]:
+    """Select genuinely distinct moves for variant generation.
+
+    Each selected move must differ from all previously selected moves by
+    at least one of: move_id, family, or compile_plan shape.
+    Returns 0-3 moves.
+    """
+    if not scored_moves:
+        return []
+
+    selected: list[dict] = []
+    used_ids: set[str] = set()
+    used_shapes: list[tuple[str, frozenset]] = []  # (family, shape) pairs
+
+    for move in scored_moves:
+        mid = move.get("move_id", "")
+        family = move.get("family", "")
+        shape = _compile_plan_shape(move)
+
+        # Skip duplicate move_ids
+        if mid in used_ids:
+            continue
+
+        # Check distinctness against already-selected moves
+        is_distinct = True
+        for sel_family, sel_shape in used_shapes:
+            if family == sel_family and shape == sel_shape:
+                is_distinct = False
+                break
+
+        if is_distinct:
+            selected.append(move)
+            used_ids.add(mid)
+            used_shapes.append((family, shape))
+
+        if len(selected) >= 3:
+            break
+
+    return selected
+
+
 # ── Variant building ─────────────────────────────────────────────
 
 _NOVELTY_LEVELS = {"safe": 0.25, "strong": 0.55, "unexpected": 0.85}
@@ -222,6 +272,8 @@ def build_variant(
         "score": 0.0,
         "rank": 0,
         "score_breakdown": {},
+        "analytical_only": False,
+        "distinctness_reason": "",
     }
 
 
@@ -244,6 +296,8 @@ def build_analytical_variant(label: str, request_text: str, novelty_level: float
         "score": 0.0,
         "rank": 0,
         "score_breakdown": {},
+        "analytical_only": True,
+        "distinctness_reason": "No matching executable move — directional suggestion only",
     }
 
 
