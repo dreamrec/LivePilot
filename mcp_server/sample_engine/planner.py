@@ -123,7 +123,6 @@ def _resolve_params(
     target_track: Optional[int],
 ) -> dict:
     """Resolve template variables in technique step params."""
-    resolved = dict(params)
     replacements = {
         "{file_path}": profile.file_path,
         "{track_index}": target_track if target_track is not None else 0,
@@ -132,15 +131,25 @@ def _resolve_params(
         "{bpm}": profile.bpm or 120.0,
         "{name}": profile.name,
     }
-    for k, v in resolved.items():
+
+    def _resolve_single(v, repl):
+        """Resolve a single value against replacements."""
         if isinstance(v, str):
-            for template, value in replacements.items():
+            # Exact template match — return the raw typed value
+            if v in repl:
+                return repl[v]
+            # Partial template substitution within a longer string
+            for template, value in repl.items():
                 v = v.replace(template, str(value))
-            resolved[k] = v
-        elif v == "{track_index}":
-            resolved[k] = replacements["{track_index}"]
-        elif v == "{file_path}":
-            resolved[k] = replacements["{file_path}"]
+            return v
+        return v
+
+    resolved = {}
+    for k, v in params.items():
+        if isinstance(v, list):
+            resolved[k] = [_resolve_single(item, replacements) for item in v]
+        else:
+            resolved[k] = _resolve_single(v, replacements)
     return resolved
 
 

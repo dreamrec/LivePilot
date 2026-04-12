@@ -24,22 +24,45 @@ _AUDIO_EXTENSIONS = frozenset({
 
 
 class BrowserSource:
-    """Search Ableton's browser for samples. Wraps search_browser and get_browser_items."""
+    """Search Ableton's browser for samples. Wraps search_browser and get_browser_items.
 
-    def search(self, query: str, categories: list[str] | None = None, max_results: int = 20) -> list[SampleCandidate]:
-        """Build search parameters for the browser. Actual execution happens in tools.py."""
-        categories = categories or ["samples", "drums", "user_library"]
-        candidates = []
-        for category in categories:
-            candidates.append(SampleCandidate(
-                source="browser",
-                name=query,
-                metadata={"category": category, "query": query},
-            ))
-        return candidates
+    This is a parameter-building class — actual Ableton communication happens
+    in tools.py which calls ``build_search_params()`` per category and sends
+    the command over TCP.
+    """
+
+    DEFAULT_CATEGORIES = ("samples", "drums", "user_library")
 
     def build_search_params(self, query: str, category: str = "samples", max_results: int = 20) -> dict:
+        """Build a single search_browser command payload."""
         return {"path": category, "name_filter": query, "loadable_only": True, "max_results": max_results}
+
+    def build_all_search_params(
+        self, query: str, categories: list[str] | None = None, max_results: int = 20,
+    ) -> list[dict]:
+        """Build search params for each category. Returns a list of param dicts."""
+        cats = categories or list(self.DEFAULT_CATEGORIES)
+        return [self.build_search_params(query, cat, max_results) for cat in cats]
+
+    def parse_results(self, raw_results: list[dict], category: str = "browser") -> list[SampleCandidate]:
+        """Parse raw browser search results into SampleCandidates."""
+        candidates: list[SampleCandidate] = []
+        for item in raw_results:
+            name = item.get("name", "")
+            stem = os.path.splitext(name)[0] if name else ""
+            metadata = {
+                "category": category,
+                "uri": item.get("uri", ""),
+            }
+            material = classify_material_from_name(stem) if stem else "unknown"
+            metadata["material_type"] = material
+            candidates.append(SampleCandidate(
+                source="browser",
+                name=stem or name,
+                uri=item.get("uri"),
+                metadata=metadata,
+            ))
+        return candidates
 
 
 # ── Filesystem Source ───────────────────────────────────────────────
@@ -154,11 +177,17 @@ class FreesoundSource:
 
         Actual HTTP calls happen in the MCP tool layer (tools.py) which
         can use httpx/aiohttp. This module builds the query and parses results.
+        For offline use, call ``parse_results()`` with pre-fetched API data.
         """
         if not self.enabled:
             return []
-        # Build query params for the tool layer to execute
-        return []  # Placeholder — actual HTTP is in tools.py
+        # Cannot make HTTP calls from source classes — return empty.
+        # tools.py calls build_search_params() + HTTP, then parse_results().
+        return []
+
+    def parse_results(self, raw_results: list[dict]) -> list[SampleCandidate]:
+        """Parse pre-fetched Freesound API results into SampleCandidates."""
+        return [parse_freesound_metadata(item) for item in raw_results]
 
     def build_search_params(self, query: str, max_results: int = 10,
                             license_filter: str = "Attribution") -> dict:

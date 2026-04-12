@@ -31,7 +31,7 @@ class TestFilenameParser:
 
     def test_key_only(self):
         result = parse_filename_metadata("pad_Fsharp.wav")
-        assert result["key"] in ("F#", "Fsharp", "F#m")  # accept variants
+        assert result["key"] == "F#"
 
     def test_no_metadata(self):
         result = parse_filename_metadata("untitled_003.wav")

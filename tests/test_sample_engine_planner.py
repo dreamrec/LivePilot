@@ -1,6 +1,7 @@
 from mcp_server.sample_engine.planner import (
     select_technique,
     compile_sample_plan,
+    _resolve_params,
 )
 from mcp_server.sample_engine.models import SampleProfile, SampleIntent, SampleFitReport
 from mcp_server.sample_engine.critics import CriticResult
@@ -49,3 +50,19 @@ class TestSamplePlanner:
         surgeon_tools = [s["tool"] for s in surgeon]
         alchemist_tools = [s["tool"] for s in alchemist]
         assert surgeon_tools != alchemist_tools or len(surgeon) != len(alchemist)
+
+    def test_resolve_params_handles_list_values(self):
+        profile = SampleProfile(source="t", file_path="/my/sample.wav", name="test",
+                                material_type="drum_loop", key="Am")
+        intent = SampleIntent(intent_type="rhythm", description="")
+        params = {
+            "file_path": "{file_path}",
+            "tags": ["{material_type}", "{key}", "fixed"],
+            "track_index": "{track_index}",
+            "number": 42,
+        }
+        resolved = _resolve_params(params, profile, intent, target_track=5)
+        assert resolved["file_path"] == "/my/sample.wav"
+        assert resolved["tags"] == ["drum_loop", "Am", "fixed"]
+        assert resolved["track_index"] == 5
+        assert resolved["number"] == 42

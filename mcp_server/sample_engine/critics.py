@@ -261,7 +261,13 @@ def run_vibe_fit_critic(
     profile: SampleProfile,
     taste_graph: object = None,
 ) -> CriticResult:
-    """Score vibe fit using TasteGraph if available."""
+    """Score vibe fit using TasteGraph if available.
+
+    Uses brightness + transient_density as an energy proxy and compares
+    against taste_graph.novelty_band:
+      high novelty_band → user likes intense/novel → high energy fits better
+      low novelty_band  → user likes subtle/familiar → low energy fits better
+    """
     if taste_graph is None or not hasattr(taste_graph, "evidence_count"):
         return CriticResult(
             critic_name="vibe_fit", score=0.5,
@@ -274,9 +280,29 @@ def run_vibe_fit_critic(
             recommendation="No taste evidence yet — neutral score",
         )
 
-    # Use brightness and density as vibe indicators
-    score = 0.5  # Enhanced in future with real taste comparison
-    rec = "Taste comparison requires more evidence"
+    # Compute energy proxy from sample characteristics (0.0 - 1.0)
+    # brightness and transient_density are both 0.0-1.0 range
+    energy = (profile.brightness + profile.transient_density) / 2.0
+    energy = max(0.0, min(1.0, energy))
+
+    # Compare against novelty_band as taste proxy
+    novelty_band = getattr(taste_graph, "novelty_band", 0.5)
+    novelty_band = max(0.0, min(1.0, novelty_band))
+
+    # Score: how well sample energy aligns with user's novelty preference
+    # Perfect alignment = 1.0, maximum mismatch = 0.2
+    distance = abs(energy - novelty_band)
+    score = max(0.2, 1.0 - distance)
+
+    if score >= 0.8:
+        rec = "Vibe aligns well with taste profile"
+    elif score >= 0.6:
+        rec = "Reasonable vibe match — minor energy difference"
+    elif score >= 0.4:
+        rec = "Vibe mismatch — sample energy differs from taste preference"
+    else:
+        rec = "Strong vibe clash — consider processing to shift energy"
+
     return CriticResult(critic_name="vibe_fit", score=score, recommendation=rec)
 
 

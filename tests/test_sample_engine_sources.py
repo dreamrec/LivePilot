@@ -83,29 +83,6 @@ class TestFilesystemSource:
 
 
 class TestBrowserSource:
-    def test_search_returns_candidates_per_category(self):
-        source = BrowserSource()
-        results = source.search("kick")
-        assert len(results) == 3  # default: samples, drums, user_library
-        sources = {r.source for r in results}
-        assert sources == {"browser"}
-        categories = {r.metadata["category"] for r in results}
-        assert "samples" in categories
-        assert "drums" in categories
-        assert "user_library" in categories
-
-    def test_search_custom_categories(self):
-        source = BrowserSource()
-        results = source.search("pad", categories=["samples"])
-        assert len(results) == 1
-        assert results[0].metadata["category"] == "samples"
-        assert results[0].metadata["query"] == "pad"
-
-    def test_search_name_is_query(self):
-        source = BrowserSource()
-        results = source.search("dark vocal")
-        assert all(r.name == "dark vocal" for r in results)
-
     def test_build_search_params(self):
         source = BrowserSource()
         params = source.build_search_params("kick", category="drums", max_results=10)
@@ -114,10 +91,43 @@ class TestBrowserSource:
         assert params["loadable_only"] is True
         assert params["max_results"] == 10
 
-    def test_candidates_are_sample_candidate_instances(self):
+    def test_build_all_search_params_defaults(self):
         source = BrowserSource()
-        results = source.search("snare")
-        assert all(isinstance(r, SampleCandidate) for r in results)
+        all_params = source.build_all_search_params("snare")
+        assert len(all_params) == 3  # default: samples, drums, user_library
+        paths = {p["path"] for p in all_params}
+        assert paths == {"samples", "drums", "user_library"}
+        assert all(p["name_filter"] == "snare" for p in all_params)
+
+    def test_build_all_search_params_custom_categories(self):
+        source = BrowserSource()
+        all_params = source.build_all_search_params("pad", categories=["samples"])
+        assert len(all_params) == 1
+        assert all_params[0]["path"] == "samples"
+
+    def test_parse_results_returns_candidates(self):
+        source = BrowserSource()
+        raw = [
+            {"name": "kick_hard.wav", "uri": "userfolder:/kick_hard.wav"},
+            {"name": "snare_crack.aif", "uri": "userfolder:/snare_crack.aif"},
+        ]
+        candidates = source.parse_results(raw, category="drums")
+        assert len(candidates) == 2
+        assert all(isinstance(c, SampleCandidate) for c in candidates)
+        assert candidates[0].source == "browser"
+        assert candidates[0].name == "kick_hard"
+        assert candidates[0].metadata["category"] == "drums"
+        assert candidates[0].uri == "userfolder:/kick_hard.wav"
+
+    def test_parse_results_classifies_material(self):
+        source = BrowserSource()
+        raw = [{"name": "vocal_loop_Cm.wav", "uri": "x"}]
+        candidates = source.parse_results(raw)
+        assert candidates[0].metadata["material_type"] == "vocal"
+
+    def test_parse_results_empty(self):
+        source = BrowserSource()
+        assert source.parse_results([]) == []
 
 
 class TestBuildSearchQueries:
@@ -203,3 +213,27 @@ class TestFreesoundSource:
         assert params["page_size"] == 5
         assert "id" in params["fields"]
         assert "rating_desc" in params["sort"]
+
+    def test_parse_results(self):
+        source = FreesoundSource(api_key="fake")
+        raw = [
+            {
+                "id": 100, "name": "kick.wav",
+                "tags": ["drum", "kick"], "duration": 0.3,
+                "ac_analysis": {"ac_key": "C", "ac_tempo": 120.0},
+            },
+            {
+                "id": 200, "name": "pad_evolving.wav",
+                "tags": ["ambient", "pad"], "duration": 8.0,
+            },
+        ]
+        candidates = source.parse_results(raw)
+        assert len(candidates) == 2
+        assert all(isinstance(c, SampleCandidate) for c in candidates)
+        assert candidates[0].freesound_id == 100
+        assert candidates[0].source == "freesound"
+        assert candidates[1].freesound_id == 200
+
+    def test_parse_results_empty(self):
+        source = FreesoundSource(api_key="fake")
+        assert source.parse_results([]) == []

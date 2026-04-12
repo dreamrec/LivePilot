@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import pytest
 
+from types import SimpleNamespace
+
 from mcp_server.sample_engine.critics import (
     run_key_fit_critic,
     run_tempo_fit_critic,
     run_frequency_fit_critic,
     run_role_fit_critic,
+    run_vibe_fit_critic,
     run_intent_fit_critic,
     run_all_sample_critics,
 )
@@ -91,6 +94,41 @@ class TestRoleFitCritic:
             existing_roles=["drums", "percussion", "hihat"],
         )
         assert r.score <= 0.5
+
+
+class TestVibeFitCritic:
+    def test_no_taste_graph_neutral(self):
+        r = run_vibe_fit_critic(_make_profile(), taste_graph=None)
+        assert r.score == 0.5
+
+    def test_zero_evidence_neutral(self):
+        tg = SimpleNamespace(evidence_count=0, novelty_band=0.5)
+        r = run_vibe_fit_critic(_make_profile(), taste_graph=tg)
+        assert r.score == 0.5
+
+    def test_high_energy_high_novelty_good_fit(self):
+        tg = SimpleNamespace(evidence_count=10, novelty_band=0.9)
+        profile = _make_profile(brightness=0.9, transient_density=0.8)
+        r = run_vibe_fit_critic(profile, taste_graph=tg)
+        assert r.score >= 0.7
+
+    def test_low_energy_high_novelty_poor_fit(self):
+        tg = SimpleNamespace(evidence_count=10, novelty_band=0.9)
+        profile = _make_profile(brightness=0.1, transient_density=0.1)
+        r = run_vibe_fit_critic(profile, taste_graph=tg)
+        assert r.score <= 0.5
+
+    def test_low_energy_low_novelty_good_fit(self):
+        tg = SimpleNamespace(evidence_count=10, novelty_band=0.1)
+        profile = _make_profile(brightness=0.1, transient_density=0.1)
+        r = run_vibe_fit_critic(profile, taste_graph=tg)
+        assert r.score >= 0.7
+
+    def test_score_always_in_range(self):
+        tg = SimpleNamespace(evidence_count=5, novelty_band=0.5)
+        profile = _make_profile(brightness=0.5, transient_density=0.5)
+        r = run_vibe_fit_critic(profile, taste_graph=tg)
+        assert 0.0 <= r.score <= 1.0
 
 
 class TestIntentFitCritic:
