@@ -82,6 +82,23 @@ Three modes:
 - Prefer Wonder when the user's request is emotionally-shaped, not parametric
 - Load `livepilot-wonder` skill for full workflow guidance
 
+## Creative Sound Design Knowledge
+
+Before setting device parameters, consult the knowledge corpus for informed creative choices. Read the relevant file BEFORE making changes:
+
+| User says | Read this file |
+|-----------|---------------|
+| "make it breathe" / "organic" / "alive" / "warm" / "cold" / "anxious" / "nostalgic" | `references/device-knowledge/creative-thinking.md` — emotional-to-technical mapping, physical world modeling |
+| "what effect chain for [genre]" / "dub techno" / "trap" / "SOPHIE" / "Arca" / "ambient" | `references/device-knowledge/chains-genre.md` — complete chains per genre |
+| "how to use Wavetable/Drift/Analog/Operator/Meld" | `references/device-knowledge/instruments-synths.md` — parameter-level recipes |
+| "distortion" / "saturation" / "Roar" / "Saturator" / "Redux" | `references/device-knowledge/effects-distortion.md` — every curve type, creative applications |
+| "reverb" / "delay" / "echo" / "space" / "dub" | `references/device-knowledge/effects-space.md` — dub recipes, shimmer chains |
+| "spectral" / "Resonators" / "Corpus" / "Vocoder" / "weird" / "experimental" | `references/device-knowledge/effects-spectral.md` — drum-to-melody, cross-synthesis |
+| "automate" / "evolve" / "arc" / "movement" / "filter sweep" | `references/device-knowledge/automation-as-music.md` — shapes, macro gestures, density mapping |
+| "sound design" / "make it interesting" / "more complex" | `references/sound-design-deep.md` — master techniques from Villalobos, SOPHIE, Basic Channel |
+
+**Rule:** Never set effect parameters from memory alone when the corpus has specific guidance. Read the file first, then apply the technique.
+
 ## Domain Skills
 
 For domain-specific workflows, load the appropriate skill:

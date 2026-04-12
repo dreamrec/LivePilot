@@ -60,3 +60,18 @@ For the recommendation, explain:
 - Why this one over the others
 - What risk it introduces
 - What sacred elements it preserves
+
+## Creative Intelligence (consult before generating variants)
+
+Wonder Mode should produce musically interesting results, not just technically correct ones. Before generating or applying any variant:
+
+1. Read `references/device-knowledge/automation-as-music.md` for automation shapes and macro gestures
+2. Read `references/device-knowledge/creative-thinking.md` for emotional-to-technical mapping
+3. Read `references/device-knowledge/chains-genre.md` if the session has a genre identity
+
+Every Wonder variant should include:
+- A **filter arc** — at least one element's filter evolving over the full section
+- A **space arc** — reverb/delay sends breathing with arrangement density
+- **Micro-modulation** — every sustained sound has sub-perceptual LFO on at least one parameter
+- **2-3 macro gestures** — coordinated multi-parameter moves at section transitions
+- A variant with no automation is not a real variant — automation IS the music
