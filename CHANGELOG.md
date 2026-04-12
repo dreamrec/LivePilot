@@ -1,5 +1,32 @@
 # Changelog
 
+## 1.9.26 — Sample Engine (April 2026)
+
+### Sample Engine — AI Sample Manipulation Intelligence
+- **feat(sample_engine):** New `sample_engine` domain with 6 tools: `analyze_sample`, `evaluate_sample_fit`, `search_samples`, `suggest_sample_technique`, `plan_sample_workflow`, `get_sample_opportunities`
+- **feat(sample_engine):** SampleAnalyzer — filename metadata parser, spectral material classifier (vocal/drum/texture/etc.), Simpler mode/slice/warp recommender
+- **feat(sample_engine):** 6-critic fitness battery — key fit, tempo fit, frequency fit, role fit, vibe fit, intent fit. Scores 0.0-1.0 per dimension
+- **feat(sample_engine):** 29-technique library across 7 categories: rhythmic (Dilla, Burial, Premier), textural (Paulstretch, granular), melodic (Bon Iver), drum enhancement, vocal processing, resampling chains (Amon Tobin), creative constraints
+- **feat(sample_engine):** Dual philosophy system — Surgeon (precision integration) and Alchemist (creative transformation), context-aware auto-switching
+- **feat(sample_engine):** 3 sample sources — Ableton browser, local filesystem scanner, Freesound API (with AudioCommons descriptors)
+- **feat(sample_engine):** SamplePlanner — technique selection scoring + compiled plan generation with template variable resolution
+- **feat(wonder_mode):** 6 new sample-domain semantic moves: chop_rhythm, texture_layer, vocal_ghost, break_layer, resample_destroy, one_shot_accent
+- **feat(wonder_mode):** Sample-aware diagnosis — 4 new patterns in _DOMAIN_MAP: no_organic_texture, stale_drums, vocal_processing_monotony, dense_but_static
+- **feat(skills):** New `livepilot-sample-engine` skill with technique catalog, critic reference, and Surgeon/Alchemist philosophy guide
+- Tool count: 297 → 303 (41 domains)
+
+## 1.9.25 — Device Forge (April 2026)
+
+### Device Forge — Programmatic M4L Device Generation
+- **feat(device_forge):** New `device_forge` domain with 3 tools: `generate_m4l_effect`, `list_genexpr_templates`, `install_m4l_device`
+- **feat(device_forge):** .amxd binary builder — generates valid Max for Live devices from pure Python using reverse-engineered binary format
+- **feat(device_forge):** gen~ DSP template library — 15 building blocks: Lorenz attractor, Karplus-Strong, wavefolder, FDN reverb, bitcrusher, ring modulator, chorus, stochastic resonance, phase distortion, and more
+- **feat(semantic_moves):** 7 new `device_creation` semantic moves for wonder mode: chaos modulator, feedback resonator, wavefolder, bitcrusher, Karplus-Strong string, stochastic texture, FDN reverb
+- **feat(device_forge):** Safety: all generated gen~ code automatically gets `clip(out, -1, 1)` appended to prevent speaker damage
+- **feat(device_forge):** Supports all 3 device types: Audio Effect, MIDI Effect, Instrument
+- **feat(device_forge):** Auto-installs to Ableton User Library — devices appear in browser immediately
+- Tool count: 294 → 297 (40 domains)
+
 ## 1.9.24 — Stability & Intelligence Upgrade (April 2026)
 
 ### Truth and Boundaries (Wave 1)

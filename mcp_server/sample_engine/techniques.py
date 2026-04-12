@@ -1,7 +1,7 @@
 """Sample Engine technique library — 30+ recipes indexed by material + intent.
 
 Each technique is a named recipe with executable steps mapping to real MCP tools.
-The steps use tool names that match LivePilot's existing 297 tools.
+The steps use tool names that match LivePilot's existing MCP tools.
 
 Zero I/O — pure data catalog.
 """
