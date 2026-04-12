@@ -176,6 +176,8 @@ from .stuckness_detector import tools as stuckness_tools       # noqa: F401, E40
 from .wonder_mode import tools as wonder_mode_tools            # noqa: F401, E402
 from .session_continuity import tools as session_cont_tools    # noqa: F401, E402
 from .creative_constraints import tools as constraints_tools   # noqa: F401, E402
+from .device_forge import tools as device_forge_tools          # noqa: F401, E402
+from .sample_engine import tools as sample_engine_tools        # noqa: F401, E402
 
 
 # ---------------------------------------------------------------------------

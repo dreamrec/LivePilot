@@ -23,6 +23,11 @@ _DOMAIN_MAP: dict[str, list[str]] = {
     "too_safe_to_progress": ["sound_design", "transition"],
     "section_missing": ["arrangement", "transition"],
     "transition_not_earned": ["transition", "arrangement"],
+    # Sample-domain patterns (session-state analysis, not action-history)
+    "no_organic_texture": ["sample", "sound_design"],
+    "stale_drums": ["sample", "arrangement"],
+    "vocal_processing_monotony": ["sample", "sound_design"],
+    "dense_but_static": ["sample", "mix"],
 }
 
 _STUCKNESS_THRESHOLD = 0.2  # Below this, treat as user_request
