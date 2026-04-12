@@ -20,7 +20,7 @@ from .sources import BrowserSource, FilesystemSource, FreesoundSource, build_sea
 
 
 @mcp.tool()
-def analyze_sample(
+async def analyze_sample(
     ctx: Context,
     file_path: Optional[str] = None,
     track_index: Optional[int] = None,
@@ -41,9 +41,8 @@ def analyze_sample(
         try:
             bridge = ctx.lifespan_context.get("m4l")
             if bridge:
-                import asyncio
-                result = asyncio.get_event_loop().run_until_complete(
-                    bridge.send_command("get_clip_file_path", track_index, clip_index or 0)
+                result = await bridge.send_command(
+                    "get_clip_file_path", track_index, clip_index or 0
                 )
                 if not result.get("error"):
                     file_path = result.get("file_path")

@@ -24,8 +24,18 @@ def _parse_key_to_num(key_str: str) -> tuple[int, bool]:
     """Parse key string to (pitch_class, is_minor)."""
     if not key_str:
         return (-1, False)
-    is_minor = key_str.endswith("m") and not key_str.endswith("maj")
-    root = key_str.rstrip("m").rstrip("inor").rstrip("aj").rstrip("ajor")
+    # Strip quality suffixes properly (not char-by-char rstrip)
+    s = key_str
+    is_minor = False
+    for suffix in ("minor", "min", "major", "maj"):
+        if s.endswith(suffix):
+            is_minor = suffix in ("minor", "min")
+            s = s[:-len(suffix)]
+            break
+    if s.endswith("m"):
+        is_minor = True
+        s = s[:-1]
+    root = s
     num = _NOTE_TO_NUM.get(root, -1)
     return (num, is_minor)
 
@@ -156,16 +166,46 @@ def run_frequency_fit_critic(
 
     Without mix_snapshot (no M4L bridge), returns neutral 0.5.
     """
-    if mix_snapshot is None:
+    if mix_snapshot is None or not mix_snapshot:
         return CriticResult(
             critic_name="frequency_fit", score=0.5,
             recommendation="No spectral data — verify frequency fit by ear",
+            adjustments=[{"note": "stub — spectral overlap analysis not yet implemented"}],
         )
 
-    # With mix data: check where sample energy sits vs existing tracks
-    # This is a simplified version — real implementation uses spectral overlap
-    score = 0.5
-    rec = "Frequency analysis requires spectral data from M4L bridge"
+    # Basic frequency overlap check using mix_snapshot track data
+    # mix_snapshot expected shape: {"tracks": [{"name": ..., "peak_frequency": ...}]}
+    tracks = mix_snapshot.get("tracks", [])
+    if not tracks:
+        return CriticResult(
+            critic_name="frequency_fit", score=0.5,
+            recommendation="Mix snapshot has no track data",
+        )
+
+    # Use sample's frequency_center to check for crowding
+    sample_center = profile.frequency_center
+    if sample_center <= 0:
+        return CriticResult(
+            critic_name="frequency_fit", score=0.5,
+            recommendation="Sample has no spectral data — verify by ear",
+        )
+
+    # Count tracks with energy near the sample's center frequency
+    crowding = 0
+    for track in tracks:
+        track_peak = track.get("peak_frequency", 0)
+        if track_peak > 0 and abs(track_peak - sample_center) < sample_center * 0.3:
+            crowding += 1
+
+    if crowding == 0:
+        score, rec = 1.0, "Fills an empty frequency range — no overlap"
+    elif crowding == 1:
+        score, rec = 0.7, "Some frequency overlap — EQ carving recommended"
+    elif crowding == 2:
+        score, rec = 0.4, "Significant masking risk — aggressive filtering needed"
+    else:
+        score, rec = 0.2, "Heavy frequency crowding — use as texture only"
+
     return CriticResult(critic_name="frequency_fit", score=score, recommendation=rec)
 
 
