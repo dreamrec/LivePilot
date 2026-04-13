@@ -1,4 +1,4 @@
-"""Verify all 303 MCP tools are registered across 41 domains."""
+"""Verify all 307 MCP tools are registered across 41 domains."""
 
 import asyncio
 import sys
@@ -113,6 +113,10 @@ def test_devices_tools_registered():
         "get_plugin_parameters",
         "map_plugin_parameter",
         "get_plugin_presets",
+        # 12.3+ device insertion and drum rack construction
+        "insert_device",
+        "insert_rack_chain",
+        "set_drum_chain_note",
     }
     missing = expected - names
     assert not missing, f"Missing devices tools: {missing}"
@@ -192,6 +196,8 @@ def test_arrangement_tools_registered():
         "get_cue_points",
         "jump_to_cue",
         "toggle_cue_point",
+        # 12.1.10+ native arrangement clips
+        "create_native_arrangement_clip",
     }
     missing = expected - names
     assert not missing, f"Missing arrangement tools: {missing}"
@@ -476,7 +482,7 @@ def test_safety_tools_registered():
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 303, f"Expected 303 tools, got {len(tools)}"
+    assert len(tools) == 307, f"Expected 307 tools, got {len(tools)}"
 
 
 def test_sample_engine_tools_registered():

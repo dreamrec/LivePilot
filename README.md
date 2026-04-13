@@ -17,7 +17,7 @@
 
 <p align="center">
   An agentic production system for Ableton Live 12.<br>
-  294 tools. Device atlas. Spectral perception. Technique memory.
+  307 tools. Device atlas. Spectral perception. Technique memory.
 </p>
 
 <br>
@@ -49,7 +49,7 @@
 │         └───────────────────┼───────────────────┘           │
 │                             ▼                               │
 │                    ┌─────────────────┐                      │
-│                    │   294 MCP Tools  │                      │
+│                    │   307 MCP Tools  │                      │
 │                    │   39 domains     │                      │
 │                    └────────┬────────┘                      │
 │                             │                               │
@@ -71,7 +71,7 @@ via a Max for Live device.
 The **memory** gives it history — a searchable library of production decisions
 that persists across sessions.
 
-All three feed into 294 deterministic tools that execute on Ableton's main thread.
+All three feed into 307 deterministic tools that execute on Ableton's main thread.
 
 <br>
 
@@ -81,7 +81,7 @@ All three feed into 294 deterministic tools that execute on Ableton's main threa
 
 Most MCP servers are tool collections — they execute commands. LivePilot is an **agentic production system** — it understands what a song is becoming, diagnoses when a session is stuck, generates real creative options, learns from your decisions, and tracks its own impact.
 
-This is the V2 intelligence layer: 12 engines that sit on top of the 294 tools and give the AI musical judgment, not just musical execution.
+This is the V2 intelligence layer: 12 engines that sit on top of the 307 tools and give the AI musical judgment, not just musical execution.
 
 ### SongBrain — What the Song Is
 
@@ -150,7 +150,7 @@ This closes the gap between "the AI did something" and "the AI did something tha
 
 ## Tools
 
-294 tools across 39 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
+307 tools across 39 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
 
 <br>
 
@@ -416,7 +416,7 @@ The V2 intelligence layer. These tools don't just execute commands — they anal
 | Creative Constraints | 5 | constraint activation, reference-inspired variants, constrained generation |
 | Preview Studio | 5 | variant creation, preview rendering, comparison, commit, discard |
 
-> **[View all 294 tools →](docs/manual/tool-catalog.md)**
+> **[View all 307 tools →](docs/manual/tool-catalog.md)**
 
 <br>
 

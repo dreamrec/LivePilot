@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.9.25 — Live 12.3 API Integration (April 2026)
+
+### New Tools (+4, total 307)
+- `create_native_arrangement_clip` — create arrangement clips with full automation envelope support (12.1.10+)
+- `insert_device` — insert native devices by name, 10x faster than browser search (12.3+), supports chain-level insertion for drum rack construction
+- `insert_rack_chain` — add chains to Instrument/Audio Effect/Drum Racks (12.3+)
+- `set_drum_chain_note` — assign MIDI notes to Drum Rack chains (12.3+)
+
+### Enhancements
+- **Version Detection** — LivePilot now detects the Live version at startup and exposes feature flags via `get_session_info`. Three capability tiers: Core (12.0+), Enhanced Arrangement (12.1.10+), Full Intelligence (12.3+)
+- **Display Values** — `get_device_parameters`, `set_device_parameter`, and `batch_set_parameters` now include `display_value` (human-readable like "26.0 Hz") on Live 12.2+ without requiring the M4L bridge
+- **Fast Device Loading** — `find_and_load_device` automatically uses `insert_device` on 12.3+ for native devices, giving a 10x speedup with no code changes needed
+- **Backward Compatibility** — All existing tools continue working on Live 12.0.x. New features use try/except feature detection with clear fallback messages
+
 ## 1.9.26 — Sample Engine (April 2026)
 
 ### Sample Engine — AI Sample Manipulation Intelligence
