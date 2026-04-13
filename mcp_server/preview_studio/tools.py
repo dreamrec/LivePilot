@@ -23,7 +23,15 @@ def _get_ableton(ctx: Context):
 
 def _should_refuse_analytical(compiled_plan, wonder_linked: bool) -> bool:
     """Check if an analytical variant should be refused in Wonder context."""
-    return compiled_plan is None and wonder_linked
+    if not wonder_linked:
+        return False
+    if compiled_plan is None:
+        return True
+    if isinstance(compiled_plan, dict):
+        return len(compiled_plan.get("steps", [])) == 0
+    if isinstance(compiled_plan, list):
+        return len(compiled_plan) == 0
+    return True
 
 
 def _find_wonder_session_by_preview(set_id: str):
