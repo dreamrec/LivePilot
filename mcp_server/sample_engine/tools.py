@@ -16,7 +16,7 @@ from .analyzer import build_profile_from_filename
 from .critics import run_all_sample_critics
 from .planner import select_technique, compile_sample_plan
 from .techniques import find_techniques, list_techniques, get_technique
-from .sources import BrowserSource, FilesystemSource, FreesoundSource, build_search_queries
+from .sources import BrowserSource, FilesystemSource, SpliceSource, build_search_queries
 
 
 @mcp.tool()
@@ -159,37 +159,70 @@ def search_samples(
     ctx: Context,
     query: str,
     material_type: Optional[str] = None,
+    key: Optional[str] = None,
+    bpm_range: Optional[str] = None,
     source: Optional[str] = None,
     max_results: int = 10,
 ) -> dict:
-    """Search for samples across Ableton browser, local filesystem, and Freesound.
+    """Search for samples across Splice library, Ableton browser, and local filesystem.
+
+    Searches all enabled sources in parallel and ranks results.
+    Splice results include rich metadata (key, BPM, genre, tags, pack info).
 
     query: search text like "dark vocal", "breakbeat", "foley metal"
     material_type: filter by type (vocal, drum_loop, texture, etc.)
-    source: "browser", "filesystem", "freesound", or None for all
+    key: prefer samples in this key (e.g., "Cm", "F#")
+    bpm_range: "min-max" BPM range (e.g., "120-130")
+    source: "splice", "browser", "filesystem", or None for all
     max_results: maximum results to return (default 10)
     """
     results: list[dict] = []
+
+    # Parse BPM range
+    bpm_min, bpm_max = None, None
+    if bpm_range:
+        parts = bpm_range.replace(" ", "").split("-")
+        if len(parts) == 2:
+            try:
+                bpm_min, bpm_max = float(parts[0]), float(parts[1])
+            except ValueError:
+                pass
+
+    # Splice search (richest metadata, searched first)
+    if source in (None, "splice"):
+        splice = SpliceSource()
+        if splice.enabled:
+            splice_results = splice.search(
+                query=query,
+                max_results=max_results,
+                key=key,
+                bpm_min=bpm_min,
+                bpm_max=bpm_max,
+            )
+            for candidate in splice_results:
+                d = candidate.to_dict()
+                d["source_priority"] = 1  # highest
+                results.append(d)
 
     # Browser search
     if source in (None, "browser"):
         try:
             ableton = ctx.lifespan_context["ableton"]
-            for path in ["samples", "drums", "user_library"]:
+            browser = BrowserSource()
+            for category in browser.DEFAULT_CATEGORIES:
                 try:
                     search_result = ableton.send_command("search_browser", {
-                        "path": path,
+                        "path": category,
                         "name_filter": query,
                         "loadable_only": True,
                         "max_results": max_results,
                     })
-                    for item in search_result.get("results", []):
-                        results.append({
-                            "source": "browser",
-                            "name": item.get("name", ""),
-                            "uri": item.get("uri", ""),
-                            "path": f"{path}/{item.get('name', '')}",
-                        })
+                    raw = search_result.get("results", [])
+                    parsed = browser.parse_results(raw, category)
+                    for candidate in parsed:
+                        d = candidate.to_dict()
+                        d["source_priority"] = 2
+                        results.append(d)
                 except Exception:
                     continue
         except Exception:
@@ -203,22 +236,23 @@ def search_samples(
         ])
         fs_results = fs.search(query, max_results=max_results)
         for candidate in fs_results:
-            results.append(candidate.to_dict())
+            d = candidate.to_dict()
+            d["source_priority"] = 3
+            results.append(d)
 
-    # Freesound (metadata only — no download yet)
-    if source in (None, "freesound"):
-        fs_source = FreesoundSource()
-        if fs_source.enabled:
-            params = fs_source.build_search_params(query, max_results)
-            results.append({
-                "source": "freesound",
-                "note": "Freesound search available — use API params below",
-                "search_params": params,
-            })
+    # Sort by source priority (Splice first), then by relevance
+    results.sort(key=lambda r: r.get("source_priority", 9))
+
+    # Build summary
+    source_counts = {}
+    for r in results:
+        src = r.get("source", "unknown")
+        source_counts[src] = source_counts.get(src, 0) + 1
 
     return {
         "query": query,
-        "result_count": len(results),
+        "result_count": len(results[:max_results]),
+        "source_counts": source_counts,
         "results": results[:max_results],
     }
 

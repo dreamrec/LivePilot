@@ -32,7 +32,7 @@ Every sample workflow is guided by one of two philosophies:
 |------|---------|
 | `analyze_sample` | Build SampleProfile — material type, key, BPM, recommendations |
 | `evaluate_sample_fit` | 6-critic battery — key, tempo, frequency, role, vibe, intent fit |
-| `search_samples` | Search browser, filesystem, and Freesound |
+| `search_samples` | Search Splice library, Ableton browser, and local filesystem |
 | `suggest_sample_technique` | Recommend techniques from the 29-recipe library |
 | `plan_sample_workflow` | End-to-end plan: analyze + critique + technique + compiled steps |
 | `get_sample_opportunities` | Analyze song for where samples could improve it |

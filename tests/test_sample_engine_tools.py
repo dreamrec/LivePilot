@@ -23,7 +23,7 @@ from mcp_server.sample_engine.planner import compile_sample_plan, select_techniq
 from mcp_server.sample_engine.sources import (
     BrowserSource,
     FilesystemSource,
-    FreesoundSource,
+    SpliceSource,
     build_search_queries,
 )
 from mcp_server.sample_engine.techniques import find_techniques, list_techniques
@@ -132,11 +132,10 @@ class TestSearchSamplesPath:
         assert params["path"] == "drums"
         assert params["name_filter"] == "kick"
 
-    def test_freesound_source_builds_params(self):
-        source = FreesoundSource(api_key="test")
-        params = source.build_search_params("ambient pad", max_results=5)
-        assert params["query"] == "ambient pad"
-        assert params["page_size"] == 5
+    def test_splice_source_disabled_without_db(self):
+        source = SpliceSource(db_path="/nonexistent/sounds.db")
+        assert source.enabled is False
+        assert source.search("kick") == []
 
     def test_build_search_queries_includes_original(self):
         queries = build_search_queries("dark vocal")

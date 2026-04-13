@@ -19,15 +19,16 @@
 ### Sample Engine — AI Sample Manipulation Intelligence
 - **feat(sample_engine):** New `sample_engine` domain with 6 tools: `analyze_sample`, `evaluate_sample_fit`, `search_samples`, `suggest_sample_technique`, `plan_sample_workflow`, `get_sample_opportunities`
 - **feat(sample_engine):** SampleAnalyzer — filename metadata parser, spectral material classifier (vocal/drum/texture/etc.), Simpler mode/slice/warp recommender
-- **feat(sample_engine):** 6-critic fitness battery — key fit, tempo fit, frequency fit, role fit, vibe fit, intent fit. Scores 0.0-1.0 per dimension
+- **feat(sample_engine):** 6-critic fitness battery — key fit, tempo fit, frequency fit, role fit, vibe fit, intent fit. Scores 0.0-1.0 per dimension with real computation (no stubs)
 - **feat(sample_engine):** 29-technique library across 7 categories: rhythmic (Dilla, Burial, Premier), textural (Paulstretch, granular), melodic (Bon Iver), drum enhancement, vocal processing, resampling chains (Amon Tobin), creative constraints
 - **feat(sample_engine):** Dual philosophy system — Surgeon (precision integration) and Alchemist (creative transformation), context-aware auto-switching
-- **feat(sample_engine):** 3 sample sources — Ableton browser, local filesystem scanner, Freesound API (with AudioCommons descriptors)
-- **feat(sample_engine):** SamplePlanner — technique selection scoring + compiled plan generation with template variable resolution
+- **feat(sample_engine):** SpliceSource — reads Splice's local sounds.db SQLite database (read-only) for rich metadata: key, BPM, genre, tags, pack info, popularity. Searches by key+tempo for song-matched results
+- **feat(sample_engine):** BrowserSource + FilesystemSource — Ableton browser search (samples, drums, packs, user_library) and local directory scanner with filename metadata extraction
+- **feat(sample_engine):** SamplePlanner — technique selection scoring + compiled plan generation with recursive template variable resolution
 - **feat(wonder_mode):** 6 new sample-domain semantic moves: chop_rhythm, texture_layer, vocal_ghost, break_layer, resample_destroy, one_shot_accent
 - **feat(wonder_mode):** Sample-aware diagnosis — 4 new patterns in _DOMAIN_MAP: no_organic_texture, stale_drums, vocal_processing_monotony, dense_but_static
 - **feat(skills):** New `livepilot-sample-engine` skill with technique catalog, critic reference, and Surgeon/Alchemist philosophy guide
-- Tool count: 297 → 303 (41 domains)
+- Tool count: 297 → 303 (41 domains), 131 sample engine tests
 
 ## 1.9.25 — Device Forge (April 2026)
 
