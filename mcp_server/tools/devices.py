@@ -359,14 +359,15 @@ def find_and_load_device(ctx: Context, track_index: int, device_name: str) -> di
     if not device_name.strip():
         raise ValueError("device_name cannot be empty")
 
-    # Guardrail: bare Drum Rack produces silence (no samples loaded)
+    # Guardrail: bare Drum Rack produces silence unless building programmatically (12.3+)
     if device_name.strip().lower() == "drum rack":
         raise ValueError(
             "Loading a bare 'Drum Rack' creates an empty rack that produces silence. "
-            "Instead, use search_browser(path='drums') to find a kit preset "
-            "(e.g., '808 Core Kit'), then load it with load_browser_item(). "
-            "Or use DS drum synths (DS Kick, DS Snare, DS HH, DS Tom, DS Clap, "
-            "DS Cymbal) which are self-contained."
+            "Options: (1) search_browser(path='drums') to find a kit preset "
+            "(e.g., '808 Core Kit'), then load with load_browser_item(). "
+            "(2) On Live 12.3+: use insert_device('Drum Rack') + insert_rack_chain "
+            "+ set_drum_chain_note to build a kit programmatically. "
+            "(3) DS drum synths (DS Kick, DS Snare, DS HH) are self-contained."
         )
 
     result = _get_ableton(ctx).send_command("find_and_load_device", {

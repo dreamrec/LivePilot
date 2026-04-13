@@ -110,18 +110,21 @@ This turns "set EQ band 3 to -4 dB" into "cut 400 Hz by 4 dB, then read the spec
 - `velocity_deviation` — -127.0 to 127.0
 - `release_velocity` — 0.0-127.0
 
-### Devices (12) — Instruments, effects, racks
+### Devices (15) — Instruments, effects, racks, 12.3+ device insertion
 
 | Tool | What it does | Key params |
 |------|-------------|------------|
 | `get_device_info` | Returns device name, class, active state, all parameters | `track_index`, `device_index` |
-| `get_device_parameters` | Lists all parameters with values and ranges | `track_index`, `device_index` |
-| `set_device_parameter` | Sets a single parameter | `track_index`, `device_index`, `parameter_index`, `value` |
+| `get_device_parameters` | Lists all parameters with values, ranges, and `display_value` (12.2+) | `track_index`, `device_index` |
+| `set_device_parameter` | Sets a single parameter, returns `display_value` on 12.2+ | `track_index`, `device_index`, `parameter_index`, `value` |
 | `batch_set_parameters` | Sets multiple parameters at once | `track_index`, `device_index`, `parameters` (array) |
 | `toggle_device` | Enables/disables a device | `track_index`, `device_index` |
 | `delete_device` | Removes a device from the chain | `track_index`, `device_index` |
 | `load_device_by_uri` | Loads a device by browser URI | `track_index`, `uri` |
-| `find_and_load_device` | Searches browser and loads first match | `track_index`, `name` |
+| `find_and_load_device` | Searches browser and loads first match (uses `insert_device` fast path on 12.3+) | `track_index`, `name` |
+| `insert_device` | **12.3+** Insert native device by name — 10x faster than browser. Supports chain insertion for drum racks | `track_index`, `device_name`, `position`, `device_index`, `chain_index` |
+| `insert_rack_chain` | **12.3+** Add a chain to Instrument/Audio Effect/Drum Rack | `track_index`, `device_index`, `position` |
+| `set_drum_chain_note` | **12.3+** Assign MIDI note to a Drum Rack chain (C1=36 kick, D1=38 snare) | `track_index`, `device_index`, `chain_index`, `note` |
 | `get_rack_chains` | Lists chains in an Instrument/Effect Rack | `track_index`, `device_index` |
 | `set_simpler_playback_mode` | Switches Simpler mode (Classic/One-Shot/Slice) | `track_index`, `device_index`, `playback_mode` (0/1/2), `slice_by`, `sensitivity` |
 | `set_chain_volume` | Sets volume of a rack chain | `track_index`, `device_index`, `chain_index`, `volume` |
@@ -165,12 +168,13 @@ This turns "set EQ band 3 to -4 dB" into "cut 400 Hz by 4 dB, then read the spec
 | `search_browser` | Searches the browser | `query` |
 | `load_browser_item` | Loads a browser item onto a track — **`uri` MUST come from `search_browser` results, NEVER invented** | `track_index`, `uri` |
 
-### Arrangement (19) — Timeline, recording, cue points, arrangement notes
+### Arrangement (20) — Timeline, recording, cue points, arrangement notes
 
 | Tool | What it does | Key params |
 |------|-------------|------------|
 | `get_arrangement_clips` | Lists clips in arrangement view | `track_index` |
 | `create_arrangement_clip` | Duplicates session clip into arrangement at a beat position | `track_index`, `clip_slot_index`, `start_time`, `length` |
+| `create_native_arrangement_clip` | **12.1.10+** Creates native arrangement clip with full automation envelope support | `track_index`, `start_time`, `length`, `name`, `color_index` |
 | `add_arrangement_notes` | Adds MIDI notes to an arrangement clip | `track_index`, `clip_index`, `notes` |
 | `get_arrangement_notes` | Reads notes from an arrangement clip | `track_index`, `clip_index`, region params |
 | `remove_arrangement_notes` | Removes notes in a region of an arrangement clip | `track_index`, `clip_index`, region params |
