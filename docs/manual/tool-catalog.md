@@ -584,3 +584,13 @@
 | `suggest_sample_technique` | Suggest manipulation technique from the 29-technique library |
 | `plan_sample_workflow` | Plan multi-step sample manipulation workflow |
 | `get_sample_opportunities` | Find opportunities to add samples to the current session |
+
+---
+
+## Composer (3)
+
+| Tool | Description |
+|------|-------------|
+| `compose` | Create a full multi-layer composition from a text prompt — searches samples, loads devices, arranges sections |
+| `augment_with_samples` | Add sample-based layers to the existing session with Splice-aware credit safety |
+| `get_composition_plan` | Dry-run preview of what compose would do — no execution, no credits spent |
