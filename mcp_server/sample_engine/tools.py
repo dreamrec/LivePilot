@@ -1,4 +1,4 @@
-"""Sample Engine MCP tools — 6 intelligence-layer tools.
+"""Sample Engine MCP tools — 7 intelligence-layer tools.
 
 No new Ableton communication — these orchestrate existing tools
 through the analyzer, critics, planner, and technique library.
@@ -440,3 +440,80 @@ def get_sample_opportunities(ctx: Context) -> dict:
         "opportunities": opportunities,
         "track_count": track_count,
     }
+
+
+@mcp.tool()
+def plan_slice_workflow(
+    ctx: Context,
+    file_path: Optional[str] = None,
+    track_index: Optional[int] = None,
+    device_index: int = 0,
+    intent: str = "rhythm",
+    target_section: Optional[str] = None,
+    target_track: Optional[int] = None,
+    bars: int = 4,
+    style_hint: str = "",
+) -> dict:
+    """Plan an end-to-end slice workflow for a sample.
+
+    Generates a Simpler slice strategy, MIDI note mapping, and starter
+    pattern based on musical intent. Returns a compiled workflow plan —
+    does NOT execute. The agent steps through each tool call in sequence.
+
+    Provide either file_path (new sample to load) or track_index +
+    device_index (existing Simpler with loaded sample).
+
+    intent: rhythm | hook | texture | percussion | melodic
+    bars: number of bars for the pattern (default 4)
+    target_section: optional section name for arrangement hints
+    style_hint: optional genre/style context (e.g. "dilla", "burial")
+    """
+    from .slice_workflow import plan_slice_steps
+
+    # Determine slice count — default 8 for file-based, or would come from
+    # get_simpler_slices in a real execution
+    slice_count = 8  # Default transient slice count
+
+    # Build the plan
+    plan = plan_slice_steps(
+        slice_count=slice_count,
+        intent=intent,
+        bars=bars,
+        tempo=120.0,  # Agent should read actual tempo from session
+        track_index=target_track if target_track is not None else 0,
+    )
+
+    # Prepend sample loading steps if file_path provided
+    if file_path:
+        load_steps = [
+            {
+                "tool": "create_midi_track",
+                "params": {"name": f"Slice {intent.title()}"},
+                "description": "Create track for sliced sample",
+            },
+            {
+                "tool": "load_sample_to_simpler",
+                "params": {"track_index": target_track or 0, "file_path": file_path},
+                "description": f"Load sample into Simpler: {file_path}",
+            },
+            {
+                "tool": "set_simpler_playback_mode",
+                "params": {"track_index": target_track or 0, "device_index": 0, "playback_mode": 2},
+                "description": "Set Simpler to Slice mode",
+            },
+        ]
+        plan["steps"] = load_steps + plan["steps"]
+
+    # Add arrangement hints if section provided
+    if target_section:
+        plan["arrangement_hints"] = {
+            "target_section": target_section,
+            "suggested_placement": f"Place slice pattern in {target_section}",
+        }
+
+    plan["file_path"] = file_path
+    plan["track_index"] = track_index
+    plan["device_index"] = device_index
+    plan["style_hint"] = style_hint
+
+    return plan

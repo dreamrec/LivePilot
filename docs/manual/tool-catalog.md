@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog
 
-316 tools across 43 domains.
+317 tools across 43 domains.
 
 ---
 
@@ -574,7 +574,7 @@
 
 ---
 
-## Sample Engine (6)
+## Sample Engine (7)
 
 | Tool | Description |
 |------|-------------|
@@ -584,6 +584,7 @@
 | `suggest_sample_technique` | Suggest manipulation technique from the 29-technique library |
 | `plan_sample_workflow` | Plan multi-step sample manipulation workflow |
 | `get_sample_opportunities` | Find opportunities to add samples to the current session |
+| `plan_slice_workflow` | Plan an end-to-end slice workflow — Simpler strategy, MIDI mapping, starter pattern |
 
 ---
 
