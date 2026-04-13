@@ -1,6 +1,6 @@
 # LivePilot Tool Catalog (Auto-Generated)
 
-316 tools across 43 domains.
+317 tools across 43 domains.
 
 - **add_arrangement_notes** — Add MIDI notes to an arrangement clip
 - **add_notes** — Add MIDI notes to a clip. notes is a JSON array: [{pitch, start_time, duration, velocity?, probability?, velocity_dev...
@@ -29,7 +29,7 @@
 - **atlas_device_info** — Get complete atlas knowledge about a device — parameters, recipes, pairings, gotchas
 - **atlas_search** — Search the device atlas for instruments, effects, kits, or plugins
 - **atlas_suggest** — Suggest devices for a production intent
-- **augment_with_samples** — Add sample-based layers to the existing session
+- **augment_with_samples** — Plan sample-based layers to add to the existing session
 - **back_to_arranger** — Switch playback from session clips back to the arrangement timeline.
 - **batch_set_parameters** — Set multiple device parameters in one call. parameters is a JSON array of objects: [{"name_or_index": "Dry/Wet", "val...
 - **build_project_brain** — Build a full Project Brain snapshot from the current Ableton session
@@ -52,7 +52,7 @@
 - **compare_preview_variants** — Compare and rank variants in a preview set
 - **compare_to_reference** — Compare a mix to a reference track (offline — no Ableton needed)
 - **compile_goal_vector** — Compile a user request into a validated GoalVector
-- **compose** — Create a full multi-layer composition from a text prompt
+- **compose** — Plan a full multi-layer composition from a text prompt
 - **continue_playback** — Continue playback from the current position.
 - **create_arrangement_clip** — Duplicate a session clip into Arrangement View at a specific beat position
 - **create_audio_track** — Create a new audio track. index=-1 appends at end.
@@ -229,6 +229,7 @@
 - **plan_reference_moves** — Plan concrete moves to close reference gaps
 - **plan_sample_workflow** — Full end-to-end sample workflow: analyze, critique, select technique, compile plan
 - **plan_scene_handoff** — Plan a safe transition between two scenes
+- **plan_slice_workflow** — Plan an end-to-end slice workflow for a sample
 - **plan_sound_design_move** — Get ranked move suggestions based on current sound design issues
 - **plan_transition** — Plan a transition between two sections with concrete gestures
 - **preview_semantic_move** — Preview what a semantic move will do before applying it

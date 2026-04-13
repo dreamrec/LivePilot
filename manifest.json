@@ -3,7 +3,7 @@
   "name": "livepilot",
   "display_name": "LivePilot — AI for Ableton Live",
   "version": "1.10.0",
-  "description": "Agentic production system for Ableton Live 12. Make beats, mix tracks, design sounds, and arrange songs with 316 AI-powered tools.",
+  "description": "Agentic production system for Ableton Live 12. Make beats, mix tracks, design sounds, and arrange songs with 317 AI-powered tools.",
   "long_description": "LivePilot is an AI production assistant that connects directly to Ableton Live 12. It can create drum patterns, program basslines, write chord progressions, design sounds, mix your tracks, analyze your audio, and arrange full songs — all through natural language.\n\n**What it does:**\n- Creates MIDI clips with notes, chords, and rhythms\n- Loads instruments and effects from Ableton's browser\n- Shapes sounds by adjusting device parameters\n- Mixes with volume, panning, sends, and automation\n- Analyzes your mix with real-time spectral data\n- Remembers your production style across sessions\n\n**How it works:**\nLivePilot installs a Remote Script in Ableton that communicates with the AI over a local TCP connection. Everything runs on your machine — no audio leaves your computer.",
   "author": {
     "name": "Pilot Studio",

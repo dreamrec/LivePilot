@@ -44,16 +44,10 @@ async def compose(
     intent = parse_prompt(prompt)
 
     # Credit safety check
+    # NOTE: Splice gRPC client is not yet wired into server lifespan.
+    # When it is, this will read ctx.lifespan_context["splice"].
     splice_client = None
     credits_remaining = None
-    try:
-        lifespan = ctx.lifespan_context
-        if lifespan and "splice" in lifespan:
-            splice_client = lifespan["splice"]
-            if splice_client and splice_client.connected:
-                credits_remaining = await splice_client.get_credits_remaining()
-    except Exception:
-        pass
 
     warnings: list[str] = []
 
@@ -114,16 +108,9 @@ async def augment_with_samples(
     Returns a compiled plan with step-by-step tool calls.
     """
     # Credit safety
+    # NOTE: Splice gRPC client is not yet wired into server lifespan.
     splice_client = None
     credits_remaining = None
-    try:
-        lifespan = ctx.lifespan_context
-        if lifespan and "splice" in lifespan:
-            splice_client = lifespan["splice"]
-            if splice_client and splice_client.connected:
-                credits_remaining = await splice_client.get_credits_remaining()
-    except Exception:
-        pass
 
     warnings: list[str] = []
 
