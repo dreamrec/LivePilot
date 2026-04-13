@@ -58,8 +58,9 @@ User wants to find and use a sample:
 ### Wonder Mode Integration
 When stuck, Wonder Mode can suggest sample-based variants:
 - 6 sample-domain semantic moves in the registry
-- Fully compiled, previewable, committable plans
+- Compiled plans require agent to supply `file_path` from prior `search_samples` results
 - Diagnosis detects: no_organic_texture, stale_drums, dense_but_static
+- Note: Wonder does not yet auto-call `search_samples` — the agent must chain the calls
 
 ## Golden Rules
 

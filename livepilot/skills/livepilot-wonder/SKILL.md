@@ -69,9 +69,11 @@ Wonder Mode should produce musically interesting results, not just technically c
 2. Read `references/device-knowledge/creative-thinking.md` for emotional-to-technical mapping
 3. Read `references/device-knowledge/chains-genre.md` if the session has a genre identity
 
-Every Wonder variant should include:
-- A **filter arc** — at least one element's filter evolving over the full section
-- A **space arc** — reverb/delay sends breathing with arrangement density
-- **Micro-modulation** — every sustained sound has sub-perceptual LFO on at least one parameter
-- **2-3 macro gestures** — coordinated multi-parameter moves at section transitions
-- A variant with no automation is not a real variant — automation IS the music
+When reviewing Wonder variants, aim for musical depth:
+- **Filter arcs** — evolving filter across sections adds movement
+- **Space arcs** — reverb/delay sends breathing with density
+- **Micro-modulation** — subtle LFOs on sustained sounds
+- **Macro gestures** — coordinated multi-parameter moves at transitions
+
+Note: these are agent-level guidelines, not enforced by the Wonder engine.
+The engine generates variants from semantic moves; the agent adds musical polish.

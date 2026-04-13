@@ -196,7 +196,8 @@ async def get_composition_plan(
     plan = _engine.get_plan(intent)
     plan["prompt"] = prompt
     plan["note"] = (
-        "This is a dry run. No samples searched, downloaded, or loaded. "
-        "Use compose() to execute this plan."
+        "This is a dry run. No samples searched or loaded. "
+        "Use compose() to get the full plan with credit checks, "
+        "then step through each tool call in sequence."
     )
     return plan

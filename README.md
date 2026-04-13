@@ -62,7 +62,7 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 │  683 drum kits           key detection           replay into session │
 │                                                                      │
 │  Sample Engine           Corpus Intelligence     Taste Graph          │
-│  Splice catalog (gRPC)   EmotionalRecipe         move preferences    │
+│  Splice (local SQLite)   EmotionalRecipe         move preferences    │
 │  Browser search          GenreChain              device affinities   │
 │  Filesystem scan         PhysicalModelRecipe     novelty tolerance   │
 │  6 fitness critics       AutomationGesture                           │
@@ -85,7 +85,7 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 │                           │                                          │
 │           Remote Script ──┤── TCP 9878                                │
 │           M4L Bridge ─────┤── UDP 9880 / OSC 9881                    │
-│           Splice Client ──┤── gRPC (auto-detected port)              │
+│           Splice (local) ─┤── SQLite (downloaded samples)             │
 │                           │                                          │
 │                  ┌────────────────┐                                   │
 │                  │  Ableton Live  │                                   │
@@ -106,9 +106,9 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 
 **Sample Engine** (`mcp_server/sample_engine/`) — Searches three sources simultaneously: BrowserSource (Ableton's library), SpliceSource (local Splice catalog via SQLite), FilesystemSource (user directories). Every result passes through a 6-critic fitness battery (key, tempo, spectral, genre, mood, technical). 29 processing techniques (Surgeon precision vs. Alchemist experimentation). Builds complete sample processing plans with warp, slice, and effect recommendations.
 
-**Splice Client** (`mcp_server/splice_client/`) — gRPC client that talks to Splice's desktop app. Auto-detects the port from `port.conf`, connects over TLS with self-signed certificates. Searches the full Splice catalog, checks credit balance, downloads samples. Safety floor of 5 credits — refuses to spend below that. Works without a Splice subscription (searches local downloads).
+**Splice Client** (`mcp_server/splice_client/`) — Reads Splice's local SQLite database (`sounds.db`) for searching downloaded samples with full metadata (key, BPM, genre, tags). A gRPC client for the Splice desktop API exists but is not yet wired into the server lifespan — currently all Splice integration is local-only via SQLite. No API key needed.
 
-**Composer** (`mcp_server/composer/`) — Prompt-to-plan pipeline. Parses natural language ("dark minimal techno 128bpm with industrial textures") into a CompositionIntent (genre, mood, tempo, key). Plans layers using role templates (kick, bass, percussion, texture, lead, pad, fx). Compiles to executable tool sequences. 7 genre defaults (techno, house, ambient, hip-hop, dnb, dub, experimental). Integrates with Sample Engine for Splice-augmented compositions.
+**Composer** (`mcp_server/composer/`) — Prompt-to-plan pipeline. Parses natural language ("dark minimal techno 128bpm with industrial textures") into a CompositionIntent (genre, mood, tempo, key). Plans layers using role templates (kick, bass, percussion, texture, lead, pad, fx). Compiles to a step-by-step plan of tool calls that the agent executes. Does not execute autonomously — returns the plan. 7 genre defaults (techno, house, ambient, hip-hop, dnb, dub, experimental).
 
 **Corpus** (`mcp_server/corpus/`) — Parsed device-knowledge markdown converted to queryable Python structures: EmotionalRecipe, GenreChain, PhysicalModelRecipe, AutomationGesture. Feeds Wonder Mode, Sound Design critics, and the Composer with deep creative knowledge at runtime — not just LLM prompts, actual structured data.
 
@@ -199,7 +199,7 @@ Every engine follows: **measure before → act → measure after → compare**. 
 
 <br>
 
-### M4L Bridge — 27 tools `[optional]`
+### M4L Bridge — 30 tools `[optional]`
 
 The M4L Analyzer sits on the master track. UDP 9880 carries spectral data to the server. OSC 9881 sends commands back.
 
@@ -278,18 +278,16 @@ get_sample_technique   Get detailed recipe for a specific technique
 
 ### Splice Integration
 
-LivePilot connects to Splice's desktop app via gRPC. No API key needed — it talks to the Splice app running on your machine.
+LivePilot reads Splice's local SQLite database to search your downloaded samples with full metadata. No API key needed — it reads the database file directly.
 
 **What it does:**
-- Searches the full Splice catalog (millions of samples)
-- Checks your credit balance before spending
-- Downloads samples directly into your project
-- Safety floor: refuses to spend if you have fewer than 5 credits remaining
-- Works without a subscription — still searches your locally downloaded Splice samples
+- Searches your downloaded Splice samples with key, BPM, genre, and tag metadata
+- Integrates as a third source alongside Ableton's browser and filesystem scanning
+- Works without a Splice subscription — any previously downloaded samples are searchable
 
-**How it works:** The Splice desktop app exposes a local gRPC API. LivePilot's `splice_client` auto-detects the port from Splice's `port.conf` file, connects over TLS with Splice's self-signed certificates, and sends search/download requests.
+**How it works:** The Sample Engine's `SpliceSource` reads `~/Library/Application Support/com.splice.Splice/users/default/*/sounds.db` — Splice's local SQLite catalog of downloaded samples. Read-only, no network calls.
 
-**Requirements:** Splice desktop app installed and running. That's it.
+**Requirements:** Splice desktop app installed with some downloaded samples. A gRPC client for Splice's live API exists in `mcp_server/splice_client/` but is not yet wired into the server runtime.
 
 <br>
 
@@ -320,10 +318,10 @@ Prompt-to-plan auto-composition engine.
 ```
 
 - 7 genre defaults: techno, house, ambient, hip-hop, dnb, dub, experimental
-- Integrates with Sample Engine for Splice-augmented compositions
-- `compose` — full multi-layer composition from text
-- `augment_with_samples` — add layers to existing session
-- `get_composition_plan` — dry-run preview (see the plan before executing)
+- Returns step-by-step plans — the agent executes each tool call in sequence
+- `compose` — plan a multi-layer composition from text prompt
+- `augment_with_samples` — plan sample-based layers for existing session
+- `get_composition_plan` — dry-run preview (see the plan without credit checks)
 
 <br>
 
@@ -473,11 +471,11 @@ The `--setup` wizard and Desktop Extension do this automatically.
 <details>
 <summary><strong>4. Splice (optional — adds sample catalog)</strong></summary>
 
-Just have the Splice desktop app running. LivePilot auto-detects it.
+If you have Splice installed with downloaded samples, the Sample Engine can search them with full metadata (key, BPM, genre, tags) via the local SQLite database.
 
-No API key, no configuration. The Splice client finds the local gRPC port automatically and connects over TLS.
+No API key, no configuration — the Sample Engine reads Splice's `sounds.db` file directly.
 
-If you don't have Splice, the Sample Engine still searches Ableton's browser and your filesystem — Splice just adds the catalog as a third source.
+Without Splice, the Sample Engine still searches Ableton's browser and your filesystem.
 
 </details>
 
@@ -518,7 +516,7 @@ claude plugin add github:dreamrec/LivePilot/plugin
 
 **Producer Agent** — autonomous multi-step production.
 Consults memory for style context, searches the atlas for instruments,
-queries Splice for samples, creates tracks, programs MIDI, chains effects,
+searches samples, creates tracks, programs MIDI, chains effects,
 reads the spectrum to verify, and arranges sections.
 
 **Core Skill** — operational discipline connecting all layers.
@@ -555,7 +553,7 @@ npx livepilot --version    # Show version
 | Python | 3.9+ |
 | Node.js | 18+ |
 | OS | macOS / Windows |
-| Splice | Desktop app (optional — enables catalog search) |
+| Splice | Desktop app with downloaded samples (optional — enables SQLite metadata search) |
 
 **Version tiers:**
 - **Core (12.0+):** All session tools, mixing, devices, MIDI, theory, generative, memory

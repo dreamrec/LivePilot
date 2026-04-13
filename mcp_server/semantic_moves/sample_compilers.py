@@ -34,13 +34,13 @@ def _compile_sample_chop_rhythm(move: SemanticMove, kernel: dict) -> CompiledPla
 
     steps.append(CompiledStep(
         tool="load_sample_to_simpler",
-        params={"track_index": new_idx},
+        params={"track_index": new_idx, "file_path": "{sample_file_path}"},
         description="Load sample into Simpler for slicing",
     ))
 
     steps.append(CompiledStep(
         tool="set_simpler_playback_mode",
-        params={"track_index": new_idx, "mode": "slice"},
+        params={"track_index": new_idx, "device_index": 0, "playback_mode": 2},
         description="Switch to slice mode for rhythmic chopping",
     ))
     descriptions.append("Slice sample")
@@ -88,7 +88,7 @@ def _compile_sample_texture_layer(move: SemanticMove, kernel: dict) -> CompiledP
 
     steps.append(CompiledStep(
         tool="load_sample_to_simpler",
-        params={"track_index": new_idx},
+        params={"track_index": new_idx, "file_path": "{sample_file_path}"},
         description="Load textural sample into Simpler",
     ))
     descriptions.append("Load texture sample")
@@ -141,7 +141,7 @@ def _compile_sample_vocal_ghost(move: SemanticMove, kernel: dict) -> CompiledPla
 
     steps.append(CompiledStep(
         tool="load_sample_to_simpler",
-        params={"track_index": new_idx},
+        params={"track_index": new_idx, "file_path": "{sample_file_path}"},
         description="Load vocal sample into Simpler",
     ))
 
@@ -205,13 +205,13 @@ def _compile_sample_break_layer(move: SemanticMove, kernel: dict) -> CompiledPla
 
     steps.append(CompiledStep(
         tool="load_sample_to_simpler",
-        params={"track_index": new_idx},
+        params={"track_index": new_idx, "file_path": "{sample_file_path}"},
         description="Load breakbeat into Simpler",
     ))
 
     steps.append(CompiledStep(
         tool="set_simpler_playback_mode",
-        params={"track_index": new_idx, "mode": "slice"},
+        params={"track_index": new_idx, "device_index": 0, "playback_mode": 2},
         description="Slice break by transients for individual hits",
     ))
     descriptions.append("Slice break")
@@ -262,7 +262,7 @@ def _compile_sample_resample_destroy(move: SemanticMove, kernel: dict) -> Compil
 
     steps.append(CompiledStep(
         tool="load_sample_to_simpler",
-        params={"track_index": new_idx},
+        params={"track_index": new_idx, "file_path": "{sample_file_path}"},
         description="Load sample for destruction",
     ))
     descriptions.append("Load source")
@@ -321,13 +321,13 @@ def _compile_sample_one_shot_accent(move: SemanticMove, kernel: dict) -> Compile
 
     steps.append(CompiledStep(
         tool="load_sample_to_simpler",
-        params={"track_index": new_idx},
+        params={"track_index": new_idx, "file_path": "{sample_file_path}"},
         description="Load one-shot into Simpler",
     ))
 
     steps.append(CompiledStep(
         tool="set_simpler_playback_mode",
-        params={"track_index": new_idx, "mode": "one_shot"},
+        params={"track_index": new_idx, "device_index": 0, "playback_mode": 1},
         description="One-shot mode for trigger playback",
     ))
     descriptions.append("One-shot mode")

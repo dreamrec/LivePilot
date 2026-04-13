@@ -7,7 +7,7 @@ description: Core discipline for LivePilot — agentic production system for Abl
 
 Agentic production system for Ableton Live 12. 316 tools across 43 domains, three layers:
 
-- **Device Atlas** — 280+ instruments, 139 drum kits, 350+ impulse responses. Consult `references/device-atlas/` before loading any device. Never guess a device name.
+- **Device Atlas** — 1305 devices indexed (81 enriched with sonic intelligence, 683 drum kits). Consult `atlas_search` or `atlas_suggest` before loading any device. Never guess a device name.
 - **M4L Analyzer** — Real-time audio analysis on the master bus (8-band spectrum, RMS/peak, key detection). Optional — all core tools work without it.
 - **Technique Memory** — Persistent storage for production decisions. Consult `memory_recall` before creative tasks to understand user taste.
 

@@ -27,13 +27,15 @@ def list_semantic_moves(
     Semantic moves express WHAT to achieve musically, not HOW parametrically.
     Each move compiles into a sequence of existing deterministic tools.
 
-    domain: filter by family (mix, arrangement, transition, sound_design, performance)
+    domain: filter by family (e.g. mix, arrangement, transition, sound_design, sample, performance)
     style: filter by genre/style (reserved for future use)
 
     Returns: list of moves with move_id, family, intent, targets, risk_level.
     """
     moves = registry.list_moves(domain=domain, style=style)
-    return {"moves": moves, "count": len(moves), "available_domains": ["mix", "arrangement"]}
+    all_moves = registry.list_moves()
+    domains = sorted({m.get("family", "") for m in all_moves if m.get("family")})
+    return {"moves": moves, "count": len(moves), "available_domains": domains}
 
 
 @mcp.tool()
