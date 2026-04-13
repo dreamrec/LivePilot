@@ -22,7 +22,7 @@ def plan_slice_steps(
     bars: int = 4,
     tempo: float = 120.0,
     track_index: int = 0,
-    clip_slot_index: int = 0,
+    clip_index: int = 0,
 ) -> dict:
     """Generate a slice workflow plan with real MIDI notes.
 
@@ -38,9 +38,8 @@ def plan_slice_steps(
         "tool": "create_clip",
         "params": {
             "track_index": track_index,
-            "clip_slot_index": clip_slot_index,
+            "clip_index": clip_index,
             "length": float(beats),
-            "name": f"Slice {intent}",
         },
         "description": f"Create {bars}-bar clip for {intent} slice pattern",
     })
@@ -49,7 +48,7 @@ def plan_slice_steps(
         "tool": "add_notes",
         "params": {
             "track_index": track_index,
-            "clip_slot_index": clip_slot_index,
+            "clip_index": clip_index,
             "notes": notes,
         },
         "description": f"Program {len(notes)} notes across {slice_count} slices",

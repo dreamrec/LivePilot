@@ -164,6 +164,8 @@ class SectionPlan:
     tracks_entering: list[int]  # new elements introduced in this section
     tracks_exiting: list[int]  # elements removed in this section
 
+    sample_hints: list[str] = field(default_factory=list)
+
     def length_bars(self) -> int:
         return self.end_bar - self.start_bar
 
@@ -194,6 +196,28 @@ class ArrangementPlan:
             "reveal_order": self.reveal_order,
             "notes": self.notes,
         }
+
+
+# ── Section Sample Hints ─────────────────────────────────────────────
+
+_SECTION_SAMPLE_DEFAULTS: dict[str, list[str]] = {
+    "intro": ["texture_bed", "fill_one_shot"],
+    "verse": ["texture_bed", "fill_one_shot"],
+    "pre_chorus": ["transition_fx", "texture_bed"],
+    "chorus": ["hook_sample", "break_layer", "fill_one_shot"],
+    "drop": ["hook_sample", "break_layer", "fill_one_shot"],
+    "build": ["transition_fx", "texture_bed"],
+    "bridge": ["texture_bed", "transition_fx"],
+    "breakdown": ["texture_bed"],
+    "outro": ["texture_bed", "fill_one_shot"],
+}
+
+
+def add_sample_hints(plan: "ArrangementPlan") -> None:
+    """Populate sample_hints on each section based on section type."""
+    for section in plan.sections:
+        section_key = section.section_type.value.lower()
+        section.sample_hints = _SECTION_SAMPLE_DEFAULTS.get(section_key, ["texture_bed"])
 
 
 # ── Core Planner ─────────────────────────────────────────────────────

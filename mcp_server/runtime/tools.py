@@ -167,4 +167,14 @@ def get_session_kernel(
         anti_preferences=anti_prefs,
     )
 
+    # Populate routing hints from conductor when request context is available
+    if request_text.strip():
+        try:
+            from ..tools._conductor import classify_request
+            plan = classify_request(request_text)
+            kernel.recommended_engines = [r.engine for r in plan.routes[:3]]
+            kernel.recommended_workflow = plan.workflow_mode
+        except Exception:
+            pass
+
     return kernel.to_dict()

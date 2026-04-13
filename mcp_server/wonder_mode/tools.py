@@ -126,14 +126,46 @@ def enter_wonder_mode(
         action_ledger=action_ledger,
     )
 
+    # 1b. If diagnosis includes sample domains, search for candidates
+    sample_context = {}
+    diag_dict = diagnosis.to_dict()
+    candidate_domains = diag_dict.get("candidate_domains") or []
+    if "sample" in candidate_domains:
+        try:
+            from ..sample_engine.tools import get_sample_opportunities, search_samples
+            opportunities = get_sample_opportunities(ctx)
+            if opportunities.get("opportunities"):
+                opp = opportunities["opportunities"][0]
+                query = opp.get("search_query", opp.get("description", "sample"))
+                results = search_samples(ctx, query=query, limit=3)
+                candidates = results.get("results", [])
+                if candidates:
+                    best = candidates[0]
+                    sample_context["sample_file_path"] = best.get("file_path", "")
+                    sample_context["sample_name"] = best.get("name", "")
+                    sample_context["material_type"] = best.get("material_type", "")
+        except Exception:
+            pass  # Graceful degradation — analytical variants still work
+
+    # 1c. Get session info for kernel
+    session_info = {}
+    try:
+        ableton = ctx.lifespan_context.get("ableton")
+        if ableton:
+            session_info = ableton.send_command("get_session_info", {})
+    except Exception:
+        pass
+
     # 2. Generate variants
     result = engine.generate_wonder_variants(
         request_text=request_text,
-        diagnosis=diagnosis.to_dict(),
+        diagnosis=diag_dict,
         kernel_id=kernel_id,
         song_brain=song_brain,
         taste_graph=taste_graph,
         active_constraints=active_constraints,
+        session_info=session_info,
+        sample_context=sample_context,
     )
 
     # 3. Create WonderSession (unique per invocation, not deterministic)

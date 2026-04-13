@@ -319,6 +319,8 @@ def plan_sample_workflow(
     intent: str = "rhythm",
     philosophy: str = "auto",
     target_track: Optional[int] = None,
+    section_type: Optional[str] = None,
+    desired_role: Optional[str] = None,
 ) -> dict:
     """Full end-to-end sample workflow: analyze, critique, select technique, compile plan.
 
@@ -328,6 +330,8 @@ def plan_sample_workflow(
     intent: rhythm, texture, layer, melody, vocal, atmosphere, transform
     philosophy: surgeon, alchemist, auto
     target_track: existing track index, or None for new track
+    section_type: optional section context (intro, verse, chorus, drop, etc.)
+    desired_role: optional sample role (hook_sample, texture_bed, break_layer, etc.)
     """
     if file_path is None and search_query is None:
         return {"error": "Provide either file_path or search_query"}
@@ -472,14 +476,36 @@ def plan_slice_workflow(
 
     # Determine slice count — default 8 for file-based, or would come from
     # get_simpler_slices in a real execution
+    # Read tempo from session if connected, otherwise default
+    tempo = 120.0
+    try:
+        ableton = ctx.lifespan_context.get("ableton")
+        if ableton:
+            info = ableton.send_command("get_session_info", {})
+            tempo = float(info.get("tempo", 120.0))
+    except Exception:
+        pass
+
+    # Read slice count from existing Simpler if track provided
     slice_count = 8  # Default transient slice count
+    if track_index is not None:
+        try:
+            ableton = ctx.lifespan_context.get("ableton")
+            if ableton:
+                slices = ableton.send_command("get_simpler_slices", {
+                    "track_index": track_index, "device_index": device_index,
+                })
+                if isinstance(slices, dict) and slices.get("slice_count"):
+                    slice_count = slices["slice_count"]
+        except Exception:
+            pass  # Fall back to default
 
     # Build the plan
     plan = plan_slice_steps(
         slice_count=slice_count,
         intent=intent,
         bars=bars,
-        tempo=120.0,  # Agent should read actual tempo from session
+        tempo=tempo,
         track_index=target_track if target_track is not None else 0,
     )
 

@@ -70,3 +70,21 @@ def test_unknown_intent_defaults_to_rhythm():
     result = plan_slice_steps(slice_count=4, intent="unknown_xyz", bars=2, tempo=120)
     notes_step = [s for s in result["steps"] if s["tool"] == "add_notes"]
     assert len(notes_step) > 0  # Falls back to rhythm
+
+
+def test_step_params_match_real_tool_signatures():
+    """All emitted steps must use params that match real tool signatures."""
+    result = plan_slice_steps(slice_count=8, intent="rhythm", bars=4, tempo=120)
+    for step in result["steps"]:
+        params = step["params"]
+        if step["tool"] == "create_clip":
+            assert "clip_index" in params, "create_clip requires clip_index, not clip_slot_index"
+            assert "clip_slot_index" not in params
+            assert "track_index" in params
+            assert "length" in params
+        elif step["tool"] == "add_notes":
+            assert "clip_index" in params, "add_notes requires clip_index"
+            assert "clip_slot_index" not in params
+            assert "track_index" in params
+            assert "notes" in params
+            assert isinstance(params["notes"], list)

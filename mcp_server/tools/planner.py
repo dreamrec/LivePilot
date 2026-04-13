@@ -88,6 +88,9 @@ def plan_arrangement(
         style=style,
     )
 
+    # Add section-level sample role hints
+    planner_engine.add_sample_hints(plan)
+
     result = plan.to_dict()
     result["loop_identity"] = loop_identity.to_dict()
     result["available_styles"] = sorted(planner_engine.VALID_STYLES)

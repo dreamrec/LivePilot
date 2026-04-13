@@ -514,6 +514,8 @@ def generate_wonder_variants(
     song_brain: dict | None = None,
     taste_graph: object = None,
     active_constraints: object = None,
+    session_info: dict | None = None,
+    sample_context: dict | None = None,
 ) -> dict:
     """Full wonder mode pipeline: discover -> select distinct -> build -> taste -> rank."""
     song_brain = song_brain or {}
@@ -530,6 +532,14 @@ def generate_wonder_variants(
     # Load corpus intelligence for variant enrichment
     corpus_hints = _get_corpus_hints(request_text, diagnosis)
 
+    # Build kernel for variant compilation
+    kernel = {
+        "session_info": session_info or {},
+        "mode": "improve",
+    }
+    if sample_context:
+        kernel.update(sample_context)
+
     # Build executable variants from distinct moves
     for i, move in enumerate(distinct):
         label = labels[i]
@@ -540,6 +550,7 @@ def generate_wonder_variants(
             song_brain=song_brain,
             novelty_level=_NOVELTY_LEVELS.get(label, 0.5),
             variant_id=f"{set_prefix}_{label}",
+            kernel=kernel,
         )
         if taste_graph is not None:
             # Score taste on envelope-adjusted move for consistency with targets_snapshot
