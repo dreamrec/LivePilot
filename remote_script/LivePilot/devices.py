@@ -46,7 +46,7 @@ def get_device_parameters(song, params):
 
     parameters = []
     for i, param in enumerate(device.parameters):
-        parameters.append({
+        info = {
             "index": i,
             "name": param.name,
             "value": param.value,
@@ -54,7 +54,13 @@ def get_device_parameters(song, params):
             "max": param.max,
             "is_quantized": param.is_quantized,
             "value_string": param.str_for_value(param.value),
-        })
+        }
+        # 12.2+ feature: native display_value
+        try:
+            info["display_value"] = param.display_value
+        except AttributeError:
+            pass
+        parameters.append(info)
     return {"parameters": parameters}
 
 
@@ -104,13 +110,19 @@ def set_device_parameter(song, params):
         raise ValueError("Must provide parameter_name or parameter_index")
 
     param.value = value
-    return {
+    result = {
         "name": param.name,
         "value": param.value,
         "value_string": param.str_for_value(param.value),
         "min": param.min,
         "max": param.max,
     }
+    # 12.2+: include display_value
+    try:
+        result["display_value"] = param.display_value
+    except AttributeError:
+        pass
+    return result
 
 
 @register("batch_set_parameters")
@@ -163,11 +175,17 @@ def batch_set_parameters(song, params):
                 )
 
         param.value = value
-        results.append({
+        result_entry = {
             "name": param.name,
             "value": param.value,
             "value_string": param.str_for_value(param.value),
-        })
+        }
+        # 12.2+: include display_value
+        try:
+            result_entry["display_value"] = param.display_value
+        except AttributeError:
+            pass
+        results.append(result_entry)
 
     return {"parameters": results}
 
