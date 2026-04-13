@@ -100,7 +100,7 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 
 **MCP Server** (`mcp_server/`) — Python FastMCP server. Validates inputs, routes commands to the Remote Script over TCP, manages the M4L bridge, runs the atlas, sample engine, composer, and all intelligence engines. This is what your AI client connects to.
 
-**M4L Bridge** (`m4l_device/`) — Optional Max for Live Audio Effect on the master track. Provides deep LOM access through Max's LiveAPI that the ControlSurface API can't reach. UDP 9880 (M4L to server) carries spectral data and LiveAPI responses. OSC 9881 (server to M4L) sends commands. 27 bridge tools for hidden parameters, Simpler internals, warp markers, and display values.
+**M4L Bridge** (`m4l_device/`) — Optional Max for Live Audio Effect on the master track. Provides deep LOM access through Max's LiveAPI that the ControlSurface API can't reach. UDP 9880 (M4L to server) carries spectral data and LiveAPI responses. OSC 9881 (server to M4L) sends commands. 30 bridge tools (backed by 28 bridge commands) for hidden parameters, Simpler internals, warp markers, and display values.
 
 **Device Atlas** (`mcp_server/atlas/`) — In-memory indexed JSON database. 1305 devices with browser URIs, 81 enriched with YAML sonic intelligence profiles (mood, genre, texture, recommended chains). 6 indexes: by_id, by_name, by_uri, by_category, by_tag, by_genre. The AI never hallucinates a device name or preset — it always resolves against the atlas first.
 
@@ -204,7 +204,7 @@ Every engine follows: **measure before → act → measure after → compare**. 
 The M4L Analyzer sits on the master track. UDP 9880 carries spectral data to the server. OSC 9881 sends commands back.
 
 > [!TIP]
-> All 289 core tools work without the analyzer — it adds 27 bridge tools and closes the feedback loop.
+> All 286 core tools work without the analyzer — it adds 30 bridge tools and closes the feedback loop.
 
 ```
 SPECTRAL ─────── 8-band frequency decomposition (sub → air)

@@ -81,11 +81,11 @@ This is what makes LivePilot agentic. The intelligence layer sits on top of the 
 | Tracks | 17 | Create MIDI/audio/return, delete, duplicate, arm, mute, solo, routing |
 | Clips | 11 | Create, delete, duplicate, fire, stop, loop, launch mode, warp mode |
 | Notes | 8 | Add/get/remove/modify MIDI, transpose, duplicate, per-note probability |
-| Devices | 15 | Load by name or URI, params, batch edit, racks, chains, presets |
+| Devices | 19 | Load by name/URI, insert native (12.3+), params, racks, chains, drum pads, plugins, presets |
 | Scenes | 12 | Create, delete, duplicate, fire, name, color, per-scene tempo |
 | Browser | 4 | Search library, browse tree, load items |
 | Mixing | 11 | Volume, pan, sends, routing, meters, return tracks, mix snapshot |
-| Arrangement | 19 | Timeline editing, arrangement notes, cue points, recording, capture |
+| Arrangement | 21 | Timeline editing, arrangement notes, native clips (12.1.10+), cue points, recording, capture |
 | Automation | 8 | Clip envelopes, 16 curve types, 15 recipes, spectral suggestions |
 | Memory | 8 | Save, recall, replay, manage production techniques |
 | Analyzer | 30 | Spectrum, RMS, key detection, Simpler ops, warp markers, capture `[M4L]` |
@@ -98,12 +98,12 @@ This is what makes LivePilot agentic. The intelligence layer sits on top of the 
 | Composition | 9 | Section analysis, motif detection, emotional arc, form planning |
 | Evaluation | 1 | Before/after evaluation with structured scoring |
 | Mix Engine | 6 | Critic-driven mix analysis, issue detection, move planning |
-| Sound Design | 5 | Patch analysis, modulation planning, timbre scoring |
+| Sound Design | 4 | Patch analysis, modulation planning, timbre scoring |
 | Transition Engine | 5 | Transition classification, scoring, archetype planning |
 | Reference Engine | 5 | Reference profiling, principle distillation, gap analysis |
 | Translation Engine | 3 | Cross-domain translation, issue detection |
-| Performance Engine | 5 | Safety-constrained suggestions, safe moves, scene handoff |
-| Song Brain | 4 | Identity inference, sacred elements, drift monitoring |
+| Performance Engine | 3 | Safety-constrained suggestions, safe moves, scene handoff |
+| Song Brain | 3 | Identity inference, sacred elements, drift monitoring |
 | Hook Hunter | 9 | Hook detection, salience scoring, neglect detection, phrase impact |
 | Stuckness Detector | 3 | Momentum analysis, rescue classification, rescue workflows |
 | Wonder Mode | 3 | Diagnosis-driven variants, taste-aware ranking, session discard |
@@ -116,6 +116,12 @@ This is what makes LivePilot agentic. The intelligence layer sits on top of the 
 | Motif | 2 | Motif graph, motif transformation |
 | Research | 4 | Technique research, style tactics |
 | Planner | 3 | Gesture planning, arrangement planning, mix move planning |
+| Device Atlas | 6 | Search 1305 devices, suggest by intent, chain building, comparison, library scan |
+| Sample Engine | 6 | Multi-source sample search (Splice/browser/filesystem), fitness critics, technique library |
+| Device Forge | 3 | Generate M4L devices from gen~ templates, install to browser |
+| Composer | 3 | Prompt → multi-layer composition plan, sample augmentation, plan preview |
+| Experiment | 5 | Create, run, compare, commit, discard A/B experiment branches |
+| Musical Intelligence | 6 | Phrase arc, impact scoring, comparison, rendering, grid analysis, snapshot |
 
 ---
 

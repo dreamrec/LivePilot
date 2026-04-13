@@ -27,18 +27,18 @@ async def compose(
     max_credits: int = 50,
     dry_run: bool = False,
 ) -> dict:
-    """Create a full multi-layer composition from a text prompt.
+    """Plan a full multi-layer composition from a text prompt.
 
-    Searches Splice's catalog, selects matching samples with critic scoring,
-    downloads them, loads into Ableton, applies processing techniques, and
-    arranges into genre-appropriate sections.
+    Parses the prompt into genre/mood/tempo/key, plans layers using role
+    templates, and compiles an executable plan of tool calls. Does NOT
+    execute — returns the plan for the agent to step through.
 
     prompt: "dark minimal techno 128bpm with industrial textures and ghostly vocals"
-    max_credits: maximum Splice credits to spend (default 50, 0 = use only downloaded)
-    dry_run: if True, return the plan without executing (same as get_composition_plan)
+    max_credits: maximum Splice credits budget for the plan (default 50, 0 = downloaded only)
+    dry_run: if True, return the plan without credit checks
 
-    Returns a compiled plan with all execution steps. When dry_run is False,
-    the plan is ready for step-by-step execution by the agent.
+    Returns a compiled plan with step-by-step tool calls. The agent
+    executes each step by calling the referenced tools in sequence.
     """
     # Parse the prompt into structured intent
     intent = parse_prompt(prompt)
@@ -101,16 +101,17 @@ async def augment_with_samples(
     max_credits: int = 10,
     max_layers: int = 3,
 ) -> dict:
-    """Add sample-based layers to the existing session.
+    """Plan sample-based layers to add to the existing session.
 
-    Analyzes the request, searches Splice for complementary samples,
-    and creates a plan to add new tracks with appropriate processing.
+    Parses the request and builds a plan for new tracks with sample
+    search queries, processing techniques, and volume/pan settings.
+    Does NOT execute — returns the plan for the agent to step through.
 
     request: "add organic textures" or "layer a vocal chop over the verse"
-    max_credits: maximum Splice credits to spend (default 10)
-    max_layers: maximum number of new tracks to add (default 3)
+    max_credits: maximum Splice credits budget for the plan (default 10)
+    max_layers: maximum number of new tracks in the plan (default 3)
 
-    Returns a compiled plan for adding new layers to the session.
+    Returns a compiled plan with step-by-step tool calls.
     """
     # Credit safety
     splice_client = None

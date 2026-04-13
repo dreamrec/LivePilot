@@ -21,7 +21,7 @@ MCP Server  <=============>  Remote Script (ControlSurface)
 - **UDP 9880** — M4L device sends spectral data stream and LiveAPI responses to MCP Server
 - **OSC 9881** — MCP Server sends LiveAPI commands to M4L device
 
-The bridge is optional. All 289 core tools work without it. The 27 bridge tools require the device on the master track.
+The bridge is optional. All 286 core tools work without it. The 30 bridge tools (backed by 28 bridge commands) require the device on the master track.
 
 ## Audio Signal Chain
 

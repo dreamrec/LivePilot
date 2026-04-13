@@ -67,7 +67,7 @@
 | `transpose_notes` | Transpose notes by semitones | `track_index`, `clip_index`, `semitones` |
 | `quantize_clip` | Quantize notes to grid | `track_index`, `clip_index`, `grid` |
 
-## Devices (15 tools)
+## Devices (19 tools)
 
 | Tool | Description | Required Params |
 |------|-------------|-----------------|
@@ -83,6 +83,13 @@
 | `get_rack_chains` | Get chains in rack device | `track_index`, `device_index` |
 | `set_chain_volume` | Set chain volume/pan in rack | `track_index`, `device_index`, `chain_index` |
 | `get_device_presets` | List available presets for a device | `device_name` |
+| `move_device` | Move device to a new position on the track | `track_index`, `device_index`, `new_index` |
+| `insert_device` | Insert native device by name (12.3+, 10x faster than browser) | `track_index`, `device_name` |
+| `insert_rack_chain` | Add a chain to an Instrument/Audio/Drum Rack | `track_index`, `device_index` |
+| `set_drum_chain_note` | Assign MIDI note to a Drum Rack chain | `track_index`, `device_index`, `chain_index`, `note` |
+| `get_plugin_parameters` | Get all parameters for AU/VST plugin devices | `track_index`, `device_index` |
+| `map_plugin_parameter` | Map a plugin parameter for automation | `track_index`, `device_index`, `parameter_index` |
+| `get_plugin_presets` | List available presets for a plugin device | `track_index`, `device_index` |
 
 ## Scenes (12 tools)
 
@@ -122,7 +129,7 @@
 | `search_browser` | Search browser tree with filters | `path` |
 | `load_browser_item` | Load instrument/effect by URI | `track_index`, `uri` |
 
-## Arrangement (19 tools)
+## Arrangement (21 tools)
 
 | Tool | Description | Required Params |
 |------|-------------|-----------------|
@@ -140,6 +147,8 @@
 | `transpose_arrangement_notes` | Transpose arrangement notes by semitones | `track_index`, `clip_index`, `semitones` |
 | `set_arrangement_clip_name` | Rename arrangement clip | `track_index`, `clip_index`, `name` |
 | `back_to_arranger` | Switch from session to arrangement playback | (none) |
+| `force_arrangement` | Force all tracks to play from arrangement (not session clips) | (none) |
+| `create_native_arrangement_clip` | Create arrangement clip with full automation envelope (12.1.10+) | `track_index`, `start_time`, `length` |
 | `get_arrangement_notes` | Get notes from arrangement clip | `track_index`, `clip_index` |
 | `remove_arrangement_notes` | Remove notes in pitch/time region | `track_index`, `clip_index` |
 | `remove_arrangement_notes_by_id` | Remove specific notes by ID | `track_index`, `clip_index`, `note_ids` |
@@ -192,7 +201,7 @@
 | `memory_update` | Update technique metadata | `technique_id` |
 | `memory_delete` | Delete technique (creates backup) | `technique_id` |
 
-## Analyzer (29 tools) [M4L]
+## Analyzer (30 tools) [M4L]
 
 All tools in this domain require the LivePilot Analyzer M4L device on the master track.
 

@@ -13,7 +13,7 @@
 - **M4L Bridge** (`m4l_device/`): Max for Live Audio Effect on master track, UDP/OSC bridge for deep LOM access
   - UDP 9880: M4L -> Server (spectral data, responses)
   - OSC 9881: Server -> M4L (commands)
-  - `livepilot_bridge.js`: 27 bridge commands for LiveAPI access
+  - `livepilot_bridge.js`: 28 bridge commands for LiveAPI access
   - `SpectralCache`: thread-safe, time-expiring data cache (5s max age)
   - Bridge is optional — all core tools work without it
 - **Device Atlas** (`mcp_server/atlas/`): In-memory indexed JSON database — 1305 devices with URIs, 81 enriched with sonic intelligence (YAML). 6 indexes: by_id, by_name, by_uri, by_category, by_tag, by_genre

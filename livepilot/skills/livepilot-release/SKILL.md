@@ -29,34 +29,38 @@ Run this checklist EVERY time the user says "update everything", "push", "releas
 ## 2. Tool Count (must ALL match)
 
 Current: **316 tools across 43 domains**.
-Core (no M4L): **289**. Bridge (M4L): **27**. V2 engines: **106+**.
+Core (no M4L): **286**. Bridge (M4L): **30** (backed by 28 bridge commands).
 
 Verify: `grep -rc "@mcp.tool" mcp_server/tools/ | grep -v ":0" | awk -F: '{sum+=$2} END{print sum}'`
 
 Files that reference tool count:
-- [ ] `README.md` — header, PERCEPTION section ("207 core...30 analyzer"), Analyzer table header "(29)", Perception table header "(4)"
-- [ ] `package.json` → `"description"` (293 tools, 39 domains)
+- [ ] `README.md` — header ("316 tools. 43 domains"), bridge section ("286 core...30 bridge")
+- [ ] `package.json` → `"description"`
 - [ ] `server.json` → `"description"`
+- [ ] `manifest.json` → `"description"`
 - [ ] `livepilot/.Codex-plugin/plugin.json` → `"description"` (primary Codex manifest)
 - [ ] `livepilot/.claude-plugin/plugin.json` → `"description"` (must match Codex plugin)
 - [ ] `.claude-plugin/marketplace.json` → `"description"`
-- [ ] `CLAUDE.md` → "293 tools across 39 domains"
-- [ ] `livepilot/skills/livepilot-core/SKILL.md` — "293 tools across 39 domains", Analyzer (30), Perception (4)
-- [ ] `livepilot/skills/livepilot-core/references/overview.md` — "293 tools across 39 domains"
-- [ ] `docs/manual/index.md` — domain table: Analyzer (30), Perception (4)
-- [ ] `docs/manual/getting-started.md` — "207 core tools...30 analyzer"
+- [ ] `CLAUDE.md` → "316 tools across 43 domains"
+- [ ] `CONTRIBUTING.md` → tool count in intro
+- [ ] `livepilot/skills/livepilot-core/SKILL.md` — tool/domain count
+- [ ] `livepilot/skills/livepilot-core/references/overview.md` — tool/domain count
+- [ ] `docs/manual/index.md` — domain table with correct per-domain counts
+- [ ] `docs/manual/getting-started.md` — "286 core tools...30 bridge"
 - [ ] `docs/manual/tool-reference.md` — all domains present with correct counts
-- [ ] `docs/TOOL_REFERENCE.md` — all domains present
-- [ ] `docs/M4L_BRIDGE.md` — "207 core tools...30 analyzer"
+- [ ] `docs/manual/tool-catalog.md` — all tools present (CI-tested)
+- [ ] `docs/manual/tool-catalog-generated.md` — regenerated from source
+- [ ] `docs/TOOL_REFERENCE.md` — all domains present with correct counts
+- [ ] `docs/M4L_BRIDGE.md` — "286 core tools...30 bridge"
 - [ ] `docs/social-banner.html`
-- [ ] `mcp_server/tools/analyzer.py` → module docstring
 - [ ] `tests/test_tools_contract.py` → expected total count
+- [ ] `tests/test_skill_contracts.py` → catalog sync test passes
 
 **How to check:** `grep -rn "168\|139\|135\|127\|115\|107" --include="*.md" --include="*.json" --include="*.py" --include="*.html" . | grep -v node_modules | grep -v .git | grep -v __pycache__ | grep -v CHANGELOG`
 
 ## 3. Domain Count
 
-Current: **43 domains**: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, analyzer, automation, theory, generative, harmony, midi_io, perception, agent_os, composition, motif, research, planner, project_brain, runtime, evaluation, mix_engine, sound_design, transition_engine, reference_engine, translation_engine, performance_engine, song_brain, preview_studio, hook_hunter, stuckness_detector, wonder_mode, session_continuity, creative_constraints, device_forge, sample_engine, atlas, composer.
+Current: **43 domains**: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, analyzer, automation, theory, generative, harmony, midi_io, perception, agent_os, composition, motif, research, planner, project_brain, runtime, evaluation, mix_engine, sound_design, transition_engine, reference_engine, translation_engine, performance_engine, song_brain, preview_studio, hook_hunter, stuckness_detector, wonder_mode, session_continuity, creative_constraints, device_forge, sample_engine, atlas, composer, experiment, musical_intelligence.
 
 - [ ] All files that mention domain count say "43 domains"
 - [ ] Domain lists include ALL 43 (especially newer domains — they're the most often omitted)
@@ -89,9 +93,9 @@ Current: **43 domains**: transport, tracks, clips, notes, devices, scenes, mixin
 
 - [ ] `README.md` — features match current capabilities, "Coming" section is accurate
 - [ ] `docs/manual/getting-started.md` — install instructions current
-- [ ] `docs/manual/tool-reference.md` — all 39 domains listed, all 293 tools present
-- [ ] `docs/TOOL_REFERENCE.md` — all 39 domains present
-- [ ] `docs/M4L_BRIDGE.md` — architecture accurate, core tool count correct
+- [ ] `docs/manual/tool-reference.md` — all 43 domains listed, all 316 tools present
+- [ ] `docs/TOOL_REFERENCE.md` — all 43 domains present with correct counts
+- [ ] `docs/M4L_BRIDGE.md` — architecture accurate, core/bridge counts correct
 
 ## 9. Derived Artifacts
 
@@ -122,5 +126,5 @@ Current: **43 domains**: transport, tracks, clips, notes, devices, scenes, mixin
 ## Quick Verify Command
 
 ```bash
-echo "=== Versions ===" && grep -h '"version"' package.json server.json livepilot/.Codex-plugin/plugin.json livepilot/.claude-plugin/plugin.json .claude-plugin/marketplace.json | head -7 && grep __version__ mcp_server/__init__.py remote_script/LivePilot/__init__.py && echo "=== Tool count ===" && grep -rc "@mcp.tool" mcp_server/tools/ | grep -v ":0" | awk -F: '{sum+=$2} END{print "Total:", sum}' && echo "=== Tests ===" && python3 -m pytest tests/ -q 2>&1 | tail -1
+echo "=== Versions ===" && grep -h '"version"' package.json server.json manifest.json livepilot/.Codex-plugin/plugin.json livepilot/.claude-plugin/plugin.json .claude-plugin/marketplace.json | head -8 && grep __version__ mcp_server/__init__.py remote_script/LivePilot/__init__.py && echo "=== Tool count ===" && grep -rc "@mcp.tool" mcp_server/ | grep -v ":0" | awk -F: '{sum+=$2} END{print "Total:", sum}' && echo "=== Tests ===" && python3 -m pytest tests/ -q 2>&1 | tail -1
 ```

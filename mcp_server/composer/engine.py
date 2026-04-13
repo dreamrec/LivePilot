@@ -111,13 +111,18 @@ def _compile_search_step(layer: LayerSpec) -> dict:
 
 
 def _compile_download_step(layer: LayerSpec) -> dict:
-    """Compile a Splice download step (placeholder — filled at runtime)."""
+    """Agent instruction: download the best sample from search results.
+
+    This step is a placeholder — the agent resolves it by picking
+    the highest-scoring result from the preceding search_samples call
+    and using the local file path (Splice downloads are already local).
+    """
     return {
-        "tool": "_splice_download",
-        "params": {"file_hash": "{best_match.file_hash}"},
-        "description": f"Download best match for {layer.role}",
+        "tool": "_agent_pick_best_sample",
+        "params": {"from_previous": "search_samples", "role": layer.role},
+        "description": f"Pick and locate the best sample for {layer.role} from search results",
         "role": layer.role,
-        "conditional": True,  # only if not already downloaded
+        "agent_instruction": True,  # not a real tool — agent resolves
     }
 
 
@@ -135,15 +140,19 @@ def _compile_load_sample_step(track_index: int, layer: LayerSpec) -> dict:
 
 
 def _compile_technique_step(track_index: int, layer: LayerSpec) -> dict:
-    """Compile a technique application step."""
+    """Compile a technique suggestion step.
+
+    Returns a suggest_sample_technique call so the agent knows what
+    processing to apply. The agent then follows the technique recipe.
+    """
     return {
-        "tool": "_apply_technique",
+        "tool": "suggest_sample_technique",
         "params": {
-            "track_index": track_index,
             "technique_id": layer.technique_id,
         },
-        "description": f"Apply technique '{layer.technique_id}' on track {track_index}",
+        "description": f"Get technique recipe '{layer.technique_id}' for track {track_index}",
         "role": layer.role,
+        "note": "Agent applies the returned recipe steps manually",
     }
 
 
@@ -180,10 +189,13 @@ def _compile_processing_steps(track_index: int, layer: LayerSpec) -> list[dict]:
 def _compile_mix_steps(track_index: int, layer: LayerSpec) -> list[dict]:
     """Compile volume and pan steps."""
     steps = []
+    # Convert dB to 0.0-1.0 linear (Ableton's native scale)
+    # Rough mapping: 0dB → 0.85, -6dB → 0.5, -12dB → 0.25, -inf → 0.0
+    linear = max(0.0, min(1.0, 10 ** (layer.volume_db / 20.0) * 0.85))
     steps.append({
         "tool": "set_track_volume",
-        "params": {"track_index": track_index, "volume_db": layer.volume_db},
-        "description": f"Set {layer.role} volume to {layer.volume_db}dB",
+        "params": {"track_index": track_index, "volume": round(linear, 3)},
+        "description": f"Set {layer.role} volume to {layer.volume_db}dB ({linear:.3f} linear)",
         "role": layer.role,
     })
     if layer.pan != 0.0:
@@ -225,6 +237,7 @@ def _compile_arrangement_steps(
             "tool": "create_arrangement_clip",
             "params": {
                 "track_index": track_index,
+                "clip_slot_index": 0,  # Use first clip slot as source
                 "start_time": start_bar * 4.0,  # bars → beats (4/4)
                 "length": bar_count * 4.0,
             },
@@ -236,13 +249,14 @@ def _compile_arrangement_steps(
 
         # Add volume automation at section boundaries if there's an offset
         if volume_offset_db != 0.0:
+            offset_linear = max(0.0, min(1.0, 10 ** ((layer.volume_db + volume_offset_db) / 20.0) * 0.85))
             steps.append({
                 "tool": "set_arrangement_automation",
                 "params": {
                     "track_index": track_index,
-                    "parameter_name": "Volume",
-                    "time": start_bar * 4.0,
-                    "value": layer.volume_db + volume_offset_db,
+                    "clip_index": 0,  # Index into arrangement clips on this track
+                    "parameter_type": "volume",
+                    "points": [{"time": 0.0, "value": offset_linear}],
                 },
                 "description": f"Automate volume fade: {layer.role} at {volume_offset_db}dB "
                                f"in {section['name']}",
