@@ -5,7 +5,7 @@
 ### The Big Picture
 LivePilot now has a real device atlas — an embedded JSON database covering every device in Ableton Live 12.3.6. 1,305 devices with URIs, categories, and searchable metadata. 81 stock devices have deep sonic intelligence: parameter guides with sweet spots, starter recipes, genre affinity, and device pairing recommendations.
 
-### New Tools (+6, total 313)
+### New Tools (+6, total 316)
 - **`atlas_search`** — fuzzy search across all devices by name, sonic character, use case, or genre
 - **`atlas_device_info`** — full knowledge entry for any device — parameters, recipes, gotchas
 - **`atlas_suggest`** — intent-driven recommendation: "warm bass for techno" → Drift + recipe
