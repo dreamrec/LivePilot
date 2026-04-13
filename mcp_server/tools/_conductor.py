@@ -110,6 +110,12 @@ _ROUTING_PATTERNS: list[tuple[str, str, str, str, list[str]]] = [
     # Research requests
     (r"research|how.?to|technique|tutorial|learn", "research", "research", "research_technique", []),
     (r"style.?tactic|production.?style|genre.?approach", "research", "research", "get_style_tactics", []),
+
+    # Sample requests
+    (r"sample|splice|loop|chop|flip|break(?:beat)?|one.?shot", "sample_engine", "sample", "search_samples", ["analyze_sample", "plan_sample_workflow"]),
+    (r"slice|transient.?hit|slice.?mode", "sample_engine", "sample", "plan_slice_workflow", ["search_samples"]),
+    (r"vocal.?sample|foley|field.?record|found.?sound", "sample_engine", "sample", "search_samples", ["analyze_sample"]),
+    (r"texture.?sample|ambient.?sample|atmo.?sample", "sample_engine", "sample", "search_samples", ["suggest_sample_technique"]),
 ]
 
 
@@ -163,6 +169,16 @@ def _infer_workflow_mode(request_lower: str) -> str:
     # Quick fix keywords
     if re.search(r"fix|quick|just|only|undo|revert|simple", request_lower):
         return "quick_fix"
+
+    # Slice workflow
+    if re.search(r"slice|chop|transient.?hit", request_lower):
+        return "slice_workflow"
+
+    # Sample workflows
+    if re.search(r"sample|splice|foley|found.?sound|one.?shot|break(?:beat)?|flip|loop", request_lower):
+        if re.search(r"arrange|section|verse|chorus|drop|bridge|hook", request_lower):
+            return "sample_plus_arrangement"
+        return "sample_discovery"
 
     # Agentic loop keywords (full autonomous)
     if re.search(r"autonomous|auto|full|everything|deep|polish|finish", request_lower):
