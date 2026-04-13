@@ -1,72 +1,77 @@
 # Changelog
 
-## 1.10.0 — Device Atlas v2 (April 2026)
+## 1.10.0 — The Intelligence Release (April 13 2026)
 
-### The Big Picture
-LivePilot now has a real device atlas — an embedded JSON database covering every device in Ableton Live 12.3.6. 1,305 devices with URIs, categories, and searchable metadata. 81 stock devices have deep sonic intelligence: parameter guides with sweet spots, starter recipes, genre affinity, and device pairing recommendations.
+316 tools across 43 domains. Device Atlas v2, Sample Intelligence, Auto-Composition, Splice Integration, Device Forge, Live 12.3 API, Corpus Intelligence.
 
-### New Tools (+6, total 316)
+### Device Atlas v2 — 1305 Devices, 81 Enriched (+6 tools)
 - **`atlas_search`** — fuzzy search across all devices by name, sonic character, use case, or genre
 - **`atlas_device_info`** — full knowledge entry for any device — parameters, recipes, gotchas
 - **`atlas_suggest`** — intent-driven recommendation: "warm bass for techno" → Drift + recipe
 - **`atlas_chain_suggest`** — full device chain for a track role: instrument + effects with rationale
 - **`atlas_compare`** — side-by-side comparison of two devices for a given role
 - **`scan_full_library`** — deep browser scan to build/refresh the atlas
-
-### Device Atlas Coverage
-- 32 instruments (all stock, with URIs) — 16 enriched with deep sonic intelligence
-- 70 audio effects (all stock, with URIs) — 35 enriched
-- 23 MIDI effects (all stock, with URIs) — 12 enriched
-- 497 Max for Live devices indexed
-- 683 drum kit presets indexed
+- 32 instruments (16 enriched), 70 audio effects (35 enriched), 23 MIDI effects (12 enriched), 497 M4L devices, 683 drum kits
 - 71 YAML enrichment files with parameter guides, recipes, and production knowledge
 
+### Composer Engine — Prompt to Multi-Layer Session (+3 tools)
+- **`compose`** — full multi-layer composition from text prompt ("dark minimal techno 128bpm with industrial textures")
+- **`augment_with_samples`** — add sample-based layers to existing session
+- **`get_composition_plan`** — dry run preview without executing
+- NLP parser extracts genre, mood, tempo, key, energy from free text
+- Layer planner with role templates (drums/bass/lead/pad/texture/vocal)
+- 7 genre defaults: techno, house, hip hop, ambient, drum and bass, trap, lo-fi
+- Credit safety system for Splice integration
+
+### Sample Engine — AI Sample Intelligence (+6 tools)
+- **`analyze_sample`**, **`evaluate_sample_fit`**, **`search_samples`**, **`suggest_sample_technique`**, **`plan_sample_workflow`**, **`get_sample_opportunities`**
+- SpliceSource — reads Splice's local sounds.db (read-only) for key, BPM, genre, tags, pack info, popularity
+- BrowserSource + FilesystemSource — Ableton browser and local directory scanning
+- 6-critic fitness battery: key fit, tempo fit, frequency fit, role fit, vibe fit, intent fit
+- 29-technique library: rhythmic (Dilla, Burial, Premier), textural (Paulstretch, granular), melodic (Bon Iver), resampling (Amon Tobin)
+- Dual philosophy: Surgeon (precision integration) vs Alchemist (creative transformation)
+- 6 sample-domain semantic moves for Wonder Mode: chop_rhythm, texture_layer, vocal_ghost, break_layer, resample_destroy, one_shot_accent
+- Sample-aware stuckness diagnosis: no_organic_texture, stale_drums, vocal_processing_monotony, dense_but_static
+
+### Splice gRPC Client
+- Live connection to Splice desktop API for downloading new samples
+- Port auto-detected from port.conf, TLS with self-signed certs
+- Credit safety floor (never drain below 5 credits)
+- Graceful degradation when Splice is not running
+
+### Device Forge — Programmatic M4L Generation (+3 tools)
+- **`generate_m4l_effect`**, **`list_genexpr_templates`**, **`install_m4l_device`**
+- .amxd binary builder from pure Python (reverse-engineered binary format)
+- gen~ DSP template library: 15 building blocks (Lorenz, Karplus-Strong, wavefolder, FDN reverb, bitcrusher, etc.)
+- 7 device_creation semantic moves for Wonder Mode
+- Safety: auto `clip(out, -1, 1)` on all generated gen~ code
+- Auto-installs to Ableton User Library
+
+### Live 12.3 API Integration (+4 tools)
+- **`create_native_arrangement_clip`** — arrangement clips with automation envelope (12.1.10+)
+- **`insert_device`** — insert native device by name, 10x faster than browser (12.3+)
+- **`insert_rack_chain`** — add chains to Instrument/Audio/Drum Racks (12.3+)
+- **`set_drum_chain_note`** — assign MIDI notes to Drum Rack chains (12.3+)
+- Version detection at startup with feature flags via `get_session_info`
+- Three capability tiers: Core (12.0+), Enhanced Arrangement (12.1.10+), Full Intelligence (12.3+)
+- Display values on device parameters (12.2+) — human-readable like "26.0 Hz"
+- `find_and_load_device` auto-routes to `insert_device` on 12.3+ (10x speedup)
+
+### Corpus Intelligence Layer
+- Parses device-knowledge markdown into queryable Python structures at runtime
+- EmotionalRecipe, GenreChain, PhysicalModelRecipe, AutomationGesture data types
+- Consumed by Wonder Mode, Sound Design critics, and Composer Engine
+
+### Wonder Mode Enhancements
+- Corpus intelligence integration — emotional/genre/material hints in variants
+- Sample-domain diagnosis patterns
+- 13 new semantic moves (6 sample + 7 device creation)
+
 ### New Domains
-- **atlas** — device knowledge database with search, suggest, and compare capabilities
-
----
-
-## 1.9.25 — Live 12.3 API Integration (April 2026)
-
-### New Tools (+4, total 307)
-- `create_native_arrangement_clip` — create arrangement clips with full automation envelope support (12.1.10+)
-- `insert_device` — insert native devices by name, 10x faster than browser search (12.3+), supports chain-level insertion for drum rack construction
-- `insert_rack_chain` — add chains to Instrument/Audio Effect/Drum Racks (12.3+)
-- `set_drum_chain_note` — assign MIDI notes to Drum Rack chains (12.3+)
-
-### Enhancements
-- **Version Detection** — LivePilot now detects the Live version at startup and exposes feature flags via `get_session_info`. Three capability tiers: Core (12.0+), Enhanced Arrangement (12.1.10+), Full Intelligence (12.3+)
-- **Display Values** — `get_device_parameters`, `set_device_parameter`, and `batch_set_parameters` now include `display_value` (human-readable like "26.0 Hz") on Live 12.2+ without requiring the M4L bridge
-- **Fast Device Loading** — `find_and_load_device` automatically uses `insert_device` on 12.3+ for native devices, giving a 10x speedup with no code changes needed
-- **Backward Compatibility** — All existing tools continue working on Live 12.0.x. New features use try/except feature detection with clear fallback messages
-
-## 1.9.26 — Sample Engine (April 2026)
-
-### Sample Engine — AI Sample Manipulation Intelligence
-- **feat(sample_engine):** New `sample_engine` domain with 6 tools: `analyze_sample`, `evaluate_sample_fit`, `search_samples`, `suggest_sample_technique`, `plan_sample_workflow`, `get_sample_opportunities`
-- **feat(sample_engine):** SampleAnalyzer — filename metadata parser, spectral material classifier (vocal/drum/texture/etc.), Simpler mode/slice/warp recommender
-- **feat(sample_engine):** 6-critic fitness battery — key fit, tempo fit, frequency fit, role fit, vibe fit, intent fit. Scores 0.0-1.0 per dimension with real computation (no stubs)
-- **feat(sample_engine):** 29-technique library across 7 categories: rhythmic (Dilla, Burial, Premier), textural (Paulstretch, granular), melodic (Bon Iver), drum enhancement, vocal processing, resampling chains (Amon Tobin), creative constraints
-- **feat(sample_engine):** Dual philosophy system — Surgeon (precision integration) and Alchemist (creative transformation), context-aware auto-switching
-- **feat(sample_engine):** SpliceSource — reads Splice's local sounds.db SQLite database (read-only) for rich metadata: key, BPM, genre, tags, pack info, popularity. Searches by key+tempo for song-matched results
-- **feat(sample_engine):** BrowserSource + FilesystemSource — Ableton browser search (samples, drums, packs, user_library) and local directory scanner with filename metadata extraction
-- **feat(sample_engine):** SamplePlanner — technique selection scoring + compiled plan generation with recursive template variable resolution
-- **feat(wonder_mode):** 6 new sample-domain semantic moves: chop_rhythm, texture_layer, vocal_ghost, break_layer, resample_destroy, one_shot_accent
-- **feat(wonder_mode):** Sample-aware diagnosis — 4 new patterns in _DOMAIN_MAP: no_organic_texture, stale_drums, vocal_processing_monotony, dense_but_static
-- **feat(skills):** New `livepilot-sample-engine` skill with technique catalog, critic reference, and Surgeon/Alchemist philosophy guide
-- Tool count: 297 → 303 (41 domains), 131 sample engine tests
-
-## 1.9.25 — Device Forge (April 2026)
-
-### Device Forge — Programmatic M4L Device Generation
-- **feat(device_forge):** New `device_forge` domain with 3 tools: `generate_m4l_effect`, `list_genexpr_templates`, `install_m4l_device`
-- **feat(device_forge):** .amxd binary builder — generates valid Max for Live devices from pure Python using reverse-engineered binary format
-- **feat(device_forge):** gen~ DSP template library — 15 building blocks: Lorenz attractor, Karplus-Strong, wavefolder, FDN reverb, bitcrusher, ring modulator, chorus, stochastic resonance, phase distortion, and more
-- **feat(semantic_moves):** 7 new `device_creation` semantic moves for wonder mode: chaos modulator, feedback resonator, wavefolder, bitcrusher, Karplus-Strong string, stochastic texture, FDN reverb
-- **feat(device_forge):** Safety: all generated gen~ code automatically gets `clip(out, -1, 1)` appended to prevent speaker damage
-- **feat(device_forge):** Supports all 3 device types: Audio Effect, MIDI Effect, Instrument
-- **feat(device_forge):** Auto-installs to Ableton User Library — devices appear in browser immediately
-- Tool count: 294 → 297 (40 domains)
+- **atlas** — device knowledge database (6 tools)
+- **composer** — auto-composition engine (3 tools)
+- **sample_engine** — sample intelligence (6 tools)
+- **device_forge** — M4L device generation (3 tools)
 
 ## 1.9.24 — Stability & Intelligence Upgrade (April 2026)
 

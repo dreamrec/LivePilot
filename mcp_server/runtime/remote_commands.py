@@ -48,9 +48,10 @@ REMOTE_COMMANDS: frozenset[str] = frozenset({
     "set_drum_chain_note",     # 12.3+ drum chain note assignment
     # clip_automation (3)
     "get_clip_automation", "set_clip_automation", "clear_clip_automation",
-    # browser (5)
+    # browser (6)
     "get_browser_tree", "get_browser_items", "search_browser",
     "load_browser_item", "get_device_presets",
+    "scan_browser_deep",       # Atlas deep scan — returns full category tree
     # arrangement (21)
     "get_arrangement_clips", "create_arrangement_clip",
     "create_native_arrangement_clip",

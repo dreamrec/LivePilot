@@ -1,13 +1,13 @@
 # LivePilot Manual
 
 An agentic production system for Ableton Live 12.
-294 tools. 39 domains. Device atlas. Spectral perception. Technique memory. Creative intelligence.
+316 tools. 43 domains. Device atlas. Sample intelligence. Auto-composition. Spectral perception. Technique memory. Creative intelligence.
 
 ---
 
 ## What LivePilot Is
 
-LivePilot is not a tool collection with an AI wrapper. It is a **production system** — three perception layers feed into 294 tools, which are orchestrated by 12 creative engines that understand song identity, learn your taste, diagnose session problems, and generate real musical options.
+LivePilot is not a tool collection with an AI wrapper. It is a **production system** — three perception layers feed into 316 tools, which are orchestrated by 12 creative engines that understand song identity, learn your taste, diagnose session problems, and generate real musical options.
 
 The difference: a tool collection executes "set volume to -6dB." LivePilot understands that turning down the drums might kill the groove that defines the track, suggests three genuinely different ways to create space instead, lets you preview each one, and remembers which approach you preferred.
 
@@ -19,7 +19,7 @@ The difference: a tool collection executes "set volume to -6dB." LivePilot under
 AI Client  ──MCP──►  FastMCP Server  ──TCP/9878──►  Remote Script (inside Ableton)
                         (validates)                    (executes on main thread)
                             │
-                            ├── Device Atlas (280+ devices, 139 kits, 350+ IRs)
+                            ├── Device Atlas (1305 devices, 81 enriched with sonic intelligence)
                             ├── M4L Analyzer ──UDP/OSC──► LivePilot_Analyzer.amxd
                             └── Technique Memory (~/.livepilot/memory/)
 ```
@@ -27,7 +27,7 @@ AI Client  ──MCP──►  FastMCP Server  ──TCP/9878──►  Remote S
 The **atlas** resolves device names and browser URIs — the AI never hallucinates a preset.
 The **analyzer** feeds back spectral data from the master bus so the AI hears its own changes.
 The **memory** persists production decisions across sessions as searchable, replayable data structures.
-All three feed into 293 deterministic LOM calls on Ableton's main thread. Everything is reversible with undo.
+All three feed into 316 deterministic LOM calls on Ableton's main thread. Everything is reversible with undo.
 
 ---
 

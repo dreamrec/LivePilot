@@ -1,6 +1,6 @@
 {
   "name": "livepilot",
-  "version": "1.9.25",
+  "version": "1.10.0",
   "mcpName": "io.github.dreamrec/livepilot",
   "description": "Agentic production system for Ableton Live 12 — 316 tools, 43 domains, device atlas, spectral perception, technique memory, neo-Riemannian harmony, Euclidean rhythm, species counterpoint, MIDI I/O",
   "author": "Pilot Studio",
@@ -17,6 +17,16 @@
   "bugs": {
     "url": "https://github.com/dreamrec/LivePilot/issues"
   },
+  "funding": [
+    {
+      "type": "patreon",
+      "url": "https://www.patreon.com/c/dreamrec"
+    },
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/dreamrec"
+    }
+  ],
   "keywords": [
     "mcp",
     "mcp-server",

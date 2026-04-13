@@ -1,4 +1,4 @@
-# LivePilot v1.9.25 — Ableton Live 12
+# LivePilot v1.10.0 — Ableton Live 12
 
 ## Project
 - **Repo:** This directory (LivePilot)
@@ -8,14 +8,20 @@
 - **Design spec:** `docs/specs/2026-03-17-livepilot-design.md`
 
 ## Architecture
-- **Remote Script** (`remote_script/LivePilot/`): Runs inside Ableton's Python, ControlSurface base class, TCP socket on port 9878
+- **Remote Script** (`remote_script/LivePilot/`): Runs inside Ableton's Python, ControlSurface base class, TCP socket on port 9878. Version detection at startup, three capability tiers: Core (12.0+), Enhanced Arrangement (12.1.10+), Full Intelligence (12.3+)
 - **MCP Server** (`mcp_server/`): Python FastMCP server, validates inputs, sends commands to Remote Script
 - **M4L Bridge** (`m4l_device/`): Max for Live Audio Effect on master track, UDP/OSC bridge for deep LOM access
   - UDP 9880: M4L -> Server (spectral data, responses)
   - OSC 9881: Server -> M4L (commands)
-  - `livepilot_bridge.js`: 22 bridge commands for LiveAPI access
+  - `livepilot_bridge.js`: 27 bridge commands for LiveAPI access
   - `SpectralCache`: thread-safe, time-expiring data cache (5s max age)
   - Bridge is optional — all core tools work without it
+- **Device Atlas** (`mcp_server/atlas/`): In-memory indexed JSON database — 1305 devices with URIs, 81 enriched with sonic intelligence (YAML). 6 indexes: by_id, by_name, by_uri, by_category, by_tag, by_genre
+- **Sample Engine** (`mcp_server/sample_engine/`): Three-source sample intelligence — BrowserSource (Ableton browser), SpliceSource (local sounds.db SQLite), FilesystemSource (user dirs). 6-critic fitness battery, 29-technique library, Surgeon/Alchemist dual philosophy
+- **Splice Client** (`mcp_server/splice_client/`): gRPC client for Splice desktop API. Port auto-detected from port.conf, TLS with self-signed certs. Credit safety floor of 5
+- **Composer** (`mcp_server/composer/`): Prompt → plan pipeline. Parses NL into CompositionIntent (genre/mood/tempo/key), plans layers with role templates, compiles to executable tool sequences. 7 genre defaults
+- **Corpus** (`mcp_server/corpus/`): Parsed device-knowledge markdown → queryable Python structures (EmotionalRecipe, GenreChain, PhysicalModelRecipe, AutomationGesture). Fed to Wonder Mode, Sound Design critics, Composer
+- **Execution Router** (`mcp_server/runtime/execution_router.py`): Classifies steps as remote_command/bridge_command/mcp_tool/unknown, dispatches correctly
 - **Plugin** (`livepilot/`): Codex plugin (primary manifest: `.Codex-plugin/plugin.json`, Claude mirror: `.claude-plugin/plugin.json`)
 - **Installer** (`installer/`): Auto-detects Ableton path, copies Remote Script
 
@@ -45,7 +51,7 @@ When modifying .amxd attributes that Max editor won't persist (e.g., `openinpres
 4. Structure: 24-byte `ampf` header + `ptch` chunk + `mx@c` header + JSON patcher + frozen deps
 
 ## Version Bump
-If bumping the version, update ALL of these: package.json, server.json (Marketplace reads this), livepilot/.Codex-plugin/plugin.json, livepilot/.claude-plugin/plugin.json, CLAUDE.md, AGENTS.md, CHANGELOG.md, livepilot/skills/livepilot-core/references/overview.md, docs/M4L_BRIDGE.md (ping version string)
+If bumping the version, update ALL of these: package.json, server.json (Marketplace reads this), livepilot/.Codex-plugin/plugin.json, livepilot/.claude-plugin/plugin.json, .claude-plugin/marketplace.json, mcp_server/__init__.py, remote_script/LivePilot/__init__.py, CLAUDE.md, AGENTS.md, CHANGELOG.md, livepilot/skills/livepilot-core/references/overview.md, docs/M4L_BRIDGE.md (ping version string)
 
 ## Tool Count
 Currently 316 tools. If adding/removing tools, update: README.md, package.json description, livepilot/.Codex-plugin/plugin.json, livepilot/.claude-plugin/plugin.json, server.json, livepilot/skills/livepilot-core/SKILL.md, livepilot/skills/livepilot-core/references/overview.md, CLAUDE.md, CHANGELOG.md, tests/test_tools_contract.py, docs/manual/index.md, docs/manual/tool-reference.md

@@ -246,7 +246,7 @@ With the Analyzer installed, you get 20 additional tools including:
 - **Hidden parameters** — access device parameters not exposed by the standard ControlSurface API
 - **Display values** — read human-readable parameter values (e.g., "−6.0 dB" instead of 0.70)
 
-The Analyzer is optional. All 207 core tools work without it. The 30 analyzer tools will return clear errors if the device is not present.
+The Analyzer is optional. All 289 core tools work without it. The 27 bridge tools require the device on the master track.
 
 ---
 

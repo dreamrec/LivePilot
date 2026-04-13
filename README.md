@@ -13,6 +13,7 @@
   <a href="https://www.npmjs.com/package/livepilot"><img src="https://img.shields.io/npm/dm/livepilot?style=flat-square" alt="npm downloads"></a>
   <a href="https://github.com/dreamrec/LivePilot/blob/main/LICENSE"><img src="https://img.shields.io/github/license/dreamrec/LivePilot?style=flat-square" alt="License"></a>
   <a href="https://github.com/dreamrec/LivePilot/releases"><img src="https://img.shields.io/github/v/release/dreamrec/LivePilot?style=flat-square&label=release" alt="Latest Release"></a>
+  <a href="https://www.patreon.com/c/dreamrec"><img src="https://img.shields.io/badge/Patreon-Support%20LivePilot-ff424d?style=flat-square&logo=patreon&logoColor=white" alt="Patreon"></a>
 </p>
 
 <p align="center">
@@ -37,10 +38,10 @@
 │   KNOWLEDGE            PERCEPTION           MEMORY          │
 │   ───────────          ──────────           ──────          │
 │                                                             │
-│   280+ devices         8-band FFT           recall by       │
-│   139 drum kits        RMS / peak           mood, genre,    │
-│   350+ impulse         pitch tracking       texture         │
-│   responses            key detection                        │
+│   1305 devices         8-band FFT           recall by       │
+│   81 enriched          RMS / peak           mood, genre,    │
+│   683 drum kits        pitch tracking       texture         │
+│   Splice catalog       key detection                        │
 │                                                             │
 │   ┌────────────┐      ┌────────────┐      ┌────────────┐   │
 │   │   Device   │─────▶│    M4L     │─────▶│ Technique  │   │
@@ -97,7 +98,7 @@ Every time you accept or reject a suggestion, the graph updates. Over time, it p
 
 ### Semantic Moves — Musical Actions, Not Parameters
 
-A semantic move is a high-level musical intent — "add contrast," "tighten the low end," "build tension toward the chorus" — that compiles into a specific sequence of tool calls. The system has 20 moves across 4 families (mix, arrangement, transition, sound design), each with an executable plan.
+A semantic move is a high-level musical intent — "add contrast," "tighten the low end," "build tension toward the chorus" — that compiles into a specific sequence of tool calls. The system has 26+ moves across 6 families (mix, arrangement, transition, sound design, sample, device creation), each with an executable plan.
 
 Moves carry risk levels, target dimensions, and protection thresholds. "Add a filter sweep build" targets energy and tension while protecting clarity. The AI doesn't just know what to do — it knows what it's risking.
 
@@ -162,11 +163,11 @@ This closes the gap between "the AI did something" and "the AI did something tha
 | Tracks | 17 | create MIDI/audio/return, delete, duplicate, arm, mute, solo, color, freeze, flatten |
 | Clips | 11 | create, delete, duplicate, fire, stop, loop, launch mode, warp mode, quantize |
 | Notes | 8 | add/get/remove/modify MIDI notes, transpose, duplicate, per-note probability |
-| Devices | 15 | load by name or URI, get/set parameters, batch edit, racks, chains, presets, plugin deep control |
+| Devices | 19 | load by name or URI, insert native (12.3+), get/set parameters, batch edit, racks, chains, drum chain note assignment, presets, plugin deep control |
 | Scenes | 12 | create, delete, duplicate, fire, name, color, tempo, scene matrix |
 | Browser | 4 | search library, browse tree, load items, filter by category |
 | Mixing | 11 | volume, pan, sends, routing, meters, return tracks, master, full mix snapshot |
-| Arrangement | 19 | timeline clips, arrangement notes, arrangement automation, recording, cue points |
+| Arrangement | 21 | timeline clips, native arrangement clips (12.1.10+), arrangement notes, arrangement automation, recording, cue points |
 
 <br>
 
@@ -176,7 +177,7 @@ The M4L Analyzer sits on the master track. UDP 9880 carries spectral data
 from Max to the server. OSC 9881 sends commands back.
 
 > [!TIP]
-> All 207 core tools work without the analyzer — it adds 30 more and closes the feedback loop.
+> All 289 core tools work without the analyzer — it adds 27 bridge tools and closes the feedback loop.
 
 ```
 SPECTRAL ─────── 8-band frequency decomposition (sub → air)
@@ -393,7 +394,7 @@ read_audio_metadata     Format, duration, sample rate, tags
 
 <br>
 
-### Agentic Intelligence — 83 tools
+### Agentic Intelligence — 106 tools
 
 The V2 intelligence layer. These tools don't just execute commands — they analyze, diagnose, plan, evaluate, and learn.
 
@@ -403,18 +404,22 @@ The V2 intelligence layer. These tools don't just execute commands — they anal
 | Composition | 9 | section analysis, motif detection, emotional arc, form planning, section transforms |
 | Evaluation | 1 | before/after evaluation with structured scoring |
 | Mix Engine | 6 | critic-driven mix analysis, issue detection, move planning, masking reports |
-| Sound Design | 5 | patch analysis, modulation planning, timbre scoring |
+| Sound Design | 4 | patch analysis, modulation planning, timbre scoring |
 | Transition Engine | 5 | transition classification, scoring, archetype-based planning |
 | Reference Engine | 5 | reference profiling, principle distillation, gap analysis, move mapping |
 | Translation Engine | 3 | cross-domain translation, issue detection |
-| Performance Engine | 5 | safety-constrained suggestions, safe move lists, scene handoff planning |
-| Song Brain | 4 | identity inference, sacred element detection, drift monitoring, section purposes |
+| Performance Engine | 3 | safety-constrained suggestions, safe move lists, scene handoff planning |
+| Song Brain | 3 | identity inference, sacred element detection, drift monitoring |
 | Hook Hunter | 9 | hook detection, salience scoring, development strategies, neglect detection, phrase impact |
 | Stuckness Detector | 3 | momentum analysis, rescue classification, structured rescue workflows |
 | Wonder Mode | 3 | diagnosis-driven variant generation, taste-aware ranking, session discard |
 | Session Continuity | 7 | creative threads, turn resolution, taste vs identity ranking, session story |
 | Creative Constraints | 5 | constraint activation, reference-inspired variants, constrained generation |
 | Preview Studio | 5 | variant creation, preview rendering, comparison, commit, discard |
+| **Device Atlas** | **6** | **search 1305 devices, suggest by intent, chain building, device comparison, library scan** |
+| **Sample Engine** | **6** | **multi-source sample search (Splice/Browser/filesystem), fitness critics, technique library** |
+| **Device Forge** | **3** | **generate M4L devices from gen~ templates, install to browser** |
+| **Composer** | **3** | **prompt → multi-layer composition, sample augmentation, plan preview** |
 
 > **[View all 316 tools →](docs/manual/tool-catalog.md)**
 
@@ -625,6 +630,20 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for architecture details, code guidelines
 - [Feature requests](https://github.com/dreamrec/LivePilot/issues/new?template=feature_request.yml)
 - [Contributing guide](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)
+
+<br>
+
+---
+
+## Support
+
+LivePilot is free and open source. Building it takes hundreds of hours, an Ableton Suite license, and a Claude subscription. If LivePilot saves you time in your sessions, consider supporting development:
+
+<p align="center">
+  <a href="https://www.patreon.com/c/dreamrec"><strong>Support on Patreon</strong></a> · <a href="https://github.com/sponsors/dreamrec">GitHub Sponsors</a>
+</p>
+
+Supporters get early access to new features, premium skills, curated technique libraries, and direct support.
 
 <br>
 

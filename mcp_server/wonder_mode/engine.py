@@ -390,8 +390,86 @@ def _all_same_family(variants: list[dict]) -> bool:
     return len(families) <= 1 and len(variants) > 1
 
 
-# ── Pipeline orchestrator ────────────────────────────────────────
+# ── Corpus intelligence enrichment ──────────────────────────────
 
+
+def _get_corpus_hints(request_text: str, diagnosis: dict | None) -> dict | None:
+    """Query the corpus for creative hints relevant to the request.
+
+    Returns a dict with emotional_recipe, genre_chain, automation_density,
+    and technique_suggestions — or None if corpus is unavailable.
+    """
+    try:
+        from ..corpus import get_corpus
+    except ImportError:
+        return None
+
+    corpus = get_corpus()
+    if not corpus.emotional_recipes and not corpus.genre_chains:
+        return None
+
+    hints: dict = {}
+    request_lower = request_text.lower()
+
+    # Check for emotional keywords
+    _EMOTION_KEYWORDS = {
+        "warm": "warmth & comfort", "cold": "tension & anxiety",
+        "dark": "melancholy", "bright": "euphoria",
+        "aggressive": "danger", "soft": "warmth & comfort",
+        "anxious": "tension & anxiety", "nostalgic": "nostalgia",
+        "vast": "vastness", "ethereal": "vastness",
+        "sad": "melancholy", "happy": "euphoria",
+        "tension": "tension & anxiety", "release": "euphoria",
+    }
+    for keyword, emotion_key in _EMOTION_KEYWORDS.items():
+        if keyword in request_lower:
+            recipe = corpus.suggest_for_emotion(emotion_key)
+            if recipe:
+                hints["emotional_recipe"] = {
+                    "emotion": recipe.emotion,
+                    "technique_count": len(recipe.techniques),
+                    "first_techniques": [t[:100] for t in recipe.techniques[:3]],
+                }
+                break
+
+    # Check for genre keywords
+    _GENRE_KEYWORDS = ["dub", "techno", "minimal", "ambient", "idm", "trap",
+                       "sophie", "arca", "house", "trance", "drum and bass"]
+    for genre in _GENRE_KEYWORDS:
+        if genre in request_lower:
+            chain = corpus.get_genre_chain(genre)
+            if chain:
+                hints["genre_chain"] = {
+                    "genre": chain.genre,
+                    "devices": chain.devices[:5],
+                    "description": chain.description[:120],
+                }
+                break
+
+    # Check for physical model keywords
+    _MATERIAL_KEYWORDS = ["water", "metal", "glass", "breath", "fire", "electric"]
+    for material in _MATERIAL_KEYWORDS:
+        if material in request_lower:
+            model = corpus.suggest_for_material(material)
+            if model:
+                hints["physical_model"] = {
+                    "material": model.material,
+                    "devices": model.devices[:4],
+                }
+                break
+
+    # Automation density from diagnosis section type
+    if diagnosis:
+        problem_class = diagnosis.get("problem_class", "")
+        if "static" in problem_class or "flat" in problem_class:
+            hints["automation_density"] = corpus.get_automation_density_for_section("peak")
+        elif "breakdown" in problem_class:
+            hints["automation_density"] = corpus.get_automation_density_for_section("breakdown")
+
+    return hints if hints else None
+
+
+# ── Pipeline orchestrator ────────────────────────────────────────
 
 
 def generate_wonder_variants(
@@ -414,6 +492,9 @@ def generate_wonder_variants(
     labels = ["safe", "strong", "unexpected"]
     variants = []
 
+    # Load corpus intelligence for variant enrichment
+    corpus_hints = _get_corpus_hints(request_text, diagnosis)
+
     # Build executable variants from distinct moves
     for i, move in enumerate(distinct):
         label = labels[i]
@@ -429,6 +510,9 @@ def generate_wonder_variants(
             # Score taste on envelope-adjusted move for consistency with targets_snapshot
             v["taste_fit"] = compute_taste_fit(move_with_envelope, taste_graph)
         v["distinctness_reason"] = _explain_distinctness(move, distinct, i)
+        # Enrich with corpus knowledge
+        if corpus_hints:
+            v["corpus_hints"] = corpus_hints
         variants.append(v)
 
     executable_count = len(variants)

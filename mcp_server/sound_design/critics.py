@@ -281,17 +281,105 @@ def run_layer_overlap_critic(
     return issues
 
 
+# ── Corpus Intelligence Critic ──────────────────────────────────────
+
+
+def run_corpus_critic(
+    patch: PatchModel,
+    goal: TimbralGoalVector,
+) -> list[SoundDesignIssue]:
+    """Use the device-knowledge corpus to flag missed opportunities.
+
+    Checks each device in the chain against the corpus for known
+    techniques, parameter sweet spots, and creative possibilities
+    that the current patch doesn't exploit.
+    """
+    try:
+        from ..corpus import get_corpus
+    except ImportError:
+        return []
+
+    corpus = get_corpus()
+    if not corpus.emotional_recipes and not corpus.device_knowledge:
+        return []  # Corpus not loaded
+
+    issues: list[SoundDesignIssue] = []
+
+    # Check if any device in the chain has corpus knowledge
+    for block in patch.blocks:
+        dk = corpus.get_device(block.device_name)
+        if dk and dk.techniques and block.block_type == "oscillator":
+            # Oscillator with known techniques — suggest if patch is simple
+            has_character_block = any(
+                b.block_type in ("saturation", "spectral")
+                for b in patch.blocks
+            )
+            if not has_character_block and len(dk.techniques) > 2:
+                issues.append(SoundDesignIssue(
+                    issue_type="corpus_technique_available",
+                    critic="corpus",
+                    severity=0.25,
+                    confidence=0.6,
+                    affected_blocks=[block.device_name],
+                    evidence=(
+                        f"Corpus has {len(dk.techniques)} known techniques "
+                        f"for {block.device_name} but chain lacks character "
+                        f"processing (saturation/spectral). First technique: "
+                        f"{dk.techniques[0][:80]}"
+                    ),
+                    recommended_moves=["modulation_injection", "filter_contour"],
+                ))
+
+    # Check if goal maps to a known emotional recipe
+    emotion_map = {
+        "warmth": ("warmth", goal.warmth),
+        "brightness": ("euphoria", goal.brightness),
+        "instability": ("tension", goal.instability),
+        "softness": ("melancholy", goal.softness),
+    }
+    for quality, (emotion_key, goal_value) in emotion_map.items():
+        if goal_value > 0.3:
+            recipe = corpus.suggest_for_emotion(emotion_key)
+            if recipe and recipe.techniques:
+                # Check if any corpus technique device is in the chain
+                chain_names_lower = {d.lower() for d in patch.device_chain}
+                recipe_devices = set()
+                for tech in recipe.techniques:
+                    # Extract bold device names from technique strings
+                    for match in re.finditer(r"\*\*(.+?)\*\*", tech):
+                        recipe_devices.add(match.group(1).lower())
+
+                missing = recipe_devices - chain_names_lower
+                if missing and len(missing) <= 3:
+                    issues.append(SoundDesignIssue(
+                        issue_type="corpus_emotion_opportunity",
+                        critic="corpus",
+                        severity=0.2,
+                        confidence=0.5,
+                        affected_blocks=list(missing)[:3],
+                        evidence=(
+                            f"Goal wants {quality}={goal_value:.2f}. "
+                            f"Corpus '{recipe.emotion}' recipe suggests "
+                            f"devices not in chain: {', '.join(list(missing)[:3])}"
+                        ),
+                        recommended_moves=["filter_contour", "modulation_injection"],
+                    ))
+
+    return issues
+
+
 # ── Run all critics ──────────────────────────────────────────────────
 
 
 def run_all_sound_design_critics(
     state: SoundDesignState,
 ) -> list[SoundDesignIssue]:
-    """Run all five critics and aggregate issues."""
+    """Run all six critics and aggregate issues."""
     issues: list[SoundDesignIssue] = []
     issues.extend(run_static_timbre_critic(state.patch, state.goal))
     issues.extend(run_weak_identity_critic(state.patch))
     issues.extend(run_masking_role_critic(state.patch, state.layers))
     issues.extend(run_modulation_flatness_critic(state.patch))
     issues.extend(run_layer_overlap_critic(state.layers))
+    issues.extend(run_corpus_critic(state.patch, state.goal))
     return issues

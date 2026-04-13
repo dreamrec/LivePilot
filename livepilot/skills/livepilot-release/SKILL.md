@@ -28,8 +28,8 @@ Run this checklist EVERY time the user says "update everything", "push", "releas
 
 ## 2. Tool Count (must ALL match)
 
-Current: **293 tools across 39 domains**.
-Core (no M4L): **149**. Analyzer (M4L): **29**. Perception (offline): **4**. V2 engines: **86+**.
+Current: **316 tools across 43 domains**.
+Core (no M4L): **289**. Bridge (M4L): **27**. V2 engines: **106+**.
 
 Verify: `grep -rc "@mcp.tool" mcp_server/tools/ | grep -v ":0" | awk -F: '{sum+=$2} END{print sum}'`
 
@@ -56,10 +56,10 @@ Files that reference tool count:
 
 ## 3. Domain Count
 
-Current: **39 domains**: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, analyzer, automation, theory, generative, harmony, midi_io, perception, agent_os, composition, motif, research, planner, project_brain, runtime, evaluation, mix_engine, sound_design, transition_engine, reference_engine, translation_engine, performance_engine, song_brain, preview_studio, hook_hunter, stuckness_detector, wonder_mode, session_continuity, creative_constraints.
+Current: **43 domains**: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, analyzer, automation, theory, generative, harmony, midi_io, perception, agent_os, composition, motif, research, planner, project_brain, runtime, evaluation, mix_engine, sound_design, transition_engine, reference_engine, translation_engine, performance_engine, song_brain, preview_studio, hook_hunter, stuckness_detector, wonder_mode, session_continuity, creative_constraints, device_forge, sample_engine, atlas, composer.
 
-- [ ] All files that mention domain count say "39 domains"
-- [ ] Domain lists include ALL 39 (especially newer domains — they're the most often omitted)
+- [ ] All files that mention domain count say "43 domains"
+- [ ] Domain lists include ALL 43 (especially newer domains — they're the most often omitted)
 
 ## 4. npm Registry
 

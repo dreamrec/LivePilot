@@ -1,4 +1,4 @@
-# LivePilot v1.9.25 — Architecture & Tool Reference
+# LivePilot v1.10.0 — Architecture & Tool Reference
 
 Agentic production system for Ableton Live 12. 316 tools across 43 domains. Device atlas (1305 devices, 81 enriched), spectral perception (M4L analyzer), technique memory, automation intelligence (16 curve types, 15 recipes), music theory (Krumhansl-Schmuckler, species counterpoint), generative algorithms (Euclidean rhythm, tintinnabuli, phase shift, additive process), neo-Riemannian harmony (PRL transforms, Tonnetz), MIDI file I/O.
 
@@ -8,7 +8,7 @@ Agentic production system for Ableton Live 12. 316 tools across 43 domains. Devi
 AI Client  ──MCP──►  FastMCP Server  ──TCP/9878──►  Remote Script (inside Ableton)
                         (validates)                    (executes on main thread)
                             │
-                            ├── Device Atlas (280+ devices, 139 kits, 350+ IRs)
+                            ├── Device Atlas (1305 devices, 81 enriched with sonic intelligence)
                             ├── M4L Analyzer ──UDP/OSC──► LivePilot_Analyzer.amxd
                             └── Technique Memory (~/.livepilot/memory/)
 ```
@@ -32,7 +32,7 @@ A flat tool list lets the AI press buttons. LivePilot's three layers give it con
 
 This turns "set EQ band 3 to -4 dB" into "cut 400 Hz by 4 dB, then read the spectrum to confirm the mud is actually reduced."
 
-## The 307 Tools — What Each One Does
+## The 316 Tools — What Each One Does
 
 ### Transport (12) — Playback, tempo, global state, diagnostics
 

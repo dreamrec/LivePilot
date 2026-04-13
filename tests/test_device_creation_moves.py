@@ -1,0 +1,61 @@
+"""Tests for device_creation semantic moves."""
+
+from __future__ import annotations
+
+import pytest
+
+from mcp_server.semantic_moves.registry import list_moves, get_move
+
+
+class TestDeviceCreationMovesRegistered:
+    def test_at_least_6_device_creation_moves(self):
+        moves = list_moves(domain="device_creation")
+        assert len(moves) >= 6
+
+    def test_chaos_modulator_exists(self):
+        move = get_move("create_chaos_modulator")
+        assert move is not None
+        assert move.family == "device_creation"
+
+    def test_feedback_resonator_exists(self):
+        move = get_move("create_feedback_resonator")
+        assert move is not None
+
+    def test_wavefolder_exists(self):
+        move = get_move("create_wavefolder_effect")
+        assert move is not None
+
+    def test_bitcrusher_exists(self):
+        move = get_move("create_bitcrusher_effect")
+        assert move is not None
+
+    def test_karplus_string_exists(self):
+        move = get_move("create_karplus_string")
+        assert move is not None
+
+    def test_stochastic_texture_exists(self):
+        move = get_move("create_stochastic_texture")
+        assert move is not None
+
+    def test_fdn_reverb_exists(self):
+        move = get_move("create_fdn_reverb")
+        assert move is not None
+
+    def test_all_have_compile_plans(self):
+        moves = list_moves(domain="device_creation")
+        for m in moves:
+            full = get_move(m["move_id"])
+            assert full.compile_plan, f"{m['move_id']} has no compile_plan"
+
+    def test_all_use_generate_m4l_effect(self):
+        moves = list_moves(domain="device_creation")
+        for m in moves:
+            full = get_move(m["move_id"])
+            tools_used = [s.get("tool") for s in full.compile_plan]
+            assert "generate_m4l_effect" in tools_used, f"{m['move_id']} doesn't use generate_m4l_effect"
+
+    def test_all_have_verification_plans(self):
+        moves = list_moves(domain="device_creation")
+        for m in moves:
+            full = get_move(m["move_id"])
+            assert full.verification_plan, f"{m['move_id']} has no verification_plan"
