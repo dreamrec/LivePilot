@@ -548,3 +548,26 @@
 | `map_reference_principles_to_song` | Translate reference principles to current song |
 | `generate_constrained_variants` | Generate triptych variants under active constraints |
 | `generate_reference_inspired_variants` | Generate variants inspired by distilled reference principles |
+
+---
+
+## Device Forge (3)
+
+| Tool | Description |
+|------|-------------|
+| `generate_m4l_effect` | Generate a custom M4L audio effect from gen~ templates |
+| `install_m4l_device` | Install generated M4L device to User Library |
+| `list_genexpr_templates` | List available gen~ expression templates |
+
+---
+
+## Sample Engine (6)
+
+| Tool | Description |
+|------|-------------|
+| `analyze_sample` | Analyze sample characteristics — material, spectral profile, Simpler mode recommendation |
+| `evaluate_sample_fit` | 6-critic fitness battery — key, tempo, frequency, role, vibe, intent fit scores |
+| `search_samples` | Search library for samples matching criteria |
+| `suggest_sample_technique` | Suggest manipulation technique from the 29-technique library |
+| `plan_sample_workflow` | Plan multi-step sample manipulation workflow |
+| `get_sample_opportunities` | Find opportunities to add samples to the current session |

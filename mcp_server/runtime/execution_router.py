@@ -29,6 +29,10 @@ MCP_TOOLS: frozenset[str] = frozenset({
     "get_emotional_arc",
     "capture_audio",
     "get_motif_graph",
+    # Device Forge tools (MCP-only, no TCP handler)
+    "generate_m4l_effect",
+    "install_m4l_device",
+    "list_genexpr_templates",
 })
 
 
