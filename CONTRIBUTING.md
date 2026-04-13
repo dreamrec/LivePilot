@@ -128,4 +128,4 @@ By participating, you agree to uphold this code.
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the [MIT License](LICENSE).
+By contributing, you agree that your contributions will be licensed under the [Business Source License 1.1](LICENSE).
