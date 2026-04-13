@@ -38,11 +38,14 @@ REMOTE_COMMANDS: frozenset[str] = frozenset({
     "fire_scene", "set_scene_name", "set_scene_color", "set_scene_tempo",
     "get_scene_matrix", "fire_scene_clips", "stop_all_clips",
     "get_playing_clips",
-    # devices (12)
+    # devices (15)
     "get_device_info", "get_device_parameters", "set_device_parameter",
     "batch_set_parameters", "toggle_device", "delete_device",
     "move_device", "load_device_by_uri", "find_and_load_device",
     "set_simpler_playback_mode", "get_rack_chains", "set_chain_volume",
+    "insert_device",           # 12.3+ native device insertion
+    "insert_rack_chain",       # 12.3+ rack chain insertion
+    "set_drum_chain_note",     # 12.3+ drum chain note assignment
     # clip_automation (3)
     "get_clip_automation", "set_clip_automation", "clear_clip_automation",
     # browser (5)

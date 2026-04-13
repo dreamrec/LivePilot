@@ -1,5 +1,5 @@
 """
-LivePilot - Device domain handlers (11 commands).
+LivePilot - Device domain handlers (12 commands).
 """
 
 import Live
@@ -426,6 +426,110 @@ def load_device_by_uri(song, params):
     )
 
 
+# ── Device name registry for insert_device (12.3+) ──────────────────────
+
+NATIVE_DEVICE_NAMES = frozenset({
+    # Instruments
+    "Analog", "Collision", "Drift", "Electric", "Drum Rack",
+    "Instrument Rack", "Meld", "Operator", "Sampler", "Simpler",
+    "Tension", "Wavetable",
+    # Audio Effects
+    "Align Delay", "Amp", "Audio Effect Rack", "Auto Filter",
+    "Auto Pan-Tremolo", "Auto Shift", "Beat Repeat", "Cabinet",
+    "Channel EQ", "Chorus-Ensemble", "Color Limiter", "Compressor",
+    "Convolution Reverb", "Corpus", "Delay", "Drum Buss",
+    "Dynamic Tube", "Echo", "EQ Eight", "EQ Three", "Erosion",
+    "External Audio Effect", "Flanger", "Frequency Shifter", "Gate",
+    "Glue Compressor", "Grain Delay", "Hybrid Reverb", "Limiter",
+    "Looper", "Multiband Dynamics", "Overdrive", "Pedal",
+    "Phaser-Flanger", "Pitch Hack", "Redux", "Re-Enveloper",
+    "Resonators", "Reverb", "Roar", "Saturator", "Shifter",
+    "Spectral Blur", "Spectral Resonator", "Spectral Time", "Tuner",
+    "Utility", "Vinyl Distortion", "Vocoder",
+    # MIDI Effects
+    "Arpeggiator", "Chord", "Expression Control", "MIDI Effect Rack",
+    "Note Echo", "Note Length", "Pitch", "Random", "Scale", "Strum",
+    "Velocity",
+})
+
+# Case-insensitive lookup for user convenience
+_DEVICE_NAME_LOOKUP = {name.lower(): name for name in NATIVE_DEVICE_NAMES}
+
+
+@register("insert_device")
+def insert_device(song, params):
+    """Insert a native Live device by name (12.3+ API).
+
+    Much faster than browser search — a single call with no state dependency.
+    Only works for native devices (not plugins or M4L).
+
+    Required: track_index, device_name
+    Optional: position (-1 = end of chain, default), chain_index + device_index (for rack chains)
+    """
+    from .version_detect import has_feature
+
+    if not has_feature("insert_device"):
+        raise RuntimeError(
+            "insert_device requires Live 12.3+. "
+            "Use find_and_load_device (browser search) instead."
+        )
+
+    track_index = int(params["track_index"])
+    device_name = str(params["device_name"])
+    position = int(params.get("position", -1))
+    chain_index = params.get("chain_index")
+
+    # Resolve canonical name (case-insensitive)
+    canonical = _DEVICE_NAME_LOOKUP.get(device_name.lower())
+    if canonical is None:
+        raise ValueError(
+            "Device '%s' is not a native Live device. "
+            "insert_device only supports native devices (not plugins or M4L). "
+            "Use find_and_load_device for plugins."
+            % device_name
+        )
+
+    track = get_track(song, track_index)
+
+    song.begin_undo_step()
+    try:
+        if chain_index is not None:
+            # 12.3+ Chain.insert_device — insert into a rack chain
+            chain_index = int(chain_index)
+            device_on_track = get_device(track, int(params.get("device_index", 0)))
+            chains = list(device_on_track.chains)
+            if chain_index < 0 or chain_index >= len(chains):
+                raise IndexError(
+                    "Chain index %d out of range (0..%d)"
+                    % (chain_index, len(chains) - 1)
+                )
+            chain = chains[chain_index]
+            if position >= 0:
+                device = chain.insert_device(canonical, position)
+            else:
+                device = chain.insert_device(canonical)
+        else:
+            # Track-level insertion
+            if position >= 0:
+                device = track.insert_device(canonical, position)
+            else:
+                device = track.insert_device(canonical)
+    finally:
+        song.end_undo_step()
+
+    # Read back the device info — use "loaded" key to match
+    # the convention expected by _postflight_loaded_device on MCP side
+    result = {
+        "loaded": device.name,
+        "class_name": device.class_name,
+        "track_index": track_index,
+        "parameter_count": len(list(device.parameters)),
+    }
+    if position >= 0:
+        result["position"] = position
+    return result
+
+
 @register("find_and_load_device")
 def find_and_load_device(song, params):
     """Find a device by name in the browser and load it onto a track.
@@ -437,6 +541,26 @@ def find_and_load_device(song, params):
     device_name = str(params["device_name"]).lower()
     track = get_track(song, track_index)
     browser = _get_browser()
+
+    # 12.3+ fast path: try insert_device for native devices
+    from .version_detect import has_feature
+    if has_feature("insert_device"):
+        canonical = _DEVICE_NAME_LOOKUP.get(device_name)
+        if canonical is not None:
+            try:
+                song.begin_undo_step()
+                try:
+                    device = track.insert_device(canonical)
+                finally:
+                    song.end_undo_step()
+                return {
+                    "loaded": device.name,
+                    "class_name": device.class_name,
+                    "track_index": track_index,
+                    "parameter_count": len(list(device.parameters)),
+                }
+            except Exception:
+                pass  # Fall through to browser search
 
     MAX_ITERATIONS = 50000
     iterations = 0

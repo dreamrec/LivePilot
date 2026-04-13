@@ -1,6 +1,6 @@
 """Device MCP tools — parameters, racks, browser loading, plugin deep control.
 
-15 tools matching the Remote Script devices domain + M4L bridge.
+16 tools matching the Remote Script devices domain + M4L bridge.
 """
 
 from __future__ import annotations
@@ -373,6 +373,57 @@ def find_and_load_device(ctx: Context, track_index: int, device_name: str) -> di
         "track_index": track_index,
         "device_name": device_name,
     })
+    return _postflight_loaded_device(ctx, result)
+
+
+@mcp.tool()
+def insert_device(
+    ctx: Context,
+    track_index: int,
+    device_name: str,
+    position: int = -1,
+    device_index: Optional[int] = None,
+    chain_index: Optional[int] = None,
+) -> dict:
+    """Insert a native Live device by name — 10x faster than browser search (Live 12.3+).
+
+    Only works for native devices (Reverb, Compressor, EQ Eight, Drift, etc.).
+    For plugins, M4L devices, or presets, use find_and_load_device or load_browser_item.
+
+    track_index:  0+ for regular tracks, -1/-2 for returns, -1000 for master
+    device_name:  exact device name (e.g. 'Reverb', 'Auto Filter', 'Wavetable')
+    position:     device chain position (0 = first, -1 = end of chain)
+    device_index: required when inserting into a rack chain (identifies the rack)
+    chain_index:  insert into this chain of a rack device (for building drum kits)
+
+    Drum Rack construction workflow (12.3+):
+    1. insert_device(track_index, 'Drum Rack')       — create empty rack
+    2. insert_rack_chain(track_index, device_index)   — add chains
+    3. set_drum_chain_note(chain_index, note=36)      — assign C1 (kick)
+    4. insert_device(track_index, 'Simpler',          — add instrument
+       device_index=rack_idx, chain_index=0)            into chain
+
+    On Live < 12.3: returns an error suggesting find_and_load_device instead.
+    """
+    _validate_track_index(track_index)
+    if not device_name.strip():
+        raise ValueError("device_name cannot be empty")
+
+    params = {
+        "track_index": track_index,
+        "device_name": device_name,
+        "position": position,
+    }
+    if device_index is not None:
+        params["device_index"] = device_index
+    if chain_index is not None:
+        if device_index is None:
+            raise ValueError("device_index is required when chain_index is provided")
+        _validate_device_index(device_index)
+        _validate_chain_index(chain_index)
+        params["chain_index"] = chain_index
+
+    result = _get_ableton(ctx).send_command("insert_device", params)
     return _postflight_loaded_device(ctx, result)
 
 
