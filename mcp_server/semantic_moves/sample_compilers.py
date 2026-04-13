@@ -11,6 +11,11 @@ from .models import SemanticMove
 from . import resolvers
 
 
+def _resolve_sample_path(kernel: dict) -> str:
+    """Get the sample file path from kernel, or return placeholder."""
+    return kernel.get("sample_file_path", "{sample_file_path}")
+
+
 def _compile_sample_chop_rhythm(move: SemanticMove, kernel: dict) -> CompiledPlan:
     """Compile 'sample_chop_rhythm': load, slice, and chop a sample for rhythm."""
     steps = []
@@ -34,7 +39,7 @@ def _compile_sample_chop_rhythm(move: SemanticMove, kernel: dict) -> CompiledPla
 
     steps.append(CompiledStep(
         tool="load_sample_to_simpler",
-        params={"track_index": new_idx, "file_path": "{sample_file_path}"},
+        params={"track_index": new_idx, "file_path": _resolve_sample_path(kernel)},
         description="Load sample into Simpler for slicing",
     ))
 
@@ -88,7 +93,7 @@ def _compile_sample_texture_layer(move: SemanticMove, kernel: dict) -> CompiledP
 
     steps.append(CompiledStep(
         tool="load_sample_to_simpler",
-        params={"track_index": new_idx, "file_path": "{sample_file_path}"},
+        params={"track_index": new_idx, "file_path": _resolve_sample_path(kernel)},
         description="Load textural sample into Simpler",
     ))
     descriptions.append("Load texture sample")
@@ -141,7 +146,7 @@ def _compile_sample_vocal_ghost(move: SemanticMove, kernel: dict) -> CompiledPla
 
     steps.append(CompiledStep(
         tool="load_sample_to_simpler",
-        params={"track_index": new_idx, "file_path": "{sample_file_path}"},
+        params={"track_index": new_idx, "file_path": _resolve_sample_path(kernel)},
         description="Load vocal sample into Simpler",
     ))
 
@@ -205,7 +210,7 @@ def _compile_sample_break_layer(move: SemanticMove, kernel: dict) -> CompiledPla
 
     steps.append(CompiledStep(
         tool="load_sample_to_simpler",
-        params={"track_index": new_idx, "file_path": "{sample_file_path}"},
+        params={"track_index": new_idx, "file_path": _resolve_sample_path(kernel)},
         description="Load breakbeat into Simpler",
     ))
 
@@ -262,7 +267,7 @@ def _compile_sample_resample_destroy(move: SemanticMove, kernel: dict) -> Compil
 
     steps.append(CompiledStep(
         tool="load_sample_to_simpler",
-        params={"track_index": new_idx, "file_path": "{sample_file_path}"},
+        params={"track_index": new_idx, "file_path": _resolve_sample_path(kernel)},
         description="Load sample for destruction",
     ))
     descriptions.append("Load source")
@@ -321,7 +326,7 @@ def _compile_sample_one_shot_accent(move: SemanticMove, kernel: dict) -> Compile
 
     steps.append(CompiledStep(
         tool="load_sample_to_simpler",
-        params={"track_index": new_idx, "file_path": "{sample_file_path}"},
+        params={"track_index": new_idx, "file_path": _resolve_sample_path(kernel)},
         description="Load one-shot into Simpler",
     ))
 
