@@ -11,13 +11,13 @@
   <a href="https://github.com/dreamrec/LivePilot/actions"><img src="https://img.shields.io/github/actions/workflow/status/dreamrec/LivePilot/ci.yml?style=flat-square&label=CI" alt="CI"></a>
   <a href="https://www.npmjs.com/package/livepilot"><img src="https://img.shields.io/npm/v/livepilot?style=flat-square&color=blue" alt="npm version"></a>
   <a href="https://www.npmjs.com/package/livepilot"><img src="https://img.shields.io/npm/dm/livepilot?style=flat-square" alt="npm downloads"></a>
-  <a href="https://github.com/dreamrec/LivePilot/blob/main/LICENSE"><img src="https://img.shields.io/github/license/dreamrec/LivePilot?style=flat-square" alt="License"></a>
+  <a href="https://github.com/dreamrec/LivePilot/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-BSL--1.1-blue?style=flat-square" alt="License"></a>
   <a href="https://github.com/dreamrec/LivePilot/releases"><img src="https://img.shields.io/github/v/release/dreamrec/LivePilot?style=flat-square&label=release" alt="Latest Release"></a>
 </p>
 
 <p align="center">
   An agentic production system for Ableton Live 12.<br>
-  316 tools. Device atlas. Spectral perception. Technique memory.
+  316 tools. 43 domains. Device atlas. Splice integration. Auto-composition. Spectral perception. Technique memory.
 </p>
 
 <br>
@@ -29,49 +29,90 @@
 
 <br>
 
+---
+
+## What LivePilot Does
+
+Most MCP servers are tool collections — they execute commands. LivePilot is an **agentic production system**. It has six layers that work together:
+
+| Layer | What it provides |
+|-------|-----------------|
+| **Deterministic Tools** | Direct control: transport, tracks, clips, notes, devices, scenes, mixing, arrangement, browser, automation |
+| **Device Atlas** | Knowledge of every device in Ableton's library — 1305 devices indexed by name, URI, category, tag, and genre. 81 enriched with sonic intelligence. 683 drum kits mapped |
+| **Sample Engine** | Three-source sample intelligence — searches Ableton's browser, your filesystem, and Splice's catalog simultaneously. 6 fitness critics score every result. 29 processing techniques |
+| **Spectral Perception** | Real-time ears via M4L — 8-band FFT, RMS/peak metering, Krumhansl-Schmuckler key detection, pitch tracking. Closes the feedback loop so the AI hears its own changes |
+| **Technique Memory** | Persistent library of production decisions. Save a beat pattern, device chain, or mix template. Recall by mood, genre, or texture across sessions |
+| **Creative Intelligence** | 12 engines that understand song identity, learn your taste, diagnose stuck sessions, generate creative options, and evaluate results before claiming success |
+
+<br>
+
+---
+
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                                                             │
-│   KNOWLEDGE            PERCEPTION           MEMORY          │
-│   ───────────          ──────────           ──────          │
-│                                                             │
-│   1305 devices         8-band FFT           recall by       │
-│   81 enriched          RMS / peak           mood, genre,    │
-│   683 drum kits        pitch tracking       texture         │
-│   Splice catalog       key detection                        │
-│                                                             │
-│   ┌────────────┐      ┌────────────┐      ┌────────────┐   │
-│   │   Device   │─────▶│    M4L     │─────▶│ Technique  │   │
-│   │   Atlas    │      │  Analyzer  │      │   Store    │   │
-│   └─────┬──────┘      └─────┬──────┘      └─────┬──────┘   │
-│         └───────────────────┼───────────────────┘           │
-│                             ▼                               │
-│                    ┌─────────────────┐                      │
-│                    │   316 MCP Tools  │                      │
-│                    │   43 domains     │                      │
-│                    └────────┬────────┘                      │
-│                             │                               │
-│             Remote Script ──┤── TCP 9878                    │
-│             M4L Bridge ─────┤── UDP 9880 / OSC 9881         │
-│                             │                               │
-│                    ┌────────────────┐                       │
-│                    │  Ableton Live  │                       │
-│                    └────────────────┘                       │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│                                                                      │
+│  KNOWLEDGE               PERCEPTION              MEMORY              │
+│  ──────────────          ──────────────          ──────────────       │
+│                                                                      │
+│  Device Atlas            8-band FFT              recall by mood,     │
+│  1305 devices            RMS / peak              genre, texture      │
+│  81 enriched             pitch tracking          29 techniques       │
+│  683 drum kits           key detection           replay into session │
+│                                                                      │
+│  Sample Engine           Corpus Intelligence     Taste Graph          │
+│  Splice catalog (gRPC)   EmotionalRecipe         move preferences    │
+│  Browser search          GenreChain              device affinities   │
+│  Filesystem scan         PhysicalModelRecipe     novelty tolerance   │
+│  6 fitness critics       AutomationGesture                           │
+│                                                                      │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐               │
+│  │  Device      │  │  M4L         │  │  Technique   │               │
+│  │  Atlas       │──│  Analyzer    │──│  Memory      │               │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘               │
+│         │                 │                  │                        │
+│  ┌──────┴───────┐  ┌──────┴───────┐  ┌──────┴───────┐               │
+│  │  Sample      │  │  Corpus      │  │  Composer    │               │
+│  │  Engine      │  │  Intelligence│  │  Engine      │               │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘               │
+│         └─────────────────┼──────────────────┘                       │
+│                           ▼                                          │
+│                  ┌─────────────────┐                                  │
+│                  │   316 MCP Tools  │                                  │
+│                  │   43 domains     │                                  │
+│                  └────────┬────────┘                                  │
+│                           │                                          │
+│           Remote Script ──┤── TCP 9878                                │
+│           M4L Bridge ─────┤── UDP 9880 / OSC 9881                    │
+│           Splice Client ──┤── gRPC (auto-detected port)              │
+│                           │                                          │
+│                  ┌────────────────┐                                   │
+│                  │  Ableton Live  │                                   │
+│                  │      12        │                                   │
+│                  └────────────────┘                                   │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
-The **atlas** gives the AI knowledge of every device in Ableton's library —
-real names, real URIs, real parameters.
+### How the pieces connect
 
-The **analyzer** gives it ears — spectral data from the master bus
-via a Max for Live device.
+**Remote Script** (`remote_script/LivePilot/`) — A Python ControlSurface that runs inside Ableton's process. Listens on TCP 9878. All Live Object Model calls execute on Ableton's main thread via `schedule_message`. Detects Ableton version at startup and enables three capability tiers: Core (12.0+), Enhanced Arrangement (12.1.10+), Full Intelligence (12.3+).
 
-The **memory** gives it history — a searchable library of production decisions
-that persists across sessions.
+**MCP Server** (`mcp_server/`) — Python FastMCP server. Validates inputs, routes commands to the Remote Script over TCP, manages the M4L bridge, runs the atlas, sample engine, composer, and all intelligence engines. This is what your AI client connects to.
 
-All three feed into 316 deterministic tools that execute on Ableton's main thread.
+**M4L Bridge** (`m4l_device/`) — Optional Max for Live Audio Effect on the master track. Provides deep LOM access through Max's LiveAPI that the ControlSurface API can't reach. UDP 9880 (M4L to server) carries spectral data and LiveAPI responses. OSC 9881 (server to M4L) sends commands. 27 bridge tools for hidden parameters, Simpler internals, warp markers, and display values.
+
+**Device Atlas** (`mcp_server/atlas/`) — In-memory indexed JSON database. 1305 devices with browser URIs, 81 enriched with YAML sonic intelligence profiles (mood, genre, texture, recommended chains). 6 indexes: by_id, by_name, by_uri, by_category, by_tag, by_genre. The AI never hallucinates a device name or preset — it always resolves against the atlas first.
+
+**Sample Engine** (`mcp_server/sample_engine/`) — Searches three sources simultaneously: BrowserSource (Ableton's library), SpliceSource (local Splice catalog via SQLite), FilesystemSource (user directories). Every result passes through a 6-critic fitness battery (key, tempo, spectral, genre, mood, technical). 29 processing techniques (Surgeon precision vs. Alchemist experimentation). Builds complete sample processing plans with warp, slice, and effect recommendations.
+
+**Splice Client** (`mcp_server/splice_client/`) — gRPC client that talks to Splice's desktop app. Auto-detects the port from `port.conf`, connects over TLS with self-signed certificates. Searches the full Splice catalog, checks credit balance, downloads samples. Safety floor of 5 credits — refuses to spend below that. Works without a Splice subscription (searches local downloads).
+
+**Composer** (`mcp_server/composer/`) — Prompt-to-plan pipeline. Parses natural language ("dark minimal techno 128bpm with industrial textures") into a CompositionIntent (genre, mood, tempo, key). Plans layers using role templates (kick, bass, percussion, texture, lead, pad, fx). Compiles to executable tool sequences. 7 genre defaults (techno, house, ambient, hip-hop, dnb, dub, experimental). Integrates with Sample Engine for Splice-augmented compositions.
+
+**Corpus** (`mcp_server/corpus/`) — Parsed device-knowledge markdown converted to queryable Python structures: EmotionalRecipe, GenreChain, PhysicalModelRecipe, AutomationGesture. Feeds Wonder Mode, Sound Design critics, and the Composer with deep creative knowledge at runtime — not just LLM prompts, actual structured data.
+
+**Execution Router** (`mcp_server/runtime/execution_router.py`) — Classifies each step in a multi-step plan as remote_command (TCP to Ableton), bridge_command (OSC to M4L), or mcp_tool (internal), then dispatches it through the correct channel.
 
 <br>
 
@@ -79,70 +120,51 @@ All three feed into 316 deterministic tools that execute on Ableton's main threa
 
 ## The Intelligence Layer
 
-Most MCP servers are tool collections — they execute commands. LivePilot is an **agentic production system** — it understands what a song is becoming, diagnoses when a session is stuck, generates real creative options, learns from your decisions, and tracks its own impact.
-
-This is the V2 intelligence layer: 12 engines that sit on top of the 316 tools and give the AI musical judgment, not just musical execution.
+12 engines sit on top of the 316 tools. They give the AI musical judgment, not just musical execution.
 
 ### SongBrain — What the Song Is
 
-SongBrain builds a real-time model of the current session: what the defining idea is (identity core), what elements must not be casually damaged (sacred elements), what each section is trying to do emotionally (section purposes), and where the energy arc is heading. It answers the question every producer asks: *"What is this track?"*
-
-It detects when the song's identity is drifting — when recent edits are pulling the track away from what made it work. When identity confidence is high, the system makes bolder suggestions. When it's fragile, it protects what's there.
+Builds a real-time model of the session: identity core (what defines this track), sacred elements (what must not be casually damaged), section purposes (what each part is doing emotionally), energy arc (where the song is heading). Detects identity drift when edits pull the track away from what made it work.
 
 ### Taste Graph — What You Like
 
-The Taste Graph learns your production preferences across sessions. Not just "prefers reverb" — it tracks which move families you keep vs. undo (mix moves? arrangement moves?), which devices you gravitate toward, how experimental you want suggestions to be (your novelty band), and which dimensions you actively avoid.
-
-Every time you accept or reject a suggestion, the graph updates. Over time, it personalizes which creative options are offered and how they're ranked. Two producers using the same tools get different recommendations.
+Learns your production preferences across sessions. Tracks which move families you keep vs. undo, which devices you gravitate toward, how experimental you want suggestions (novelty band), and which dimensions you avoid. Every accept/reject updates the graph. Two producers using the same tools get different recommendations.
 
 ### Semantic Moves — Musical Actions, Not Parameters
 
-A semantic move is a high-level musical intent — "add contrast," "tighten the low end," "build tension toward the chorus" — that compiles into a specific sequence of tool calls. The system has 26+ moves across 6 families (mix, arrangement, transition, sound design, sample, device creation), each with an executable plan.
-
-Moves carry risk levels, target dimensions, and protection thresholds. "Add a filter sweep build" targets energy and tension while protecting clarity. The AI doesn't just know what to do — it knows what it's risking.
+26+ high-level intents ("add contrast," "tighten the low end," "build tension") that compile into tool sequences. Each move carries a risk level, target dimensions, and protection thresholds. The AI knows what it's risking with every action.
 
 ### Wonder Mode — Stuck-Rescue Workflow
 
-When a session is stuck — too many undos, polishing the same loop, no structural progress — Wonder Mode activates. It's not "surprise me." It's a structured diagnosis-and-rescue workflow:
+When a session is stuck — repeated undos, overpolished loops, no structural progress — Wonder Mode activates:
 
-1. **Diagnose** — Why is the session stuck? Repeated undos? Overpolished loop? Missing contrast? Identity unclear? The stuckness detector analyzes the action history and classifies the problem.
-
-2. **Generate** — Based on the diagnosis, Wonder searches for semantic moves that address the specific problem. It enforces real distinctness — each variant must differ by move family or execution approach. If only one real option exists, it says so honestly instead of relabeling the same idea three times.
-
-3. **Preview** — Each executable variant can be applied, captured, and undone using Ableton's undo system. You hear what each option would actually sound like before committing.
-
-4. **Commit or Reject** — Choose one, and the system records it into taste and session continuity. Reject all, and the creative thread stays open for another attempt. No fake outcomes are recorded.
+1. **Diagnose** — classify the stuckness (loop trap? missing contrast? identity unclear?)
+2. **Generate** — find semantic moves that address the diagnosis, enforcing real distinctness
+3. **Preview** — apply each variant, capture, undo. Hear before committing
+4. **Commit or Reject** — choice recorded into taste and session continuity
 
 ### Creative Engines
 
-Six specialized engines handle different aspects of production intelligence:
-
 | Engine | What it does |
 |--------|-------------|
-| **Mix Engine** | Critic-driven mix analysis. Identifies masking, headroom issues, stereo problems. Plans corrective moves with before/after evaluation. |
-| **Sound Design Engine** | Analyzes patches for static timbre, missing modulation, weak transients. Suggests parameter moves and evaluates the result. |
-| **Transition Engine** | Classifies transition types (drop, build, breakdown). Scores transition quality and plans improvements using archetypes. |
-| **Composition Engine** | Analyzes song structure, detects motifs, infers section purposes, scores emotional arcs. Plans arrangement moves. |
-| **Performance Engine** | Safety-constrained suggestions for live performance. Knows which moves are safe during playback and which risk audio dropouts. |
-| **Reference Engine** | Distills principles from reference tracks. Maps those principles to your current session as concrete, actionable moves. |
+| **Mix Engine** | Critic-driven analysis: masking, headroom, stereo, dynamics. Plans corrective moves with before/after evaluation |
+| **Sound Design Engine** | Analyzes patches for static timbre, missing modulation, weak transients. Suggests parameter moves |
+| **Transition Engine** | Classifies transition types (drop, build, breakdown). Scores quality, plans improvements from archetypes |
+| **Composition Engine** | Section analysis, motif detection, emotional arcs. Plans structural moves |
+| **Performance Engine** | Safety-constrained suggestions for live sets. Knows which moves risk audio dropouts |
+| **Reference Engine** | Distills principles from reference tracks. Maps them to your session as concrete moves |
 
-### Hook Hunter — Finding What Matters
+### Hook Hunter
 
-The Hook Hunter identifies the most salient musical idea in a session — the element listeners would remember. It ranks candidates by rhythmic distinctiveness, melodic contour, and repetition. Then it tracks whether hooks are being developed, neglected, or undermined by arrangement choices.
+Identifies the most salient musical idea — ranks by rhythmic distinctiveness, melodic contour, repetition. Tracks whether hooks are developed, neglected, or undermined. Flags when a transition fails to deliver expected payoff.
 
-When the hook is strong but underused, it flags it. When a transition fails to deliver the expected payoff, it diagnoses why.
+### Session Continuity
 
-### Session Continuity — The Story of Your Session
+Maintains creative threads ("the chorus needs more lift") and turn resolutions across the session. When you return to a project: *"Last time, you kept the filter sweep for the bridge. The chorus lift thread is still open."*
 
-Session Continuity tracks what happened, what changed, and what's still unresolved. It maintains creative threads (open questions like "the chorus needs more lift") and records turn resolutions (what you tried, whether you kept it, how it affected identity).
+### Evaluation Loop
 
-When you return to a project, the session story tells the AI: *"Last time, you were working on making the bridge darker. You tried three approaches and kept the filter sweep. The chorus lift thread is still open."*
-
-### Evaluation Loop — Verify Before Claiming Success
-
-Every creative engine follows the same discipline: **measure before, act, measure after, compare**. The evaluation system captures session state snapshots, runs the change, captures again, and scores the difference. If the change made things worse — more masking, lost headroom, identity drift — the system flags it before you move on.
-
-This closes the gap between "the AI did something" and "the AI did something that actually helped."
+Every engine follows: **measure before → act → measure after → compare**. If a change made things worse (more masking, lost headroom, identity drift), the system flags it before you move on.
 
 <br>
 
@@ -154,7 +176,7 @@ This closes the gap between "the AI did something" and "the AI did something tha
 
 <br>
 
-### Core
+### Core (210 tools)
 
 | Domain | # | What it covers |
 |--------|:-:|----------------|
@@ -166,14 +188,20 @@ This closes the gap between "the AI did something" and "the AI did something tha
 | Scenes | 12 | create, delete, duplicate, fire, name, color, tempo, scene matrix |
 | Browser | 4 | search library, browse tree, load items, filter by category |
 | Mixing | 11 | volume, pan, sends, routing, meters, return tracks, master, full mix snapshot |
-| Arrangement | 21 | timeline clips, native arrangement clips (12.1.10+), arrangement notes, arrangement automation, recording, cue points |
+| Arrangement | 21 | timeline clips, native arrangement clips (12.1.10+), arrangement notes, automation, recording, cue points |
+| Automation | 8 | 16 curve types, 15 recipes (filter sweep, sidechain pump, dub throw...), spectral suggestions |
+| Theory | 7 | Krumhansl-Schmuckler key detection, Roman numeral analysis, species counterpoint, SATB harmonization |
+| Harmony | 4 | neo-Riemannian PRL transforms, Tonnetz navigation, voice leading paths, chromatic mediants |
+| Generative | 5 | Euclidean rhythm (Bjorklund), tintinnabuli (Arvo Part), phase shift (Steve Reich), additive process (Philip Glass) |
+| Memory | 8 | save, recall, replay, manage production techniques by mood/genre/texture |
+| MIDI I/O | 4 | export/import .mid, offline analysis, piano roll extraction |
+| Perception | 4 | offline loudness (integrated LUFS, LRA), spectral analysis, reference comparison |
 
 <br>
 
-### Perception — 30 tools `[M4L]`
+### M4L Bridge — 27 tools `[optional]`
 
-The M4L Analyzer sits on the master track. UDP 9880 carries spectral data
-from Max to the server. OSC 9881 sends commands back.
+The M4L Analyzer sits on the master track. UDP 9880 carries spectral data to the server. OSC 9881 sends commands back.
 
 > [!TIP]
 > All 289 core tools work without the analyzer — it adds 27 bridge tools and closes the feedback loop.
@@ -198,227 +226,141 @@ WARP ─────────── get / add / move / remove markers
 
 <br>
 
-### Intelligence
+### Device Atlas — 6 tools
 
-<details>
-<summary><strong>Theory — 7 tools</strong></summary>
+The atlas is an in-memory indexed database of Ableton's entire device library.
+
+```
+1305 devices total
+  81 enriched with sonic intelligence (mood, genre, texture, chains)
+ 683 drum kits mapped with note assignments
+   6 indexes: by_id, by_name, by_uri, by_category, by_tag, by_genre
+```
+
+```
+atlas_search           Search devices by name, category, or tag
+atlas_suggest          Suggest devices for a musical intent (e.g., "warm pad")
+atlas_chain            Build a device chain from a genre or purpose
+atlas_compare          Compare two devices side-by-side
+atlas_detail           Get full enriched profile for a device
+atlas_library_scan     Scan what's actually installed on this machine
+```
 
 <br>
 
-Krumhansl-Schmuckler key detection with 7 mode profiles:
-major, minor, dorian, phrygian, lydian, mixolydian, locrian.
+### Sample Engine — 6 tools
 
-Roman numeral analysis via scale-degree chord matching
-on a 1/32 note quantization grid.
-
-Voice leading checks — parallel fifths, parallel octaves,
-voice crossing, unresolved dominants.
-
-Species counterpoint generation (1st and 2nd species).
-SATB harmonization with smooth voice leading.
-Diatonic transposition that preserves scale relationships.
+Three-source sample intelligence with critic-driven fitness scoring.
 
 ```
-analyze_harmony         suggest_next_chord      detect_theory_issues
-identify_scale          harmonize_melody         generate_countermelody
-transpose_smart
+SOURCES ─────────── BrowserSource  (Ableton's built-in library)
+                    SpliceSource   (local Splice catalog via SQLite)
+                    FilesystemSource (user-specified directories)
+
+CRITICS ─────────── key fitness · tempo fitness · spectral match
+                    genre alignment · mood alignment · technical quality
+
+TECHNIQUES ─────── 29 processing recipes:
+                    Surgeon (precise, transparent) vs.
+                    Alchemist (experimental, transformative)
 ```
 
-</details>
-
-<details>
-<summary><strong>Harmony — 4 tools</strong></summary>
+```
+analyze_sample         Build a complete SampleProfile (material, key, BPM, spectral)
+search_samples         Multi-source search with critic scoring
+suggest_sample_move    Recommend processing technique for a sample
+build_sample_plan      Full processing pipeline: warp + slice + effects
+list_sample_techniques Browse the 29-technique library
+get_sample_technique   Get detailed recipe for a specific technique
+```
 
 <br>
 
-Neo-Riemannian PRL transforms on the Tonnetz.
+### Splice Integration
 
-```
-P  flips the third ─────── Cm ↔ C
-L  shifts by semitone ──── C  ↔ Em
-R  shifts by whole tone ── C  ↔ Am
-```
+LivePilot connects to Splice's desktop app via gRPC. No API key needed — it talks to the Splice app running on your machine.
 
-All three are involutions — apply twice, return to origin.
+**What it does:**
+- Searches the full Splice catalog (millions of samples)
+- Checks your credit balance before spending
+- Downloads samples directly into your project
+- Safety floor: refuses to spend if you have fewer than 5 credits remaining
+- Works without a subscription — still searches your locally downloaded Splice samples
 
-BFS through PRL space finds the shortest voice-leading path
-between any two triads. Cm to E major? That's PLP — the hexatonic pole.
-Three steps, each moving one voice by a semitone.
-The Hitchcock chord change.
+**How it works:** The Splice desktop app exposes a local gRPC API. LivePilot's `splice_client` auto-detects the port from Splice's `port.conf` file, connects over TLS with Splice's self-signed certificates, and sends search/download requests.
 
-Chromatic mediants for film-score harmony: chords a major/minor third away
-sharing 0-1 common tones. Maximum color shift, minimal voice movement.
-
-```
-navigate_tonnetz        find_voice_leading_path
-classify_progression    suggest_chromatic_mediants
-```
-
-</details>
-
-<details>
-<summary><strong>Generative — 5 tools</strong></summary>
+**Requirements:** Splice desktop app installed and running. That's it.
 
 <br>
 
-**Euclidean Rhythm** — Bjorklund distributes N pulses across M steps.
-Bresenham's line algorithm applied to rhythm.
+### Composer — 3 tools
+
+Prompt-to-plan auto-composition engine.
 
 ```
-E(3,8)  = tresillo          ×··×··×·
-E(5,8)  = cinquillo          ×·××·××·
-E(7,16) = Brazilian necklace ×·×·×××·×·×·×××·
+"dark minimal techno 128bpm with industrial textures and ghostly vocals"
+    │
+    ▼
+┌─────────────────┐
+│  Prompt Parser   │ → CompositionIntent (genre, mood, tempo, key)
+└────────┬────────┘
+         ▼
+┌─────────────────┐
+│  Layer Planner   │ → role templates (kick, bass, perc, texture, lead, pad, fx)
+└────────┬────────┘
+         ▼
+┌─────────────────┐
+│  Plan Compiler   │ → executable tool sequences
+└────────┬────────┘
+         ▼
+┌─────────────────┐
+│ Execution Router │ → dispatches: create tracks, search samples, load devices,
+│                  │   program notes, set volumes, build arrangement
+└─────────────────┘
 ```
 
-Layer multiple patterns at different pitches for polyrhythmic textures.
-
-**Tintinnabuli** (Arvo Pärt) — for each melody note, find the nearest tone
-of a specified triad. Two voices, one rule, infinite music.
-
-**Phase Shifting** (Steve Reich) — identical voices with accumulating timing drift.
-They start in unison, gradually separate, and eventually realign.
-
-**Additive Process** (Philip Glass) — melody unfolds note by note.
-The structure *is* the composition.
-
-```
-generate_euclidean_rhythm    layer_euclidean_rhythms
-generate_tintinnabuli        generate_phase_shift
-generate_additive_process
-```
-
-</details>
-
-<details>
-<summary><strong>Automation — 8 tools</strong></summary>
+- 7 genre defaults: techno, house, ambient, hip-hop, dnb, dub, experimental
+- Integrates with Sample Engine for Splice-augmented compositions
+- `compose` — full multi-layer composition from text
+- `augment_with_samples` — add layers to existing session
+- `get_composition_plan` — dry-run preview (see the plan before executing)
 
 <br>
 
-16 curve types in 4 categories:
+### Device Forge — 3 tools
+
+Generate M4L audio effect devices from `gen~` templates and install them into Ableton's browser.
 
 ```
-BASIC ──────────── linear · exponential · logarithmic · s_curve
-                   sine · sawtooth · spike · square · steps
-
-ORGANIC ─────────── perlin · brownian · spring
-
-SHAPE ──────────── bezier · easing
-                   (bounce, elastic, back, quad, cubic,
-                    quart, quint, expo)
-
-GENERATIVE ─────── euclidean · stochastic
+forge_device           Generate a device from a gen~ template
+forge_list_templates   Browse available gen~ templates
+forge_install          Install generated device to browser
 ```
-
-15 built-in recipes:
-
-```
-filter_sweep_up     filter_sweep_down    dub_throw
-tape_stop           build_rise           sidechain_pump
-fade_in             fade_out             tremolo
-auto_pan            stutter              breathing
-washout             vinyl_crackle        stereo_narrow
-```
-
-Perception-action loop: `analyze_for_automation` reads the spectrum
-and device chain, suggests what to automate, and maps each suggestion
-to a recipe.
-
-```
-get_clip_automation      set_clip_automation       clear_clip_automation
-apply_automation_shape   apply_automation_recipe   get_automation_recipes
-generate_automation_curve                          analyze_for_automation
-```
-
-</details>
-
-<details>
-<summary><strong>Memory — 8 tools</strong></summary>
 
 <br>
 
-Persistent technique library across sessions.
+### Agentic Intelligence — 79 tools
 
-Five types: `beat_pattern` · `device_chain` · `mix_template` · `preference` · `browser_pin`
-
-Each stores:
-- **Identity** — name, tags, timestamps
-- **Qualities** — mood, genre, texture, production notes
-- **Payload** — raw MIDI, device params, tempo, URIs
-
-Recall by text query matching mood, genre, texture — not just names.
-
-```
-memory_learn     memory_recall     memory_list       memory_get
-memory_update    memory_delete     memory_favorite   memory_replay
-```
-
-</details>
-
-<details>
-<summary><strong>MIDI I/O — 4 tools</strong></summary>
-
-<br>
-
-Export session clips to standard .mid files.
-Import .mid into session clips — auto-creates the clip, tempo-aware timing.
-
-Offline analysis without Ableton: note count, duration, tempo,
-pitch range, velocity stats, density curve, key estimate.
-
-Piano roll extraction: 2D velocity matrix at configurable resolution
-(default 1/32 note).
-
-```
-export_clip_midi     import_midi_to_clip
-analyze_midi_file    extract_piano_roll
-```
-
-</details>
-
-<details>
-<summary><strong>Perception — 4 tools</strong></summary>
-
-<br>
-
-Offline audio analysis — no M4L required.
-
-```
-analyze_loudness        Integrated LUFS, true peak, LRA, streaming compliance
-analyze_spectrum_offline  Spectral centroid, rolloff, flatness, 5-band balance
-compare_to_reference    Mix vs reference: loudness + spectral delta
-read_audio_metadata     Format, duration, sample rate, tags
-```
-
-</details>
-
-<br>
-
-### Agentic Intelligence — 106 tools
-
-The V2 intelligence layer. These tools don't just execute commands — they analyze, diagnose, plan, evaluate, and learn.
+The V2 intelligence layer. These tools analyze, diagnose, plan, evaluate, and learn.
 
 | Domain | # | What it does |
 |--------|:-:|-------------|
 | Agent OS | 8 | session kernel, action ledger, capability state, routing, turn budget |
-| Composition | 9 | section analysis, motif detection, emotional arc, form planning, section transforms |
+| Composition | 9 | section analysis, motif detection, emotional arc, form planning |
 | Evaluation | 1 | before/after evaluation with structured scoring |
-| Mix Engine | 6 | critic-driven mix analysis, issue detection, move planning, masking reports |
+| Mix Engine | 6 | critic-driven mix analysis, masking, headroom, stereo, dynamics |
 | Sound Design | 4 | patch analysis, modulation planning, timbre scoring |
 | Transition Engine | 5 | transition classification, scoring, archetype-based planning |
-| Reference Engine | 5 | reference profiling, principle distillation, gap analysis, move mapping |
+| Reference Engine | 5 | reference profiling, principle distillation, gap analysis |
 | Translation Engine | 3 | cross-domain translation, issue detection |
-| Performance Engine | 3 | safety-constrained suggestions, safe move lists, scene handoff planning |
-| Song Brain | 3 | identity inference, sacred element detection, drift monitoring |
-| Hook Hunter | 9 | hook detection, salience scoring, development strategies, neglect detection, phrase impact |
-| Stuckness Detector | 3 | momentum analysis, rescue classification, structured rescue workflows |
-| Wonder Mode | 3 | diagnosis-driven variant generation, taste-aware ranking, session discard |
-| Session Continuity | 7 | creative threads, turn resolution, taste vs identity ranking, session story |
-| Creative Constraints | 5 | constraint activation, reference-inspired variants, constrained generation |
-| Preview Studio | 5 | variant creation, preview rendering, comparison, commit, discard |
-| **Device Atlas** | **6** | **search 1305 devices, suggest by intent, chain building, device comparison, library scan** |
-| **Sample Engine** | **6** | **multi-source sample search (Splice/Browser/filesystem), fitness critics, technique library** |
-| **Device Forge** | **3** | **generate M4L devices from gen~ templates, install to browser** |
-| **Composer** | **3** | **prompt → multi-layer composition, sample augmentation, plan preview** |
+| Performance Engine | 3 | safety-constrained suggestions, safe moves, scene handoff |
+| Song Brain | 3 | identity inference, sacred elements, drift monitoring |
+| Hook Hunter | 9 | hook detection, salience scoring, neglect detection, phrase impact |
+| Stuckness Detector | 3 | momentum analysis, rescue classification, rescue workflows |
+| Wonder Mode | 3 | diagnosis-driven variants, taste-aware ranking |
+| Session Continuity | 7 | creative threads, turn resolution, session story |
+| Creative Constraints | 5 | constraint activation, reference-inspired variants |
+| Preview Studio | 5 | variant creation, preview rendering, comparison, commit |
 
 > **[View all 316 tools →](docs/manual/tool-catalog.md)**
 
@@ -446,7 +388,7 @@ Claude Desktop installs everything automatically. Then:
 npx livepilot --setup
 ```
 
-This runs the full setup wizard: checks Python, installs the Remote Script, creates the Python environment, copies the M4L Analyzer, and tests the Ableton connection.
+Runs the full setup wizard: checks Python, installs the Remote Script, creates the Python environment, copies the M4L Analyzer, and tests the Ableton connection.
 
 ### Manual: Step by Step
 
@@ -519,20 +461,27 @@ livepilot --install
 </details>
 
 <details>
-<summary><strong>3. M4L Analyzer (optional)</strong></summary>
+<summary><strong>3. M4L Analyzer (optional — adds 27 tools)</strong></summary>
 
 Drag `LivePilot_Analyzer.amxd` onto the master track for real-time spectral analysis.
 The `--setup` wizard and Desktop Extension do this automatically.
 
+> **Important:** The Analyzer must be the LAST device on the master track — after all effects (EQ, Compressor, Utility) so it reads the final output signal.
+
 </details>
 
-Unlocks 29 additional tools: spectral analysis, key detection,
-sample manipulation, deep device introspection, plugin parameter mapping.
+<details>
+<summary><strong>4. Splice (optional — adds sample catalog)</strong></summary>
 
-> [!IMPORTANT]
-> All core tools work without the analyzer. It adds perception, not dependency.
+Just have the Splice desktop app running. LivePilot auto-detects it.
 
-### 4. Verify
+No API key, no configuration. The Splice client finds the local gRPC port automatically and connects over TLS.
+
+If you don't have Splice, the Sample Engine still searches Ableton's browser and your filesystem — Splice just adds the catalog as a third source.
+
+</details>
+
+### Verify
 
 ```bash
 npx livepilot --status
@@ -550,9 +499,6 @@ npx livepilot --status
 npx livepilot --install-codex-plugin
 ```
 
-Installs the bundled plugin into `~/plugins/livepilot` and registers it in
-`~/.agents/plugins/marketplace.json`.
-
 **Claude Code**
 
 ```bash
@@ -563,15 +509,19 @@ claude plugin add github:dreamrec/LivePilot/plugin
 |---------|------|
 | `/session` | Full session overview with diagnostics |
 | `/beat` | Guided beat creation |
+| `/arrange` | Guided arrangement and song structure |
 | `/mix` | Mixing assistant |
 | `/sounddesign` | Sound design workflow |
+| `/perform` | Live performance mode with safety constraints |
+| `/evaluate` | Before/after evaluation of recent changes |
 | `/memory` | Technique library management |
 
 **Producer Agent** — autonomous multi-step production.
 Consults memory for style context, searches the atlas for instruments,
-creates tracks, programs MIDI, chains effects, reads the spectrum to verify.
+queries Splice for samples, creates tracks, programs MIDI, chains effects,
+reads the spectrum to verify, and arranges sections.
 
-**Core Skill** — operational discipline connecting all three layers.
+**Core Skill** — operational discipline connecting all layers.
 Consult atlas before loading. Read analyzer after mixing.
 Check memory before creative decisions. Verify every mutation.
 
@@ -583,6 +533,7 @@ Check memory before creative decisions. Verify every mutation.
 
 ```bash
 npx livepilot              # Start MCP server (stdio)
+npx livepilot --setup      # Full setup wizard
 npx livepilot --install    # Install Remote Script
 npx livepilot --uninstall  # Remove Remote Script
 npx livepilot --install-codex-plugin   # Install bundled Codex plugin
@@ -598,10 +549,18 @@ npx livepilot --version    # Show version
 
 ## Compatibility
 
-- **Ableton Live 12** — all editions. Suite required for Max for Live and stock instruments (Drift, Meld, Wavetable).
-- **Python** 3.9+
-- **Node.js** 18+
-- **macOS / Windows**
+| Requirement | Minimum |
+|-------------|---------|
+| Ableton Live | **12** (any edition). Suite required for Max for Live bridge and stock instruments |
+| Python | 3.9+ |
+| Node.js | 18+ |
+| OS | macOS / Windows |
+| Splice | Desktop app (optional — enables catalog search) |
+
+**Version tiers:**
+- **Core (12.0+):** All session tools, mixing, devices, MIDI, theory, generative, memory
+- **Enhanced Arrangement (12.1.10+):** Native arrangement clips, arrangement automation
+- **Full Intelligence (12.3+):** `insert_device_native`, complete device insertion pipeline
 
 <br>
 
@@ -622,6 +581,24 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for architecture details, code guidelines
 
 ---
 
+## Documentation
+
+| Document | What's inside |
+|----------|---------------|
+| [Manual](docs/manual/index.md) | Complete reference: architecture, all 316 tools, workflows |
+| [Tool Catalog](docs/manual/tool-catalog.md) | Every tool organized by domain |
+| [Tool Reference](docs/manual/tool-reference.md) | Every tool with parameters, ranges, usage notes |
+| [Getting Started](docs/manual/getting-started.md) | Zero to sound in five minutes |
+| [MIDI Guide](docs/manual/midi-guide.md) | Drum patterns, scales, chords, humanization |
+| [Sound Design](docs/manual/sound-design.md) | Instruments, effects, parameter recipes |
+| [Mixing](docs/manual/mixing.md) | Gain staging, EQ, compression, sends, stereo width |
+| [M4L Bridge](docs/M4L_BRIDGE.md) | Technical reference for the Max for Live analyzer |
+| [Troubleshooting](docs/manual/troubleshooting.md) | Connection issues, common errors, diagnostics |
+
+<br>
+
+---
+
 ## Community
 
 - [Discussions](https://github.com/dreamrec/LivePilot/discussions) — questions, ideas, show & tell
@@ -636,20 +613,20 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for architecture details, code guidelines
 
 ## Support
 
-LivePilot is free and open source. Building it takes hundreds of hours, an Ableton Suite license, and a Claude subscription. If LivePilot saves you time in your sessions, consider supporting development:
+LivePilot is source-available under the [Business Source License 1.1](LICENSE). If it saves you time in your sessions:
 
 <p align="center">
-  <a href="https://www.patreon.com/c/dreamrec"><strong>Support on Patreon</strong></a> · <a href="https://github.com/sponsors/dreamrec">GitHub Sponsors</a>
+  <a href="https://github.com/sponsors/dreamrec"><strong>Sponsor on GitHub</strong></a>
 </p>
 
-Supporters get early access to new features, premium skills, curated technique libraries, and direct support.
+Sponsors get early access to new features, premium skills, curated technique libraries, and direct support.
 
 <br>
 
 ---
 
 <p align="center">
-  <a href="LICENSE">MIT</a> — Pilot Studio
+  <a href="LICENSE">BSL-1.1</a> — Pilot Studio
   <br><br>
   Sister projects: <a href="https://github.com/dreamrec/TDPilot">TDPilot</a> (TouchDesigner) · <a href="https://github.com/dreamrec/ComfyPilot">ComfyPilot</a> (ComfyUI)
 </p>
