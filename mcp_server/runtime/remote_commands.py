@@ -48,8 +48,9 @@ REMOTE_COMMANDS: frozenset[str] = frozenset({
     # browser (5)
     "get_browser_tree", "get_browser_items", "search_browser",
     "load_browser_item", "get_device_presets",
-    # arrangement (19)
+    # arrangement (21)
     "get_arrangement_clips", "create_arrangement_clip",
+    "create_native_arrangement_clip",
     "add_arrangement_notes", "get_arrangement_notes",
     "remove_arrangement_notes", "remove_arrangement_notes_by_id",
     "modify_arrangement_notes", "duplicate_arrangement_notes",

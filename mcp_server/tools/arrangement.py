@@ -144,6 +144,48 @@ def create_arrangement_clip(
 
 
 @mcp.tool()
+def create_native_arrangement_clip(
+    ctx: Context,
+    track_index: int,
+    start_time: float,
+    length: float,
+    name: str = "",
+    color_index: Optional[int] = None,
+) -> dict:
+    """Create an empty MIDI clip directly in Arrangement View (Live 12.1.10+).
+
+    Unlike create_arrangement_clip (which duplicates a session clip), this creates
+    a native arrangement clip with full automation envelope support — volume rides,
+    filter sweeps, send automation all work natively.
+
+    Requires Live 12.1.10+. Falls back with a clear error on older versions.
+
+    track_index: 0+ for regular MIDI tracks
+    start_time:  beat position (0.0 = song start, 4.0 = bar 2 in 4/4)
+    length:      clip length in beats
+    name:        optional clip display name
+    color_index: optional 0-69 Ableton color
+    """
+    _validate_track_index(track_index)
+    if start_time < 0:
+        raise ValueError("start_time must be >= 0")
+    if length <= 0:
+        raise ValueError("length must be > 0")
+
+    params = {
+        "track_index": track_index,
+        "start_time": start_time,
+        "length": length,
+    }
+    if name:
+        params["name"] = name
+    if color_index is not None:
+        params["color_index"] = color_index
+
+    return _get_ableton(ctx).send_command("create_native_arrangement_clip", params)
+
+
+@mcp.tool()
 def add_arrangement_notes(
     ctx: Context,
     track_index: int,

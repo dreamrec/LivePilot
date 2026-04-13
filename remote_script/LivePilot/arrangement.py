@@ -169,6 +169,70 @@ def create_arrangement_clip(song, params):
     }
 
 
+@register("create_native_arrangement_clip")
+def create_native_arrangement_clip(song, params):
+    """Create an empty MIDI clip in arrangement using the native 12.1.10+ API.
+
+    Unlike create_arrangement_clip (which duplicates a session clip),
+    this creates a true native clip with full automation envelope support.
+
+    Required: track_index, start_time, length
+    Optional: name, color_index
+    """
+    from .version_detect import has_feature
+
+    if not has_feature("create_midi_clip_arrangement"):
+        raise RuntimeError(
+            "create_native_arrangement_clip requires Live 12.1.10+. "
+            "Use create_arrangement_clip (session clip duplication) instead."
+        )
+
+    track_index = int(params["track_index"])
+    start_time = float(params["start_time"])
+    length = float(params["length"])
+    if length <= 0:
+        raise ValueError("length must be > 0")
+    if start_time < 0:
+        raise ValueError("start_time must be >= 0")
+
+    track = get_track(song, track_index)
+    if not track.has_midi_input:
+        raise ValueError(
+            "Track %d is not a MIDI track — create_native_arrangement_clip "
+            "only works on MIDI tracks" % track_index
+        )
+
+    song.begin_undo_step()
+    try:
+        clip = track.create_midi_clip(start_time, length)
+
+        name = params.get("name")
+        if name:
+            clip.name = str(name)
+        color_index = params.get("color_index")
+        if color_index is not None:
+            clip.color_index = int(color_index)
+    finally:
+        song.end_undo_step()
+
+    # Find the clip index in arrangement_clips
+    clip_index = None
+    for i, c in enumerate(track.arrangement_clips):
+        if abs(c.start_time - start_time) < 0.01:
+            clip_index = i
+            break
+
+    return {
+        "track_index": track_index,
+        "clip_index": clip_index,
+        "start_time": start_time,
+        "length": length,
+        "name": clip.name,
+        "has_envelope_support": True,
+        "native": True,
+    }
+
+
 @register("add_arrangement_notes")
 def add_arrangement_notes(song, params):
     """Add MIDI notes to an arrangement clip (by index in arrangement_clips)."""
