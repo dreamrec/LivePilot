@@ -530,6 +530,94 @@ def insert_device(song, params):
     return result
 
 
+@register("insert_rack_chain")
+def insert_rack_chain(song, params):
+    """Insert a new chain into an Instrument Rack, Audio Effect Rack, or Drum Rack (12.3+).
+
+    Required: track_index, device_index
+    Optional: position (-1 = end)
+    """
+    from .version_detect import has_feature
+
+    if not has_feature("insert_chain"):
+        raise RuntimeError(
+            "insert_rack_chain requires Live 12.3+."
+        )
+
+    track_index = int(params["track_index"])
+    device_index = int(params["device_index"])
+    position = int(params.get("position", -1))
+
+    track = get_track(song, track_index)
+    device = get_device(track, device_index)
+
+    if not device.can_have_chains:
+        raise ValueError(
+            "Device '%s' is not a rack — cannot insert chains"
+            % device.name
+        )
+
+    song.begin_undo_step()
+    try:
+        if position >= 0:
+            device.insert_chain(position)
+        else:
+            device.insert_chain()
+    finally:
+        song.end_undo_step()
+
+    chain_count = len(list(device.chains))
+    return {
+        "inserted": True,
+        "track_index": track_index,
+        "device_index": device_index,
+        "chain_count": chain_count,
+    }
+
+
+@register("set_drum_chain_note")
+def set_drum_chain_note(song, params):
+    """Set which MIDI note triggers a drum chain (12.3+).
+
+    Required: track_index, device_index, chain_index, note
+    note: MIDI note number (0-127), or -1 for 'All Notes'
+    """
+    from .version_detect import has_feature
+
+    if not has_feature("drum_chain_in_note"):
+        raise RuntimeError(
+            "set_drum_chain_note requires Live 12.3+."
+        )
+
+    track_index = int(params["track_index"])
+    device_index = int(params["device_index"])
+    chain_index = int(params["chain_index"])
+    note = int(params["note"])
+
+    if note < -1 or note > 127:
+        raise ValueError("note must be -1 (All Notes) or 0-127")
+
+    track = get_track(song, track_index)
+    device = get_device(track, device_index)
+
+    chains = list(device.chains)
+    if chain_index < 0 or chain_index >= len(chains):
+        raise IndexError(
+            "Chain index %d out of range (0..%d)"
+            % (chain_index, len(chains) - 1)
+        )
+
+    chain = chains[chain_index]
+    chain.in_note = note
+
+    return {
+        "track_index": track_index,
+        "device_index": device_index,
+        "chain_index": chain_index,
+        "in_note": note,
+    }
+
+
 @register("find_and_load_device")
 def find_and_load_device(song, params):
     """Find a device by name in the browser and load it onto a track.

@@ -428,6 +428,65 @@ def insert_device(
 
 
 @mcp.tool()
+def insert_rack_chain(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+    position: int = -1,
+) -> dict:
+    """Insert a new chain into a Rack device — Instrument Rack, Audio Effect Rack, or Drum Rack (Live 12.3+).
+
+    Use with insert_device + set_drum_chain_note to build Drum Racks from scratch:
+    1. insert_device(track, 'Drum Rack') to create the rack
+    2. insert_rack_chain(track, rack_device_index) to add chains
+    3. set_drum_chain_note(chain_index=0, note=36) to assign C1 (kick)
+    4. insert_device(track, 'Simpler', device_index=rack, chain_index=0) into chain
+
+    track_index:  track containing the rack
+    device_index: rack device index on the track
+    position:     chain position (-1 = append to end)
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+
+    return _get_ableton(ctx).send_command("insert_rack_chain", {
+        "track_index": track_index,
+        "device_index": device_index,
+        "position": position,
+    })
+
+
+@mcp.tool()
+def set_drum_chain_note(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+    chain_index: int,
+    note: int,
+) -> dict:
+    """Set which MIDI note triggers a Drum Rack chain (Live 12.3+).
+
+    Standard drum mapping:
+    C1 (36) = Kick, D1 (38) = Snare, F#1 (42) = Closed HH,
+    A#1 (46) = Open HH, C#2 (49) = Crash, D#2 (51) = Ride
+
+    note: MIDI note 0-127, or -1 for 'All Notes'
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    _validate_chain_index(chain_index)
+    if note < -1 or note > 127:
+        raise ValueError("note must be -1 (All Notes) or 0-127")
+
+    return _get_ableton(ctx).send_command("set_drum_chain_note", {
+        "track_index": track_index,
+        "device_index": device_index,
+        "chain_index": chain_index,
+        "note": note,
+    })
+
+
+@mcp.tool()
 def set_simpler_playback_mode(
     ctx: Context,
     track_index: int,
