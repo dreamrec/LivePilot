@@ -10,6 +10,7 @@ All sources return SampleCandidate objects. Actual Ableton communication happens
 
 from __future__ import annotations
 
+import glob
 import os
 import sqlite3
 from typing import Optional
@@ -81,12 +82,9 @@ class BrowserSource:
 # ── Splice Source ──────────────────────────────────────────────────
 
 
-# Candidate paths for Splice's sounds.db on macOS
-_SPLICE_DB_CANDIDATES = [
-    "~/Library/Application Support/com.splice.Splice/sounds.db",
-    "~/Library/Application Support/Splice/sounds.db",
-    "~/Splice/sounds.db",
-]
+# Splice stores sounds.db under a user-specific subdirectory:
+# ~/Library/Application Support/com.splice.Splice/users/default/<username>/sounds.db
+_SPLICE_APP_SUPPORT = "~/Library/Application Support/com.splice.Splice"
 
 # Map Splice sample_type to our material_type
 _SPLICE_TYPE_MAP = {
@@ -132,11 +130,27 @@ class SpliceSource:
 
     @staticmethod
     def _find_db() -> Optional[str]:
-        """Auto-detect Splice sounds.db location."""
-        for candidate in _SPLICE_DB_CANDIDATES:
-            expanded = os.path.expanduser(candidate)
-            if os.path.isfile(expanded):
-                return expanded
+        """Auto-detect Splice sounds.db location.
+
+        Splice stores the DB at:
+        ~/Library/Application Support/com.splice.Splice/users/default/<username>/sounds.db
+        We glob for it since the username varies per account.
+        """
+        base = os.path.expanduser(_SPLICE_APP_SUPPORT)
+        # Search under users/default/*/sounds.db (most common)
+        pattern = os.path.join(base, "users", "default", "*", "sounds.db")
+        matches = glob.glob(pattern)
+        if matches:
+            return matches[0]
+        # Broader search: users/*/sounds.db
+        pattern = os.path.join(base, "users", "*", "sounds.db")
+        matches = glob.glob(pattern)
+        if matches:
+            return matches[0]
+        # Direct fallback (older Splice versions)
+        direct = os.path.join(base, "sounds.db")
+        if os.path.isfile(direct):
+            return direct
         return None
 
     def _connect(self) -> Optional[sqlite3.Connection]:
@@ -164,54 +178,87 @@ class SpliceSource:
         """Search Splice database by tags, filename, key, BPM, genre.
 
         Only returns samples with local_path NOT NULL (actually downloaded).
+        Genre filtering JOINs with the packs table (genre lives there, not on samples).
+        Keys are stored lowercase in Splice (e.g., "c#") — we normalize for comparison.
+        Duration is stored as milliseconds — we convert to seconds.
         """
         conn = self._connect()
         if conn is None:
             return []
 
         try:
-            conditions = ["local_path IS NOT NULL"]
+            conditions = ["s.local_path IS NOT NULL"]
             params: list = []
+            use_packs_join = genre is not None
 
             # Text search across tags and filename
             if query:
                 words = query.lower().split()
                 for word in words:
                     conditions.append(
-                        "(LOWER(tags) LIKE ? OR LOWER(filename) LIKE ?)"
+                        "(LOWER(s.tags) LIKE ? OR LOWER(s.filename) LIKE ?)"
                     )
                     params.extend([f"%{word}%", f"%{word}%"])
 
             if sample_type:
-                conditions.append("sample_type = ?")
+                conditions.append("s.sample_type = ?")
                 params.append(sample_type)
 
             if key:
-                conditions.append("audio_key = ?")
-                params.append(key)
+                # Normalize: user might pass "Cm" or "C#", Splice stores "c" or "c#"
+                # Strip minor suffix for comparison — Splice uses chord_type column
+                key_normalized = key.lower().rstrip("m").rstrip("inor")
+                # But proper suffix removal:
+                k = key.lower()
+                for suffix in ("minor", "min"):
+                    if k.endswith(suffix):
+                        k = k[:-len(suffix)]
+                        break
+                if k.endswith("m") and not k.endswith("bm") and len(k) > 1:
+                    k = k[:-1]
+                conditions.append("LOWER(s.audio_key) = ?")
+                params.append(k)
 
             if bpm_min is not None:
-                conditions.append("bpm >= ?")
+                conditions.append("s.bpm >= ?")
                 params.append(bpm_min)
 
             if bpm_max is not None:
-                conditions.append("bpm <= ?")
+                conditions.append("s.bpm <= ?")
                 params.append(bpm_max)
 
             if genre:
-                conditions.append("LOWER(genre) LIKE ?")
+                use_packs_join = True
+                conditions.append("LOWER(p.genre) LIKE ?")
                 params.append(f"%{genre.lower()}%")
 
             where = " AND ".join(conditions)
-            sql = f"""
-                SELECT id, local_path, audio_key, bpm, tags, sample_type,
-                       genre, filename, provider_name, pack_uuid, duration,
-                       popularity
-                FROM samples
-                WHERE {where}
-                ORDER BY popularity DESC
-                LIMIT ?
-            """
+
+            if use_packs_join:
+                sql = f"""
+                    SELECT s.id, s.local_path, s.audio_key, s.bpm, s.tags,
+                           s.sample_type, p.genre AS pack_genre, s.filename,
+                           s.provider_name, s.pack_uuid, s.duration,
+                           s.popularity, s.chord_type,
+                           p.name AS pack_name
+                    FROM samples s
+                    LEFT JOIN packs p ON s.pack_uuid = p.uuid
+                    WHERE {where}
+                    ORDER BY s.popularity DESC
+                    LIMIT ?
+                """
+            else:
+                sql = f"""
+                    SELECT s.id, s.local_path, s.audio_key, s.bpm, s.tags,
+                           s.sample_type, NULL AS pack_genre, s.filename,
+                           s.provider_name, s.pack_uuid, s.duration,
+                           s.popularity, s.chord_type,
+                           NULL AS pack_name
+                    FROM samples s
+                    WHERE {where}
+                    ORDER BY s.popularity DESC
+                    LIMIT ?
+                """
             params.append(max_results)
 
             cursor = conn.execute(sql, params)
@@ -255,15 +302,17 @@ class SpliceSource:
             conn.close()
 
     def get_available_genres(self) -> list[str]:
-        """Return all unique genres in the Splice library."""
+        """Return all unique genres from packs that have downloaded samples."""
         conn = self._connect()
         if conn is None:
             return []
         try:
             cursor = conn.execute(
-                "SELECT DISTINCT genre FROM samples "
-                "WHERE genre IS NOT NULL AND genre != '' AND local_path IS NOT NULL "
-                "ORDER BY genre"
+                "SELECT DISTINCT p.genre FROM packs p "
+                "INNER JOIN samples s ON s.pack_uuid = p.uuid "
+                "WHERE p.genre IS NOT NULL AND p.genre != '' "
+                "AND s.local_path IS NOT NULL "
+                "ORDER BY p.genre"
             )
             return [row[0] for row in cursor.fetchall()]
         except (sqlite3.OperationalError, sqlite3.DatabaseError):
@@ -291,29 +340,79 @@ class SpliceSource:
         )
 
     def _row_to_candidate(self, row: sqlite3.Row) -> SampleCandidate:
-        """Convert a database row to SampleCandidate with rich metadata."""
+        """Convert a database row to SampleCandidate with rich metadata.
+
+        Handles Splice-specific quirks:
+        - audio_key is lowercase ("c#") → normalize to "C#"
+        - chord_type is separate ("major"/"minor") → combine with key
+        - duration is milliseconds → convert to seconds
+        - genre lives on packs table (pack_genre column from JOIN)
+        """
         tags = str(row["tags"] or "")
         splice_type = str(row["sample_type"] or "")
         material = self._classify_splice_material(splice_type, tags)
+
+        # Normalize key: "c#" → "C#", combine with chord_type
+        raw_key = row["audio_key"]
+        chord_type = str(row["chord_type"] or "") if "chord_type" in row.keys() else ""
+        normalized_key = self._normalize_key(raw_key, chord_type)
+
+        # Duration: ms → seconds
+        raw_duration = row["duration"]
+        duration_sec = (raw_duration / 1000.0) if raw_duration else 0.0
+
+        # Genre from packs JOIN (pack_genre) or fallback
+        genre = None
+        try:
+            genre = row["pack_genre"]
+        except (IndexError, KeyError):
+            pass
+
+        # Pack name from JOIN
+        pack_name = None
+        try:
+            pack_name = row["pack_name"]
+        except (IndexError, KeyError):
+            pack_name = row["provider_name"]
 
         return SampleCandidate(
             source="splice",
             name=str(row["filename"] or ""),
             file_path=str(row["local_path"] or ""),
             metadata={
-                "key": row["audio_key"],
-                "bpm": row["bpm"],
+                "key": normalized_key,
+                "bpm": row["bpm"] if row["bpm"] else None,
                 "tags": tags,
-                "genre": row["genre"],
+                "genre": genre,
                 "sample_type": splice_type,
                 "material_type": material,
-                "pack": row["provider_name"],
+                "pack": pack_name or row["provider_name"],
                 "pack_uuid": row["pack_uuid"],
-                "duration": row["duration"],
+                "duration": round(duration_sec, 2),
                 "popularity": row["popularity"],
                 "splice_id": row["id"],
+                "chord_type": chord_type,
             },
         )
+
+    @staticmethod
+    def _normalize_key(raw_key: Optional[str], chord_type: str = "") -> Optional[str]:
+        """Normalize Splice's lowercase key + chord_type to standard format.
+
+        "c#" + "major" → "C#"
+        "c#" + "minor" → "C#m"
+        "eb" + "" → "Eb"
+        """
+        if not raw_key:
+            return None
+        # Capitalize root note
+        key = raw_key[0].upper() + raw_key[1:] if raw_key else ""
+        # Replace 'b' after first char — it's a flat, keep as-is
+        # Replace '#' — keep as-is
+        # Add minor suffix
+        if chord_type.lower() in ("minor", "min"):
+            key += "m"
+        return key
 
     @staticmethod
     def _classify_splice_material(sample_type: str, tags: str) -> str:

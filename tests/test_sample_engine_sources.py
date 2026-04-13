@@ -71,8 +71,15 @@ class TestBrowserSource:
 # ═══════════════════════════════════════════════════════════════════════
 
 
-def _create_splice_db(path: str, rows: list[dict]) -> str:
-    """Create a test Splice sounds.db with sample rows."""
+def _create_splice_db(path: str, rows: list[dict], packs: list[dict] | None = None) -> str:
+    """Create a test Splice sounds.db matching the real v11 schema.
+
+    Real Splice quirks:
+    - genre lives on packs table, NOT samples
+    - audio_key is lowercase ("c#" not "C#")
+    - chord_type is separate ("major"/"minor")
+    - duration is milliseconds (16000 = 16s)
+    """
     db_path = os.path.join(path, "sounds.db")
     conn = sqlite3.connect(db_path)
     conn.execute("""
@@ -82,42 +89,66 @@ def _create_splice_db(path: str, rows: list[dict]) -> str:
             attr_hash TEXT,
             dir TEXT,
             audio_key TEXT,
-            bpm REAL,
+            bpm INTEGER,
             chord_type TEXT,
-            duration REAL,
+            duration INTEGER,
             file_hash TEXT,
             sas_id TEXT,
             filename TEXT,
-            genre TEXT,
+            genre INTEGER,
             pack_uuid TEXT,
             sample_type TEXT,
             tags TEXT,
-            popularity REAL,
+            popularity INTEGER,
             purchased_at TEXT,
             last_modified_at TEXT,
             waveform_url TEXT,
             provider_name TEXT
         )
     """)
+    conn.execute("""
+        CREATE TABLE packs (
+            id INTEGER PRIMARY KEY,
+            uuid TEXT UNIQUE,
+            name TEXT,
+            description TEXT,
+            cover_url TEXT,
+            genre TEXT,
+            permalink TEXT,
+            provider_name TEXT
+        )
+    """)
     for row in rows:
         conn.execute(
             """INSERT INTO samples (id, local_path, audio_key, bpm, tags,
-               sample_type, genre, filename, provider_name, pack_uuid,
-               duration, popularity)
+               sample_type, filename, provider_name, pack_uuid,
+               duration, popularity, chord_type)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 row.get("id", 1),
                 row.get("local_path"),
-                row.get("audio_key"),
-                row.get("bpm"),
+                row.get("audio_key"),           # lowercase: "c#"
+                row.get("bpm", 0),
                 row.get("tags", ""),
                 row.get("sample_type", "oneshot"),
-                row.get("genre", ""),
                 row.get("filename", "test.wav"),
                 row.get("provider_name", "Test Pack"),
                 row.get("pack_uuid", "abc-123"),
-                row.get("duration", 2.0),
+                row.get("duration", 2000),       # milliseconds!
                 row.get("popularity", 50),
+                row.get("chord_type", ""),
+            ),
+        )
+    for pack in (packs or []):
+        conn.execute(
+            """INSERT INTO packs (id, uuid, name, genre, provider_name)
+               VALUES (?, ?, ?, ?, ?)""",
+            (
+                pack.get("id", 1),
+                pack.get("uuid", "abc-123"),
+                pack.get("name", "Test Pack"),
+                pack.get("genre"),
+                pack.get("provider_name", "Test"),
             ),
         )
     conn.commit()
@@ -160,9 +191,9 @@ class TestSpliceSource:
     def test_search_by_key(self, tmp_path):
         db = _create_splice_db(str(tmp_path), [
             {"id": 1, "local_path": "/a.wav", "filename": "pad_Cm.wav",
-             "tags": "pad ambient", "audio_key": "Cm", "sample_type": "loop"},
+             "tags": "pad ambient", "audio_key": "c", "chord_type": "minor", "sample_type": "loop"},
             {"id": 2, "local_path": "/b.wav", "filename": "pad_Am.wav",
-             "tags": "pad ambient", "audio_key": "Am", "sample_type": "loop"},
+             "tags": "pad ambient", "audio_key": "a", "chord_type": "minor", "sample_type": "loop"},
         ])
         s = SpliceSource(db_path=db)
         results = s.search("", key="Cm")
@@ -182,21 +213,26 @@ class TestSpliceSource:
         assert results[0].metadata["bpm"] == 170
 
     def test_rich_metadata(self, tmp_path):
-        db = _create_splice_db(str(tmp_path), [
-            {"id": 42, "local_path": "/samples/lead.wav", "filename": "lead.wav",
-             "tags": "synth lead bright", "audio_key": "F#", "bpm": 128,
-             "genre": "House", "sample_type": "loop", "provider_name": "KSHMR",
-             "pack_uuid": "xyz-789", "duration": 4.0, "popularity": 95},
-        ])
+        db = _create_splice_db(
+            str(tmp_path),
+            rows=[
+                {"id": 42, "local_path": "/samples/lead.wav", "filename": "lead.wav",
+                 "tags": "synth lead bright", "audio_key": "f#", "chord_type": "major",
+                 "bpm": 128, "sample_type": "loop", "provider_name": "KSHMR",
+                 "pack_uuid": "xyz-789", "duration": 4000, "popularity": 95},
+            ],
+            packs=[
+                {"id": 1, "uuid": "xyz-789", "name": "KSHMR Pack", "genre": "House",
+                 "provider_name": "KSHMR"},
+            ],
+        )
         s = SpliceSource(db_path=db)
         results = s.search("lead")
         assert len(results) == 1
         m = results[0].metadata
-        assert m["key"] == "F#"
+        assert m["key"] == "F#"           # normalized from "f#" + "major"
         assert m["bpm"] == 128
-        assert m["genre"] == "House"
-        assert m["pack"] == "KSHMR"
-        assert m["duration"] == 4.0
+        assert m["duration"] == 4.0       # converted from 4000ms
         assert m["material_type"] == "instrument_loop"
 
     def test_material_type_classification(self, tmp_path):
@@ -241,11 +277,11 @@ class TestSpliceSource:
     def test_search_by_key_and_tempo(self, tmp_path):
         db = _create_splice_db(str(tmp_path), [
             {"id": 1, "local_path": "/a.wav", "filename": "a.wav",
-             "audio_key": "Cm", "bpm": 128, "tags": "synth"},
+             "audio_key": "c", "chord_type": "minor", "bpm": 128, "tags": "synth"},
             {"id": 2, "local_path": "/b.wav", "filename": "b.wav",
-             "audio_key": "Cm", "bpm": 80, "tags": "synth"},
+             "audio_key": "c", "chord_type": "minor", "bpm": 80, "tags": "synth"},
             {"id": 3, "local_path": "/c.wav", "filename": "c.wav",
-             "audio_key": "Am", "bpm": 128, "tags": "synth"},
+             "audio_key": "a", "chord_type": "minor", "bpm": 128, "tags": "synth"},
         ])
         s = SpliceSource(db_path=db)
         results = s.search_by_key_and_tempo("Cm", 128.0, tolerance_bpm=5)
@@ -265,23 +301,37 @@ class TestSpliceSource:
         conn.close()
 
     def test_search_by_genre(self, tmp_path):
-        db = _create_splice_db(str(tmp_path), [
-            {"id": 1, "local_path": "/a.wav", "filename": "a.wav",
-             "tags": "drums", "genre": "House"},
-            {"id": 2, "local_path": "/b.wav", "filename": "b.wav",
-             "tags": "drums", "genre": "Trap"},
-        ])
+        db = _create_splice_db(
+            str(tmp_path),
+            rows=[
+                {"id": 1, "local_path": "/a.wav", "filename": "a.wav",
+                 "tags": "drums", "pack_uuid": "p1"},
+                {"id": 2, "local_path": "/b.wav", "filename": "b.wav",
+                 "tags": "drums", "pack_uuid": "p2"},
+            ],
+            packs=[
+                {"id": 1, "uuid": "p1", "name": "House Pack", "genre": "house"},
+                {"id": 2, "uuid": "p2", "name": "Trap Pack", "genre": "trap"},
+            ],
+        )
         s = SpliceSource(db_path=db)
         results = s.search("", genre="house")
         assert len(results) == 1
 
     def test_get_available_genres(self, tmp_path):
-        db = _create_splice_db(str(tmp_path), [
-            {"id": 1, "local_path": "/a.wav", "filename": "a.wav",
-             "tags": "", "genre": "House"},
-            {"id": 2, "local_path": "/b.wav", "filename": "b.wav",
-             "tags": "", "genre": "Trap"},
-        ])
+        db = _create_splice_db(
+            str(tmp_path),
+            rows=[
+                {"id": 1, "local_path": "/a.wav", "filename": "a.wav",
+                 "tags": "", "pack_uuid": "p1"},
+                {"id": 2, "local_path": "/b.wav", "filename": "b.wav",
+                 "tags": "", "pack_uuid": "p2"},
+            ],
+            packs=[
+                {"id": 1, "uuid": "p1", "name": "Pack A", "genre": "House"},
+                {"id": 2, "uuid": "p2", "name": "Pack B", "genre": "Trap"},
+            ],
+        )
         s = SpliceSource(db_path=db)
         genres = s.get_available_genres()
         assert "House" in genres
