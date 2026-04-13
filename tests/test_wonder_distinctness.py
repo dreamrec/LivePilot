@@ -104,10 +104,11 @@ def test_same_move_id_never_duplicated():
 # ── analytical_only field ────────────────────────────────────────
 
 
-def test_build_variant_has_analytical_only_false():
+def test_build_variant_has_analytical_only_field():
     move = _move("punch", "mix")
-    v = build_variant(label="safe", move_dict=move, novelty_level=0.25, variant_id="v1")
-    assert v["analytical_only"] is False
+    kernel = {"session_info": {"tempo": 120, "tracks": []}, "mode": "improve"}
+    v = build_variant(label="safe", move_dict=move, novelty_level=0.25, variant_id="v1", kernel=kernel)
+    assert isinstance(v["analytical_only"], bool)
 
 
 def test_build_analytical_variant_has_analytical_only_true():

@@ -190,14 +190,45 @@ _NOVELTY_LEVELS = {"safe": 0.25, "strong": 0.55, "unexpected": 0.85}
 _RISK_TO_EFFECT = {"low": "preserves", "medium": "evolves", "high": "contrasts"}
 
 
+def _compile_variant_plan(move_dict: dict, kernel: dict | None) -> dict | None:
+    """Compile a move through the semantic compiler if possible.
+
+    Returns CompiledPlan.to_dict() or None if no compiler is registered.
+    """
+    if kernel is None:
+        return None
+
+    move_id = move_dict.get("move_id", "")
+    from ..semantic_moves.compiler import compile as sem_compile, _COMPILERS
+    from ..semantic_moves import registry
+
+    if move_id not in _COMPILERS:
+        return None
+
+    move_obj = registry.get_move(move_id)
+    if move_obj is None:
+        return None
+
+    try:
+        plan = sem_compile(move_obj, kernel)
+        return plan.to_dict()
+    except Exception:
+        return None
+
+
 def build_variant(
     label: str,
     move_dict: dict,
     song_brain: Optional[dict] = None,
     novelty_level: float = 0.5,
     variant_id: str = "",
+    kernel: dict | None = None,
 ) -> dict:
-    """Build a variant dict from a real move + SongBrain context."""
+    """Build a variant dict from a real move + SongBrain context.
+
+    If kernel is provided, compiles the move through the semantic compiler
+    for an executable plan. Otherwise falls back to plan_template metadata.
+    """
     song_brain = song_brain or {}
     targets = move_dict.get("targets", {})
     protect = move_dict.get("protect", {})
@@ -226,6 +257,10 @@ def build_variant(
     if sacred and identity_effect == "preserves":
         why += f". Preserves {sacred[0].get('description', 'sacred elements')}"
 
+    # Compile through semantic compiler if kernel available
+    compiled = _compile_variant_plan(move_dict, kernel)
+    analytical = compiled is None
+
     return {
         "variant_id": variant_id,
         "label": label,
@@ -239,11 +274,11 @@ def build_variant(
         "novelty_level": novelty_level,
         "taste_fit": 0.5,
         "targets_snapshot": dict(targets),
-        "compiled_plan": move_dict.get("plan_template"),
+        "compiled_plan": compiled,
         "score": 0.0,
         "rank": 0,
         "score_breakdown": {},
-        "analytical_only": False,
+        "analytical_only": analytical,
         "distinctness_reason": "",
     }
 

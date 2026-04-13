@@ -142,11 +142,13 @@ def test_what_preserved_references_sacred_and_protect():
     assert "808" in v["what_preserved"] or "kick" in v["what_preserved"].lower()
 
 
-def test_compiled_plan_is_list_of_dicts():
-    v = build_variant("safe", _sample_move(), {}, 0.25)
-    assert isinstance(v["compiled_plan"], list)
-    assert len(v["compiled_plan"]) > 0
-    assert isinstance(v["compiled_plan"][0], dict)
+def test_compiled_plan_is_dict_with_steps():
+    kernel = {"session_info": {"tempo": 120, "tracks": []}, "mode": "improve"}
+    v = build_variant("safe", _sample_move(), {}, 0.25, kernel=kernel)
+    assert isinstance(v["compiled_plan"], dict)
+    assert "steps" in v["compiled_plan"]
+    assert len(v["compiled_plan"]["steps"]) > 0
+    assert isinstance(v["compiled_plan"]["steps"][0], dict)
 
 
 def test_variant_has_targets_snapshot():
@@ -178,7 +180,8 @@ def test_analytical_fallback_has_none_plan():
 
 
 def test_build_variant_not_analytical():
-    v = build_variant("safe", _sample_move(), {}, 0.25)
+    kernel = {"session_info": {"tempo": 120, "tracks": []}, "mode": "improve"}
+    v = build_variant("safe", _sample_move(), {}, 0.25, kernel=kernel)
     assert v["analytical_only"] is False
 
 
