@@ -13,7 +13,6 @@
   <a href="https://www.npmjs.com/package/livepilot"><img src="https://img.shields.io/npm/dm/livepilot?style=flat-square" alt="npm downloads"></a>
   <a href="https://github.com/dreamrec/LivePilot/blob/main/LICENSE"><img src="https://img.shields.io/github/license/dreamrec/LivePilot?style=flat-square" alt="License"></a>
   <a href="https://github.com/dreamrec/LivePilot/releases"><img src="https://img.shields.io/github/v/release/dreamrec/LivePilot?style=flat-square&label=release" alt="Latest Release"></a>
-  <a href="https://www.patreon.com/c/dreamrec"><img src="https://img.shields.io/badge/Patreon-Support%20LivePilot-ff424d?style=flat-square&logo=patreon&logoColor=white" alt="Patreon"></a>
 </p>
 
 <p align="center">
