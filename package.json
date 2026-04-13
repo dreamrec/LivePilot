@@ -2,9 +2,9 @@
   "name": "livepilot",
   "version": "1.10.0",
   "mcpName": "io.github.dreamrec/livepilot",
-  "description": "Agentic production system for Ableton Live 12 — 316 tools, 43 domains, device atlas, spectral perception, technique memory, neo-Riemannian harmony, Euclidean rhythm, species counterpoint, MIDI I/O",
+  "description": "Agentic production system for Ableton Live 12 — 316 tools, 43 domains. Device atlas (1305 devices), sample engine (Splice + browser + filesystem), auto-composition, spectral perception, technique memory, creative intelligence (12 engines)",
   "author": "Pilot Studio",
-  "license": "MIT",
+  "license": "BSL-1.1",
   "type": "commonjs",
   "bin": {
     "livepilot": "./bin/livepilot.js"
@@ -35,7 +35,11 @@
     "ai",
     "sound-design",
     "mixing",
-    "arrangement"
+    "arrangement",
+    "splice",
+    "sample-engine",
+    "auto-composition",
+    "device-atlas"
   ],
   "engines": {
     "node": ">=18.0.0"
