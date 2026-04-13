@@ -15,7 +15,7 @@ CREATE_CHAOS_MODULATOR = SemanticMove(
     targets={"novelty": 0.8, "motion": 0.6, "surprise": 0.7},
     protect={"clarity": 0.5},
     risk_level="medium",
-    compile_plan=[
+    plan_template=[
         {
             "tool": "generate_m4l_effect",
             "params": {
@@ -46,7 +46,7 @@ CREATE_FEEDBACK_RESONATOR = SemanticMove(
     targets={"depth": 0.6, "texture": 0.5, "novelty": 0.4},
     protect={"clarity": 0.6, "punch": 0.5},
     risk_level="low",
-    compile_plan=[
+    plan_template=[
         {
             "tool": "generate_m4l_effect",
             "params": {
@@ -77,7 +77,7 @@ CREATE_WAVEFOLDER_EFFECT = SemanticMove(
     targets={"edge": 0.6, "novelty": 0.5, "energy": 0.4},
     protect={"warmth": 0.5},
     risk_level="medium",
-    compile_plan=[
+    plan_template=[
         {
             "tool": "generate_m4l_effect",
             "params": {
@@ -108,7 +108,7 @@ CREATE_BITCRUSHER_EFFECT = SemanticMove(
     targets={"edge": 0.5, "novelty": 0.4, "texture": 0.4},
     protect={"clarity": 0.4},
     risk_level="low",
-    compile_plan=[
+    plan_template=[
         {
             "tool": "generate_m4l_effect",
             "params": {
@@ -139,7 +139,7 @@ CREATE_KARPLUS_STRING = SemanticMove(
     targets={"novelty": 0.5, "texture": 0.6, "depth": 0.4},
     protect={"clarity": 0.6},
     risk_level="low",
-    compile_plan=[
+    plan_template=[
         {
             "tool": "generate_m4l_effect",
             "params": {
@@ -170,7 +170,7 @@ CREATE_STOCHASTIC_TEXTURE = SemanticMove(
     targets={"texture": 0.7, "novelty": 0.6, "motion": 0.5},
     protect={"clarity": 0.4},
     risk_level="medium",
-    compile_plan=[
+    plan_template=[
         {
             "tool": "generate_m4l_effect",
             "params": {
@@ -201,7 +201,7 @@ CREATE_FDN_REVERB = SemanticMove(
     targets={"depth": 0.7, "width": 0.5, "novelty": 0.4},
     protect={"punch": 0.5, "clarity": 0.5},
     risk_level="low",
-    compile_plan=[
+    plan_template=[
         {
             "tool": "generate_m4l_effect",
             "params": {

@@ -25,7 +25,7 @@ class TestSamplePlanner:
         assert technique is not None
         assert technique.philosophy in ("alchemist", "both")
 
-    def test_compile_plan_returns_tool_steps(self):
+    def test_plan_template_returns_tool_steps(self):
         profile = SampleProfile(source="t", file_path="/t.wav", name="t",
                                 material_type="drum_loop", bpm=128.0)
         intent = SampleIntent(intent_type="rhythm", description="")

@@ -18,7 +18,7 @@ def _move(move_id, family, tools=None, risk="low"):
         "targets": {"energy": 0.5},
         "protect": {"clarity": 0.7},
         "risk_level": risk,
-        "compile_plan": [
+        "plan_template": [
             {"tool": t, "params": {}, "description": f"Do {t}"} for t in (tools or ["set_track_volume"])
         ],
         "relevance_score": 0.5,
@@ -57,7 +57,7 @@ def test_two_families_gives_two():
 
 
 def test_same_family_different_shape_is_distinct():
-    """Same family but different compile_plan shapes = distinct."""
+    """Same family but different plan_template shapes = distinct."""
     moves = [
         _move("punch", "mix", tools=["set_track_volume", "set_track_send"]),
         _move("widen", "mix", tools=["set_device_parameter", "set_track_pan"]),

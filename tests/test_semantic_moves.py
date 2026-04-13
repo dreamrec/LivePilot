@@ -10,13 +10,13 @@ def test_semantic_move_has_required_fields():
     assert move.move_id == "tighten_low_end"
     assert move.family == "mix"
     assert move.intent == "tighten_low_end" or "tighten" in move.intent.lower()
-    assert len(move.compile_plan) > 0
+    assert len(move.plan_template) > 0
     assert move.risk_level in ("low", "medium", "high")
 
 
-def test_compile_plan_has_tool_and_description():
+def test_plan_template_has_tool_and_description():
     move = TIGHTEN_LOW_END
-    for step in move.compile_plan:
+    for step in move.plan_template:
         assert "tool" in step, f"Step missing 'tool': {step}"
         assert "description" in step, f"Step missing 'description': {step}"
 
@@ -62,16 +62,16 @@ def test_to_dict_compact():
     move = TIGHTEN_LOW_END
     d = move.to_dict()
     assert "move_id" in d
-    assert "compile_plan" not in d  # Compact doesn't include plans
-    assert "compile_plan_steps" in d  # Just the count
+    assert "plan_template" not in d  # Compact doesn't include plans
+    assert "plan_template_steps" in d  # Just the count
 
 
 def test_to_full_dict_includes_plans():
     move = TIGHTEN_LOW_END
     d = move.to_full_dict()
-    assert "compile_plan" in d
+    assert "plan_template" in d
     assert "verification_plan" in d
-    assert isinstance(d["compile_plan"], list)
+    assert isinstance(d["plan_template"], list)
 
 
 def test_all_registered_moves_have_valid_structure():
@@ -83,4 +83,4 @@ def test_all_registered_moves_have_valid_structure():
         assert move.family
         assert move.intent
         assert move.risk_level in ("low", "medium", "high")
-        assert len(move.compile_plan) > 0, f"{move.move_id} has empty compile_plan"
+        assert len(move.plan_template) > 0, f"{move.move_id} has empty plan_template"

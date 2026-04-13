@@ -121,7 +121,7 @@ def _build_triptych(
         compiled_plan = None
         if moves and i < len(moves):
             move_id = moves[i].get("move_id", "")
-            compiled_plan = moves[i].get("compile_plan")
+            compiled_plan = moves[i].get("plan_template")
 
         variants.append(PreviewVariant(
             variant_id=f"{set_id}_{profile['label']}",

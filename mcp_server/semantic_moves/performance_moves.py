@@ -15,7 +15,7 @@ RECOVER_ENERGY = SemanticMove(
     protect={"clarity": 0.7},
     risk_level="low",
     required_capabilities=["session"],
-    compile_plan=[
+    plan_template=[
         {"tool": "set_track_volume", "params": {"description": "Gradually restore drum volume"}, "description": "Bring drums back", "backend": "remote_command"},
         {"tool": "set_track_volume", "params": {"description": "Restore bass volume"}, "description": "Bring bass back", "backend": "remote_command"},
         {"tool": "set_track_send", "params": {"description": "Reduce reverb send to tighten mix"}, "description": "Tighten reverb", "backend": "remote_command"},
@@ -33,7 +33,7 @@ DECOMPRESS_TENSION = SemanticMove(
     protect={"cohesion": 0.6},
     risk_level="low",
     required_capabilities=["session"],
-    compile_plan=[
+    plan_template=[
         {"tool": "set_track_volume", "params": {"description": "Pull back high-energy elements 15-20%"}, "description": "Pull energy down", "backend": "remote_command"},
         {"tool": "set_track_send", "params": {"description": "Increase reverb for spaciousness"}, "description": "Open space", "backend": "remote_command"},
     ],
@@ -50,7 +50,7 @@ SAFE_SPOTLIGHT = SemanticMove(
     protect={"cohesion": 0.7, "energy": 0.5},
     risk_level="low",
     required_capabilities=["session"],
-    compile_plan=[
+    plan_template=[
         {"tool": "set_track_volume", "params": {"description": "Pull non-spotlight tracks to 30-40%"}, "description": "Pull background", "backend": "remote_command"},
         {"tool": "set_track_volume", "params": {"description": "Push spotlight track to 80-85%"}, "description": "Push spotlight", "backend": "remote_command"},
     ],
@@ -67,7 +67,7 @@ EMERGENCY_SIMPLIFY = SemanticMove(
     protect={"energy": 0.3},
     risk_level="low",
     required_capabilities=["session"],
-    compile_plan=[
+    plan_template=[
         {"tool": "set_track_volume", "params": {"description": "Pull all non-rhythm tracks to 10-15%"}, "description": "Strip to essentials", "backend": "remote_command"},
         {"tool": "set_track_volume", "params": {"description": "Keep drums at current level"}, "description": "Maintain rhythm", "backend": "remote_command"},
     ],

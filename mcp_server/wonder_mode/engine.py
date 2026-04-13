@@ -25,11 +25,11 @@ def discover_moves(
     """Find semantic moves relevant to the request.
 
     Uses keyword scoring + optional taste reranking + constraint filtering.
-    Returns full move dicts including compile_plan (via registry.get_move).
+    Returns full move dicts including plan_template (via registry.get_move).
     """
     from ..semantic_moves import registry
 
-    all_moves = registry.list_moves()  # returns to_dict() — no compile_plan
+    all_moves = registry.list_moves()  # returns to_dict() — no plan_template
     if not all_moves:
         return []
 
@@ -77,7 +77,7 @@ def discover_moves(
 
     scored.sort(key=lambda x: -x[1])
 
-    # Enrich with full compile_plan via get_move()
+    # Enrich with full plan_template via get_move()
     result = []
     for move_dict, score in scored:
         full_move = registry.get_move(move_dict["move_id"])
@@ -98,7 +98,7 @@ def discover_moves(
             for move in result:
                 plan = {"steps": [
                     {"action": step.get("tool", ""), **step}
-                    for step in (move.get("compile_plan") or [])
+                    for step in (move.get("plan_template") or [])
                 ]}
                 validation = validate_plan_against_constraints(plan, active_constraints)
                 if validation["valid"]:
@@ -137,9 +137,9 @@ def _with_envelope(move: dict, tier: str) -> dict:
 # ── Distinctness selection ───────────────────────────────────────
 
 
-def _compile_plan_shape(move: dict) -> frozenset[str]:
-    """Extract the set of tool names from a move's compile_plan."""
-    plan = move.get("compile_plan") or []
+def _plan_template_shape(move: dict) -> frozenset[str]:
+    """Extract the set of tool names from a move's plan_template."""
+    plan = move.get("plan_template") or []
     return frozenset(step.get("tool", "") for step in plan if step.get("tool"))
 
 
@@ -147,7 +147,7 @@ def select_distinct_variants(scored_moves: list[dict]) -> list[dict]:
     """Select genuinely distinct moves for variant generation.
 
     Each selected move must differ from all previously selected moves by
-    at least one of: move_id, family, or compile_plan shape.
+    at least one of: move_id, family, or plan_template shape.
     Returns 0-3 moves.
     """
     if not scored_moves:
@@ -160,7 +160,7 @@ def select_distinct_variants(scored_moves: list[dict]) -> list[dict]:
     for move in scored_moves:
         mid = move.get("move_id", "")
         family = move.get("family", "")
-        shape = _compile_plan_shape(move)
+        shape = _plan_template_shape(move)
 
         # Skip duplicate move_ids
         if mid in used_ids:
@@ -239,7 +239,7 @@ def build_variant(
         "novelty_level": novelty_level,
         "taste_fit": 0.5,
         "targets_snapshot": dict(targets),
-        "compiled_plan": move_dict.get("compile_plan"),
+        "compiled_plan": move_dict.get("plan_template"),
         "score": 0.0,
         "rank": 0,
         "score_breakdown": {},
@@ -567,7 +567,7 @@ def _explain_distinctness(move: dict, all_moves: list[dict], index: int) -> str:
 
     if family not in other_families:
         return f"Different family: {family}"
-    shape = _compile_plan_shape(move)
+    shape = _plan_template_shape(move)
     return f"Different approach: {', '.join(sorted(shape))}"
 
 

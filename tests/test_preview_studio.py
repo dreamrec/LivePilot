@@ -219,7 +219,7 @@ def test_render_variant_uses_lifespan_spectral_cache_for_audible_preview(monkeyp
     ps = create_preview_set(
         request_text="test render",
         kernel_id="test_kern_render",
-        available_moves=[{"move_id": "m1", "compile_plan": [{"tool": "set_track_volume", "params": {}}]}],
+        available_moves=[{"move_id": "m1", "plan_template": [{"tool": "set_track_volume", "params": {}}]}],
     )
     variant_id = ps.variants[0].variant_id
 

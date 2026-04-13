@@ -10,7 +10,7 @@ INCREASE_FORWARD_MOTION = SemanticMove(
     targets={"motion": 0.5, "energy": 0.3, "tension": 0.2},
     protect={"clarity": 0.6},
     risk_level="low",
-    compile_plan=[
+    plan_template=[
         {"tool": "apply_automation_shape", "params": {"curve_type": "exponential", "description": "Rising filter cutoff over 4 bars"}, "description": "Rising filter sweep", "backend": "mcp_tool"},
         {"tool": "set_track_volume", "params": {"description": "Push rhythm elements +5-8%"}, "description": "Push rhythm forward", "backend": "remote_command"},
         {"tool": "apply_automation_shape", "params": {"curve_type": "linear", "description": "Rising reverb send for anticipation"}, "description": "Build reverb wash", "backend": "mcp_tool"},
@@ -27,7 +27,7 @@ OPEN_CHORUS = SemanticMove(
     targets={"energy": 0.4, "width": 0.3, "contrast": 0.3},
     protect={"clarity": 0.6, "cohesion": 0.5},
     risk_level="medium",
-    compile_plan=[
+    plan_template=[
         {"tool": "set_track_volume", "params": {"description": "Push all melodic tracks +10-15%"}, "description": "Push chorus energy", "backend": "remote_command"},
         {"tool": "set_track_pan", "params": {"description": "Widen stereo field on chords/pads"}, "description": "Widen stereo", "backend": "remote_command"},
         {"tool": "set_track_send", "params": {"description": "Increase reverb/delay sends for spaciousness"}, "description": "Add space", "backend": "remote_command"},
@@ -45,7 +45,7 @@ CREATE_BREAKDOWN = SemanticMove(
     targets={"contrast": 0.5, "depth": 0.3, "clarity": 0.2},
     protect={"cohesion": 0.5},
     risk_level="medium",
-    compile_plan=[
+    plan_template=[
         {"tool": "set_track_volume", "params": {"description": "Pull drums to 20-30%"}, "description": "Strip drums", "backend": "remote_command"},
         {"tool": "set_track_volume", "params": {"description": "Pull bass to 30-40%"}, "description": "Reduce bass", "backend": "remote_command"},
         {"tool": "set_track_send", "params": {"description": "Increase reverb send on remaining elements"}, "description": "Add reverb depth", "backend": "remote_command"},
@@ -62,7 +62,7 @@ BRIDGE_SECTIONS = SemanticMove(
     targets={"motion": 0.4, "contrast": 0.3, "cohesion": 0.3},
     protect={"clarity": 0.6},
     risk_level="low",
-    compile_plan=[
+    plan_template=[
         {"tool": "apply_automation_shape", "params": {"curve_type": "cosine", "description": "Gentle filter sweep across bridge"}, "description": "Bridge filter motion", "backend": "mcp_tool"},
         {"tool": "set_track_volume", "params": {"description": "Gentle volume crossfade between section elements"}, "description": "Crossfade elements", "backend": "remote_command"},
     ],

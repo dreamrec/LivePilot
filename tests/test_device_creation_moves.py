@@ -41,17 +41,17 @@ class TestDeviceCreationMovesRegistered:
         move = get_move("create_fdn_reverb")
         assert move is not None
 
-    def test_all_have_compile_plans(self):
+    def test_all_have_plan_templates(self):
         moves = list_moves(domain="device_creation")
         for m in moves:
             full = get_move(m["move_id"])
-            assert full.compile_plan, f"{m['move_id']} has no compile_plan"
+            assert full.plan_template, f"{m['move_id']} has no plan_template"
 
     def test_all_use_generate_m4l_effect(self):
         moves = list_moves(domain="device_creation")
         for m in moves:
             full = get_move(m["move_id"])
-            tools_used = [s.get("tool") for s in full.compile_plan]
+            tools_used = [s.get("tool") for s in full.plan_template]
             assert "generate_m4l_effect" in tools_used, f"{m['move_id']} doesn't use generate_m4l_effect"
 
     def test_all_have_verification_plans(self):

@@ -171,7 +171,7 @@ class TestSuggestTechniquePath:
 class TestPlanWorkflowPath:
     """Tests compile_sample_plan that plan_sample_workflow calls."""
 
-    def test_compile_plan_with_file(self):
+    def test_plan_template_with_file(self):
         profile = build_profile_from_filename("/samples/vocal_Cm_120bpm.wav")
         intent = SampleIntent(intent_type="layer", philosophy="auto", description="test")
         plan = compile_sample_plan(profile, intent, target_track=0)
@@ -180,7 +180,7 @@ class TestPlanWorkflowPath:
         assert all("tool" in step for step in plan)
         assert all("params" in step for step in plan)
 
-    def test_compile_plan_without_file_returns_fallback(self):
+    def test_plan_template_without_file_returns_fallback(self):
         """When no technique matches, fallback plan should still be valid."""
         profile = SampleProfile(
             source="test", file_path="/test.wav", name="test",

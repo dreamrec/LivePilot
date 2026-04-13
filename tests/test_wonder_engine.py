@@ -25,7 +25,7 @@ def _sample_move():
         "targets": {"punch": 0.5, "energy": 0.3, "contrast": 0.2},
         "protect": {"clarity": 0.7, "warmth": 0.5},
         "risk_level": "low",
-        "compile_plan": [
+        "plan_template": [
             {"tool": "set_device_parameter", "params": {"track": 0}, "description": "Boost attack"}
         ],
         "confidence": 0.7,
@@ -93,10 +93,10 @@ def test_no_matching_moves_returns_empty():
     assert moves == []
 
 
-def test_discover_includes_compile_plan():
+def test_discover_includes_plan_template():
     moves = discover_moves("make it punchier")
     for m in moves:
-        assert isinstance(m.get("compile_plan"), list)
+        assert isinstance(m.get("plan_template"), list)
 
 
 # ── Distinctness selection ───────────────────────────────────────
@@ -104,9 +104,9 @@ def test_discover_includes_compile_plan():
 
 def test_distinct_selects_different_families():
     moves = [
-        {"move_id": "a", "family": "mix", "risk_level": "low", "targets": {"x": 0.5}, "protect": {}, "compile_plan": [{"tool": "set_track_volume"}]},
-        {"move_id": "b", "family": "arrangement", "risk_level": "medium", "targets": {"y": 0.5}, "protect": {}, "compile_plan": [{"tool": "create_clip"}]},
-        {"move_id": "c", "family": "transition", "risk_level": "high", "targets": {"z": 0.5}, "protect": {}, "compile_plan": [{"tool": "set_tempo"}]},
+        {"move_id": "a", "family": "mix", "risk_level": "low", "targets": {"x": 0.5}, "protect": {}, "plan_template": [{"tool": "set_track_volume"}]},
+        {"move_id": "b", "family": "arrangement", "risk_level": "medium", "targets": {"y": 0.5}, "protect": {}, "plan_template": [{"tool": "create_clip"}]},
+        {"move_id": "c", "family": "transition", "risk_level": "high", "targets": {"z": 0.5}, "protect": {}, "plan_template": [{"tool": "set_tempo"}]},
     ]
     result = select_distinct_variants(moves)
     assert len(result) == 3
@@ -115,8 +115,8 @@ def test_distinct_selects_different_families():
 
 def test_distinct_deduplicates_same_family_same_shape():
     moves = [
-        {"move_id": "a", "family": "mix", "compile_plan": [{"tool": "set_track_volume"}]},
-        {"move_id": "b", "family": "mix", "compile_plan": [{"tool": "set_track_volume"}]},
+        {"move_id": "a", "family": "mix", "plan_template": [{"tool": "set_track_volume"}]},
+        {"move_id": "b", "family": "mix", "plan_template": [{"tool": "set_track_volume"}]},
     ]
     result = select_distinct_variants(moves)
     assert len(result) == 1
