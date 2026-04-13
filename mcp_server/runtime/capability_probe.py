@@ -34,6 +34,23 @@ def probe_capabilities(
         "detail": "TCP 9878 connection active" if ableton_ok else "Not connected",
     }
 
+    # 1b. Live version capabilities
+    live_version_str = "12.0.0"
+    if ableton_ok:
+        try:
+            info = ableton.send_command("get_session_info")
+            live_version_str = info.get("live_version", "12.0.0")
+        except Exception:
+            pass
+    from .live_version import LiveVersionCapabilities
+    version_caps = LiveVersionCapabilities.from_version_string(live_version_str)
+    report["live_version"] = {
+        "status": "ok",
+        "version": live_version_str,
+        "capability_tier": version_caps.capability_tier,
+        "features": version_caps.to_dict(),
+    }
+
     # 2. Remote Script parity
     from .remote_commands import REMOTE_COMMANDS
     report["remote_script"] = {

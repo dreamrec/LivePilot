@@ -3,6 +3,7 @@ LivePilot - Transport domain handlers (10 commands).
 """
 
 from .router import register
+from .version_detect import version_string, get_api_features
 
 
 @register("get_session_info")
@@ -59,6 +60,8 @@ def get_session_info(song, params):
         "tracks": tracks_info,
         "return_tracks": return_tracks_info,
         "scenes": scenes_info,
+        "live_version": version_string(),
+        "api_features": get_api_features(),
     }
 
 

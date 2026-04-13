@@ -20,6 +20,7 @@ from . import browser      # noqa: F401  — registers browser handlers
 from . import arrangement  # noqa: F401  — registers arrangement handlers
 from . import diagnostics       # noqa: F401  — registers diagnostics handler
 from . import clip_automation   # noqa: F401  — registers clip automation handlers
+from . import version_detect    # noqa: F401  — version detection
 
 
 def create_instance(c_instance):
@@ -36,6 +37,12 @@ class LivePilot(ControlSurface):
         self._server.start()
         self.log_message("LivePilot v%s starting..." % __version__)
         self.show_message("LivePilot v%s starting..." % __version__)
+        v = version_detect.version_string()
+        self.log_message("LivePilot detected Ableton Live %s" % v)
+        features = version_detect.get_api_features()
+        enabled = [k for k, flag in features.items() if flag]
+        if enabled:
+            self.log_message("  Enabled features: %s" % ", ".join(enabled))
 
     def disconnect(self):
         """Called by Ableton when the script is unloaded."""
