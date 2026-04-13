@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog
 
-294 tools across 39 domains.
+307 tools across 41 domains.
 
 ---
 
@@ -72,19 +72,22 @@
 | `transpose_notes` | Shift pitch by semitones |
 | `quantize_clip` | Quantize to grid |
 
-## Devices (12)
+## Devices (15)
 
 | Tool | Description |
 |------|-------------|
 | `get_device_info` | Device name, class, parameters |
-| `get_device_parameters` | All params with names, values, ranges |
+| `get_device_parameters` | All params with names, values, ranges (+ display_value on 12.2+) |
 | `set_device_parameter` | Set param by name or index |
 | `batch_set_parameters` | Set multiple params in one call |
 | `toggle_device` | Enable/disable |
 | `delete_device` | Remove from chain |
 | `move_device` | Reorder device on track or move between tracks |
 | `load_device_by_uri` | Load by browser URI |
-| `find_and_load_device` | Search and load by name |
+| `find_and_load_device` | Search and load by name (uses insert_device fast path on 12.3+) |
+| `insert_device` | Insert native device by name — 10x faster (12.3+), supports chain insertion |
+| `insert_rack_chain` | Add chain to Instrument/Audio Effect/Drum Rack (12.3+) |
+| `set_drum_chain_note` | Assign MIDI note to Drum Rack chain (12.3+) |
 | `get_rack_chains` | Get chains in a rack |
 | `set_simpler_playback_mode` | Classic/1-shot/slice |
 | `set_chain_volume` | Set chain volume in rack |
@@ -132,12 +135,13 @@
 | `search_browser` | Search by name with filters |
 | `load_browser_item` | Load item by URI |
 
-## Arrangement (19)
+## Arrangement (20)
 
 | Tool | Description |
 |------|-------------|
 | `get_arrangement_clips` | List arrangement clips |
-| `create_arrangement_clip` | New clip at timeline position |
+| `create_arrangement_clip` | New clip at timeline position (duplicates session clip) |
+| `create_native_arrangement_clip` | Native arrangement clip with automation envelope support (12.1.10+) |
 | `add_arrangement_notes` | Add MIDI notes to arrangement clip |
 | `get_arrangement_notes` | Read arrangement notes |
 | `remove_arrangement_notes` | Remove notes in region |
