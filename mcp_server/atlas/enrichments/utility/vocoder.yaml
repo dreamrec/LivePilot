@@ -1,0 +1,160 @@
+id: vocoder
+name: Vocoder
+sonic_description: >
+  Classic analysis-synthesis vocoder that imposes the spectral envelope of one sound
+  (the modulator/carrier) onto another. Splits audio into frequency bands and uses
+  the amplitude envelope of the modulator to shape the carrier signal. Creates iconic
+  robot voice effects, talking instruments, and spectral transfer textures.
+effect_type: spectral
+character_tags: [vocoder, spectral, robotic, vocal, synthesis]
+use_cases: [robot_voice, talking_synth, spectral_transfer, vocal_processing, creative_filtering]
+genre_affinity:
+  primary: [edm, synthwave, electro]
+  secondary: [pop, funk, experimental, hip_hop]
+complexity: advanced
+introduced_in: "8.0"
+
+key_parameters:
+  - name: "Bands"
+    description: "Number of frequency analysis/synthesis bands — more = higher spectral resolution"
+    range: [4, 40]
+    type: int
+    sweet_spots:
+      lo_fi: 8
+      standard: 20
+      high_res: 40
+
+  - name: "Bandwidth"
+    description: "Width of each frequency band — affects spectral smearing"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      narrow: 0.3
+      normal: 0.6
+      wide: 0.9
+
+  - name: "Formant Shift"
+    description: "Shifts the spectral envelope up or down — changes perceived vowel character"
+    range: [-1.0, 1.0]
+    type: float
+    sweet_spots:
+      deeper: -0.5
+      natural: 0.0
+      higher: 0.5
+
+  - name: "Depth"
+    description: "How strongly the modulator's envelope shapes the carrier"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      subtle: 0.3
+      normal: 0.7
+      extreme: 1.0
+
+  - name: "Attack"
+    description: "How quickly the vocoder responds to changes in the modulator"
+    range: [0.1, 500.0]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      fast: 1.0
+      medium: 10.0
+      slow: 100.0
+
+  - name: "Release"
+    description: "How quickly the vocoder releases after the modulator drops"
+    range: [0.1, 500.0]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      fast: 5.0
+      medium: 30.0
+      slow: 200.0
+
+  - name: "Carrier"
+    description: "Source for the carrier signal — what gets shaped by the modulator"
+    range: ["External", "Noise", "Pitch Track", "Modulator"]
+    type: enum
+    sweet_spots:
+      classic: "External"
+      self_vocoder: "Noise"
+      monophonic: "Pitch Track"
+
+  - name: "Gate"
+    description: "Threshold below which bands are silenced — cleans up noise"
+    range: [-80.0, 0.0]
+    unit: "dB"
+    type: float
+
+  - name: "Level"
+    description: "Overall output level of the vocoder"
+    range: [-30.0, 30.0]
+    unit: "dB"
+    type: float
+
+  - name: "Dry/Wet"
+    description: "Mix between dry input and vocoder output"
+    range: [0, 100]
+    unit: "%"
+    type: int
+
+pairs_well_with:
+  - device: "Wavetable"
+    reason: "Rich carrier signal with evolving harmonics for detailed vocoding"
+  - device: "Analog"
+    reason: "Classic synth carrier for retro vocoder sounds"
+  - device: "Reverb"
+    reason: "Spatializes vocoder output for cinematic vocal processing"
+  - device: "Compressor"
+    reason: "Evens out the dynamic range of vocoder output"
+  - device: "EQ Eight"
+    reason: "Shapes the spectral balance after vocoding"
+  - device: "Chorus-Ensemble"
+    reason: "Thickens vocoder output for wider, richer vocal effects"
+
+starter_recipes:
+  - name: "Classic Vocoder"
+    description: "Traditional robot voice — send voice to modulator, synth pad to carrier"
+    genre: electro
+    params:
+      "Bands": 20
+      "Bandwidth": 0.6
+      "Depth": 0.8
+      "Carrier": "External"
+      "Attack": 5.0
+      "Release": 30.0
+      "Dry/Wet": 100
+
+  - name: "Robot Voice"
+    description: "Heavily processed robotic vocal effect with noise carrier"
+    genre: edm
+    params:
+      "Bands": 40
+      "Bandwidth": 0.4
+      "Depth": 1.0
+      "Carrier": "Noise"
+      "Attack": 1.0
+      "Release": 10.0
+      "Formant Shift": 0.0
+      "Dry/Wet": 100
+
+  - name: "Spectral Transfer"
+    description: "Subtle spectral imprint of one sound onto another — creative coloring"
+    genre: experimental
+    params:
+      "Bands": 30
+      "Bandwidth": 0.8
+      "Depth": 0.5
+      "Carrier": "External"
+      "Attack": 10.0
+      "Release": 50.0
+      "Dry/Wet": 60
+
+gotchas:
+  - "External carrier mode requires routing a sidechain input — the carrier audio must come from another track"
+  - "Noise carrier mode does not need external routing — it uses internal noise as the carrier"
+  - "More Bands = higher spectral resolution but more CPU and potential for artifacts"
+  - "Formant Shift changes perceived vowels — positive sounds smaller/higher, negative sounds larger/deeper"
+  - "Attack and Release values affect intelligibility — too slow loses consonants, too fast sounds glitchy"
+  - "Gate threshold helps clean up background noise between phrases — set just above the noise floor"
+  - "Pitch Track carrier mode works best with monophonic input and may track inaccurately on chords"

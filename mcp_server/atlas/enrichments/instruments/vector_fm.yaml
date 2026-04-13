@@ -1,0 +1,165 @@
+id: vector_fm
+name: Vector FM
+sonic_description: >
+  FM synthesis engine with an XY vector pad that enables real-time morphing between
+  four timbral snapshots. Combines the harmonic complexity of frequency modulation
+  with intuitive vector control for expressive, evolving sounds that shift character
+  fluidly during performance or automation.
+synthesis_type: fm
+character_tags: [morphing, dynamic, complex, digital, expressive]
+use_cases: [bass, leads, pads, textures, sound_design]
+genre_affinity:
+  primary: [edm, experimental, sound_design]
+  secondary: [techno, cinematic, dnb, pop]
+complexity: advanced
+self_contained: true
+introduced_in: "12.0"
+
+key_parameters:
+  - name: "Vector X"
+    description: "Horizontal position on the XY vector pad — morphs between left and right timbral snapshots"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      left: 0.0
+      center: 0.5
+      right: 1.0
+
+  - name: "Vector Y"
+    description: "Vertical position on the XY vector pad — morphs between top and bottom timbral snapshots"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      bottom: 0.0
+      center: 0.5
+      top: 1.0
+
+  - name: "FM Amount"
+    description: "Global FM modulation depth — controls overall harmonic complexity"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      subtle: 0.15
+      moderate: 0.4
+      aggressive: 0.75
+      extreme: 1.0
+
+  - name: "FM Ratio"
+    description: "Modulator to carrier frequency ratio — harmonic ratios (1:1, 2:1) sound tonal, non-integer ratios sound metallic"
+    range: [0.5, 16.0]
+    type: float
+    sweet_spots:
+      fundamental: 1.0
+      octave: 2.0
+      fifth: 3.0
+      metallic: 7.0
+
+  - name: "Filter Freq"
+    description: "Global filter cutoff frequency"
+    range: [20.0, 20000.0]
+    unit: "Hz"
+    type: float
+    sweet_spots:
+      dark: 800.0
+      balanced: 4000.0
+      open: 15000.0
+
+  - name: "Filter Res"
+    description: "Filter resonance"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      clean: 0.0
+      character: 0.3
+      aggressive: 0.6
+
+  - name: "Vector Motion Rate"
+    description: "Speed of automatic vector pad movement — for evolving timbres without manual control"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      static: 0.0
+      slow_morph: 0.15
+      moderate: 0.4
+      fast: 0.7
+
+  - name: "Attack"
+    description: "Amplitude envelope attack"
+    range: [0.0, 10000.0]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      percussive: 0.0
+      soft: 100.0
+      pad: 600.0
+
+  - name: "Release"
+    description: "Amplitude envelope release"
+    range: [0.0, 10000.0]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      tight: 50.0
+      natural: 300.0
+      ambient: 2000.0
+
+pairs_well_with:
+  - device: "Reverb"
+    reason: "FM timbres gain depth and space in reverb — morphing vector creates shifting reflections"
+  - device: "Chorus-Ensemble"
+    reason: "Softens the digital FM edges and adds width"
+  - device: "Saturator"
+    reason: "Adds analog warmth to counterbalance FM's digital character"
+  - device: "Delay"
+    reason: "Vector-driven timbral changes create unique variation in delay repeats"
+  - device: "EQ Eight"
+    reason: "FM harmonics are often unpredictable — surgical EQ tames resonant peaks"
+
+starter_recipes:
+  - name: "Morphing Bass"
+    description: "Bass that shifts character as you move through the vector space"
+    genre: edm
+    params:
+      "Vector X": 0.3
+      "Vector Y": 0.2
+      "FM Amount": 0.4
+      "FM Ratio": 1.0
+      "Filter Freq": 600.0
+      "Filter Res": 0.2
+      "Attack": 0.0
+      "Release": 100.0
+
+  - name: "Evolving Lead"
+    description: "Lead sound that morphs timbre via vector automation"
+    genre: experimental
+    params:
+      "Vector X": 0.5
+      "Vector Y": 0.5
+      "FM Amount": 0.5
+      "FM Ratio": 2.0
+      "Vector Motion Rate": 0.2
+      "Filter Freq": 5000.0
+      "Filter Res": 0.15
+      "Attack": 5.0
+      "Release": 300.0
+
+  - name: "Vector Pad"
+    description: "Slowly morphing pad that drifts through four timbral zones"
+    genre: cinematic
+    params:
+      "Vector X": 0.5
+      "Vector Y": 0.5
+      "FM Amount": 0.3
+      "FM Ratio": 1.0
+      "Vector Motion Rate": 0.1
+      "Filter Freq": 3000.0
+      "Filter Res": 0.1
+      "Attack": 800.0
+      "Release": 2500.0
+
+gotchas:
+  - "New in Live 12 — exact parameter names may differ. Use get_device_parameters for the actual parameter list"
+  - "The vector pad is the primary control — automate Vector X and Y for evolving sounds in arrangements"
+  - "FM Amount creates dramatic timbral shifts — small changes have big sonic impact, especially at non-integer ratios"
+  - "Each corner of the vector pad stores a different FM snapshot — program all four corners before morphing"
+  - "High FM Amount at non-integer ratios creates inharmonic, metallic timbres — use intentionally for percussion or sound design"

@@ -1,0 +1,141 @@
+id: vinyl_distortion
+name: Vinyl Distortion
+sonic_description: >
+  Vinyl record simulation that adds the warmth, crackle, and imperfections of vinyl
+  playback. Features a Tracing Model that simulates the physical interaction of a
+  stylus with the groove, plus adjustable crackle and pinch effects for authentic
+  vintage character.
+effect_type: distortion
+character_tags: [warm, vintage, crackle, lo_fi, nostalgic]
+use_cases: [vinyl_warmth, crackle_texture, lo_fi_aesthetic, vintage_character, retro_production]
+genre_affinity:
+  primary: [lo_fi, hip_hop, jazz]
+  secondary: [house, soul, indie, ambient]
+complexity: beginner
+signal_type: audio
+introduced_in: "5.0"
+
+key_parameters:
+  - name: "Tracing Model"
+    description: "Simulates stylus tracing distortion — how the needle interacts with the groove"
+    type: toggle
+    range: [0, 1]
+    sweet_spots:
+      off: 0
+      on: 1
+
+  - name: "Tracing Drive"
+    description: "Intensity of the tracing distortion — higher values = more stylus nonlinearity"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      subtle: 15.0
+      moderate: 35.0
+      heavy: 60.0
+
+  - name: "Tracing Freq"
+    description: "Frequency focus of the tracing model distortion"
+    range: [20.0, 20000.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      bass_warmth: 100.0
+      mid_character: 1000.0
+      high_sizzle: 5000.0
+
+  - name: "Pinch"
+    description: "Pinch effect — frequency modulation distortion for metallic color"
+    type: toggle
+    range: [0, 1]
+
+  - name: "Pinch Amount"
+    description: "Intensity of the pinch effect"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      subtle: 10.0
+      moderate: 30.0
+      heavy: 60.0
+
+  - name: "Pinch Width"
+    description: "Stereo width of the pinch effect"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      mono: 0.0
+      moderate: 50.0
+      wide: 100.0
+
+  - name: "Crackle Volume"
+    description: "Level of vinyl crackle noise — the pop and hiss of a record"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      off: 0.0
+      subtle: 10.0
+      noticeable: 25.0
+      heavy: 50.0
+
+  - name: "Crackle Density"
+    description: "How frequent the crackle events are"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      sparse: 15.0
+      moderate: 40.0
+      dense: 70.0
+
+pairs_well_with:
+  - device: "EQ Eight"
+    reason: "Roll off highs and lows for authentic vinyl frequency response"
+  - device: "Saturator"
+    reason: "Layer analog warmth with vinyl character"
+  - device: "Chorus-Ensemble"
+    reason: "Subtle modulation adds tape-like wow and flutter"
+  - device: "Redux"
+    reason: "Combine for extreme lo-fi vintage degradation"
+
+starter_recipes:
+  - name: "Vinyl Warmth + Crackle"
+    description: "Authentic vinyl record character with subtle crackle"
+    genre: lo_fi
+    params:
+      "Tracing Model": 1
+      "Tracing Drive": 25.0
+      "Tracing Freq": 1000.0
+      "Crackle Volume": 15.0
+      "Crackle Density": 30.0
+
+  - name: "Lo-Fi Aesthetic"
+    description: "Heavy vinyl degradation for lo-fi hip-hop and chill beats"
+    genre: hip_hop
+    params:
+      "Tracing Model": 1
+      "Tracing Drive": 45.0
+      "Tracing Freq": 500.0
+      Pinch: 1
+      "Pinch Amount": 15.0
+      "Crackle Volume": 25.0
+      "Crackle Density": 50.0
+
+  - name: "Subtle Vintage"
+    description: "Light vinyl coloring for nostalgic warmth"
+    genre: all
+    params:
+      "Tracing Model": 1
+      "Tracing Drive": 15.0
+      "Tracing Freq": 800.0
+      "Crackle Volume": 8.0
+      "Crackle Density": 20.0
+
+gotchas:
+  - "Crackle is generated noise, not input-dependent — it plays even during silence"
+  - "Tracing Model at high Drive with low Frequency adds significant low-end distortion"
+  - "Pinch creates frequency-modulation artifacts — can sound metallic and unmusical at high values"
+  - "For authentic vinyl sound, combine with EQ Eight: gentle LP at 12kHz, HP at 40Hz"
+  - "Crackle Volume should be subtle — real vinyl crackle is barely perceptible unless the record is damaged"

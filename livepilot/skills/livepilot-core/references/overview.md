@@ -1,6 +1,6 @@
 # LivePilot v1.9.25 — Architecture & Tool Reference
 
-Agentic production system for Ableton Live 12. 307 tools across 41 domains. Device atlas (280+ devices), spectral perception (M4L analyzer), technique memory, automation intelligence (16 curve types, 15 recipes), music theory (Krumhansl-Schmuckler, species counterpoint), generative algorithms (Euclidean rhythm, tintinnabuli, phase shift, additive process), neo-Riemannian harmony (PRL transforms, Tonnetz), MIDI file I/O.
+Agentic production system for Ableton Live 12. 313 tools across 42 domains. Device atlas (1305 devices, 81 enriched), spectral perception (M4L analyzer), technique memory, automation intelligence (16 curve types, 15 recipes), music theory (Krumhansl-Schmuckler, species counterpoint), generative algorithms (Euclidean rhythm, tintinnabuli, phase shift, additive process), neo-Riemannian harmony (PRL transforms, Tonnetz), MIDI file I/O.
 
 ## Architecture
 

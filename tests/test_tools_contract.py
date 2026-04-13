@@ -1,4 +1,4 @@
-"""Verify all 307 MCP tools are registered across 41 domains."""
+"""Verify all 313 MCP tools are registered across 42 domains."""
 
 import asyncio
 import sys
@@ -482,7 +482,7 @@ def test_safety_tools_registered():
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 307, f"Expected 307 tools, got {len(tools)}"
+    assert len(tools) == 313, f"Expected 313 tools, got {len(tools)}"
 
 
 def test_sample_engine_tools_registered():
@@ -714,3 +714,17 @@ def test_creative_constraints_tools_registered():
     }
     missing = expected - names
     assert not missing, f"Missing creative constraints tools: {missing}"
+
+
+def test_atlas_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "atlas_search",
+        "atlas_device_info",
+        "atlas_suggest",
+        "atlas_chain_suggest",
+        "atlas_compare",
+        "scan_full_library",
+    }
+    missing = expected - names
+    assert not missing, f"Missing atlas tools: {missing}"

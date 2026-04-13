@@ -1,0 +1,133 @@
+id: gated_delay
+name: Gated Delay
+sonic_description: >
+  Delay effect with a built-in rhythmic gate that chops the echo trail into patterned
+  bursts. Creates stuttered, rhythmically sculpted echoes that go beyond simple
+  repetition — from gated reverb-like effects to complex trance-gate delay textures.
+effect_type: delay
+character_tags: [rhythmic, gated, stuttered, patterned, creative]
+use_cases: [rhythmic_stutter, gated_reverb_effect, trance_gate, creative_delay, transition_effects]
+genre_affinity:
+  primary: [trance, electronic, house, techno]
+  secondary: [pop, edm, experimental]
+complexity: intermediate
+signal_type: audio
+introduced_in: "12.0"
+m4l_device: true
+
+key_parameters:
+  - name: "Delay Time"
+    description: "Base delay time — synced to tempo"
+    range: ["1/16", "1/8T", "1/8", "3/16", "1/4T", "1/4", "3/8", "1/2", "1"]
+    type: enum
+    sweet_spots:
+      eighth: "1/8"
+      quarter: "1/4"
+
+  - name: "Feedback"
+    description: "Amount of delayed signal fed back into the delay"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      few: 25.0
+      moderate: 45.0
+      dense: 70.0
+
+  - name: "Gate Rate"
+    description: "Speed of the rhythmic gate applied to the delay trail"
+    range: ["1/32", "1/16", "1/8", "1/4"]
+    type: enum
+    sweet_spots:
+      fast_stutter: "1/32"
+      sixteenth: "1/16"
+      eighth: "1/8"
+
+  - name: "Gate Amount"
+    description: "Depth of the gate effect — 0% = no gating, 100% = full silence between pulses"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      subtle: 30.0
+      moderate: 60.0
+      full: 100.0
+
+  - name: "Gate Shape"
+    description: "Shape of the gate envelope — affects the character of the chopping"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      sharp: 10.0
+      smooth: 50.0
+      soft: 80.0
+
+  - name: "Filter"
+    description: "Feedback filter frequency"
+    range: [20.0, 20000.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      dark: 2000.0
+      warm: 4000.0
+      bright: 8000.0
+
+  - name: "Dry/Wet"
+    description: "Mix between dry and gated delay signal"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      subtle: 20.0
+      moderate: 35.0
+      heavy: 50.0
+
+pairs_well_with:
+  - device: "Reverb"
+    reason: "Reverb after gated delay smears the stuttered echoes into a wash"
+  - device: "EQ Eight"
+    reason: "Shape the frequency content of the gated echoes"
+  - device: "Compressor"
+    reason: "Even out the dynamics of the gated delay on return tracks"
+
+starter_recipes:
+  - name: "Rhythmic Stutter"
+    description: "Fast-gated delay for stuttered echo textures"
+    genre: electronic
+    params:
+      "Delay Time": "1/8"
+      Feedback: 40.0
+      "Gate Rate": "1/16"
+      "Gate Amount": 80.0
+      "Gate Shape": 30.0
+      "Dry/Wet": 30.0
+
+  - name: "Gated Reverb-Like"
+    description: "Simulates gated reverb using delay with fast gate"
+    genre: pop
+    params:
+      "Delay Time": "1/16"
+      Feedback: 60.0
+      "Gate Rate": "1/8"
+      "Gate Amount": 100.0
+      "Gate Shape": 20.0
+      "Dry/Wet": 35.0
+
+  - name: "Trance Gate Delay"
+    description: "Pulsing, rhythmic delay for trance buildups"
+    genre: trance
+    params:
+      "Delay Time": "1/4"
+      Feedback: 50.0
+      "Gate Rate": "1/16"
+      "Gate Amount": 90.0
+      "Gate Shape": 40.0
+      "Dry/Wet": 40.0
+
+gotchas:
+  - "This is a Max for Live device — requires Suite or M4L license"
+  - "Gate Rate interacts with Delay Time — choose complementary subdivisions for musical results"
+  - "High Feedback + high Gate Amount can create very rhythmic but potentially loud buildup"
+  - "Gate Shape at 0% creates hard, clicky cuts — increase for smoother transitions"
+  - "Best used on a return track for parallel processing control"

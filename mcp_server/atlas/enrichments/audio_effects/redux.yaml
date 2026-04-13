@@ -1,0 +1,114 @@
+id: redux
+name: Redux
+sonic_description: >
+  Bit reduction and downsampling effect that reduces audio fidelity by quantizing
+  amplitude (bit depth) and reducing sample rate. Creates classic retro digital sounds,
+  from subtle lo-fi warmth at mild settings to extreme 1-bit crunchy noise at
+  aggressive settings.
+effect_type: distortion
+character_tags: [lo_fi, retro, crushed, digital, 8_bit]
+use_cases: [lo_fi, bitcrush, retro_gaming, downsample, creative_destruction]
+genre_affinity:
+  primary: [lo_fi, chiptune, electronic, hip_hop]
+  secondary: [glitch, experimental, idm]
+complexity: beginner
+signal_type: audio
+introduced_in: "1.0"
+
+key_parameters:
+  - name: "Bit Depth"
+    description: "Reduces the number of amplitude levels — lower values = more quantization noise"
+    range: [1, 16]
+    type: int
+    sweet_spots:
+      subtle: 12
+      lo_fi: 8
+      crushed: 4
+      extreme: 2
+      one_bit: 1
+
+  - name: "Downsample"
+    description: "Reduces the effective sample rate — creates aliasing and frequency folding"
+    range: [1, 200]
+    type: int
+    sweet_spots:
+      subtle: 2
+      lo_fi: 8
+      crushed: 20
+      extreme: 50
+      destroyed: 200
+
+  - name: "Downsample Mode"
+    description: "How downsampling is applied — Soft is smoother, Hard is more aliased"
+    range: ["Soft", "Hard"]
+    type: enum
+    sweet_spots:
+      smooth: "Soft"
+      aliased: "Hard"
+
+  - name: "Jitter"
+    description: "Randomizes the sample rate reduction for noisy, unstable character"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      off: 0.0
+      subtle: 10.0
+      noisy: 40.0
+
+  - name: "Dry/Wet"
+    description: "Mix between clean and reduced signal"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      full: 100.0
+      parallel: 50.0
+      subtle: 30.0
+
+pairs_well_with:
+  - device: "Erosion"
+    reason: "Layer Redux with Erosion for full digital degradation"
+  - device: "Saturator"
+    reason: "Warm saturation before Redux softens the harsh digital artifacts"
+  - device: "Auto Filter"
+    reason: "Filter after Redux to tame harsh aliasing frequencies"
+  - device: "EQ Eight"
+    reason: "Cut high frequencies after downsampling to control aliasing"
+
+starter_recipes:
+  - name: "Lo-Fi 12-Bit"
+    description: "Subtle quality reduction for lo-fi hip-hop or chillwave aesthetics"
+    genre: lo_fi
+    params:
+      "Bit Depth": 12
+      Downsample: 3
+      "Downsample Mode": "Soft"
+      "Dry/Wet": 100.0
+
+  - name: "Extreme Bitcrush"
+    description: "Heavy bit and sample rate reduction for glitch and experimental"
+    genre: glitch
+    params:
+      "Bit Depth": 4
+      Downsample: 20
+      "Downsample Mode": "Hard"
+      "Dry/Wet": 80.0
+
+  - name: "Retro Gaming"
+    description: "8-bit chiptune character for retro game-style sounds"
+    genre: chiptune
+    params:
+      "Bit Depth": 8
+      Downsample: 10
+      "Downsample Mode": "Hard"
+      Jitter: 5.0
+      "Dry/Wet": 100.0
+
+gotchas:
+  - "Bit Depth of 1 is extreme — the signal becomes a square wave at the input frequency"
+  - "Downsampling creates aliasing that folds frequencies back down — can produce unexpected tones"
+  - "Hard mode produces more aliasing artifacts; Soft mode smooths the downsampling"
+  - "Very heavy settings can make the audio unrecognizable — use Dry/Wet for parallel blending"
+  - "Low Bit Depth adds significant noise floor — compensate with a noise gate if needed"
+  - "Jitter adds randomness to the sample rate — creates a more organic, unstable character"

@@ -1,0 +1,150 @@
+id: collision
+name: Collision
+sonic_description: >
+  Physical modeling instrument that simulates a mallet or noise exciter striking
+  a resonating body (beam, membrane, plate, pipe, or tube). Produces realistic
+  tuned percussion from marimbas to metallic gongs, and can be pushed into
+  otherworldly resonant textures impossible with sampling.
+synthesis_type: physical_modeling
+character_tags: [metallic, resonant, percussive, organic, physical]
+use_cases: [percussion, bells, tuned_percussion, textures, sound_design]
+genre_affinity:
+  primary: [ambient, world, experimental]
+  secondary: [cinematic, minimal, techno, idm]
+complexity: intermediate
+self_contained: true
+introduced_in: "8.0"
+
+key_parameters:
+  - name: "Mallet Stiffness"
+    description: "Hardness of the striking mallet — soft produces warm tones, hard produces bright attack"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      soft_mallet: 0.2
+      medium: 0.5
+      hard_mallet: 0.85
+
+  - name: "Mallet Noise"
+    description: "Amount of noise in the excitation — adds realism and attack character"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      clean: 0.0
+      realistic: 0.3
+      noisy: 0.7
+
+  - name: "Res 1 Type"
+    description: "Resonator 1 body type — determines the fundamental character of resonance"
+    range: ["Beam", "Membrane", "Plate", "Pipe", "Tube"]
+    type: enum
+    sweet_spots:
+      marimba: "Beam"
+      drum: "Membrane"
+      gong: "Plate"
+      wind: "Pipe"
+
+  - name: "Res 1 Decay"
+    description: "How long the resonator rings after excitation"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      short_percussion: 0.2
+      medium_ring: 0.5
+      long_sustain: 0.85
+
+  - name: "Res 1 Material"
+    description: "Material dampening character — affects how harmonics decay over time"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      wood: 0.3
+      metal: 0.7
+      glass: 0.9
+
+  - name: "Res 1 Tune"
+    description: "Resonator tuning — pitch of the resonating body"
+    range: [-48.0, 48.0]
+    unit: "st"
+    type: float
+    sweet_spots:
+      center: 0.0
+      octave_up: 12.0
+      octave_down: -12.0
+
+  - name: "Res 1 Quality"
+    description: "Resonance quality factor — higher values ring more clearly"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      dull: 0.2
+      clear: 0.6
+      ringing: 0.9
+
+  - name: "Res 2 Type"
+    description: "Resonator 2 body type — for layered or coupled resonance"
+    range: ["Beam", "Membrane", "Plate", "Pipe", "Tube"]
+    type: enum
+
+  - name: "Res 2 Tune"
+    description: "Resonator 2 tuning — set relative to Res 1 for harmonic or inharmonic relationships"
+    range: [-48.0, 48.0]
+    unit: "st"
+    type: float
+    sweet_spots:
+      unison: 0.0
+      fifth: 7.0
+      octave: 12.0
+
+pairs_well_with:
+  - device: "Reverb"
+    reason: "Physical modeling sounds bloom in reverberant spaces — adds room context"
+  - device: "EQ Eight"
+    reason: "Resonant peaks from physical modeling often need surgical taming"
+  - device: "Compressor"
+    reason: "Percussive transients from mallets can be very dynamic — compression evens levels"
+  - device: "Delay"
+    reason: "Rhythmic delays on tuned percussion create gamelan-like patterns"
+  - device: "Saturator"
+    reason: "Adds warmth and harmonic density to thin resonator tones"
+
+starter_recipes:
+  - name: "Tuned Metallic Percussion"
+    description: "Bright, ringing metallic hit for melodic percussion parts"
+    genre: experimental
+    params:
+      "Mallet Stiffness": 0.7
+      "Mallet Noise": 0.2
+      "Res 1 Type": "Plate"
+      "Res 1 Decay": 0.6
+      "Res 1 Material": 0.7
+      "Res 1 Quality": 0.7
+
+  - name: "Wooden Marimba"
+    description: "Warm, natural-sounding marimba with soft mallet and beam resonator"
+    genre: world
+    params:
+      "Mallet Stiffness": 0.3
+      "Mallet Noise": 0.15
+      "Res 1 Type": "Beam"
+      "Res 1 Decay": 0.4
+      "Res 1 Material": 0.3
+      "Res 1 Quality": 0.5
+
+  - name: "Glass Bells"
+    description: "Crystalline bell tones with long sustain and high material brightness"
+    genre: ambient
+    params:
+      "Mallet Stiffness": 0.8
+      "Mallet Noise": 0.05
+      "Res 1 Type": "Beam"
+      "Res 1 Decay": 0.85
+      "Res 1 Material": 0.9
+      "Res 1 Quality": 0.85
+
+gotchas:
+  - "Resonator Type is the most impactful parameter — always choose this first as it defines the fundamental character"
+  - "High Quality + high Decay can create very long ringing tones that build up and mask other instruments"
+  - "Material controls harmonic damping, not the literal material — higher values mean brighter, longer-ringing upper partials"
+  - "Two coupled resonators can create very complex timbres — tune Res 2 to a harmonic interval (5th, octave) for musical results"
+  - "Mallet Noise adds realistic transient character but can be harsh at high settings — blend carefully"

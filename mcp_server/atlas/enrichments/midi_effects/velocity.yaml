@@ -1,0 +1,119 @@
+id: velocity
+name: Velocity
+sonic_description: >
+  Processes and reshapes MIDI note velocity, offering compression, expansion, limiting,
+  randomization, and fixed-value output. Controls dynamic expression and can flatten,
+  exaggerate, or humanize the velocity range of incoming MIDI data.
+effect_type: midi_processor
+character_tags: [dynamics, expression, compression, humanizing, limiting]
+use_cases: [velocity_compression, dynamic_control, humanization, fixed_velocity, velocity_mapping]
+genre_affinity:
+  primary: [edm, pop, hip_hop]
+  secondary: [jazz, ambient, techno]
+complexity: beginner
+introduced_in: "1.0"
+
+key_parameters:
+  - name: "Drive"
+    description: "Amplifies the velocity curve — boosts or attenuates velocity values"
+    range: [-1.0, 1.0]
+    type: float
+    sweet_spots:
+      attenuate: -0.5
+      neutral: 0.0
+      boost: 0.5
+      aggressive: 0.9
+
+  - name: "Compand"
+    description: "Compresses (negative) or expands (positive) the velocity range"
+    range: [-1.0, 1.0]
+    type: float
+    sweet_spots:
+      compress: -0.5
+      neutral: 0.0
+      expand: 0.5
+
+  - name: "Out Hi"
+    description: "Maximum output velocity — caps the highest velocity value"
+    range: [1, 127]
+    type: int
+    sweet_spots:
+      limited: 100
+      full: 127
+
+  - name: "Out Low"
+    description: "Minimum output velocity — sets the floor for velocity values"
+    range: [1, 127]
+    type: int
+    sweet_spots:
+      quiet: 30
+      moderate: 64
+      loud: 100
+
+  - name: "Random"
+    description: "Adds random velocity offset to each note — humanizes mechanical input"
+    range: [0, 64]
+    type: int
+    sweet_spots:
+      subtle: 5
+      moderate: 15
+      wild: 40
+
+  - name: "Operation"
+    description: "How velocity is processed — Clip, Gate, or Fixed"
+    range: ["Clip", "Gate", "Fixed"]
+    type: enum
+    sweet_spots:
+      normal: "Clip"
+      gated: "Gate"
+      uniform: "Fixed"
+
+pairs_well_with:
+  - device: "Arpeggiator"
+    reason: "Normalizes velocity across arpeggiated notes for even dynamics"
+  - device: "Drum Rack"
+    reason: "Controls hit dynamics for consistent drum patterns"
+  - device: "Compressor"
+    reason: "MIDI velocity compression before audio compression for maximum control"
+  - device: "Random"
+    reason: "Random pitch combined with random velocity for organic generative output"
+
+starter_recipes:
+  - name: "Flatten Velocity"
+    description: "Force all notes to the same velocity for mechanical, consistent output"
+    genre: techno
+    params:
+      "Out Hi": 64
+      "Out Low": 64
+      "Operation": "Fixed"
+
+  - name: "Expand Dynamics"
+    description: "Exaggerate velocity differences for more expressive playing"
+    genre: jazz
+    params:
+      "Compand": 0.6
+      "Out Hi": 127
+      "Out Low": 1
+
+  - name: "Random Humanize"
+    description: "Add subtle random velocity variation to mechanical MIDI for human feel"
+    genre: pop
+    params:
+      "Random": 10
+      "Out Hi": 120
+      "Out Low": 60
+
+  - name: "Soft Limiter"
+    description: "Cap maximum velocity to prevent harsh hits while preserving dynamics"
+    genre: ambient
+    params:
+      "Out Hi": 90
+      "Out Low": 30
+      "Compand": -0.3
+
+gotchas:
+  - "Fixed operation mode ignores input velocity entirely — all notes output at (Out Hi + Out Low) / 2"
+  - "Gate mode silences notes below Out Low — notes either pass or are killed, no middle ground"
+  - "Random offset is bidirectional — it can push notes above Out Hi or below Out Low before clipping"
+  - "Compand at extreme negative values squashes all velocities to a narrow band — check the curve display"
+  - "Drive and Compand interact — set one at a time to understand the combined curve shape"

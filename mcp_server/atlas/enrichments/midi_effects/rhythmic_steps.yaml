@@ -1,0 +1,103 @@
+id: rhythmic_steps
+name: Rhythmic Steps
+sonic_description: >
+  Rhythmic step sequencer focused on gate patterns, velocity accents, and per-step
+  probability. Transforms held notes into complex rhythmic patterns without changing
+  pitch, ideal for creating drum-like rhythmic figures from melodic input.
+effect_type: midi_processor
+character_tags: [rhythmic, sequencer, percussive, pattern, probability]
+use_cases: [rhythm_programming, gate_patterns, accent_sequences, probability_rhythms, euclidean_style]
+genre_affinity:
+  primary: [techno, house, edm]
+  secondary: [hip_hop, experimental, idm]
+complexity: intermediate
+introduced_in: "12.0"
+
+key_parameters:
+  - name: "Steps"
+    description: "Number of active steps in the rhythmic pattern"
+    range: [1, 16]
+    type: int
+    sweet_spots:
+      minimal: 4
+      standard: 8
+      complex: 16
+
+  - name: "Rate"
+    description: "Playback speed of the step pattern"
+    range: ["1/1", "1/2", "1/4", "1/8", "1/16", "1/32"]
+    type: enum
+    sweet_spots:
+      quarter: "1/4"
+      eighth: "1/8"
+      sixteenth: "1/16"
+
+  - name: "Gate (per step)"
+    description: "Whether each step triggers a note and for how long"
+    range: [0, 200]
+    unit: "%"
+    type: int
+    sweet_spots:
+      off: 0
+      short: 20
+      normal: 80
+      tied: 200
+
+  - name: "Velocity (per step)"
+    description: "Velocity for each step — creates accent patterns"
+    range: [0, 127]
+    type: int
+    sweet_spots:
+      ghost: 40
+      normal: 90
+      accent: 127
+
+  - name: "Probability (per step)"
+    description: "Chance each step fires — creates evolving, non-repeating patterns"
+    range: [0, 100]
+    unit: "%"
+    type: int
+    sweet_spots:
+      always: 100
+      likely: 75
+      coin_flip: 50
+      rare: 25
+
+pairs_well_with:
+  - device: "Drum Rack"
+    reason: "Rhythmic gating on drum hits for complex beat programming"
+  - device: "Analog"
+    reason: "Rhythmic gate patterns on synth drones for sequenced synth lines"
+  - device: "Auto Filter"
+    reason: "Timbral movement synchronized to rhythmic step triggers"
+  - device: "Compressor"
+    reason: "Sidechain-style pumping aligned with rhythmic patterns"
+
+starter_recipes:
+  - name: "Euclidean-Style Pattern"
+    description: "Evenly distributed hits across 16 steps for polyrhythmic feel"
+    genre: techno
+    params:
+      "Steps": 16
+      "Rate": "1/16"
+
+  - name: "Probability Rhythm"
+    description: "8-step pattern with varying probabilities for evolving beats"
+    genre: idm
+    params:
+      "Steps": 8
+      "Rate": "1/16"
+
+  - name: "Four on the Floor with Ghost Notes"
+    description: "Strong accents on beats with quiet ghost notes between"
+    genre: house
+    params:
+      "Steps": 8
+      "Rate": "1/8"
+
+gotchas:
+  - "New in Live 12 — this is a Max for Live MIDI effect included with Suite"
+  - "Rhythmic Steps does not change pitch — it only controls rhythm, velocity, and gate"
+  - "Steps with Gate at 0 are silent rests — different from Probability at 0 which is deterministically off"
+  - "Probability creates variation on each cycle — the pattern is never exactly the same twice"
+  - "Combine with Melodic Steps for full melodic+rhythmic sequencing capability"

@@ -1,0 +1,164 @@
+id: spectral_time
+name: Spectral Time
+sonic_description: >
+  Spectral processing effect that applies delay and freeze to individual frequency bands
+  independently. Each frequency component can be delayed by a different amount, creating
+  smeared, washed-out textures. The freeze function captures and sustains the spectral
+  content indefinitely, turning any input into evolving drones and textures.
+effect_type: special
+character_tags: [spectral, ethereal, frozen, evolving, otherworldly]
+use_cases: [spectral_freeze, spectral_delay, granular_wash, drone, ambient_texture, transition]
+genre_affinity:
+  primary: [ambient, experimental, electronic]
+  secondary: [sound_design, film_score, idm, shoegaze]
+complexity: advanced
+signal_type: audio
+introduced_in: "11.0"
+m4l_device: true
+
+key_parameters:
+  - name: "Freeze"
+    description: "Captures and infinitely sustains the current spectral content"
+    type: toggle
+    range: [0, 1]
+    sweet_spots:
+      off: 0
+      frozen: 1
+
+  - name: "Delay Time"
+    description: "Amount of spectral delay applied to frequency components"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      off: 0.0
+      subtle: 15.0
+      moderate: 40.0
+      heavy: 70.0
+      full: 100.0
+
+  - name: "Delay Feedback"
+    description: "Feedback of the spectral delay for building density"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      single: 0.0
+      moderate: 40.0
+      dense: 70.0
+      infinite: 100.0
+
+  - name: "Resolution"
+    description: "FFT resolution — higher values give more frequency bands but more latency"
+    range: [128, 8192]
+    type: int
+    sweet_spots:
+      low: 256
+      medium: 1024
+      high: 4096
+      ultra: 8192
+
+  - name: "Tilt"
+    description: "Tilts the spectral delay — positive = highs delayed more, negative = lows delayed more"
+    range: [-100.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      highs_first: -50.0
+      even: 0.0
+      lows_first: 50.0
+
+  - name: "Spray"
+    description: "Randomizes the delay times per frequency band for scattered textures"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      off: 0.0
+      subtle: 15.0
+      scattered: 40.0
+      chaotic: 80.0
+
+  - name: "Mod Rate"
+    description: "Modulation speed for the spectral parameters"
+    range: [0.01, 20.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      slow: 0.1
+      moderate: 1.0
+      fast: 5.0
+
+  - name: "Mod Amount"
+    description: "Depth of spectral modulation"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      off: 0.0
+      subtle: 15.0
+      moderate: 40.0
+
+  - name: "Dry/Wet"
+    description: "Mix between dry and spectrally processed signal"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      subtle: 15.0
+      blend: 35.0
+      heavy: 60.0
+      full: 100.0
+
+pairs_well_with:
+  - device: "Reverb"
+    reason: "Reverb on spectral output creates vast, evolving sonic spaces"
+  - device: "EQ Eight"
+    reason: "Shape the spectral output to control harsh or muddy frequencies"
+  - device: "Delay"
+    reason: "Layer conventional echoes with spectral delay for complex textures"
+  - device: "Auto Filter"
+    reason: "Dynamic filtering on the spectral wash for movement"
+  - device: "Compressor"
+    reason: "Control the dynamics of the spectral output, especially after freeze"
+
+starter_recipes:
+  - name: "Spectral Freeze"
+    description: "Capture and sustain input as an evolving spectral drone"
+    genre: ambient
+    params:
+      Freeze: 1
+      Resolution: 4096
+      "Mod Rate": 0.1
+      "Mod Amount": 15.0
+      "Dry/Wet": 80.0
+
+  - name: "Spectral Delay Shimmer"
+    description: "Frequency-smeared delay for ethereal, washed-out textures"
+    genre: ambient
+    params:
+      "Delay Time": 40.0
+      "Delay Feedback": 50.0
+      Tilt: 30.0
+      Resolution: 2048
+      "Dry/Wet": 35.0
+
+  - name: "Granular Wash"
+    description: "Scattered spectral delay creating granular-like textures"
+    genre: experimental
+    params:
+      "Delay Time": 60.0
+      "Delay Feedback": 40.0
+      Spray: 50.0
+      Tilt: -20.0
+      Resolution: 1024
+      "Dry/Wet": 45.0
+
+gotchas:
+  - "This is a Max for Live device — requires Suite or M4L license"
+  - "High Resolution values (4096+) add significant latency — not suitable for real-time monitoring"
+  - "Freeze captures whatever is currently in the spectral buffer — automate for transitions"
+  - "Delay Feedback at 100% creates infinite buildup — can get very loud"
+  - "CPU-intensive, especially at high Resolution — use on a return track for efficiency"
+  - "Tilt creates interesting textures where high frequencies arrive before low or vice versa"
+  - "Spray adds randomness that evolves over time — no two moments sound identical"

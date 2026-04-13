@@ -1,0 +1,162 @@
+id: tree_tone
+name: Tree Tone
+sonic_description: >
+  Multi-layer tonal synthesis instrument that generates evolving timbres through
+  branching harmonic structures. Produces organic, tree-like growth of sound where
+  multiple tonal layers bloom and interact, creating rich textures that evolve
+  naturally over time with an almost living quality.
+synthesis_type: additive
+character_tags: [organic, evolving, layered, textural, lush]
+use_cases: [textures, pads, drones, atmospheric, sound_design]
+genre_affinity:
+  primary: [ambient, cinematic, experimental]
+  secondary: [electronic, post_rock, new_age, downtempo]
+complexity: intermediate
+self_contained: true
+introduced_in: "12.0"
+
+key_parameters:
+  - name: "Layer 1 Tone"
+    description: "Tonal character of the first synthesis layer"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      fundamental: 0.0
+      mid_tone: 0.5
+      bright: 1.0
+
+  - name: "Layer 2 Tone"
+    description: "Tonal character of the second synthesis layer"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      complementary: 0.3
+      contrasting: 0.7
+
+  - name: "Layer Mix"
+    description: "Balance between the tonal layers"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      layer_1_heavy: 0.2
+      balanced: 0.5
+      layer_2_heavy: 0.8
+
+  - name: "Evolution Rate"
+    description: "Speed at which timbral changes unfold over time"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      static: 0.0
+      glacial: 0.15
+      moderate: 0.4
+      fast_morph: 0.75
+
+  - name: "Evolution Depth"
+    description: "How far the timbre evolves from its starting point"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      subtle: 0.2
+      organic: 0.5
+      dramatic: 0.8
+
+  - name: "Brightness"
+    description: "Overall high-frequency content and harmonic brightness"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      dark: 0.15
+      warm: 0.4
+      bright: 0.75
+
+  - name: "Spread"
+    description: "Stereo spread of the layered tones"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      mono: 0.0
+      natural: 0.5
+      wide: 0.85
+
+  - name: "Attack"
+    description: "Amplitude envelope attack time"
+    range: [0.0, 10000.0]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      immediate: 0.0
+      soft: 300.0
+      slow_bloom: 1500.0
+
+  - name: "Release"
+    description: "Amplitude envelope release time"
+    range: [0.0, 10000.0]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      tight: 100.0
+      natural: 800.0
+      ambient: 4000.0
+
+pairs_well_with:
+  - device: "Reverb"
+    reason: "Evolving tonal layers merge beautifully with long reverb for immersive atmospheres"
+  - device: "Delay"
+    reason: "Evolving timbres create naturally varied delay repetitions that build complexity"
+  - device: "Chorus-Ensemble"
+    reason: "Extra stereo depth enhances the layered quality"
+  - device: "Auto Filter"
+    reason: "Slow filter sweeps add another dimension of movement to the tonal evolution"
+  - device: "Utility"
+    reason: "Width management is important — layered sounds can be very wide"
+
+starter_recipes:
+  - name: "Organic Texture"
+    description: "Slowly evolving multi-layer texture with natural movement"
+    genre: ambient
+    params:
+      "Layer 1 Tone": 0.3
+      "Layer 2 Tone": 0.6
+      "Layer Mix": 0.45
+      "Evolution Rate": 0.2
+      "Evolution Depth": 0.5
+      "Brightness": 0.5
+      "Spread": 0.6
+      "Attack": 800.0
+      "Release": 3000.0
+
+  - name: "Tonal Drone"
+    description: "Rich, sustained drone with multiple tonal layers blending together"
+    genre: cinematic
+    params:
+      "Layer 1 Tone": 0.1
+      "Layer 2 Tone": 0.4
+      "Layer Mix": 0.5
+      "Evolution Rate": 0.1
+      "Evolution Depth": 0.3
+      "Brightness": 0.35
+      "Spread": 0.7
+      "Attack": 2000.0
+      "Release": 5000.0
+
+  - name: "Evolving Atmosphere"
+    description: "Dynamic, shifting atmosphere with fast evolution and wide spread"
+    genre: experimental
+    params:
+      "Layer 1 Tone": 0.5
+      "Layer 2 Tone": 0.8
+      "Layer Mix": 0.5
+      "Evolution Rate": 0.6
+      "Evolution Depth": 0.7
+      "Brightness": 0.6
+      "Spread": 0.85
+      "Attack": 500.0
+      "Release": 2500.0
+
+gotchas:
+  - "New in Live 12 — exact parameter names may differ from descriptions here. Always verify with get_device_parameters"
+  - "High Evolution Rate + Depth can make the sound unpredictable for melodic use — reduce both for pitched parts"
+  - "Wide Spread settings can cause phase issues in mono — check mono compatibility with Utility"
+  - "Layer interaction creates emergent timbres — the combined sound may differ significantly from either layer alone"
+  - "CPU usage scales with the number of active layers and evolution complexity"

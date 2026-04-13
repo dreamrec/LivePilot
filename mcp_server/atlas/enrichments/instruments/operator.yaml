@@ -1,0 +1,197 @@
+id: operator
+name: Operator
+sonic_description: >
+  Four-operator FM synthesizer with 11 routing algorithms that range from pure additive
+  (all parallel) to deep FM chains (all serial). Capable of crystalline bells, metallic
+  percussion, punchy electric pianos, and aggressive digital basses that no subtractive
+  synth can produce.
+synthesis_type: fm
+character_tags: [metallic, crystalline, precise, digital, complex]
+use_cases: [bass, bells, keys, percussion, textures]
+genre_affinity:
+  primary: [techno, experimental, jazz]
+  secondary: [ambient, dnb, house, pop]
+complexity: advanced
+self_contained: true
+introduced_in: "1.0"
+
+key_parameters:
+  - name: "Algorithm"
+    description: "Routing topology between 4 operators — defines FM vs additive balance (1=all serial/max FM, 11=all parallel/additive)"
+    range: [1, 11]
+    type: int
+    sweet_spots:
+      maximum_fm: 1
+      classic_epiano: 6
+      bell: 4
+      additive: 11
+      hybrid: 7
+
+  - name: "Osc-A Coarse"
+    description: "Operator A frequency ratio — harmonic ratios (1, 2, 3...) sound tonal, non-integer ratios sound metallic"
+    range: [0.5, 48.0]
+    type: float
+    sweet_spots:
+      fundamental: 1.0
+      octave: 2.0
+      fifth: 3.0
+      metallic: 7.0
+
+  - name: "Osc-A Level"
+    description: "Operator A output level — as modulator, controls FM depth; as carrier, controls volume"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      subtle_fm: 0.3
+      moderate_fm: 0.6
+      aggressive_fm: 0.9
+
+  - name: "Osc-A Waveform"
+    description: "Operator A waveform shape"
+    range: ["Sine", "Saw", "Square", "Triangle", "Noise"]
+    type: enum
+    sweet_spots:
+      pure_fm: "Sine"
+      harsh: "Saw"
+
+  - name: "Osc-B Coarse"
+    description: "Operator B frequency ratio"
+    range: [0.5, 48.0]
+    type: float
+    sweet_spots:
+      fundamental: 1.0
+      bright_fm: 4.0
+
+  - name: "Osc-B Level"
+    description: "Operator B output/modulation level"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      subtle: 0.2
+      moderate: 0.5
+
+  - name: "Osc-C Coarse"
+    description: "Operator C frequency ratio"
+    range: [0.5, 48.0]
+    type: float
+    sweet_spots:
+      harmonic: 3.0
+      inharmonic: 5.5
+
+  - name: "Osc-C Level"
+    description: "Operator C output/modulation level"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      subtle: 0.3
+
+  - name: "Osc-D Coarse"
+    description: "Operator D frequency ratio"
+    range: [0.5, 48.0]
+    type: float
+    sweet_spots:
+      fundamental: 1.0
+
+  - name: "Osc-D Level"
+    description: "Operator D output/modulation level"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      carrier: 0.8
+
+  - name: "Filter Freq"
+    description: "Global filter cutoff frequency"
+    range: [20.0, 20000.0]
+    unit: "Hz"
+    type: float
+    sweet_spots:
+      dark: 1000.0
+      open: 15000.0
+
+  - name: "Filter Res"
+    description: "Global filter resonance"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      clean: 0.0
+      colored: 0.3
+
+  - name: "LFO Rate"
+    description: "LFO speed for vibrato or tremolo"
+    range: [0.01, 30.0]
+    unit: "Hz"
+    type: float
+    sweet_spots:
+      vibrato: 5.5
+      slow_sweep: 0.3
+
+  - name: "LFO Amount"
+    description: "LFO modulation depth"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      subtle_vibrato: 0.1
+      deep_modulation: 0.5
+
+pairs_well_with:
+  - device: "Reverb"
+    reason: "FM bells and keys sound stunning with plate or hall reverb"
+  - device: "Chorus-Ensemble"
+    reason: "Softens the digital precision and adds warmth to FM timbres"
+  - device: "EQ Eight"
+    reason: "FM synthesis creates unpredictable harmonics that often need surgical EQ"
+  - device: "Compressor"
+    reason: "Tames the wide dynamic range of velocity-sensitive FM patches"
+  - device: "Saturator"
+    reason: "Adds analog warmth to counterbalance FM's inherently digital character"
+
+starter_recipes:
+  - name: "FM Bass"
+    description: "Deep, punchy FM bass with controlled harmonics — Algorithm 1 for maximum modulation"
+    genre: techno
+    params:
+      "Algorithm": 1
+      "Osc-A Coarse": 1.0
+      "Osc-A Level": 0.6
+      "Osc-A Waveform": "Sine"
+      "Osc-B Coarse": 1.0
+      "Osc-B Level": 0.8
+      "Osc-C Coarse": 2.0
+      "Osc-C Level": 0.3
+      "Osc-D Coarse": 1.0
+      "Osc-D Level": 0.7
+
+  - name: "Metallic Bell"
+    description: "Shimmering bell tone with inharmonic partials — Algorithm 4 for parallel modulators"
+    genre: ambient
+    params:
+      "Algorithm": 4
+      "Osc-A Coarse": 1.0
+      "Osc-A Level": 0.5
+      "Osc-B Coarse": 3.5
+      "Osc-B Level": 0.4
+      "Osc-C Coarse": 7.0
+      "Osc-C Level": 0.25
+      "Osc-D Coarse": 1.0
+      "Osc-D Level": 0.7
+
+  - name: "Electric Piano"
+    description: "Classic DX-style electric piano — Algorithm 6 with paired carrier/modulator operators"
+    genre: jazz
+    params:
+      "Algorithm": 6
+      "Osc-A Coarse": 1.0
+      "Osc-A Level": 0.4
+      "Osc-B Coarse": 1.0
+      "Osc-B Level": 0.7
+      "Osc-C Coarse": 14.0
+      "Osc-C Level": 0.15
+      "Osc-D Coarse": 1.0
+      "Osc-D Level": 0.7
+
+gotchas:
+  - "Algorithm choice fundamentally changes the sound — always set this first before adjusting operator levels"
+  - "Non-integer Coarse ratios (3.5, 7.1, etc.) create inharmonic/metallic timbres — use for bells and percussion"
+  - "Operator Level as a modulator controls FM depth, not volume — small changes cause dramatic timbral shifts"
+  - "Each operator has its own ADSR envelope — for percussive FM, use fast decay on modulators"
+  - "Velocity sensitivity on modulator levels is key for expressive FM patches — higher velocity = more brightness"

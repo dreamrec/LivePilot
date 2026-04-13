@@ -1,0 +1,150 @@
+id: corpus
+name: Corpus
+sonic_description: >
+  Physical modeling resonator that simulates the resonant properties of various
+  physical objects — beams, strings, membranes, plates, pipes, and tubes. Imposes
+  the harmonic character of a physical body onto incoming audio, adding tuned
+  metallic, woody, or hollow resonances.
+effect_type: resonator
+character_tags: [physical_modeling, resonant, metallic, woody, tuned]
+use_cases: [body_resonance, metallic_texture, tuned_resonance, physical_modeling, creative_coloring]
+genre_affinity:
+  primary: [experimental, ambient, sound_design]
+  secondary: [techno, idm, cinematic]
+complexity: advanced
+introduced_in: "8.0"
+
+key_parameters:
+  - name: "Resonance Type"
+    description: "Physical object being modeled — each has distinct harmonic characteristics"
+    range: ["Beam", "Marimba", "String", "Membrane", "Plate", "Pipe", "Tube"]
+    type: enum
+    sweet_spots:
+      metallic: "Beam"
+      woody: "Marimba"
+      tonal: "String"
+      deep: "Membrane"
+      bright: "Plate"
+      hollow: "Pipe"
+      breathy: "Tube"
+
+  - name: "Material"
+    description: "Damping characteristics — wood absorbs more than metal"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      wood: 0.2
+      mixed: 0.5
+      metal: 0.9
+
+  - name: "Decay"
+    description: "How long the resonance sustains after excitation"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      tight: 0.1
+      natural: 0.4
+      long: 0.8
+      infinite: 1.0
+
+  - name: "Tune"
+    description: "Pitch of the resonant body — tunes the fundamental resonance"
+    range: [-48.0, 48.0]
+    unit: "st"
+    type: float
+    sweet_spots:
+      bass: -12.0
+      middle: 0.0
+      high: 12.0
+
+  - name: "Fine Tune"
+    description: "Fine pitch adjustment in cents"
+    range: [-50.0, 50.0]
+    unit: "cents"
+    type: float
+
+  - name: "Listening Position (L)"
+    description: "Left channel listening position on the resonant body"
+    range: [0.0, 1.0]
+    type: float
+
+  - name: "Listening Position (R)"
+    description: "Right channel listening position on the resonant body"
+    range: [0.0, 1.0]
+    type: float
+
+  - name: "Brightness"
+    description: "High-frequency content of the resonance — higher is brighter"
+    range: [0.0, 1.0]
+    type: float
+
+  - name: "Inharm"
+    description: "Inharmonicity — how much the overtones deviate from pure harmonics"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      harmonic: 0.0
+      natural: 0.3
+      metallic: 0.7
+      bell_like: 1.0
+
+  - name: "Dry/Wet"
+    description: "Mix between dry signal and resonator output"
+    range: [0, 100]
+    unit: "%"
+    type: int
+
+pairs_well_with:
+  - device: "Drum Rack"
+    reason: "Adds body and tuned resonance to drum hits"
+  - device: "Compressor"
+    reason: "Controls the dynamics of resonance tails"
+  - device: "Reverb"
+    reason: "Spatializes the resonance for immersive textures"
+  - device: "EQ Eight"
+    reason: "Tames specific resonant peaks that can build up"
+  - device: "Saturator"
+    reason: "Adds warmth and harmonics to the resonant tone"
+
+starter_recipes:
+  - name: "Metallic Resonance"
+    description: "Bright, ringing metallic body resonance on percussion or synths"
+    genre: experimental
+    params:
+      "Resonance Type": "Plate"
+      "Material": 0.8
+      "Decay": 0.5
+      "Brightness": 0.7
+      "Inharm": 0.5
+      "Dry/Wet": 40
+
+  - name: "Body Resonator"
+    description: "Warm wooden body resonance for acoustic character"
+    genre: ambient
+    params:
+      "Resonance Type": "Marimba"
+      "Material": 0.3
+      "Decay": 0.3
+      "Brightness": 0.4
+      "Inharm": 0.1
+      "Dry/Wet": 30
+
+  - name: "Tuned Surface"
+    description: "Tuned membrane resonance that pitches the input to a specific note"
+    genre: sound_design
+    params:
+      "Resonance Type": "Membrane"
+      "Material": 0.5
+      "Decay": 0.6
+      "Tune": 0.0
+      "Brightness": 0.5
+      "Inharm": 0.2
+      "Dry/Wet": 60
+
+gotchas:
+  - "High Decay + high Material (metal) can create very long resonances that build up — watch levels"
+  - "Tune parameter dramatically changes the character — a few semitones makes a big difference"
+  - "Inharm at high values creates bell-like, non-harmonic overtones that may not track pitch musically"
+  - "Listening Position affects stereo image — different L/R positions create natural stereo spread"
+  - "Works best with transient-rich input (drums, plucks) — sustained input can cause runaway resonance"
+  - "CPU usage increases with long Decay times — monitor CPU on dense sessions"

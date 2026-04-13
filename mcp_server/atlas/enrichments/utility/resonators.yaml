@@ -1,0 +1,131 @@
+id: resonators
+name: Resonators
+sonic_description: >
+  Five parallel tuned resonators, each individually tunable by note, fine pitch,
+  gain, and decay time. Creates pitched resonances from incoming audio, turning
+  noise, drums, or any sound into tuned harmonic content. Can produce drone-like
+  sustains, harmonic series, and chord-based resonant effects.
+effect_type: resonator
+character_tags: [tuned, harmonic, resonant, drone, pitched]
+use_cases: [harmonic_resonance, drone_generator, pitched_noise, chord_resonance, creative_tuning]
+genre_affinity:
+  primary: [ambient, experimental, drone]
+  secondary: [techno, idm, sound_design, cinematic]
+complexity: intermediate
+introduced_in: "1.0"
+
+key_parameters:
+  - name: "Mode"
+    description: "Overall resonance character — affects overtone structure"
+    range: ["A", "B"]
+    type: enum
+
+  - name: "Note (I-V)"
+    description: "Pitch of each resonator as a MIDI note — sets the fundamental frequency"
+    range: ["C-2", "G8"]
+    type: note
+    sweet_spots:
+      sub_bass: "C2"
+      middle: "C4"
+      high: "C6"
+
+  - name: "Fine (I-V)"
+    description: "Fine tuning in cents for each resonator"
+    range: [-50.0, 50.0]
+    unit: "cents"
+    type: float
+
+  - name: "Gain (I-V)"
+    description: "Volume of each resonator — balance the harmonic blend"
+    range: [-30.0, 0.0]
+    unit: "dB"
+    type: float
+    sweet_spots:
+      soft: -20.0
+      medium: -10.0
+      full: 0.0
+
+  - name: "Decay (I-V)"
+    description: "How long each resonator sustains after excitation"
+    range: [0.0, 20.0]
+    unit: "s"
+    type: float
+    sweet_spots:
+      tight: 0.5
+      medium: 2.0
+      long: 8.0
+      drone: 20.0
+
+  - name: "Brightness"
+    description: "High-frequency content of all resonators"
+    range: [0.0, 1.0]
+    type: float
+
+  - name: "Color"
+    description: "Tonal color of the resonance — interacts with overtone structure"
+    range: [0.0, 1.0]
+    type: float
+
+  - name: "Dry/Wet"
+    description: "Mix between dry signal and resonator output"
+    range: [0, 100]
+    unit: "%"
+    type: int
+
+  - name: "Width"
+    description: "Stereo spread of the resonators"
+    range: [0.0, 1.0]
+    type: float
+
+pairs_well_with:
+  - device: "Drum Rack"
+    reason: "Drum hits excite resonators to create pitched percussion"
+  - device: "Reverb"
+    reason: "Spatializes resonator output for immersive drone textures"
+  - device: "Auto Filter"
+    reason: "Filter sweeps over resonator harmonics for movement"
+  - device: "Compressor"
+    reason: "Controls resonance dynamics and prevents buildup"
+  - device: "Utility"
+    reason: "Gain staging to manage resonator output levels"
+
+starter_recipes:
+  - name: "Harmonic Series"
+    description: "Tune five resonators to the harmonic series (fundamental, octave, fifth, octave, major third)"
+    genre: ambient
+    params:
+      "Decay (I-V)": 5.0
+      "Brightness": 0.5
+      "Dry/Wet": 50
+
+  - name: "Chord Resonance"
+    description: "Tune resonators to a chord — incoming audio excites the chord"
+    genre: experimental
+    params:
+      "Decay (I-V)": 3.0
+      "Brightness": 0.6
+      "Dry/Wet": 60
+
+  - name: "Drone Generator"
+    description: "Very long decay resonators fed by any audio — creates sustained drones"
+    genre: drone
+    params:
+      "Decay (I-V)": 20.0
+      "Brightness": 0.3
+      "Dry/Wet": 80
+
+  - name: "Percussive Resonance"
+    description: "Short decay resonators tuned to a scale for melodic percussion"
+    genre: techno
+    params:
+      "Decay (I-V)": 0.5
+      "Brightness": 0.7
+      "Dry/Wet": 40
+
+gotchas:
+  - "Each resonator has its own Note, Fine, Gain, and Decay — set all five independently"
+  - "Very long Decay values with loud input can cause resonance buildup and volume spikes"
+  - "Resonators respond to ANY input — even silence with noise floor can excite long-decay resonators"
+  - "The five resonators are parallel, not serial — they all process the same input simultaneously"
+  - "Low Note values (bass) with long Decay can cause low-frequency buildup — use with Utility for gain control"
+  - "Width spreads the five resonators across the stereo field — 0 is mono, 1 is full spread"

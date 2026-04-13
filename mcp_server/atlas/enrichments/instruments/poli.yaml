@@ -1,0 +1,192 @@
+id: poli
+name: Poli
+sonic_description: >
+  Warm polyphonic synthesizer inspired by classic analog polysynths of the late 1970s
+  and early 1980s, with modern MPE expression support. Delivers lush chord pads, thick
+  stacked sounds, and expressive leads with the immediate playability and warm character
+  of vintage Roland and Sequential Circuits hardware.
+synthesis_type: analog_modeling
+character_tags: [warm, polyphonic, vintage, lush, expressive]
+use_cases: [pads, chords, leads, stabs, keys]
+genre_affinity:
+  primary: [synthwave, pop, ambient]
+  secondary: [house, lo_fi, new_wave, indie_electronic]
+complexity: intermediate
+self_contained: true
+introduced_in: "12.0"
+
+key_parameters:
+  - name: "Osc Shape"
+    description: "Oscillator waveform shape with continuous morphing"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      saw: 0.0
+      hybrid: 0.5
+      square: 1.0
+
+  - name: "Osc Detune"
+    description: "Detuning between oscillator copies for analog-style thickness"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      clean: 0.0
+      subtle_chorus: 0.15
+      thick_vintage: 0.35
+      extreme: 0.6
+
+  - name: "Filter Freq"
+    description: "Low-pass filter cutoff frequency"
+    range: [20.0, 20000.0]
+    unit: "Hz"
+    type: float
+    sweet_spots:
+      warm_pad: 1500.0
+      bright: 8000.0
+      closed: 400.0
+
+  - name: "Filter Res"
+    description: "Filter resonance with vintage-style self-oscillation character"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      clean: 0.0
+      warm: 0.2
+      squelchy: 0.55
+
+  - name: "Filter Env"
+    description: "Filter envelope amount — how much the envelope opens the filter"
+    range: [-1.0, 1.0]
+    type: float
+    sweet_spots:
+      pluck: 0.6
+      subtle: 0.2
+      negative_sweep: -0.3
+
+  - name: "Chorus"
+    description: "Built-in vintage-style chorus effect for instant width and warmth"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      off: 0.0
+      subtle: 0.3
+      full_juno: 0.7
+      extreme: 1.0
+
+  - name: "Attack"
+    description: "Amplitude envelope attack"
+    range: [0.0, 10000.0]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      percussive: 0.0
+      soft: 100.0
+      pad: 500.0
+
+  - name: "Decay"
+    description: "Amplitude envelope decay"
+    range: [0.0, 10000.0]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      stab: 150.0
+      natural: 500.0
+
+  - name: "Sustain"
+    description: "Amplitude envelope sustain level"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      stab: 0.0
+      held: 0.7
+      pad: 1.0
+
+  - name: "Release"
+    description: "Amplitude envelope release"
+    range: [0.0, 10000.0]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      tight: 50.0
+      natural: 300.0
+      pad: 1500.0
+
+  - name: "MPE Press"
+    description: "MPE pressure response amount — how aftertouch affects sound"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      subtle: 0.2
+      responsive: 0.6
+
+  - name: "Voices"
+    description: "Polyphony count"
+    range: [1, 16]
+    type: int
+    sweet_spots:
+      mono: 1
+      standard: 6
+      full: 12
+
+pairs_well_with:
+  - device: "Reverb"
+    reason: "Lush pads benefit from plate or hall reverb for depth"
+  - device: "Delay"
+    reason: "Rhythmic delays on chord stabs create movement and space"
+  - device: "Phaser-Flanger"
+    reason: "Classic 80s polysynth processing — phaser sweeps on pads"
+  - device: "Compressor"
+    reason: "Evens out dynamics for consistent chord pads in a mix"
+  - device: "EQ Eight"
+    reason: "Roll off low-end mud from thick detuned poly patches"
+
+starter_recipes:
+  - name: "Vintage Poly Pad"
+    description: "Classic Juno-style warm pad with chorus and gentle filter"
+    genre: synthwave
+    params:
+      "Osc Shape": 0.0
+      "Osc Detune": 0.25
+      "Filter Freq": 2500.0
+      "Filter Res": 0.15
+      "Chorus": 0.65
+      "Attack": 300.0
+      "Sustain": 1.0
+      "Release": 1200.0
+
+  - name: "Stacked Chord"
+    description: "Thick, detuned polysynth chord stab with fast envelope"
+    genre: house
+    params:
+      "Osc Shape": 0.0
+      "Osc Detune": 0.3
+      "Filter Freq": 4000.0
+      "Filter Res": 0.1
+      "Filter Env": 0.3
+      "Chorus": 0.4
+      "Attack": 2.0
+      "Decay": 200.0
+      "Sustain": 0.5
+      "Release": 200.0
+
+  - name: "Expression Lead"
+    description: "Monophonic lead with MPE expression for live performance"
+    genre: pop
+    params:
+      "Osc Shape": 0.5
+      "Osc Detune": 0.1
+      "Filter Freq": 5000.0
+      "Filter Res": 0.3
+      "MPE Press": 0.6
+      "Voices": 1
+      "Attack": 5.0
+      "Decay": 300.0
+      "Sustain": 0.7
+      "Release": 200.0
+
+gotchas:
+  - "New in Live 12 — exact parameter names may differ. Use get_device_parameters to discover the actual parameters"
+  - "The built-in Chorus is key to the vintage polysynth sound — enable it before reaching for external chorus"
+  - "Osc Detune interacts with voice count — higher voice counts with detune can phase-cancel at certain settings"
+  - "MPE features require an MPE controller to take full advantage — without one it still works as a great polysynth"
+  - "Filter self-oscillation behavior is modeled after vintage analog circuits — character varies with note pitch"

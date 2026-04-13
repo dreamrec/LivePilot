@@ -1,0 +1,173 @@
+id: filter_delay
+name: Filter Delay
+sonic_description: >
+  Three-tap delay with independent filters and panning per tap, routed to Left, Right,
+  and Center outputs. Each tap has its own delay time, feedback, filter frequency, and
+  pan position, enabling complex spatial echo patterns with frequency movement.
+effect_type: delay
+character_tags: [spatial, filtered, wide, complex, dub]
+use_cases: [filtered_dub, stereo_movement, rhythmic_delay, spatial_effects, creative_echo]
+genre_affinity:
+  primary: [dub, electronic, ambient]
+  secondary: [idm, techno, experimental]
+complexity: intermediate
+signal_type: audio
+introduced_in: "1.0"
+
+key_parameters:
+  - name: "L Delay Time"
+    description: "Delay time for the Left tap"
+    range: ["1/16", "1/8T", "1/8", "3/16", "1/4T", "1/4", "3/8", "1/2", "1"]
+    type: enum
+    sweet_spots:
+      eighth: "1/8"
+      dotted_eighth: "3/16"
+
+  - name: "L Filter Freq"
+    description: "Filter cutoff frequency for the Left tap"
+    range: [20.0, 20000.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      dark: 1000.0
+      warm: 3000.0
+      bright: 8000.0
+
+  - name: "L Feedback"
+    description: "Feedback amount for the Left tap"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      few: 25.0
+      moderate: 50.0
+      dub: 70.0
+
+  - name: "L Pan"
+    description: "Stereo position for the Left tap"
+    range: [-100.0, 100.0]
+    type: float
+    sweet_spots:
+      hard_left: -100.0
+      center: 0.0
+
+  - name: "R Delay Time"
+    description: "Delay time for the Right tap"
+    range: ["1/16", "1/8T", "1/8", "3/16", "1/4T", "1/4", "3/8", "1/2", "1"]
+    type: enum
+    sweet_spots:
+      quarter: "1/4"
+      dotted_eighth: "3/16"
+
+  - name: "R Filter Freq"
+    description: "Filter cutoff frequency for the Right tap"
+    range: [20.0, 20000.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      dark: 1500.0
+      warm: 4000.0
+
+  - name: "R Feedback"
+    description: "Feedback amount for the Right tap"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      few: 25.0
+      moderate: 50.0
+
+  - name: "R Pan"
+    description: "Stereo position for the Right tap"
+    range: [-100.0, 100.0]
+    type: float
+    sweet_spots:
+      hard_right: 100.0
+      center: 0.0
+
+  - name: "C Delay Time"
+    description: "Delay time for the Center tap"
+    range: ["1/16", "1/8T", "1/8", "3/16", "1/4T", "1/4", "3/8", "1/2", "1"]
+    type: enum
+    sweet_spots:
+      sixteenth: "1/16"
+      eighth: "1/8"
+
+  - name: "C Filter Freq"
+    description: "Filter cutoff frequency for the Center tap"
+    range: [20.0, 20000.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      mid: 2000.0
+      bright: 6000.0
+
+  - name: "Dry/Wet"
+    description: "Overall mix between dry and delayed signals"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      subtle: 20.0
+      moderate: 35.0
+      heavy: 50.0
+
+pairs_well_with:
+  - device: "Reverb"
+    reason: "Reverb after Filter Delay creates deep, evolving spatial effects"
+  - device: "Auto Filter"
+    reason: "Additional dynamic filtering on the delay output"
+  - device: "Saturator"
+    reason: "Warm saturation on the filtered echoes for analog character"
+
+starter_recipes:
+  - name: "Filtered Dub"
+    description: "Classic dub-style delay with darkening echoes that pan across the stereo field"
+    genre: dub
+    params:
+      "L Delay Time": "3/16"
+      "L Filter Freq": 2000.0
+      "L Feedback": 50.0
+      "L Pan": -80.0
+      "R Delay Time": "1/4"
+      "R Filter Freq": 3000.0
+      "R Feedback": 40.0
+      "R Pan": 80.0
+      "Dry/Wet": 30.0
+
+  - name: "Stereo Movement"
+    description: "Wide stereo echoes at different rhythmic divisions for movement"
+    genre: electronic
+    params:
+      "L Delay Time": "1/8"
+      "L Filter Freq": 4000.0
+      "L Feedback": 30.0
+      "L Pan": -100.0
+      "R Delay Time": "3/16"
+      "R Filter Freq": 5000.0
+      "R Feedback": 30.0
+      "R Pan": 100.0
+      "C Delay Time": "1/16"
+      "C Filter Freq": 2000.0
+      "Dry/Wet": 25.0
+
+  - name: "Rhythmic Filter Delay"
+    description: "Polyrhythmic echoes with different filter colors per tap"
+    genre: idm
+    params:
+      "L Delay Time": "1/8"
+      "L Filter Freq": 1000.0
+      "L Feedback": 40.0
+      "R Delay Time": "1/4T"
+      "R Filter Freq": 6000.0
+      "R Feedback": 35.0
+      "C Delay Time": "1/16"
+      "C Filter Freq": 3000.0
+      "Dry/Wet": 35.0
+
+gotchas:
+  - "Each tap can be independently enabled/disabled — check that the taps you want are active"
+  - "Different filter frequencies per tap make echoes progressively brighter or darker — use intentionally"
+  - "More complex than Delay but less feature-rich than Echo for modulation and ducking"
+  - "High feedback on multiple taps simultaneously can build up quickly — watch output levels"
+  - "Input can be routed to individual taps via L/R split or all three — check the input routing"

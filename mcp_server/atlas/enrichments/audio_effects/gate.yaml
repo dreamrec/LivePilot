@@ -1,0 +1,130 @@
+id: gate
+name: Gate
+sonic_description: >
+  Noise gate that silences audio below a threshold level. Tightens drums by removing
+  bleed, cleans up noisy recordings, and creates rhythmic chopping effects. The return
+  (hysteresis) parameter prevents rapid on/off chattering at the threshold.
+effect_type: dynamics
+character_tags: [clean, tight, surgical, rhythmic]
+use_cases: [noise_removal, drum_tightening, bleed_reduction, creative_gating]
+genre_affinity:
+  primary: [all]
+  secondary: []
+complexity: beginner
+signal_type: audio
+introduced_in: "1.0"
+
+key_parameters:
+  - name: "Threshold"
+    description: "Level below which the gate closes and mutes audio"
+    range: [-inf, 0.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      gentle: -30.0
+      moderate: -20.0
+      aggressive: -12.0
+
+  - name: "Return"
+    description: "Hysteresis — how far below threshold the signal must drop to close the gate"
+    range: [-inf, 0.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      tight: -2.0
+      moderate: -6.0
+      loose: -12.0
+
+  - name: "Attack"
+    description: "How fast the gate opens when signal exceeds threshold"
+    range: [0.01, 100.0]
+    unit: ms
+    type: float
+    sweet_spots:
+      instant: 0.01
+      natural: 0.5
+      soft: 5.0
+
+  - name: "Hold"
+    description: "Minimum time the gate stays open after signal drops below threshold"
+    range: [0.0, 500.0]
+    unit: ms
+    type: float
+    sweet_spots:
+      tight: 10.0
+      moderate: 50.0
+      long: 200.0
+
+  - name: "Release"
+    description: "How fast the gate closes after Hold time expires"
+    range: [1.0, 3000.0]
+    unit: ms
+    type: float
+    sweet_spots:
+      fast: 10.0
+      natural: 50.0
+      smooth: 200.0
+
+  - name: "Floor"
+    description: "Level of attenuation when gate is closed — full silence or partial reduction"
+    range: [-inf, 0.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      full_gate: -inf
+      partial: -20.0
+      subtle: -10.0
+
+  - name: "Sidechain"
+    description: "External sidechain input for triggering the gate from another source"
+    type: toggle
+    range: [0, 1]
+
+pairs_well_with:
+  - device: "Compressor"
+    reason: "Gate first to clean noise, then compress — avoids compressing noise floor"
+  - device: "EQ Eight"
+    reason: "Filter the sidechain or input to focus the gate on specific frequency ranges"
+  - device: "Drum Buss"
+    reason: "Gate for tightness, then Drum Buss for character"
+
+starter_recipes:
+  - name: "Drum Tightening"
+    description: "Clean up drum bleed — keep only the direct hits"
+    genre: all
+    params:
+      Threshold: -20.0
+      Return: -6.0
+      Attack: 0.01
+      Hold: 20.0
+      Release: 30.0
+      Floor: -inf
+
+  - name: "Noise Removal"
+    description: "Remove background noise between vocal or instrument phrases"
+    genre: all
+    params:
+      Threshold: -35.0
+      Return: -10.0
+      Attack: 0.5
+      Hold: 50.0
+      Release: 100.0
+      Floor: -inf
+
+  - name: "Creative Gating"
+    description: "Rhythmic gating effect using sidechain from a rhythmic source"
+    genre: electronic
+    params:
+      Threshold: -15.0
+      Attack: 0.01
+      Hold: 10.0
+      Release: 10.0
+      Floor: -inf
+      Sidechain: 1
+
+gotchas:
+  - "Set Return (hysteresis) at least -3 dB below Threshold to prevent rapid chattering"
+  - "Very fast attack can cause clicks — use 0.5ms minimum for natural-sounding transients"
+  - "Floor at -inf is complete silence; use -20 dB for more natural results on vocals"
+  - "Hold time is critical for drums — too short and the tail gets chopped, too long and bleed returns"
+  - "Sidechain gating with a rhythmic source (hi-hat pattern) creates trance-gate effects"

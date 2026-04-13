@@ -1,0 +1,141 @@
+id: spectral_resonator
+name: Spectral Resonator
+sonic_description: >
+  Spectral processing effect that creates pitched resonances from any input audio by
+  decomposing it into partials and resonating at specific frequencies. Can track MIDI input
+  for pitched resonance, creating tonal textures from noise, drums, or any sound source.
+effect_type: spectral
+character_tags: [ethereal, harmonic, tonal, creative, otherworldly]
+use_cases: [harmonic_resonance, spectral_freeze, pitched_noise, creative_sound_design, drone]
+genre_affinity:
+  primary: [ambient, experimental, electronic]
+  secondary: [sound_design, film_score, idm]
+complexity: advanced
+signal_type: audio
+introduced_in: "11.0"
+m4l_device: true
+
+key_parameters:
+  - name: "Frequency"
+    description: "Base frequency of the resonance — sets the fundamental pitch"
+    range: [20.0, 20000.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      low_drone: 60.0
+      mid_tone: 440.0
+      high_shimmer: 2000.0
+
+  - name: "Decay"
+    description: "How long the resonances ring out"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      short: 20.0
+      medium: 50.0
+      long_sustain: 80.0
+      infinite: 100.0
+
+  - name: "Mod Rate"
+    description: "Modulation speed of the spectral processing"
+    range: [0.01, 20.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      slow: 0.1
+      moderate: 1.0
+      fast: 5.0
+
+  - name: "Mod Amount"
+    description: "Depth of spectral modulation"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      subtle: 15.0
+      moderate: 40.0
+      extreme: 80.0
+
+  - name: "Unison"
+    description: "Number of unison voices for thickness"
+    range: [1, 8]
+    type: int
+    sweet_spots:
+      single: 1
+      thick: 4
+      massive: 8
+
+  - name: "Stretch"
+    description: "Stretches the harmonic series — creates inharmonic or bell-like tones"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      harmonic: 0.0
+      slight: 20.0
+      metallic: 50.0
+      bell: 80.0
+
+  - name: "MIDI Sidechain"
+    description: "Route MIDI to control the resonance pitch in real-time"
+    type: toggle
+    range: [0, 1]
+
+  - name: "Dry/Wet"
+    description: "Mix between dry input and resonated output"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      subtle: 20.0
+      blend: 50.0
+      wet: 100.0
+
+pairs_well_with:
+  - device: "Reverb"
+    reason: "Long reverb on resonated output creates vast, evolving spaces"
+  - device: "Delay"
+    reason: "Delays on resonances build complex, shimmering textures"
+  - device: "EQ Eight"
+    reason: "Shape the resonance frequency content to tame harsh harmonics"
+  - device: "Compressor"
+    reason: "Control dynamic surges from the resonance process"
+
+starter_recipes:
+  - name: "Harmonic Resonance"
+    description: "Turn drums or noise into pitched, harmonic drones"
+    genre: ambient
+    params:
+      Frequency: 220.0
+      Decay: 70.0
+      Stretch: 0.0
+      "Dry/Wet": 80.0
+      Unison: 4
+
+  - name: "Spectral Freeze"
+    description: "Sustain and freeze the spectral content of any input"
+    genre: experimental
+    params:
+      Decay: 100.0
+      "Mod Amount": 10.0
+      "Mod Rate": 0.1
+      "Dry/Wet": 100.0
+
+  - name: "Pitched Noise Texture"
+    description: "Create tonal textures from white noise or percussive input"
+    genre: sound_design
+    params:
+      Frequency: 440.0
+      Decay: 50.0
+      Stretch: 30.0
+      Unison: 6
+      "Dry/Wet": 60.0
+
+gotchas:
+  - "This is a Max for Live device — requires Suite or M4L license"
+  - "High Decay values with loud input can build up to very loud levels — watch output"
+  - "MIDI sidechain routing must be configured in Live's routing section, not just the device"
+  - "Stretch parameter makes the sound inharmonic — musical at low values, metallic at high values"
+  - "CPU-intensive with high Unison counts — use sparingly on weaker systems"
+  - "Works best with transient-rich or noisy input — sustained tones may not excite resonances effectively"

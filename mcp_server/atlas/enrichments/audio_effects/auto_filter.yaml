@@ -1,0 +1,162 @@
+id: auto_filter
+name: Auto Filter
+sonic_description: >
+  Versatile resonant filter with built-in envelope follower, LFO, and sidechain input.
+  Creates everything from classic acid sweeps to rhythmic wobbles and auto-wah effects.
+  The morph filter type smoothly blends between low-pass and high-pass for evolving textures.
+effect_type: filter
+character_tags: [dynamic, resonant, expressive, rhythmic, acid]
+use_cases: [filter_sweeps, acid_bass, auto_wah, rhythmic_filter, wobble, sidechain_filter]
+genre_affinity:
+  primary: [techno, house, dubstep, electronic]
+  secondary: [funk, pop, ambient]
+complexity: intermediate
+signal_type: audio
+introduced_in: "1.0"
+
+key_parameters:
+  - name: "Filter Type"
+    description: "Filter topology — LP, HP, BP, Notch, or Morph (blends between types)"
+    range: ["LP 12", "LP 24", "HP 12", "HP 24", "BP 6", "BP 12", "Notch", "Morph"]
+    type: enum
+    sweet_spots:
+      acid: "LP 24"
+      wah: "BP 12"
+      sweep: "Morph"
+
+  - name: "Frequency"
+    description: "Filter cutoff frequency"
+    range: [20.0, 20000.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      dark: 200.0
+      warm: 800.0
+      bright: 4000.0
+      open: 12000.0
+
+  - name: "Resonance"
+    description: "Filter resonance — adds emphasis at cutoff frequency"
+    range: [0.0, 1.25]
+    type: float
+    sweet_spots:
+      clean: 0.0
+      warm: 0.3
+      squelchy: 0.6
+      screaming: 1.0
+
+  - name: "Env Amount"
+    description: "How much the envelope follower modulates the filter cutoff"
+    range: [-100.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      subtle: 20.0
+      auto_wah: 50.0
+      aggressive: 80.0
+
+  - name: "Env Attack"
+    description: "Envelope follower attack time"
+    range: [0.1, 100.0]
+    unit: ms
+    type: float
+    sweet_spots:
+      fast: 1.0
+      medium: 10.0
+      slow: 50.0
+
+  - name: "Env Release"
+    description: "Envelope follower release time"
+    range: [1.0, 3000.0]
+    unit: ms
+    type: float
+    sweet_spots:
+      fast: 20.0
+      medium: 100.0
+      slow: 500.0
+
+  - name: "LFO Amount"
+    description: "How much the LFO modulates the filter cutoff"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      subtle: 10.0
+      moderate: 30.0
+      heavy: 60.0
+      extreme: 100.0
+
+  - name: "LFO Rate"
+    description: "LFO speed — can be free or synced to tempo"
+    range: [0.01, 30.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      slow_sweep: 0.1
+      moderate: 1.0
+      wobble: 4.0
+      fast: 8.0
+
+  - name: "LFO Shape"
+    description: "LFO waveform shape"
+    range: ["Sine", "Square", "Triangle", "Saw Up", "Saw Down", "Random"]
+    type: enum
+    sweet_spots:
+      smooth: "Sine"
+      choppy: "Square"
+      ramp: "Saw Up"
+
+  - name: "Sidechain"
+    description: "External sidechain input for envelope follower"
+    type: toggle
+    range: [0, 1]
+
+pairs_well_with:
+  - device: "Saturator"
+    reason: "Distortion before filter for classic acid sound"
+  - device: "Delay"
+    reason: "Filtered delays for dub-style effects"
+  - device: "Reverb"
+    reason: "Filter sweep into reverb for dramatic transitions"
+  - device: "Compressor"
+    reason: "Tame dynamics after resonant filter sweeps"
+
+starter_recipes:
+  - name: "Acid Filter Sweep"
+    description: "Classic acid house resonant filter with LFO movement"
+    genre: techno
+    params:
+      "Filter Type": "LP 24"
+      Frequency: 400.0
+      Resonance: 0.7
+      "LFO Amount": 50.0
+      "LFO Rate": 2.0
+      "LFO Shape": "Saw Up"
+
+  - name: "Auto-Wah"
+    description: "Dynamic filter that opens with playing intensity"
+    genre: funk
+    params:
+      "Filter Type": "BP 12"
+      Frequency: 500.0
+      Resonance: 0.5
+      "Env Amount": 60.0
+      "Env Attack": 2.0
+      "Env Release": 80.0
+
+  - name: "Rhythmic Filter"
+    description: "Tempo-synced choppy filter for rhythmic textures"
+    genre: house
+    params:
+      "Filter Type": "LP 24"
+      Frequency: 600.0
+      Resonance: 0.4
+      "LFO Amount": 70.0
+      "LFO Shape": "Square"
+
+gotchas:
+  - "Resonance above 1.0 causes self-oscillation — the filter will ring/whistle on its own"
+  - "LFO Rate can be free-running (Hz) or tempo-synced — check which mode is active"
+  - "Env Amount can be negative — inverts the envelope follower direction (filter closes when input is loud)"
+  - "Morph filter type smoothly blends between LP and HP — great for automated sweeps"
+  - "High resonance + low frequency + loud input can produce very loud output — watch levels"

@@ -1,0 +1,109 @@
+id: color_limiter
+name: Color Limiter
+sonic_description: >
+  Limiter with built-in coloration and saturation options that adds character while
+  controlling peaks. Unlike the transparent Limiter, Color Limiter intentionally
+  introduces harmonic warmth, grit, or color to the limiting process.
+effect_type: dynamics
+character_tags: [warm, colored, characterful, saturated]
+use_cases: [mastering, creative_limiting, bus_processing, loudness]
+genre_affinity:
+  primary: [hip_hop, electronic, lo_fi]
+  secondary: [pop, rock, indie]
+complexity: intermediate
+signal_type: audio
+introduced_in: "12.0"
+m4l_device: true
+
+key_parameters:
+  - name: "Gain"
+    description: "Input gain driving into the limiter/saturation stage"
+    range: [0.0, 24.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      subtle: 3.0
+      moderate: 6.0
+      aggressive: 12.0
+
+  - name: "Ceiling"
+    description: "Maximum output level"
+    range: [-inf, 0.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      streaming: -1.0
+      mastering: -0.3
+
+  - name: "Color"
+    description: "Amount of harmonic coloration added to the limiting"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      subtle_warmth: 20.0
+      moderate: 50.0
+      aggressive: 80.0
+
+  - name: "Release"
+    description: "Release time after limiting"
+    range: [0.01, 1000.0]
+    unit: ms
+    type: float
+    sweet_spots:
+      fast: 10.0
+      auto: -1
+      slow: 100.0
+
+  - name: "Dry/Wet"
+    description: "Mix between clean and colored/limited signal"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      full: 100.0
+      parallel: 60.0
+
+pairs_well_with:
+  - device: "EQ Eight"
+    reason: "Shape frequency content before coloring to control harmonic balance"
+  - device: "Compressor"
+    reason: "Stage dynamics before Color Limiter for smoother limiting"
+  - device: "Utility"
+    reason: "Precise level control before and after"
+  - device: "Saturator"
+    reason: "Stack with different saturation character for complex harmonic layering"
+
+starter_recipes:
+  - name: "Warm Limiting"
+    description: "Gentle loudness with analog-style warmth"
+    genre: all
+    params:
+      Gain: 4.0
+      Ceiling: -1.0
+      Color: 30.0
+      Release: -1
+
+  - name: "Aggressive Color"
+    description: "Driven, characterful limiting for lo-fi or hip-hop"
+    genre: hip_hop
+    params:
+      Gain: 8.0
+      Ceiling: -1.0
+      Color: 70.0
+      Release: 10.0
+
+  - name: "Subtle Gloss"
+    description: "Light coloration that adds sheen without obvious distortion"
+    genre: pop
+    params:
+      Gain: 3.0
+      Ceiling: -0.5
+      Color: 15.0
+      Release: -1
+
+gotchas:
+  - "This is a Max for Live device — requires Suite or M4L license"
+  - "High Color values add noticeable harmonic distortion — may not suit acoustic or classical material"
+  - "Compare with the stock Limiter to decide whether coloration is actually improving the mix"
+  - "Gain staging before this device matters more than with transparent limiters due to saturation interaction"

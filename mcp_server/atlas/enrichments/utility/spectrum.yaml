@@ -1,0 +1,63 @@
+id: spectrum
+name: Spectrum
+sonic_description: >
+  Real-time frequency spectrum analyzer that displays the spectral content of audio
+  passing through it. Purely visual — it does not alter the audio signal. Essential
+  for identifying frequency buildups, monitoring bass content, and making informed
+  EQ decisions.
+effect_type: analyzer
+character_tags: [analysis, visual, diagnostic, frequency, metering]
+use_cases: [frequency_analysis, mix_monitoring, eq_guidance, bass_monitoring, spectral_comparison]
+genre_affinity:
+  primary: [all]
+  secondary: []
+complexity: beginner
+introduced_in: "1.0"
+
+key_parameters:
+  - name: "Block Size"
+    description: "FFT analysis window size — larger = more frequency resolution, less time resolution"
+    range: [256, 512, 1024, 2048, 4096, 8192, 16384]
+    type: enum
+    sweet_spots:
+      fast_response: 1024
+      balanced: 4096
+      high_resolution: 8192
+
+  - name: "Channel"
+    description: "Which channel to analyze"
+    range: ["L/R", "Left", "Right", "Mid", "Side"]
+    type: enum
+
+  - name: "Range"
+    description: "Display range in dB"
+    range: [30, 60, 80]
+    unit: "dB"
+    type: enum
+
+  - name: "Refresh Rate"
+    description: "How frequently the display updates"
+    range: ["Slow", "Mid", "Fast"]
+    type: enum
+
+  - name: "Average"
+    description: "Averaging mode — smooths the display for easier reading"
+    range: ["Off", "Slow", "Mid", "Fast"]
+    type: enum
+
+pairs_well_with:
+  - device: "EQ Eight"
+    reason: "Use Spectrum to identify problems, EQ Eight to fix them"
+  - device: "Utility"
+    reason: "Solo channels with Utility, analyze with Spectrum"
+  - device: "Compressor"
+    reason: "Monitor spectral changes caused by compression"
+
+starter_recipes: []
+
+gotchas:
+  - "Spectrum is purely visual — it passes audio through unchanged"
+  - "Larger Block Size shows more frequency detail but reacts more slowly to transients"
+  - "Place at the END of the device chain to see the final processed output"
+  - "Mid/Side mode is invaluable for checking stereo width distribution across frequencies"
+  - "CPU usage increases with Block Size — use 4096 for normal work, 8192+ only when needed"

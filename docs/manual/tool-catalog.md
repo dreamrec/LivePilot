@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog
 
-307 tools across 41 domains.
+313 tools across 42 domains.
 
 ---
 
@@ -558,6 +558,19 @@
 | `generate_m4l_effect` | Generate a custom M4L audio effect from gen~ templates |
 | `install_m4l_device` | Install generated M4L device to User Library |
 | `list_genexpr_templates` | List available gen~ expression templates |
+
+---
+
+## Device Atlas (6)
+
+| Tool | Description |
+|------|-------------|
+| `atlas_search` | Search the device atlas — name, sonic character, use case, or genre |
+| `atlas_device_info` | Full atlas knowledge about a device — parameters, recipes, pairings |
+| `atlas_suggest` | Suggest devices for a production intent with rationale and recipe |
+| `atlas_chain_suggest` | Suggest a full device chain for a track role and genre |
+| `atlas_compare` | Compare two devices — strengths, weaknesses, recommendation |
+| `scan_full_library` | Scan Ableton browser and rebuild the device atlas |
 
 ---
 

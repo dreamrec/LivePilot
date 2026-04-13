@@ -1,0 +1,174 @@
+id: multiband_dynamics
+name: Multiband Dynamics
+sonic_description: >
+  Three-band dynamics processor that splits audio into low, mid, and high frequency
+  bands with independent compression and expansion per band. Allows surgical frequency-specific
+  dynamics control without affecting other ranges — essential for mastering and de-essing.
+effect_type: dynamics
+character_tags: [surgical, precise, powerful, transparent]
+use_cases: [mastering, de_essing, multiband_compression, frequency_specific_dynamics, bass_control]
+genre_affinity:
+  primary: [all]
+  secondary: []
+complexity: advanced
+signal_type: audio
+introduced_in: "8.0"
+
+key_parameters:
+  - name: "Low Crossover"
+    description: "Frequency dividing Low and Mid bands"
+    range: [20.0, 20000.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      standard: 120.0
+      deep_bass_split: 80.0
+      wide_low: 200.0
+
+  - name: "High Crossover"
+    description: "Frequency dividing Mid and High bands"
+    range: [20.0, 20000.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      standard: 4500.0
+      sibilance_target: 6000.0
+      bright_split: 8000.0
+
+  - name: "Low Above Threshold"
+    description: "Compression threshold for the Low band"
+    range: [-inf, 0.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      gentle: -15.0
+      moderate: -25.0
+
+  - name: "Low Above Ratio"
+    description: "Compression ratio for the Low band"
+    range: [1.0, inf]
+    type: float
+    sweet_spots:
+      gentle: 2.0
+      tight: 4.0
+
+  - name: "Mid Above Threshold"
+    description: "Compression threshold for the Mid band"
+    range: [-inf, 0.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      gentle: -15.0
+      moderate: -20.0
+
+  - name: "Mid Above Ratio"
+    description: "Compression ratio for the Mid band"
+    range: [1.0, inf]
+    type: float
+    sweet_spots:
+      gentle: 2.0
+      moderate: 3.0
+
+  - name: "High Above Threshold"
+    description: "Compression threshold for the High band"
+    range: [-inf, 0.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      gentle: -15.0
+      de_ess: -25.0
+
+  - name: "High Above Ratio"
+    description: "Compression ratio for the High band"
+    range: [1.0, inf]
+    type: float
+    sweet_spots:
+      gentle: 2.0
+      de_ess: 4.0
+
+  - name: "Low Below Threshold"
+    description: "Expansion threshold for the Low band — expands/gates below this level"
+    range: [-inf, 0.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      noise_gate: -40.0
+
+  - name: "Low Attack"
+    description: "Attack time for Low band dynamics"
+    range: [0.01, 1000.0]
+    unit: ms
+    type: float
+    sweet_spots:
+      fast: 1.0
+      slow: 30.0
+
+  - name: "Low Release"
+    description: "Release time for Low band dynamics"
+    range: [1.0, 3000.0]
+    unit: ms
+    type: float
+    sweet_spots:
+      fast: 50.0
+      slow: 200.0
+
+  - name: "Output Gain"
+    description: "Per-band output gain for rebalancing after processing"
+    range: [-inf, 12.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      unity: 0.0
+
+pairs_well_with:
+  - device: "EQ Eight"
+    reason: "Use before for broad EQ moves, after for fine tonal adjustments"
+  - device: "Limiter"
+    reason: "Final peak protection after multiband processing"
+  - device: "Compressor"
+    reason: "Gentle broadband compression before or after for overall dynamics"
+  - device: "Utility"
+    reason: "Level matching and mono-bass after multiband processing"
+
+starter_recipes:
+  - name: "Multiband Mastering"
+    description: "Gentle multiband compression for a balanced, controlled master"
+    genre: all
+    params:
+      "Low Crossover": 120.0
+      "High Crossover": 4500.0
+      "Low Above Threshold": -18.0
+      "Low Above Ratio": 2.0
+      "Mid Above Threshold": -15.0
+      "Mid Above Ratio": 2.0
+      "High Above Threshold": -18.0
+      "High Above Ratio": 2.0
+
+  - name: "De-Esser"
+    description: "Tame sibilance by compressing only the high frequencies"
+    genre: all
+    params:
+      "High Crossover": 6000.0
+      "High Above Threshold": -25.0
+      "High Above Ratio": 4.0
+      "Low Above Threshold": 0.0
+      "Mid Above Threshold": 0.0
+
+  - name: "Bass-Only Compression"
+    description: "Tighten only the low end without affecting mids and highs"
+    genre: electronic
+    params:
+      "Low Crossover": 150.0
+      "Low Above Threshold": -20.0
+      "Low Above Ratio": 3.0
+      "Low Attack": 5.0
+      "Low Release": 100.0
+      "Mid Above Threshold": 0.0
+      "High Above Threshold": 0.0
+
+gotchas:
+  - "Each band has BOTH compression (Above) and expansion (Below) — set unused thresholds to 0 dB (Above) or -inf (Below)"
+  - "Crossover frequencies cause phase shifts — avoid narrow bands unless necessary"
+  - "Easy to over-process — use the solo buttons to listen to each band individually"
+  - "For de-essing, solo the High band and adjust crossover until you isolate the sibilance"
+  - "Heavy processing on all three bands simultaneously can sound unnatural — less is more"

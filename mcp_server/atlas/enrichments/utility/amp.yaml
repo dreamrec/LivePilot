@@ -1,0 +1,159 @@
+id: amp
+name: Amp
+sonic_description: >
+  Guitar and bass amplifier modeling with seven distinct amp types ranging from
+  pristine clean to crushing heavy distortion. Models the preamp gain stage, tone
+  stack (bass/mid/treble), presence, and output level of classic amplifier designs.
+  Best paired with Cabinet for complete amp simulation.
+effect_type: distortion
+character_tags: [guitar, amp, distortion, warm, crunchy, heavy]
+use_cases: [guitar_amp, bass_amp, synth_distortion, amp_modeling, overdrive]
+genre_affinity:
+  primary: [rock, metal, blues]
+  secondary: [indie, funk, jazz, pop]
+complexity: beginner
+introduced_in: "9.0"
+
+key_parameters:
+  - name: "Amp Type"
+    description: "Amplifier model — each models a different classic amp character"
+    range: ["Clean", "Boost", "Blues", "Rock", "Lead", "Heavy", "Bass"]
+    type: enum
+    sweet_spots:
+      jazz: "Clean"
+      blues: "Blues"
+      classic_rock: "Rock"
+      metal: "Heavy"
+      bass_guitar: "Bass"
+
+  - name: "Gain"
+    description: "Preamp gain — controls distortion amount"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      clean: 0.2
+      crunch: 0.5
+      overdrive: 0.7
+      saturated: 0.9
+
+  - name: "Bass"
+    description: "Low frequency tone control"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      thin: 0.2
+      balanced: 0.5
+      warm: 0.7
+      heavy: 0.9
+
+  - name: "Middle"
+    description: "Midrange tone control — scooped vs present"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      scooped: 0.2
+      balanced: 0.5
+      honky: 0.7
+      nasal: 0.9
+
+  - name: "Treble"
+    description: "High frequency tone control"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      dark: 0.2
+      balanced: 0.5
+      bright: 0.7
+      ice: 0.9
+
+  - name: "Presence"
+    description: "Upper harmonic emphasis — adds air and bite above the treble range"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      smooth: 0.2
+      normal: 0.5
+      cutting: 0.8
+
+  - name: "Output"
+    description: "Master output level after the amp stage"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      quiet: 0.3
+      normal: 0.5
+      loud: 0.8
+
+  - name: "Dry/Wet"
+    description: "Mix between dry input and amp-processed signal"
+    range: [0, 100]
+    unit: "%"
+    type: int
+
+pairs_well_with:
+  - device: "Cabinet"
+    reason: "Essential pairing — Amp provides preamp/tone, Cabinet adds speaker simulation"
+  - device: "Pedal"
+    reason: "Place Pedal before Amp for stompbox-into-amp signal chain"
+  - device: "Reverb"
+    reason: "Spring or plate reverb after amp for classic guitar tones"
+  - device: "Delay"
+    reason: "Echo after amp for spacious guitar sounds"
+  - device: "EQ Eight"
+    reason: "Surgical EQ after amp to tame resonances"
+
+starter_recipes:
+  - name: "Clean Jazz Amp"
+    description: "Pristine clean tone with warm bass and smooth highs"
+    genre: jazz
+    params:
+      "Amp Type": "Clean"
+      "Gain": 0.3
+      "Bass": 0.6
+      "Middle": 0.5
+      "Treble": 0.4
+      "Presence": 0.3
+      "Output": 0.5
+
+  - name: "Overdriven Rock"
+    description: "Classic crunchy rock tone with mid-focused bite"
+    genre: rock
+    params:
+      "Amp Type": "Rock"
+      "Gain": 0.7
+      "Bass": 0.5
+      "Middle": 0.6
+      "Treble": 0.6
+      "Presence": 0.5
+      "Output": 0.5
+
+  - name: "Bass Amp Warmth"
+    description: "Warm, fat bass guitar tone with controlled low end"
+    genre: rock
+    params:
+      "Amp Type": "Bass"
+      "Gain": 0.4
+      "Bass": 0.7
+      "Middle": 0.4
+      "Treble": 0.3
+      "Presence": 0.2
+      "Output": 0.6
+
+  - name: "Heavy Metal"
+    description: "High-gain saturated tone for metal and hard rock"
+    genre: metal
+    params:
+      "Amp Type": "Heavy"
+      "Gain": 0.9
+      "Bass": 0.6
+      "Middle": 0.3
+      "Treble": 0.7
+      "Presence": 0.7
+      "Output": 0.5
+
+gotchas:
+  - "Amp without Cabinet sounds harsh and buzzy — always pair with Cabinet for realistic speaker simulation"
+  - "High Gain settings can dramatically increase output level — watch for clipping downstream"
+  - "The Bass amp type has a different tone stack optimized for bass guitar frequencies"
+  - "Dry/Wet allows parallel distortion — useful for bass guitar to preserve low-end clarity"
+  - "Presence control affects frequencies above the Treble control — subtle but important for cut"

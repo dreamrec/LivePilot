@@ -1,0 +1,146 @@
+id: saturator
+name: Saturator
+sonic_description: >
+  Versatile waveshaping saturation with six curve types ranging from warm analog clipping
+  to aggressive digital distortion and wavefold synthesis. Adds harmonics, warmth, and
+  edge to any source with precise control over the distortion character.
+effect_type: distortion
+character_tags: [warm, harmonics, analog, versatile, colorful]
+use_cases: [warmth, harmonic_saturation, bass_grit, subtle_drive, aggressive_distortion, tape_emulation]
+genre_affinity:
+  primary: [all]
+  secondary: []
+complexity: beginner
+signal_type: audio
+introduced_in: "1.0"
+
+key_parameters:
+  - name: "Drive"
+    description: "Amount of saturation applied — higher values = more harmonics and distortion"
+    range: [-inf, 24.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      subtle: 3.0
+      warm: 8.0
+      driven: 15.0
+      extreme: 24.0
+
+  - name: "Type"
+    description: "Waveshaping curve — defines the character of the distortion"
+    range: ["Analog Clip", "Soft Sine", "Medium Curve", "Hard Curve", "Sinoid Fold", "Digital Clip"]
+    type: enum
+    sweet_spots:
+      tape_warmth: "Analog Clip"
+      gentle: "Soft Sine"
+      moderate: "Medium Curve"
+      aggressive: "Hard Curve"
+      folding: "Sinoid Fold"
+      harsh: "Digital Clip"
+
+  - name: "Color"
+    description: "Pre-saturation tone shaping — adds brightness before the waveshaper"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      dark: 0.0
+      neutral: 50.0
+      bright: 80.0
+
+  - name: "Base"
+    description: "Pre-saturation low-frequency boost — adds bass weight before clipping"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      flat: 0.0
+      warm: 30.0
+      fat: 60.0
+
+  - name: "Output"
+    description: "Output level for gain compensation after saturation"
+    range: [-inf, 0.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      compensate: -6.0
+      unity: 0.0
+
+  - name: "Dry/Wet"
+    description: "Parallel blend — mix saturated and clean signal"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      full: 100.0
+      parallel: 50.0
+      subtle_blend: 30.0
+
+  - name: "Soft Clip"
+    description: "Additional soft clipping on the output for rounded peaks"
+    type: toggle
+    range: [0, 1]
+    sweet_spots:
+      off: 0
+      on: 1
+
+pairs_well_with:
+  - device: "EQ Eight"
+    reason: "Shape frequency content before and after saturation"
+  - device: "Compressor"
+    reason: "Compress before saturating for more even harmonic generation"
+  - device: "Utility"
+    reason: "Precise level control after saturation"
+  - device: "Auto Filter"
+    reason: "Filter after saturation to control harsh harmonics"
+
+starter_recipes:
+  - name: "Warm Analog Saturation"
+    description: "Subtle tape-like warmth for any source"
+    genre: all
+    params:
+      Drive: 5.0
+      Type: "Analog Clip"
+      Color: 40.0
+      Output: -3.0
+      "Dry/Wet": 100.0
+
+  - name: "Aggressive Digital Clip"
+    description: "Hard, edgy distortion for industrial or aggressive sounds"
+    genre: industrial
+    params:
+      Drive: 18.0
+      Type: "Digital Clip"
+      Color: 60.0
+      Output: -8.0
+      "Dry/Wet": 100.0
+
+  - name: "Subtle Harmonics"
+    description: "Gentle parallel saturation to add life without obvious distortion"
+    genre: all
+    params:
+      Drive: 10.0
+      Type: "Soft Sine"
+      Color: 50.0
+      Output: -4.0
+      "Dry/Wet": 40.0
+
+  - name: "Bass Grit"
+    description: "Add upper harmonics to bass for speaker presence"
+    genre: electronic
+    params:
+      Drive: 12.0
+      Type: "Medium Curve"
+      Base: 40.0
+      Color: 30.0
+      Output: -5.0
+      "Dry/Wet": 60.0
+
+gotchas:
+  - "Soft Sine is the most transparent curve type — start here for mixing contexts"
+  - "Sinoid Fold creates wavefold distortion — extreme harmonics at high Drive values"
+  - "Digital Clip is harsh and unforgiving — use intentionally for industrial or lo-fi sounds"
+  - "Color boosts high frequencies before saturation — can create harsh artifacts at high values"
+  - "Always compensate output level when adding Drive — saturation increases perceived loudness"
+  - "Dry/Wet is key for parallel saturation — 30-50% often sounds better than 100%"

@@ -1,0 +1,147 @@
+id: chord
+name: Chord
+sonic_description: >
+  Adds up to six parallel intervals to every incoming MIDI note, instantly building
+  chords from single-note input. Ideal for thickening melodic lines, creating
+  power chords, or harmonizing a monophonic source without writing polyphonic parts.
+effect_type: midi_processor
+character_tags: [harmonic, layering, thickening, chordal]
+use_cases: [chord_building, harmonization, octave_doubling, power_chords, parallel_harmony]
+genre_affinity:
+  primary: [edm, pop, rock]
+  secondary: [synthwave, ambient, hip_hop]
+complexity: beginner
+introduced_in: "1.0"
+
+key_parameters:
+  - name: "Shift 1"
+    description: "Semitone offset for the first added note"
+    range: [-36, 36]
+    unit: "st"
+    type: int
+    sweet_spots:
+      minor_third: 3
+      major_third: 4
+      fifth: 7
+      octave: 12
+
+  - name: "Shift 2"
+    description: "Semitone offset for the second added note"
+    range: [-36, 36]
+    unit: "st"
+    type: int
+    sweet_spots:
+      fifth: 7
+      octave: 12
+      ninth: 14
+
+  - name: "Shift 3"
+    description: "Semitone offset for the third added note"
+    range: [-36, 36]
+    unit: "st"
+    type: int
+    sweet_spots:
+      seventh: 10
+      major_seventh: 11
+      two_octaves: 24
+
+  - name: "Shift 4"
+    description: "Semitone offset for the fourth added note"
+    range: [-36, 36]
+    unit: "st"
+    type: int
+
+  - name: "Shift 5"
+    description: "Semitone offset for the fifth added note"
+    range: [-36, 36]
+    unit: "st"
+    type: int
+
+  - name: "Shift 6"
+    description: "Semitone offset for the sixth added note"
+    range: [-36, 36]
+    unit: "st"
+    type: int
+
+  - name: "Velocity 1"
+    description: "Velocity of the first added note (0 disables)"
+    range: [0, 127]
+    type: int
+
+  - name: "Velocity 2"
+    description: "Velocity of the second added note (0 disables)"
+    range: [0, 127]
+    type: int
+
+  - name: "Velocity 3"
+    description: "Velocity of the third added note (0 disables)"
+    range: [0, 127]
+    type: int
+
+  - name: "Velocity 4"
+    description: "Velocity of the fourth added note (0 disables)"
+    range: [0, 127]
+    type: int
+
+  - name: "Velocity 5"
+    description: "Velocity of the fifth added note (0 disables)"
+    range: [0, 127]
+    type: int
+
+  - name: "Velocity 6"
+    description: "Velocity of the sixth added note (0 disables)"
+    range: [0, 127]
+    type: int
+
+pairs_well_with:
+  - device: "Scale"
+    reason: "Place Scale after Chord to force all generated intervals into the correct key"
+  - device: "Arpeggiator"
+    reason: "Place Arpeggiator before Chord to arpeggiate then harmonize, or after for chord arpeggiation"
+  - device: "Drift"
+    reason: "Instant polyphonic chords from single notes into a warm synth"
+  - device: "Reverb"
+    reason: "Blends chord tones together into lush harmonic washes"
+
+starter_recipes:
+  - name: "Power Chord"
+    description: "Root + fifth + octave for rock and EDM power stabs"
+    genre: rock
+    params:
+      "Shift 1": 7
+      "Shift 2": 12
+
+  - name: "Major Triad"
+    description: "Root + major third + fifth for instant major chords"
+    genre: pop
+    params:
+      "Shift 1": 4
+      "Shift 2": 7
+
+  - name: "Minor Triad"
+    description: "Root + minor third + fifth for instant minor chords"
+    genre: pop
+    params:
+      "Shift 1": 3
+      "Shift 2": 7
+
+  - name: "Octave Stack"
+    description: "Doubled one and two octaves up for massive unison sounds"
+    genre: edm
+    params:
+      "Shift 1": 12
+      "Shift 2": 24
+
+  - name: "Major 7th Chord"
+    description: "Lush jazz-inflected major seventh voicing"
+    genre: jazz
+    params:
+      "Shift 1": 4
+      "Shift 2": 7
+      "Shift 3": 11
+
+gotchas:
+  - "Setting Velocity to 0 disables that shift slot — use this to selectively enable/disable intervals"
+  - "All intervals are fixed semitone offsets — the Chord device does NOT adapt to key or scale. Pair with Scale to correct dissonances"
+  - "Can quickly exceed polyphony limits on mono synths — ensure instrument supports enough voices"
+  - "Shift values stack from the root — Shift 1=4, Shift 2=7 gives a major triad, not an octave+fourth"

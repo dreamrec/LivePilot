@@ -1,0 +1,190 @@
+id: reverb
+name: Reverb
+sonic_description: >
+  Algorithmic reverb that simulates acoustic spaces from small rooms to infinite drones.
+  Features independent early reflection and diffuse tail controls, input filtering, chorus
+  modulation, and a Freeze function that infinitely sustains the current reverb cloud.
+effect_type: reverb
+character_tags: [spacious, atmospheric, versatile, lush, ambient]
+use_cases: [room_simulation, spatial_depth, ambient_wash, vocal_reverb, drum_room, infinite_drone]
+genre_affinity:
+  primary: [all]
+  secondary: []
+complexity: beginner
+signal_type: audio
+introduced_in: "1.0"
+
+key_parameters:
+  - name: "Decay Time"
+    description: "Length of the reverb tail in seconds"
+    range: [0.2, 60.0]
+    unit: s
+    type: float
+    sweet_spots:
+      tight_room: 0.5
+      small_room: 1.2
+      hall: 3.0
+      cathedral: 6.0
+      infinite: 60.0
+
+  - name: "Pre Delay"
+    description: "Delay before reverb onset — separates dry signal from reverb"
+    range: [0.0, 500.0]
+    unit: ms
+    type: float
+    sweet_spots:
+      intimate: 0.0
+      vocal: 20.0
+      large_space: 50.0
+      separated: 100.0
+
+  - name: "Room Size"
+    description: "Size of the simulated space — affects early reflection pattern"
+    range: [0.0, 500.0]
+    type: float
+    sweet_spots:
+      small: 50.0
+      medium: 150.0
+      large: 300.0
+      huge: 500.0
+
+  - name: "Diffusion"
+    description: "Density of reflections — higher values sound smoother"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      sparse: 30.0
+      moderate: 60.0
+      dense: 90.0
+
+  - name: "ER Level"
+    description: "Early reflections level — provides room character and spatial cues"
+    range: [-inf, 6.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      off: -inf
+      subtle: -6.0
+      present: 0.0
+
+  - name: "Diffuse Level"
+    description: "Diffuse tail level — the main body of the reverb"
+    range: [-inf, 6.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      subtle: -6.0
+      normal: 0.0
+
+  - name: "High Cut"
+    description: "Low-pass filter on the reverb — darkens the tail"
+    range: [20.0, 20000.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      dark: 2000.0
+      warm: 4000.0
+      natural: 8000.0
+      bright: 15000.0
+
+  - name: "Low Cut"
+    description: "High-pass filter on the reverb — removes muddy low frequencies"
+    range: [20.0, 20000.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      off: 20.0
+      clean: 100.0
+      thin: 300.0
+
+  - name: "Chorus Amount"
+    description: "Chorus modulation on the reverb tail — adds movement"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      off: 0.0
+      subtle: 20.0
+      lush: 50.0
+
+  - name: "Freeze"
+    description: "Infinitely sustains the current reverb — great for drones and transitions"
+    type: toggle
+    range: [0, 1]
+
+  - name: "Dry/Wet"
+    description: "Mix between dry and reverb signal"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      touch: 10.0
+      subtle: 20.0
+      moderate: 35.0
+      lush: 50.0
+      return_track: 100.0
+
+pairs_well_with:
+  - device: "EQ Eight"
+    reason: "Cut low-end before reverb to prevent muddiness; shape reverb tone after"
+  - device: "Delay"
+    reason: "Delay before reverb for depth, or reverb before delay for washy echoes"
+  - device: "Compressor"
+    reason: "Compress the reverb return for controlled, even tails"
+  - device: "Utility"
+    reason: "Width control on the reverb return — mono reverb sits tighter in the mix"
+
+starter_recipes:
+  - name: "Small Room"
+    description: "Tight, natural-sounding room for drums or guitars"
+    genre: all
+    params:
+      "Decay Time": 0.8
+      "Pre Delay": 5.0
+      "Room Size": 80.0
+      Diffusion: 70.0
+      "High Cut": 6000.0
+      "Dry/Wet": 20.0
+
+  - name: "Large Hall"
+    description: "Spacious concert hall for orchestral or cinematic sounds"
+    genre: cinematic
+    params:
+      "Decay Time": 3.5
+      "Pre Delay": 30.0
+      "Room Size": 300.0
+      Diffusion: 85.0
+      "High Cut": 8000.0
+      "Low Cut": 100.0
+      "Dry/Wet": 30.0
+
+  - name: "Infinite Drone"
+    description: "Sustained reverb cloud for ambient and drone textures"
+    genre: ambient
+    params:
+      "Decay Time": 60.0
+      "Pre Delay": 0.0
+      Diffusion: 100.0
+      "Chorus Amount": 40.0
+      "Dry/Wet": 80.0
+
+  - name: "Vocal Plate"
+    description: "Bright, clear reverb for vocals with pre-delay separation"
+    genre: pop
+    params:
+      "Decay Time": 1.5
+      "Pre Delay": 25.0
+      "Room Size": 120.0
+      Diffusion: 90.0
+      "High Cut": 10000.0
+      "Low Cut": 200.0
+      "Dry/Wet": 20.0
+
+gotchas:
+  - "On return tracks, set Dry/Wet to 100% — control the reverb amount with the send level"
+  - "Always cut low frequencies (Low Cut at 100-200 Hz) to prevent muddy reverb buildup"
+  - "Freeze captures whatever is currently in the reverb buffer — automate it for transitions"
+  - "Pre Delay above 20ms helps keep the dry signal distinct from the reverb, crucial for clarity"
+  - "Chorus Amount adds modulation but also subtle pitch variation — turn off for surgical reverb"
+  - "Very long Decay Times with high Diffusion can mask rhythmic detail — match decay to tempo"

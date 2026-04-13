@@ -1,0 +1,178 @@
+id: convolution_reverb_pro
+name: Convolution Reverb Pro
+sonic_description: >
+  Extended convolution reverb with advanced controls beyond the standard version. Adds
+  per-channel EQ, modulation, position control within the IR, and more flexible decay
+  shaping. Provides the realism of impulse responses with deeper sound design options
+  for detailed space emulation and creative IR manipulation.
+effect_type: reverb
+character_tags: [realistic, detailed, professional, flexible, immersive]
+use_cases: [detailed_space_emulation, professional_reverb, ir_sound_design, film_scoring, mastering_reverb]
+genre_affinity:
+  primary: [all]
+  secondary: []
+complexity: advanced
+signal_type: audio
+introduced_in: "10.0"
+m4l_device: true
+
+key_parameters:
+  - name: "IR"
+    description: "Impulse response file — the recorded space character"
+    type: file
+    sweet_spots:
+      room: "Studio or Room IR"
+      hall: "Concert Hall IR"
+      creative: "Experimental IR"
+
+  - name: "Size"
+    description: "Scales the impulse response duration"
+    range: [10.0, 400.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      small: 50.0
+      natural: 100.0
+      large: 200.0
+
+  - name: "Pre Delay"
+    description: "Delay before the reverb onset"
+    range: [0.0, 500.0]
+    unit: ms
+    type: float
+    sweet_spots:
+      intimate: 0.0
+      separated: 25.0
+      distant: 60.0
+
+  - name: "Decay"
+    description: "Adjusts the decay envelope of the IR"
+    range: [0.1, 10.0]
+    unit: s
+    type: float
+    sweet_spots:
+      short: 0.5
+      medium: 2.0
+      long: 5.0
+
+  - name: "Position"
+    description: "Starting point within the IR — skip early reflections or start mid-tail"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      start: 0.0
+      skip_early: 20.0
+      mid_tail: 50.0
+
+  - name: "Mod Rate"
+    description: "Modulation speed applied to the convolution"
+    range: [0.01, 10.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      slow: 0.2
+      moderate: 1.0
+      fast: 4.0
+
+  - name: "Mod Depth"
+    description: "Depth of modulation — adds movement to static IRs"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      off: 0.0
+      subtle: 15.0
+      moderate: 40.0
+
+  - name: "EQ Low"
+    description: "Low-frequency gain on the reverb"
+    range: [-15.0, 15.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      cut: -6.0
+      flat: 0.0
+
+  - name: "EQ Mid"
+    description: "Mid-frequency gain on the reverb"
+    range: [-15.0, 15.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      flat: 0.0
+      scoop: -3.0
+
+  - name: "EQ High"
+    description: "High-frequency gain on the reverb"
+    range: [-15.0, 15.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      dark: -6.0
+      flat: 0.0
+      air: 3.0
+
+  - name: "Dry/Wet"
+    description: "Mix between dry and convolved signal"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      subtle: 15.0
+      moderate: 30.0
+      heavy: 50.0
+      return_track: 100.0
+
+pairs_well_with:
+  - device: "EQ Eight"
+    reason: "Detailed post-reverb EQ for precise tonal shaping"
+  - device: "Compressor"
+    reason: "Dynamic control of the reverb tail"
+  - device: "Hybrid Reverb"
+    reason: "Layer convolution Pro with Hybrid for complex multi-space effects"
+  - device: "Utility"
+    reason: "Width and level control on the reverb output"
+
+starter_recipes:
+  - name: "Detailed Space Emulation"
+    description: "High-fidelity room emulation with modulation for liveliness"
+    genre: all
+    params:
+      Size: 100.0
+      "Pre Delay": 15.0
+      Decay: 2.0
+      "Mod Rate": 0.5
+      "Mod Depth": 10.0
+      "EQ Low": -3.0
+      "Dry/Wet": 25.0
+
+  - name: "Cinematic Hall"
+    description: "Large, detailed hall reverb for orchestral and film scoring"
+    genre: cinematic
+    params:
+      Size: 180.0
+      "Pre Delay": 30.0
+      Decay: 4.0
+      "Mod Rate": 0.3
+      "Mod Depth": 15.0
+      "EQ High": 2.0
+      "Dry/Wet": 30.0
+
+  - name: "Creative IR Manipulation"
+    description: "Use Position and Size to reshape an IR into something new"
+    genre: experimental
+    params:
+      Position: 30.0
+      Size: 250.0
+      Decay: 6.0
+      "Mod Rate": 1.5
+      "Mod Depth": 40.0
+      "Dry/Wet": 40.0
+
+gotchas:
+  - "This is a Max for Live device — requires Suite or M4L license"
+  - "More CPU and memory intensive than the standard Convolution Reverb"
+  - "Position parameter is unique — skipping into the IR tail removes early reflections for drone-like textures"
+  - "Modulation on a convolution reverb can sound unnatural at high depths — use subtly for liveness"
+  - "Custom IR loading supports WAV/AIFF — experiment with non-reverb recordings as IRs for wild results"

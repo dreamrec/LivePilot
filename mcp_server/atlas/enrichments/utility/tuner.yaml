@@ -1,0 +1,51 @@
+id: tuner
+name: Tuner
+sonic_description: >
+  Chromatic tuner that detects the pitch of incoming audio and displays deviation
+  from the nearest note. Passes audio through unchanged. Essential for tuning
+  instruments before recording or checking pitch accuracy of audio material.
+effect_type: analyzer
+character_tags: [tuning, pitch_detection, utility, diagnostic]
+use_cases: [instrument_tuning, pitch_checking, intonation_verification]
+genre_affinity:
+  primary: [all]
+  secondary: []
+complexity: beginner
+introduced_in: "8.0"
+
+key_parameters:
+  - name: "Reference Pitch"
+    description: "Reference frequency for A4 — standard is 440Hz, adjustable for alternate tunings"
+    range: [410.0, 480.0]
+    unit: "Hz"
+    type: float
+    sweet_spots:
+      standard: 440.0
+      baroque: 415.0
+      concert_sharp: 442.0
+      orchestral: 443.0
+
+  - name: "Note Display"
+    description: "Shows the detected note name and octave"
+    type: display
+
+  - name: "Cents Display"
+    description: "Shows deviation from the nearest note in cents"
+    range: [-50, 50]
+    unit: "cents"
+    type: display
+
+pairs_well_with:
+  - device: "Utility"
+    reason: "Use Utility to isolate left or right channel before tuning"
+  - device: "EQ Eight"
+    reason: "High-pass filter to remove rumble that can confuse pitch detection"
+
+starter_recipes: []
+
+gotchas:
+  - "Tuner is purely visual — it passes audio through unchanged"
+  - "Works best with monophonic input — polyphonic audio (chords) will confuse the detection"
+  - "Place FIRST in the device chain before any pitch-altering effects"
+  - "Very low or very high frequencies may not detect reliably"
+  - "Reference pitch changes affect the displayed note name, not the audio itself"

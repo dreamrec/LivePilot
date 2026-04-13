@@ -1,0 +1,164 @@
+id: meld
+name: Meld
+sonic_description: >
+  MPE-ready dual-engine synthesizer combining an additive-inspired engine with an
+  FM-inspired engine, blended through a central mixer. Designed for expressive
+  performance with per-note pitch bend, slide, and pressure response. Produces
+  rich, evolving timbres that respond intimately to playing dynamics.
+synthesis_type: additive
+character_tags: [expressive, responsive, complex, evolving, MPE]
+use_cases: [pads, leads, textures, expressive_performance, sound_design]
+genre_affinity:
+  primary: [ambient, experimental, cinematic]
+  secondary: [electronic, downtempo, neo-soul, art_pop]
+complexity: advanced
+self_contained: true
+introduced_in: "11.0"
+
+key_parameters:
+  - name: "Engine 1 Shape"
+    description: "Timbral shape of the additive-inspired engine"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      simple: 0.0
+      complex: 0.7
+
+  - name: "Engine 2 Shape"
+    description: "Timbral shape of the FM-inspired engine"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      mellow: 0.2
+      bright: 0.8
+
+  - name: "Engine Mix"
+    description: "Crossfade balance between Engine 1 and Engine 2"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      engine_1_only: 0.0
+      balanced: 0.5
+      engine_2_only: 1.0
+
+  - name: "Filter Freq"
+    description: "Global filter cutoff frequency"
+    range: [20.0, 20000.0]
+    unit: "Hz"
+    type: float
+    sweet_spots:
+      warm: 2000.0
+      open: 12000.0
+
+  - name: "Filter Res"
+    description: "Global filter resonance"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      clean: 0.0
+      colored: 0.3
+
+  - name: "MPE Slide"
+    description: "How much MPE slide (Y-axis) affects timbre — maps to tonal brightness"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      subtle: 0.3
+      responsive: 0.7
+
+  - name: "MPE Press"
+    description: "How much MPE pressure (Z-axis/aftertouch) affects the sound"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      gentle: 0.3
+      expressive: 0.7
+
+  - name: "Cross Mod"
+    description: "Cross-modulation amount between the two engines"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      none: 0.0
+      subtle_interaction: 0.2
+      aggressive: 0.6
+
+  - name: "Attack"
+    description: "Amplitude envelope attack"
+    range: [0.0, 10000.0]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      percussive: 0.0
+      pad: 600.0
+
+  - name: "Release"
+    description: "Amplitude envelope release"
+    range: [0.0, 10000.0]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      tight: 100.0
+      ambient: 2000.0
+
+pairs_well_with:
+  - device: "Reverb"
+    reason: "MPE expression + reverb creates deeply immersive evolving soundscapes"
+  - device: "Delay"
+    reason: "Expression-driven timbral changes create unique variation in delay repeats"
+  - device: "Chorus-Ensemble"
+    reason: "Adds width and movement to the already complex dual-engine sound"
+  - device: "Auto Filter"
+    reason: "Additional filter movement layered with MPE expression"
+  - device: "Utility"
+    reason: "Width control helps place the often-wide Meld sound in a mix"
+
+starter_recipes:
+  - name: "MPE Pad"
+    description: "Expressive pad that responds to slide and pressure for live performance"
+    genre: ambient
+    params:
+      "Engine 1 Shape": 0.3
+      "Engine 2 Shape": 0.5
+      "Engine Mix": 0.4
+      "MPE Slide": 0.6
+      "MPE Press": 0.5
+      "Filter Freq": 3000.0
+      "Filter Res": 0.15
+      "Attack": 500.0
+      "Release": 2000.0
+
+  - name: "Responsive Lead"
+    description: "Expressive monophonic lead where dynamics shape timbre in real time"
+    genre: experimental
+    params:
+      "Engine 1 Shape": 0.6
+      "Engine 2 Shape": 0.7
+      "Engine Mix": 0.3
+      "Cross Mod": 0.25
+      "MPE Press": 0.7
+      "Filter Freq": 5000.0
+      "Filter Res": 0.25
+      "Attack": 5.0
+      "Release": 300.0
+
+  - name: "Evolving Texture"
+    description: "Slowly morphing textural sound using cross-modulation between engines"
+    genre: cinematic
+    params:
+      "Engine 1 Shape": 0.2
+      "Engine 2 Shape": 0.8
+      "Engine Mix": 0.5
+      "Cross Mod": 0.4
+      "MPE Slide": 0.5
+      "Filter Freq": 4000.0
+      "Filter Res": 0.2
+      "Attack": 1000.0
+      "Release": 3000.0
+
+gotchas:
+  - "MPE features require an MPE-capable controller (Roli Seaboard, Linnstrument, Sensel Morph) — without one, Meld works as a standard synth but loses its main advantage"
+  - "Cross-modulation between engines can create very complex, sometimes harsh timbres — start low and increase"
+  - "The dual-engine architecture means more parameters than simpler synths — use get_device_parameters to discover the full set"
+  - "Engine Mix is the most impactful single parameter for timbral change — automate for evolving textures"
+  - "MPE Slide and Press ranges should match your controller's sensitivity — too high can be hard to control"

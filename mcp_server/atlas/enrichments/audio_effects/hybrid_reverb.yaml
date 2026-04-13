@@ -1,0 +1,160 @@
+id: hybrid_reverb
+name: Hybrid Reverb
+sonic_description: >
+  Hybrid reverb combining convolution (impulse response) early reflections with an
+  algorithmic tail. Uses real-world IR recordings for authentic room character while the
+  algorithmic component provides flexible, adjustable decay. Best of both worlds — realism
+  plus tunability.
+effect_type: reverb
+character_tags: [realistic, lush, detailed, flexible, cinematic]
+use_cases: [realistic_room, stadium_reverb, morphing_space, cinematic, vocal_reverb]
+genre_affinity:
+  primary: [all]
+  secondary: []
+complexity: intermediate
+signal_type: audio
+introduced_in: "11.0"
+
+key_parameters:
+  - name: "IR Category"
+    description: "Category of impulse response — Real Spaces, Studios, Plates, Springs, etc."
+    type: enum
+    range: ["Real Spaces", "Studios", "Plates", "Springs", "Vintage", "Experimental"]
+    sweet_spots:
+      room: "Real Spaces"
+      plate: "Plates"
+      creative: "Experimental"
+
+  - name: "Blend"
+    description: "Balance between convolution (IR) and algorithmic reverb"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      full_convolution: 0.0
+      balanced: 50.0
+      full_algorithmic: 100.0
+
+  - name: "Size"
+    description: "Size scaling of the convolution/algorithmic space"
+    range: [0.0, 500.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      small: 50.0
+      natural: 100.0
+      large: 200.0
+      huge: 400.0
+
+  - name: "Decay"
+    description: "Algorithmic tail decay time"
+    range: [0.2, 60.0]
+    unit: s
+    type: float
+    sweet_spots:
+      short: 1.0
+      medium: 2.5
+      long: 5.0
+      infinite: 60.0
+
+  - name: "Pre Delay"
+    description: "Delay before reverb onset"
+    range: [0.0, 500.0]
+    unit: ms
+    type: float
+    sweet_spots:
+      intimate: 0.0
+      vocal: 20.0
+      large: 50.0
+
+  - name: "Damping"
+    description: "High-frequency absorption in the algorithmic tail"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      bright: 20.0
+      natural: 50.0
+      dark: 80.0
+
+  - name: "EQ Low"
+    description: "Low-frequency EQ on the reverb output"
+    range: [-15.0, 15.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      cut: -6.0
+      flat: 0.0
+
+  - name: "EQ High"
+    description: "High-frequency EQ on the reverb output"
+    range: [-15.0, 15.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      dark: -6.0
+      flat: 0.0
+      bright: 3.0
+
+  - name: "Dry/Wet"
+    description: "Mix between dry and reverb signal"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      subtle: 15.0
+      moderate: 30.0
+      heavy: 50.0
+      return_track: 100.0
+
+pairs_well_with:
+  - device: "EQ Eight"
+    reason: "Additional frequency shaping before or after the hybrid reverb"
+  - device: "Compressor"
+    reason: "Control reverb dynamics on a return track"
+  - device: "Delay"
+    reason: "Delay into Hybrid Reverb for depth and dimension"
+  - device: "Utility"
+    reason: "Stereo width control on the reverb output"
+
+starter_recipes:
+  - name: "Realistic Room + Long Tail"
+    description: "Authentic room character fading into a smooth algorithmic tail"
+    genre: all
+    params:
+      Blend: 40.0
+      Size: 100.0
+      Decay: 2.5
+      "Pre Delay": 15.0
+      Damping: 50.0
+      "Dry/Wet": 25.0
+
+  - name: "Stadium Verb"
+    description: "Massive, wide reverb for big cinematic moments"
+    genre: cinematic
+    params:
+      Blend: 30.0
+      Size: 350.0
+      Decay: 5.0
+      "Pre Delay": 40.0
+      Damping: 40.0
+      "EQ Low": -3.0
+      "Dry/Wet": 35.0
+
+  - name: "Morphing Space"
+    description: "Automate Blend to morph from convolution room to algorithmic wash"
+    genre: ambient
+    params:
+      Blend: 50.0
+      Size: 200.0
+      Decay: 8.0
+      Damping: 60.0
+      "Dry/Wet": 40.0
+
+gotchas:
+  - "Convolution IRs use memory — long IRs at high quality settings increase RAM usage"
+  - "Blend parameter is key — automate it for evolving room-to-hall transitions"
+  - "Size affects both convolution and algorithmic components"
+  - "The IR library is extensive — browse categories to find the right starting point"
+  - "More CPU-intensive than the stock Reverb — use on return tracks for efficiency"
+  - "Damping only affects the algorithmic tail, not the convolution early reflections"

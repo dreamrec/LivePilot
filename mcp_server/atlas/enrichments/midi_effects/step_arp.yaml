@@ -1,0 +1,112 @@
+id: step_arp
+name: Step Arp
+sonic_description: >
+  Step-based arpeggiator combining the chord-cycling behavior of Arpeggiator with
+  per-step control over pitch offset, velocity, gate, and probability. Offers more
+  granular control than the classic Arpeggiator for complex, evolving arp patterns.
+effect_type: midi_processor
+character_tags: [arpeggiator, sequencer, stepped, complex, programmable]
+use_cases: [complex_arpeggios, per_step_arp, custom_sequences, evolving_patterns, hybrid_sequencing]
+genre_affinity:
+  primary: [trance, edm, synthwave]
+  secondary: [ambient, techno, pop]
+complexity: advanced
+introduced_in: "12.0"
+
+key_parameters:
+  - name: "Steps"
+    description: "Number of active steps in the arpeggiator pattern"
+    range: [1, 16]
+    type: int
+    sweet_spots:
+      minimal: 4
+      standard: 8
+      extended: 16
+
+  - name: "Rate"
+    description: "Arpeggio speed — tempo-synced"
+    range: ["1/1", "1/2", "1/4", "1/8", "1/16", "1/32"]
+    type: enum
+    sweet_spots:
+      moderate: "1/8"
+      fast: "1/16"
+
+  - name: "Pitch Offset (per step)"
+    description: "Semitone offset from the current arp note for each step"
+    range: [-24, 24]
+    unit: "st"
+    type: int
+
+  - name: "Velocity (per step)"
+    description: "Velocity override for each step"
+    range: [0, 127]
+    type: int
+
+  - name: "Gate (per step)"
+    description: "Note length as percentage of step duration for each step"
+    range: [0, 200]
+    unit: "%"
+    type: int
+
+  - name: "Probability (per step)"
+    description: "Trigger probability for each step"
+    range: [0, 100]
+    unit: "%"
+    type: int
+
+  - name: "Style"
+    description: "Base arpeggio direction before per-step modifications"
+    range: ["Up", "Down", "UpDown", "Random"]
+    type: enum
+
+  - name: "Octave Range"
+    description: "Number of octaves the arpeggio spans"
+    range: [1, 4]
+    type: int
+
+pairs_well_with:
+  - device: "Scale"
+    reason: "Corrects per-step pitch offsets to stay in key"
+  - device: "Wavetable"
+    reason: "Complex arpeggiated patterns with evolving wavetable timbres"
+  - device: "Chorus-Ensemble"
+    reason: "Widens and thickens arpeggiated output"
+  - device: "Delay"
+    reason: "Echo on complex arp patterns creates intricate rhythmic webs"
+  - device: "Reverb"
+    reason: "Spatializes complex arp sequences into immersive soundscapes"
+
+starter_recipes:
+  - name: "Complex Arp"
+    description: "8-step arp with varying velocities and gates for dynamic movement"
+    genre: trance
+    params:
+      "Steps": 8
+      "Rate": "1/16"
+      "Style": "Up"
+      "Octave Range": 2
+
+  - name: "Step Sequence Arp"
+    description: "Hybrid sequencer-arpeggiator with per-step pitch offsets"
+    genre: synthwave
+    params:
+      "Steps": 16
+      "Rate": "1/16"
+      "Style": "Up"
+      "Octave Range": 1
+
+  - name: "Probability Arp"
+    description: "Random-direction arp with per-step probability for generative evolution"
+    genre: ambient
+    params:
+      "Steps": 12
+      "Rate": "1/8"
+      "Style": "Random"
+      "Octave Range": 3
+
+gotchas:
+  - "New in Live 12 — not available in earlier versions"
+  - "Per-step Pitch Offset stacks on top of the arpeggio's chord-tone cycling — the final pitch is chord note + offset"
+  - "More CPU-intensive than the classic Arpeggiator due to per-step processing"
+  - "Steps with Gate at 0% are silent — different from Probability at 0% which is a deterministic rest"
+  - "Differs from Melodic Steps: Step Arp cycles through held chord tones, Melodic Steps applies a fixed pitch pattern"

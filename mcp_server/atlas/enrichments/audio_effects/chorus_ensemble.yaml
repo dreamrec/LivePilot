@@ -1,0 +1,149 @@
+id: chorus_ensemble
+name: Chorus-Ensemble
+sonic_description: >
+  Classic chorus and ensemble effect that thickens sound by layering modulated copies
+  of the input. Three modes — Classic (standard chorus), Ensemble (multi-voice shimmer),
+  and Vibrato (pitch modulation without dry signal). Adds stereo width, depth, and
+  warmth to any source.
+effect_type: modulation
+character_tags: [lush, thick, wide, warm, shimmering]
+use_cases: [thickening, stereo_width, vocal_doubling, synth_lush, guitar_chorus]
+genre_affinity:
+  primary: [pop, indie, shoegaze, new_wave]
+  secondary: [electronic, ambient, jazz, rock]
+complexity: beginner
+signal_type: audio
+introduced_in: "11.0"
+
+key_parameters:
+  - name: "Mode"
+    description: "Chorus algorithm — Classic, Ensemble, or Vibrato"
+    range: ["Classic", "Ensemble", "Vibrato"]
+    type: enum
+    sweet_spots:
+      standard: "Classic"
+      lush: "Ensemble"
+      pitch_mod: "Vibrato"
+
+  - name: "Rate 1"
+    description: "Speed of the primary modulation LFO"
+    range: [0.01, 20.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      slow: 0.3
+      moderate: 1.0
+      fast: 4.0
+
+  - name: "Rate 2"
+    description: "Speed of the secondary modulation LFO — creates complex movement"
+    range: [0.01, 20.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      slow: 0.5
+      moderate: 1.5
+      fast: 5.0
+
+  - name: "Amount 1"
+    description: "Depth of the primary modulation"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      subtle: 15.0
+      moderate: 35.0
+      deep: 60.0
+
+  - name: "Amount 2"
+    description: "Depth of the secondary modulation"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      subtle: 10.0
+      moderate: 25.0
+      deep: 50.0
+
+  - name: "Feedback"
+    description: "Feeds output back to input — adds flanging character at high values"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      off: 0.0
+      subtle: 15.0
+      flanging: 50.0
+      metallic: 80.0
+
+  - name: "Width"
+    description: "Stereo spread of the chorus effect"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      narrow: 30.0
+      moderate: 60.0
+      wide: 100.0
+
+  - name: "Dry/Wet"
+    description: "Mix between dry and chorused signal"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      subtle: 20.0
+      moderate: 40.0
+      heavy: 60.0
+      vibrato: 100.0
+
+pairs_well_with:
+  - device: "Reverb"
+    reason: "Chorus into reverb creates vast, shimmering spaces"
+  - device: "Delay"
+    reason: "Chorused delays add width and depth"
+  - device: "Compressor"
+    reason: "Tame dynamic fluctuations from the modulation"
+  - device: "EQ Eight"
+    reason: "Shape the chorused signal — cut lows to prevent mud from doubled bass"
+
+starter_recipes:
+  - name: "Subtle Thickening"
+    description: "Gentle chorus to add width and body without obvious modulation"
+    genre: all
+    params:
+      Mode: "Classic"
+      "Rate 1": 0.5
+      "Amount 1": 20.0
+      Feedback: 0.0
+      Width: 80.0
+      "Dry/Wet": 25.0
+
+  - name: "Lush Ensemble"
+    description: "Rich, multi-voice ensemble for pads and strings"
+    genre: ambient
+    params:
+      Mode: "Ensemble"
+      "Rate 1": 0.8
+      "Rate 2": 1.2
+      "Amount 1": 35.0
+      "Amount 2": 25.0
+      Width: 100.0
+      "Dry/Wet": 45.0
+
+  - name: "Vibrato"
+    description: "Classic pitch vibrato without dry signal mixing"
+    genre: pop
+    params:
+      Mode: "Vibrato"
+      "Rate 1": 4.5
+      "Amount 1": 25.0
+      "Dry/Wet": 100.0
+
+gotchas:
+  - "Ensemble mode uses more CPU than Classic — it processes multiple modulation voices"
+  - "Vibrato mode at 100% wet removes the dry signal entirely — this is intentional for pitch vibrato"
+  - "High Feedback values push toward flanging territory — can overwhelm the chorus character"
+  - "Check in mono — heavy chorus can cause phase cancellation issues when summed to mono"
+  - "Two LFO rates create more complex, less predictable movement than one"
+  - "Width at 100% sounds great in stereo but can lose energy in mono — use 60-80% for safe mixes"

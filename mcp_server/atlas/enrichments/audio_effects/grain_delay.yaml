@@ -1,0 +1,141 @@
+id: grain_delay
+name: Grain Delay
+sonic_description: >
+  Granular delay that chops the delayed signal into tiny grains and can pitch-shift,
+  time-scatter, and randomize them. Creates shimmering, otherworldly textures from any
+  input — from subtle shimmer effects to extreme glitch scatter and frozen soundscapes.
+effect_type: delay
+character_tags: [granular, shimmering, textural, glitchy, ethereal]
+use_cases: [shimmer, glitch, ambient_texture, pitch_delay, creative_effects]
+genre_affinity:
+  primary: [ambient, experimental, electronic]
+  secondary: [shoegaze, post_rock, idm, sound_design]
+complexity: intermediate
+signal_type: audio
+introduced_in: "1.0"
+
+key_parameters:
+  - name: "Frequency"
+    description: "Grain rate — how many grains per second are generated"
+    range: [1.0, 150.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      slow_grains: 10.0
+      moderate: 40.0
+      fast_smooth: 100.0
+
+  - name: "Pitch"
+    description: "Pitch transposition of the grains in semitones"
+    range: [-48, 48]
+    unit: st
+    type: int
+    sweet_spots:
+      octave_down: -12
+      fifth_up: 7
+      octave_up: 12
+      two_octaves_up: 24
+
+  - name: "Spray"
+    description: "Randomizes grain playback position — scatters grains in time"
+    range: [0.0, 500.0]
+    unit: ms
+    type: float
+    sweet_spots:
+      tight: 0.0
+      subtle: 10.0
+      scattered: 50.0
+      extreme: 200.0
+
+  - name: "Random Pitch"
+    description: "Randomizes the pitch of individual grains"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      off: 0.0
+      subtle: 10.0
+      wild: 50.0
+
+  - name: "Feedback"
+    description: "Amount of granulated signal fed back for layered textures"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      single: 0.0
+      moderate: 40.0
+      dense: 70.0
+      runaway: 95.0
+
+  - name: "Delay Time"
+    description: "Base delay time before granulation"
+    range: [1.0, 1000.0]
+    unit: ms
+    type: float
+    sweet_spots:
+      short: 50.0
+      moderate: 200.0
+      long: 500.0
+
+  - name: "Dry/Wet"
+    description: "Mix between dry and granulated signal"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      subtle: 15.0
+      blend: 30.0
+      heavy: 50.0
+      return_track: 100.0
+
+pairs_well_with:
+  - device: "Reverb"
+    reason: "Long reverb on granulated output creates vast, evolving textures"
+  - device: "Auto Filter"
+    reason: "Filter the granular output for tonal control"
+  - device: "Echo"
+    reason: "Layer conventional echoes with granular textures"
+  - device: "EQ Eight"
+    reason: "Tame harsh frequencies from pitch-shifted grains"
+
+starter_recipes:
+  - name: "Shimmer"
+    description: "Ethereal octave-up granular delay for ambient guitar or pads"
+    genre: ambient
+    params:
+      Pitch: 12
+      Frequency: 80.0
+      Spray: 5.0
+      "Random Pitch": 5.0
+      Feedback: 45.0
+      "Dry/Wet": 25.0
+
+  - name: "Glitch Scatter"
+    description: "Chaotic, scattered grains for glitch and IDM textures"
+    genre: idm
+    params:
+      Pitch: 0
+      Frequency: 20.0
+      Spray: 150.0
+      "Random Pitch": 40.0
+      Feedback: 30.0
+      "Dry/Wet": 35.0
+
+  - name: "Frozen Texture"
+    description: "Dense, sustained granular cloud from any input"
+    genre: ambient
+    params:
+      Pitch: 7
+      Frequency: 100.0
+      Spray: 30.0
+      "Random Pitch": 15.0
+      Feedback: 80.0
+      "Dry/Wet": 40.0
+
+gotchas:
+  - "High Feedback + Pitch shift creates ever-rising or falling pitch cascades — intentional but can overwhelm"
+  - "Spray at high values with slow Frequency creates sparse, unpredictable textures"
+  - "Pitch is in semitones, not cents — +12 = octave up, -12 = octave down"
+  - "Low Frequency values create rhythmic, audible grain pulses; high values sound smoother"
+  - "CPU usage increases with high Feedback and Frequency settings"

@@ -1,0 +1,167 @@
+id: echo
+name: Echo
+sonic_description: >
+  Character-rich delay combining echo, modulation, reverb, ducking, and gate in one device.
+  More colorful than Delay — the built-in modulation adds chorus-like movement, the reverb
+  smears echoes, and ducking automatically lowers repeats when new audio arrives.
+effect_type: delay
+character_tags: [warm, modulated, characterful, musical, dub]
+use_cases: [dub_echo, modulated_delay, ducking_delay, creative_echo, ambient]
+genre_affinity:
+  primary: [dub, ambient, electronic, indie]
+  secondary: [pop, rock, shoegaze]
+complexity: intermediate
+signal_type: audio
+introduced_in: "10.0"
+
+key_parameters:
+  - name: "Left Time"
+    description: "Delay time for left channel — tempo-synced or free"
+    range: ["1/16", "1/8T", "1/8", "3/16", "1/4T", "1/4", "3/8", "1/2", "1"]
+    type: enum
+    sweet_spots:
+      eighth: "1/8"
+      dotted_eighth: "3/16"
+      quarter: "1/4"
+
+  - name: "Right Time"
+    description: "Delay time for right channel"
+    range: ["1/16", "1/8T", "1/8", "3/16", "1/4T", "1/4", "3/8", "1/2", "1"]
+    type: enum
+    sweet_spots:
+      eighth: "1/8"
+      dotted_eighth: "3/16"
+      quarter: "1/4"
+
+  - name: "Feedback"
+    description: "Amount of echo fed back — controls repeat count and buildup"
+    range: [0.0, 110.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      few_taps: 30.0
+      dub: 60.0
+      self_oscillate: 100.0
+
+  - name: "Mod Rate"
+    description: "Speed of chorus/modulation on the delay taps"
+    range: [0.01, 20.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      slow: 0.5
+      moderate: 2.0
+      fast: 6.0
+
+  - name: "Mod Depth"
+    description: "Depth of pitch modulation on echoes"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      subtle: 10.0
+      tape: 30.0
+      heavy: 60.0
+
+  - name: "Reverb Level"
+    description: "Built-in reverb amount on the echo signal"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      off: 0.0
+      subtle: 20.0
+      washy: 50.0
+
+  - name: "Reverb Decay"
+    description: "Reverb tail length"
+    range: [0.1, 10.0]
+    unit: s
+    type: float
+    sweet_spots:
+      short: 0.5
+      medium: 1.5
+      long: 4.0
+
+  - name: "Duck Amount"
+    description: "How much the echo ducks when new input arrives — keeps echoes out of the way"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      off: 0.0
+      subtle: 30.0
+      heavy: 70.0
+      full: 100.0
+
+  - name: "Gate"
+    description: "Gate threshold for rhythmic chopping of the echo tail"
+    range: [-inf, 0.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      off: -inf
+      gate: -20.0
+
+  - name: "Dry/Wet"
+    description: "Mix between dry and echoed signal"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      subtle: 15.0
+      moderate: 25.0
+      heavy: 40.0
+      return_track: 100.0
+
+pairs_well_with:
+  - device: "EQ Eight"
+    reason: "Shape echo tone — cut lows before to prevent muddiness"
+  - device: "Saturator"
+    reason: "Warm saturation on Echo's output for tape-delay character"
+  - device: "Auto Filter"
+    reason: "Dynamic filtering of the echo trail for movement"
+  - device: "Compressor"
+    reason: "Tame echo dynamics on return tracks"
+
+starter_recipes:
+  - name: "Dub Echo"
+    description: "Classic dub delay with modulation and reverb wash"
+    genre: dub
+    params:
+      "Left Time": "3/16"
+      "Right Time": "1/4"
+      Feedback: 55.0
+      "Mod Rate": 1.5
+      "Mod Depth": 25.0
+      "Reverb Level": 30.0
+      "Dry/Wet": 30.0
+
+  - name: "Modulated Tape"
+    description: "Warm, wobbly tape-delay character with pitch variation"
+    genre: indie
+    params:
+      "Left Time": "1/8"
+      "Right Time": "1/8"
+      Feedback: 40.0
+      "Mod Rate": 0.8
+      "Mod Depth": 45.0
+      "Dry/Wet": 25.0
+
+  - name: "Ducking Delay"
+    description: "Echo that stays out of the way during performance, fills gaps"
+    genre: pop
+    params:
+      "Left Time": "1/4"
+      "Right Time": "1/4"
+      Feedback: 35.0
+      "Duck Amount": 60.0
+      "Reverb Level": 15.0
+      "Dry/Wet": 30.0
+
+gotchas:
+  - "Feedback above 100% causes intentional self-oscillation — use for buildup effects, reduce quickly"
+  - "Ducking is key for keeping echoes musical — set Duck Amount to 50-70% for clean performances"
+  - "Mod Depth at high values causes noticeable pitch wobble — can be a feature or a problem"
+  - "The built-in reverb is basic — for complex reverb tails, chain a dedicated Reverb after Echo"
+  - "Gate parameter is separate from the Gate device — it chops the echo tail rhythmically"

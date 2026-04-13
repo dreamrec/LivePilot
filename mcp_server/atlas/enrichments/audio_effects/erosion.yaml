@@ -1,0 +1,103 @@
+id: erosion
+name: Erosion
+sonic_description: >
+  Frequency-dependent degradation effect that modulates the input signal with a sine wave
+  or noise to create aliasing, digital artifacts, and spectral erosion. Produces digital
+  dirt, metallic textures, and lo-fi degradation that sounds distinctly different from
+  analog-style distortion.
+effect_type: distortion
+character_tags: [digital, gritty, metallic, lo_fi, degraded]
+use_cases: [digital_dirt, lo_fi_texture, aliasing, metallic_effects, subtle_degradation]
+genre_affinity:
+  primary: [electronic, glitch, lo_fi, experimental]
+  secondary: [idm, industrial, sound_design]
+complexity: beginner
+signal_type: audio
+introduced_in: "1.0"
+
+key_parameters:
+  - name: "Amount"
+    description: "Intensity of the erosion effect — how much degradation is applied"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      subtle: 10.0
+      moderate: 30.0
+      heavy: 60.0
+      extreme: 100.0
+
+  - name: "Frequency"
+    description: "Frequency of the modulation source — targets where the degradation occurs"
+    range: [20.0, 20000.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      low_rumble: 200.0
+      mid_grit: 2000.0
+      high_fizz: 8000.0
+      ultra_high: 15000.0
+
+  - name: "Mode"
+    description: "Type of modulation — Sine (tonal), Noise (broadband), Wide Noise (stereo)"
+    range: ["Sine", "Noise", "Wide Noise"]
+    type: enum
+    sweet_spots:
+      tonal_alias: "Sine"
+      broadband: "Noise"
+      stereo_noise: "Wide Noise"
+
+  - name: "Width"
+    description: "Bandwidth of the noise modulation (Noise modes only)"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      narrow: 20.0
+      moderate: 50.0
+      wide: 80.0
+
+pairs_well_with:
+  - device: "Saturator"
+    reason: "Layer digital erosion with analog saturation for complex texture"
+  - device: "Redux"
+    reason: "Combine with bit reduction for full lo-fi destruction"
+  - device: "EQ Eight"
+    reason: "Shape which frequencies reach the erosion for targeted degradation"
+  - device: "Auto Filter"
+    reason: "Dynamic filtering after erosion to control harsh artifacts"
+
+starter_recipes:
+  - name: "Subtle Digital Dirt"
+    description: "Light digital texture that adds edge without obvious distortion"
+    genre: electronic
+    params:
+      Amount: 12.0
+      Frequency: 5000.0
+      Mode: "Noise"
+      Width: 40.0
+
+  - name: "Harsh Noise"
+    description: "Aggressive noise erosion for industrial or experimental textures"
+    genre: industrial
+    params:
+      Amount: 60.0
+      Frequency: 3000.0
+      Mode: "Wide Noise"
+      Width: 80.0
+
+  - name: "Aliasing Effect"
+    description: "Sine-wave modulation for metallic, aliased textures"
+    genre: glitch
+    params:
+      Amount: 40.0
+      Frequency: 7000.0
+      Mode: "Sine"
+
+gotchas:
+  - "Sine mode creates tonal artifacts at the set Frequency — these can clash with musical content"
+  - "Very different from analog distortion — produces digital artifacts, not warm harmonics"
+  - "Amount at high values with high Frequency can be extremely harsh — start low"
+  - "Wide Noise mode creates stereo-decorrelated noise modulation — good for width but can sound phasey"
+  - "Works best as a subtle texture layer — a little goes a long way"
+  - "Frequency parameter determines the character more than Amount in many cases"

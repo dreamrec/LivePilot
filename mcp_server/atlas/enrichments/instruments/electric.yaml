@@ -1,0 +1,137 @@
+id: electric
+name: Electric
+sonic_description: >
+  Physical modeling instrument that recreates classic electric piano sounds by simulating
+  a mallet striking a fork (tine or tone bar) with electromagnetic pickup and damper
+  mechanics. Delivers authentic Rhodes, Wurlitzer, and clavinet-style tones with
+  the playability and tonal variation that only physical modeling can provide.
+synthesis_type: physical_modeling
+character_tags: [warm, vintage, keys, expressive, smooth]
+use_cases: [keys, chords, comping, bass, melodic_lines]
+genre_affinity:
+  primary: [jazz, soul, neo_soul, lo_fi]
+  secondary: [r_and_b, funk, pop, downtempo, hip_hop]
+complexity: intermediate
+self_contained: true
+introduced_in: "8.0"
+
+key_parameters:
+  - name: "Mallet Stiffness"
+    description: "Hardness of the striking mallet — soft for mellow Rhodes, hard for bright bark"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      mellow_rhodes: 0.25
+      balanced: 0.5
+      bright_attack: 0.8
+
+  - name: "Mallet Noise"
+    description: "Mechanical noise of the mallet mechanism — adds realistic key-click"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      clean: 0.0
+      subtle_click: 0.2
+      clicky: 0.5
+
+  - name: "Fork Tine Color"
+    description: "Brightness of the fork tine — controls the fundamental vs overtone balance"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      dark_warm: 0.2
+      balanced: 0.5
+      bright_bell: 0.8
+
+  - name: "Fork Tine Decay"
+    description: "How long the tine rings after being struck"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      short_staccato: 0.2
+      medium: 0.5
+      long_sustain: 0.8
+
+  - name: "Damper"
+    description: "Damper engagement — simulates the felt damper pressing against the tine"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      fully_damped: 0.0
+      half_damped: 0.5
+      undamped: 1.0
+
+  - name: "Pickup Position"
+    description: "Electromagnetic pickup position along the tine — changes harmonic emphasis"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      mellow: 0.2
+      balanced: 0.5
+      nasal: 0.8
+
+  - name: "Pickup Symmetry"
+    description: "Pickup coil symmetry — affects distortion character at high velocities"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      clean: 0.5
+      asymmetric_bark: 0.3
+
+pairs_well_with:
+  - device: "Chorus-Ensemble"
+    reason: "Classic electric piano chorus — essential for the Juno-Rhodes sound"
+  - device: "Phaser-Flanger"
+    reason: "Classic phaser on electric piano creates the iconic 70s soul sound"
+  - device: "Reverb"
+    reason: "Plate reverb on electric piano is a timeless combination"
+  - device: "Compressor"
+    reason: "Evens out the velocity-dependent dynamics for consistent level"
+  - device: "Saturator"
+    reason: "Adds the warm amp-like overdrive character of a driven Rhodes"
+  - device: "Auto Filter"
+    reason: "Wah-like filter sweeps on electric piano for funk styles"
+
+starter_recipes:
+  - name: "Classic Rhodes"
+    description: "Warm, bell-like Rhodes electric piano with gentle bark on hard hits"
+    genre: jazz
+    params:
+      "Mallet Stiffness": 0.35
+      "Mallet Noise": 0.15
+      "Fork Tine Color": 0.4
+      "Fork Tine Decay": 0.6
+      "Damper": 0.8
+      "Pickup Position": 0.4
+      "Pickup Symmetry": 0.4
+
+  - name: "Bright Wurlitzer"
+    description: "Punchy, bright electric piano with nasal character and pronounced attack"
+    genre: funk
+    params:
+      "Mallet Stiffness": 0.7
+      "Mallet Noise": 0.3
+      "Fork Tine Color": 0.7
+      "Fork Tine Decay": 0.4
+      "Damper": 0.6
+      "Pickup Position": 0.7
+      "Pickup Symmetry": 0.5
+
+  - name: "Crunchy Keys"
+    description: "Overdriven electric piano with aggressive attack and harmonic distortion"
+    genre: neo_soul
+    params:
+      "Mallet Stiffness": 0.8
+      "Mallet Noise": 0.4
+      "Fork Tine Color": 0.6
+      "Fork Tine Decay": 0.5
+      "Damper": 0.7
+      "Pickup Position": 0.5
+      "Pickup Symmetry": 0.25
+
+gotchas:
+  - "Velocity is critical for Electric — it controls not just volume but timbral bark and distortion character"
+  - "Pickup Symmetry away from center creates asymmetric clipping — this is the source of the 'bark' on hard hits"
+  - "Damper at 0 cuts notes very short — great for staccato funk but unnatural for ballads"
+  - "Fork Tine Color and Pickup Position interact — both affect brightness, so adjust together"
+  - "Best played with a velocity-sensitive keyboard — flat velocity loses the instrument's main expressive dimension"

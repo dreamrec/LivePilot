@@ -1,0 +1,202 @@
+id: bass
+name: Bass
+sonic_description: >
+  Purpose-built bass synthesizer with focused controls optimized for low-end production.
+  Features a streamlined signal path with oscillator, integrated distortion, compression,
+  and filter designed specifically for bass frequencies. Delivers everything from clean
+  sub-bass to aggressive, distorted bass lines with less tweaking than general-purpose synths.
+synthesis_type: subtractive
+character_tags: [deep, powerful, focused, punchy, low_end]
+use_cases: [sub_bass, distorted_bass, funk_bass, bass_lines, low_end]
+genre_affinity:
+  primary: [hip_hop, house, dnb, pop]
+  secondary: [techno, trap, r_and_b, funk, dubstep]
+complexity: beginner
+self_contained: true
+introduced_in: "12.0"
+
+key_parameters:
+  - name: "Osc Shape"
+    description: "Oscillator waveform shape — determines the harmonic foundation of the bass"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      pure_sub: 0.0
+      warm_saw: 0.5
+      buzzy_square: 1.0
+
+  - name: "Sub Level"
+    description: "Sub-harmonic oscillator level — adds pure low-end weight below the main oscillator"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      off: 0.0
+      subtle_weight: 0.3
+      heavy_sub: 0.7
+      dominant: 1.0
+
+  - name: "Filter Freq"
+    description: "Low-pass filter cutoff — controls how much harmonic content passes through"
+    range: [20.0, 20000.0]
+    unit: "Hz"
+    type: float
+    sweet_spots:
+      deep_sub: 120.0
+      warm_bass: 400.0
+      mid_bass: 1000.0
+      open: 5000.0
+
+  - name: "Filter Res"
+    description: "Filter resonance — adds emphasis at the cutoff frequency"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      clean: 0.0
+      warm: 0.15
+      squelchy: 0.5
+      acid: 0.75
+
+  - name: "Filter Env"
+    description: "Filter envelope amount — how much the envelope shapes the filter over time"
+    range: [-1.0, 1.0]
+    type: float
+    sweet_spots:
+      static: 0.0
+      pluck: 0.4
+      aggressive: 0.7
+
+  - name: "Drive"
+    description: "Built-in distortion amount — from subtle warmth to aggressive grit"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      clean: 0.0
+      warm: 0.2
+      gritty: 0.5
+      aggressive: 0.8
+
+  - name: "Compress"
+    description: "Built-in compressor amount — tightens dynamics and adds punch"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      off: 0.0
+      subtle: 0.25
+      punchy: 0.5
+      squashed: 0.8
+
+  - name: "Attack"
+    description: "Amplitude envelope attack"
+    range: [0.0, 10000.0]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      instant: 0.0
+      soft_click: 5.0
+
+  - name: "Decay"
+    description: "Amplitude envelope decay"
+    range: [0.0, 10000.0]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      short: 100.0
+      medium: 400.0
+      long_808: 2000.0
+
+  - name: "Sustain"
+    description: "Amplitude envelope sustain level"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      pluck: 0.0
+      held: 0.7
+      sustained: 1.0
+
+  - name: "Release"
+    description: "Amplitude envelope release"
+    range: [0.0, 10000.0]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      tight: 20.0
+      natural: 100.0
+      smooth: 300.0
+
+  - name: "Glide"
+    description: "Portamento time between notes — essential for sliding bass lines"
+    range: [0.0, 1000.0]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      off: 0.0
+      fast_slide: 30.0
+      medium: 80.0
+      slow_glide: 200.0
+
+pairs_well_with:
+  - device: "EQ Eight"
+    reason: "Surgical low-end shaping — roll off sub-rumble and shape the bass presence"
+  - device: "Compressor"
+    reason: "Additional dynamics control beyond the built-in compressor — sidechain from kick for pumping"
+  - device: "Saturator"
+    reason: "Additional harmonic generation for bass to cut through on small speakers"
+  - device: "Utility"
+    reason: "Bass Mono ensures low frequencies stay centered — essential for club mixes"
+  - device: "Limiter"
+    reason: "Prevents bass peaks from clipping the mix bus"
+
+starter_recipes:
+  - name: "Deep Sub"
+    description: "Clean, powerful sub-bass for modern production — felt more than heard"
+    genre: hip_hop
+    params:
+      "Osc Shape": 0.0
+      "Sub Level": 0.6
+      "Filter Freq": 150.0
+      "Filter Res": 0.0
+      "Drive": 0.0
+      "Compress": 0.3
+      "Attack": 0.0
+      "Sustain": 1.0
+      "Release": 80.0
+
+  - name: "Distorted Bass"
+    description: "Aggressive, gritty bass with drive and compression for energy"
+    genre: dnb
+    params:
+      "Osc Shape": 0.5
+      "Sub Level": 0.3
+      "Filter Freq": 800.0
+      "Filter Res": 0.2
+      "Drive": 0.6
+      "Compress": 0.5
+      "Glide": 40.0
+      "Attack": 0.0
+      "Sustain": 0.8
+      "Release": 50.0
+
+  - name: "Funk Bass"
+    description: "Bouncy, articulate bass with filter envelope and subtle drive"
+    genre: pop
+    params:
+      "Osc Shape": 0.3
+      "Sub Level": 0.2
+      "Filter Freq": 600.0
+      "Filter Res": 0.3
+      "Filter Env": 0.5
+      "Drive": 0.15
+      "Compress": 0.3
+      "Glide": 20.0
+      "Attack": 0.0
+      "Decay": 200.0
+      "Sustain": 0.4
+      "Release": 60.0
+
+gotchas:
+  - "New in Live 12 — exact parameter names may differ. Use get_device_parameters to verify actual parameters"
+  - "Built-in Drive and Compress mean you may not need external Saturator/Compressor — check the built-in processing first"
+  - "Sub Level adds significant low-end energy — use Utility's Bass Mono after Bass to keep subs centered"
+  - "Designed specifically for bass frequencies — using it for midrange or treble leads won't sound right"
+  - "Glide is essential for 808-style sliding bass patterns — enable for legato playing"
+  - "Filter Freq below 200 Hz cuts harmonics that help bass translate to small speakers — keep some mids for presence"

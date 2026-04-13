@@ -1,0 +1,218 @@
+id: sampler
+name: Sampler
+sonic_description: >
+  Full-featured multi-zone sampler with velocity layers, key zones, round-robin
+  selection, and a deep modulation matrix. The most powerful sampling instrument
+  in Live, designed for building realistic multi-sampled instruments with complex
+  modulation routing, multiple filter types, and three LFOs.
+synthesis_type: sampling
+character_tags: [deep, powerful, realistic, multi_layered, professional]
+use_cases: [multi_velocity_instruments, layered_pads, orchestral, chromatic_samples, realistic_instruments]
+genre_affinity:
+  primary: [cinematic, orchestral, pop]
+  secondary: [electronic, hip_hop, ambient, jazz, all]
+complexity: advanced
+self_contained: false
+introduced_in: "1.0"
+
+key_parameters:
+  - name: "Filter Type"
+    description: "Filter topology — extensive selection of LP, HP, BP, Notch, and morphing filters"
+    range: ["LP12", "LP24", "HP12", "HP24", "BP", "Notch", "Morph"]
+    type: enum
+    sweet_spots:
+      warm: "LP12"
+      aggressive: "LP24"
+      morph: "Morph"
+
+  - name: "Filter Freq"
+    description: "Filter cutoff frequency"
+    range: [20.0, 20000.0]
+    unit: "Hz"
+    type: float
+    sweet_spots:
+      dark: 1000.0
+      warm: 4000.0
+      open: 18000.0
+
+  - name: "Filter Res"
+    description: "Filter resonance"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      clean: 0.0
+      subtle: 0.2
+      resonant: 0.5
+
+  - name: "Amp Attack"
+    description: "Amplitude envelope attack time"
+    range: [0.0, 10000.0]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      instant: 0.0
+      natural: 10.0
+      pad: 500.0
+
+  - name: "Amp Decay"
+    description: "Amplitude envelope decay time"
+    range: [0.0, 10000.0]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      short: 100.0
+      medium: 500.0
+
+  - name: "Amp Sustain"
+    description: "Amplitude envelope sustain level"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      percussive: 0.0
+      natural: 0.7
+      sustained: 1.0
+
+  - name: "Amp Release"
+    description: "Amplitude envelope release time"
+    range: [0.0, 10000.0]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      tight: 30.0
+      natural: 300.0
+      ambient: 2000.0
+
+  - name: "Filter Env Amount"
+    description: "Filter envelope modulation depth"
+    range: [-1.0, 1.0]
+    type: float
+    sweet_spots:
+      subtle: 0.15
+      pluck: 0.5
+      dramatic: 0.8
+
+  - name: "Filter Attack"
+    description: "Filter envelope attack time"
+    range: [0.0, 10000.0]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      instant: 0.0
+      medium: 200.0
+
+  - name: "Filter Decay"
+    description: "Filter envelope decay time"
+    range: [0.0, 10000.0]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      short: 100.0
+      medium: 400.0
+
+  - name: "Pitch Env Amount"
+    description: "Pitch envelope modulation depth"
+    range: [-48.0, 48.0]
+    unit: "st"
+    type: float
+    sweet_spots:
+      none: 0.0
+      subtle: 2.0
+      kick_pitch: 12.0
+
+  - name: "LFO 1 Rate"
+    description: "LFO 1 speed"
+    range: [0.01, 30.0]
+    unit: "Hz"
+    type: float
+    sweet_spots:
+      slow: 0.2
+      vibrato: 5.5
+
+  - name: "LFO 1 Amount"
+    description: "LFO 1 modulation depth"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      subtle: 0.1
+      moderate: 0.3
+
+  - name: "Mod Matrix"
+    description: "Modulation matrix — route any source to any destination with scaled amount"
+    range: ["Matrix routing"]
+    type: enum
+
+  - name: "Vel > Filter"
+    description: "Velocity sensitivity of filter cutoff — higher velocity opens the filter"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      fixed: 0.0
+      subtle: 0.3
+      expressive: 0.7
+
+  - name: "Vel > Volume"
+    description: "Velocity sensitivity of output volume"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      fixed: 0.0
+      natural: 0.5
+      full_range: 1.0
+
+pairs_well_with:
+  - device: "EQ Eight"
+    reason: "Surgical frequency shaping for multi-sampled instruments in a mix context"
+  - device: "Compressor"
+    reason: "Evens dynamics across velocity layers and key zones"
+  - device: "Reverb"
+    reason: "Places sampled instruments in a convincing acoustic space"
+  - device: "Saturator"
+    reason: "Adds warmth and harmonics to sterile or thin samples"
+  - device: "Utility"
+    reason: "Width and gain management for large multi-sample instruments"
+
+starter_recipes:
+  - name: "Multi-Velocity Instrument"
+    description: "Expressive sampled instrument with velocity controlling both volume and brightness"
+    genre: cinematic
+    params:
+      "Filter Type": "LP12"
+      "Filter Freq": 8000.0
+      "Filter Res": 0.1
+      "Vel > Filter": 0.5
+      "Vel > Volume": 0.7
+      "Amp Attack": 5.0
+      "Amp Release": 400.0
+
+  - name: "Layered Pad"
+    description: "Thick pad from layered samples with slow envelopes and filtering"
+    genre: ambient
+    params:
+      "Filter Type": "LP12"
+      "Filter Freq": 3000.0
+      "Filter Res": 0.15
+      "Amp Attack": 800.0
+      "Amp Sustain": 1.0
+      "Amp Release": 2000.0
+      "LFO 1 Rate": 0.3
+      "LFO 1 Amount": 0.1
+
+  - name: "Chromatic Sample Spread"
+    description: "Sample spread across the keyboard with pitch tracking and natural dynamics"
+    genre: pop
+    params:
+      "Filter Type": "LP12"
+      "Filter Freq": 12000.0
+      "Vel > Volume": 0.6
+      "Amp Attack": 2.0
+      "Amp Decay": 500.0
+      "Amp Sustain": 0.7
+      "Amp Release": 300.0
+
+gotchas:
+  - "Sampler requires samples loaded into zones — bare Sampler produces no sound. Always load a preset or configure zone maps"
+  - "Zone Map editing (key ranges, velocity layers) is GUI-only in Live — cannot be fully programmed via MCP"
+  - "Much more CPU-intensive than Simpler — use Simpler when you only need single-sample playback"
+  - "The modulation matrix is very deep — use get_device_parameters to discover all available routing options"
+  - "Round-robin and random sample selection are zone-level settings, not global — configure per zone"
+  - "Velocity layers should overlap slightly for smooth crossfading between dynamic levels"

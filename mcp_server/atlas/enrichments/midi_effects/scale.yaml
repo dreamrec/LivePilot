@@ -1,0 +1,83 @@
+id: scale
+name: Scale
+sonic_description: >
+  Forces all incoming MIDI notes to conform to a selected musical scale, correcting
+  out-of-key notes by mapping them to the nearest scale degree. Essential for keeping
+  generative, randomized, or improvised MIDI output harmonically coherent.
+effect_type: midi_processor
+character_tags: [harmonic, corrective, constraining, tonal]
+use_cases: [scale_locking, key_correction, modal_constraint, generative_safety, improvisation_aid]
+genre_affinity:
+  primary: [edm, pop, ambient]
+  secondary: [jazz, world, classical, hip_hop]
+complexity: beginner
+introduced_in: "1.0"
+
+key_parameters:
+  - name: "Base"
+    description: "Root note of the scale"
+    range: ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+    type: enum
+
+  - name: "Scale Type"
+    description: "Musical scale or mode to enforce"
+    range: ["Major", "Minor", "Dorian", "Mixolydian", "Lydian", "Phrygian", "Locrian", "Harmonic Minor", "Melodic Minor", "Pentatonic Major", "Pentatonic Minor", "Blues", "Whole Tone", "Chromatic"]
+    type: enum
+    sweet_spots:
+      universal: "Minor"
+      bright: "Major"
+      jazzy: "Dorian"
+      eastern: "Phrygian"
+      dreamy: "Lydian"
+      minimal: "Pentatonic Minor"
+
+  - name: "Fold"
+    description: "Whether out-of-scale notes are folded to nearest scale degree or blocked"
+    range: ["On", "Off"]
+    type: enum
+
+pairs_well_with:
+  - device: "Arpeggiator"
+    reason: "Place Scale after Arpeggiator to ensure arpeggiated notes stay in key"
+  - device: "Random"
+    reason: "Scale corrects random pitch offsets to stay musically coherent"
+  - device: "Chord"
+    reason: "Corrects parallel intervals that fall outside the target scale"
+  - device: "Note Echo"
+    reason: "Ensures pitch-shifted echo repeats stay in key"
+
+starter_recipes:
+  - name: "Lock to Natural Minor"
+    description: "Constrain all input to A natural minor — safe for most melancholic productions"
+    genre: pop
+    params:
+      "Base": "A"
+      "Scale Type": "Minor"
+
+  - name: "Pentatonic Filter"
+    description: "Reduce to pentatonic for universally consonant generative output"
+    genre: ambient
+    params:
+      "Base": "C"
+      "Scale Type": "Pentatonic Minor"
+
+  - name: "Modal Constraint — Dorian"
+    description: "Force Dorian mode for jazzy, sophisticated minor tonality"
+    genre: jazz
+    params:
+      "Base": "D"
+      "Scale Type": "Dorian"
+
+  - name: "Blues Scale Lock"
+    description: "Constrain to blues scale for authentic blues/soul feel"
+    genre: blues
+    params:
+      "Base": "A"
+      "Scale Type": "Blues"
+
+gotchas:
+  - "Scale has a per-note mapping grid — you can customize individual note routing beyond the preset scales"
+  - "Place Scale AFTER pitch-generating MIDI effects (Arpeggiator, Random, Chord) so it corrects their output"
+  - "Chromatic scale type passes all notes through unchanged — useful as a bypass without removing the device"
+  - "Live 12 clips have their own scale setting — the Scale MIDI effect is independent and can conflict. Check both"
+  - "Fold mode determines whether notes snap to nearest scale tone or are silenced — Fold On is usually preferred"

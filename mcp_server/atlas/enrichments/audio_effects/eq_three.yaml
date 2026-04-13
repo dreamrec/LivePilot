@@ -1,0 +1,121 @@
+id: eq_three
+name: EQ Three
+sonic_description: >
+  Simple three-band EQ with low, mid, and high gain controls plus crossover frequency
+  adjustment and per-band kill switches. Designed for quick tonal adjustments and DJ-style
+  frequency isolation rather than surgical precision.
+effect_type: eq
+character_tags: [simple, quick, dj_style, performable]
+use_cases: [dj_mixing, quick_eq, live_performance, frequency_kill]
+genre_affinity:
+  primary: [house, techno, dj]
+  secondary: [all]
+complexity: beginner
+signal_type: audio
+introduced_in: "1.0"
+
+key_parameters:
+  - name: "GainLo"
+    description: "Low band gain"
+    range: [-inf, 6.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      cut: -6.0
+      unity: 0.0
+      boost: 3.0
+
+  - name: "GainMid"
+    description: "Mid band gain"
+    range: [-inf, 6.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      cut: -6.0
+      unity: 0.0
+      boost: 3.0
+
+  - name: "GainHi"
+    description: "High band gain"
+    range: [-inf, 6.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      cut: -6.0
+      unity: 0.0
+      boost: 3.0
+
+  - name: "FreqLo"
+    description: "Low/Mid crossover frequency"
+    range: [20.0, 20000.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      standard: 250.0
+      deep: 120.0
+
+  - name: "FreqHi"
+    description: "Mid/High crossover frequency"
+    range: [20.0, 20000.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      standard: 2500.0
+      bright: 4000.0
+
+  - name: "LowOn"
+    description: "Low band kill switch — instantly mutes the low band"
+    type: toggle
+    range: [0, 1]
+
+  - name: "MidOn"
+    description: "Mid band kill switch — instantly mutes the mid band"
+    type: toggle
+    range: [0, 1]
+
+  - name: "HighOn"
+    description: "High band kill switch — instantly mutes the high band"
+    type: toggle
+    range: [0, 1]
+
+pairs_well_with:
+  - device: "Utility"
+    reason: "Volume trim after EQ adjustments"
+  - device: "Auto Filter"
+    reason: "EQ Three for static shaping, Auto Filter for dynamic movement"
+  - device: "Beat Repeat"
+    reason: "EQ before Beat Repeat to control which frequencies get repeated"
+
+starter_recipes:
+  - name: "DJ-Style EQ"
+    description: "Standard DJ isolator setup — ready for live frequency kills"
+    genre: dj
+    params:
+      GainLo: 0.0
+      GainMid: 0.0
+      GainHi: 0.0
+      FreqLo: 250.0
+      FreqHi: 2500.0
+
+  - name: "Quick Mix Adjustment"
+    description: "Warm up a thin mix or thin out a boomy one"
+    genre: all
+    params:
+      GainLo: 2.0
+      GainMid: -1.5
+      GainHi: 1.0
+
+  - name: "Bass Kill Transition"
+    description: "Remove low end for build-up tension — automate LowOn"
+    genre: electronic
+    params:
+      LowOn: 0
+      GainMid: 0.0
+      GainHi: 0.0
+
+gotchas:
+  - "Kill switches create abrupt frequency changes — use gain knobs for smoother transitions"
+  - "Less precise than EQ Eight — use for quick adjustments, not surgical work"
+  - "The crossover slopes are relatively gentle — frequencies bleed between bands"
+  - "No Q control — each band has a fixed bandwidth"
+  - "Good for performance mapping to MIDI controllers due to simple parameter set"

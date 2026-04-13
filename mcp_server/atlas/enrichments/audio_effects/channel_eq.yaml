@@ -1,0 +1,126 @@
+id: channel_eq
+name: Channel EQ
+sonic_description: >
+  Streamlined channel strip EQ with fixed low, sweepable mid, and fixed high bands plus
+  a built-in spectrum analyzer. Designed for fast tonal shaping with minimal controls,
+  perfect for quick adjustments when EQ Eight feels like overkill.
+effect_type: eq
+character_tags: [simple, quick, clean, channel_strip]
+use_cases: [quick_tonal_shaping, channel_strip, vocal_brightening, bass_warmth]
+genre_affinity:
+  primary: [all]
+  secondary: []
+complexity: beginner
+signal_type: audio
+introduced_in: "10.0"
+
+key_parameters:
+  - name: "Low Gain"
+    description: "Low shelf gain for bass control"
+    range: [-15.0, 15.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      warmth: 2.0
+      thin_out: -3.0
+      bass_boost: 4.0
+
+  - name: "Mid Gain"
+    description: "Mid bell gain for body/presence control"
+    range: [-15.0, 15.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      presence: 2.0
+      scoop: -3.0
+      body: 3.0
+
+  - name: "Mid Freq"
+    description: "Sweepable mid frequency — target the problem or sweet spot"
+    range: [120.0, 7500.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      mud: 350.0
+      body: 800.0
+      presence: 3000.0
+      clarity: 5000.0
+
+  - name: "High Gain"
+    description: "High shelf gain for brightness control"
+    range: [-15.0, 15.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      air: 2.0
+      darken: -3.0
+      bright: 4.0
+
+  - name: "HP On"
+    description: "Enable the built-in high-pass filter"
+    type: toggle
+    range: [0, 1]
+
+  - name: "HP Freq"
+    description: "High-pass filter cutoff frequency"
+    range: [20.0, 500.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      rumble: 30.0
+      vocal: 80.0
+      thin: 200.0
+
+  - name: "Output"
+    description: "Output gain for level matching"
+    range: [-15.0, 15.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      unity: 0.0
+
+pairs_well_with:
+  - device: "Compressor"
+    reason: "Quick EQ shaping before dynamics processing"
+  - device: "Utility"
+    reason: "Channel EQ for tone, Utility for level and width"
+  - device: "Saturator"
+    reason: "Tone shaping before saturation for controlled harmonic content"
+
+starter_recipes:
+  - name: "Quick Vocal Brightening"
+    description: "Add air and presence to a vocal with one device"
+    genre: all
+    params:
+      "Low Gain": -1.0
+      "Mid Gain": 1.5
+      "Mid Freq": 3000.0
+      "High Gain": 2.5
+      "HP On": 1
+      "HP Freq": 80.0
+
+  - name: "Bass Warmth"
+    description: "Warm up a bass track with low boost and mud cut"
+    genre: all
+    params:
+      "Low Gain": 3.0
+      "Mid Gain": -2.0
+      "Mid Freq": 400.0
+      "High Gain": 0.0
+
+  - name: "General Cleanup"
+    description: "High-pass and slight presence boost for most sources"
+    genre: all
+    params:
+      "HP On": 1
+      "HP Freq": 40.0
+      "Low Gain": 0.0
+      "Mid Gain": 1.0
+      "Mid Freq": 2500.0
+      "High Gain": 1.0
+
+gotchas:
+  - "Only one mid band with fixed Q — for surgical work, use EQ Eight instead"
+  - "The built-in spectrum analyzer is useful for visual feedback but adds slight CPU overhead"
+  - "High-pass filter has a fixed slope — less control than EQ Eight's HP options"
+  - "Good enough for 80% of EQ tasks — save EQ Eight for complex multi-band needs"

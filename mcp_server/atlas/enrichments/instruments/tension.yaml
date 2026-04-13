@@ -1,0 +1,156 @@
+id: tension
+name: Tension
+sonic_description: >
+  Physical modeling instrument that simulates vibrating strings excited by bowing,
+  plucking, or hammering. Models the full signal chain from exciter through string
+  to resonant body, producing everything from realistic bowed drones to otherworldly
+  plucked textures that evolve organically over time.
+synthesis_type: physical_modeling
+character_tags: [stringy, organic, resonant, expressive, physical]
+use_cases: [drones, bass, plucked_sounds, textures, bowed_strings]
+genre_affinity:
+  primary: [ambient, classical, experimental]
+  secondary: [cinematic, world, downtempo, post_rock]
+complexity: advanced
+self_contained: true
+introduced_in: "8.0"
+
+key_parameters:
+  - name: "Exciter Type"
+    description: "How the string is activated — bow for sustained tones, pluck for percussive, hammer for piano-like"
+    range: ["Bow", "Pluck", "Hammer"]
+    type: enum
+    sweet_spots:
+      drone: "Bow"
+      bass: "Pluck"
+      keys: "Hammer"
+
+  - name: "Bow Force"
+    description: "Pressure of the bow on the string (bow exciter only)"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      gentle: 0.2
+      normal: 0.5
+      aggressive: 0.8
+
+  - name: "String Decay"
+    description: "How long the string vibrates after excitation"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      short_pluck: 0.2
+      natural: 0.5
+      long_sustain: 0.85
+
+  - name: "String Damping"
+    description: "High-frequency loss over time — simulates string material and age"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      bright_new: 0.1
+      warm: 0.4
+      dull_old: 0.7
+
+  - name: "String Inharmonicity"
+    description: "Degree to which overtones deviate from perfect harmonics — adds stiffness character"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      pure_string: 0.0
+      piano_like: 0.3
+      metallic: 0.7
+
+  - name: "Body Type"
+    description: "Resonant body that colors the string output"
+    range: ["None", "Guitar", "Violin", "Viola", "Cello"]
+    type: enum
+    sweet_spots:
+      raw: "None"
+      small: "Guitar"
+      expressive: "Violin"
+      deep: "Cello"
+
+  - name: "Body Size"
+    description: "Size of the resonant body — larger bodies have more low-frequency resonance"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      small_bright: 0.2
+      medium: 0.5
+      large_boomy: 0.8
+
+  - name: "Vibrato Rate"
+    description: "Speed of pitch vibrato"
+    range: [0.0, 20.0]
+    unit: "Hz"
+    type: float
+    sweet_spots:
+      slow_expressive: 4.5
+      fast_nervous: 7.0
+
+  - name: "Vibrato Amount"
+    description: "Depth of pitch vibrato"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      subtle: 0.1
+      expressive: 0.3
+
+pairs_well_with:
+  - device: "Reverb"
+    reason: "Bowed strings and plucks sound natural in reverberant spaces — essential for realism"
+  - device: "EQ Eight"
+    reason: "Body resonances can create unwanted peaks that need surgical EQ"
+  - device: "Compressor"
+    reason: "Bowed exciter produces very dynamic output — compression helps in a mix"
+  - device: "Chorus-Ensemble"
+    reason: "Adds section-like ensemble width to solo string sounds"
+  - device: "Saturator"
+    reason: "Light saturation adds rosin-like character to bowed sounds"
+
+starter_recipes:
+  - name: "Bowed Drone"
+    description: "Sustained, evolving bowed string drone with warm body resonance"
+    genre: ambient
+    params:
+      "Exciter Type": "Bow"
+      "Bow Force": 0.5
+      "String Decay": 0.9
+      "String Damping": 0.3
+      "String Inharmonicity": 0.1
+      "Body Type": "Cello"
+      "Body Size": 0.7
+      "Vibrato Rate": 4.5
+      "Vibrato Amount": 0.15
+
+  - name: "Plucked Bass"
+    description: "Deep, organic plucked bass with natural damping"
+    genre: downtempo
+    params:
+      "Exciter Type": "Pluck"
+      "String Decay": 0.4
+      "String Damping": 0.35
+      "String Inharmonicity": 0.05
+      "Body Type": "Guitar"
+      "Body Size": 0.6
+
+  - name: "Harp Textures"
+    description: "Bright, shimmering plucked harp-like sound with long decay"
+    genre: cinematic
+    params:
+      "Exciter Type": "Pluck"
+      "String Decay": 0.75
+      "String Damping": 0.15
+      "String Inharmonicity": 0.0
+      "Body Type": "None"
+      "Body Size": 0.5
+      "Vibrato Amount": 0.0
+
+gotchas:
+  - "Exciter Type fundamentally changes the interaction model — Bow gives sustained sound, Pluck and Hammer are percussive"
+  - "Bowed sounds require careful Force settings — too high creates harsh, unrealistic screeching"
+  - "String Inharmonicity at high values sounds metallic/bell-like, not string-like"
+  - "Body Type 'None' gives a raw string sound without coloring — useful when adding external reverb/IR"
+  - "CPU-intensive instrument — limit polyphony if using in dense arrangements"
+  - "Vibrato on bowed sounds is essential for realism — without it, bowed patches sound static and synthetic"

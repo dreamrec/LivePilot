@@ -1,0 +1,159 @@
+id: compressor
+name: Compressor
+sonic_description: >
+  Transparent dynamics processor that reduces the dynamic range of audio by attenuating
+  signals above a threshold. Clean and surgical — from invisible gain riding to aggressive
+  pumping, it shapes transients and sustain without adding coloration.
+effect_type: dynamics
+character_tags: [transparent, clean, surgical, versatile]
+use_cases: [mixing, mastering, sidechain, bus_glue, vocal_taming, transient_shaping]
+genre_affinity:
+  primary: [all]
+  secondary: []
+complexity: beginner
+signal_type: audio
+introduced_in: "1.0"
+
+key_parameters:
+  - name: "Threshold"
+    description: "Level above which compression engages"
+    range: [-inf, 0.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      gentle: -20.0
+      moderate: -28.0
+      heavy: -35.0
+
+  - name: "Ratio"
+    description: "Compression ratio — how much gain reduction per dB above threshold"
+    range: [1.0, inf]
+    type: float
+    sweet_spots:
+      subtle: 2.0
+      vocal: 4.0
+      limiting: 10.0
+      brick_wall: inf
+
+  - name: "Attack"
+    description: "How quickly compression engages after signal exceeds threshold"
+    range: [0.01, 1000.0]
+    unit: ms
+    type: float
+    sweet_spots:
+      fast_transient_kill: 0.1
+      punch_preserve: 10.0
+      slow_natural: 30.0
+
+  - name: "Release"
+    description: "How quickly compression releases after signal falls below threshold"
+    range: [1.0, 3000.0]
+    unit: ms
+    type: float
+    sweet_spots:
+      fast_pumping: 50.0
+      musical: 100.0
+      slow_smooth: 300.0
+      auto: -1
+
+  - name: "Knee"
+    description: "Transition sharpness at threshold — soft knee gives gradual onset"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      hard: 0.0
+      medium: 0.5
+      soft: 1.0
+
+  - name: "Makeup"
+    description: "Output gain to compensate for gain reduction"
+    range: [-inf, 15.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      compensate: 6.0
+
+  - name: "Dry/Wet"
+    description: "Blend between dry and compressed signal for parallel compression"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      full: 100.0
+      parallel: 50.0
+
+  - name: "Model"
+    description: "Detection model — Peak responds to transients, RMS to average level"
+    range: ["Peak", "RMS", "Expand"]
+    type: enum
+    sweet_spots:
+      transient_control: "Peak"
+      bus_glue: "RMS"
+
+  - name: "Sidechain"
+    description: "External sidechain input for ducking and pumping effects"
+    type: toggle
+    range: [0, 1]
+
+pairs_well_with:
+  - device: "EQ Eight"
+    reason: "Shape tone before compressing to avoid pumping from low-end energy"
+  - device: "Saturator"
+    reason: "Add harmonic warmth after compression for analog-like processing"
+  - device: "Utility"
+    reason: "Final volume trim and mono-bass after dynamics processing"
+  - device: "Limiter"
+    reason: "Catch peaks after compression for safe output levels"
+
+starter_recipes:
+  - name: "Gentle Bus Glue"
+    description: "Subtle cohesion for a mix bus — barely noticeable but adds coherence"
+    genre: all
+    params:
+      Threshold: -20.0
+      Ratio: 2.0
+      Attack: 10.0
+      Release: 100.0
+      Knee: 0.5
+      Model: "RMS"
+
+  - name: "Vocal Taming"
+    description: "Even out vocal dynamics while preserving natural feel"
+    genre: all
+    params:
+      Threshold: -25.0
+      Ratio: 4.0
+      Attack: 5.0
+      Release: 80.0
+      Knee: 0.3
+      Model: "RMS"
+
+  - name: "Sidechain Pump"
+    description: "Classic EDM pumping effect — duck bass/pads from kick"
+    genre: house
+    params:
+      Threshold: -30.0
+      Ratio: 10.0
+      Attack: 0.1
+      Release: 150.0
+      Knee: 0.0
+      Model: "Peak"
+      Sidechain: 1
+
+  - name: "Parallel Smash"
+    description: "Heavy compression blended with dry signal for power without squash"
+    genre: rock
+    params:
+      Threshold: -35.0
+      Ratio: 10.0
+      Attack: 0.5
+      Release: 50.0
+      "Dry/Wet": 40.0
+      Model: "Peak"
+
+gotchas:
+  - "Attack at 0.01ms kills transients completely — use 5-15ms to preserve punch"
+  - "RMS mode is better for bus/group compression; Peak mode for individual transient control"
+  - "Makeup gain should roughly equal the gain reduction shown on the meter for level-matched A/B"
+  - "Sidechain input must be configured in the routing section — just enabling the toggle is not enough"
+  - "Very fast release times cause audible distortion on low-frequency material"

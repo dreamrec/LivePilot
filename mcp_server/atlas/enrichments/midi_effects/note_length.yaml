@@ -1,0 +1,97 @@
+id: note_length
+name: Note Length
+sonic_description: >
+  Controls the duration and triggering behavior of MIDI notes, forcing all notes
+  to a fixed length or converting note-on events into gated triggers. Essential for
+  creating uniform staccato patterns, consistent sample triggers, or legato sustains.
+effect_type: midi_processor
+character_tags: [rhythmic, gating, precise, uniform, triggering]
+use_cases: [staccato, legato, gate_conversion, uniform_length, sample_triggering]
+genre_affinity:
+  primary: [techno, house, edm]
+  secondary: [pop, ambient, experimental]
+complexity: beginner
+introduced_in: "1.0"
+
+key_parameters:
+  - name: "Mode"
+    description: "Operating mode — Time sets fixed duration, Trigger converts note-on to fixed output"
+    range: ["Time", "Trigger"]
+    type: enum
+
+  - name: "Length"
+    description: "Note duration when in Time mode — synced or milliseconds"
+    range: ["1/1", "1/2", "1/4", "1/8", "1/16", "1/32"]
+    type: enum
+    sweet_spots:
+      staccato: "1/32"
+      short: "1/16"
+      medium: "1/8"
+      sustained: "1/4"
+
+  - name: "Gate"
+    description: "Note length as percentage of original or set length"
+    range: [1, 200]
+    unit: "%"
+    type: int
+    sweet_spots:
+      very_short: 10
+      staccato: 30
+      normal: 80
+      legato: 130
+      overlapping: 200
+
+  - name: "Timing"
+    description: "Time offset — delays or advances note output"
+    range: [-200, 200]
+    unit: "ms"
+    type: int
+
+  - name: "Trigger"
+    description: "Trigger mode — Note On generates fixed note, Note Off is ignored"
+    range: ["Note On", "Note Off", "Both"]
+    type: enum
+
+pairs_well_with:
+  - device: "Arpeggiator"
+    reason: "Uniform note lengths after arpeggiation create tight rhythmic patterns"
+  - device: "Drum Rack"
+    reason: "Consistent trigger lengths for one-shot sample playback"
+  - device: "Simpler"
+    reason: "Fixed gate lengths for predictable sample triggering"
+  - device: "Gate"
+    reason: "Pair MIDI gating with audio gating for precise rhythmic effects"
+
+starter_recipes:
+  - name: "Staccato"
+    description: "Very short notes for tight, punchy rhythmic parts"
+    genre: techno
+    params:
+      "Gate": 10
+
+  - name: "Legato"
+    description: "Extended notes that overlap slightly for smooth connected lines"
+    genre: ambient
+    params:
+      "Gate": 200
+
+  - name: "Trigger to Gate"
+    description: "Convert any note input to fixed-length triggers for consistent sample hits"
+    genre: edm
+    params:
+      "Mode": "Trigger"
+      "Length": "1/16"
+      "Trigger": "Note On"
+
+  - name: "Uniform 8th Notes"
+    description: "Force all notes to exactly one eighth note in length"
+    genre: house
+    params:
+      "Length": "1/8"
+      "Gate": 80
+
+gotchas:
+  - "Gate values above 100% create overlapping notes — can cause issues with monophonic synths"
+  - "Trigger mode ignores the original note duration entirely — useful for drum triggers"
+  - "In Trigger mode, Note Off trigger fires a new note when you release — can create unintended double hits"
+  - "Timing offset can push notes ahead or behind the beat — small negative values add feel"

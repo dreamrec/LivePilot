@@ -7,9 +7,23 @@ description: This skill should be used when the user asks to "load a device", "a
 
 Load instruments, effects, and plugins into Ableton Live tracks. Every device operation follows one discipline: search first, verify after.
 
-## Browser Workflow — The Safe Path
+## Primary Workflow — Atlas-Driven
 
-Always use the two-step browser workflow for loading devices:
+The device atlas contains 1,305 devices with sonic descriptions, recipes, and recommendations. Always start here:
+
+1. **Discover:** `atlas_search(query)` — find devices by name, sound character, or genre
+2. **Learn:** `atlas_device_info(device_id)` — full parameters, recipes, gotchas, pairings
+3. **Suggest:** `atlas_suggest(intent, genre)` — "I need a warm pad" → ranked device+recipe combos
+4. **Chain:** `atlas_chain_suggest(role, genre)` — full device chain for a track role (instrument + effects)
+5. **Load:** Use the URI from atlas results → `load_browser_item(uri)` or `find_and_load_device(name)`
+6. **Recipe:** Apply starter recipe params → `batch_set_parameters(params)` from the atlas entry
+7. **Verify:** `get_device_info(track_index, device_index)` — check health flags
+
+If the atlas doesn't have a device (newly installed plugin, user sample), fall back to the browser workflow below.
+
+## Browser Workflow — The Fallback Path
+
+Use the browser workflow when the atlas doesn't have what you need:
 
 1. **Search:** `search_browser(path, name_filter)` — returns a list of matching items with exact URIs
 2. **Inspect:** Read the results. Confirm the item name, type, and path match what you need

@@ -1,0 +1,119 @@
+id: overdrive
+name: Overdrive
+sonic_description: >
+  Amp-style overdrive distortion that emulates the warm breakup of a tube amplifier
+  being pushed into clipping. More focused and characterful than Saturator, with a Tone
+  control that shapes the brightness of the distortion and a Dynamics parameter that
+  preserves or flattens the dynamic range.
+effect_type: distortion
+character_tags: [warm, crunchy, amp_like, musical, dynamic]
+use_cases: [guitar_crunch, synth_warmth, bass_grit, lo_fi_character, subtle_edge]
+genre_affinity:
+  primary: [rock, indie, blues]
+  secondary: [electronic, lo_fi, pop]
+complexity: beginner
+signal_type: audio
+introduced_in: "1.0"
+
+key_parameters:
+  - name: "Drive"
+    description: "Amount of overdrive distortion"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      subtle: 15.0
+      crunch: 40.0
+      heavy: 70.0
+      maxed: 100.0
+
+  - name: "Tone"
+    description: "Brightness of the overdrive — low values are darker, high values are brighter"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      dark: 20.0
+      warm: 40.0
+      neutral: 50.0
+      bright: 75.0
+
+  - name: "Dynamics"
+    description: "Preserves or compresses dynamics — 0% = heavily compressed, 100% = fully dynamic"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      compressed: 20.0
+      moderate: 50.0
+      dynamic: 80.0
+      full: 100.0
+
+  - name: "Bandwidth"
+    description: "Frequency range affected by the overdrive"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      narrow: 20.0
+      moderate: 50.0
+      wide: 80.0
+      full: 100.0
+
+  - name: "Dry/Wet"
+    description: "Mix between clean and overdriven signal"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      full: 100.0
+      parallel: 50.0
+      subtle: 30.0
+
+pairs_well_with:
+  - device: "EQ Eight"
+    reason: "Shape tone before and after overdrive for precise tonal control"
+  - device: "Compressor"
+    reason: "Compress before for consistent overdrive, after for taming peaks"
+  - device: "Cabinet"
+    reason: "Speaker cabinet emulation after overdrive for realistic guitar tone"
+  - device: "Reverb"
+    reason: "Room reverb after overdrive for guitar-in-a-room feel"
+
+starter_recipes:
+  - name: "Guitar Crunch"
+    description: "Classic rock crunch overdrive for guitar"
+    genre: rock
+    params:
+      Drive: 45.0
+      Tone: 55.0
+      Dynamics: 60.0
+      Bandwidth: 70.0
+      "Dry/Wet": 100.0
+
+  - name: "Synth Warmth"
+    description: "Subtle warmth and harmonics on synthesizers"
+    genre: electronic
+    params:
+      Drive: 20.0
+      Tone: 40.0
+      Dynamics: 70.0
+      Bandwidth: 60.0
+      "Dry/Wet": 60.0
+
+  - name: "Lo-Fi Character"
+    description: "Dark, compressed overdrive for lo-fi aesthetics"
+    genre: lo_fi
+    params:
+      Drive: 50.0
+      Tone: 25.0
+      Dynamics: 30.0
+      Bandwidth: 50.0
+      "Dry/Wet": 80.0
+
+gotchas:
+  - "Dynamics at 0% means maximum compression — the overdrive output is very consistent but lifeless"
+  - "Bandwidth narrows the affected frequency range — use to target mids for guitar-like breakup"
+  - "Less versatile than Saturator for mixing saturation — more suited to creative distortion"
+  - "Tone control interacts with Drive — high Tone + high Drive can be very harsh"
+  - "No waveshaping curve selection like Saturator — the character is fixed (tube-style)"

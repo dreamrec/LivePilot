@@ -1,0 +1,151 @@
+id: delay
+name: Delay
+sonic_description: >
+  Clean stereo delay with independent left and right times, feedback control, and a built-in
+  filter on the feedback path. From tight slapback to spacious ping-pong echoes, it provides
+  transparent repetitions without added coloration.
+effect_type: delay
+character_tags: [clean, spacious, rhythmic, transparent, versatile]
+use_cases: [stereo_delay, slapback, ping_pong, dub_delay, rhythmic_echo, depth]
+genre_affinity:
+  primary: [all]
+  secondary: []
+complexity: beginner
+signal_type: audio
+introduced_in: "1.0"
+
+key_parameters:
+  - name: "Time Left"
+    description: "Delay time for left channel — sync to tempo or set in ms"
+    range: [1.0, 3000.0]
+    unit: ms
+    type: float
+    sweet_spots:
+      slapback: 80.0
+      quarter: 500.0
+      dotted_eighth: 375.0
+
+  - name: "Time Right"
+    description: "Delay time for right channel"
+    range: [1.0, 3000.0]
+    unit: ms
+    type: float
+    sweet_spots:
+      slapback: 80.0
+      quarter: 500.0
+      dotted_eighth: 375.0
+
+  - name: "Sync"
+    description: "Sync delay times to song tempo"
+    type: toggle
+    range: [0, 1]
+    sweet_spots:
+      synced: 1
+
+  - name: "Sync Left"
+    description: "Tempo-synced division for left channel"
+    range: ["1/16", "1/8T", "1/8", "3/16", "1/4T", "1/4", "3/8", "1/2", "1"]
+    type: enum
+    sweet_spots:
+      eighth: "1/8"
+      dotted_eighth: "3/16"
+      quarter: "1/4"
+
+  - name: "Sync Right"
+    description: "Tempo-synced division for right channel"
+    range: ["1/16", "1/8T", "1/8", "3/16", "1/4T", "1/4", "3/8", "1/2", "1"]
+    type: enum
+    sweet_spots:
+      eighth: "1/8"
+      dotted_eighth: "3/16"
+      quarter: "1/4"
+
+  - name: "Feedback"
+    description: "Amount of delayed signal fed back into the input — controls number of repeats"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      single: 0.0
+      few_taps: 30.0
+      dub: 60.0
+      runaway: 90.0
+
+  - name: "Filter"
+    description: "Filter on the feedback path — darkens repeats over time"
+    type: toggle
+    range: [0, 1]
+
+  - name: "Filter Freq"
+    description: "Feedback filter frequency"
+    range: [20.0, 20000.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      dark: 2000.0
+      warm: 4000.0
+
+  - name: "Ping Pong"
+    description: "Alternates echoes between left and right channels"
+    type: toggle
+    range: [0, 1]
+
+  - name: "Dry/Wet"
+    description: "Mix between dry and delayed signal"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      subtle: 15.0
+      moderate: 25.0
+      wet: 50.0
+      return_track: 100.0
+
+pairs_well_with:
+  - device: "EQ Eight"
+    reason: "Cut low frequencies before delay to prevent muddy echoes"
+  - device: "Reverb"
+    reason: "Delay into reverb creates depth and spaciousness"
+  - device: "Auto Filter"
+    reason: "Filter the delayed signal for evolving echo textures"
+  - device: "Compressor"
+    reason: "Control dynamics of the delayed signal on return tracks"
+
+starter_recipes:
+  - name: "Stereo Ping-Pong"
+    description: "Classic bouncing delay between left and right"
+    genre: all
+    params:
+      "Sync Left": "1/8"
+      "Sync Right": "1/8"
+      Feedback: 35.0
+      "Ping Pong": 1
+      "Dry/Wet": 25.0
+
+  - name: "Slapback"
+    description: "Short single repeat for rockabilly or vocal doubling effect"
+    genre: rock
+    params:
+      "Time Left": 80.0
+      "Time Right": 80.0
+      Feedback: 0.0
+      Sync: 0
+      "Dry/Wet": 20.0
+
+  - name: "Dub Delay"
+    description: "Warm, filtered echoes with high feedback for dub music"
+    genre: dub
+    params:
+      "Sync Left": "3/16"
+      "Sync Right": "1/4"
+      Feedback: 55.0
+      Filter: 1
+      "Filter Freq": 3000.0
+      "Dry/Wet": 30.0
+
+gotchas:
+  - "Feedback above 90% can cause runaway self-oscillation — be ready to reduce it quickly"
+  - "On return tracks, set Dry/Wet to 100% — the send level controls the blend"
+  - "Sync mode overrides ms values — make sure the right mode is active"
+  - "Ping-pong with different L/R times creates polyrhythmic echo patterns"
+  - "Dotted eighth (3/16) is the classic U2/Edge guitar delay feel"

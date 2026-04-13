@@ -1,0 +1,109 @@
+id: cabinet
+name: Cabinet
+sonic_description: >
+  Speaker cabinet simulation modeling the frequency response and spatial characteristics
+  of classic guitar and bass speaker cabinets with selectable microphone type and position.
+  Transforms raw amp signal into realistic speaker output. Essential companion to the
+  Amp device.
+effect_type: distortion
+character_tags: [speaker, cabinet, guitar, modeling, warm]
+use_cases: [speaker_simulation, guitar_cabinet, bass_cabinet, amp_completion, tone_shaping]
+genre_affinity:
+  primary: [rock, metal, blues]
+  secondary: [indie, funk, jazz, pop]
+complexity: beginner
+introduced_in: "9.0"
+
+key_parameters:
+  - name: "Speaker"
+    description: "Speaker configuration — size and number of speakers"
+    range: ["1x12", "2x12", "4x10", "4x12"]
+    type: enum
+    sweet_spots:
+      combo: "1x12"
+      twin: "2x12"
+      bass: "4x10"
+      full_stack: "4x12"
+
+  - name: "Microphone"
+    description: "Microphone type used to capture the speaker"
+    range: ["Dynamic", "Condenser", "Ribbon"]
+    type: enum
+    sweet_spots:
+      rock: "Dynamic"
+      detailed: "Condenser"
+      warm: "Ribbon"
+
+  - name: "Mic Position"
+    description: "Microphone placement relative to the speaker — near to far"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      close: 0.1
+      medium: 0.4
+      room: 0.8
+
+  - name: "Dry/Wet"
+    description: "Mix between dry input and cabinet-processed signal"
+    range: [0, 100]
+    unit: "%"
+    type: int
+
+  - name: "Output"
+    description: "Output level after cabinet processing"
+    range: [0.0, 1.0]
+    type: float
+
+pairs_well_with:
+  - device: "Amp"
+    reason: "Essential pairing — Amp before Cabinet recreates a complete amplifier rig"
+  - device: "Pedal"
+    reason: "Pedal before Amp before Cabinet for classic pedalboard-to-amp chain"
+  - device: "Reverb"
+    reason: "Room or spring reverb after Cabinet for spacious amp tones"
+  - device: "EQ Eight"
+    reason: "Post-cabinet EQ to fine-tune the speaker response"
+
+starter_recipes:
+  - name: "Classic Combo"
+    description: "Small combo amp feel — 1x12 with close dynamic mic"
+    genre: blues
+    params:
+      "Speaker": "1x12"
+      "Microphone": "Dynamic"
+      "Mic Position": 0.2
+      "Dry/Wet": 100
+
+  - name: "4x12 Full Stack"
+    description: "Big rock/metal cabinet with tight low end and aggressive midrange"
+    genre: rock
+    params:
+      "Speaker": "4x12"
+      "Microphone": "Dynamic"
+      "Mic Position": 0.15
+      "Dry/Wet": 100
+
+  - name: "Warm Ribbon Capture"
+    description: "Smooth, warm tone using ribbon mic at medium distance"
+    genre: jazz
+    params:
+      "Speaker": "2x12"
+      "Microphone": "Ribbon"
+      "Mic Position": 0.5
+      "Dry/Wet": 100
+
+  - name: "Bass Cabinet"
+    description: "4x10 bass cabinet with condenser mic for full frequency response"
+    genre: rock
+    params:
+      "Speaker": "4x10"
+      "Microphone": "Condenser"
+      "Mic Position": 0.3
+      "Dry/Wet": 100
+
+gotchas:
+  - "Cabinet without Amp sounds very different — Cabinet applies speaker coloring to whatever signal enters"
+  - "Mic Position dramatically changes tone — close is bright and focused, far is roomy and darker"
+  - "4x12 has more low end than 1x12 — match the cabinet size to your musical context"
+  - "Ribbon mic type rolls off highs naturally — good for taming harsh distortion"
+  - "Can be used on non-guitar sources (synths, drums) for creative speaker coloring"

@@ -1,0 +1,108 @@
+id: note_echo
+name: Note Echo
+sonic_description: >
+  Creates delayed repetitions of incoming MIDI notes, functioning as a MIDI-domain
+  delay effect. Each repeat can shift in pitch, creating cascading melodic echoes
+  that rise, fall, or stay constant. Produces effects impossible with audio delay.
+effect_type: midi_processor
+character_tags: [delay, cascading, melodic, echoing, layering]
+use_cases: [midi_delay, cascading_echoes, pitch_shifted_repeats, melodic_canon, rhythmic_buildup]
+genre_affinity:
+  primary: [ambient, trance, cinematic]
+  secondary: [techno, idm, pop]
+complexity: intermediate
+introduced_in: "1.0"
+
+key_parameters:
+  - name: "Time"
+    description: "Delay time between repeats — synced to tempo or free-running"
+    range: ["1/1", "1/2", "1/2T", "1/4", "1/4T", "1/8", "1/8T", "1/16", "1/16T", "1/32"]
+    type: enum
+    sweet_spots:
+      slow_echo: "1/4"
+      rhythmic: "1/8"
+      fast_cascade: "1/16"
+      triplet_bounce: "1/8T"
+
+  - name: "Feedback"
+    description: "Number of echo repetitions"
+    range: [1, 16]
+    type: int
+    sweet_spots:
+      single_echo: 1
+      fading: 3
+      long_tail: 8
+      infinite_feel: 16
+
+  - name: "Pitch Delta"
+    description: "Semitone pitch shift applied to each successive repeat"
+    range: [-24, 24]
+    unit: "st"
+    type: int
+    sweet_spots:
+      octave_rise: 12
+      fifth_climb: 7
+      descending: -7
+      chromatic_fall: -1
+      no_shift: 0
+
+  - name: "Velocity Decay"
+    description: "Velocity reduction per repeat — lower values fade echoes out"
+    range: [0, 127]
+    type: int
+    sweet_spots:
+      natural_fade: 90
+      rapid_decay: 60
+      even_volume: 127
+
+pairs_well_with:
+  - device: "Scale"
+    reason: "Corrects pitch-shifted echoes to stay in key"
+  - device: "Reverb"
+    reason: "Blurs echo tails into ambient washes"
+  - device: "Drift"
+    reason: "Warm analog tones make cascading echoes sound organic"
+  - device: "Auto Filter"
+    reason: "Filter envelope on each echo repeat creates timbral movement"
+  - device: "Delay"
+    reason: "Audio delay on top of MIDI echo creates layered rhythmic complexity"
+
+starter_recipes:
+  - name: "Cascading Octaves"
+    description: "Each echo jumps up an octave for shimmering upward cascades"
+    genre: ambient
+    params:
+      "Time": "1/8"
+      "Feedback": 3
+      "Pitch Delta": 12
+
+  - name: "Simple MIDI Delay"
+    description: "Straightforward note echoes without pitch change"
+    genre: pop
+    params:
+      "Time": "1/4"
+      "Feedback": 2
+      "Pitch Delta": 0
+
+  - name: "Descending Cascade"
+    description: "Echoes descend by a fifth each repeat for dramatic falling lines"
+    genre: cinematic
+    params:
+      "Time": "1/8"
+      "Feedback": 4
+      "Pitch Delta": -7
+
+  - name: "Chromatic Waterfall"
+    description: "Rapid echoes falling one semitone each for glassy descending runs"
+    genre: experimental
+    params:
+      "Time": "1/16"
+      "Feedback": 8
+      "Pitch Delta": -1
+
+gotchas:
+  - "Pitch Delta accumulates across repeats — 3 repeats at +12 means the third echo is 36 semitones up"
+  - "High Feedback with Pitch Delta can push notes outside audible MIDI range (0-127)"
+  - "Unlike audio delay, MIDI echo creates distinct new note events — each echo triggers the synth independently"
+  - "Long Feedback values with fast Time can create very dense note output — watch polyphony limits"
+  - "Place Scale after Note Echo if using Pitch Delta to keep all echoes in key"

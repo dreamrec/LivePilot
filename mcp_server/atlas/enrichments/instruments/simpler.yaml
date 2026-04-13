@@ -1,0 +1,217 @@
+id: simpler
+name: Simpler
+sonic_description: >
+  Streamlined sample-based instrument with three playback modes: Classic for chromatic
+  pitched playback, One-Shot for triggered samples, and Slicing for beat chopping.
+  The workhorse sampler for quick sample loading and manipulation with built-in filter,
+  envelope, and LFO — faster and simpler than Sampler for most tasks.
+synthesis_type: sampling
+character_tags: [versatile, immediate, sample_based, flexible, quick]
+use_cases: [vocal_chops, drums, bass, pads, one_shots, sliced_beats]
+genre_affinity:
+  primary: [hip_hop, electronic, pop, house]
+  secondary: [dnb, ambient, lo_fi, techno, trap]
+complexity: beginner
+self_contained: false
+introduced_in: "1.0"
+
+key_parameters:
+  - name: "Mode"
+    description: "Playback mode — Classic (pitched chromatic), One-Shot (triggered, ignores note-off), Slicing (auto-chop by transient/beat)"
+    range: ["Classic", "One-Shot", "Slicing"]
+    type: enum
+    sweet_spots:
+      pitched_instrument: "Classic"
+      drums_and_hits: "One-Shot"
+      beat_chopping: "Slicing"
+
+  - name: "Start"
+    description: "Sample playback start point"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      beginning: 0.0
+      skip_transient: 0.05
+
+  - name: "End"
+    description: "Sample playback end point"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      full_sample: 1.0
+      trimmed: 0.8
+
+  - name: "Loop On"
+    description: "Enable sample looping for sustained playback"
+    range: [0, 1]
+    type: int
+    sweet_spots:
+      one_shot: 0
+      sustained: 1
+
+  - name: "Loop Mode"
+    description: "Loop direction when looping is enabled"
+    range: ["Forward", "Back-Forth"]
+    type: enum
+    sweet_spots:
+      standard: "Forward"
+      smooth: "Back-Forth"
+
+  - name: "Filter Type"
+    description: "Filter topology for sample processing"
+    range: ["LP12", "LP24", "HP12", "HP24", "BP"]
+    type: enum
+    sweet_spots:
+      warmth: "LP12"
+      aggressive: "LP24"
+      thin: "HP12"
+
+  - name: "Filter Freq"
+    description: "Filter cutoff frequency"
+    range: [20.0, 20000.0]
+    unit: "Hz"
+    type: float
+    sweet_spots:
+      dark: 500.0
+      warm: 2000.0
+      bright: 12000.0
+
+  - name: "Filter Res"
+    description: "Filter resonance"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      clean: 0.0
+      colored: 0.3
+      resonant: 0.6
+
+  - name: "Amp Attack"
+    description: "Amplitude envelope attack time"
+    range: [0.0, 10000.0]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      instant: 0.0
+      soft: 50.0
+      pad: 500.0
+
+  - name: "Amp Decay"
+    description: "Amplitude envelope decay time"
+    range: [0.0, 10000.0]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      short_hit: 100.0
+      natural: 500.0
+
+  - name: "Amp Sustain"
+    description: "Amplitude envelope sustain level"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      percussive: 0.0
+      held: 0.8
+      full: 1.0
+
+  - name: "Amp Release"
+    description: "Amplitude envelope release time"
+    range: [0.0, 10000.0]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      tight: 20.0
+      natural: 200.0
+      ambient: 1500.0
+
+  - name: "Warp"
+    description: "Enable time-stretching to lock sample to session tempo"
+    range: [0, 1]
+    type: int
+    sweet_spots:
+      off: 0
+      on: 1
+
+  - name: "Transpose"
+    description: "Sample pitch transposition"
+    range: [-48, 48]
+    unit: "st"
+    type: int
+    sweet_spots:
+      original: 0
+      octave_down: -12
+      octave_up: 12
+
+  - name: "Voices"
+    description: "Polyphony count — how many simultaneous notes"
+    range: [1, 32]
+    type: int
+    sweet_spots:
+      mono: 1
+      standard: 8
+      generous: 16
+
+  - name: "Spread"
+    description: "Stereo spread for polyphonic voices"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      mono: 0.0
+      subtle: 0.3
+      wide: 0.7
+
+pairs_well_with:
+  - device: "Auto Filter"
+    reason: "Adds rhythmic filter movement and envelope following to sampled material"
+  - device: "Saturator"
+    reason: "Adds warmth and harmonics to thin or digital samples"
+  - device: "Reverb"
+    reason: "Places samples in a space — essential for one-shot vocals and atmospheric use"
+  - device: "Delay"
+    reason: "Creates rhythmic patterns from single one-shot samples"
+  - device: "Compressor"
+    reason: "Evens dynamics across the sample's playback range"
+  - device: "EQ Eight"
+    reason: "Shapes the sample's frequency content beyond what the built-in filter offers"
+
+starter_recipes:
+  - name: "One-Shot Vocal Chop"
+    description: "Quick vocal chop triggered by MIDI with filter and reverb-ready output"
+    genre: pop
+    params:
+      "Mode": "One-Shot"
+      "Filter Type": "LP12"
+      "Filter Freq": 6000.0
+      "Filter Res": 0.1
+      "Amp Attack": 0.0
+      "Amp Release": 200.0
+
+  - name: "Looped Pad from Sample"
+    description: "Sustained pad created by looping a textural sample region"
+    genre: ambient
+    params:
+      "Mode": "Classic"
+      "Loop On": 1
+      "Loop Mode": "Back-Forth"
+      "Filter Type": "LP12"
+      "Filter Freq": 3000.0
+      "Amp Attack": 500.0
+      "Amp Sustain": 1.0
+      "Amp Release": 1500.0
+      "Voices": 8
+      "Spread": 0.5
+
+  - name: "Sliced Break"
+    description: "Drum break auto-sliced by transients for rearrangement and programming"
+    genre: dnb
+    params:
+      "Mode": "Slicing"
+      "Warp": 1
+
+gotchas:
+  - "A bare Simpler (loaded empty) has NO sample — it produces silence. Always load a preset or use load_sample_to_simpler"
+  - "One-Shot mode ignores note-off — the sample always plays to the end (or until envelope release)"
+  - "Slicing mode changes the UI and parameter set significantly — some standard parameters are unavailable"
+  - "Warp must be ON for the sample to follow session tempo — off by default for pitched samples"
+  - "Transpose shifts pitch in semitones, not time — use Warp for time-stretching without pitch change"
+  - "crop_simpler and reverse_simpler are available as LivePilot tools for destructive sample editing"
+  - "replace_simpler_sample only works if a sample is already loaded — cannot replace an empty Simpler"

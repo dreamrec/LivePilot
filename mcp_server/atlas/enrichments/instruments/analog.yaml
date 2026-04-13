@@ -1,0 +1,222 @@
+id: analog
+name: Analog
+sonic_description: >
+  Classic analog-modeled subtractive synthesizer with two oscillators, noise generator,
+  two multimode filters, and two amplifiers. Delivers everything from fat basses to
+  shimmering pads with the warmth and punch of vintage hardware subtractive synths.
+synthesis_type: subtractive
+character_tags: [warm, punchy, classic, fat, versatile]
+use_cases: [bass, leads, pads, plucks, keys]
+genre_affinity:
+  primary: [techno, house, synthwave]
+  secondary: [trance, electro, pop, disco]
+complexity: intermediate
+self_contained: true
+introduced_in: "8.0"
+
+key_parameters:
+  - name: "Osc1 Shape"
+    description: "Oscillator 1 waveform — selects the raw tonal character"
+    range: ["Saw", "Square", "Sine", "Noise"]
+    type: enum
+    sweet_spots:
+      bass: "Saw"
+      pad: "Sine"
+      lead: "Square"
+
+  - name: "Osc2 Shape"
+    description: "Oscillator 2 waveform — layer with Osc1 for thickness"
+    range: ["Saw", "Square", "Sine", "Noise"]
+    type: enum
+    sweet_spots:
+      reese_bass: "Saw"
+      texture: "Noise"
+
+  - name: "Osc1 Octave"
+    description: "Oscillator 1 octave transposition"
+    range: [-3, 3]
+    type: int
+    sweet_spots:
+      sub_bass: -1
+      lead: 0
+
+  - name: "Osc2 Octave"
+    description: "Oscillator 2 octave transposition"
+    range: [-3, 3]
+    type: int
+    sweet_spots:
+      thickness: 0
+      sub_layer: -1
+
+  - name: "Osc2 Detune"
+    description: "Fine detune of oscillator 2 for chorus-like thickness"
+    range: [-1.0, 1.0]
+    unit: "st"
+    type: float
+    sweet_spots:
+      subtle_width: 0.08
+      thick_unison: 0.25
+      extreme_detune: 0.5
+
+  - name: "Filter1 Type"
+    description: "Filter 1 topology — shapes the harmonic content"
+    range: ["LP12", "LP24", "BP", "HP", "Notch"]
+    type: enum
+    sweet_spots:
+      bass: "LP24"
+      pad: "LP12"
+      acid: "LP24"
+
+  - name: "Filter1 Freq"
+    description: "Filter 1 cutoff frequency"
+    range: [20.0, 20000.0]
+    unit: "Hz"
+    type: float
+    sweet_spots:
+      deep_bass: 200.0
+      warm_pad: 2000.0
+      bright_lead: 8000.0
+      acid_closed: 400.0
+
+  - name: "Filter1 Res"
+    description: "Filter 1 resonance — adds emphasis at cutoff frequency"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      clean: 0.0
+      warm: 0.2
+      squelchy: 0.6
+      acid_screech: 0.85
+
+  - name: "Fil1 Env Amount"
+    description: "How much the filter envelope modulates Filter 1 cutoff"
+    range: [-1.0, 1.0]
+    type: float
+    sweet_spots:
+      pluck: 0.7
+      acid_sweep: 0.9
+      subtle_movement: 0.2
+
+  - name: "Amp1 Attack"
+    description: "Amplitude envelope attack time"
+    range: [0.0, 10000.0]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      percussive: 0.0
+      pad: 500.0
+      slow_swell: 2000.0
+
+  - name: "Amp1 Decay"
+    description: "Amplitude envelope decay time"
+    range: [0.0, 10000.0]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      pluck: 200.0
+      bass: 500.0
+
+  - name: "Amp1 Sustain"
+    description: "Amplitude envelope sustain level"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      pluck: 0.0
+      bass: 0.8
+      pad: 1.0
+
+  - name: "Amp1 Release"
+    description: "Amplitude envelope release time"
+    range: [0.0, 10000.0]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      tight: 50.0
+      normal: 200.0
+      pad: 1500.0
+
+  - name: "LFO1 Rate"
+    description: "LFO 1 speed — modulation frequency"
+    range: [0.01, 30.0]
+    unit: "Hz"
+    type: float
+    sweet_spots:
+      slow_sweep: 0.2
+      vibrato: 5.5
+      wobble: 3.0
+
+  - name: "LFO1 Amount"
+    description: "LFO 1 modulation depth"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      subtle: 0.1
+      moderate: 0.35
+      extreme: 0.8
+
+pairs_well_with:
+  - device: "Auto Filter"
+    reason: "Adds rhythmic filter movement and envelope-following beyond the built-in filters"
+  - device: "Chorus-Ensemble"
+    reason: "Thickens single-oscillator patches and adds stereo width"
+  - device: "Saturator"
+    reason: "Adds harmonic warmth and edge, especially for bass sounds"
+  - device: "Reverb"
+    reason: "Essential for pads — long decay with diffusion creates lush space"
+  - device: "Compressor"
+    reason: "Tightens dynamics for bass and lead patches in a mix context"
+
+starter_recipes:
+  - name: "Acid Bass"
+    description: "Classic 303-style acid bass line with squelchy resonant filter"
+    genre: techno
+    params:
+      "Osc1 Shape": "Saw"
+      "Osc1 Octave": -1
+      "Filter1 Type": "LP24"
+      "Filter1 Freq": 400.0
+      "Filter1 Res": 0.75
+      "Fil1 Env Amount": 0.85
+      "Amp1 Attack": 0.0
+      "Amp1 Decay": 300.0
+      "Amp1 Sustain": 0.0
+      "Amp1 Release": 50.0
+
+  - name: "Warm Analog Pad"
+    description: "Lush, warm evolving pad with slow attack and gentle filter movement"
+    genre: ambient
+    params:
+      "Osc1 Shape": "Saw"
+      "Osc2 Shape": "Saw"
+      "Osc2 Detune": 0.1
+      "Filter1 Type": "LP12"
+      "Filter1 Freq": 2500.0
+      "Filter1 Res": 0.15
+      "Amp1 Attack": 600.0
+      "Amp1 Decay": 0.0
+      "Amp1 Sustain": 1.0
+      "Amp1 Release": 1500.0
+      "LFO1 Rate": 0.2
+      "LFO1 Amount": 0.15
+
+  - name: "Punchy Lead"
+    description: "Cutting monophonic lead with moderate resonance and fast envelope"
+    genre: synthwave
+    params:
+      "Osc1 Shape": "Square"
+      "Osc2 Shape": "Saw"
+      "Osc2 Detune": 0.05
+      "Filter1 Type": "LP24"
+      "Filter1 Freq": 3000.0
+      "Filter1 Res": 0.3
+      "Fil1 Env Amount": 0.4
+      "Amp1 Attack": 5.0
+      "Amp1 Decay": 200.0
+      "Amp1 Sustain": 0.7
+      "Amp1 Release": 200.0
+
+gotchas:
+  - "Two separate filter/amp sections — make sure you're editing Filter1/Amp1 (the primary signal path) not Filter2/Amp2 unless you want parallel filtering"
+  - "Osc2 Detune is in semitones not cents — small values like 0.05-0.15 give tasteful thickness"
+  - "Filter1 Res at maximum can cause self-oscillation and volume spikes — use with caution"
+  - "LFO routing is fixed per LFO slot — check which destination is selected before adjusting amount"

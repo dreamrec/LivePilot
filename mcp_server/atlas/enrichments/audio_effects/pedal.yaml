@@ -1,0 +1,145 @@
+id: pedal
+name: Pedal
+sonic_description: >
+  Guitar pedal emulation with three distinct modes — Overdrive (warm tube breakup),
+  Distortion (aggressive clipping), and Fuzz (thick, woolly saturation). Includes a
+  three-band tone stack (Bass/Mid/Treble) for shaping the distortion character like
+  a real guitar pedalboard.
+effect_type: distortion
+character_tags: [guitar, crunchy, warm, aggressive, fuzzy]
+use_cases: [guitar_tone, fuzz_bass, distortion_lead, overdrive_crunch, creative_destruction]
+genre_affinity:
+  primary: [rock, indie, stoner, garage]
+  secondary: [electronic, lo_fi, shoegaze]
+complexity: beginner
+signal_type: audio
+introduced_in: "10.0"
+
+key_parameters:
+  - name: "Type"
+    description: "Pedal emulation type — each has a distinct distortion character"
+    range: ["Overdrive", "Distortion", "Fuzz"]
+    type: enum
+    sweet_spots:
+      warm_crunch: "Overdrive"
+      aggressive: "Distortion"
+      thick: "Fuzz"
+
+  - name: "Gain"
+    description: "Amount of distortion — higher values increase clipping and harmonics"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      edge_of_breakup: 20.0
+      crunch: 45.0
+      heavy: 70.0
+      maxed: 100.0
+
+  - name: "Output"
+    description: "Output volume after distortion"
+    range: [-inf, 0.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      compensate: -6.0
+      quiet: -12.0
+
+  - name: "Bass"
+    description: "Low-frequency tone control"
+    range: [-1.0, 1.0]
+    type: float
+    sweet_spots:
+      cut: -0.5
+      flat: 0.0
+      boost: 0.5
+
+  - name: "Mid"
+    description: "Mid-frequency tone control — critical for cut-through"
+    range: [-1.0, 1.0]
+    type: float
+    sweet_spots:
+      scooped: -0.6
+      flat: 0.0
+      honky: 0.5
+
+  - name: "Treble"
+    description: "High-frequency tone control"
+    range: [-1.0, 1.0]
+    type: float
+    sweet_spots:
+      dark: -0.5
+      flat: 0.0
+      bright: 0.5
+
+  - name: "Sub"
+    description: "Sub-bass emphasis below the tone stack"
+    type: toggle
+    range: [0, 1]
+    sweet_spots:
+      off: 0
+      bass_heavy: 1
+
+  - name: "Dry/Wet"
+    description: "Mix between clean and distorted signal"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      full: 100.0
+      blend: 60.0
+
+pairs_well_with:
+  - device: "Cabinet"
+    reason: "Speaker cabinet emulation completes the amp simulation chain"
+  - device: "EQ Eight"
+    reason: "Detailed EQ shaping after the pedal for precise tonal control"
+  - device: "Reverb"
+    reason: "Spring or room reverb after pedal for realistic guitar tones"
+  - device: "Delay"
+    reason: "Classic guitar delay after distortion pedal"
+  - device: "Chorus-Ensemble"
+    reason: "Chorus after overdrive for 80s clean-crunch tone"
+
+starter_recipes:
+  - name: "Fuzz Bass"
+    description: "Thick, fuzzy bass distortion for stoner or psychedelic music"
+    genre: stoner
+    params:
+      Type: "Fuzz"
+      Gain: 60.0
+      Bass: 0.3
+      Mid: -0.2
+      Treble: -0.3
+      Sub: 1
+      Output: -8.0
+
+  - name: "Distortion Lead"
+    description: "Aggressive lead guitar distortion with mid presence"
+    genre: rock
+    params:
+      Type: "Distortion"
+      Gain: 65.0
+      Bass: 0.0
+      Mid: 0.3
+      Treble: 0.2
+      Output: -6.0
+
+  - name: "Overdrive Crunch"
+    description: "Warm, responsive crunch that cleans up with playing dynamics"
+    genre: blues
+    params:
+      Type: "Overdrive"
+      Gain: 35.0
+      Bass: 0.1
+      Mid: 0.1
+      Treble: 0.0
+      Output: -4.0
+
+gotchas:
+  - "Each Type sounds dramatically different — Overdrive is subtle, Fuzz is extreme"
+  - "Gain interacts strongly with input level — hotter inputs drive harder into clipping"
+  - "Mid control is crucial for guitars — boosted mids cut through a mix, scooped mids sit behind"
+  - "Sub toggle adds significant low-end energy — watch for muddiness, especially with Fuzz"
+  - "Output level needs compensation — high Gain settings significantly increase volume"
+  - "Works on synths and drums too, not just guitar — Fuzz on drums is a classic technique"

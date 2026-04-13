@@ -1,0 +1,167 @@
+id: drift
+name: Drift
+sonic_description: >
+  Characterful analog-modeled synthesizer with built-in pitch and filter instability
+  that emulates the organic imperfections of vintage hardware. A single oscillator
+  with continuous shape morphing, resonant filter, and streamlined modulation deliver
+  warm, slightly unpredictable tones with minimal parameter tweaking.
+synthesis_type: analog_modeling
+character_tags: [warm, organic, analog, unstable, characterful]
+use_cases: [bass, pads, leads, drones, textures]
+genre_affinity:
+  primary: [techno, ambient, minimal]
+  secondary: [house, lo-fi, experimental, downtempo]
+complexity: beginner
+self_contained: true
+introduced_in: "11.0"
+
+key_parameters:
+  - name: "Shape"
+    description: "Oscillator shape — continuously morphs between waveform types for fluid timbral control"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      sine_like: 0.0
+      saw_like: 0.5
+      square_like: 1.0
+      sweet_spot: 0.35
+
+  - name: "Drift"
+    description: "Amount of analog-style pitch and filter instability — the instrument's signature character"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      stable: 0.0
+      subtle_warmth: 0.2
+      vintage_feel: 0.45
+      wobbly: 0.7
+      extreme: 1.0
+
+  - name: "Filter Freq"
+    description: "Low-pass filter cutoff frequency"
+    range: [20.0, 20000.0]
+    unit: "Hz"
+    type: float
+    sweet_spots:
+      deep_sub: 150.0
+      warm: 1000.0
+      bright: 8000.0
+
+  - name: "Filter Res"
+    description: "Filter resonance — interacts with the drift parameter for organic movement"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      clean: 0.0
+      gentle: 0.2
+      character: 0.45
+      squelchy: 0.7
+
+  - name: "Voice Mode"
+    description: "Voice allocation — Mono for bass/leads, Poly for chords, Unison for thick textures"
+    range: ["Mono", "Poly", "Unison"]
+    type: enum
+    sweet_spots:
+      bass: "Mono"
+      pad: "Poly"
+      thick_lead: "Unison"
+
+  - name: "Attack"
+    description: "Amplitude envelope attack time"
+    range: [0.0, 10000.0]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      percussive: 0.0
+      soft: 200.0
+      pad: 800.0
+
+  - name: "Decay"
+    description: "Amplitude envelope decay time"
+    range: [0.0, 10000.0]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      pluck: 150.0
+      moderate: 500.0
+
+  - name: "Sustain"
+    description: "Amplitude envelope sustain level"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      pluck: 0.0
+      held: 0.8
+      pad: 1.0
+
+  - name: "Release"
+    description: "Amplitude envelope release time"
+    range: [0.0, 10000.0]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      tight: 50.0
+      natural: 250.0
+      ambient: 1500.0
+
+pairs_well_with:
+  - device: "Reverb"
+    reason: "The organic drift character blooms beautifully in reverb space"
+  - device: "Delay"
+    reason: "Drifting pitch adds subtle variation to delay repeats — each echo is slightly different"
+  - device: "Saturator"
+    reason: "Light saturation enhances the analog warmth Drift is designed for"
+  - device: "Auto Filter"
+    reason: "Adds rhythmic movement that complements the random drift modulation"
+  - device: "Chorus-Ensemble"
+    reason: "Deepens the analog imperfection character with subtle detuning"
+
+starter_recipes:
+  - name: "Deep Sub Bass"
+    description: "Warm, slightly wobbly sub bass with organic character"
+    genre: techno
+    params:
+      "Shape": 0.0
+      "Drift": 0.15
+      "Voice Mode": "Mono"
+      "Filter Freq": 200.0
+      "Filter Res": 0.0
+      "Attack": 0.0
+      "Decay": 0.0
+      "Sustain": 1.0
+      "Release": 80.0
+
+  - name: "Drifting Pad"
+    description: "Evolving, dreamy pad where the drift creates gentle organic movement"
+    genre: ambient
+    params:
+      "Shape": 0.35
+      "Drift": 0.5
+      "Voice Mode": "Poly"
+      "Filter Freq": 2500.0
+      "Filter Res": 0.2
+      "Attack": 800.0
+      "Decay": 0.0
+      "Sustain": 1.0
+      "Release": 2000.0
+
+  - name: "Wonky Lead"
+    description: "Unstable, characterful mono lead with heavy drift and resonance"
+    genre: minimal
+    params:
+      "Shape": 0.6
+      "Drift": 0.7
+      "Voice Mode": "Mono"
+      "Filter Freq": 3500.0
+      "Filter Res": 0.45
+      "Attack": 5.0
+      "Decay": 300.0
+      "Sustain": 0.6
+      "Release": 200.0
+
+gotchas:
+  - "The Drift parameter affects pitch AND filter — high values make bass notes noticeably out of tune"
+  - "Drift is intentionally non-deterministic — the same patch will sound slightly different each time"
+  - "Simpler than Analog — fewer parameters means less flexibility but faster sound design"
+  - "Voice Mode changes dramatically affect CPU and polyphony — Unison is the most expensive"
+  - "Shape is continuous, not discrete waveform selection — automate it for morphing textures"

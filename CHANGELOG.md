@@ -1,5 +1,31 @@
 # Changelog
 
+## 1.10.0 — Device Atlas v2 (April 2026)
+
+### The Big Picture
+LivePilot now has a real device atlas — an embedded JSON database covering every device in Ableton Live 12.3.6. 1,305 devices with URIs, categories, and searchable metadata. 81 stock devices have deep sonic intelligence: parameter guides with sweet spots, starter recipes, genre affinity, and device pairing recommendations.
+
+### New Tools (+6, total 313)
+- **`atlas_search`** — fuzzy search across all devices by name, sonic character, use case, or genre
+- **`atlas_device_info`** — full knowledge entry for any device — parameters, recipes, gotchas
+- **`atlas_suggest`** — intent-driven recommendation: "warm bass for techno" → Drift + recipe
+- **`atlas_chain_suggest`** — full device chain for a track role: instrument + effects with rationale
+- **`atlas_compare`** — side-by-side comparison of two devices for a given role
+- **`scan_full_library`** — deep browser scan to build/refresh the atlas
+
+### Device Atlas Coverage
+- 32 instruments (all stock, with URIs) — 16 enriched with deep sonic intelligence
+- 70 audio effects (all stock, with URIs) — 35 enriched
+- 23 MIDI effects (all stock, with URIs) — 12 enriched
+- 497 Max for Live devices indexed
+- 683 drum kit presets indexed
+- 71 YAML enrichment files with parameter guides, recipes, and production knowledge
+
+### New Domains
+- **atlas** — device knowledge database with search, suggest, and compare capabilities
+
+---
+
 ## 1.9.25 — Live 12.3 API Integration (April 2026)
 
 ### New Tools (+4, total 307)

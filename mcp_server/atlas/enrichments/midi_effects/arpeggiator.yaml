@@ -1,0 +1,156 @@
+id: arpeggiator
+name: Arpeggiator
+sonic_description: >
+  Transforms held chords into rhythmic arpeggiated note sequences, cycling through
+  chord tones in configurable patterns. Essential for creating pulsing synth lines,
+  trance leads, and generative melodic movement from static chord input.
+effect_type: midi_processor
+character_tags: [rhythmic, pattern, generative, pulsing, melodic]
+use_cases: [arpeggios, synth_sequences, trance_leads, generative_melody, chord_animation]
+genre_affinity:
+  primary: [trance, edm, synthwave]
+  secondary: [ambient, pop, techno, house]
+complexity: beginner
+introduced_in: "1.0"
+
+key_parameters:
+  - name: "Style"
+    description: "Arpeggio pattern direction — determines note traversal order"
+    range: ["Up", "Down", "UpDown", "DownUp", "Converge", "Diverge", "Con&Diverge", "PinkyUp", "PinkyUpDown", "ThumbUp", "ThumbUpDown", "Random", "Custom"]
+    type: enum
+    sweet_spots:
+      classic_arp: "Up"
+      bouncy: "UpDown"
+      generative: "Random"
+      dramatic: "Converge"
+
+  - name: "Rate"
+    description: "Speed of arpeggiation — synced to tempo"
+    range: ["1/1", "1/2", "1/2T", "1/4", "1/4T", "1/8", "1/8T", "1/16", "1/16T", "1/32"]
+    type: enum
+    sweet_spots:
+      driving: "1/16"
+      relaxed: "1/8"
+      fast_trance: "1/32"
+      triplet_groove: "1/8T"
+
+  - name: "Gate"
+    description: "Note length as percentage of step length — controls staccato vs legato"
+    range: [1, 200]
+    unit: "%"
+    type: int
+    sweet_spots:
+      staccato: 20
+      normal: 80
+      legato: 130
+      overlapping: 200
+
+  - name: "Steps"
+    description: "Number of steps for custom pattern mode"
+    range: [1, 8]
+    type: int
+
+  - name: "Offset"
+    description: "Shift the start position of the arpeggio pattern"
+    range: [0, 7]
+    type: int
+
+  - name: "Groove"
+    description: "Amount of swing applied to the arpeggio rhythm"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      straight: 0.0
+      subtle_swing: 0.2
+      heavy_groove: 0.6
+
+  - name: "Transpose"
+    description: "Pitch shift per octave repetition in semitones"
+    range: [-36, 36]
+    unit: "st"
+    type: int
+    sweet_spots:
+      octave_up: 12
+      fifth_up: 7
+
+  - name: "Distance"
+    description: "Interval distance for transpose repetitions"
+    range: [1, 12]
+    type: int
+
+  - name: "Repeats"
+    description: "Number of octave repetitions before pattern restarts"
+    range: [1, 16]
+    type: int
+    sweet_spots:
+      single: 1
+      two_octave: 2
+      wide_range: 4
+
+  - name: "Retrigger"
+    description: "Whether to restart the pattern on new note input"
+    range: ["On", "Off"]
+    type: enum
+
+  - name: "Velocity"
+    description: "Fixed velocity or follows input velocity"
+    range: [0, 127]
+    type: int
+
+pairs_well_with:
+  - device: "Drift"
+    reason: "Warm arpeggiated lines with analog character and gentle instability"
+  - device: "Wavetable"
+    reason: "Evolving timbres animated by rhythmic arpeggiation"
+  - device: "Scale"
+    reason: "Place after Arpeggiator to force generated notes into key"
+  - device: "Reverb"
+    reason: "Long tails blend arp notes into shimmering textures"
+  - device: "Delay"
+    reason: "Rhythmic delays compound with arp patterns for complex polyrhythms"
+  - device: "Auto Filter"
+    reason: "Envelope-following filter adds timbral movement to arp sequences"
+
+starter_recipes:
+  - name: "Classic Trance Arp"
+    description: "Driving 16th-note upward arpeggio for trance and EDM"
+    genre: trance
+    params:
+      "Style": "Up"
+      "Rate": "1/16"
+      "Gate": 80
+      "Repeats": 3
+
+  - name: "Random Ambient"
+    description: "Slow random arpeggiation for evolving ambient textures"
+    genre: ambient
+    params:
+      "Style": "Random"
+      "Rate": "1/4"
+      "Gate": 130
+      "Repeats": 2
+
+  - name: "Staccato Pulse"
+    description: "Short, punchy 8th-note pulses for rhythmic synth parts"
+    genre: synthwave
+    params:
+      "Style": "Up"
+      "Rate": "1/8"
+      "Gate": 20
+      "Repeats": 1
+
+  - name: "Converging Drama"
+    description: "Notes converge from extremes for cinematic builds"
+    genre: cinematic
+    params:
+      "Style": "Converge"
+      "Rate": "1/16"
+      "Gate": 60
+      "Repeats": 2
+
+gotchas:
+  - "Arpeggiator must be placed BEFORE the instrument in the device chain — it is a MIDI effect"
+  - "Gate values above 100% create overlapping notes which can cause polyphony issues on mono synths"
+  - "Retrigger mode resets the pattern on every new note — disable for continuous flowing arps"
+  - "Random mode is truly random per cycle, not a fixed random sequence — each repetition differs"
+  - "Transpose stacks with Repeats — 3 repeats with +12 transpose covers 3 octaves"

@@ -1,0 +1,162 @@
+id: wavetable
+name: Wavetable
+sonic_description: >
+  Powerful wavetable synthesizer with two oscillators that morph continuously through
+  wavetable positions, a sub oscillator, multimode filter, unison engine, and a deep
+  modulation matrix. Excels at everything from massive supersaws to evolving cinematic textures.
+synthesis_type: wavetable
+character_tags: [modern, versatile, lush, massive, evolving]
+use_cases: [leads, pads, bass, textures, plucks]
+genre_affinity:
+  primary: [edm, pop, future_bass]
+  secondary: [synthwave, cinematic, ambient, dnb]
+complexity: intermediate
+self_contained: true
+introduced_in: "10.0"
+
+key_parameters:
+  - name: "Osc 1 Pos"
+    description: "Wavetable position — morphs through the waveform set for timbral change"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      bright: 0.8
+      mellow: 0.2
+      mid_morph: 0.5
+
+  - name: "Osc 1 Effect"
+    description: "Processing effect applied to the wavetable oscillator"
+    range: ["None", "FM", "Classic", "Modern", "Formant"]
+    type: enum
+    sweet_spots:
+      clean: "None"
+      harsh_digital: "FM"
+      vintage: "Classic"
+      vocal: "Formant"
+
+  - name: "Osc 2 Pos"
+    description: "Wavetable position for oscillator 2"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      contrast_layer: 0.6
+
+  - name: "Sub Osc"
+    description: "Sub oscillator level — adds low-end foundation"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      subtle_weight: 0.3
+      heavy_sub: 0.7
+      off: 0.0
+
+  - name: "Filter Type"
+    description: "Filter topology — LP, HP, BP with various slopes"
+    range: ["LP12", "LP24", "HP12", "HP24", "BP"]
+    type: enum
+    sweet_spots:
+      warm: "LP12"
+      aggressive: "LP24"
+      thin: "HP12"
+
+  - name: "Filter Freq"
+    description: "Filter cutoff frequency"
+    range: [20.0, 20000.0]
+    unit: "Hz"
+    type: float
+    sweet_spots:
+      dark_pad: 1500.0
+      open: 12000.0
+      bass: 500.0
+
+  - name: "Filter Res"
+    description: "Filter resonance — peak at cutoff"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      clean: 0.0
+      character: 0.25
+      aggressive: 0.6
+
+  - name: "Unison Voices"
+    description: "Number of unison voices per note — stacks detuned copies"
+    range: [1, 8]
+    type: int
+    sweet_spots:
+      mono: 1
+      subtle_thicken: 2
+      supersaw: 7
+      maximum: 8
+
+  - name: "Unison Amount"
+    description: "Detune spread between unison voices"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      tight: 0.15
+      wide_supersaw: 0.5
+      extreme: 0.8
+
+  - name: "Mod Matrix"
+    description: "Flexible modulation routing — map any source (LFO, envelope, velocity, aftertouch) to any parameter"
+    range: ["Matrix routing"]
+    type: enum
+
+pairs_well_with:
+  - device: "Reverb"
+    reason: "Pads and textures come alive with long reverb tails and high diffusion"
+  - device: "Delay"
+    reason: "Dotted eighth delays on leads create rhythmic movement and width"
+  - device: "Chorus-Ensemble"
+    reason: "Extra stereo width and shimmer on top of unison voices"
+  - device: "Saturator"
+    reason: "Adds analog warmth to the inherently digital wavetable sound"
+  - device: "EQ Eight"
+    reason: "Surgical control of the complex harmonic content wavetables generate"
+  - device: "Compressor"
+    reason: "Tames dynamics from wavetable position modulation"
+
+starter_recipes:
+  - name: "Supersaw Lead"
+    description: "Classic EDM/trance supersaw with massive unison spread"
+    genre: edm
+    params:
+      "Osc 1 Pos": 0.0
+      "Unison Voices": 7
+      "Unison Amount": 0.45
+      "Filter Type": "LP12"
+      "Filter Freq": 8000.0
+      "Filter Res": 0.1
+      "Sub Osc": 0.3
+
+  - name: "Glassy Pad"
+    description: "Shimmering, evolving pad with slow wavetable modulation"
+    genre: ambient
+    params:
+      "Osc 1 Pos": 0.3
+      "Osc 1 Effect": "None"
+      "Unison Voices": 4
+      "Unison Amount": 0.25
+      "Filter Type": "LP12"
+      "Filter Freq": 3000.0
+      "Filter Res": 0.15
+
+  - name: "Digital Bass"
+    description: "Tight, modern bass with wavetable character and sub weight"
+    genre: future_bass
+    params:
+      "Osc 1 Pos": 0.6
+      "Osc 1 Effect": "Modern"
+      "Sub Osc": 0.6
+      "Unison Voices": 2
+      "Unison Amount": 0.1
+      "Filter Type": "LP24"
+      "Filter Freq": 600.0
+      "Filter Res": 0.2
+
+gotchas:
+  - "Wavetable position is the primary timbre control — automate it for evolving textures"
+  - "High unison voice counts are CPU-intensive — use 4+ voices sparingly on multiple tracks"
+  - "The mod matrix is extremely powerful but has many slots — get_device_parameters to see all available targets"
+  - "Sub oscillator adds significant low-end energy — may need high-pass on the sub for mixing clarity"
+  - "Effect type dramatically changes character even at the same wavetable position"

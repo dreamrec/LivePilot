@@ -1,0 +1,142 @@
+id: glue_compressor
+name: Glue Compressor
+sonic_description: >
+  SSL-style bus compressor modeled on the classic analog mix bus compressor. Adds cohesion
+  and punch with musical timing characteristics. Fixed ratio options and a Range control
+  give it a distinct, glue-like character that bonds mix elements together.
+effect_type: dynamics
+character_tags: [punchy, warm, musical, cohesive, analog]
+use_cases: [bus_glue, drum_bus, mix_bus, parallel_compression, mastering]
+genre_affinity:
+  primary: [all]
+  secondary: []
+complexity: beginner
+signal_type: audio
+introduced_in: "9.0"
+
+key_parameters:
+  - name: "Threshold"
+    description: "Level above which compression engages"
+    range: [-inf, 0.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      gentle: -15.0
+      moderate: -25.0
+      heavy: -35.0
+
+  - name: "Ratio"
+    description: "Fixed compression ratios matching classic SSL design"
+    range: [2, 4, 10]
+    type: enum
+    sweet_spots:
+      bus_glue: 2
+      drum_punch: 4
+      parallel_crush: 10
+
+  - name: "Attack"
+    description: "Attack time — fast attacks clamp transients, slow attacks let punch through"
+    range: [0.01, 30.0]
+    unit: ms
+    type: float
+    sweet_spots:
+      fast_clamp: 0.1
+      punch: 1.0
+      slow_natural: 10.0
+      slowest: 30.0
+
+  - name: "Release"
+    description: "Release time — Auto mode tracks program material"
+    range: [0.1, 1.2]
+    unit: s
+    type: float
+    sweet_spots:
+      fast: 0.1
+      medium: 0.4
+      slow: 1.2
+      auto: -1
+
+  - name: "Range"
+    description: "Limits maximum gain reduction — prevents over-compression"
+    range: [-inf, 0.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      subtle: -6.0
+      moderate: -12.0
+      unlimited: -inf
+
+  - name: "Makeup"
+    description: "Output gain compensation"
+    range: [-inf, 15.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      compensate: 4.0
+
+  - name: "Dry/Wet"
+    description: "Parallel compression blend — mix dry signal with compressed"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      full: 100.0
+      parallel: 50.0
+      subtle_parallel: 30.0
+
+  - name: "Soft Clip"
+    description: "Applies gentle saturation clipping on output for analog warmth"
+    type: toggle
+    range: [0, 1]
+    sweet_spots:
+      off: 0
+      warm: 1
+
+pairs_well_with:
+  - device: "EQ Eight"
+    reason: "Surgical EQ before the bus compressor to tame problematic frequencies"
+  - device: "Saturator"
+    reason: "Subtle saturation after Glue for extra analog warmth"
+  - device: "Limiter"
+    reason: "Final peak protection after bus compression"
+  - device: "Utility"
+    reason: "Level trim and width control after bus processing"
+
+starter_recipes:
+  - name: "Mix Bus Glue"
+    description: "Classic SSL mix bus treatment — subtle cohesion without squash"
+    genre: all
+    params:
+      Threshold: -18.0
+      Ratio: 2
+      Attack: 10.0
+      Release: -1
+      Range: -6.0
+      Soft Clip: 1
+
+  - name: "Drum Bus Punch"
+    description: "Punchy drum bus with transient preservation and controlled sustain"
+    genre: all
+    params:
+      Threshold: -25.0
+      Ratio: 4
+      Attack: 1.0
+      Release: 0.1
+      Range: -12.0
+
+  - name: "Parallel Crush"
+    description: "Aggressive compression blended in for power and density"
+    genre: rock
+    params:
+      Threshold: -35.0
+      Ratio: 10
+      Attack: 0.1
+      Release: 0.1
+      "Dry/Wet": 40.0
+
+gotchas:
+  - "Only three fixed ratios (2, 4, 10) — no continuous ratio control like Compressor"
+  - "Range parameter is unique to Glue Compressor — it limits maximum gain reduction, great for preventing over-compression"
+  - "Auto Release mode is usually the best starting point for bus compression"
+  - "Soft Clip adds subtle harmonic content — good for warmth but can change the tonal balance"
+  - "At extreme settings the fixed ratios make it less flexible than Compressor for surgical work"

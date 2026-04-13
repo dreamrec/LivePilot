@@ -1,0 +1,147 @@
+id: dynamic_tube
+name: Dynamic Tube
+sonic_description: >
+  Tube amplifier saturation with an envelope follower that dynamically controls the
+  distortion intensity based on input level. Responds to playing dynamics like a real
+  tube amp — plays louder to drive harder, softer to stay clean. The Bias parameter
+  shifts the operating point of the virtual tube for different harmonic flavors.
+effect_type: distortion
+character_tags: [warm, dynamic, tube, responsive, musical]
+use_cases: [tube_warmth, dynamic_crunch, tape_like_saturation, bass_drive, amp_feel]
+genre_affinity:
+  primary: [rock, blues, jazz]
+  secondary: [pop, indie, electronic, lo_fi]
+complexity: intermediate
+signal_type: audio
+introduced_in: "5.0"
+
+key_parameters:
+  - name: "Drive"
+    description: "Amount of tube saturation — how hard the virtual tube is pushed"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      subtle: 15.0
+      warm: 35.0
+      driven: 60.0
+      hot: 85.0
+
+  - name: "Bias"
+    description: "Operating point of the tube — changes harmonic content and clipping character"
+    range: [-1.0, 1.0]
+    type: float
+    sweet_spots:
+      cold: -0.5
+      neutral: 0.0
+      warm: 0.3
+      hot: 0.7
+
+  - name: "Tone"
+    description: "Brightness of the tube distortion"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      dark: 20.0
+      warm: 40.0
+      bright: 70.0
+
+  - name: "Envelope"
+    description: "How much the input level dynamically affects the drive amount"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      static: 0.0
+      responsive: 30.0
+      dynamic: 60.0
+      highly_dynamic: 90.0
+
+  - name: "Attack"
+    description: "Envelope follower attack — how fast the dynamic drive responds"
+    range: [0.1, 100.0]
+    unit: ms
+    type: float
+    sweet_spots:
+      fast: 2.0
+      medium: 15.0
+      slow: 50.0
+
+  - name: "Release"
+    description: "Envelope follower release — how fast the dynamic drive releases"
+    range: [1.0, 1000.0]
+    unit: ms
+    type: float
+    sweet_spots:
+      fast: 20.0
+      medium: 100.0
+      slow: 500.0
+
+  - name: "Output"
+    description: "Output level compensation"
+    range: [-inf, 0.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      compensate: -4.0
+
+  - name: "Dry/Wet"
+    description: "Mix between clean and tube-saturated signal"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      full: 100.0
+      parallel: 50.0
+      subtle: 30.0
+
+pairs_well_with:
+  - device: "EQ Eight"
+    reason: "Shape tone before tube saturation for controlled harmonic content"
+  - device: "Compressor"
+    reason: "Level the dynamics before for more consistent saturation"
+  - device: "Reverb"
+    reason: "Room reverb after tube drive for amp-in-room feel"
+  - device: "Cabinet"
+    reason: "Speaker cabinet emulation after tube for guitar amp simulation"
+
+starter_recipes:
+  - name: "Tube Warmth"
+    description: "Subtle tube coloring for warmth on any source"
+    genre: all
+    params:
+      Drive: 25.0
+      Bias: 0.2
+      Tone: 45.0
+      Envelope: 20.0
+      "Dry/Wet": 100.0
+
+  - name: "Dynamic Crunch"
+    description: "Responsive drive that reacts to playing intensity"
+    genre: rock
+    params:
+      Drive: 50.0
+      Bias: 0.0
+      Tone: 55.0
+      Envelope: 60.0
+      Attack: 5.0
+      Release: 80.0
+      "Dry/Wet": 100.0
+
+  - name: "Tape-Like Saturation"
+    description: "Warm, compressed saturation that mimics analog tape"
+    genre: lo_fi
+    params:
+      Drive: 40.0
+      Bias: 0.4
+      Tone: 35.0
+      Envelope: 10.0
+      "Dry/Wet": 70.0
+
+gotchas:
+  - "Bias parameter is subtle but important — positive values add even harmonics (warmer), negative adds odd harmonics (edgier)"
+  - "Envelope at 0% makes the saturation static — increase for dynamic, responsive drive"
+  - "Different from Saturator in that it explicitly models tube nonlinearity, not generic waveshaping"
+  - "Hot Bias values can cause DC offset — use sparingly or compensate with a high-pass filter"
+  - "Works well as a gentle always-on warming effect at low Drive + moderate Bias"

@@ -1,0 +1,142 @@
+id: drum_buss
+name: Drum Buss
+sonic_description: >
+  All-in-one drum processing combining drive, crunch distortion, a transient shaper, and
+  a tunable low-end resonance enhancer (Boom). Designed specifically for drum bus treatment,
+  it adds punch, grit, and low-end weight in one device with minimal fuss.
+effect_type: dynamics
+character_tags: [punchy, warm, gritty, fat, aggressive]
+use_cases: [drum_bus, drum_processing, lo_fi_drums, boom_enhancement, transient_shaping]
+genre_affinity:
+  primary: [hip_hop, electronic, house, techno]
+  secondary: [rock, pop, trap]
+complexity: beginner
+signal_type: audio
+introduced_in: "10.0"
+
+key_parameters:
+  - name: "Drive"
+    description: "Amount of saturation/distortion applied to the drums"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      subtle_warmth: 20.0
+      moderate: 40.0
+      crunchy: 70.0
+      destroyed: 100.0
+
+  - name: "Crunch"
+    description: "Additional distortion stage with more aggressive character"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      off: 0.0
+      edge: 30.0
+      heavy: 60.0
+
+  - name: "Boom"
+    description: "Low-frequency resonance enhancer — adds sub weight and boom"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      subtle: 20.0
+      heavy: 50.0
+      massive: 80.0
+
+  - name: "Boom Freq"
+    description: "Frequency of the low-end resonance enhancer"
+    range: [20.0, 200.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      sub: 40.0
+      kick_body: 60.0
+      low_thump: 100.0
+
+  - name: "Boom Decay"
+    description: "How long the low-end resonance rings out"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      tight: 20.0
+      moderate: 50.0
+      long: 80.0
+
+  - name: "Transients"
+    description: "Transient shaper — positive emphasizes attack, negative softens"
+    range: [-100.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      soften: -30.0
+      neutral: 0.0
+      punchy: 40.0
+      aggressive: 80.0
+
+  - name: "Trim"
+    description: "Output level control"
+    range: [-inf, 6.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      compensate: 0.0
+
+  - name: "Dry/Wet"
+    description: "Mix between dry and processed signal"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      full: 100.0
+      blend: 60.0
+
+pairs_well_with:
+  - device: "Glue Compressor"
+    reason: "Glue before Drum Buss for cohesion, or after for controlled saturation"
+  - device: "EQ Eight"
+    reason: "Sculpt the frequency balance after Drum Buss processing"
+  - device: "Gate"
+    reason: "Tighten drums before adding Drum Buss character"
+
+starter_recipes:
+  - name: "Punchy Drums"
+    description: "Tight, punchy drum bus with added attack and subtle warmth"
+    genre: all
+    params:
+      Drive: 25.0
+      Crunch: 10.0
+      Boom: 30.0
+      "Boom Freq": 60.0
+      Transients: 40.0
+
+  - name: "Boom-Heavy Hip-Hop"
+    description: "Massive low-end weight with sub resonance for hip-hop/trap"
+    genre: hip_hop
+    params:
+      Drive: 20.0
+      Crunch: 0.0
+      Boom: 65.0
+      "Boom Freq": 45.0
+      "Boom Decay": 60.0
+      Transients: 20.0
+
+  - name: "Crispy Electronic"
+    description: "Aggressive, crunchy electronic drums with distortion edge"
+    genre: techno
+    params:
+      Drive: 60.0
+      Crunch: 50.0
+      Boom: 15.0
+      "Boom Freq": 80.0
+      Transients: 60.0
+
+gotchas:
+  - "Boom can add a lot of sub energy — check on full-range monitors or with a spectrum analyzer"
+  - "Boom Freq should be tuned to the kick fundamental to avoid conflicting resonances"
+  - "Drive and Crunch together can get very loud — watch Trim level"
+  - "Transients at extreme positive values can clip downstream — leave headroom"
+  - "Best on a drum group/bus rather than individual drum tracks"

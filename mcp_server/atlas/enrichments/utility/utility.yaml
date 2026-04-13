@@ -1,0 +1,136 @@
+id: utility
+name: Utility
+sonic_description: >
+  Essential mixing and signal management tool providing gain adjustment, stereo width
+  control, channel mode selection, bass mono filtering, and DC offset correction.
+  The Swiss army knife of Ableton mixing — used on nearly every track for gain staging,
+  mono compatibility checks, and stereo field management.
+effect_type: utility
+character_tags: [mixing, gain, stereo, mono, essential]
+use_cases: [gain_staging, mono_check, stereo_width, bass_mono, channel_swap, dc_offset]
+genre_affinity:
+  primary: [all]
+  secondary: []
+complexity: beginner
+introduced_in: "1.0"
+
+key_parameters:
+  - name: "Gain"
+    description: "Volume adjustment in dB — primary gain staging tool"
+    range: [-35.0, 35.0]
+    unit: "dB"
+    type: float
+    sweet_spots:
+      cut_6: -6.0
+      unity: 0.0
+      boost_3: 3.0
+
+  - name: "Channel Mode"
+    description: "Channel routing and monitoring mode"
+    range: ["Stereo", "Left", "Right", "Swap", "Mono"]
+    type: enum
+    sweet_spots:
+      normal: "Stereo"
+      mono_check: "Mono"
+      side_isolation: "Right"
+
+  - name: "Width"
+    description: "Stereo width control — 0% is mono, 100% is normal, 400% is super-wide"
+    range: [0, 400]
+    unit: "%"
+    type: int
+    sweet_spots:
+      mono: 0
+      normal: 100
+      wide: 150
+      super_wide: 200
+
+  - name: "Bass Mono"
+    description: "Frequency below which the signal is summed to mono — essential for club mixes"
+    range: [50, 500]
+    unit: "Hz"
+    type: int
+    sweet_spots:
+      sub_only: 80
+      bass_region: 120
+      low_mid: 200
+
+  - name: "Bass Mono On/Off"
+    description: "Enables or disables bass mono filtering"
+    range: ["On", "Off"]
+    type: enum
+
+  - name: "Phono Filter"
+    description: "Applies high-pass and low-pass filtering for DJ-style frequency isolation"
+    range: ["Off", "On"]
+    type: enum
+
+  - name: "DC Offset"
+    description: "Removes DC offset from the signal — fixes asymmetric waveforms"
+    range: ["On", "Off"]
+    type: enum
+
+  - name: "Phase Invert (L)"
+    description: "Inverts the phase of the left channel"
+    range: ["On", "Off"]
+    type: enum
+
+  - name: "Phase Invert (R)"
+    description: "Inverts the phase of the right channel"
+    range: ["On", "Off"]
+    type: enum
+
+  - name: "Mute"
+    description: "Silences the output completely"
+    range: ["On", "Off"]
+    type: enum
+
+pairs_well_with:
+  - device: "EQ Eight"
+    reason: "Gain stage before EQ for optimal headroom management"
+  - device: "Compressor"
+    reason: "Set input level before compression for consistent threshold behavior"
+  - device: "Spectrum"
+    reason: "Use Utility to solo channels, then Spectrum to analyze"
+  - device: "Limiter"
+    reason: "Gain stage into limiter for predictable limiting behavior"
+
+starter_recipes:
+  - name: "Mono Bass Below 120Hz"
+    description: "Sum everything below 120Hz to mono for club-ready low end"
+    genre: edm
+    params:
+      "Bass Mono On/Off": "On"
+      "Bass Mono": 120
+
+  - name: "Gain Staging (-6dB)"
+    description: "Standard gain reduction for headroom management"
+    genre: all
+    params:
+      "Gain": -6.0
+
+  - name: "Stereo to Mono Check"
+    description: "Collapse to mono to check mix compatibility on mono systems"
+    genre: all
+    params:
+      "Channel Mode": "Mono"
+
+  - name: "Wide Stereo"
+    description: "Widen the stereo image for pads, ambient, or background elements"
+    genre: ambient
+    params:
+      "Width": 150
+
+  - name: "Phase Fix"
+    description: "Invert one channel's phase to correct phase cancellation issues"
+    genre: all
+    params:
+      "Phase Invert (L)": "On"
+
+gotchas:
+  - "Gain goes up to +35dB — extreme values can cause clipping downstream"
+  - "Width at 0% is not silence, it is mono — the mid signal is preserved"
+  - "Width above 100% boosts the side signal — can introduce phase issues on mono playback"
+  - "Bass Mono frequency is a crossover point, not a hard cutoff — there is a transition slope"
+  - "Place Utility BEFORE effects when gain staging, AFTER effects when checking output level"
+  - "Mute on Utility silences the track more cleanly than track mute — no tail from effects"

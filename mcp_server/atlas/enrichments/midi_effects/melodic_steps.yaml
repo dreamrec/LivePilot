@@ -1,0 +1,97 @@
+id: melodic_steps
+name: Melodic Steps
+sonic_description: >
+  Step sequencer designed for creating melodic patterns with per-step control over
+  pitch, velocity, gate length, and more. Generates repeating melodic phrases from
+  a configurable step grid, turning held notes into evolving melodic sequences.
+effect_type: midi_processor
+character_tags: [sequencer, melodic, pattern, generative, stepped]
+use_cases: [melody_sequencing, bassline_patterns, lead_sequences, generative_melody, step_composition]
+genre_affinity:
+  primary: [techno, house, synthwave]
+  secondary: [ambient, idm, trance]
+complexity: intermediate
+introduced_in: "12.0"
+
+key_parameters:
+  - name: "Steps"
+    description: "Number of active steps in the sequence"
+    range: [1, 16]
+    type: int
+    sweet_spots:
+      short: 4
+      standard: 8
+      extended: 16
+
+  - name: "Rate"
+    description: "Playback speed of the step sequence"
+    range: ["1/1", "1/2", "1/4", "1/8", "1/16", "1/32"]
+    type: enum
+    sweet_spots:
+      slow: "1/4"
+      standard: "1/8"
+      fast: "1/16"
+
+  - name: "Pitch (per step)"
+    description: "Pitch offset in semitones for each step"
+    range: [-24, 24]
+    unit: "st"
+    type: int
+
+  - name: "Velocity (per step)"
+    description: "Velocity value for each step"
+    range: [0, 127]
+    type: int
+
+  - name: "Gate (per step)"
+    description: "Note length as percentage of step duration"
+    range: [1, 200]
+    unit: "%"
+    type: int
+
+  - name: "Probability (per step)"
+    description: "Probability that each step triggers"
+    range: [0, 100]
+    unit: "%"
+    type: int
+
+pairs_well_with:
+  - device: "Scale"
+    reason: "Corrects step pitches to stay in key"
+  - device: "Drift"
+    reason: "Warm analog character on stepped melodic sequences"
+  - device: "Wavetable"
+    reason: "Evolving timbres animated by melodic step patterns"
+  - device: "Delay"
+    reason: "Echo on stepped sequences creates polyrhythmic complexity"
+  - device: "Reverb"
+    reason: "Blends stepped notes into flowing melodic textures"
+
+starter_recipes:
+  - name: "Melodic Sequence"
+    description: "8-step ascending melodic pattern for synth leads"
+    genre: synthwave
+    params:
+      "Steps": 8
+      "Rate": "1/8"
+
+  - name: "Accent Pattern"
+    description: "4-step sequence with velocity accents on beats 1 and 3"
+    genre: techno
+    params:
+      "Steps": 4
+      "Rate": "1/16"
+
+  - name: "Generative Melody"
+    description: "16-step sequence with probability variation for evolving patterns"
+    genre: ambient
+    params:
+      "Steps": 16
+      "Rate": "1/8"
+
+gotchas:
+  - "New in Live 12 — this is a Max for Live MIDI effect included with Suite"
+  - "Per-step pitch offsets are relative to the held note — the base pitch changes with your input"
+  - "Steps with 0% probability are effectively muted — use for creating rests in the sequence"
+  - "Gate values above 100% create tied/overlapping notes between steps"
+  - "Unlike Arpeggiator, Melodic Steps does not cycle through chord tones — it applies a fixed pitch pattern"

@@ -1,0 +1,148 @@
+id: eq_eight
+name: EQ Eight
+sonic_description: >
+  Eight-band fully parametric equalizer — the workhorse of Ableton's mixing toolkit.
+  Each band offers selectable filter types with adjustable frequency, gain, and Q. Supports
+  oversampling for cleaner high-frequency processing and adaptive Q for natural-sounding boosts.
+effect_type: eq
+character_tags: [transparent, surgical, precise, clean, versatile]
+use_cases: [mixing, mastering, surgical_eq, tonal_shaping, highpass, problem_solving]
+genre_affinity:
+  primary: [all]
+  secondary: []
+complexity: beginner
+signal_type: audio
+introduced_in: "8.0"
+
+key_parameters:
+  - name: "Band 1 Type"
+    description: "Filter type for band 1"
+    range: ["HP 12", "HP 24", "HP 48", "Low Shelf", "Bell", "Notch", "High Shelf", "LP 12", "LP 24", "LP 48"]
+    type: enum
+    sweet_spots:
+      highpass: "HP 48"
+      low_shelf: "Low Shelf"
+
+  - name: "Band 1 Freq"
+    description: "Center/cutoff frequency for band 1"
+    range: [20.0, 20000.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      rumble_filter: 30.0
+      vocal_hp: 80.0
+      mud_cut: 300.0
+
+  - name: "Band 1 Gain"
+    description: "Gain for band 1 (bell/shelf types)"
+    range: [-15.0, 15.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      subtle_cut: -3.0
+      moderate_boost: 3.0
+
+  - name: "Band 1 Q"
+    description: "Bandwidth/resonance — higher Q = narrower band"
+    range: [0.1, 18.0]
+    type: float
+    sweet_spots:
+      broad: 0.7
+      moderate: 1.4
+      surgical: 5.0
+      notch: 12.0
+
+  - name: "Band 4 Freq"
+    description: "Center frequency for band 4 — often used for presence"
+    range: [20.0, 20000.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      presence: 3000.0
+      vocal_clarity: 5000.0
+
+  - name: "Band 4 Gain"
+    description: "Gain for band 4"
+    range: [-15.0, 15.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      presence_boost: 2.0
+      honk_cut: -3.0
+
+  - name: "Band 8 Type"
+    description: "Filter type for band 8 — commonly used as low-pass"
+    range: ["HP 12", "HP 24", "HP 48", "Low Shelf", "Bell", "Notch", "High Shelf", "LP 12", "LP 24", "LP 48"]
+    type: enum
+    sweet_spots:
+      lowpass: "LP 24"
+      high_shelf: "High Shelf"
+
+  - name: "Oversampling"
+    description: "Reduces aliasing at high frequencies — use for mastering"
+    type: toggle
+    range: [0, 1]
+    sweet_spots:
+      off: 0
+      mastering: 1
+
+  - name: "Scale"
+    description: "Scales all band gains proportionally — useful for A/B comparison"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      full: 100.0
+      bypassed: 0.0
+
+pairs_well_with:
+  - device: "Compressor"
+    reason: "EQ before compression to prevent low-end pumping"
+  - device: "Saturator"
+    reason: "Shape tone before saturation to control harmonic content"
+  - device: "Reverb"
+    reason: "Cut low-end before reverb to prevent muddy tails"
+  - device: "Utility"
+    reason: "EQ for tone, Utility for level — complete channel strip"
+
+starter_recipes:
+  - name: "Surgical Mud Cut"
+    description: "Remove boxy mud frequencies to clean up any source"
+    genre: all
+    params:
+      "Band 1 Type": "Bell"
+      "Band 1 Freq": 400.0
+      "Band 1 Gain": -3.0
+      "Band 1 Q": 1.4
+
+  - name: "Presence Boost"
+    description: "Add clarity and presence to vocals or leads"
+    genre: all
+    params:
+      "Band 4 Type": "Bell"
+      "Band 4 Freq": 3000.0
+      "Band 4 Gain": 2.0
+      "Band 4 Q": 1.0
+
+  - name: "High-Pass Everything"
+    description: "Remove subsonic rumble from any non-bass track"
+    genre: all
+    params:
+      "Band 1 Type": "HP 48"
+      "Band 1 Freq": 30.0
+
+  - name: "Air Shelf"
+    description: "Add brightness and air to the top end"
+    genre: pop
+    params:
+      "Band 8 Type": "High Shelf"
+      "Band 8 Freq": 10000.0
+      "Band 8 Gain": 2.5
+
+gotchas:
+  - "All 8 bands are off by default — enable each band individually with the power toggle"
+  - "Oversampling doubles CPU usage — use only when needed (mastering, high-frequency bell boosts)"
+  - "Cutting is almost always better than boosting — if something sounds dull, cut elsewhere rather than boosting"
+  - "The analyzer shows input (gray) and output (colored) — use it to verify your moves"
+  - "Very high Q values (>8) are for surgical notch cuts, not musical shaping"
+  - "HP filter on every non-bass track at 20-40 Hz is good practice to remove inaudible energy"

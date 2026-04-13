@@ -1,0 +1,140 @@
+id: vector_delay
+name: Vector Delay
+sonic_description: >
+  Experimental delay with an XY vector pad that morphs between different delay states.
+  Moving through the XY space smoothly transitions between multiple delay time, feedback,
+  and filter configurations, creating evolving, animated echo textures that shift character
+  in real-time.
+effect_type: delay
+character_tags: [morphing, evolving, experimental, animated, creative]
+use_cases: [morphing_delay, evolving_echoes, performance, creative_effects, sound_design]
+genre_affinity:
+  primary: [electronic, ambient, experimental]
+  secondary: [idm, sound_design, film_score]
+complexity: advanced
+signal_type: audio
+introduced_in: "12.0"
+m4l_device: true
+
+key_parameters:
+  - name: "X Position"
+    description: "Horizontal position on the XY vector pad — morphs between delay states"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      left: 0.0
+      center: 0.5
+      right: 1.0
+
+  - name: "Y Position"
+    description: "Vertical position on the XY vector pad — morphs between delay states"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      bottom: 0.0
+      center: 0.5
+      top: 1.0
+
+  - name: "Delay Time"
+    description: "Base delay time affecting all vector states"
+    range: ["1/16", "1/8T", "1/8", "3/16", "1/4T", "1/4", "3/8", "1/2", "1"]
+    type: enum
+    sweet_spots:
+      eighth: "1/8"
+      quarter: "1/4"
+
+  - name: "Feedback"
+    description: "Amount of delay feedback across all states"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      few: 25.0
+      moderate: 45.0
+      dense: 70.0
+
+  - name: "Filter"
+    description: "Filter frequency on the feedback path"
+    range: [20.0, 20000.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      dark: 1500.0
+      warm: 4000.0
+      bright: 10000.0
+
+  - name: "Mod Rate"
+    description: "Rate of automatic XY movement modulation"
+    range: [0.01, 20.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      slow_drift: 0.1
+      moderate: 1.0
+      fast: 5.0
+
+  - name: "Mod Amount"
+    description: "Depth of automatic XY position modulation"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      subtle: 15.0
+      moderate: 40.0
+      wild: 80.0
+
+  - name: "Dry/Wet"
+    description: "Mix between dry and vector-delayed signal"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      subtle: 20.0
+      blend: 35.0
+      wet: 50.0
+
+pairs_well_with:
+  - device: "Reverb"
+    reason: "Reverb smooths the morphing transitions for ambient textures"
+  - device: "Auto Filter"
+    reason: "Additional filtering layers on top of the vector morphing"
+  - device: "Saturator"
+    reason: "Warm the morphing echoes with harmonic saturation"
+
+starter_recipes:
+  - name: "Morphing Delay"
+    description: "Slowly evolving delay character through XY modulation"
+    genre: ambient
+    params:
+      "Delay Time": "1/4"
+      Feedback: 45.0
+      "Mod Rate": 0.2
+      "Mod Amount": 50.0
+      "Dry/Wet": 30.0
+
+  - name: "Evolving Echoes"
+    description: "Dynamic, shifting echoes for experimental production"
+    genre: experimental
+    params:
+      "Delay Time": "1/8"
+      Feedback: 55.0
+      "Mod Rate": 1.5
+      "Mod Amount": 70.0
+      Filter: 3000.0
+      "Dry/Wet": 35.0
+
+  - name: "Performance Delay"
+    description: "Map XY to a controller for real-time delay morphing during performance"
+    genre: electronic
+    params:
+      "Delay Time": "3/16"
+      Feedback: 40.0
+      "Mod Amount": 0.0
+      "Dry/Wet": 30.0
+
+gotchas:
+  - "This is a Max for Live device — requires Suite or M4L license"
+  - "XY pad is ideal for MIDI controller mapping — map X and Y to knobs or a trackpad"
+  - "Modulation creates automatic movement but manual control gives more musical results"
+  - "Each corner of the XY pad represents a distinct delay configuration — explore all four"
+  - "Can be CPU-intensive when feedback is high and modulation is fast"

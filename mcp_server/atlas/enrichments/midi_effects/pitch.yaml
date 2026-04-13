@@ -1,0 +1,76 @@
+id: pitch
+name: Pitch
+sonic_description: >
+  Simple, transparent MIDI pitch transposition that shifts all incoming notes by a
+  fixed semitone interval. Can also limit transposition to a specific note range.
+  The most direct way to change the key of MIDI input without editing notes.
+effect_type: midi_processor
+character_tags: [transposition, simple, utility, transparent]
+use_cases: [transposition, octave_shifting, key_change, range_limiting, layered_transposition]
+genre_affinity:
+  primary: [pop, edm, rock]
+  secondary: [jazz, classical, ambient]
+complexity: beginner
+introduced_in: "1.0"
+
+key_parameters:
+  - name: "Pitch"
+    description: "Semitone offset applied to all incoming notes"
+    range: [-48, 48]
+    unit: "st"
+    type: int
+    sweet_spots:
+      octave_down: -12
+      fifth_down: -7
+      no_change: 0
+      fifth_up: 7
+      octave_up: 12
+      two_octaves_up: 24
+
+  - name: "Range"
+    description: "Whether to limit the affected pitch range"
+    range: ["On", "Off"]
+    type: enum
+
+  - name: "Lowest"
+    description: "Lower bound of the affected MIDI note range (when Range is On)"
+    range: [0, 127]
+    type: int
+
+  - name: "Highest"
+    description: "Upper bound of the affected MIDI note range (when Range is On)"
+    range: [0, 127]
+    type: int
+
+pairs_well_with:
+  - device: "Chord"
+    reason: "Transpose the output of Chord to shift entire chord structures"
+  - device: "Arpeggiator"
+    reason: "Shift arpeggiated output up or down without changing the arp pattern"
+  - device: "Scale"
+    reason: "Transpose then snap to scale for key-aware transposition"
+
+starter_recipes:
+  - name: "Octave Up"
+    description: "Shift all notes up one octave"
+    genre: pop
+    params:
+      "Pitch": 12
+
+  - name: "Octave Down"
+    description: "Shift all notes down one octave for bass register"
+    genre: edm
+    params:
+      "Pitch": -12
+
+  - name: "Transpose to Key"
+    description: "Shift up a fifth — useful for quick harmonic layering"
+    genre: pop
+    params:
+      "Pitch": 7
+
+gotchas:
+  - "Pitch is a static offset — it does not adapt to key or scale. Notes shifted out of scale will sound wrong without a Scale device"
+  - "Range mode only transposes notes within the specified range — notes outside pass through unchanged"
+  - "Values beyond +/-48 semitones can push notes outside the audible MIDI range (0-127)"
+  - "Multiple Pitch devices stack additively — two +7 Pitch devices = +14 semitones total"

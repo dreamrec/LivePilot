@@ -1,0 +1,159 @@
+id: roar
+name: Roar
+sonic_description: >
+  Multi-stage distortion and saturation processor with parallel routing options introduced
+  in Live 12. Features multiple distortion algorithms that can be chained or run in parallel,
+  offering everything from subtle warming to extreme textural destruction with sophisticated
+  routing and feedback options.
+effect_type: distortion
+character_tags: [aggressive, textural, parallel, multi_stage, destructive]
+use_cases: [aggressive_distortion, parallel_saturation, textural_destruction, creative_sound_design, warm_parallel]
+genre_affinity:
+  primary: [industrial, electronic, experimental, techno]
+  secondary: [rock, hip_hop, sound_design]
+complexity: advanced
+signal_type: audio
+introduced_in: "12.0"
+
+key_parameters:
+  - name: "Drive"
+    description: "Primary distortion drive amount"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      subtle: 15.0
+      moderate: 40.0
+      heavy: 70.0
+      extreme: 100.0
+
+  - name: "Routing"
+    description: "Signal flow between distortion stages — serial, parallel, or feedback"
+    range: ["Serial", "Parallel", "Feedback"]
+    type: enum
+    sweet_spots:
+      stacked: "Serial"
+      blended: "Parallel"
+      chaotic: "Feedback"
+
+  - name: "Stage 1 Type"
+    description: "Distortion algorithm for the first stage"
+    range: ["Saturate", "Fold", "Clip", "Squeeze", "Erode"]
+    type: enum
+    sweet_spots:
+      warm: "Saturate"
+      complex: "Fold"
+      hard: "Clip"
+
+  - name: "Stage 2 Type"
+    description: "Distortion algorithm for the second stage"
+    range: ["Saturate", "Fold", "Clip", "Squeeze", "Erode"]
+    type: enum
+    sweet_spots:
+      complement: "Fold"
+      texture: "Erode"
+
+  - name: "Tone"
+    description: "Brightness/darkness control for the overall distortion"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      dark: 20.0
+      neutral: 50.0
+      bright: 80.0
+
+  - name: "Feedback"
+    description: "Internal feedback amount — creates self-oscillation at high values"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      off: 0.0
+      subtle: 20.0
+      chaotic: 60.0
+      screaming: 90.0
+
+  - name: "Comp"
+    description: "Built-in compression before or after distortion"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      off: 0.0
+      gentle: 30.0
+      heavy: 70.0
+
+  - name: "Body"
+    description: "Low-frequency emphasis — adds weight to the distortion"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      thin: 0.0
+      warm: 40.0
+      heavy: 70.0
+
+  - name: "Dry/Wet"
+    description: "Mix between clean and distorted signal"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      parallel_subtle: 30.0
+      blend: 50.0
+      full: 100.0
+
+pairs_well_with:
+  - device: "EQ Eight"
+    reason: "Surgical frequency control before and after multi-stage distortion"
+  - device: "Compressor"
+    reason: "Tame dynamics after aggressive distortion"
+  - device: "Reverb"
+    reason: "Space and depth after textural distortion for soundscape design"
+  - device: "Auto Filter"
+    reason: "Dynamic filtering on the distorted output for movement"
+
+starter_recipes:
+  - name: "Aggressive Parallel Distortion"
+    description: "Hard-clipped distortion blended with clean signal for impact without mush"
+    genre: electronic
+    params:
+      Drive: 70.0
+      Routing: "Parallel"
+      "Stage 1 Type": "Clip"
+      "Stage 2 Type": "Fold"
+      Tone: 55.0
+      "Dry/Wet": 45.0
+
+  - name: "Textural Destruction"
+    description: "Extreme distortion with feedback for industrial textures"
+    genre: industrial
+    params:
+      Drive: 85.0
+      Routing: "Feedback"
+      "Stage 1 Type": "Fold"
+      "Stage 2 Type": "Erode"
+      Feedback: 50.0
+      Tone: 40.0
+      "Dry/Wet": 80.0
+
+  - name: "Warm Parallel Saturation"
+    description: "Subtle multi-stage warmth for bus or master processing"
+    genre: all
+    params:
+      Drive: 25.0
+      Routing: "Parallel"
+      "Stage 1 Type": "Saturate"
+      "Stage 2 Type": "Saturate"
+      Body: 40.0
+      Comp: 30.0
+      "Dry/Wet": 35.0
+
+gotchas:
+  - "Feedback routing can self-oscillate unpredictably — start with low Feedback values"
+  - "Multiple stages compound the distortion — Drive at 50% with two stages is much heavier than a single stage at 50%"
+  - "Different stage type combinations create very different results — experiment methodically"
+  - "The built-in Comp interacts with the distortion character — try pre and post positions"
+  - "Body adds sub content that can overpower monitors — check on full-range systems"
+  - "New in Live 12 — no equivalent in earlier versions"

@@ -1,0 +1,117 @@
+id: random
+name: Random
+sonic_description: >
+  Adds controlled randomization to MIDI note properties — pitch, velocity, or timing.
+  Creates evolving, non-repeating patterns from static input, ranging from subtle
+  humanization to full generative chaos depending on parameter settings.
+effect_type: midi_processor
+character_tags: [generative, chaotic, evolving, unpredictable, humanizing]
+use_cases: [generative_melody, humanization, probability_gates, evolving_patterns, controlled_chaos]
+genre_affinity:
+  primary: [ambient, experimental, generative]
+  secondary: [techno, idm, glitch]
+complexity: intermediate
+introduced_in: "1.0"
+
+key_parameters:
+  - name: "Chance"
+    description: "Probability that randomization occurs on each note (0 = never, 100 = always)"
+    range: [0, 100]
+    unit: "%"
+    type: int
+    sweet_spots:
+      subtle: 25
+      moderate: 50
+      frequent: 75
+      always: 100
+
+  - name: "Choices"
+    description: "Number of possible random values — higher = more variation"
+    range: [1, 24]
+    type: int
+    sweet_spots:
+      binary: 2
+      diatonic: 7
+      chromatic: 12
+      wide: 24
+
+  - name: "Scale"
+    description: "Semitone range of randomization"
+    range: [1, 24]
+    unit: "st"
+    type: int
+    sweet_spots:
+      subtle: 2
+      octave: 12
+      two_octave: 24
+
+  - name: "Mode"
+    description: "How randomization is applied"
+    range: ["Add", "Toggle", "Randomize"]
+    type: enum
+    sweet_spots:
+      humanize: "Add"
+      probability: "Toggle"
+      generative: "Randomize"
+
+  - name: "Sign"
+    description: "Direction of random offset"
+    range: ["Bi", "Add", "Sub"]
+    type: enum
+
+pairs_well_with:
+  - device: "Scale"
+    reason: "Corrects random pitch output to stay in key — essential for musical results"
+  - device: "Arpeggiator"
+    reason: "Randomizes arpeggiated patterns for evolving sequences"
+  - device: "Wavetable"
+    reason: "Evolving timbres pair well with unpredictable melodic input"
+  - device: "Delay"
+    reason: "Delay smears random variations into complex evolving textures"
+  - device: "Reverb"
+    reason: "Reverb tail blends randomized notes into atmospheric washes"
+
+starter_recipes:
+  - name: "Subtle Pitch Variation"
+    description: "Gentle random pitch offsets for organic, human feel"
+    genre: ambient
+    params:
+      "Chance": 30
+      "Choices": 3
+      "Scale": 2
+      "Mode": "Add"
+      "Sign": "Bi"
+
+  - name: "Generative Melody"
+    description: "Full random pitch within an octave — pair with Scale for musicality"
+    genre: generative
+    params:
+      "Chance": 100
+      "Choices": 12
+      "Scale": 12
+      "Mode": "Randomize"
+      "Sign": "Bi"
+
+  - name: "Controlled Chaos"
+    description: "High chance, wide range randomization for experimental textures"
+    genre: experimental
+    params:
+      "Chance": 80
+      "Choices": 24
+      "Scale": 24
+      "Mode": "Randomize"
+      "Sign": "Bi"
+
+  - name: "Probability Gate"
+    description: "50% chance each note plays — creates evolving rhythmic patterns"
+    genre: techno
+    params:
+      "Chance": 50
+      "Mode": "Toggle"
+
+gotchas:
+  - "Without a Scale device after Random, output will be chromatic and likely dissonant"
+  - "Chance at 100% means every note is affected — lower values create a mix of original and randomized notes"
+  - "Toggle mode does not change pitch — it randomly enables or disables notes, acting as a probability gate"
+  - "Choices and Scale interact — Choices subdivides the Scale range into equal steps"
+  - "Sign=Add only offsets upward, Sign=Sub only downward — use Bi for balanced randomization"

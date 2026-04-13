@@ -1,5 +1,5 @@
 """
-LivePilot - Browser domain handlers (5 commands).
+LivePilot - Browser domain handlers (6 commands).
 """
 
 import Live
@@ -384,6 +384,61 @@ def load_browser_item(song, params):
     raise ValueError(
         "Item '%s' not found in browser" % device_name
     )
+
+
+_SCAN_MAX_ITERATIONS = 100000
+
+
+def _scan_recursive(item, results, depth, max_depth, max_per_category,
+                    _counter=None):
+    """Recursively collect loadable browser items with iteration cap."""
+    if _counter is None:
+        _counter = [0]
+    if depth > max_depth or len(results) >= max_per_category:
+        return
+    for child in item.children:
+        _counter[0] += 1
+        if _counter[0] > _SCAN_MAX_ITERATIONS or len(results) >= max_per_category:
+            return
+        if child.is_loadable:
+            entry = {"name": child.name, "is_loadable": True}
+            try:
+                entry["uri"] = child.uri
+            except AttributeError:
+                entry["uri"] = None
+            results.append(entry)
+        if child.is_folder:
+            _scan_recursive(
+                child, results, depth + 1, max_depth, max_per_category,
+                _counter
+            )
+            if len(results) >= max_per_category:
+                return
+
+
+@register("scan_browser_deep")
+def scan_browser_deep(song, params):
+    """Walk the entire browser tree and return all loadable items by category.
+
+    Parameters
+    ----------
+    max_per_category : int, optional
+        Maximum items to collect per top-level category (default 1000).
+    max_depth : int, optional
+        Maximum recursion depth into the browser tree (default 4).
+    """
+    max_per_category = int(params.get("max_per_category", 1000))
+    max_depth = int(params.get("max_depth", 4))
+    browser = _get_browser()
+    categories = _get_categories(browser)
+
+    result = {}
+    for cat_name, cat_item in categories.items():
+        items = []
+        _scan_recursive(cat_item, items, 0, max_depth, max_per_category)
+        result[cat_name] = items
+
+    return {"categories": result}
 
 
 @register("get_device_presets")

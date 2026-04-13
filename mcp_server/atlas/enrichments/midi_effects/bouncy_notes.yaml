@@ -1,0 +1,93 @@
+id: bouncy_notes
+name: Bouncy Notes
+sonic_description: >
+  Physics-based MIDI note repetition inspired by a bouncing ball — notes repeat with
+  decreasing intervals and velocity, simulating gravity and friction. Creates organic,
+  naturally decaying rhythmic patterns impossible to program manually.
+effect_type: midi_processor
+character_tags: [physics, rhythmic, organic, percussive, decaying]
+use_cases: [bouncing_ball_rhythm, percussive_repeats, organic_decay, creative_echo, physics_patterns]
+genre_affinity:
+  primary: [edm, experimental, idm]
+  secondary: [pop, hip_hop, glitch]
+complexity: intermediate
+introduced_in: "12.0"
+
+key_parameters:
+  - name: "Gravity"
+    description: "Strength of the gravity simulation — higher values create faster bounces"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      light: 0.2
+      moderate: 0.5
+      heavy: 0.8
+
+  - name: "Friction"
+    description: "Energy loss per bounce — higher values make bounces decay faster"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      sustained: 0.1
+      natural: 0.4
+      damped: 0.8
+
+  - name: "Bounce"
+    description: "Elasticity of the bounce — affects how high the ball rebounds"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      dead: 0.2
+      rubber: 0.5
+      super_ball: 0.9
+
+  - name: "Velocity Sensitivity"
+    description: "How much input velocity affects the initial bounce height"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      fixed: 0.0
+      responsive: 0.5
+      dramatic: 1.0
+
+pairs_well_with:
+  - device: "Drum Rack"
+    reason: "Bouncing percussion hits create organic fill patterns"
+  - device: "Simpler"
+    reason: "Bouncing one-shot samples for creative percussive textures"
+  - device: "Reverb"
+    reason: "Reverb tail on bouncing notes creates immersive spatial effects"
+  - device: "Auto Filter"
+    reason: "Filter sweep across bouncing repeats for timbral decay"
+
+starter_recipes:
+  - name: "Bouncing Ball"
+    description: "Classic bouncing ball effect — fast decay, natural physics feel"
+    genre: edm
+    params:
+      "Gravity": 0.7
+      "Friction": 0.3
+      "Bounce": 0.7
+
+  - name: "Long Decay Bounce"
+    description: "Sustained bouncing with low friction for extended rhythmic patterns"
+    genre: ambient
+    params:
+      "Gravity": 0.4
+      "Friction": 0.1
+      "Bounce": 0.8
+
+  - name: "Staccato Bounce"
+    description: "Tight, damped bounces for percussive accents"
+    genre: techno
+    params:
+      "Gravity": 0.9
+      "Friction": 0.7
+      "Bounce": 0.4
+
+gotchas:
+  - "New in Live 12 — not available in earlier versions"
+  - "High Bounce + low Friction creates very long note tails — can cause MIDI overload on dense parts"
+  - "The physics simulation is real-time — bounces are not quantized to the grid"
+  - "Velocity Sensitivity at 0 means all notes bounce the same regardless of how hard you play"
+  - "Works best with percussive, short sounds — sustained pads can become muddy with overlapping bounces"

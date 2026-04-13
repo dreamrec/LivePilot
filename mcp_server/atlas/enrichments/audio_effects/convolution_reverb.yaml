@@ -1,0 +1,143 @@
+id: convolution_reverb
+name: Convolution Reverb
+sonic_description: >
+  Impulse response reverb that uses real-world recordings of acoustic spaces to create
+  authentic, realistic reverberations. Each IR captures the exact reflections, frequency
+  response, and character of a physical space — from recording studios to cathedrals
+  to vintage spring and plate reverb units.
+effect_type: reverb
+character_tags: [realistic, authentic, detailed, natural, immersive]
+use_cases: [real_room_emulation, creative_ir, plate_reverb, spring_reverb, space_simulation]
+genre_affinity:
+  primary: [all]
+  secondary: []
+complexity: intermediate
+signal_type: audio
+introduced_in: "10.0"
+m4l_device: true
+
+key_parameters:
+  - name: "IR"
+    description: "Impulse response file — the recorded space character"
+    type: file
+    sweet_spots:
+      room: "Studio or Room IR"
+      plate: "Plate Reverb IR"
+      spring: "Spring Reverb IR"
+
+  - name: "Size"
+    description: "Scales the impulse response duration — stretches or shrinks the space"
+    range: [10.0, 400.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      small: 50.0
+      natural: 100.0
+      large: 200.0
+
+  - name: "Pre Delay"
+    description: "Delay before the impulse response begins"
+    range: [0.0, 500.0]
+    unit: ms
+    type: float
+    sweet_spots:
+      intimate: 0.0
+      separated: 20.0
+      distant: 50.0
+
+  - name: "Decay"
+    description: "Adjusts the decay envelope of the impulse response"
+    range: [0.1, 10.0]
+    unit: s
+    type: float
+    sweet_spots:
+      short: 0.5
+      medium: 1.5
+      long: 4.0
+
+  - name: "EQ Low"
+    description: "Low-frequency gain on the reverb output"
+    range: [-15.0, 15.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      cut: -6.0
+      flat: 0.0
+
+  - name: "EQ Mid"
+    description: "Mid-frequency gain on the reverb output"
+    range: [-15.0, 15.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      flat: 0.0
+      scoop: -3.0
+
+  - name: "EQ High"
+    description: "High-frequency gain on the reverb output"
+    range: [-15.0, 15.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      dark: -6.0
+      flat: 0.0
+      bright: 3.0
+
+  - name: "Dry/Wet"
+    description: "Mix between dry and convolved signal"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      subtle: 15.0
+      moderate: 30.0
+      wet: 50.0
+      return_track: 100.0
+
+pairs_well_with:
+  - device: "EQ Eight"
+    reason: "Detailed frequency shaping of the reverb output beyond built-in EQ"
+  - device: "Compressor"
+    reason: "Control dynamics of the convolved signal"
+  - device: "Delay"
+    reason: "Add echo dimension to the convolved space"
+  - device: "Utility"
+    reason: "Width and level control on the reverb output"
+
+starter_recipes:
+  - name: "Real Room Emulation"
+    description: "Authentic room reverb using a studio IR for natural placement"
+    genre: all
+    params:
+      Size: 100.0
+      "Pre Delay": 10.0
+      Decay: 1.5
+      "EQ Low": -3.0
+      "Dry/Wet": 25.0
+
+  - name: "Creative Plate"
+    description: "Plate reverb IR for classic vocal and snare treatment"
+    genre: pop
+    params:
+      Size: 100.0
+      "Pre Delay": 15.0
+      Decay: 2.0
+      "EQ High": 2.0
+      "Dry/Wet": 20.0
+
+  - name: "Spring Character"
+    description: "Spring reverb IR for guitar or lo-fi vocal character"
+    genre: rock
+    params:
+      Size: 80.0
+      "Pre Delay": 0.0
+      Decay: 1.0
+      "Dry/Wet": 25.0
+
+gotchas:
+  - "This is a Max for Live device — requires Suite or M4L license"
+  - "IR files use memory — long IRs at high sample rates increase RAM usage significantly"
+  - "Size stretching above 200% can introduce artifacts — use for creative effects, not realism"
+  - "Cannot adjust room character as flexibly as algorithmic reverb — the IR defines the space"
+  - "Custom IRs can be loaded from WAV/AIFF files — record your own spaces with a balloon pop or starter pistol"
+  - "More CPU-intensive than Reverb — use on return tracks and freeze tracks when needed"

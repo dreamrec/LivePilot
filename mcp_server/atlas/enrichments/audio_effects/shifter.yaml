@@ -1,0 +1,154 @@
+id: shifter
+name: Shifter
+sonic_description: >
+  Pitch shifter, frequency shifter, and ring modulator in one device. Pitch Shift mode
+  transposes in semitones (harmonic). Frequency Shift mode shifts in Hz (inharmonic,
+  metallic). Ring Mod mode multiplies the input with an oscillator for bell-like,
+  metallic timbres. Renamed from Frequency Shifter in Live 12.
+effect_type: modulation
+character_tags: [metallic, inharmonic, creative, otherworldly, experimental]
+use_cases: [pitch_shifting, ring_modulation, metallic_textures, detuning, frequency_shifting]
+genre_affinity:
+  primary: [experimental, electronic, sound_design]
+  secondary: [ambient, idm, industrial]
+complexity: intermediate
+signal_type: audio
+introduced_in: "8.0"
+
+key_parameters:
+  - name: "Mode"
+    description: "Processing mode — Shift (pitch), Ring (ring mod), or Freq Shift (Hz-based)"
+    range: ["Shift", "Ring", "Freq Shift"]
+    type: enum
+    sweet_spots:
+      pitch: "Shift"
+      metallic: "Ring"
+      inharmonic: "Freq Shift"
+
+  - name: "Coarse"
+    description: "Coarse pitch shift in semitones (Shift mode)"
+    range: [-48, 48]
+    unit: st
+    type: int
+    sweet_spots:
+      octave_down: -12
+      fifth: 7
+      octave_up: 12
+
+  - name: "Fine"
+    description: "Fine pitch shift in cents (Shift mode)"
+    range: [-100, 100]
+    unit: cents
+    type: int
+    sweet_spots:
+      subtle_detune: -10
+      chorus_like: 7
+      quarter_tone: 50
+
+  - name: "Frequency"
+    description: "Shift amount in Hz (Freq Shift mode) or ring mod frequency (Ring mode)"
+    range: [-5000.0, 5000.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      subtle_shift: 2.0
+      metallic: 200.0
+      extreme: 1000.0
+
+  - name: "Ring Mod Freq"
+    description: "Ring modulator oscillator frequency (Ring mode)"
+    range: [0.1, 5000.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      tremolo: 5.0
+      metallic: 200.0
+      bell: 800.0
+      harsh: 2000.0
+
+  - name: "Drive"
+    description: "Input gain before processing"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      clean: 0.0
+      moderate: 30.0
+      hot: 60.0
+
+  - name: "Feedback"
+    description: "Feeds shifted signal back into the input for cascading pitch effects"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      off: 0.0
+      subtle: 20.0
+      shimmering: 50.0
+      runaway: 80.0
+
+  - name: "Dry/Wet"
+    description: "Mix between dry and shifted signal"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      subtle: 15.0
+      blend: 35.0
+      heavy: 60.0
+      full: 100.0
+
+pairs_well_with:
+  - device: "Reverb"
+    reason: "Reverb on shifted signal creates ethereal, otherworldly spaces"
+  - device: "Delay"
+    reason: "Delay + pitch shift = shimmer effect"
+  - device: "EQ Eight"
+    reason: "Tame harsh harmonics from ring mod or frequency shifting"
+  - device: "Auto Filter"
+    reason: "Filter the metallic artifacts for controlled texture"
+
+starter_recipes:
+  - name: "Octave Up Shimmer"
+    description: "Pitch shift up one octave blended with reverb for shimmer"
+    genre: ambient
+    params:
+      Mode: "Shift"
+      Coarse: 12
+      Fine: 0
+      Feedback: 30.0
+      "Dry/Wet": 25.0
+
+  - name: "Ring Mod Metallic"
+    description: "Classic ring modulation for metallic, bell-like textures"
+    genre: experimental
+    params:
+      Mode: "Ring"
+      "Ring Mod Freq": 300.0
+      Drive: 20.0
+      "Dry/Wet": 50.0
+
+  - name: "Subtle Detune"
+    description: "Gentle pitch offset for subtle thickening and unease"
+    genre: all
+    params:
+      Mode: "Shift"
+      Coarse: 0
+      Fine: -8
+      "Dry/Wet": 30.0
+
+  - name: "Frequency Shift Movement"
+    description: "Small Hz-based shift for subtle inharmonic movement"
+    genre: ambient
+    params:
+      Mode: "Freq Shift"
+      Frequency: 3.0
+      "Dry/Wet": 40.0
+
+gotchas:
+  - "Browser name is 'Shifter' (not 'Frequency Shifter') — use this with find_and_load_device"
+  - "Frequency Shift mode shifts in Hz, not semitones — even small values create inharmonic content"
+  - "Ring Mod at low frequencies (1-10 Hz) creates tremolo; at higher frequencies creates new sidebands"
+  - "Feedback with pitch shift creates ever-ascending or descending pitch cascades"
+  - "Frequency Shift at +/- 1-5 Hz creates subtle beating and movement without obvious pitch change"
+  - "Ring Mod produces sum and difference frequencies — the output contains frequencies not in the input"

@@ -1,0 +1,183 @@
+id: beat_repeat
+name: Beat Repeat
+sonic_description: >
+  Rhythmic audio repeater and glitch machine that captures and stutters incoming audio
+  at controllable intervals. Creates fills, builds, and glitch effects by grabbing a
+  slice of audio and repeating it at various grid divisions with pitch decay and filtering.
+effect_type: delay
+character_tags: [glitchy, rhythmic, stuttered, creative, performable]
+use_cases: [fill_builder, glitch_stutter, dj_style, beat_mangle, transition, live_performance]
+genre_affinity:
+  primary: [electronic, glitch, idm, hip_hop]
+  secondary: [dnb, house, experimental]
+complexity: intermediate
+signal_type: audio
+introduced_in: "5.0"
+
+key_parameters:
+  - name: "Interval"
+    description: "How often Beat Repeat activates — the repetition cycle"
+    range: ["1/32", "1/16", "1/8", "1/4", "1/2", "1 Bar", "2 Bars", "4 Bars"]
+    type: enum
+    sweet_spots:
+      every_beat: "1/4"
+      every_bar: "1 Bar"
+      every_2_bars: "2 Bars"
+
+  - name: "Offset"
+    description: "Shifts the activation point within the Interval"
+    range: [0, 16]
+    type: int
+    sweet_spots:
+      start: 0
+      half: 8
+
+  - name: "Grid"
+    description: "Size of the repeated slice — determines the repeat rhythm"
+    range: ["1/32", "1/16", "1/8", "1/4", "1/2", "1 Bar"]
+    type: enum
+    sweet_spots:
+      fast_stutter: "1/32"
+      sixteenth: "1/16"
+      eighth: "1/8"
+      quarter: "1/4"
+
+  - name: "Variation"
+    description: "Adds rhythmic variation to the grid size over time"
+    range: [0, 100]
+    unit: "%"
+    type: int
+    sweet_spots:
+      locked: 0
+      subtle: 20
+      wild: 60
+
+  - name: "Chance"
+    description: "Probability that Beat Repeat activates each interval"
+    range: [0, 100]
+    unit: "%"
+    type: int
+    sweet_spots:
+      always: 100
+      occasional: 50
+      rare: 20
+
+  - name: "Gate"
+    description: "How long the repeat effect runs before passing through"
+    range: ["1/32", "1/16", "1/8", "1/4", "1/2", "1 Bar", "2 Bars", "4 Bars"]
+    type: enum
+    sweet_spots:
+      short: "1/4"
+      medium: "1 Bar"
+      long: "2 Bars"
+
+  - name: "Pitch"
+    description: "Pitch decay — repeats descend in pitch over time"
+    range: [0, 100]
+    unit: "%"
+    type: int
+    sweet_spots:
+      off: 0
+      subtle: 20
+      heavy: 60
+
+  - name: "Pitch Decay"
+    description: "Rate at which pitch drops during the repeat"
+    range: [0, 100]
+    unit: "%"
+    type: int
+    sweet_spots:
+      slow: 20
+      medium: 50
+      fast: 80
+
+  - name: "Filter Freq"
+    description: "Low-pass filter on the repeated signal"
+    range: [20.0, 20000.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      dark: 2000.0
+      warm: 5000.0
+      open: 15000.0
+
+  - name: "Volume"
+    description: "Output volume of the repeated signal"
+    range: [-inf, 6.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      unity: 0.0
+      quiet: -6.0
+
+  - name: "Decay"
+    description: "Volume decay of repeats over time"
+    range: [0, 100]
+    unit: "%"
+    type: int
+    sweet_spots:
+      constant: 0
+      gentle: 30
+      rapid: 70
+
+  - name: "Mix Mode"
+    description: "Insert (replaces audio) or Mix (layers with original)"
+    range: ["Insert", "Mix"]
+    type: enum
+    sweet_spots:
+      replace: "Insert"
+      layer: "Mix"
+
+pairs_well_with:
+  - device: "Auto Filter"
+    reason: "Dynamic filter movement on the repeated audio"
+  - device: "Reverb"
+    reason: "Smear the stutters with reverb for dramatic builds"
+  - device: "Redux"
+    reason: "Bitcrush the repeats for extra lo-fi glitch character"
+  - device: "Saturator"
+    reason: "Drive the stuttered audio for aggressive texture"
+
+starter_recipes:
+  - name: "Fill Builder"
+    description: "Rhythmic fill that activates every 2 bars with accelerating stutter"
+    genre: electronic
+    params:
+      Interval: "2 Bars"
+      Grid: "1/8"
+      Variation: 40
+      Chance: 100
+      Gate: "1 Bar"
+      Pitch: 0
+      Decay: 20
+
+  - name: "Glitch Stutter"
+    description: "Random glitch bursts for experimental textures"
+    genre: idm
+    params:
+      Interval: "1/4"
+      Grid: "1/32"
+      Variation: 60
+      Chance: 30
+      Gate: "1/4"
+      Pitch: 30
+      "Pitch Decay": 50
+
+  - name: "DJ-Style Beat Mangle"
+    description: "Performance-ready beat repeat for live manipulation"
+    genre: dj
+    params:
+      Interval: "1 Bar"
+      Grid: "1/16"
+      Variation: 20
+      Chance: 100
+      Gate: "1/2"
+      "Mix Mode": "Insert"
+
+gotchas:
+  - "Insert mode replaces the original audio — Mix mode layers repeats on top"
+  - "Chance at 100% means it always triggers — lower values create unpredictable fills"
+  - "Variation adds randomness to grid size — starts musical but can get chaotic at high values"
+  - "Pitch decay creates a classic turntable-slowdown effect — set Pitch and Pitch Decay together"
+  - "Gate controls duration, not whether it triggers — Chance controls probability"
+  - "Map Grid to a MIDI controller for real-time stutter size changes during performance"

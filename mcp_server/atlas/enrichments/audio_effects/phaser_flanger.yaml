@@ -1,0 +1,161 @@
+id: phaser_flanger
+name: Phaser-Flanger
+sonic_description: >
+  Combined phaser and flanger effect with three modes — Phaser (sweeping notch filters),
+  Flanger (short modulated delay), and Doubler (subtle stereo widening). Creates everything
+  from subtle movement to dramatic jet-engine sweeps and metallic textures.
+effect_type: modulation
+character_tags: [sweeping, metallic, jet, wide, psychedelic]
+use_cases: [phaser_sweep, jet_flanger, stereo_doubling, metallic_texture, psychedelic_effect]
+genre_affinity:
+  primary: [psychedelic, electronic, funk, rock]
+  secondary: [synthwave, ambient, pop, progressive]
+complexity: beginner
+signal_type: audio
+introduced_in: "11.0"
+
+key_parameters:
+  - name: "Mode"
+    description: "Effect type — Phaser, Flanger, or Doubler"
+    range: ["Phaser", "Flanger", "Doubler"]
+    type: enum
+    sweet_spots:
+      notch_sweep: "Phaser"
+      jet_whoosh: "Flanger"
+      width: "Doubler"
+
+  - name: "Rate"
+    description: "LFO speed controlling the sweep"
+    range: [0.01, 20.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      slow_sweep: 0.2
+      moderate: 1.0
+      fast: 5.0
+
+  - name: "Amount"
+    description: "Depth of the modulation sweep"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      subtle: 20.0
+      moderate: 45.0
+      deep: 75.0
+      extreme: 100.0
+
+  - name: "Feedback"
+    description: "Intensity of the effect — higher values create more pronounced resonances"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      subtle: 15.0
+      moderate: 40.0
+      intense: 70.0
+      metallic: 90.0
+
+  - name: "Center"
+    description: "Center frequency of the modulation sweep"
+    range: [20.0, 20000.0]
+    unit: Hz
+    type: float
+    sweet_spots:
+      low: 200.0
+      mid: 1000.0
+      high: 4000.0
+
+  - name: "Spread"
+    description: "Stereo spread of the modulation — creates wide sweeps"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      mono: 0.0
+      moderate: 50.0
+      wide: 100.0
+
+  - name: "Width"
+    description: "Stereo width of the output"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      narrow: 30.0
+      normal: 70.0
+      wide: 100.0
+
+  - name: "Dry/Wet"
+    description: "Mix between dry and effected signal"
+    range: [0.0, 100.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      subtle: 20.0
+      moderate: 40.0
+      heavy: 60.0
+
+pairs_well_with:
+  - device: "Overdrive"
+    reason: "Distortion before phaser for classic psychedelic guitar tone"
+  - device: "Reverb"
+    reason: "Reverb after flanger smears the metallic sweeps into a wash"
+  - device: "Delay"
+    reason: "Echo after phaser for spacious, evolving repeats"
+  - device: "Auto Filter"
+    reason: "Layer filter sweep with phaser for complex modulation"
+
+starter_recipes:
+  - name: "Jet Flanger"
+    description: "Classic jet engine flanging effect"
+    genre: rock
+    params:
+      Mode: "Flanger"
+      Rate: 0.3
+      Amount: 60.0
+      Feedback: 65.0
+      Center: 800.0
+      "Dry/Wet": 50.0
+
+  - name: "Subtle Phase"
+    description: "Gentle phaser movement for synth pads or clean guitar"
+    genre: pop
+    params:
+      Mode: "Phaser"
+      Rate: 0.5
+      Amount: 30.0
+      Feedback: 25.0
+      Center: 1500.0
+      "Dry/Wet": 35.0
+
+  - name: "Metallic Sweep"
+    description: "Intense, resonant phaser sweep for psychedelic textures"
+    genre: psychedelic
+    params:
+      Mode: "Phaser"
+      Rate: 0.15
+      Amount: 80.0
+      Feedback: 80.0
+      Center: 1000.0
+      Spread: 80.0
+      "Dry/Wet": 55.0
+
+  - name: "Stereo Doubler"
+    description: "Subtle stereo widening without obvious modulation"
+    genre: all
+    params:
+      Mode: "Doubler"
+      Rate: 0.8
+      Amount: 20.0
+      Feedback: 0.0
+      Width: 100.0
+      "Dry/Wet": 30.0
+
+gotchas:
+  - "Phaser creates notches in the spectrum; Flanger uses a short delay — they sound fundamentally different"
+  - "High Feedback in Flanger mode creates metallic, resonant sounds — can be harsh"
+  - "Doubler mode is designed for subtle widening — don't push Amount or Feedback too high"
+  - "Check mono compatibility — phaser and flanger can cause significant phase cancellation"
+  - "Center frequency determines where in the spectrum the sweep occurs — low Center for bass-heavy sweeps"
+  - "Spread creates left/right phase offset in the sweep — increases stereo width but can thin mono sum"

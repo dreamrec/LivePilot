@@ -1,0 +1,163 @@
+id: emit
+name: Emit
+sonic_description: >
+  Spectral synthesizer with direct control over individual harmonics and partials.
+  Allows sculpting of timbres at the partial level with spectral filtering, built-in
+  effects, and organic motion. Produces crystalline, ethereal, and breathy tones
+  that sit between synthesis and acoustic sound in a way no other Live instrument achieves.
+synthesis_type: spectral
+character_tags: [crystalline, ethereal, spectral, breathy, luminous]
+use_cases: [pads, textures, atmospheric, vocal_textures, sound_design]
+genre_affinity:
+  primary: [ambient, experimental, cinematic]
+  secondary: [electronic, post_rock, new_age, sound_design]
+complexity: advanced
+self_contained: true
+introduced_in: "12.0"
+
+key_parameters:
+  - name: "Partials"
+    description: "Number of active harmonic partials in the sound"
+    range: [1, 64]
+    type: int
+    sweet_spots:
+      simple_pure: 4
+      rich: 16
+      complex: 32
+      maximum: 64
+
+  - name: "Spectral Shape"
+    description: "Overall spectral envelope that shapes which partials are prominent"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      fundamental_heavy: 0.1
+      balanced: 0.5
+      upper_partials: 0.9
+
+  - name: "Spectral Filter"
+    description: "Spectral domain filtering — shapes the harmonic content differently from traditional filters"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      dark: 0.2
+      neutral: 0.5
+      bright: 0.9
+
+  - name: "Breath"
+    description: "Amount of breathy, noise-like component blended with the partials"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      pure: 0.0
+      subtle_air: 0.2
+      breathy: 0.5
+      whispered: 0.8
+
+  - name: "Motion Rate"
+    description: "Speed of internal spectral motion — how fast partials shift and evolve"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      static: 0.0
+      slow_drift: 0.2
+      moderate: 0.5
+      fast_shimmer: 0.8
+
+  - name: "Motion Amount"
+    description: "Depth of spectral motion — how much the partials deviate from their base positions"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      subtle: 0.15
+      organic: 0.4
+      chaotic: 0.8
+
+  - name: "Brightness"
+    description: "Overall timbral brightness control"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      dark: 0.2
+      natural: 0.5
+      sparkling: 0.85
+
+  - name: "Attack"
+    description: "Amplitude envelope attack time"
+    range: [0.0, 10000.0]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      immediate: 0.0
+      pad: 500.0
+      slow_swell: 2000.0
+
+  - name: "Release"
+    description: "Amplitude envelope release time"
+    range: [0.0, 10000.0]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      tight: 100.0
+      natural: 500.0
+      ambient: 3000.0
+
+pairs_well_with:
+  - device: "Reverb"
+    reason: "Spectral sounds merge beautifully with long reverb — creates immersive washes"
+  - device: "Delay"
+    reason: "Evolving partials create naturally varied delay repetitions"
+  - device: "Chorus-Ensemble"
+    reason: "Adds width and subtle detuning that enhances the crystalline quality"
+  - device: "EQ Eight"
+    reason: "Surgical EQ can isolate or boost specific partial ranges for precision"
+  - device: "Utility"
+    reason: "Width control essential — spectral sounds often need mono-bass treatment"
+
+starter_recipes:
+  - name: "Evolving Harmonics"
+    description: "Slowly shifting spectral landscape with organic motion and rich partials"
+    genre: ambient
+    params:
+      "Partials": 24
+      "Spectral Shape": 0.5
+      "Motion Rate": 0.2
+      "Motion Amount": 0.4
+      "Breath": 0.1
+      "Brightness": 0.6
+      "Attack": 800.0
+      "Release": 3000.0
+
+  - name: "Crystalline Pad"
+    description: "Pure, bell-like pad with shimmering upper partials"
+    genre: cinematic
+    params:
+      "Partials": 16
+      "Spectral Shape": 0.7
+      "Spectral Filter": 0.7
+      "Motion Rate": 0.15
+      "Motion Amount": 0.2
+      "Breath": 0.0
+      "Brightness": 0.8
+      "Attack": 500.0
+      "Release": 2000.0
+
+  - name: "Breathy Texture"
+    description: "Airy, vocal-like texture blending partials with breath noise"
+    genre: experimental
+    params:
+      "Partials": 12
+      "Spectral Shape": 0.4
+      "Breath": 0.5
+      "Motion Rate": 0.3
+      "Motion Amount": 0.35
+      "Brightness": 0.5
+      "Attack": 300.0
+      "Release": 1500.0
+
+gotchas:
+  - "New in Live 12 — exact parameter names may differ from generic descriptions here. Always use get_device_parameters to discover the actual parameter list"
+  - "High partial counts are CPU-intensive — reduce for dense arrangements"
+  - "Spectral synthesis is fundamentally different from subtractive — traditional filter-based sound design intuitions don't always apply"
+  - "Motion Amount at high values can make the sound pitch-unstable — use carefully on melodic parts"
+  - "Breath parameter adds noise-band energy that occupies a different frequency space than the partials — useful for realism but can muddy a mix"

@@ -1,0 +1,97 @@
+id: limiter
+name: Limiter
+sonic_description: >
+  Brick-wall peak limiter that prevents audio from exceeding a ceiling level. Transparent
+  at gentle settings, it catches transient peaks without audible compression artifacts.
+  Essential for mastering and output protection.
+effect_type: dynamics
+character_tags: [transparent, protective, loud, clean]
+use_cases: [mastering, output_protection, loudness, live_safety]
+genre_affinity:
+  primary: [all]
+  secondary: []
+complexity: beginner
+signal_type: audio
+introduced_in: "1.0"
+
+key_parameters:
+  - name: "Gain"
+    description: "Input gain before limiting — push into the limiter for loudness"
+    range: [0.0, 16.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      safety: 0.0
+      subtle_loudness: 3.0
+      moderate: 6.0
+      loud: 10.0
+
+  - name: "Ceiling"
+    description: "Maximum output level — nothing passes above this"
+    range: [-inf, 0.0]
+    unit: dB
+    type: float
+    sweet_spots:
+      streaming: -1.0
+      mastering: -0.3
+      safe: -0.5
+
+  - name: "Release"
+    description: "How fast the limiter releases after clamping a peak"
+    range: [0.01, 1000.0]
+    unit: ms
+    type: float
+    sweet_spots:
+      fast: 1.0
+      auto: -1
+      slow: 100.0
+
+  - name: "Stereo Link"
+    description: "Whether limiting is applied to L/R together or independently"
+    type: toggle
+    range: [0, 1]
+    sweet_spots:
+      linked: 1
+      independent: 0
+
+pairs_well_with:
+  - device: "EQ Eight"
+    reason: "Shape frequency balance before limiting to avoid low-end pumping"
+  - device: "Compressor"
+    reason: "Stage compression before limiting for transparent loudness"
+  - device: "Utility"
+    reason: "Set precise gain staging before the limiter"
+  - device: "Glue Compressor"
+    reason: "Bus compression before limiting gives more headroom"
+
+starter_recipes:
+  - name: "Mastering Limiter"
+    description: "Transparent loudness maximizing for final output"
+    genre: all
+    params:
+      Gain: 4.0
+      Ceiling: -1.0
+      Release: -1
+
+  - name: "Safety Limiter"
+    description: "Output protection for live performance — catches unexpected peaks"
+    genre: all
+    params:
+      Gain: 0.0
+      Ceiling: -0.3
+      Release: 1.0
+
+  - name: "Loud Master"
+    description: "Aggressive loudness for competitive levels — use with care"
+    genre: pop
+    params:
+      Gain: 8.0
+      Ceiling: -1.0
+      Release: -1
+
+gotchas:
+  - "More than 3-4 dB of gain reduction usually means you need compression before the limiter"
+  - "Ceiling of -1.0 dB is recommended for streaming platforms (Spotify, Apple Music) to avoid codec artifacts"
+  - "Fast release can cause audible distortion on bass-heavy material"
+  - "Pushing Gain too hard causes audible pumping and loss of dynamics — check with meters"
+  - "Always monitor in mono after limiting to catch phase issues"
