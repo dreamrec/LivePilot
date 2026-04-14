@@ -246,4 +246,73 @@ def test_render_variant_uses_lifespan_spectral_cache_for_audible_preview(monkeyp
     result = render_preview_variant(ctx, set_id=ps.set_id, variant_id=variant_id, bars=2)
 
     assert result["preview_mode"] == "audible_preview"
+
+
+def test_render_preview_variant_captures_audible_before_undo(monkeypatch):
+    """Regression: audible capture must happen while the variant is applied.
+
+    Previously the finally block ran undo before the audible capture section,
+    so "audible_preview" was a lie — it captured pre-variant audio and labeled
+    it as the variant's sound. This test asserts ordering via a call log.
+    """
+    from mcp_server.preview_studio.tools import render_preview_variant
+    from mcp_server.preview_studio.engine import create_preview_set
+    import mcp_server.runtime.execution_router as execution_router
+
+    ps = create_preview_set(
+        request_text="ordering test",
+        kernel_id="test_kern_order",
+        available_moves=[{"move_id": "make_punchier", "plan_template": [{"tool": "set_track_volume", "params": {}}]}],
+    )
+    variant_id = ps.variants[0].variant_id
+
+    calls = []
+
+    class _Ableton:
+        def send_command(self, cmd, params=None):
+            calls.append(cmd)
+            if cmd == "get_session_info":
+                return {"tempo": 120, "track_count": 4}
+            return {"ok": True}
+
+    class _Spectral(SpectralCache):
+        def get_all(self):
+            calls.append("spectral_snapshot")
+            return super().get_all()
+
+    cache = _Spectral()
+    cache.update("spectrum", {"sub": 0.1})
+
+    monkeypatch.setattr(
+        execution_router,
+        "execute_plan_steps",
+        lambda steps, ableton=None, ctx=None, stop_on_failure=True: (
+            calls.append("apply_plan"),
+            [SimpleNamespace(ok=True, tool="set_track_volume", backend="remote_command", result={"ok": True}, error="")],
+        )[1],
+    )
+    monkeypatch.setattr("time.sleep", lambda _seconds: None)
+
+    ctx = SimpleNamespace(lifespan_context={"ableton": _Ableton(), "spectral": cache})
+    result = render_preview_variant(ctx, set_id=ps.set_id, variant_id=variant_id, bars=2)
+
+    assert result["preview_mode"] == "audible_preview"
+
+    # Ordering: apply must precede spectral snapshots; snapshots + start_playback
+    # must precede undo.
+    assert "apply_plan" in calls
+    assert "start_playback" in calls
+    assert "undo" in calls, "undo should eventually run in cleanup"
+
+    apply_idx = calls.index("apply_plan")
+    undo_idx = calls.index("undo")
+    play_idx = calls.index("start_playback")
+    snapshot_indices = [i for i, c in enumerate(calls) if c == "spectral_snapshot"]
+
+    assert apply_idx < play_idx < undo_idx, f"Apply before play before undo required; got {calls}"
+    for si in snapshot_indices:
+        assert si < undo_idx, f"Spectral snapshot at {si} must precede undo at {undo_idx}; got {calls}"
+
+    # There should be exactly one spectral_comparison in the result (before + after)
+    assert "spectral_comparison" in result
     assert "spectral_comparison" in result

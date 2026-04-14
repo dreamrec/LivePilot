@@ -360,7 +360,7 @@ def render_preview_variant(
             "analytical_only": True,
         }
 
-    # If the variant has a compiled plan, we could apply-capture-undo.
+    # If the variant has a compiled plan, apply -> capture audible -> undo.
     # Without a compiled plan, return the variant's analytical preview.
     if variant.compiled_plan:
         ableton = _get_ableton(ctx)
@@ -371,48 +371,74 @@ def render_preview_variant(
         from ..runtime.execution_router import execute_plan_steps
 
         applied_count = 0
-        try:
-            # Capture before state
-            before_info = ableton.send_command("get_session_info", {})
+        playback_started = False
+        preview_mode = "metadata_only_preview"
+        spectral_before: Optional[dict] = None
+        spectral_after: Optional[dict] = None
+        before_info: dict = {}
+        after_info: dict = {}
 
-            # Execute through unified router
+        try:
+            # ── 1. Capture BEFORE metadata ──
+            before_info = ableton.send_command("get_session_info", {}) or {}
+
+            # ── 2. Apply the variant ──
             exec_results = execute_plan_steps(steps, ableton=ableton, ctx=ctx)
             applied_count = sum(1 for r in exec_results if r.ok)
+            if applied_count == 0 and steps:
+                return {
+                    "error": "Variant failed to apply any steps",
+                    "variant_id": variant_id,
+                    "step_errors": [r.error for r in exec_results if not r.ok],
+                }
 
-            # Capture after state
-            after_info = ableton.send_command("get_session_info", {})
+            # ── 3. Capture AFTER metadata (variant is live) ──
+            after_info = ableton.send_command("get_session_info", {}) or {}
+
+            # ── 4. Audible capture WHILE variant is still applied ──
+            # This is the critical ordering fix: previously this block ran AFTER
+            # the finally's undo loop, so "audible_preview" captured pre-variant
+            # audio and lied about it. Now playback + spectrum sampling happens
+            # while the variant is actually in effect, then the finally undoes it.
+            try:
+                from ..m4l_bridge import SpectralCache
+                cache = ctx.lifespan_context.get("spectral")
+                if cache and isinstance(cache, SpectralCache) and cache.is_connected:
+                    spectral_before = cache.get_all()
+
+                    tempo = before_info.get("tempo", 120) or 120
+                    play_seconds = min(bars * (60.0 / tempo) * 4, 8.0)
+
+                    ableton.send_command("start_playback", {})
+                    playback_started = True
+
+                    import time as _time
+                    _time.sleep(play_seconds)
+
+                    spectral_after = cache.get_all()
+
+                    ableton.send_command("stop_playback", {})
+                    playback_started = False
+
+                    preview_mode = "audible_preview"
+            except Exception:
+                # Spectral capture is best-effort; keep preview_mode as metadata_only
+                pass
+
         except Exception as e:
             return {"error": f"Render failed: {e}", "variant_id": variant_id}
         finally:
-            # Undo all applied changes regardless of success/failure
+            # ── 5. Cleanup: stop playback if still running, then undo everything ──
+            if playback_started:
+                try:
+                    ableton.send_command("stop_playback", {})
+                except Exception:
+                    pass
             for _ in range(applied_count):
                 try:
                     ableton.send_command("undo")
                 except Exception:
                     break
-
-        # Determine preview mode: audible (M4L available) or metadata-only
-        preview_mode = "metadata_only_preview"
-        spectral_before = None
-        spectral_after = None
-
-        # Try audible preview — capture spectrum via M4L spectral cache
-        try:
-            from ..m4l_bridge import SpectralCache
-            cache = ctx.lifespan_context.get("spectral")
-            if cache and isinstance(cache, SpectralCache) and cache.is_connected:
-                spectral_before = cache.get_all()
-                # Play for the requested bar count
-                tempo = before_info.get("tempo", 120)
-                play_seconds = bars * (60.0 / tempo) * 4  # bars * beat_duration * 4 beats
-                ableton.send_command("start_playback", {})
-                import time as _time
-                _time.sleep(min(play_seconds, 8.0))  # cap at 8 seconds
-                spectral_after = cache.get_all()
-                ableton.send_command("stop_playback", {})
-                preview_mode = "audible_preview"
-        except Exception:
-            pass  # fall back to metadata_only
 
         variant.status = "rendered"
         variant.preview_mode = preview_mode
