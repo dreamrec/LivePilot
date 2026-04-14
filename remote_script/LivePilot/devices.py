@@ -508,14 +508,23 @@ def insert_device(song, params):
                 device = chain.insert_device(canonical, position)
             else:
                 device = chain.insert_device(canonical)
+            container_devices = list(chain.devices)
         else:
             # Track-level insertion
             if position >= 0:
                 device = track.insert_device(canonical, position)
             else:
                 device = track.insert_device(canonical)
+            container_devices = list(track.devices)
     finally:
         song.end_undo_step()
+
+    # Resolve the index the newly-inserted device landed at so callers can
+    # bind later parameter/chain operations to it (composer plans rely on this).
+    try:
+        inserted_index = container_devices.index(device)
+    except ValueError:
+        inserted_index = len(container_devices) - 1
 
     # Read back the device info — use "loaded" key to match
     # the convention expected by _postflight_loaded_device on MCP side
@@ -523,6 +532,7 @@ def insert_device(song, params):
         "loaded": device.name,
         "class_name": device.class_name,
         "track_index": track_index,
+        "device_index": inserted_index,  # additive — for step-result binding
         "parameter_count": len(list(device.parameters)),
     }
     if position >= 0:

@@ -21,14 +21,18 @@ from .remote_commands import BRIDGE_COMMANDS, REMOTE_COMMANDS
 
 # MCP-only tools that exist as Python functions but NOT as TCP handlers.
 # These must be called through direct import, not ableton.send_command().
+# NOTE: capture_audio is a BRIDGE command (livepilot_bridge.js:146), not MCP.
+# It used to be duplicated here; removed to keep classification unambiguous.
 MCP_TOOLS: frozenset[str] = frozenset({
     "apply_automation_shape",
     "apply_gesture_template",
     "analyze_mix",
     "get_master_spectrum",
     "get_emotional_arc",
-    "capture_audio",
     "get_motif_graph",
+    # Sample-engine workflow tools — async Python that orchestrates multiple
+    # sub-commands (search_browser + load_browser_item + bridge.replace_simpler_sample).
+    "load_sample_to_simpler",
     # Device Forge tools (MCP-only, no TCP handler)
     "generate_m4l_effect",
     "install_m4l_device",

@@ -31,6 +31,20 @@ def test_classify_undo_is_remote():
     assert classify_step("undo") == "remote_command"
 
 
+def test_load_sample_to_simpler_is_mcp_tool():
+    """load_sample_to_simpler is a Python async MCP tool, not a bridge command.
+
+    It internally calls search_browser + load_browser_item + replace_simpler_sample
+    (the last via the M4L bridge), but the tool itself is dispatched in-process.
+    """
+    assert classify_step("load_sample_to_simpler") == "mcp_tool"
+
+
+def test_capture_audio_is_bridge_not_mcp():
+    """capture_audio is handled by livepilot_bridge.js:146, not an in-proc MCP fn."""
+    assert classify_step("capture_audio") == "bridge_command"
+
+
 # ── Single step execution ────────────────────────────────────────
 
 

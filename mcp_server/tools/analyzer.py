@@ -381,6 +381,8 @@ async def load_sample_to_simpler(
         return {"error": "Sample replacement failed after bootstrap"}
 
     result["method"] = "bootstrap_and_replace"
+    result["device_index"] = actual_device_index  # additive — for step-result binding
+    result["track_index"] = track_index
     return result
 
 

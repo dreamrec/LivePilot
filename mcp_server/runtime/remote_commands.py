@@ -80,7 +80,10 @@ BRIDGE_COMMANDS: frozenset[str] = frozenset({
     "remove_warp_marker", "capture_audio", "capture_stop",
     "check_flucoma", "scrub_clip", "stop_scrub", "get_display_values",
     "get_plugin_params", "map_plugin_param", "get_plugin_presets",
-    "load_sample_to_simpler",
+    # NOTE: load_sample_to_simpler used to live here, but it's actually an
+    # async Python MCP tool in mcp_server/tools/analyzer.py, not a bridge
+    # command. It has no case in livepilot_bridge.js and no @register handler
+    # in remote_script. See mcp_server/runtime/execution_router.MCP_TOOLS.
 })
 
 # Combined: all valid send_command targets
