@@ -19,13 +19,13 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def get_version() -> str:
     """Read version from package.json (source of truth)."""
-    pkg = json.loads((ROOT / "package.json").read_text())
+    pkg = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
     return pkg["version"]
 
 
 def get_tool_count() -> int:
     """Read tool count from test_tools_contract.py assertion."""
-    src = (ROOT / "tests" / "test_tools_contract.py").read_text()
+    src = (ROOT / "tests" / "test_tools_contract.py").read_text(encoding="utf-8")
     match = re.search(r"assert len\(tools\) == (\d+)", src)
     if match:
         return int(match.group(1))
@@ -73,7 +73,7 @@ def check_version(version: str) -> list[str]:
         path = ROOT / rel_path
         if not path.exists():
             continue
-        content = path.read_text()
+        content = path.read_text(encoding="utf-8")
         if version not in content:
             # Find what version IS there
             old = re.search(r"1\.\d+\.\d+", content)
@@ -91,7 +91,7 @@ def check_tool_count(count: int) -> list[str]:
         path = ROOT / rel_path
         if not path.exists():
             continue
-        content = path.read_text()
+        content = path.read_text(encoding="utf-8")
         # Look for "N tools" pattern
         matches = re.findall(r"(\d+)\s+tools", content)
         for m in matches:

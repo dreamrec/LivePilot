@@ -19,10 +19,15 @@ BRIDGE_JS = REPO / "m4l_device" / "livepilot_bridge.js"
 
 
 def _js_dispatch_cases() -> set[str]:
-    """Extract every `case "<name>":` label from the JS dispatch switch."""
+    """Extract every `case "<name>":` label from the JS dispatch switch.
+
+    Read with explicit UTF-8 encoding. Without this, Windows (which defaults
+    to cp1252 / Windows-1252) fails on the em-dash bytes in the file's
+    header comment, breaking CI on windows-latest runners.
+    """
     if not BRIDGE_JS.exists():
         return set()
-    text = BRIDGE_JS.read_text()
+    text = BRIDGE_JS.read_text(encoding="utf-8")
     return set(re.findall(r'case\s+"([^"]+)"\s*:', text))
 
 

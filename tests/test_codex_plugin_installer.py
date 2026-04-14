@@ -41,12 +41,12 @@ def test_install_codex_plugin_updates_temp_marketplace(tmp_path: Path):
 
     _run_node(["-e", "require('./installer/codex.js').installCodexPlugin()"], env=env)
 
-    expected_manifest = json.loads((_repo_root() / "livepilot" / ".Codex-plugin" / "plugin.json").read_text())
-    manifest = json.loads((plugin_dir / ".Codex-plugin" / "plugin.json").read_text())
+    expected_manifest = json.loads((_repo_root() / "livepilot" / ".Codex-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    manifest = json.loads((plugin_dir / ".Codex-plugin" / "plugin.json").read_text(encoding="utf-8"))
     assert manifest["name"] == expected_manifest["name"]
     assert manifest["version"] == expected_manifest["version"]
 
-    marketplace_data = json.loads(marketplace.read_text())
+    marketplace_data = json.loads(marketplace.read_text(encoding="utf-8"))
     entry = next(plugin for plugin in marketplace_data["plugins"] if plugin["name"] == "livepilot")
     assert entry["source"]["path"] == "./plugins/livepilot"
     assert entry["policy"]["installation"] == "AVAILABLE"
@@ -63,7 +63,7 @@ def test_uninstall_codex_plugin_removes_plugin_and_marketplace_entry(tmp_path: P
     _run_node(["-e", "const m = require('./installer/codex.js'); m.installCodexPlugin(); m.uninstallCodexPlugin();"], env=env)
 
     assert not plugin_dir.exists()
-    marketplace_data = json.loads(marketplace.read_text())
+    marketplace_data = json.loads(marketplace.read_text(encoding="utf-8"))
     assert all(plugin["name"] != "livepilot" for plugin in marketplace_data["plugins"])
 
 
