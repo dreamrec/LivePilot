@@ -1,81 +1,20 @@
 # Changelog
 
-## [Unreleased] — Orchestration Hardening Phase 2 (April 14 2026)
+## 1.10.1 — Orchestration Hardening (April 14 2026)
 
-Follow-up pass to the initial orchestration hardening. Closes the three items
-that were deferred with "back-compat required" in the first series — now with
-no back-compat constraints. Four phases (A-D): delete sync router, re-enable
-composer arrangement clip emission, wire Splice remote download workflow,
-verify and document.
+Pure correctness pass on the execution substrate. No new public tools,
+no renames, no tool count change. Thirteen commits across thirteen phases
+(nine Phase 1 + four Phase 2). All new response fields are additive.
 
-### Changed (breaking at the internal substrate level, no public tool changes)
-- **Execution router is async-only.** Deleted `execute_step` and
-  `execute_plan_steps` (sync path). The only surviving entry point is
-  `execute_plan_steps_async`. `apply_semantic_move` and `render_preview_variant`
-  both became `async def` and dispatch through the async router. The dead sync
-  path was the last place where a plan could silently produce steps that only
-  worked on one transport.
-- **Bridge dispatch now unpacks params positionally.** Fix for a latent bug:
-  the async router previously passed the whole params dict as a single arg to
-  `bridge.send_command`, which would have OSC-encoded the dict and failed on
-  the real M4L bridge. Now unpacks via `*list(params.values())` — plan authors
-  construct params in the order the bridge command expects.
-- **`ComposerEngine.compose`, `augment`, and `get_plan` are async.** Sample
-  resolution may now hit the network (Splice download), so the whole compose
-  chain awaits. No production callers outside `composer/tools.py`; tests use
-  `asyncio.run(...)` wrappers.
-- **`CompositionResult.resolved_samples` shape changed** from
-  `{role: path_str}` to `{role: {"path": str, "source": str}}` — callers
-  can now tell filesystem vs splice_local vs splice_remote hits apart.
+**Test results:** 1690 → **1740 passing** (+50 net, +56 new tests, −6 sync-to-async
+rewrites). No regressions.
 
-### Added
-- **Composer arrangement clip emission.** Re-enabled in phase 2B with the
-  correct 5-step sequence per layer:
-    1. `create_midi_track` (with `step_id` for binding)
-    2. `load_sample_to_simpler`
-    3. `create_clip` — 1-bar MIDI source clip at slot 0
-    4. `add_notes` — single C3 trigger note so Simpler actually sounds
-    5. `create_arrangement_clip` per section, `clip_slot_index=0`,
-       `loop_length=4.0` to tile the 1-bar trigger across each section
-  Simpler in classic mode plays the full sample on every trigger, so the
-  minimal pattern is enough for a playable baseline. Agent can replace the
-  trigger clip with a more musical pattern via `suggest_sample_technique`
-  recipes later. Layers that don't resolve a sample produce zero arrangement
-  steps — no broken references.
-- **Splice remote download workflow in composer.** `sample_resolver` extended
-  with `splice_local` and `splice_remote` sources. Resolution order:
-  `filesystem > splice_local > splice_remote > browser`. Filesystem wins
-  even when Splice has a hit (local files are free). Splice remote downloads
-  cost 1 credit each and respect the 5-credit hard floor via
-  `splice_client.can_afford(1, budget)` — the floor check is upfront so
-  the resolver fails fast rather than thrashing per-layer.
-- **`SpliceGRPCClient` wired into server lifespan.** `ctx.lifespan_context["splice_client"]`
-  is now populated at startup. Graceful degradation: if grpcio is missing,
-  Splice desktop isn't running, or the cert can't be read, `splice_client.connected`
-  stays False and the resolver treats it as "no splice hits".
-- **Composer credit-safety prelude.** New `_credit_safety_prelude()` helper
-  in `composer/tools.py` runs once per compose/augment call: checks credits
-  remaining, trims `max_credits` to respect the floor, returns a warnings
-  list the tool merges into the plan output. No per-layer credit thrashing.
-- **`mcp_dispatch` registry is lifespan-installed.** `build_mcp_dispatch_registry()`
-  runs at server startup and the result lives in `ctx.lifespan_context["mcp_dispatch"]`.
-  Callers (apply_semantic_move, render_preview_variant) read it via
-  `ctx.lifespan_context.get("mcp_dispatch", {})` — same pattern as all
-  other shared state.
-
-### Tests
-- Router suite: 23/23 (async-only; 6 legacy sync tests rewritten as async equivalents)
-- Composer resolver suite: 13/13 (7 filesystem + 6 new splice paths)
-- Composer engine suite: 14/14 (9 Phase 7 + 5 new Phase 2B arrangement contracts)
-- Full repo: 1740 passed, 1 skipped (up from 1731)
-
----
-
-## [Unreleased] — Orchestration Hardening (April 14 2026)
-
-Nine-phase correctness pass on the execution substrate. No new public tools,
-no renames, no tool count change. All new response fields are additive — the
-series is a pure correctness pass.
+**Known carryover:** `m4l_device/LivePilot_Analyzer.amxd` is lagging —
+its embedded JS is frozen at v1.9.14 while the repo source is at v1.10.1.
+This is a pre-existing drift (1.10.0 shipped the same stale .amxd). The
+Python/JS source in the repo is current; re-export from Max for Live at
+your convenience to pick up `get_selected` ID-matching and 4-byte UTF-8
+decoding in the embedded JS.
 
 ### Fixed
 - **Execution router: `load_sample_to_simpler` reclassified as MCP tool.** It
@@ -86,6 +25,17 @@ series is a pure correctness pass.
 - **Execution router: dedupe `capture_audio` classification.** Removed the
   dead entry from `MCP_TOOLS` — `capture_audio` lives in `BRIDGE_COMMANDS`
   and is handled by `livepilot_bridge.js`.
+- **Execution router: async-only substrate.** `execute_step` and
+  `execute_plan_steps` (the sync path) are **deleted**. The only surviving
+  entry point is `execute_plan_steps_async`. `apply_semantic_move` and
+  `render_preview_variant` both became `async def` and dispatch through the
+  async router. The dead sync path was the last place where a plan could
+  silently produce steps that only worked on one transport.
+- **Bridge dispatch unpacks params positionally.** Latent bug in the Phase 1
+  async router: it passed the whole params dict as a single arg to
+  `bridge.send_command`, which would have OSC-encoded the dict and failed on
+  the real M4L bridge. Fixed in Phase 2 to unpack via `*list(params.values())` —
+  plan authors construct params in the order the bridge command expects.
 - **Preview Studio: `render_preview_variant` captures audible preview BEFORE
   undo.** The function previously ran undo in a `finally` block that
   executed before the "audible preview" section, so `preview_mode =
@@ -119,6 +69,15 @@ series is a pure correctness pass.
   output and surfaced in `warnings`, but dropped from `plan`. Processing
   chains use `step_id` + `$from_step` bindings to resolve `device_index`
   from `insert_device` results at execution time.
+- **Composer: arrangement clips finally work.** Re-enabled the arrangement
+  emission path that was stubbed in Phase 7. Each resolved layer now emits
+  `create_clip` → `add_notes` (C3 trigger) → `create_arrangement_clip` per
+  section, tiling a 1-bar source clip across each section's bar count.
+  Simpler in classic mode plays the full sample on every trigger, so the
+  minimal pattern produces a playable baseline; the agent can replace it
+  with a more musical pattern via `suggest_sample_technique` recipes later.
+  Example: a techno prompt with one resolved sample now produces a 65-step
+  plan with 5 arrangement clips tiling Intro / Build / Drop / Drop 2 / Outro.
 - **ProjectBrain: `build_project_brain` fetches notes for role inference.**
   The tool never called `get_notes`, so `build_project_state_from_data`
   always ran with an empty `notes_map`, forcing `role_graph` into the
@@ -130,12 +89,27 @@ series is a pure correctness pass.
   `mcp_server/runtime/execution_router.execute_plan_steps_async` dispatches
   `remote_command`, `bridge_command`, and `mcp_tool` backends through their
   correct transports. Supports step-result binding via
-  `{"$from_step": "<id>", "path": "a.b"}` on any param. The sync
-  `execute_plan_steps` path is preserved for back-compat.
+  `{"$from_step": "<id>", "path": "a.b"}` on any param.
 - **MCP dispatch registry** — `mcp_server/runtime/mcp_dispatch.py` registers
   in-process Python tools (starting with `load_sample_to_simpler`) so plans
-  can invoke them through the async router.
-- **Additive return fields** (no breaking changes):
+  can invoke them through the async router. Lifespan-installed at startup
+  alongside `ableton`, `spectral`, `m4l`, and `splice_client`.
+- **Splice remote download workflow in composer.** `sample_resolver` extended
+  with `splice_local` and `splice_remote` sources. Resolution order:
+  `filesystem > splice_local > splice_remote > browser`. Filesystem wins
+  even when Splice has a hit (local files are free). Splice remote downloads
+  cost 1 credit each and respect the 5-credit hard floor via
+  `splice_client.can_afford(1, budget)` — the floor check is upfront so
+  the resolver fails fast rather than thrashing per-layer.
+- **`SpliceGRPCClient` wired into server lifespan.** `ctx.lifespan_context["splice_client"]`
+  is now populated at startup. Graceful degradation: if grpcio is missing,
+  Splice desktop isn't running, or the cert can't be read, `splice_client.connected`
+  stays False and the resolver treats it as "no splice hits".
+- **Composer credit-safety prelude.** New `_credit_safety_prelude()` helper
+  in `composer/tools.py` runs once per compose/augment call: checks credits
+  remaining, trims `max_credits` to respect the floor, returns a warnings
+  list the tool merges into the plan output. No per-layer credit thrashing.
+- **Additive return fields** (no breaking changes to existing callers):
   - `insert_device.device_index` — actual index of the inserted device in
     its chain/track. Composer plans bind to it.
   - `load_sample_to_simpler.device_index` and `.track_index` — the real
@@ -145,8 +119,8 @@ series is a pure correctness pass.
     alongside the existing static `plan_template`.
   - `get_session_kernel.warnings` — surfaced when memory/taste stores fail
     to load. Additive, callers can ignore.
-- **`mcp_server/composer/sample_resolver.py`** — filesystem-first sample
-  resolution for composer plans. Optional Splice and browser client hooks.
+- **`mcp_server/composer/sample_resolver.py`** — async sample resolver with
+  filesystem-first preference, splice_local/remote hooks, and browser fallback.
 - **`mcp_server/memory/taste_accessors.get_dimension_pref`** — canonical
   reader for taste-graph dimension preferences. All new consumers must
   use it.
@@ -154,9 +128,25 @@ series is a pure correctness pass.
   `BRIDGE_COMMANDS` against the `case` labels in
   `m4l_device/livepilot_bridge.js`. Catches future misclassification drift.
 
+### Changed (internal, no public tool changes)
+- **`ComposerEngine.compose`, `augment`, and `get_plan` are async.** Sample
+  resolution may now hit the network (Splice download), so the whole compose
+  chain awaits. No production callers outside `composer/tools.py`; tests use
+  `asyncio.run(...)` wrappers.
+- **`CompositionResult.resolved_samples` shape changed** from
+  `{role: path_str}` to `{role: {"path": str, "source": str}}` — callers
+  can now tell filesystem vs splice_local vs splice_remote hits apart.
+
 ### Tests
-- 1731 passing (up from 1690 baseline; +41 new tests across all phases).
-- No regressions in any existing area.
+- Router suite: 23/23 (async-only; 6 legacy sync tests rewritten as async)
+- Composer resolver suite: 13/13 (7 filesystem + 6 splice paths)
+- Composer engine suite: 14/14 (9 Phase 7 + 5 Phase 2B arrangement contracts)
+- Project brain suite: 47/47 (+2 Phase 8 notes_map regression)
+- Preview studio suite: 17/17 (+1 ordering regression)
+- Session kernel suite: 11/11 (+3 hydration regression)
+- Taste accessors suite: 9/9 (new in Phase 3)
+- Bridge parity suite: 2/2 (new in Phase 9)
+- **Full repo: 1740 passed, 1 skipped** (up from 1690)
 
 ---
 
