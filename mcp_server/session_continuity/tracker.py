@@ -210,7 +210,10 @@ def rank_by_taste_and_identity(
         identity_effect = candidate.get("identity_effect", "preserves")
 
         # Taste score — how well does this fit cross-session preferences?
-        boldness_pref = taste_graph.get("transition_boldness", 0.5)
+        # Routed through the canonical accessor so dimension_weights.transition_boldness
+        # is honored. Previously read the top-level key directly and always got 0.5.
+        from ..memory.taste_accessors import get_dimension_pref
+        boldness_pref = get_dimension_pref(taste_graph, "transition_boldness", default=0.5)
         taste_score = 1.0 - abs(novelty - boldness_pref) * 0.8
         taste_score = round(max(0.0, min(1.0, taste_score)), 3)
 

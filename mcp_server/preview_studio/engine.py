@@ -268,7 +268,10 @@ def _compute_set_id(request_text: str, kernel_id: str) -> str:
 
 def _estimate_taste_fit(novelty: float, taste_graph: dict) -> float:
     """Estimate how well a novelty level fits user taste."""
-    boldness = taste_graph.get("transition_boldness", 0.5)
+    # Routes through the canonical accessor so dimension_weights.transition_boldness
+    # is honored. Previously read the top-level key directly and always got 0.5.
+    from ..memory.taste_accessors import get_dimension_pref
+    boldness = get_dimension_pref(taste_graph, "transition_boldness", default=0.5)
     # Users who like boldness prefer higher novelty
     fit = 1.0 - abs(novelty - boldness) * 0.5
     return round(max(0.0, min(1.0, fit)), 3)
