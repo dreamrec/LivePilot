@@ -126,19 +126,18 @@ def _step_load_sample_to_simpler(track_index: int, layer: LayerSpec, file_path: 
     }
 
 
-def _step_suggest_technique(track_index: int, layer: LayerSpec) -> dict:
-    """Real tool — returns technique recipe for the agent to interpret.
-
-    Not a pseudo-tool: suggest_sample_technique is a registered MCP tool.
-    The agent reads the returned recipe and applies the steps manually; we
-    don't try to auto-apply here because the recipe is open-ended.
-    """
-    return {
-        "tool": "suggest_sample_technique",
-        "params": {"technique_id": layer.technique_id},
-        "description": f"Get technique recipe '{layer.technique_id}' for track {track_index}",
-        "role": layer.role,
-    }
+# NOTE: there used to be a _step_suggest_technique helper here that emitted a
+# `suggest_sample_technique` step into the executable plan with params
+# {"technique_id": layer.technique_id}. This was broken: the real tool's
+# signature is (file_path, intent, philosophy, max_suggestions) and takes
+# no technique_id param. The step would have failed at runtime with a
+# "required file_path missing" error.
+#
+# Removed in v1.10.3 (Truth Release). Technique suggestions for composer
+# layers are now surfaced in the descriptive result output (result.layers[*].
+# technique_id) — the agent can call suggest_sample_technique separately
+# with the resolved sample path if it wants per-sample recipe advice. The
+# executable plan emits only real, validated tool calls.
 
 
 def _processing_steps_with_binding(
@@ -366,8 +365,9 @@ class ComposerEngine:
 
             plan.append(_step_load_sample_to_simpler(track_index, layer, file_path))
 
-            if layer.technique_id:
-                plan.append(_step_suggest_technique(track_index, layer))
+            # technique_id intentionally NOT emitted as an executable step —
+            # see note above _step_suggest_technique removal. layer.technique_id
+            # is still surfaced in result.layers for descriptive output.
 
             plan.extend(_processing_steps_with_binding(track_index, layer, layer_idx))
             plan.extend(_mix_steps(track_index, layer))
@@ -458,13 +458,8 @@ class ComposerEngine:
                 "role": layer.role,
             })
 
-            if layer.technique_id:
-                plan.append({
-                    "tool": "suggest_sample_technique",
-                    "params": {"technique_id": layer.technique_id},
-                    "description": f"Get technique recipe '{layer.technique_id}'",
-                    "role": layer.role,
-                })
+            # technique_id intentionally NOT emitted (see compose() above).
+            # Surfaced in result.new_layers for descriptive output only.
 
             for dev_idx, device in enumerate(layer.processing):
                 device_name = device.get("name", "")

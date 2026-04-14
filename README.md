@@ -514,10 +514,12 @@ claude plugin add github:dreamrec/LivePilot/plugin
 | `/evaluate` | Before/after evaluation of recent changes |
 | `/memory` | Technique library management |
 
-**Producer Agent** — autonomous multi-step production.
-Consults memory for style context, searches the atlas for instruments,
-searches samples, creates tracks, programs MIDI, chains effects,
-reads the spectrum to verify, and arranges sections.
+**Producer Agent** — an orchestrated multi-step assistant for building,
+layering and refining sessions. Consults memory for style context, searches
+the atlas for instruments, searches samples, creates tracks, programs MIDI,
+chains effects, reads the spectrum to verify, and arranges sections. The
+agent proposes plans; the user confirms and listens. LivePilot is a high-
+trust operator, not an autonomous producer.
 
 **Core Skill** — operational discipline connecting all layers.
 Consult atlas before loading. Read analyzer after mixing.

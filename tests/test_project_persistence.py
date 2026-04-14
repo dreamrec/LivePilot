@@ -23,6 +23,108 @@ def test_project_hash_differs():
     assert project_hash(info1) != project_hash(info2)
 
 
+# ── v1.10.3 Truth Release: collision-resistance regressions ──
+
+def test_project_hash_distinguishes_track_order():
+    """Two sessions with the same tracks in different order must not collide.
+    This was a real failure mode in the old hash (which sorted track names)."""
+    info1 = {
+        "tempo": 128.0,
+        "tracks": [
+            {"index": 0, "name": "Drums"},
+            {"index": 1, "name": "Bass"},
+            {"index": 2, "name": "Lead"},
+        ],
+    }
+    info2 = {
+        "tempo": 128.0,
+        "tracks": [
+            {"index": 0, "name": "Lead"},
+            {"index": 1, "name": "Bass"},
+            {"index": 2, "name": "Drums"},
+        ],
+    }
+    assert project_hash(info1) != project_hash(info2), \
+        "Track reordering should produce a different project hash"
+
+
+def test_project_hash_distinguishes_by_song_length():
+    """Two sessions with identical tempo + tracks but different arrangement
+    lengths must not collide (common template-based project scenario)."""
+    base = {
+        "tempo": 128.0,
+        "tracks": [{"index": 0, "name": "Drums"}, {"index": 1, "name": "Bass"}],
+    }
+    info1 = dict(base, song_length=64.0)
+    info2 = dict(base, song_length=128.0)
+    assert project_hash(info1) != project_hash(info2)
+
+
+def test_project_hash_distinguishes_by_scene_list():
+    """Two sessions with identical tempo + tracks but different scenes must
+    not collide."""
+    tracks = [{"index": 0, "name": "Drums"}, {"index": 1, "name": "Bass"}]
+    info1 = {
+        "tempo": 128.0,
+        "tracks": tracks,
+        "scenes": [{"index": 0, "name": "Intro"}, {"index": 1, "name": "Verse"}],
+    }
+    info2 = {
+        "tempo": 128.0,
+        "tracks": tracks,
+        "scenes": [{"index": 0, "name": "Intro"}, {"index": 1, "name": "Chorus"}],
+    }
+    assert project_hash(info1) != project_hash(info2)
+
+
+def test_project_hash_distinguishes_by_time_signature():
+    """Two sessions at 128 BPM with different time signatures must not collide."""
+    tracks = [{"index": 0, "name": "Drums"}]
+    info1 = {"tempo": 128.0, "tracks": tracks,
+             "signature_numerator": 4, "signature_denominator": 4}
+    info2 = {"tempo": 128.0, "tracks": tracks,
+             "signature_numerator": 7, "signature_denominator": 8}
+    assert project_hash(info1) != project_hash(info2)
+
+
+def test_project_hash_distinguishes_by_track_rename():
+    """Renaming a track changes the project identity (honest: it's a real
+    edit). This is the tradeoff documented in the function's docstring."""
+    info1 = {
+        "tempo": 128.0,
+        "tracks": [{"index": 0, "name": "Drums"}, {"index": 1, "name": "Bass"}],
+    }
+    info2 = {
+        "tempo": 128.0,
+        "tracks": [{"index": 0, "name": "Drums"}, {"index": 1, "name": "Sub"}],
+    }
+    assert project_hash(info1) != project_hash(info2)
+
+
+def test_project_hash_stable_for_identical_full_session():
+    """Full session info produces a stable hash across multiple reads."""
+    info = {
+        "tempo": 128.0,
+        "signature_numerator": 4,
+        "signature_denominator": 4,
+        "song_length": 192.0,
+        "tracks": [
+            {"index": 0, "name": "Drums", "color_index": 1, "has_midi_input": True},
+            {"index": 1, "name": "Bass", "color_index": 2, "has_midi_input": True},
+        ],
+        "return_tracks": [{"index": 0, "name": "Reverb"}],
+        "scenes": [
+            {"index": 0, "name": "Intro"},
+            {"index": 1, "name": "Drop"},
+        ],
+    }
+    h1 = project_hash(info)
+    h2 = project_hash(info)
+    h3 = project_hash(dict(info))  # copy, same content
+    assert h1 == h2 == h3
+    assert len(h1) == 12
+
+
 # ── Thread persistence ───────────────────────────────────────────
 
 

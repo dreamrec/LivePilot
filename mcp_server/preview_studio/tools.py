@@ -225,18 +225,33 @@ def compare_preview_variants(
 
 
 @mcp.tool()
-def commit_preview_variant(
+async def commit_preview_variant(
     ctx: Context,
     set_id: str,
     variant_id: str,
 ) -> dict:
-    """Commit the chosen variant from a preview set.
+    """Commit the chosen variant from a preview set — APPLIES the plan.
 
-    Marks the variant as committed and discards the others.
-    The caller should then apply the variant's compiled plan.
+    v1.10.3 Truth Release: this tool used to only mark the variant as
+    committed in the in-memory store and leave plan application to the
+    caller, which was a trust leak — users expected "commit" to actually
+    apply the chosen variant. It now actually runs the variant's compiled
+    plan through the async execution router. No undo after, the changes
+    stick.
 
-    set_id: the preview set
-    variant_id: the chosen variant to commit
+    Returns:
+        {
+            committed: bool (true if all steps applied, false if plan failed),
+            variant_id, label, intent, move_id, identity_effect, what_preserved,
+            execution_log: [{tool, backend, ok, error/result} per step],
+            steps_ok: int,
+            steps_failed: int,
+            status: "committed" | "committed_with_errors" | "failed",
+        }
+
+    If the variant is analytical-only (no compiled_plan), the tool records
+    the choice and returns status="analytical_only" WITHOUT pretending to
+    execute anything — callers get a clear signal instead of a silent no-op.
     """
     ps = engine.get_preview_set(set_id)
     if not ps:
@@ -259,6 +274,57 @@ def commit_preview_variant(
         "identity_effect": chosen.identity_effect,
         "what_preserved": chosen.what_preserved,
     }
+
+    # ── v1.10.3: actually execute the compiled plan ──
+    # If there's no compiled plan, the variant is analytical-only — record
+    # the choice and return honestly instead of pretending it was applied.
+    if not chosen.compiled_plan:
+        result["committed"] = False
+        result["status"] = "analytical_only"
+        result["note"] = (
+            "Variant has no compiled plan (analytical-only). Preview set "
+            "marked the choice but no session changes were made. Use an "
+            "executable variant if you want the commit to apply changes."
+        )
+    else:
+        from ..runtime.execution_router import execute_plan_steps_async
+        plan = chosen.compiled_plan
+        steps = plan if isinstance(plan, list) else plan.get("steps", []) or []
+        ableton = _get_ableton(ctx)
+        bridge = ctx.lifespan_context.get("m4l")
+        mcp_registry = ctx.lifespan_context.get("mcp_dispatch", {})
+
+        exec_results = await execute_plan_steps_async(
+            steps,
+            ableton=ableton,
+            bridge=bridge,
+            mcp_registry=mcp_registry,
+            ctx=ctx,
+            stop_on_failure=False,
+        )
+        log = [
+            {
+                "tool": r.tool,
+                "backend": r.backend,
+                "ok": r.ok,
+                **({"result": r.result} if r.ok else {"error": r.error}),
+            }
+            for r in exec_results
+        ]
+        steps_ok = sum(1 for r in exec_results if r.ok)
+        steps_failed = len(exec_results) - steps_ok
+
+        result["execution_log"] = log
+        result["steps_ok"] = steps_ok
+        result["steps_failed"] = steps_failed
+
+        if steps_failed == 0 and steps_ok > 0:
+            result["status"] = "committed"
+        elif steps_ok > 0:
+            result["status"] = "committed_with_errors"
+        else:
+            result["status"] = "failed"
+            result["committed"] = False
 
     # Wonder lifecycle hooks
     ws = _find_wonder_session_by_preview(set_id)

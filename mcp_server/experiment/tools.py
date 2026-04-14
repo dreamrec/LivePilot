@@ -116,7 +116,7 @@ def create_experiment(
 
 
 @mcp.tool()
-def run_experiment(
+async def run_experiment(
     ctx: Context,
     experiment_id: str,
 ) -> dict:
@@ -125,10 +125,11 @@ def run_experiment(
     For each branch:
     1. Compile the semantic move against current session
     2. Capture before state
-    3. Execute the compiled plan
+    3. Execute the compiled plan (through the async router — v1.10.3 truth)
     4. Capture after state
-    5. Undo all changes (revert to checkpoint)
+    5. Undo all successful steps (revert to checkpoint)
     6. Evaluate the branch
+    7. Record per-step results on branch.execution_log
 
     Branches run sequentially (Ableton has linear undo).
     """
@@ -137,6 +138,8 @@ def run_experiment(
         return {"error": f"Experiment {experiment_id} not found"}
 
     ableton = _get_ableton(ctx)
+    bridge = ctx.lifespan_context.get("m4l")
+    mcp_registry = ctx.lifespan_context.get("mcp_dispatch", {})
 
     # Import compiler
     from ..semantic_moves import registry, compiler
@@ -149,7 +152,7 @@ def run_experiment(
         # Compile the move
         move = registry.get_move(branch.move_id)
         if not move:
-            branch.status = "evaluated"
+            branch.status = "failed"
             branch.score = 0.0
             branch.evaluation = {"error": f"Move {branch.move_id} not found"}
             results.append(branch.to_dict())
@@ -160,12 +163,15 @@ def run_experiment(
         plan = compiler.compile(move, kernel)
         compiled_dict = plan.to_dict()
 
-        # Run the branch (apply → capture → undo)
-        engine.run_branch(
+        # Run the branch through the async router
+        await engine.run_branch_async(
             branch=branch,
             ableton=ableton,
             compiled_plan=compiled_dict,
             capture_fn=lambda: _capture_snapshot(ctx),
+            bridge=bridge,
+            mcp_registry=mcp_registry,
+            ctx=ctx,
         )
 
         # Evaluate
@@ -236,22 +242,34 @@ def compare_experiments(
 
 
 @mcp.tool()
-def commit_experiment(
+async def commit_experiment(
     ctx: Context,
     experiment_id: str,
     branch_id: str,
 ) -> dict:
     """Commit the winning branch — re-apply its moves permanently.
 
-    This executes the branch's compiled plan again, this time without undoing.
-    The experiment is marked as committed.
+    Routes the compiled plan through the async router (v1.10.3 truth).
+    Returns a result dict with per-step execution_log. If any step failed,
+    branch.status is set to 'committed_with_errors' and the response
+    reports steps_failed > 0, so callers can tell the commit was partial.
     """
     experiment = engine.get_experiment(experiment_id)
     if not experiment:
         return {"error": f"Experiment {experiment_id} not found"}
 
     ableton = _get_ableton(ctx)
-    return engine.commit_branch(experiment, branch_id, ableton)
+    bridge = ctx.lifespan_context.get("m4l")
+    mcp_registry = ctx.lifespan_context.get("mcp_dispatch", {})
+
+    return await engine.commit_branch_async(
+        experiment,
+        branch_id,
+        ableton,
+        bridge=bridge,
+        mcp_registry=mcp_registry,
+        ctx=ctx,
+    )
 
 
 @mcp.tool()

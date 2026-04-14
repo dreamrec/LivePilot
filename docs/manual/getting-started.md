@@ -190,11 +190,11 @@ This adds:
 
 ### The producer agent
 
-An autonomous agent that can build entire tracks from high-level descriptions:
+A multi-step assistant that builds scaffold sessions from high-level descriptions:
 
-> "Make me a 126 BPM minimal techno track with a driving kick, shuffling hi-hats, and a deep bass line in A minor"
+> "Start me a 126 BPM minimal techno session with a driving kick, shuffling hi-hats, and a deep bass line in A minor"
 
-The agent handles track creation, instrument loading, pattern programming, arrangement, and basic mixing — the entire pipeline.
+The agent handles track creation, instrument loading, pattern programming, arrangement, and basic mixing. The output is a playable baseline — a starting point, not a finished track. You listen, decide what works, and iterate. LivePilot is a high-trust session operator, not a full autonomous producer — your taste stays in the loop.
 
 ### Quick tips for faster production
 

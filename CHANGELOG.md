@@ -1,5 +1,143 @@
 # Changelog
 
+## 1.10.3 — Truth Release (April 14 2026)
+
+A correctness pass focused on making the top-layer workflows **trustworthy
+in real use**. No new tool families, no new domains, no new breadth. Every
+change is a truth-release fix: execution paths are real, emitted plans are
+valid, sample matching is musically sane, and product language matches
+implementation.
+
+The four flagship workflows this release optimizes for:
+  1. **Session understanding** — already strong, unchanged
+  2. **Sample-guided section building** — fixed by §2 + §3
+  3. **Wonder rescue** — fixed by §1
+  4. **Targeted improvement ("tighten the low end")** — already strong, unchanged
+
+If a feature couldn't be made true in this cycle, it was downgraded honestly
+rather than preserved as fake capability.
+
+### Fixed — Execution truth (§1)
+
+- **Experiments now route through the async execution router.**
+  `mcp_server/experiment/engine.py` had two code paths (`run_branch` and
+  `commit_branch`) that called `ableton.send_command(tool, params)` directly
+  and suppressed every failure with a silent `except Exception: pass`. They
+  now go through `execute_plan_steps_async` with per-step results recorded
+  on `branch.execution_log`. Branch status reflects reality: `evaluated`
+  when steps ran, `failed` when zero succeeded, `committed_with_errors`
+  when a commit was partial. Users can see exactly which tools succeeded
+  and which didn't.
+- **`commit_preview_variant` actually applies the variant now.**
+  Previously this tool only marked the variant as chosen in an in-memory
+  store and updated taste memory — the comment said *"the caller should
+  then apply the variant's compiled plan"* which was a trust leak. Users
+  reasonably expected `commit` to **apply** the variant. It now runs the
+  variant's compiled plan through `execute_plan_steps_async` and returns
+  `execution_log` + `steps_ok` / `steps_failed` + explicit `status`
+  (`committed` / `committed_with_errors` / `failed`). Analytical-only
+  variants (no compiled plan) return `status="analytical_only"` and
+  `committed=False` instead of pretending to apply anything.
+
+### Fixed — Composer truthfulness (§2)
+
+- **`suggest_sample_technique` removed from the executable plan.**
+  The composer was emitting `{"tool": "suggest_sample_technique", "params":
+  {"technique_id": layer.technique_id}}` in both `compose()` and `augment()`.
+  The real tool's signature is `(file_path required, intent, philosophy,
+  max_suggestions)` — `technique_id` is not a parameter and `file_path` is
+  required. This step would have always failed at runtime. It's now dropped
+  from the executable plan entirely; `layer.technique_id` still surfaces
+  in the descriptive `result.layers[*].technique_id` output for user
+  inspection. The agent can call `suggest_sample_technique` separately with
+  a real file path if it wants per-sample recipe advice.
+  All 12 remaining composer tool emissions validated against real signatures
+  — they're all correct.
+
+### Fixed — Sample resolution quality (§3)
+
+- **Role-aware scored ranking replaces naive first-hit substring matching.**
+  The old `_filesystem_match` returned the first audio file whose name
+  contained the layer's role OR any query token. This produced obvious
+  musical mistakes: a `lead` layer asking for *"techno melody Am"* would
+  get matched to `drums_techno.wav` because of the shared "techno" token.
+  The new scorer considers:
+  * role word in filename (+3.0)
+  * filename's primary role matches layer role (+1.5 bonus)
+  * filename's primary role is a **different** role (−5.0 penalty — this
+    is what blocks the drums-for-lead failure)
+  * role-adjacent hint words (kick/snare for drums, sub/808 for bass, etc.)
+    (+2.0)
+  * query token overlap excluding the role word (+0.5 per token)
+  * tempo token overlap between filename and query (+1.0)
+  A candidate must score strictly above 0.0 to be returned — files with
+  no signal at all return `unresolved` instead of an arbitrary first pick.
+  Six new regression tests lock out specific failure patterns.
+
+### Fixed — Project identity stability (§5)
+
+- **`project_hash` uses much more entropy.** The old hash was
+  `tempo + track_count + sorted_track_names` — the author's own comment
+  said *"this is imperfect"*. It collided whenever two songs shared the
+  same tempo and track names, and it was invariant to track reordering,
+  scene changes, and arrangement length. The new hash includes:
+  * tempo (1 decimal)
+  * time signature
+  * song length in beats (arrangement duration — very distinguishing)
+  * **ordered** track list: `(index, name, color, has_midi_input)` per track
+  * return track count + names
+  * **ordered** scene list: `(index, name, color)` per scene
+  Six new tests lock out: track reordering collision, song-length collision,
+  scene-list collision, time-signature collision, and track-rename detection.
+  Not a true project ID (that still needs Live set file path access from
+  the Remote Script, deferred) but substantially less fragile in practice.
+
+### Changed — Product language (§6)
+
+- **README.md**: "Producer Agent — autonomous multi-step production"
+  rewritten as *"an orchestrated multi-step assistant for building,
+  layering and refining sessions. [...] The agent proposes plans; the user
+  confirms and listens. LivePilot is a high-trust operator, not an
+  autonomous producer."*
+- **docs/manual/getting-started.md**: "An autonomous agent that can build
+  entire tracks from high-level descriptions" rewritten to frame output as
+  a *"playable baseline — a starting point, not a finished track. You
+  listen, decide what works, and iterate."*
+- **docs/manual/intelligence.md**: `agentic_loop` workflow mode description
+  changed from *"Full autonomous loop with evaluation"* to *"Multi-step
+  plan-and-evaluate loop with explicit checkpoints"*.
+
+### Tests
+
+- **1756 passing**, 1 skipped (was 1740 in v1.10.2; +16 net new regressions):
+  * +2 composer: `suggest_sample_technique` NOT in compose/augment plan
+  * +6 sample resolver: role-aware ranking lockouts
+  * +2 preview studio: `commit_preview_variant` executes + analytical-only honesty
+  * +6 project persistence: hash collision-resistance
+
+### Note — what was intentionally NOT fixed in this cycle
+
+- **`mcp_dispatch` registry expansion.** Only `load_sample_to_simpler` is
+  registered. The other 9 `MCP_TOOLS` entries are not currently emitted by
+  any compiled plan I can find. The router returns a clear "not in dispatch"
+  error if an unregistered MCP tool ever gets emitted, which is *honest
+  failure* — not silent. Adding stub entries would be preemptive scope.
+- **Wonder Mode full SessionKernel.** Wonder passes real `session_info` from
+  Ableton to the variant compilers when connected — the kernel SHAPE is
+  minimal (`{session_info, mode}`) but the semantic-move compilers only
+  read `kernel.session_info.tracks`, so the extra fields don't change
+  behavior. Low value, deferred.
+- **Silent `except: pass` in non-execution paths.** `commit_preview_variant`
+  has two silent excepts around taste-memory and turn-resolution updates.
+  These are bookkeeping side effects, not execution-critical, and failing
+  them shouldn't abort the commit. Left as-is.
+- **Project identity via Live set file path.** The real fix for §5 would
+  be to pull `song.song_document_path` from Live via a new Remote Script
+  handler. Deferred — the stronger hash is a substantial improvement
+  without adding new Remote Script surface area.
+
+---
+
 ## 1.10.2 — npm Distribution Fix + Tool-Count Audit (April 14 2026)
 
 Patch release. The orchestration hardening shipped in 1.10.1 was correct on

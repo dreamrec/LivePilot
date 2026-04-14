@@ -101,41 +101,128 @@ def run_branch(
 
     The branch is updated in-place with snapshots and status.
     """
+    # NOTE: this function was converted to an async wrapper around the
+    # async execution router in v1.10.3 (Truth Release). The synchronous
+    # _run_branch_sync stays for any caller that still uses it, but it now
+    # fails loudly on execution errors instead of silently swallowing them.
+    # The canonical path is run_branch_async below. Callers (tools.py) use
+    # the async variant directly.
+    return _run_branch_sync(branch, ableton, compiled_plan, capture_fn)
+
+
+def _run_branch_sync(branch, ableton, compiled_plan, capture_fn):
+    """Legacy sync run_branch body. Preserved for back-compat only.
+
+    Experiment tools now use run_branch_async which routes through the
+    unified execution substrate.
+    """
     branch.status = "running"
     branch.compiled_plan = compiled_plan
-
-    # 1. Capture before
     branch.before_snapshot = capture_fn()
 
-    # 2. Execute plan steps
     steps_executed = 0
+    log = []
     for step in compiled_plan.get("steps", []):
         tool = step.get("tool", "")
         params = step.get("params", {})
         if not tool:
             continue
-        # Skip read-only verification steps
         if tool in ("get_track_meters", "get_master_spectrum", "analyze_mix"):
             continue
         try:
-            ableton.send_command(tool, params)
+            result = ableton.send_command(tool, params)
             steps_executed += 1
-        except Exception:
-            pass  # Best effort — continue with remaining steps
+            log.append({"tool": tool, "backend": "remote_command", "ok": True, "result": result})
+        except Exception as exc:
+            log.append({"tool": tool, "backend": "remote_command", "ok": False, "error": str(exc)})
 
+    branch.execution_log = log
     branch.executed_at_ms = int(time.time() * 1000)
-
-    # 3. Capture after
     branch.after_snapshot = capture_fn()
 
-    # 4. Undo all changes back to checkpoint
     for _ in range(steps_executed):
         try:
             ableton.send_command("undo", {})
         except Exception:
             break
 
-    branch.status = "evaluated"
+    branch.status = "evaluated" if steps_executed > 0 else "failed"
+    return branch
+
+
+async def run_branch_async(
+    branch,
+    ableton,
+    compiled_plan: dict,
+    capture_fn,
+    bridge=None,
+    mcp_registry=None,
+    ctx=None,
+):
+    """Run a single branch experiment through the async execution router.
+
+    Same semantics as run_branch (apply → capture → evaluate → undo) but
+    dispatches each step through execute_plan_steps_async so remote /
+    bridge / mcp backends are all routed correctly and per-step failures
+    are visible in branch.execution_log.
+
+    Read-only verification steps (get_track_meters, get_master_spectrum,
+    analyze_mix) are skipped in the apply pass — they're used for snapshot
+    capture separately.
+    """
+    from ..runtime.execution_router import execute_plan_steps_async
+
+    branch.status = "running"
+    branch.compiled_plan = compiled_plan
+
+    branch.before_snapshot = capture_fn()
+
+    # Filter out read-only verification steps from the apply pass
+    all_steps = compiled_plan.get("steps", []) or []
+    apply_steps = [
+        s for s in all_steps
+        if s.get("tool") and s.get("tool") not in (
+            "get_track_meters", "get_master_spectrum", "analyze_mix",
+        )
+    ]
+
+    exec_results = await execute_plan_steps_async(
+        apply_steps,
+        ableton=ableton,
+        bridge=bridge,
+        mcp_registry=mcp_registry or {},
+        ctx=ctx,
+        stop_on_failure=False,  # best-effort, but log every failure
+    )
+
+    # Record per-step results on the branch for visibility
+    branch.execution_log = [
+        {
+            "tool": r.tool,
+            "backend": r.backend,
+            "ok": r.ok,
+            **({"result": r.result} if r.ok else {"error": r.error}),
+        }
+        for r in exec_results
+    ]
+
+    steps_executed = sum(1 for r in exec_results if r.ok)
+    branch.executed_at_ms = int(time.time() * 1000)
+    branch.after_snapshot = capture_fn()
+
+    # Undo all successful steps back to checkpoint. Undo is a remote_command,
+    # route it through the normal ableton.send_command path for simplicity.
+    for _ in range(steps_executed):
+        try:
+            ableton.send_command("undo", {})
+        except Exception:
+            break
+
+    # A branch is "evaluated" only if it actually applied at least one step.
+    # If every step failed, mark it "failed" — this is the truth-release
+    # behavior that makes the experiment honest instead of pretending
+    # a broken branch produced a neutral result.
+    branch.status = "evaluated" if steps_executed > 0 else "failed"
     return branch
 
 
@@ -160,12 +247,23 @@ def evaluate_branch(
 
 # ── Commit / discard ─────────────────────────────────────────────────────────
 
-def commit_branch(
+async def commit_branch_async(
     experiment: ExperimentSet,
     branch_id: str,
     ableton,
+    bridge=None,
+    mcp_registry=None,
+    ctx=None,
 ) -> dict:
-    """Re-apply the winning branch's moves permanently."""
+    """Re-apply the winning branch's moves permanently, through the async
+    execution router. No undo — the changes stick.
+
+    Returns a dict with the committed branch info AND the execution_log
+    (per-step ok/error results). If any step failed, the branch is marked
+    'committed_with_errors' so the caller can tell the commit was partial.
+    """
+    from ..runtime.execution_router import execute_plan_steps_async
+
     branch = experiment.get_branch(branch_id)
     if not branch:
         return {"error": f"Branch {branch_id} not found"}
@@ -173,7 +271,85 @@ def commit_branch(
     if not branch.compiled_plan:
         return {"error": "Branch has no compiled plan"}
 
-    # Re-execute the plan (this time without undoing)
+    all_steps = branch.compiled_plan.get("steps", []) or []
+    apply_steps = [
+        s for s in all_steps
+        if s.get("tool") and s.get("tool") not in (
+            "get_track_meters", "get_master_spectrum", "analyze_mix",
+        )
+    ]
+
+    exec_results = await execute_plan_steps_async(
+        apply_steps,
+        ableton=ableton,
+        bridge=bridge,
+        mcp_registry=mcp_registry or {},
+        ctx=ctx,
+        stop_on_failure=False,  # best-effort commit — record everything
+    )
+
+    log = [
+        {
+            "tool": r.tool,
+            "backend": r.backend,
+            "ok": r.ok,
+            **({"result": r.result} if r.ok else {"error": r.error}),
+        }
+        for r in exec_results
+    ]
+    branch.execution_log = log
+    steps_ok = sum(1 for r in exec_results if r.ok)
+    steps_failed = len(exec_results) - steps_ok
+
+    if steps_failed == 0 and steps_ok > 0:
+        branch.status = "committed"
+    elif steps_ok > 0:
+        branch.status = "committed_with_errors"
+    else:
+        # Zero successful steps — don't claim the commit happened
+        branch.status = "failed"
+        return {
+            "committed": False,
+            "branch_id": branch_id,
+            "branch_name": branch.name,
+            "error": "No steps executed successfully",
+            "steps_attempted": len(apply_steps),
+            "execution_log": log,
+        }
+
+    experiment.winner_branch_id = branch_id
+    experiment.status = "committed"
+
+    return {
+        "committed": True,
+        "branch_id": branch_id,
+        "branch_name": branch.name,
+        "steps_executed": steps_ok,
+        "steps_failed": steps_failed,
+        "status": branch.status,
+        "score": branch.score,
+        "execution_log": log,
+    }
+
+
+def commit_branch(
+    experiment: ExperimentSet,
+    branch_id: str,
+    ableton,
+) -> dict:
+    """Legacy sync wrapper kept for any direct caller. The canonical path
+    is commit_branch_async through tools.py → execute_plan_steps_async.
+
+    Still truth-honest: records per-step ok/error, marks branches as
+    'committed_with_errors' on partial failure rather than lying about it.
+    """
+    branch = experiment.get_branch(branch_id)
+    if not branch:
+        return {"error": f"Branch {branch_id} not found"}
+
+    if not branch.compiled_plan:
+        return {"error": "Branch has no compiled plan"}
+
     executed = []
     for step in branch.compiled_plan.get("steps", []):
         tool = step.get("tool", "")
@@ -182,11 +358,29 @@ def commit_branch(
             continue
         try:
             result = ableton.send_command(tool, params)
-            executed.append({"tool": tool, "ok": True})
+            executed.append({"tool": tool, "ok": True, "backend": "remote_command"})
         except Exception as exc:
-            executed.append({"tool": tool, "ok": False, "error": str(exc)})
+            executed.append({"tool": tool, "ok": False, "backend": "remote_command", "error": str(exc)})
 
-    branch.status = "committed"
+    branch.execution_log = executed
+    ok_count = sum(1 for e in executed if e.get("ok"))
+    failed_count = len(executed) - ok_count
+
+    if failed_count == 0 and ok_count > 0:
+        branch.status = "committed"
+    elif ok_count > 0:
+        branch.status = "committed_with_errors"
+    else:
+        branch.status = "failed"
+        return {
+            "committed": False,
+            "branch_id": branch_id,
+            "branch_name": branch.name,
+            "error": "No steps executed successfully",
+            "steps_attempted": len(executed),
+            "execution_log": executed,
+        }
+
     experiment.winner_branch_id = branch_id
     experiment.status = "committed"
 
@@ -194,7 +388,9 @@ def commit_branch(
         "committed": True,
         "branch_id": branch_id,
         "branch_name": branch.name,
-        "steps_executed": len(executed),
+        "steps_executed": ok_count,
+        "steps_failed": failed_count,
+        "status": branch.status,
         "score": branch.score,
     }
 

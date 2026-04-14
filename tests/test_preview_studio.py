@@ -320,3 +320,123 @@ def test_render_preview_variant_captures_audible_before_undo(monkeypatch):
 
     # There should be exactly one spectral_comparison in the result (before + after)
     assert "spectral_comparison" in result
+
+
+# ── v1.10.3 Truth Release: commit_preview_variant actually executes ──
+
+def test_commit_preview_variant_actually_executes_compiled_plan(monkeypatch):
+    """v1.10.3: commit used to mark the variant as committed in memory and
+    return committed=True without running anything. Users expected commit
+    to apply the chosen variant. It now runs the compiled plan through the
+    async router and reports per-step results.
+    """
+    import asyncio
+    from mcp_server.preview_studio.tools import commit_preview_variant
+    from mcp_server.preview_studio.engine import create_preview_set, store_preview_set
+    from mcp_server.preview_studio.models import PreviewSet, PreviewVariant
+    import mcp_server.runtime.execution_router as execution_router
+    import time
+
+    # Build a preview set containing a variant with a real compiled plan
+    variant = PreviewVariant(
+        variant_id="v_commit_test",
+        label="safe",
+        intent="test commit",
+        compiled_plan=[
+            {"tool": "set_track_volume", "params": {"track_index": 0, "volume": 0.5}},
+            {"tool": "set_track_pan", "params": {"track_index": 0, "pan": 0.3}},
+        ],
+        identity_effect="preserves",
+        what_preserved="everything",
+        move_id="test_move",
+    )
+    ps = PreviewSet(
+        set_id="ps_commit_test",
+        request_text="commit test",
+        strategy="binary",
+        source_kernel_id="k",
+        variants=[variant],
+        created_at_ms=int(time.time() * 1000),
+    )
+    store_preview_set(ps)
+
+    executed_tools = []
+
+    async def _fake_exec_async(steps, ableton=None, bridge=None, mcp_registry=None,
+                                ctx=None, stop_on_failure=True):
+        for s in steps:
+            executed_tools.append(s.get("tool"))
+        return [
+            SimpleNamespace(
+                ok=True, tool=s.get("tool"),
+                backend="remote_command", result={"ok": True}, error="",
+            )
+            for s in steps
+        ]
+
+    monkeypatch.setattr(execution_router, "execute_plan_steps_async", _fake_exec_async)
+
+    class _Ableton:
+        def send_command(self, cmd, params=None):
+            return {"ok": True}
+
+    ctx = SimpleNamespace(lifespan_context={"ableton": _Ableton()})
+    result = asyncio.run(commit_preview_variant(
+        ctx, set_id="ps_commit_test", variant_id="v_commit_test",
+    ))
+
+    # The compiled plan must have actually been executed
+    assert executed_tools == ["set_track_volume", "set_track_pan"], \
+        f"commit should have executed both plan steps; got {executed_tools}"
+
+    # Response should reflect real execution
+    assert result["committed"] is True
+    assert result["status"] == "committed"
+    assert result["steps_ok"] == 2
+    assert result["steps_failed"] == 0
+    assert "execution_log" in result
+    assert len(result["execution_log"]) == 2
+
+
+def test_commit_preview_variant_analytical_only_returns_honest_status(monkeypatch):
+    """If the variant has no compiled_plan (analytical-only), commit must
+    NOT pretend to apply anything — it returns status='analytical_only'
+    with committed=False.
+    """
+    import asyncio
+    from mcp_server.preview_studio.tools import commit_preview_variant
+    from mcp_server.preview_studio.engine import store_preview_set
+    from mcp_server.preview_studio.models import PreviewSet, PreviewVariant
+    import time
+
+    variant = PreviewVariant(
+        variant_id="v_analytical",
+        label="unexpected",
+        intent="analytical",
+        compiled_plan=None,  # analytical-only
+        identity_effect="contrasts",
+    )
+    ps = PreviewSet(
+        set_id="ps_analytical_test",
+        request_text="analytical",
+        strategy="binary",
+        source_kernel_id="k",
+        variants=[variant],
+        created_at_ms=int(time.time() * 1000),
+    )
+    store_preview_set(ps)
+
+    class _Ableton:
+        def send_command(self, cmd, params=None):
+            raise AssertionError("commit should NOT call any Ableton command for analytical variant")
+
+    ctx = SimpleNamespace(lifespan_context={"ableton": _Ableton()})
+    result = asyncio.run(commit_preview_variant(
+        ctx, set_id="ps_analytical_test", variant_id="v_analytical",
+    ))
+
+    assert result["committed"] is False
+    assert result["status"] == "analytical_only"
+    assert "note" in result
+    # execution_log should not be present because nothing ran
+    assert "execution_log" not in result

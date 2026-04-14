@@ -65,7 +65,7 @@ The conductor knows about every engine and matches keywords to routing patterns.
 | `guided_workflow` | Default | Step-by-step with your approval at each stage |
 | `quick_fix` | "just fix," "undo" | Minimal steps, fast execution |
 | `creative_search` | "try," "explore," "surprise me" | Multiple variants, experiment-friendly |
-| `agentic_loop` | "polish everything," "finish it" | Full autonomous loop with evaluation |
+| `agentic_loop` | "polish everything," "finish it" | Multi-step plan-and-evaluate loop with explicit checkpoints |
 | `performance_safe` | "live," "performing" | Safety constraints, no risky moves |
 | `sample_discovery` | "find me a sample" | Sample Engine first |
 | `slice_workflow` | "slice this," "chop" | Slice-focused pipeline |

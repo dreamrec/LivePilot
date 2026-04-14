@@ -235,3 +235,90 @@ def test_resolve_download_failure_falls_through_to_unresolved():
     assert path is None
     assert source == "unresolved"
     assert splice.download_calls == ["h1"]
+
+
+# ── v1.10.3 Truth Release: role-aware ranking, no bad musical matches ──
+
+def test_resolve_lead_does_not_grab_drums_via_shared_genre_token(tmp_path):
+    """The naive resolver used to return the first file whose name contained
+    any query token. Query 'techno melody Am' would match 'drums_techno.wav'
+    because of the shared 'techno' token — giving the lead layer a drum
+    sample. Lock out that failure mode.
+    """
+    (tmp_path / "drums_techno.wav").write_bytes(b"RIFF")
+    (tmp_path / "kick_techno_punchy.wav").write_bytes(b"RIFF")
+
+    layer = LayerSpec(role="lead", search_query="techno melody Am")
+    path, source = _run(resolve_sample_for_layer(layer, search_roots=[tmp_path]))
+
+    if path is not None:
+        name = path.lower()
+        assert "drum" not in name and "kick" not in name, \
+            f"lead layer resolved to drum material: {path}"
+    else:
+        assert source == "unresolved"
+
+
+def test_resolve_bass_prefers_bass_over_generic_genre_match(tmp_path):
+    """When both a role-matching and a genre-token-matching file exist,
+    role match must win."""
+    (tmp_path / "drums_techno_128.wav").write_bytes(b"RIFF")
+    (tmp_path / "bass_sub_808.wav").write_bytes(b"RIFF")
+
+    layer = LayerSpec(role="bass", search_query="techno bass 128bpm")
+    path, source = _run(resolve_sample_for_layer(layer, search_roots=[tmp_path]))
+
+    assert path is not None
+    assert "bass" in path.lower(), f"Expected bass-named file, got: {path}"
+    assert source == "filesystem"
+
+
+def test_resolve_tempo_in_filename_boosts_score(tmp_path):
+    """If tempo token appears in the filename AND in the query, prefer that file."""
+    (tmp_path / "drums_generic.wav").write_bytes(b"RIFF")
+    (tmp_path / "drums_128bpm.wav").write_bytes(b"RIFF")
+
+    layer = LayerSpec(role="drums", search_query="techno drums 128bpm")
+    path, source = _run(resolve_sample_for_layer(layer, search_roots=[tmp_path]))
+    assert path is not None
+    assert "128" in path, f"Expected tempo-matched file preferred, got: {path}"
+
+
+def test_resolve_role_only_match_still_works(tmp_path):
+    """When only a role-matching file exists, return it even if query tokens
+    don't overlap at all."""
+    (tmp_path / "pad_ambient.wav").write_bytes(b"RIFF")
+
+    layer = LayerSpec(role="pad", search_query="atmospheric texture")
+    path, source = _run(resolve_sample_for_layer(layer, search_roots=[tmp_path]))
+    assert path is not None
+    assert "pad" in path.lower()
+
+
+def test_resolve_multiple_candidates_picks_best_score(tmp_path):
+    """Confirm scoring actually ranks — best candidate wins, not first seen.
+
+    Alphabetical order is set up so first-hit-wins would pick the worst one.
+    """
+    (tmp_path / "a_unrelated.wav").write_bytes(b"RIFF")
+    (tmp_path / "b_random_techno.wav").write_bytes(b"RIFF")
+    (tmp_path / "z_drums_perfect_match.wav").write_bytes(b"RIFF")
+
+    layer = LayerSpec(role="drums", search_query="drums perfect")
+    path, source = _run(resolve_sample_for_layer(layer, search_roots=[tmp_path]))
+    assert path is not None
+    assert "z_drums_perfect_match" in path, f"Scoring did not rank best candidate: {path}"
+
+
+def test_resolve_unrelated_files_return_unresolved(tmp_path):
+    """If NO file has any signal (no role, no token), return unresolved,
+    not a random arbitrary hit."""
+    (tmp_path / "a.wav").write_bytes(b"RIFF")
+    (tmp_path / "b.wav").write_bytes(b"RIFF")
+    (tmp_path / "c.wav").write_bytes(b"RIFF")
+
+    layer = LayerSpec(role="lead", search_query="arpeggiated melody C")
+    path, source = _run(resolve_sample_for_layer(layer, search_roots=[tmp_path]))
+    # a/b/c have no signal at all — should be unresolved (not an arbitrary pick)
+    assert path is None
+    assert source == "unresolved"

@@ -300,6 +300,36 @@ def test_compose_arrangement_clip_tiles_all_layer_sections(tmp_path):
     assert len(sections_named) == len(arr_for_drums)
 
 
+# ── Phase 2C truth: suggest_sample_technique must NOT be in executable plan ──
+
+def test_compose_does_not_emit_suggest_sample_technique(tmp_path):
+    """suggest_sample_technique was a broken emission: composer passed
+    {technique_id} but the real tool requires {file_path}. Removed in
+    v1.10.3 from the executable plan; technique_id lives in layer metadata
+    for descriptive output only.
+    """
+    (tmp_path / "drums_techno.wav").write_bytes(b"RIFF")
+    engine = ComposerEngine()
+    result = _compose(engine, parse_prompt("techno 128bpm"), search_roots=[tmp_path])
+
+    # No suggest_sample_technique in the executable plan
+    tools = [s.get("tool") for s in result.plan]
+    assert "suggest_sample_technique" not in tools, \
+        f"Broken suggest_sample_technique emission leaked into plan: {tools}"
+
+    # But technique_id IS still visible in descriptive layer output
+    has_technique = any(l.technique_id for l in result.layers if hasattr(l, "technique_id"))
+    assert has_technique, "Expected at least one layer to carry a technique_id for descriptive output"
+
+
+def test_augment_does_not_emit_suggest_sample_technique(tmp_path):
+    (tmp_path / "vocal_warm.wav").write_bytes(b"RIFF")
+    engine = ComposerEngine()
+    result = _augment(engine, "add a vocal layer", search_roots=[tmp_path])
+    tools = [s.get("tool") for s in result.plan]
+    assert "suggest_sample_technique" not in tools
+
+
 def test_compose_unresolved_layer_emits_no_arrangement_steps():
     """When a layer doesn't resolve, we must NOT emit create_clip, add_notes,
     or create_arrangement_clip for it — those would reference a nonexistent

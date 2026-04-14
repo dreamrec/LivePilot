@@ -55,6 +55,12 @@ class ExperimentBranch:
     evaluation: Optional[dict] = None
     score: float = 0.0
 
+    # Execution log — per-step results from the async router. Non-empty when
+    # a branch has been run through run_branch or committed via commit_branch.
+    # Each entry: {tool, backend, ok, error, result}. Surfaced on to_dict()
+    # so callers can see exactly which steps succeeded or failed.
+    execution_log: list = field(default_factory=list)
+
     # Metadata
     created_at_ms: int = 0
     executed_at_ms: int = 0
@@ -77,6 +83,10 @@ class ExperimentBranch:
             d["after_snapshot"] = self.after_snapshot.to_dict()
         if self.evaluation:
             d["evaluation"] = self.evaluation
+        if self.execution_log:
+            d["execution_log"] = self.execution_log
+            d["steps_ok"] = sum(1 for e in self.execution_log if e.get("ok"))
+            d["steps_failed"] = sum(1 for e in self.execution_log if not e.get("ok"))
         return d
 
 
