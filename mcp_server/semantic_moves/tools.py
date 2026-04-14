@@ -45,9 +45,13 @@ def preview_semantic_move(
 ) -> dict:
     """Preview what a semantic move will do before applying it.
 
-    Returns the full compile plan (tool sequence), verification plan,
-    targets, protection constraints, and risk level. Use this to understand
-    the impact before committing.
+    Returns the static plan_template + verification_plans, PLUS an additive
+    compiled_plan field built by compiling the move against a lightweight
+    kernel of the current session. Use compiled_plan to inspect the concrete
+    tool calls the move would emit right now; use plan_template to understand
+    the move's shape independent of session state.
+
+    Existing callers reading plan_template are unaffected by the addition.
     """
     move = registry.get_move(move_id)
     if not move:
@@ -57,7 +61,46 @@ def preview_semantic_move(
             "available_moves": available,
         }
 
-    return move.to_full_dict()
+    result = move.to_full_dict()
+
+    # Additive: compile against a lightweight kernel so callers get an
+    # executable representation alongside the static plan_template.
+    try:
+        from ..runtime.session_kernel import build_session_kernel
+        from ..runtime.capability_state import build_capability_state
+        from . import compiler as move_compiler
+
+        ableton = None
+        if hasattr(ctx, "lifespan_context"):
+            ableton = ctx.lifespan_context.get("ableton")
+
+        session_info: dict = {}
+        if ableton is not None:
+            try:
+                info = ableton.send_command("get_session_info")
+                if isinstance(info, dict):
+                    session_info = info
+            except Exception:
+                session_info = {}
+
+        state = build_capability_state(
+            session_ok=bool(session_info),
+            analyzer_ok=False,
+            memory_ok=True,
+        )
+        kernel = build_session_kernel(
+            session_info=session_info,
+            capability_state=state.to_dict(),
+        )
+        plan = move_compiler.compile(move, kernel.to_dict())
+        result["compiled_plan"] = plan.to_dict()
+        result["compiled_plan_executable"] = bool(plan.executable)
+    except Exception as e:
+        result["compiled_plan"] = None
+        result["compiled_plan_executable"] = False
+        result["compiled_plan_error"] = str(e)
+
+    return result
 
 
 @mcp.tool()

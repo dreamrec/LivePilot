@@ -84,3 +84,46 @@ def test_all_registered_moves_have_valid_structure():
         assert move.intent
         assert move.risk_level in ("low", "medium", "high")
         assert len(move.plan_template) > 0, f"{move.move_id} has empty plan_template"
+
+
+# ── preview_semantic_move compiled_plan (Phase 6) ────────────────────────
+
+def test_preview_semantic_move_returns_compiled_plan_additive_field():
+    """preview_semantic_move must include compiled_plan alongside plan_template.
+
+    Previously it just returned move.to_full_dict() — static metadata only.
+    Callers had no executable representation to render or inspect.
+    """
+    from types import SimpleNamespace
+    from mcp_server.semantic_moves.tools import preview_semantic_move
+
+    class _Ableton:
+        def send_command(self, cmd, params=None):
+            return {
+                "tempo": 120, "track_count": 3,
+                "tracks": [{"index": 0, "name": "Drums"}],
+                "scenes": [],
+            }
+
+    ctx = SimpleNamespace(lifespan_context={"ableton": _Ableton()})
+    result = preview_semantic_move(ctx, move_id="tighten_low_end")
+
+    # Existing fields still present
+    assert "plan_template" in result
+    assert "verification_plans" in result or "verification_plan" in result
+
+    # New additive fields
+    assert "compiled_plan" in result, "compiled_plan should be an additive field"
+    assert "compiled_plan_executable" in result
+    assert isinstance(result["compiled_plan_executable"], bool)
+
+
+def test_preview_semantic_move_unknown_still_errors_cleanly():
+    """Unknown move_id path is unaffected by the compile addition."""
+    from types import SimpleNamespace
+    from mcp_server.semantic_moves.tools import preview_semantic_move
+
+    ctx = SimpleNamespace(lifespan_context={})
+    result = preview_semantic_move(ctx, move_id="nonexistent_move_xyz")
+    assert "error" in result
+    assert "available_moves" in result
