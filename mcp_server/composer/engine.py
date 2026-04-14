@@ -209,17 +209,82 @@ def _arrangement_steps(
     layer: LayerSpec,
     sections: list[dict],
 ) -> list[dict]:
-    """Arrangement clips — only for tracks that already have a source clip.
+    """Emit the full arrangement sequence for a layer.
 
-    Skipped entirely for newly-created Simpler tracks (they have no source
-    clip to tile into the arrangement). The composer can be extended later
-    to also emit create_clip steps first, but that's out of scope here.
+    For each layer that appears in at least one section, we emit:
+
+      1. create_clip — a 1-bar MIDI clip in session slot 0 (the source)
+      2. add_notes   — a single C3 trigger note so Simpler actually sounds
+      3. create_arrangement_clip (×N) — one per section the layer is in,
+         tiling the 1-bar source across each section's bar count
+
+    The trigger-clip-plus-tile approach is intentionally minimal: Simpler
+    in classic mode plays the full sample on every note, so a single C3
+    at bar 0 is enough for a playable baseline. The suggest_sample_technique
+    step elsewhere in the plan produces a recipe the agent can use later
+    to replace the trigger pattern with something more musical.
     """
-    # For now we skip arrangement emission from the composer since the tracks
-    # we create are empty Simplers — create_arrangement_clip with
-    # clip_slot_index=0 is invalid and would fail at runtime. Leaving this as
-    # a stub so the descriptive `sections` field is still populated upstream.
-    return []
+    active_sections = [s for s in sections if s["name"] in layer.sections]
+    if not active_sections:
+        return []
+
+    steps: list[dict] = []
+
+    # 1. Source session clip — 1 bar = 4 beats at 4/4
+    SOURCE_SLOT = 0
+    SOURCE_BEATS = 4.0
+    steps.append({
+        "tool": "create_clip",
+        "params": {
+            "track_index": track_index,
+            "clip_index": SOURCE_SLOT,
+            "length": SOURCE_BEATS,
+        },
+        "description": f"Create 1-bar source clip for {layer.role} (slot {SOURCE_SLOT})",
+        "role": layer.role,
+    })
+
+    # 2. Single trigger note at beat 0 — C3 (MIDI 60), 1 beat duration.
+    #    Simpler plays the full sample from this note; shorter durations
+    #    are fine because Simpler doesn't gate on note-off in classic mode.
+    steps.append({
+        "tool": "add_notes",
+        "params": {
+            "track_index": track_index,
+            "clip_index": SOURCE_SLOT,
+            "notes": [{
+                "pitch": 60,           # C3
+                "start_time": 0.0,
+                "duration": 1.0,       # 1 beat
+                "velocity": 100,
+            }],
+        },
+        "description": f"Add C3 trigger note to {layer.role} source clip",
+        "role": layer.role,
+    })
+
+    # 3. One arrangement clip per section this layer appears in
+    for section in active_sections:
+        start_bar = section["start_bar"]
+        bar_count = section["bars"]
+        steps.append({
+            "tool": "create_arrangement_clip",
+            "params": {
+                "track_index": track_index,
+                "clip_slot_index": SOURCE_SLOT,
+                "start_time": float(start_bar * 4.0),       # bars → beats
+                "length": float(bar_count * 4.0),
+                "loop_length": SOURCE_BEATS,                # tile 1-bar source
+            },
+            "description": (
+                f"Arrange {layer.role} into '{section['name']}' "
+                f"(bar {start_bar}, {bar_count} bars)"
+            ),
+            "role": layer.role,
+            "section": section["name"],
+        })
+
+    return steps
 
 
 # ── Engine ─────────────────────────────────────────────────────────

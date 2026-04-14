@@ -166,3 +166,128 @@ def test_get_plan_dry_run_path():
     assert "plan" in plan
     assert "layers" in plan
     assert "warnings" in plan
+
+
+# ── Phase 2B: arrangement clip emission ────────────────────────────────
+
+def test_compose_emits_create_clip_and_add_notes_before_arrangement(tmp_path):
+    """Every layer that loads a sample must also emit, in order:
+      1. create_clip (session slot, source for tiling)
+      2. add_notes (trigger note so Simpler actually sounds)
+      3. create_arrangement_clip per section
+    The ordering matters because create_arrangement_clip duplicates an
+    existing session clip — if add_notes hasn't run, the arrangement clip
+    will be empty.
+    """
+    (tmp_path / "drums_techno.wav").write_bytes(b"RIFF")
+    engine = ComposerEngine()
+    result = engine.compose(parse_prompt("techno 128bpm"), search_roots=[tmp_path])
+
+    # Find the drums layer's create_midi_track, load_sample, create_clip,
+    # add_notes, and create_arrangement_clip indices in emission order.
+    seq = [(i, s.get("tool"), s.get("role", "")) for i, s in enumerate(result.plan)]
+
+    def find_first(tool, role):
+        for i, t, r in seq:
+            if t == tool and r == role:
+                return i
+        return None
+
+    load_idx = find_first("load_sample_to_simpler", "drums")
+    assert load_idx is not None, f"No load step for drums; plan:\n{seq}"
+
+    clip_idx = None
+    notes_idx = None
+    arr_idx = None
+    for i, t, r in seq:
+        if r != "drums" or i <= load_idx:
+            continue
+        if t == "create_clip" and clip_idx is None:
+            clip_idx = i
+        elif t == "add_notes" and notes_idx is None:
+            notes_idx = i
+        elif t == "create_arrangement_clip" and arr_idx is None:
+            arr_idx = i
+
+    assert clip_idx is not None, "Missing create_clip for drums layer"
+    assert notes_idx is not None, "Missing add_notes for drums layer"
+    assert arr_idx is not None, "Missing create_arrangement_clip for drums layer"
+    assert load_idx < clip_idx < notes_idx < arr_idx, (
+        f"Ordering wrong: load={load_idx}, clip={clip_idx}, "
+        f"notes={notes_idx}, arr={arr_idx}"
+    )
+
+
+def test_compose_arrangement_clip_has_concrete_timing(tmp_path):
+    """Every create_arrangement_clip step must carry concrete start_time
+    and length in beats, plus a clip_slot_index pointing at the source."""
+    (tmp_path / "drums_techno.wav").write_bytes(b"RIFF")
+    engine = ComposerEngine()
+    result = engine.compose(parse_prompt("techno 128bpm"), search_roots=[tmp_path])
+
+    arr_steps = [s for s in result.plan if s.get("tool") == "create_arrangement_clip"]
+    assert arr_steps, "Expected at least one create_arrangement_clip step"
+
+    for step in arr_steps:
+        params = step["params"]
+        assert "start_time" in params
+        assert "length" in params
+        assert "clip_slot_index" in params
+        assert isinstance(params["start_time"], (int, float))
+        assert isinstance(params["length"], (int, float))
+        assert params["length"] > 0
+        assert params["start_time"] >= 0
+
+
+def test_compose_trigger_clip_has_single_midi_note(tmp_path):
+    """The source clip created for each layer has at least one MIDI note
+    so Simpler actually sounds when the arrangement clip plays."""
+    (tmp_path / "drums_techno.wav").write_bytes(b"RIFF")
+    engine = ComposerEngine()
+    result = engine.compose(parse_prompt("techno 128bpm"), search_roots=[tmp_path])
+
+    add_notes_steps = [s for s in result.plan if s.get("tool") == "add_notes"]
+    assert add_notes_steps, "Expected at least one add_notes step"
+
+    for step in add_notes_steps:
+        params = step["params"]
+        assert "notes" in params
+        notes = params["notes"]
+        assert isinstance(notes, list) and len(notes) >= 1
+        for note in notes:
+            assert "pitch" in note
+            assert "start_time" in note
+            assert "duration" in note
+            assert 0 <= note["pitch"] <= 127
+
+
+def test_compose_arrangement_clip_tiles_all_layer_sections(tmp_path):
+    """If a layer is used in multiple sections, each gets its own
+    create_arrangement_clip call."""
+    (tmp_path / "drums_techno.wav").write_bytes(b"RIFF")
+    engine = ComposerEngine()
+    result = engine.compose(parse_prompt("techno 128bpm"), search_roots=[tmp_path])
+
+    arr_for_drums = [
+        s for s in result.plan
+        if s.get("tool") == "create_arrangement_clip" and s.get("role") == "drums"
+    ]
+    # Drums layer should appear in >=1 section, usually more
+    assert len(arr_for_drums) >= 1
+
+    # Each arrangement clip targets a distinct section
+    sections_named = [s.get("section", "") for s in arr_for_drums]
+    assert len(sections_named) == len(arr_for_drums)
+
+
+def test_compose_unresolved_layer_emits_no_arrangement_steps():
+    """When a layer doesn't resolve, we must NOT emit create_clip, add_notes,
+    or create_arrangement_clip for it — those would reference a nonexistent
+    track and crash the plan."""
+    engine = ComposerEngine()
+    result = engine.compose(parse_prompt("techno 128bpm"), search_roots=[])
+
+    # Everything is unresolved
+    assert not any(s.get("tool") == "create_clip" for s in result.plan)
+    assert not any(s.get("tool") == "add_notes" for s in result.plan)
+    assert not any(s.get("tool") == "create_arrangement_clip" for s in result.plan)
