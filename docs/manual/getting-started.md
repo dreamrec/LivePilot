@@ -237,7 +237,7 @@ The LivePilot Analyzer is an optional Max for Live device that enables real-time
 
 ### What it enables
 
-With the Analyzer installed, you get 20 additional tools including:
+With the Analyzer installed, you get 30 additional tools including:
 
 - **Spectrum analysis** — real-time frequency data from the master output
 - **Key detection** — automatic key/scale detection using the Krumhansl-Schmuckler algorithm
