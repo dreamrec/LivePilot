@@ -110,11 +110,16 @@ def get_session_kernel(
         memory_ok=True,
     )
 
-    # Optional subcomponents — degrade gracefully
-    ledger_summary = {}
-    taste_graph = {}
-    anti_prefs = []
-    session_mem = []
+    # Optional subcomponents — degrade gracefully, but reach into the SAME
+    # session-scoped stores the public memory tools read/write via
+    # ctx.lifespan_context.setdefault(...). Creating fresh stores here meant
+    # users who recorded anti-preferences, session memory, or taste signals
+    # through the MCP tools always saw an empty kernel.
+    ledger_summary: dict = {}
+    taste_graph: dict = {}
+    anti_prefs: list = []
+    session_mem: list = []
+    kernel_warnings: list[str] = []
 
     try:
         from .action_ledger import SessionLedger
@@ -122,38 +127,42 @@ def get_session_kernel(
         if ledger is None:
             ledger = SessionLedger()
             ctx.lifespan_context["action_ledger"] = ledger
-        if ledger:
-            recent = ledger.get_recent_moves(limit=10)
-            ledger_summary = {
-                "total_moves": len(ledger._entries),
-                "memory_candidate_count": len(ledger.get_memory_candidates()),
-                "last_move": ledger.get_last_move().to_dict() if ledger.get_last_move() else None,
-                "recent_moves": [entry.to_dict() for entry in recent],
-            }
-    except Exception:
-        pass
+        recent = ledger.get_recent_moves(limit=10)
+        ledger_summary = {
+            "total_moves": len(ledger._entries),
+            "memory_candidate_count": len(ledger.get_memory_candidates()),
+            "last_move": ledger.get_last_move().to_dict() if ledger.get_last_move() else None,
+            "recent_moves": [entry.to_dict() for entry in recent],
+        }
+    except Exception as e:
+        kernel_warnings.append(f"ledger_unavailable: {e}")
 
+    # Taste graph + anti-prefs — share stores via lifespan_context, use the
+    # canonical build_taste_graph() so consumers see dimension_weights shape.
     try:
+        from ..memory.taste_graph import build_taste_graph
         from ..memory.taste_memory import TasteMemoryStore
-        taste_store = TasteMemoryStore()
-        taste_graph = {d.name: d.to_dict() for d in taste_store._dims.values()
-                       if d.evidence_count > 0}
-    except Exception:
-        pass
-
-    try:
         from ..memory.anti_memory import AntiMemoryStore
-        anti_store = AntiMemoryStore()
-        anti_prefs = anti_store.list_all()
-    except Exception:
-        pass
+        from ..persistence.taste_store import PersistentTasteStore
+        taste_store = ctx.lifespan_context.setdefault("taste_memory", TasteMemoryStore())
+        anti_store = ctx.lifespan_context.setdefault("anti_memory", AntiMemoryStore())
+        persistent = ctx.lifespan_context.setdefault("persistent_taste", PersistentTasteStore())
+        graph = build_taste_graph(
+            taste_store=taste_store,
+            anti_store=anti_store,
+            persistent_store=persistent,
+        )
+        taste_graph = graph.to_dict()
+        anti_prefs = [p.to_dict() for p in anti_store.get_anti_preferences()]
+    except Exception as e:
+        kernel_warnings.append(f"taste_graph_unavailable: {e}")
 
     try:
         from ..memory.session_memory import SessionMemoryStore
-        mem_store = SessionMemoryStore()
-        session_mem = mem_store.recent(limit=10)
-    except Exception:
-        pass
+        mem_store = ctx.lifespan_context.setdefault("session_memory", SessionMemoryStore())
+        session_mem = [entry.to_dict() for entry in mem_store.get_recent(limit=10)]
+    except Exception as e:
+        kernel_warnings.append(f"session_memory_unavailable: {e}")
 
     kernel = build_session_kernel(
         session_info=session_info,
@@ -174,7 +183,11 @@ def get_session_kernel(
             plan = classify_request(request_text)
             kernel.recommended_engines = [r.engine for r in plan.routes[:3]]
             kernel.recommended_workflow = plan.workflow_mode
-        except Exception:
-            pass
+        except Exception as e:
+            kernel_warnings.append(f"conductor_routing_unavailable: {e}")
 
-    return kernel.to_dict()
+    result_dict = kernel.to_dict()
+    if kernel_warnings:
+        # Additive — callers can ignore; debug-mode introspection benefits.
+        result_dict["warnings"] = kernel_warnings
+    return result_dict

@@ -15,7 +15,7 @@ SAMPLE_CHOP_RHYTHM = SemanticMove(
     protect={"clarity": 0.6, "coherence": 0.5},
     risk_level="medium",
     plan_template=[
-        {"tool": "load_sample_to_simpler", "params": {"description": "Load sample into Simpler for slicing"}, "description": "Load into Simpler", "backend": "bridge_command"},
+        {"tool": "load_sample_to_simpler", "params": {"description": "Load sample into Simpler for slicing"}, "description": "Load into Simpler", "backend": "mcp_tool"},
         {"tool": "set_simpler_playback_mode", "params": {"mode": "slice", "description": "Switch to slice mode for rhythmic chopping"}, "description": "Enable slice mode", "backend": "remote_command"},
         {"tool": "crop_simpler", "params": {"description": "Crop to rhythmically relevant region"}, "description": "Crop to useful region", "backend": "bridge_command"},
     ],
@@ -33,7 +33,7 @@ SAMPLE_TEXTURE_LAYER = SemanticMove(
     protect={"clarity": 0.7, "punch": 0.5},
     risk_level="low",
     plan_template=[
-        {"tool": "load_sample_to_simpler", "params": {"description": "Load textural sample into Simpler"}, "description": "Load texture sample", "backend": "bridge_command"},
+        {"tool": "load_sample_to_simpler", "params": {"description": "Load textural sample into Simpler"}, "description": "Load texture sample", "backend": "mcp_tool"},
         {"tool": "set_simpler_playback_mode", "params": {"mode": "classic", "description": "Classic mode for sustained texture playback"}, "description": "Classic playback", "backend": "remote_command"},
         {"tool": "set_device_parameter", "params": {"description": "Lower filter cutoff to sit beneath main elements"}, "description": "Filter for background placement", "backend": "remote_command"},
         {"tool": "set_track_send", "params": {"description": "Add reverb send for spatial depth"}, "description": "Reverb for depth", "backend": "remote_command"},
@@ -51,7 +51,7 @@ SAMPLE_VOCAL_GHOST = SemanticMove(
     protect={"clarity": 0.5},
     risk_level="medium",
     plan_template=[
-        {"tool": "load_sample_to_simpler", "params": {"description": "Load vocal sample into Simpler"}, "description": "Load vocal", "backend": "bridge_command"},
+        {"tool": "load_sample_to_simpler", "params": {"description": "Load vocal sample into Simpler"}, "description": "Load vocal", "backend": "mcp_tool"},
         {"tool": "reverse_simpler", "params": {"description": "Reverse for ghostly character"}, "description": "Reverse vocal", "backend": "bridge_command"},
         {"tool": "set_device_parameter", "params": {"description": "Detune -5 to -12 semitones for haunting pitch"}, "description": "Pitch down for ghost effect", "backend": "remote_command"},
         {"tool": "set_track_send", "params": {"description": "Heavy reverb send 40-60% for wash"}, "description": "Reverb wash", "backend": "remote_command"},
@@ -70,7 +70,7 @@ SAMPLE_BREAK_LAYER = SemanticMove(
     risk_level="medium",
     plan_template=[
         {"tool": "create_midi_track", "params": {"description": "New track for break layer"}, "description": "Create break track", "backend": "remote_command"},
-        {"tool": "load_sample_to_simpler", "params": {"description": "Load breakbeat into Simpler"}, "description": "Load break", "backend": "bridge_command"},
+        {"tool": "load_sample_to_simpler", "params": {"description": "Load breakbeat into Simpler"}, "description": "Load break", "backend": "mcp_tool"},
         {"tool": "set_simpler_playback_mode", "params": {"mode": "slice", "slice_by": "transient", "description": "Slice by transients for individual hits"}, "description": "Slice break by transients", "backend": "remote_command"},
         {"tool": "set_track_volume", "params": {"description": "Set break layer volume below main drums"}, "description": "Balance break level", "backend": "remote_command"},
     ],
@@ -88,7 +88,7 @@ SAMPLE_RESAMPLE_DESTROY = SemanticMove(
     protect={"coherence": 0.4},
     risk_level="high",
     plan_template=[
-        {"tool": "load_sample_to_simpler", "params": {"description": "Load sample for destruction"}, "description": "Load source material", "backend": "bridge_command"},
+        {"tool": "load_sample_to_simpler", "params": {"description": "Load sample for destruction"}, "description": "Load source material", "backend": "mcp_tool"},
         {"tool": "warp_simpler", "params": {"description": "Extreme warp settings for time-stretch artifacts"}, "description": "Warp for artifacts", "backend": "bridge_command"},
         {"tool": "set_device_parameter", "params": {"description": "Add Redux or bitcrusher for lo-fi destruction"}, "description": "Bitcrush/reduce", "backend": "remote_command"},
         {"tool": "set_device_parameter", "params": {"description": "Saturator drive to maximum for harmonic distortion"}, "description": "Saturate heavily", "backend": "remote_command"},
@@ -106,7 +106,7 @@ SAMPLE_ONE_SHOT_ACCENT = SemanticMove(
     protect={"clarity": 0.6, "coherence": 0.5},
     risk_level="low",
     plan_template=[
-        {"tool": "load_sample_to_simpler", "params": {"description": "Load one-shot into Simpler"}, "description": "Load one-shot", "backend": "bridge_command"},
+        {"tool": "load_sample_to_simpler", "params": {"description": "Load one-shot into Simpler"}, "description": "Load one-shot", "backend": "mcp_tool"},
         {"tool": "set_simpler_playback_mode", "params": {"mode": "one_shot", "description": "One-shot mode for trigger playback"}, "description": "One-shot mode", "backend": "remote_command"},
         {"tool": "crop_simpler", "params": {"description": "Tight crop around the transient"}, "description": "Crop to transient", "backend": "bridge_command"},
     ],

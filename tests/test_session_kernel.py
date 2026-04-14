@@ -117,6 +117,65 @@ def test_get_session_kernel_includes_action_ledger_summary():
     assert result["ledger_summary"]["last_move"]["intent"] == "tighten low end"
 
 
+def test_get_session_kernel_reads_shared_anti_preferences():
+    """get_session_kernel must reflect anti-preferences recorded via the public tool.
+
+    Previously it instantiated a fresh AntiMemoryStore and called a non-existent
+    list_all() method wrapped in try/except: pass — so users always saw empty.
+    """
+    from mcp_server.runtime.tools import get_session_kernel
+    from mcp_server.memory.anti_memory import AntiMemoryStore
+
+    class _Ableton:
+        def send_command(self, cmd, params=None):
+            return {"tempo": 120, "track_count": 2, "tracks": []}
+
+    ctx = SimpleNamespace(lifespan_context={"ableton": _Ableton(), "action_ledger": SessionLedger()})
+    store = ctx.lifespan_context.setdefault("anti_memory", AntiMemoryStore())
+    store.record_dislike("brightness", "increase")
+    store.record_dislike("brightness", "increase")
+
+    result = get_session_kernel(ctx)
+    anti = result.get("anti_preferences", [])
+    assert any(p.get("dimension") == "brightness" for p in anti), \
+        f"Expected brightness anti-pref; got {anti}"
+
+
+def test_get_session_kernel_reads_shared_session_memory():
+    """Same bug for session_memory — mem_store.recent() did not exist."""
+    from mcp_server.runtime.tools import get_session_kernel
+    from mcp_server.memory.session_memory import SessionMemoryStore
+
+    class _Ableton:
+        def send_command(self, cmd, params=None):
+            return {"tempo": 120, "track_count": 2, "tracks": []}
+
+    ctx = SimpleNamespace(lifespan_context={"ableton": _Ableton(), "action_ledger": SessionLedger()})
+    store = ctx.lifespan_context.setdefault("session_memory", SessionMemoryStore())
+    store.add(category="observation", content="kick feels muddy", engine="mix")
+
+    result = get_session_kernel(ctx)
+    mem = result.get("session_memory", [])
+    assert len(mem) >= 1, f"Expected 1+ session memory entries; got {mem}"
+    assert mem[0]["content"] == "kick feels muddy"
+
+
+def test_get_session_kernel_taste_graph_uses_canonical_shape():
+    """Taste graph must be built via build_taste_graph() so dimension_weights exists."""
+    from mcp_server.runtime.tools import get_session_kernel
+
+    class _Ableton:
+        def send_command(self, cmd, params=None):
+            return {"tempo": 120, "track_count": 2, "tracks": []}
+
+    ctx = SimpleNamespace(lifespan_context={"ableton": _Ableton(), "action_ledger": SessionLedger()})
+    result = get_session_kernel(ctx)
+    tg = result.get("taste_graph", {})
+    # Canonical TasteGraph.to_dict() always has dimension_weights (possibly empty)
+    assert "dimension_weights" in tg, \
+        f"Taste graph must have canonical shape (dimension_weights key); got keys {list(tg.keys())}"
+
+
 def test_get_session_kernel_marks_analyzer_available_when_fresh():
     from mcp_server.runtime.tools import get_session_kernel
 
