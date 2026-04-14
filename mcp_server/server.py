@@ -78,12 +78,22 @@ async def _warm_analyzer_bridge(
 async def lifespan(server):
     """Create and yield the shared AbletonConnection + M4L bridge + registries."""
     from .runtime.mcp_dispatch import build_mcp_dispatch_registry
+    from .splice_client.client import SpliceGRPCClient
 
     ableton = AbletonConnection()
     spectral = SpectralCache()
     receiver = SpectralReceiver(spectral)
     m4l = M4LBridge(spectral, receiver)
     mcp_dispatch = build_mcp_dispatch_registry()
+
+    # Splice gRPC client — graceful degradation if Splice desktop isn't
+    # running or grpcio isn't installed. .connected will be False in that
+    # case and sample_resolver treats it as "no splice hits".
+    splice_client = SpliceGRPCClient()
+    try:
+        await splice_client.connect()
+    except Exception:
+        pass  # client remains in disconnected state
 
     # Start UDP listener for incoming M4L spectral data (port 9880)
     loop = asyncio.get_running_loop()
@@ -125,12 +135,17 @@ async def lifespan(server):
             "m4l": m4l,
             "_bridge_state": bridge_state,
             "mcp_dispatch": mcp_dispatch,
+            "splice_client": splice_client,
         }
     finally:
         if bridge_state["transport"]:
             bridge_state["transport"].close()
         m4l.close()
         ableton.disconnect()
+        try:
+            await splice_client.disconnect()
+        except Exception:
+            pass
 
 
 mcp = FastMCP("LivePilot", lifespan=lifespan)

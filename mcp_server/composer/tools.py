@@ -20,6 +20,61 @@ from .engine import ComposerEngine
 _engine = ComposerEngine()
 
 
+def _get_search_roots(ctx: Context) -> list:
+    """Pull sample-search roots from ctx (if the server wired any) plus
+    environment fallbacks.
+    """
+    roots = []
+    try:
+        cfg = ctx.lifespan_context.get("sample_search_roots") if hasattr(ctx, "lifespan_context") else None
+        if cfg:
+            roots.extend(cfg)
+    except Exception:
+        pass
+    return roots
+
+
+async def _credit_safety_prelude(splice_client, max_credits: int) -> tuple[int, int | None, list[str]]:
+    """Apply the hard floor / budget trimming rules upfront.
+
+    Returns (adjusted_max_credits, credits_remaining_or_None, warnings).
+    """
+    warnings: list[str] = []
+    credits_remaining: int | None = None
+
+    if splice_client is None or not getattr(splice_client, "connected", False):
+        warnings.append(
+            "Splice not connected. Plan will use browser/filesystem fallback "
+            "for sample search."
+        )
+        return max_credits, None, warnings
+
+    try:
+        info = await splice_client.get_credits()
+        credits_remaining = getattr(info, "credits", None)
+    except Exception:
+        credits_remaining = None
+
+    if credits_remaining is None:
+        return max_credits, None, warnings
+
+    if credits_remaining <= 5:
+        warnings.append(
+            f"Splice credits critically low ({credits_remaining}). "
+            f"Using downloaded samples only."
+        )
+        max_credits = 0
+    elif max_credits > credits_remaining - 5:
+        safe_budget = max(0, credits_remaining - 5)
+        warnings.append(
+            f"Budget capped at {safe_budget} credits "
+            f"(remaining: {credits_remaining}, floor: 5)."
+        )
+        max_credits = safe_budget
+
+    return max_credits, credits_remaining, warnings
+
+
 @mcp.tool()
 async def compose(
     ctx: Context,
@@ -40,42 +95,20 @@ async def compose(
     Returns a compiled plan with step-by-step tool calls. The agent
     executes each step by calling the referenced tools in sequence.
     """
-    # Parse the prompt into structured intent
     intent = parse_prompt(prompt)
 
-    # Credit safety check
-    # NOTE: Splice gRPC client is not yet wired into server lifespan.
-    # When it is, this will read ctx.lifespan_context["splice"].
-    splice_client = None
-    credits_remaining = None
+    splice_client = ctx.lifespan_context.get("splice_client") if hasattr(ctx, "lifespan_context") else None
+    search_roots = _get_search_roots(ctx)
 
-    warnings: list[str] = []
+    max_credits, credits_remaining, warnings = await _credit_safety_prelude(splice_client, max_credits)
 
-    if credits_remaining is not None:
-        if credits_remaining <= 5:
-            warnings.append(
-                f"Splice credits critically low ({credits_remaining}). "
-                f"Using downloaded samples only."
-            )
-            max_credits = 0
-        elif max_credits > credits_remaining - 5:
-            safe_budget = max(0, credits_remaining - 5)
-            warnings.append(
-                f"Budget capped at {safe_budget} credits "
-                f"(remaining: {credits_remaining}, floor: 5)."
-            )
-            max_credits = safe_budget
-
-    if splice_client is None or not getattr(splice_client, "connected", False):
-        warnings.append(
-            "Splice not connected. Plan will use browser/filesystem fallback "
-            "for sample search."
-        )
-
-    # Compose
-    result = _engine.compose(intent, dry_run=dry_run, max_credits=max_credits)
-
-    # Merge warnings
+    result = await _engine.compose(
+        intent,
+        dry_run=dry_run,
+        max_credits=max_credits,
+        search_roots=search_roots,
+        splice_client=splice_client,
+    )
     result.warnings.extend(warnings)
 
     output = result.to_dict()
@@ -107,30 +140,12 @@ async def augment_with_samples(
 
     Returns a compiled plan with step-by-step tool calls.
     """
-    # Credit safety
-    # NOTE: Splice gRPC client is not yet wired into server lifespan.
-    splice_client = None
-    credits_remaining = None
+    splice_client = ctx.lifespan_context.get("splice_client") if hasattr(ctx, "lifespan_context") else None
+    search_roots = _get_search_roots(ctx)
 
-    warnings: list[str] = []
+    max_credits, credits_remaining, warnings = await _credit_safety_prelude(splice_client, max_credits)
 
-    if credits_remaining is not None:
-        if credits_remaining <= 5:
-            warnings.append(
-                f"Splice credits critically low ({credits_remaining}). "
-                f"Using downloaded samples only."
-            )
-            max_credits = 0
-        elif max_credits > credits_remaining - 5:
-            safe_budget = max(0, credits_remaining - 5)
-            max_credits = safe_budget
-
-    if splice_client is None or not getattr(splice_client, "connected", False):
-        warnings.append(
-            "Splice not connected. Will use browser/filesystem fallback."
-        )
-
-    # Get current session info for context
+    # Pull current session info for tempo context
     session_context: dict = {}
     try:
         ableton = ctx.lifespan_context.get("ableton")
@@ -141,14 +156,14 @@ async def augment_with_samples(
     except Exception:
         pass
 
-    # Augment
-    result = _engine.augment(
+    result = await _engine.augment(
         request=request,
         max_credits=max_credits,
         max_layers=max_layers,
+        search_roots=search_roots,
+        splice_client=splice_client,
     )
 
-    # Override tempo from session if available
     if session_context.get("tempo"):
         result.intent.tempo = int(session_context["tempo"])
 
@@ -180,7 +195,13 @@ async def get_composition_plan(
     prompt: "dark minimal techno 128bpm with industrial textures"
     """
     intent = parse_prompt(prompt)
-    plan = _engine.get_plan(intent)
+    splice_client = ctx.lifespan_context.get("splice_client") if hasattr(ctx, "lifespan_context") else None
+    search_roots = _get_search_roots(ctx)
+    plan = await _engine.get_plan(
+        intent,
+        search_roots=search_roots,
+        splice_client=splice_client,
+    )
     plan["prompt"] = prompt
     plan["note"] = (
         "This is a dry run. No samples searched or loaded. "

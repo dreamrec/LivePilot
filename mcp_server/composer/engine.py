@@ -294,20 +294,31 @@ class ComposerEngine:
 
     Pure computation — returns compiled plan dicts.
     The tool layer (tools.py) handles actual execution.
+
+    Async because sample resolution may download from Splice over gRPC.
+    Filesystem-only callers still get near-instant resolution — the resolver
+    only awaits when it actually hits the network.
     """
 
-    def compose(
+    async def compose(
         self,
         intent: CompositionIntent,
         dry_run: bool = False,
         max_credits: int = 10,
         search_roots: Optional[list] = None,
+        splice_client: object = None,
+        browser_client: object = None,
     ) -> CompositionResult:
         """Plan a full multi-layer composition from a CompositionIntent.
 
         Returns a CompositionResult where `plan` contains only executable
         steps. Unresolved layers are kept in `layers` (descriptive) but
         dropped from `plan`, with warnings naming the unresolved roles.
+
+        splice_client is typically `ctx.lifespan_context["splice_client"]`
+        from the tool layer. When connected, its catalog is searched after
+        filesystem and remote samples are downloaded one credit at a time
+        (subject to the hard floor).
         """
         result = CompositionResult(intent=intent, dry_run=dry_run)
 
@@ -333,16 +344,21 @@ class ComposerEngine:
         for layer_idx, layer in enumerate(layers):
             track_index = layer_idx
 
-            file_path, source = resolve_sample_for_layer(layer, search_roots=search_roots)
+            file_path, source = await resolve_sample_for_layer(
+                layer,
+                search_roots=search_roots,
+                splice_client=splice_client,
+                browser_client=browser_client,
+                credit_budget=max_credits,
+            )
             if not file_path:
-                # Layer is descriptive-only. Skip emission, warn.
                 result.warnings.append(
                     f"Unresolved sample for layer '{layer.role}' "
                     f"(query: {layer.search_query!r}). Dropped from plan."
                 )
                 continue
 
-            result.resolved_samples[layer.role] = file_path
+            result.resolved_samples[layer.role] = {"path": file_path, "source": source}
 
             track_step_id = f"layer_{layer_idx}_track"
             plan.append(_step_create_midi_track(track_index, layer.role, track_step_id))
@@ -360,12 +376,14 @@ class ComposerEngine:
         result.plan = plan
         return result
 
-    def augment(
+    async def augment(
         self,
         request: str,
         max_credits: int = 3,
         max_layers: int = 3,
         search_roots: Optional[list] = None,
+        splice_client: object = None,
+        browser_client: object = None,
     ) -> AugmentResult:
         """Plan augmentation layers to add to an existing session.
 
@@ -394,7 +412,13 @@ class ComposerEngine:
         plan: list[dict] = []
 
         for layer_idx, layer in enumerate(layers):
-            file_path, _source = resolve_sample_for_layer(layer, search_roots=search_roots)
+            file_path, source = await resolve_sample_for_layer(
+                layer,
+                search_roots=search_roots,
+                splice_client=splice_client,
+                browser_client=browser_client,
+                credit_budget=max_credits,
+            )
             if not file_path:
                 result.warnings.append(
                     f"Unresolved sample for layer '{layer.role}' "
@@ -402,7 +426,7 @@ class ComposerEngine:
                 )
                 continue
 
-            result.resolved_samples[layer.role] = file_path
+            result.resolved_samples[layer.role] = {"path": file_path, "source": source}
 
             # We don't know the absolute track index yet. create_midi_track's
             # result carries "index" (via Remote Script) — later steps bind
@@ -485,15 +509,24 @@ class ComposerEngine:
         result.plan = plan
         return result
 
-    def get_plan(
+    async def get_plan(
         self,
         intent: CompositionIntent,
         search_roots: Optional[list] = None,
+        splice_client: object = None,
+        browser_client: object = None,
     ) -> dict:
         """Dry run — return the full composition plan without execution.
 
-        Passes search_roots through to compose() so the dry-run accurately
-        reflects which layers would resolve.
+        Passes resolution dependencies through to compose() so the dry-run
+        accurately reflects which layers would resolve.
         """
-        result = self.compose(intent, dry_run=True, max_credits=0, search_roots=search_roots)
+        result = await self.compose(
+            intent,
+            dry_run=True,
+            max_credits=0,
+            search_roots=search_roots,
+            splice_client=splice_client,
+            browser_client=browser_client,
+        )
         return result.to_dict()

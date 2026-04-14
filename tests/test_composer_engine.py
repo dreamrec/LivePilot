@@ -8,7 +8,12 @@ The composer used to emit:
 
 Now it must emit only real tool calls with concrete params, or drop the
 layer from the plan and surface a warning.
+
+Phase 2C: compose/augment/get_plan are async because sample resolution
+may download from Splice. Tests wrap calls in asyncio.run().
 """
+
+import asyncio
 
 import pytest
 
@@ -25,6 +30,21 @@ def _tool_names(result):
     return [s.get("tool", "") for s in _steps(result)]
 
 
+def _compose(engine, intent, **kwargs):
+    """Sync wrapper around async compose for concise tests."""
+    return asyncio.run(engine.compose(intent, **kwargs))
+
+
+def _augment(engine, request, **kwargs):
+    """Sync wrapper around async augment for concise tests."""
+    return asyncio.run(engine.augment(request, **kwargs))
+
+
+def _get_plan(engine, intent, **kwargs):
+    """Sync wrapper around async get_plan for concise tests."""
+    return asyncio.run(engine.get_plan(intent, **kwargs))
+
+
 # ── Pseudo-tool elimination ─────────────────────────────────────────────
 
 def test_compose_plan_contains_no_pseudo_tools(tmp_path):
@@ -36,7 +56,7 @@ def test_compose_plan_contains_no_pseudo_tools(tmp_path):
 
     engine = ComposerEngine()
     intent = parse_prompt("dark minimal techno 128bpm with organic textures")
-    result = engine.compose(intent, search_roots=[tmp_path])
+    result = _compose(engine, intent, search_roots=[tmp_path])
 
     for step in _steps(result):
         tool = step.get("tool", "")
@@ -46,7 +66,7 @@ def test_compose_plan_contains_no_pseudo_tools(tmp_path):
 def test_augment_plan_contains_no_pseudo_tools(tmp_path):
     (tmp_path / "vocal.wav").write_bytes(b"RIFF")
     engine = ComposerEngine()
-    result = engine.augment("add a vocal layer", search_roots=[tmp_path])
+    result = _augment(engine, "add a vocal layer", search_roots=[tmp_path])
 
     for step in _steps(result):
         tool = step.get("tool", "")
@@ -59,7 +79,7 @@ def test_compose_plan_has_no_placeholder_strings(tmp_path):
     """No param value may be a literal {placeholder} template."""
     (tmp_path / "drums_techno.wav").write_bytes(b"RIFF")
     engine = ComposerEngine()
-    result = engine.compose(parse_prompt("techno 128bpm"), search_roots=[tmp_path])
+    result = _compose(engine, parse_prompt("techno 128bpm"), search_roots=[tmp_path])
 
     for step in _steps(result):
         for key, val in step.get("params", {}).items():
@@ -73,7 +93,7 @@ def test_set_device_parameter_binds_device_index_via_from_step(tmp_path):
     """set_device_parameter.device_index must be a $from_step binding, never -1."""
     (tmp_path / "drums_techno.wav").write_bytes(b"RIFF")
     engine = ComposerEngine()
-    result = engine.compose(parse_prompt("techno 128bpm"), search_roots=[tmp_path])
+    result = _compose(engine, parse_prompt("techno 128bpm"), search_roots=[tmp_path])
 
     found_binding = False
     for step in _steps(result):
@@ -94,7 +114,7 @@ def test_insert_device_emits_step_id_when_params_follow(tmp_path):
     """insert_device must carry a step_id so set_device_parameter can bind to it."""
     (tmp_path / "drums_techno.wav").write_bytes(b"RIFF")
     engine = ComposerEngine()
-    result = engine.compose(parse_prompt("techno 128bpm"), search_roots=[tmp_path])
+    result = _compose(engine, parse_prompt("techno 128bpm"), search_roots=[tmp_path])
 
     for i, step in enumerate(_steps(result)):
         if step.get("tool") == "insert_device":
@@ -112,7 +132,7 @@ def test_compose_drops_unresolved_layers_and_warns():
     """With no search_roots, everything is unresolved — plan must not emit
     load_sample_to_simpler steps with placeholder paths."""
     engine = ComposerEngine()
-    result = engine.compose(parse_prompt("techno 128bpm"), search_roots=[])
+    result = _compose(engine, parse_prompt("techno 128bpm"), search_roots=[])
 
     # Any load_sample_to_simpler must have a real path (none emitted here)
     for step in _steps(result):
@@ -136,7 +156,7 @@ def test_compose_keeps_resolved_layers_in_plan(tmp_path):
     (tmp_path / "drums_techno.wav").write_bytes(b"RIFF")
 
     engine = ComposerEngine()
-    result = engine.compose(parse_prompt("techno 128bpm"), search_roots=[tmp_path])
+    result = _compose(engine, parse_prompt("techno 128bpm"), search_roots=[tmp_path])
 
     load_steps = [s for s in _steps(result) if s.get("tool") == "load_sample_to_simpler"]
     # At least the drums layer should have produced a concrete load step
@@ -152,7 +172,7 @@ def test_compose_keeps_resolved_layers_in_plan(tmp_path):
 def test_every_plan_tool_name_is_non_empty(tmp_path):
     (tmp_path / "drums_techno.wav").write_bytes(b"RIFF")
     engine = ComposerEngine()
-    result = engine.compose(parse_prompt("techno 128bpm"), search_roots=[tmp_path])
+    result = _compose(engine, parse_prompt("techno 128bpm"), search_roots=[tmp_path])
     for step in _steps(result):
         assert step.get("tool", "").strip(), f"Empty tool name: {step}"
 
@@ -162,7 +182,7 @@ def test_every_plan_tool_name_is_non_empty(tmp_path):
 def test_get_plan_dry_run_path():
     """get_plan is the explicit dry-run preview. Should return a dict with plan shape."""
     engine = ComposerEngine()
-    plan = engine.get_plan(parse_prompt("techno 128bpm"))
+    plan = _get_plan(engine, parse_prompt("techno 128bpm"))
     assert "plan" in plan
     assert "layers" in plan
     assert "warnings" in plan
@@ -181,7 +201,7 @@ def test_compose_emits_create_clip_and_add_notes_before_arrangement(tmp_path):
     """
     (tmp_path / "drums_techno.wav").write_bytes(b"RIFF")
     engine = ComposerEngine()
-    result = engine.compose(parse_prompt("techno 128bpm"), search_roots=[tmp_path])
+    result = _compose(engine, parse_prompt("techno 128bpm"), search_roots=[tmp_path])
 
     # Find the drums layer's create_midi_track, load_sample, create_clip,
     # add_notes, and create_arrangement_clip indices in emission order.
@@ -223,7 +243,7 @@ def test_compose_arrangement_clip_has_concrete_timing(tmp_path):
     and length in beats, plus a clip_slot_index pointing at the source."""
     (tmp_path / "drums_techno.wav").write_bytes(b"RIFF")
     engine = ComposerEngine()
-    result = engine.compose(parse_prompt("techno 128bpm"), search_roots=[tmp_path])
+    result = _compose(engine, parse_prompt("techno 128bpm"), search_roots=[tmp_path])
 
     arr_steps = [s for s in result.plan if s.get("tool") == "create_arrangement_clip"]
     assert arr_steps, "Expected at least one create_arrangement_clip step"
@@ -244,7 +264,7 @@ def test_compose_trigger_clip_has_single_midi_note(tmp_path):
     so Simpler actually sounds when the arrangement clip plays."""
     (tmp_path / "drums_techno.wav").write_bytes(b"RIFF")
     engine = ComposerEngine()
-    result = engine.compose(parse_prompt("techno 128bpm"), search_roots=[tmp_path])
+    result = _compose(engine, parse_prompt("techno 128bpm"), search_roots=[tmp_path])
 
     add_notes_steps = [s for s in result.plan if s.get("tool") == "add_notes"]
     assert add_notes_steps, "Expected at least one add_notes step"
@@ -266,7 +286,7 @@ def test_compose_arrangement_clip_tiles_all_layer_sections(tmp_path):
     create_arrangement_clip call."""
     (tmp_path / "drums_techno.wav").write_bytes(b"RIFF")
     engine = ComposerEngine()
-    result = engine.compose(parse_prompt("techno 128bpm"), search_roots=[tmp_path])
+    result = _compose(engine, parse_prompt("techno 128bpm"), search_roots=[tmp_path])
 
     arr_for_drums = [
         s for s in result.plan
@@ -285,7 +305,7 @@ def test_compose_unresolved_layer_emits_no_arrangement_steps():
     or create_arrangement_clip for it — those would reference a nonexistent
     track and crash the plan."""
     engine = ComposerEngine()
-    result = engine.compose(parse_prompt("techno 128bpm"), search_roots=[])
+    result = _compose(engine, parse_prompt("techno 128bpm"), search_roots=[])
 
     # Everything is unresolved
     assert not any(s.get("tool") == "create_clip" for s in result.plan)
