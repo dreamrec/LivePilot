@@ -39,6 +39,14 @@ livepilot/skills/livepilot-core/references/device-atlas/presets-by-vibe.md
 demo Project/
 *.als
 
+# Previous npm pack artifacts — never recursively include these (they
+# would double the tarball size and ship a stale .amxd from the previous
+# release). See 2026-04-14 incident where 1.10.5.tgz initially contained
+# both 1.10.5 and 1.10.4 copies of the .amxd via recursive inclusion.
+livepilot-*.tgz
+/package/
+livepilot.mcpb
+
 # Audio captures from testing
 m4l_device/*.wav
 
