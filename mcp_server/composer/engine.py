@@ -1,16 +1,34 @@
-"""ComposerEngine — orchestrate prompt → layers → compiled plan.
+"""ComposerEngine — orchestrate prompt → layers → executable plan.
 
 Pure computation engine. Does NOT call MCP tools directly.
 Returns compiled plan dicts that the tool layer (tools.py) executes.
+
+Executability contract (Phase 7 rewrite)
+----------------------------------------
+The returned plan contains only REAL tool calls with concrete params. It
+never emits:
+  - pseudo-tools like _agent_pick_best_sample or _apply_technique
+  - placeholder strings like "{downloaded_path}"
+  - invalid sentinels like device_index: -1 or track_index: -1
+  - hardcoded clip_slot_index: 0 for tracks with no source clip
+
+Samples are resolved at PLAN time via sample_resolver.resolve_sample_for_layer.
+Layers that don't resolve to a concrete local file are dropped from `plan`
+but kept in `layers` for descriptive output, and the unresolved role is
+named in `warnings`. Processing chains use step_id + $from_step bindings
+to bind set_device_parameter.device_index to the actual inserted device
+position returned by insert_device.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Optional
 
 from .prompt_parser import CompositionIntent, parse_prompt
 from .layer_planner import LayerSpec, plan_layers, plan_sections
+from .sample_resolver import resolve_sample_for_layer
 
 
 # ── Result Models ──────────────────────────────────────────────────
@@ -22,10 +40,11 @@ class CompositionResult:
     intent: CompositionIntent = field(default_factory=CompositionIntent)
     layers: list[LayerSpec] = field(default_factory=list)
     sections: list[dict] = field(default_factory=list)
-    plan: list[dict] = field(default_factory=list)        # compiled execution steps
+    plan: list[dict] = field(default_factory=list)        # executable steps only
     credits_estimated: int = 0
     dry_run: bool = False
     warnings: list[str] = field(default_factory=list)
+    resolved_samples: dict = field(default_factory=dict)  # role -> local_path
 
     def to_dict(self) -> dict:
         return {
@@ -38,6 +57,7 @@ class CompositionResult:
             "credits_estimated": self.credits_estimated,
             "dry_run": self.dry_run,
             "warnings": self.warnings,
+            "resolved_samples": self.resolved_samples,
         }
 
 
@@ -51,6 +71,7 @@ class AugmentResult:
     plan: list[dict] = field(default_factory=list)
     credits_estimated: int = 0
     warnings: list[str] = field(default_factory=list)
+    resolved_samples: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return {
@@ -62,13 +83,13 @@ class AugmentResult:
             "plan": self.plan,
             "credits_estimated": self.credits_estimated,
             "warnings": self.warnings,
+            "resolved_samples": self.resolved_samples,
         }
 
 
-# ── Compiled Step Builders ─────────────────────────────────────────
+# ── Step builders ──────────────────────────────────────────────────
 
-def _compile_set_tempo_step(tempo: int) -> dict:
-    """Compile a set_tempo step."""
+def _step_set_tempo(tempo: int) -> dict:
     return {
         "tool": "set_tempo",
         "params": {"tempo": tempo},
@@ -76,92 +97,70 @@ def _compile_set_tempo_step(tempo: int) -> dict:
     }
 
 
-def _compile_create_track_step(track_index: int, role: str) -> dict:
-    """Compile a create_midi_track step."""
+def _step_create_midi_track(track_index: int, role: str, step_id: str) -> dict:
     return {
+        "step_id": step_id,
         "tool": "create_midi_track",
         "params": {"index": track_index},
         "description": f"Create MIDI track for {role}",
+        "role": role,
     }
 
 
-def _compile_name_track_step(track_index: int, role: str) -> dict:
-    """Compile a set_track_name step."""
+def _step_set_track_name(track_index: int, role: str) -> dict:
     return {
         "tool": "set_track_name",
         "params": {"track_index": track_index, "name": role.title()},
         "description": f"Name track: {role.title()}",
+        "role": role,
     }
 
 
-def _compile_search_step(layer: LayerSpec) -> dict:
-    """Compile a Splice search step."""
-    return {
-        "tool": "search_samples",
-        "params": {
-            "query": layer.search_query,
-            "source": "splice",
-            "max_results": 10,
-            **{k: v for k, v in layer.splice_filters.items()
-               if k in ("key", "bpm_range", "material_type")},
-        },
-        "description": f"Search Splice: {layer.search_query}",
-        "role": layer.role,
-    }
-
-
-def _compile_download_step(layer: LayerSpec) -> dict:
-    """Agent instruction: download the best sample from search results.
-
-    This step is a placeholder — the agent resolves it by picking
-    the highest-scoring result from the preceding search_samples call
-    and using the local file path (Splice downloads are already local).
-    """
-    return {
-        "tool": "_agent_pick_best_sample",
-        "params": {"from_previous": "search_samples", "role": layer.role},
-        "description": f"Pick and locate the best sample for {layer.role} from search results",
-        "role": layer.role,
-        "agent_instruction": True,  # not a real tool — agent resolves
-    }
-
-
-def _compile_load_sample_step(track_index: int, layer: LayerSpec) -> dict:
-    """Compile a load_sample_to_simpler step."""
+def _step_load_sample_to_simpler(track_index: int, layer: LayerSpec, file_path: str) -> dict:
     return {
         "tool": "load_sample_to_simpler",
-        "params": {
-            "track_index": track_index,
-            "file_path": "{downloaded_path}",
-        },
+        "params": {"track_index": track_index, "file_path": file_path},
         "description": f"Load sample into Simpler on track {track_index}",
+        "backend": "mcp_tool",
         "role": layer.role,
     }
 
 
-def _compile_technique_step(track_index: int, layer: LayerSpec) -> dict:
-    """Compile a technique suggestion step.
+def _step_suggest_technique(track_index: int, layer: LayerSpec) -> dict:
+    """Real tool — returns technique recipe for the agent to interpret.
 
-    Returns a suggest_sample_technique call so the agent knows what
-    processing to apply. The agent then follows the technique recipe.
+    Not a pseudo-tool: suggest_sample_technique is a registered MCP tool.
+    The agent reads the returned recipe and applies the steps manually; we
+    don't try to auto-apply here because the recipe is open-ended.
     """
     return {
         "tool": "suggest_sample_technique",
-        "params": {
-            "technique_id": layer.technique_id,
-        },
+        "params": {"technique_id": layer.technique_id},
         "description": f"Get technique recipe '{layer.technique_id}' for track {track_index}",
         "role": layer.role,
-        "note": "Agent applies the returned recipe steps manually",
     }
 
 
-def _compile_processing_steps(track_index: int, layer: LayerSpec) -> list[dict]:
-    """Compile device insertion and parameter setting steps."""
+def _processing_steps_with_binding(
+    track_index: int,
+    layer: LayerSpec,
+    layer_idx: int,
+) -> list[dict]:
+    """Build insert_device + set_device_parameter pairs using step_id bindings.
+
+    Each insert_device carries a unique step_id like 'layer_0_dev_1'. The
+    following set_device_parameter steps bind their device_index param to
+    that id via $from_step — the async router resolves it to the real
+    device index returned by insert_device at runtime.
+    """
     steps: list[dict] = []
-    for i, device in enumerate(layer.processing):
+    for dev_idx, device in enumerate(layer.processing):
         device_name = device.get("name", "")
+        if not device_name:
+            continue
+        step_id = f"layer_{layer_idx}_dev_{dev_idx}"
         steps.append({
+            "step_id": step_id,
             "tool": "insert_device",
             "params": {
                 "track_index": track_index,
@@ -170,13 +169,12 @@ def _compile_processing_steps(track_index: int, layer: LayerSpec) -> list[dict]:
             "description": f"Insert {device_name} on track {track_index}",
             "role": layer.role,
         })
-        # Parameter setting
         for param_name, param_value in device.get("params", {}).items():
             steps.append({
                 "tool": "set_device_parameter",
                 "params": {
                     "track_index": track_index,
-                    "device_index": -1,  # last inserted device
+                    "device_index": {"$from_step": step_id, "path": "device_index"},
                     "parameter_name": param_name,
                     "value": param_value,
                 },
@@ -186,11 +184,9 @@ def _compile_processing_steps(track_index: int, layer: LayerSpec) -> list[dict]:
     return steps
 
 
-def _compile_mix_steps(track_index: int, layer: LayerSpec) -> list[dict]:
-    """Compile volume and pan steps."""
-    steps = []
-    # Convert dB to 0.0-1.0 linear (Ableton's native scale)
-    # Rough mapping: 0dB → 0.85, -6dB → 0.5, -12dB → 0.25, -inf → 0.0
+def _mix_steps(track_index: int, layer: LayerSpec) -> list[dict]:
+    steps: list[dict] = []
+    # dB to linear with 0dB -> 0.85 convention (Ableton native scale)
     linear = max(0.0, min(1.0, 10 ** (layer.volume_db / 20.0) * 0.85))
     steps.append({
         "tool": "set_track_volume",
@@ -208,63 +204,22 @@ def _compile_mix_steps(track_index: int, layer: LayerSpec) -> list[dict]:
     return steps
 
 
-def _compile_arrangement_steps(
+def _arrangement_steps(
     track_index: int,
     layer: LayerSpec,
     sections: list[dict],
 ) -> list[dict]:
-    """Compile arrangement clip creation steps for the layer's sections."""
-    steps: list[dict] = []
+    """Arrangement clips — only for tracks that already have a source clip.
 
-    for section in sections:
-        if section["name"] not in layer.sections:
-            continue
-
-        # Check for volume offset in section layer refs (e.g. "drums:-6dB")
-        volume_offset_db = 0.0
-        for layer_ref in section.get("layers", []):
-            parts = layer_ref.split(":")
-            if parts[0] == layer.role and len(parts) > 1:
-                try:
-                    volume_offset_db = float(parts[1].replace("dB", ""))
-                except ValueError:
-                    pass
-
-        start_bar = section["start_bar"]
-        bar_count = section["bars"]
-
-        steps.append({
-            "tool": "create_arrangement_clip",
-            "params": {
-                "track_index": track_index,
-                "clip_slot_index": 0,  # Use first clip slot as source
-                "start_time": start_bar * 4.0,  # bars → beats (4/4)
-                "length": bar_count * 4.0,
-            },
-            "description": f"Create arrangement clip: {layer.role} in {section['name']} "
-                           f"(bar {start_bar}, {bar_count} bars)",
-            "role": layer.role,
-            "section": section["name"],
-        })
-
-        # Add volume automation at section boundaries if there's an offset
-        if volume_offset_db != 0.0:
-            offset_linear = max(0.0, min(1.0, 10 ** ((layer.volume_db + volume_offset_db) / 20.0) * 0.85))
-            steps.append({
-                "tool": "set_arrangement_automation",
-                "params": {
-                    "track_index": track_index,
-                    "clip_index": 0,  # Index into arrangement clips on this track
-                    "parameter_type": "volume",
-                    "points": [{"time": 0.0, "value": offset_linear}],
-                },
-                "description": f"Automate volume fade: {layer.role} at {volume_offset_db}dB "
-                               f"in {section['name']}",
-                "role": layer.role,
-                "section": section["name"],
-            })
-
-    return steps
+    Skipped entirely for newly-created Simpler tracks (they have no source
+    clip to tile into the arrangement). The composer can be extended later
+    to also emit create_clip steps first, but that's out of scope here.
+    """
+    # For now we skip arrangement emission from the composer since the tracks
+    # we create are empty Simplers — create_arrangement_clip with
+    # clip_slot_index=0 is invalid and would fail at runtime. Leaving this as
+    # a stub so the descriptive `sections` field is still populated upstream.
+    return []
 
 
 # ── Engine ─────────────────────────────────────────────────────────
@@ -281,66 +236,61 @@ class ComposerEngine:
         intent: CompositionIntent,
         dry_run: bool = False,
         max_credits: int = 10,
+        search_roots: Optional[list] = None,
     ) -> CompositionResult:
         """Plan a full multi-layer composition from a CompositionIntent.
 
-        Returns a CompositionResult with compiled execution steps.
+        Returns a CompositionResult where `plan` contains only executable
+        steps. Unresolved layers are kept in `layers` (descriptive) but
+        dropped from `plan`, with warnings naming the unresolved roles.
         """
-        result = CompositionResult(
-            intent=intent,
-            dry_run=dry_run,
-        )
+        result = CompositionResult(intent=intent, dry_run=dry_run)
 
-        # Plan layers and sections
         layers = plan_layers(intent)
         sections = plan_sections(intent)
         result.layers = layers
         result.sections = sections
+        result.credits_estimated = len(layers)
 
-        # Estimate credits needed (1 per non-downloaded layer)
-        credits_needed = len(layers)
-        result.credits_estimated = credits_needed
-
-        if credits_needed > max_credits:
+        if result.credits_estimated > max_credits:
             result.warnings.append(
-                f"Estimated {credits_needed} credits needed, "
+                f"Estimated {result.credits_estimated} credits needed, "
                 f"but budget is {max_credits}. Some layers may use "
                 f"downloaded samples or browser fallback."
             )
 
-        # Compile the execution plan
         plan: list[dict] = []
 
-        # Step 1: Set tempo
-        plan.append(_compile_set_tempo_step(intent.tempo))
+        # Step 1: Tempo
+        plan.append(_step_set_tempo(intent.tempo))
 
-        # Step 2: Create tracks and layers
-        for track_idx, layer in enumerate(layers):
-            # Create track
-            plan.append(_compile_create_track_step(track_idx, layer.role))
-            plan.append(_compile_name_track_step(track_idx, layer.role))
+        # Step 2: Per-layer build, resolving samples at plan time
+        for layer_idx, layer in enumerate(layers):
+            track_index = layer_idx
 
-            # Search for sample
-            plan.append(_compile_search_step(layer))
+            file_path, source = resolve_sample_for_layer(layer, search_roots=search_roots)
+            if not file_path:
+                # Layer is descriptive-only. Skip emission, warn.
+                result.warnings.append(
+                    f"Unresolved sample for layer '{layer.role}' "
+                    f"(query: {layer.search_query!r}). Dropped from plan."
+                )
+                continue
 
-            # Download if needed
-            plan.append(_compile_download_step(layer))
+            result.resolved_samples[layer.role] = file_path
 
-            # Load into Simpler
-            plan.append(_compile_load_sample_step(track_idx, layer))
+            track_step_id = f"layer_{layer_idx}_track"
+            plan.append(_step_create_midi_track(track_index, layer.role, track_step_id))
+            plan.append(_step_set_track_name(track_index, layer.role))
 
-            # Apply technique
+            plan.append(_step_load_sample_to_simpler(track_index, layer, file_path))
+
             if layer.technique_id:
-                plan.append(_compile_technique_step(track_idx, layer))
+                plan.append(_step_suggest_technique(track_index, layer))
 
-            # Insert processing devices
-            plan.extend(_compile_processing_steps(track_idx, layer))
-
-            # Set mix levels
-            plan.extend(_compile_mix_steps(track_idx, layer))
-
-            # Arrange into sections
-            plan.extend(_compile_arrangement_steps(track_idx, layer, sections))
+            plan.extend(_processing_steps_with_binding(track_index, layer, layer_idx))
+            plan.extend(_mix_steps(track_index, layer))
+            plan.extend(_arrangement_steps(track_index, layer, sections))
 
         result.plan = plan
         return result
@@ -350,28 +300,24 @@ class ComposerEngine:
         request: str,
         max_credits: int = 3,
         max_layers: int = 3,
+        search_roots: Optional[list] = None,
     ) -> AugmentResult:
         """Plan augmentation layers to add to an existing session.
 
-        Parses the request as a composition prompt but limits to max_layers.
+        Like compose(), resolves samples at plan time and drops unresolved
+        layers. Since the actual track count isn't known at plan time, this
+        uses track_index: -1 only for create_midi_track (where the Remote
+        Script interprets -1 as append-at-end) and then binds later steps
+        to the actual created track via $from_step — same pattern as the
+        device_index binding in compose().
         """
         intent = parse_prompt(request)
-
-        # Override layer count to respect max_layers
         intent.layer_count = min(intent.layer_count or max_layers, max_layers)
 
-        result = AugmentResult(
-            request=request,
-            intent=intent,
-        )
+        result = AugmentResult(request=request, intent=intent)
 
-        # Plan layers
-        layers = plan_layers(intent)
-        # Limit to max_layers
-        layers = layers[:max_layers]
+        layers = plan_layers(intent)[:max_layers]
         result.new_layers = layers
-
-        # Estimate credits
         result.credits_estimated = len(layers)
 
         if result.credits_estimated > max_credits:
@@ -380,50 +326,66 @@ class ComposerEngine:
                 f"but budget is {max_credits}."
             )
 
-        # Compile augmentation plan
-        # Track indices start from a placeholder — the tool layer will
-        # determine the actual track offset at runtime
         plan: list[dict] = []
-        for offset, layer in enumerate(layers):
-            track_placeholder = f"{{existing_track_count}} + {offset}"
 
+        for layer_idx, layer in enumerate(layers):
+            file_path, _source = resolve_sample_for_layer(layer, search_roots=search_roots)
+            if not file_path:
+                result.warnings.append(
+                    f"Unresolved sample for layer '{layer.role}' "
+                    f"(query: {layer.search_query!r}). Dropped from plan."
+                )
+                continue
+
+            result.resolved_samples[layer.role] = file_path
+
+            # We don't know the absolute track index yet. create_midi_track's
+            # result carries "index" (via Remote Script) — later steps bind
+            # track_index to that via $from_step. The composer tools layer
+            # passes existing_track_count in via a hint when available.
+            track_step_id = f"aug_layer_{layer_idx}_track"
             plan.append({
+                "step_id": track_step_id,
                 "tool": "create_midi_track",
-                "params": {"index": -1},  # append at end
+                "params": {"index": -1},  # append at end — Remote Script convention
                 "description": f"Create MIDI track for {layer.role}",
                 "role": layer.role,
             })
 
+            track_ref = {"$from_step": track_step_id, "path": "index"}
+
             plan.append({
                 "tool": "set_track_name",
-                "params": {"track_index": -1, "name": f"+ {layer.role.title()}"},
+                "params": {"track_index": track_ref, "name": f"+ {layer.role.title()}"},
                 "description": f"Name new track: + {layer.role.title()}",
                 "role": layer.role,
             })
 
-            plan.append(_compile_search_step(layer))
-            plan.append(_compile_download_step(layer))
-
             plan.append({
                 "tool": "load_sample_to_simpler",
-                "params": {"track_index": -1, "file_path": "{downloaded_path}"},
+                "params": {"track_index": track_ref, "file_path": file_path},
                 "description": f"Load sample into Simpler",
+                "backend": "mcp_tool",
                 "role": layer.role,
             })
 
             if layer.technique_id:
                 plan.append({
-                    "tool": "_apply_technique",
-                    "params": {"track_index": -1, "technique_id": layer.technique_id},
-                    "description": f"Apply technique '{layer.technique_id}'",
+                    "tool": "suggest_sample_technique",
+                    "params": {"technique_id": layer.technique_id},
+                    "description": f"Get technique recipe '{layer.technique_id}'",
                     "role": layer.role,
                 })
 
-            for device in layer.processing:
+            for dev_idx, device in enumerate(layer.processing):
                 device_name = device.get("name", "")
+                if not device_name:
+                    continue
+                dev_step_id = f"aug_layer_{layer_idx}_dev_{dev_idx}"
                 plan.append({
+                    "step_id": dev_step_id,
                     "tool": "insert_device",
-                    "params": {"track_index": -1, "device_name": device_name},
+                    "params": {"track_index": track_ref, "device_name": device_name},
                     "description": f"Insert {device_name}",
                     "role": layer.role,
                 })
@@ -431,8 +393,8 @@ class ComposerEngine:
                     plan.append({
                         "tool": "set_device_parameter",
                         "params": {
-                            "track_index": -1,
-                            "device_index": -1,
+                            "track_index": track_ref,
+                            "device_index": {"$from_step": dev_step_id, "path": "device_index"},
                             "parameter_name": param_name,
                             "value": param_value,
                         },
@@ -440,16 +402,17 @@ class ComposerEngine:
                         "role": layer.role,
                     })
 
+            linear = max(0.0, min(1.0, 10 ** (layer.volume_db / 20.0) * 0.85))
             plan.append({
                 "tool": "set_track_volume",
-                "params": {"track_index": -1, "volume_db": layer.volume_db},
+                "params": {"track_index": track_ref, "volume": round(linear, 3)},
                 "description": f"Set {layer.role} volume to {layer.volume_db}dB",
                 "role": layer.role,
             })
             if layer.pan != 0.0:
                 plan.append({
                     "tool": "set_track_pan",
-                    "params": {"track_index": -1, "pan": layer.pan},
+                    "params": {"track_index": track_ref, "pan": layer.pan},
                     "description": f"Set {layer.role} pan to {layer.pan}",
                     "role": layer.role,
                 })
@@ -460,7 +423,12 @@ class ComposerEngine:
     def get_plan(
         self,
         intent: CompositionIntent,
+        search_roots: Optional[list] = None,
     ) -> dict:
-        """Dry run — return the full composition plan without execution."""
-        result = self.compose(intent, dry_run=True, max_credits=0)
+        """Dry run — return the full composition plan without execution.
+
+        Passes search_roots through to compose() so the dry-run accurately
+        reflects which layers would resolve.
+        """
+        result = self.compose(intent, dry_run=True, max_credits=0, search_roots=search_roots)
         return result.to_dict()
