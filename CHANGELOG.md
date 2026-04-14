@@ -1,5 +1,76 @@
 # Changelog
 
+## [Unreleased] — Orchestration Hardening Phase 2 (April 14 2026)
+
+Follow-up pass to the initial orchestration hardening. Closes the three items
+that were deferred with "back-compat required" in the first series — now with
+no back-compat constraints. Four phases (A-D): delete sync router, re-enable
+composer arrangement clip emission, wire Splice remote download workflow,
+verify and document.
+
+### Changed (breaking at the internal substrate level, no public tool changes)
+- **Execution router is async-only.** Deleted `execute_step` and
+  `execute_plan_steps` (sync path). The only surviving entry point is
+  `execute_plan_steps_async`. `apply_semantic_move` and `render_preview_variant`
+  both became `async def` and dispatch through the async router. The dead sync
+  path was the last place where a plan could silently produce steps that only
+  worked on one transport.
+- **Bridge dispatch now unpacks params positionally.** Fix for a latent bug:
+  the async router previously passed the whole params dict as a single arg to
+  `bridge.send_command`, which would have OSC-encoded the dict and failed on
+  the real M4L bridge. Now unpacks via `*list(params.values())` — plan authors
+  construct params in the order the bridge command expects.
+- **`ComposerEngine.compose`, `augment`, and `get_plan` are async.** Sample
+  resolution may now hit the network (Splice download), so the whole compose
+  chain awaits. No production callers outside `composer/tools.py`; tests use
+  `asyncio.run(...)` wrappers.
+- **`CompositionResult.resolved_samples` shape changed** from
+  `{role: path_str}` to `{role: {"path": str, "source": str}}` — callers
+  can now tell filesystem vs splice_local vs splice_remote hits apart.
+
+### Added
+- **Composer arrangement clip emission.** Re-enabled in phase 2B with the
+  correct 5-step sequence per layer:
+    1. `create_midi_track` (with `step_id` for binding)
+    2. `load_sample_to_simpler`
+    3. `create_clip` — 1-bar MIDI source clip at slot 0
+    4. `add_notes` — single C3 trigger note so Simpler actually sounds
+    5. `create_arrangement_clip` per section, `clip_slot_index=0`,
+       `loop_length=4.0` to tile the 1-bar trigger across each section
+  Simpler in classic mode plays the full sample on every trigger, so the
+  minimal pattern is enough for a playable baseline. Agent can replace the
+  trigger clip with a more musical pattern via `suggest_sample_technique`
+  recipes later. Layers that don't resolve a sample produce zero arrangement
+  steps — no broken references.
+- **Splice remote download workflow in composer.** `sample_resolver` extended
+  with `splice_local` and `splice_remote` sources. Resolution order:
+  `filesystem > splice_local > splice_remote > browser`. Filesystem wins
+  even when Splice has a hit (local files are free). Splice remote downloads
+  cost 1 credit each and respect the 5-credit hard floor via
+  `splice_client.can_afford(1, budget)` — the floor check is upfront so
+  the resolver fails fast rather than thrashing per-layer.
+- **`SpliceGRPCClient` wired into server lifespan.** `ctx.lifespan_context["splice_client"]`
+  is now populated at startup. Graceful degradation: if grpcio is missing,
+  Splice desktop isn't running, or the cert can't be read, `splice_client.connected`
+  stays False and the resolver treats it as "no splice hits".
+- **Composer credit-safety prelude.** New `_credit_safety_prelude()` helper
+  in `composer/tools.py` runs once per compose/augment call: checks credits
+  remaining, trims `max_credits` to respect the floor, returns a warnings
+  list the tool merges into the plan output. No per-layer credit thrashing.
+- **`mcp_dispatch` registry is lifespan-installed.** `build_mcp_dispatch_registry()`
+  runs at server startup and the result lives in `ctx.lifespan_context["mcp_dispatch"]`.
+  Callers (apply_semantic_move, render_preview_variant) read it via
+  `ctx.lifespan_context.get("mcp_dispatch", {})` — same pattern as all
+  other shared state.
+
+### Tests
+- Router suite: 23/23 (async-only; 6 legacy sync tests rewritten as async equivalents)
+- Composer resolver suite: 13/13 (7 filesystem + 6 new splice paths)
+- Composer engine suite: 14/14 (9 Phase 7 + 5 new Phase 2B arrangement contracts)
+- Full repo: 1740 passed, 1 skipped (up from 1731)
+
+---
+
 ## [Unreleased] — Orchestration Hardening (April 14 2026)
 
 Nine-phase correctness pass on the execution substrate. No new public tools,
