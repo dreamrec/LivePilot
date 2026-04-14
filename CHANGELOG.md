@@ -1,5 +1,51 @@
 # Changelog
 
+## 1.10.4 — Bridge ping sync (April 14 2026)
+
+A pure ship-fix release. The frozen JS inside `LivePilot_Analyzer.amxd` was
+last re-exported during the v1.10.1 hardening pass and never re-frozen
+during the 1.10.2 / 1.10.3 sweeps. The published `npm livepilot@1.10.3`
+tarball therefore shipped with a stale `.amxd` whose `ping` returned
+`{"version": "1.10.1"}`. End users installing via `npm install -g livepilot`
+got the v1.10.3 source code but a v1.10.1 bridge.
+
+### Fixed
+- **M4L bridge ping reports 1.10.4 (was 1.10.1).** Source
+  `m4l_device/livepilot_bridge.js` updated and the `.amxd` was binary-patched
+  in place — replacing the 6-byte version literal at offset 6669978
+  (`b"1.10.3" -> b"1.10.4"`) leaves all `dire`/`sz32`/`of32` chunk offsets
+  numerically valid, so the patched device opens cleanly in Ableton without
+  needing a Max re-export. Verified by `tests/test_bridge_parity.py` and the
+  capture/contract tests (36 tests pass against the patched binary).
+- **`livepilot.mcpb` no longer ships internal docs.** `.mcpbignore` was
+  tightened to exclude `docs/superpowers/`, `docs/research/`, `docs/plans/`,
+  `docs/v2-master-spec/`, `docs/LivePilot-1.7-Perception/`, `docs/2026-*`,
+  `AGENT_OS_V1.md`, `COMPOSITION_ENGINE_V1.md`, `ableton-library-map.md`,
+  `patreon-content.md`, and `m4l_device/*.adv` (Ableton presets users save
+  into the dev folder). The bundle is back to lean shape: 4.66 MB / 403 files
+  vs the bloated 5.56 MB / 491 files an unpatched repack produced. The
+  `.mcp.json` exclusion is now root-only (`/.mcp.json`) so the
+  plugin-internal `livepilot/.mcp.json` stays in the bundle.
+
+### Why a new patch version
+npm package versions are immutable. Once `livepilot@1.10.3` was published with
+the stale `.amxd`, the only way to ship a fix to anyone using
+`npm install -g livepilot` is to bump and republish. Same root cause and same
+fix as the v1.10.1 → v1.10.2 jump.
+
+### Deprecation
+- `npm livepilot@1.10.3` deprecated with message: "stale M4L bridge .amxd
+  ships v1.10.1 ping; please install 1.10.4".
+
+### Verification
+- 36 bridge-related tests (`test_bridge_parity`, `test_capture_bridge`,
+  `test_m4l_capture_contract`, `test_sample_engine_analyzer`) pass against
+  the patched binary.
+- `unzip -p livepilot.mcpb m4l_device/LivePilot_Analyzer.amxd | grep 1.10.4`
+  matches; `1.10.1` and `1.10.3` are absent.
+- GitHub release `LivePilot_Analyzer.amxd` and bundled `livepilot.mcpb`
+  asset SHAs match local artifacts.
+
 ## 1.10.3 — Truth Release (April 14 2026)
 
 A correctness pass focused on making the top-layer workflows **trustworthy
