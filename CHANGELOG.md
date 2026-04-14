@@ -1,5 +1,94 @@
 # Changelog
 
+## [Unreleased] — Orchestration Hardening (April 14 2026)
+
+Nine-phase correctness pass on the execution substrate. No new public tools,
+no renames, no tool count change. All new response fields are additive — the
+series is a pure correctness pass.
+
+### Fixed
+- **Execution router: `load_sample_to_simpler` reclassified as MCP tool.** It
+  was wrongly declared in `BRIDGE_COMMANDS` despite being an async Python
+  function with no JS dispatch case. All six sample-family semantic moves
+  that compiled this step now classify it correctly. Backend annotations
+  in `mcp_server/sample_engine/moves.py` updated to match.
+- **Execution router: dedupe `capture_audio` classification.** Removed the
+  dead entry from `MCP_TOOLS` — `capture_audio` lives in `BRIDGE_COMMANDS`
+  and is handled by `livepilot_bridge.js`.
+- **Preview Studio: `render_preview_variant` captures audible preview BEFORE
+  undo.** The function previously ran undo in a `finally` block that
+  executed before the "audible preview" section, so `preview_mode =
+  "audible_preview"` was a lie — it captured pre-variant audio. Now
+  restructured as: capture-before → apply → capture-after → play+sample
+  while variant is applied → stop playback → undo applied steps. Callers
+  can trust the `audible_preview` label.
+- **SessionKernel: shares `ctx.lifespan_context` memory stores and fixes
+  silent method-name bugs.** `get_session_kernel` used to instantiate fresh
+  `TasteMemoryStore`, `AntiMemoryStore`, and `SessionMemoryStore` and call
+  `list_all()` / `recent()` (neither method exists), all wrapped in silent
+  `try/except: pass`. Users who recorded anti-preferences or session memory
+  via the public tools always saw an empty kernel. Now reuses stores the
+  same way `mcp_server/memory/tools.py` does, calls the correct methods
+  (`get_anti_preferences`, `get_recent`), and surfaces store-load failures
+  in a non-breaking `warnings` field.
+- **Taste graph shape normalized across consumers.** Both
+  `preview_studio/engine.py:_estimate_taste_fit` and
+  `session_continuity/tracker.py` read `taste_graph.get("transition_boldness")`,
+  but the canonical `TasteGraph.to_dict()` puts it under `dimension_weights`.
+  Both consumers silently defaulted to 0.5, ignoring recorded user taste.
+  New `mcp_server/memory/taste_accessors.get_dimension_pref` helper reads
+  all three observed shapes; both consumers route through it.
+- **Composer: plans are executable, not aspirational.** `compose()` and
+  `augment_with_samples()` used to emit pseudo-tools
+  (`_agent_pick_best_sample`, `_apply_technique`), placeholder strings
+  (`{downloaded_path}`), invalid sentinels (`device_index: -1`,
+  `track_index: -1`), and hardcoded `clip_slot_index: 0` on newly-created
+  empty tracks. Plans are now rebuilt via `sample_resolver.resolve_sample_for_layer`
+  at plan time. Unresolved layers are kept in the descriptive `layers`
+  output and surfaced in `warnings`, but dropped from `plan`. Processing
+  chains use `step_id` + `$from_step` bindings to resolve `device_index`
+  from `insert_device` results at execution time.
+- **ProjectBrain: `build_project_brain` fetches notes for role inference.**
+  The tool never called `get_notes`, so `build_project_state_from_data`
+  always ran with an empty `notes_map`, forcing `role_graph` into the
+  "assume all tracks active in every section" fallback — destroying the
+  section-scoped role confidence RoleGraph was supposed to compute.
+
+### Added
+- **Async execution router with step-result binding** —
+  `mcp_server/runtime/execution_router.execute_plan_steps_async` dispatches
+  `remote_command`, `bridge_command`, and `mcp_tool` backends through their
+  correct transports. Supports step-result binding via
+  `{"$from_step": "<id>", "path": "a.b"}` on any param. The sync
+  `execute_plan_steps` path is preserved for back-compat.
+- **MCP dispatch registry** — `mcp_server/runtime/mcp_dispatch.py` registers
+  in-process Python tools (starting with `load_sample_to_simpler`) so plans
+  can invoke them through the async router.
+- **Additive return fields** (no breaking changes):
+  - `insert_device.device_index` — actual index of the inserted device in
+    its chain/track. Composer plans bind to it.
+  - `load_sample_to_simpler.device_index` and `.track_index` — the real
+    Simpler position (was previously computed internally but not returned).
+  - `preview_semantic_move.compiled_plan` and `.compiled_plan_executable` —
+    the move compiled against a lightweight current-session kernel,
+    alongside the existing static `plan_template`.
+  - `get_session_kernel.warnings` — surfaced when memory/taste stores fail
+    to load. Additive, callers can ignore.
+- **`mcp_server/composer/sample_resolver.py`** — filesystem-first sample
+  resolution for composer plans. Optional Splice and browser client hooks.
+- **`mcp_server/memory/taste_accessors.get_dimension_pref`** — canonical
+  reader for taste-graph dimension preferences. All new consumers must
+  use it.
+- **Bridge parity test** — `tests/test_bridge_parity.py` compares Python
+  `BRIDGE_COMMANDS` against the `case` labels in
+  `m4l_device/livepilot_bridge.js`. Catches future misclassification drift.
+
+### Tests
+- 1731 passing (up from 1690 baseline; +41 new tests across all phases).
+- No regressions in any existing area.
+
+---
+
 ## 1.10.0 — The Intelligence Release (April 13 2026)
 
 316 tools across 43 domains. Device Atlas v2, Sample Intelligence, Auto-Composition, Splice Integration, Device Forge, Live 12.3 API, Corpus Intelligence.
