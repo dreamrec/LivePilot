@@ -17,6 +17,12 @@ scripts/
 *.pyc
 .DS_Store
 *.egg-info
+.gitignore
+.mcpbignore
+package-lock.json
+
+# Untracked Ableton presets (saved by users into m4l_device/)
+m4l_device/*.adv
 
 # Credentials and tokens
 .mcpregistry_*
@@ -24,15 +30,26 @@ scripts/
 .npmrc
 
 # Docs and marketing (not needed at runtime)
+# Ship only docs/manual/, docs/assets/, docs/M4L_BRIDGE.md, docs/TOOL_REFERENCE.md
 docs/specs/
+docs/superpowers/
+docs/plans/
+docs/research/
+docs/v2-master-spec/
+docs/LivePilot-1.7-Perception/
+docs/2026-*
+docs/AGENT_OS_V1.md
+docs/COMPOSITION_ENGINE_V1.md
+docs/ableton-library-map.md
+docs/patreon-content.md
 docs/social-banner.*
 docs/screenshots/
 
 # Large binary already in User Library after install
 # m4l_device/LivePilot_Analyzer.amxd
 
-# Dev config
-.mcp.json
+# Dev config (root-level only — keep livepilot/.mcp.json which the plugin needs)
+/.mcp.json
 .npmignore
 .editorconfig
 CODE_OF_CONDUCT.md
