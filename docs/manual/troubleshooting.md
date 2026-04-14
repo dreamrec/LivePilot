@@ -202,11 +202,66 @@ The `get_session_diagnostics` tool reports potential issues as warnings, not err
 
 ---
 
+## M4L Bridge Issues
+
+### Analyzer not detected
+
+**Likely cause:** The LivePilot_Analyzer.amxd is not on the master track, or it's not the last device.
+
+**Fix:** Drag the analyzer onto the master track. It must be AFTER all other effects (EQ, Compressor, Utility) so it reads the final output signal.
+
+---
+
+### Bridge tools return empty data
+
+**Likely cause:** The M4L device lost its UDP/OSC connection.
+
+**Fix:** Run `reconnect_bridge()` to re-establish the connection. If that fails, remove and re-add the analyzer device on the master track.
+
+---
+
+## Sample Engine Issues
+
+### search_samples returns no Splice results
+
+**Likely cause:** Splice desktop app not installed, or no samples downloaded.
+
+**Fix:** The Sample Engine reads Splice's local SQLite database. You need the Splice app installed with at least some downloaded samples. No API key or subscription required — it reads the local database file.
+
+---
+
+### plan_slice_workflow returns generic patterns
+
+**Likely cause:** When loading a new sample (via `file_path`), the slice count defaults to 8 since the sample isn't loaded in Simpler yet.
+
+**Fix:** For more accurate slicing, load the sample into Simpler first, then use `track_index` + `device_index` to plan against the real slice data.
+
+---
+
+## Intelligence Layer Issues
+
+### Wonder Mode returns only analytical variants
+
+**Likely cause:** The moves matching your diagnosis don't have registered compilers, or no sample candidates were found for sample-domain moves.
+
+**Fix:** This is honest behavior — it means the system can suggest but not execute. Try a more specific request, or manually provide context (e.g., "I have a vocal sample at /path/to/file.wav").
+
+---
+
+### Semantic moves don't match my request
+
+**Likely cause:** Move matching is keyword-based. Very abstract requests may not match concrete moves.
+
+**Fix:** Try `propose_next_best_move(request_text="...")` which ranks all moves by relevance. Or `list_semantic_moves()` to see what's available and pick directly.
+
+---
+
 ## Getting Help
 
 - **Report issues:** [github.com/dreamrec/LivePilot/issues](https://github.com/dreamrec/LivePilot/issues)
-- **Run diagnostics:** `npx -y github:dreamrec/LivePilot --doctor`
-- **Check version:** `npx -y github:dreamrec/LivePilot --version`
+- **Run diagnostics:** `npx livepilot --doctor`
+- **Check version:** `npx livepilot --version`
+- **Full status:** `npx livepilot --status`
 
 ---
 

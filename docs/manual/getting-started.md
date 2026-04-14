@@ -196,6 +196,13 @@ An autonomous agent that can build entire tracks from high-level descriptions:
 
 The agent handles track creation, instrument loading, pattern programming, arrangement, and basic mixing — the entire pipeline.
 
+### Quick tips for faster production
+
+- **Use the Device Atlas** — `atlas_suggest(intent="warm bass for techno")` is faster and more reliable than browser search.
+- **Use automation recipes** — `apply_automation_recipe(recipe="filter_sweep_up")` adds movement in one call.
+- **On Live 12.3+** — `insert_device` loads devices 10x faster than browser search. The system auto-detects your version.
+- **For samples** — `search_samples(query="...")` searches Splice, browser, and filesystem simultaneously.
+
 ### The core skill
 
 The `livepilot-core` skill teaches the AI how to use LivePilot properly: always check session state first, verify after writes, never load empty Drum Racks, check volumes, and more. It's the difference between an AI that fumbles through the API and one that works like an experienced producer's assistant.

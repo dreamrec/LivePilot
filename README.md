@@ -584,9 +584,13 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for architecture details, code guidelines
 | Document | What's inside |
 |----------|---------------|
 | [Manual](docs/manual/index.md) | Complete reference: architecture, all 317 tools, workflows |
-| [Tool Catalog](docs/manual/tool-catalog.md) | Every tool organized by domain |
-| [Tool Reference](docs/manual/tool-reference.md) | Every tool with parameters, ranges, usage notes |
+| [Intelligence Layer](docs/manual/intelligence.md) | How the 12 engines connect — conductor, moves, preview, evaluation |
+| [Device Atlas](docs/manual/device-atlas.md) | 1305 devices indexed — search, suggest, chain building |
+| [Samples & Slicing](docs/manual/samples.md) | 3-source search, fitness critics, slice workflows |
+| [Automation](docs/manual/automation.md) | 16 curve types, 15 recipes, spectral suggestions |
+| [Composition](docs/manual/composition.md) | Composer, section analysis, arrangement planning |
 | [Getting Started](docs/manual/getting-started.md) | Zero to sound in five minutes |
+| [Workflows](docs/manual/workflows.md) | Beats, session setup, sound design, arrangement, mixing |
 | [MIDI Guide](docs/manual/midi-guide.md) | Drum patterns, scales, chords, humanization |
 | [Sound Design](docs/manual/sound-design.md) | Instruments, effects, parameter recipes |
 | [Mixing](docs/manual/mixing.md) | Gain staging, EQ, compression, sends, stereo width |

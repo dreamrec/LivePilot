@@ -127,16 +127,33 @@ This is what makes LivePilot agentic. The intelligence layer sits on top of the 
 
 ## Chapters
 
+### Understanding the System
+
+| Chapter | What's inside |
+|---------|---------------|
+| [The Intelligence Layer](intelligence.md) | How the 12 engines connect — conductor, kernel, moves, preview, evaluation |
+| [Device Atlas](device-atlas.md) | 1305 devices indexed — search, suggest, chain building, comparison |
+| [Samples & Slicing](samples.md) | 3-source search, fitness critics, 29 techniques, slice workflows |
+| [Automation](automation.md) | 16 curve types, 15 recipes, spectral suggestions |
+| [Composition & Arrangement](composition.md) | Composer, section analysis, arrangement planning with sample roles |
+
+### Production Guides
+
+| Chapter | What's inside |
+|---------|---------------|
+| [Workflows](workflows.md) | Step-by-step: beats, session setup, sound design, arrangement, mixing |
+| [MIDI Guide](midi-guide.md) | Drum patterns, scales, chords, humanization techniques |
+| [Sound Design](sound-design.md) | Instruments, effects, parameter recipes, device chains |
+| [Mixing](mixing.md) | Gain staging, EQ, compression, sends, stereo width |
+
+### Reference
+
 | Chapter | What's inside |
 |---------|---------------|
 | [Tool Catalog](tool-catalog.md) | Every tool organized by domain |
 | [Tool Reference](tool-reference.md) | Every tool with parameters, ranges, and usage notes |
-| [Workflows](workflows.md) | Production workflows from session setup to arrangement |
-| [MIDI Guide](midi-guide.md) | Drum patterns, scales, chords, humanization techniques |
-| [Sound Design](sound-design.md) | Instruments, effects, parameter recipes, device chains |
-| [Mixing](mixing.md) | Gain staging, EQ, compression, sends, stereo width |
 | [Troubleshooting](troubleshooting.md) | Connection issues, common errors, diagnostics |
 
 ---
 
-Next: [Tool Catalog](tool-catalog.md)
+Next: [The Intelligence Layer](intelligence.md)

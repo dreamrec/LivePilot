@@ -192,11 +192,20 @@ Each call creates one track. The AI can batch these, but they execute one at a t
 
 ### Load instruments
 
-For each MIDI track, search for and load an appropriate instrument. Remember: always search for a preset, not a bare device.
+The fastest way to find the right instrument is through the Device Atlas:
 
 ```
-search_browser(path="instruments", name_filter="Analog")
-load_browser_item(track_index=1, uri="<uri for bass preset>")
+atlas_suggest(intent="warm analog bass", genre="house")
+→ device: Analog, recipe: specific parameter values
+
+atlas_chain_suggest(role="bass", genre="house")
+→ Analog + EQ Eight + Compressor + Saturator (complete chain)
+```
+
+Then load:
+
+```
+find_and_load_device(track_index=1, device_name="Analog")
 
 search_browser(path="instruments", name_filter="Electric Piano")
 load_browser_item(track_index=2, uri="<uri for keys preset>")
