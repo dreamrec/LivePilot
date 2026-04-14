@@ -47,8 +47,10 @@ Build linear song structures on the timeline.
 
 ### Creating Arrangement Clips
 
-- `create_arrangement_clip(track_index, start_time, length)` — place a new clip on the timeline at a specific beat position
+- `create_arrangement_clip(track_index, clip_slot_index, start_time, length)` — duplicate a session clip into Arrangement View at a specific beat position
+- `create_native_arrangement_clip(track_index, start_time, length)` — create arrangement clip with full automation envelope (12.1.10+)
 - `set_arrangement_clip_name(track_index, clip_index, name)` — name arrangement clips for clarity
+- `force_arrangement()` — force all tracks to play from arrangement (not session clips)
 
 ### Arrangement Notes
 
@@ -121,6 +123,21 @@ When building arrangements, use these as starting templates:
 - **Lo-fi:** Intro (4) - A (8) - B (8) - A (8) - B variation (8) - Outro (4)
 
 Adapt these to the user's needs. Use `plan_arrangement` from the planner domain for algorithmic structure suggestions, and `transform_section` to create variations of existing sections.
+
+## Section-Aware Sample Roles
+
+`plan_arrangement` returns `sample_hints` per section — suggested roles for sample-based elements:
+
+| Section | Default Hints |
+|---------|--------------|
+| Intro | `texture_bed`, `fill_one_shot` |
+| Verse | `texture_bed`, `fill_one_shot` |
+| Build | `transition_fx`, `texture_bed` |
+| Chorus/Drop | `hook_sample`, `break_layer`, `fill_one_shot` |
+| Bridge/Breakdown | `texture_bed`, `transition_fx` |
+| Outro | `texture_bed`, `fill_one_shot` |
+
+Use `plan_sample_workflow(section_type=..., desired_role=...)` to generate concrete sample plans for each role. Use `plan_slice_workflow(intent=..., target_section=...)` for slice-based patterns.
 
 ## Composition Engine
 

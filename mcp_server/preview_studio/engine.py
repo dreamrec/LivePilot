@@ -121,15 +121,11 @@ def _build_triptych(
         compiled_plan = None
         if moves and i < len(moves):
             move_id = moves[i].get("move_id", "")
-            # Compile through the semantic compiler if possible
+            # Compile through the semantic compiler — single source of truth
             from ..wonder_mode.engine import _compile_variant_plan
             kernel = {"session_info": {"tempo": 120, "tracks": []}, "mode": "improve"}
             compiled_plan = _compile_variant_plan(moves[i], kernel)
-            # Fall back to plan_template for moves without registered compilers
-            if compiled_plan is None:
-                raw = moves[i].get("plan_template")
-                if raw:
-                    compiled_plan = raw  # list shape — Preview handles both
+            # No fallback to plan_template — uncompilable moves stay analytical
 
         variants.append(PreviewVariant(
             variant_id=f"{set_id}_{profile['label']}",

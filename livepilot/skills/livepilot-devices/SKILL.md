@@ -120,9 +120,30 @@ For Simpler devices that already have samples loaded:
 - `crop_simpler(track_index, device_index)` — trim sample to current start/end points
 - `reverse_simpler(track_index, device_index)` — reverse the loaded sample
 - `get_simpler_slices(track_index, device_index)` — retrieve auto-detected slice points (Slice mode)
-- `set_simpler_playback_mode(track_index, device_index, mode)` — switch between Classic, One-Shot, and Slice modes
+- `set_simpler_playback_mode(track_index, device_index, playback_mode)` — switch modes: 0=Classic, 1=One-Shot, 2=Slice. Optional: `slice_by` (0=Transient, 1=Beat, 2=Region, 3=Manual), `sensitivity` (0.0-1.0, Transient only)
+- `warp_simpler(track_index, device_index, beats)` — warp sample to fit N beats
 
-Slice mode workflow: load sample, set playback mode to Slice, call `get_simpler_slices` to see slice points, then program MIDI notes targeting slice indices.
+### Slice Workflow
+
+For slice-based production, use `plan_slice_workflow`:
+1. `plan_slice_workflow(file_path=..., intent="rhythm")` — generates a complete workflow with Simpler setup, slice mapping, and MIDI notes
+2. Intents: `rhythm`, `hook`, `texture`, `percussion`, `melodic`
+3. The tool returns a step-by-step plan — execute each tool call in sequence
+
+Manual slice workflow: load sample → `set_simpler_playback_mode(playback_mode=2)` → `get_simpler_slices` → program MIDI notes targeting slice indices (C3 = slice 0, C#3 = slice 1, etc.)
+
+### New Device Operations (12.3+)
+
+- `insert_device(track_index, device_name)` — insert native device by name (10x faster than browser, 12.3+)
+- `insert_rack_chain(track_index, device_index)` — add chain to Instrument/Audio/Drum Rack
+- `set_drum_chain_note(track_index, device_index, chain_index, note)` — assign MIDI note to Drum Rack chain
+- `move_device(track_index, device_index, new_index)` — reorder devices on a track
+
+### Plugin Deep Control
+
+- `get_plugin_parameters(track_index, device_index)` — all AU/VST plugin parameters
+- `map_plugin_parameter(track_index, device_index, parameter_index)` — map for automation
+- `get_plugin_presets(track_index, device_index)` — list plugin presets
 
 ## Effect Chain Best Practices
 

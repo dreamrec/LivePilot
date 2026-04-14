@@ -137,7 +137,7 @@ def enter_wonder_mode(
             if opportunities.get("opportunities"):
                 opp = opportunities["opportunities"][0]
                 query = opp.get("search_query", opp.get("description", "sample"))
-                results = search_samples(ctx, query=query, limit=3)
+                results = search_samples(ctx, query=query, max_results=3)
                 candidates = results.get("results", [])
                 if candidates:
                     best = candidates[0]
