@@ -1,4 +1,4 @@
-"""Verify all 317 MCP tools are registered across 43 domains."""
+"""Verify all 320 MCP tools are registered across 43 domains."""
 
 import asyncio
 import sys
@@ -482,7 +482,7 @@ def test_safety_tools_registered():
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 317, f"Expected 317 tools, got {len(tools)}"
+    assert len(tools) == 320, f"Expected 320 tools, got {len(tools)}"
 
 
 def test_sample_engine_tools_registered():
@@ -494,6 +494,10 @@ def test_sample_engine_tools_registered():
         "suggest_sample_technique",
         "plan_sample_workflow",
         "get_sample_opportunities",
+        # v1.10.5 Splice online catalog tools
+        "get_splice_credits",
+        "splice_catalog_hunt",
+        "splice_download_sample",
     }
     missing = expected - names
     assert not missing, f"Missing sample engine tools: {missing}"

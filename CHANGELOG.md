@@ -1,5 +1,103 @@
 # Changelog
 
+## 1.10.5 — Splice online catalog unblocked + Simpler sample-loading fixes (April 14 2026)
+
+The Splice integration was **never working online** in previous releases. The
+`SpliceGRPCClient` existed in the codebase but silently fell back to a
+SQLite-only path that returned only locally-downloaded samples (2 files on the
+test user's machine). The bug was a missing `grpcio` dependency in the venv
+combined with `sources.py` never checking for the gRPC client. Once unblocked,
+a single query returns 19,690+ catalog hits. The "Beatles × Boards of Canada"
+session that surfaced these bugs is archived at
+`docs/2026-04-14-bugs-discovered.md` with 13 bugs categorized P0–P3.
+
+Tool count: **317 → 320** (three new Splice catalog tools added).
+
+### Added
+- **`get_splice_credits`** — query the Splice user's subscription tier and
+  remaining credit balance. Returns `{connected, username, plan,
+  credits_remaining, credit_floor, can_download}`. Graceful degradation when
+  Splice desktop isn't running or grpcio is missing.
+- **`splice_catalog_hunt`** — search Splice's ONLINE catalog via gRPC (not
+  just local downloads). Supports query, bpm_min/max, key, sample_type,
+  genre filters. Returns full sample metadata including `file_hash` for
+  downloads. This is the tool that unblocks 19,690+ results previously
+  inaccessible.
+- **`splice_download_sample`** — download a sample by `file_hash` (costs 1
+  credit), with automatic credit-floor safety check. Optionally copies the
+  downloaded file into `~/Music/Ableton/User Library/Samples/Splice/` so
+  Ableton's browser indexes it, returning a `browser_uri` ready for
+  `load_browser_item`.
+- **Smart warped-loop defaults** in `load_sample_to_simpler` and
+  `replace_simpler_sample`: when the filename contains a BPM marker (e.g.
+  `86bpm`), Simpler's `S Start` is set to 0, `S Length` to 100%, and
+  `S Loop On` to 1 so the full musical loop plays. Previously these tools
+  used crop defaults designed for one-shots, which chopped warped loops.
+
+### Fixed
+- **P0-2 — Splice online catalog is finally reachable.** `grpcio>=1.60.0`
+  and `protobuf>=4.25.0` are now REQUIRED dependencies (added to
+  `requirements.txt`). `search_samples(source="splice")` now uses the gRPC
+  client from `ctx.lifespan_context["splice_client"]` when connected and
+  only falls back to SQLite when the gRPC path is unavailable. Before this
+  fix, a query like `"mellotron"` returned 0 hits; after, it returns 851.
+  Queries like `"lofi chord"` 80-92 BPM return 19,690 hits.
+- **P0-1 — Simpler sample replacement is verified.** Both
+  `replace_simpler_sample` and `load_sample_to_simpler` now verify by
+  reading the device name back after the replace. If the name doesn't
+  match the requested filename stem, the tool returns a clear error
+  instead of silently shipping a wrong sample (the previous behavior
+  caused the test session to play a kick drum named as a vocal for two
+  consecutive rebuilds). The error message recommends
+  `load_browser_item` as a more reliable alternative.
+- **P1-1 — Simpler `Snap` is automatically turned OFF** after sample load.
+  With Snap ON, the Sample Start position gets snapped to a zero-crossing
+  outside the newly loaded sample's data, causing silent playback. This was
+  the root cause of every "sample loaded but doesn't play" symptom in
+  previous sessions. The fix also applies to `replace_simpler_sample`.
+- **P2-6 — Warped-loop sample defaults** no longer crop arbitrary sections.
+  When `load_sample_to_simpler` or `replace_simpler_sample` detects a BPM
+  marker in the filename, it applies loop-appropriate defaults instead of
+  one-shot-appropriate defaults.
+
+### Removed
+Nothing removed — all additions are additive.
+
+### Verified
+- `tests/test_tools_contract.py::test_total_tool_count` — 320 tools
+  (up from 317)
+- `tests/test_tools_contract.py::test_sample_engine_tools_registered` —
+  includes `get_splice_credits`, `splice_catalog_hunt`,
+  `splice_download_sample`
+- Live gRPC round-trip: searched 3 queries against Splice online, found
+  21,488 combined catalog hits, downloaded 3 samples (credits 100 → 97),
+  copied into User Library, loaded onto 3 Ableton tracks via
+  `load_browser_item` — all verified via `get_track_info` device name
+  matching.
+
+### Known limitations
+- **Unlimited downloads inside Splice Sounds.vst3 are not yet drivable**
+  programmatically. The gRPC download path always decrements monthly
+  credits (100/month on most subscription tiers) regardless of
+  `SoundsStatus: subscribed`. The Splice Sounds VST3 uses a separate HTTPS
+  API that LivePilot cannot drive through Ableton's plugin boundary.
+  Treat this as a research item — see P2-7 in
+  `docs/2026-04-14-bugs-discovered.md`.
+- **The M4L bridge `.amxd` still reports 1.10.4** in its ping response.
+  Source code is at 1.10.5 but the frozen JS inside the .amxd wasn't
+  re-exported. For users installing via `npm install -g livepilot@1.10.5`
+  this is cosmetic — no bridge commands changed. If publishing a new
+  `.mcpb`, re-freeze or binary-patch the version bytes first (see
+  `feedback_amxd_freeze_drift.md`).
+
+### Why a new patch version
+The P0-2 fix (missing grpcio dependency) is a correctness bug: users
+installed previous versions believed the Splice integration worked, when
+in fact every "online" search returned only locally-downloaded files.
+This is a silent incorrect-behavior bug — the tool returned 0-2 results
+confidently without any warning. Users deserve a clearly-communicated
+fix release and the ability to `npm install -g livepilot@1.10.5`.
+
 ## 1.10.4 — Bridge ping sync (April 14 2026)
 
 A pure ship-fix release. The frozen JS inside `LivePilot_Analyzer.amxd` was

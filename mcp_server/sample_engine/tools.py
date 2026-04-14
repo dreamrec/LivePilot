@@ -1,11 +1,12 @@
-"""Sample Engine MCP tools — 7 intelligence-layer tools.
+"""Sample Engine MCP tools — intelligence-layer tools.
 
-No new Ableton communication — these orchestrate existing tools
-through the analyzer, critics, planner, and technique library.
+Wraps analyzer, critics, planner, technique library, and (as of v1.10.5)
+direct Splice online catalog hunt/download via the gRPC client.
 """
 
 from __future__ import annotations
 
+import os
 from typing import Optional
 
 from fastmcp import Context
@@ -155,7 +156,7 @@ def evaluate_sample_fit(
 
 
 @mcp.tool()
-def search_samples(
+async def search_samples(
     ctx: Context,
     query: str,
     material_type: Optional[str] = None,
@@ -168,6 +169,12 @@ def search_samples(
 
     Searches all enabled sources in parallel and ranks results.
     Splice results include rich metadata (key, BPM, genre, tags, pack info).
+
+    When the Splice desktop app is running AND grpcio is installed, this
+    searches Splice's ONLINE catalog (19,690+ hits for a generic query)
+    and returns un-downloaded items alongside local files. When gRPC is
+    unavailable, it falls back to the local SQLite index and only returns
+    already-downloaded samples.
 
     query: search text like "dark vocal", "breakbeat", "foley metal"
     material_type: filter by type (vocal, drum_loop, texture, etc.)
@@ -188,21 +195,73 @@ def search_samples(
             except ValueError:
                 pass
 
-    # Splice search (richest metadata, searched first)
+    # Splice search — prefer gRPC online catalog when available, fall back
+    # to local SQLite index. See docs/2026-04-14-bugs-discovered.md — P0-2.
     if source in (None, "splice"):
-        splice = SpliceSource()
-        if splice.enabled:
-            splice_results = splice.search(
-                query=query,
-                max_results=max_results,
-                key=key,
-                bpm_min=bpm_min,
-                bpm_max=bpm_max,
-            )
-            for candidate in splice_results:
-                d = candidate.to_dict()
-                d["source_priority"] = 1  # highest
-                results.append(d)
+        grpc_client = None
+        try:
+            grpc_client = ctx.lifespan_context.get("splice_client")
+        except AttributeError:
+            grpc_client = None
+
+        used_grpc = False
+        if grpc_client is not None and getattr(grpc_client, "connected", False):
+            try:
+                grpc_result = await grpc_client.search_samples(
+                    query=query,
+                    key=(key or "").lower().rstrip("m") if key else "",
+                    bpm_min=int(bpm_min) if bpm_min else 0,
+                    bpm_max=int(bpm_max) if bpm_max else 0,
+                    per_page=max_results,
+                    page=1,
+                    purchased_only=False,
+                )
+                for s in grpc_result.samples[:max_results]:
+                    results.append({
+                        "source": "splice",
+                        "name": s.filename,
+                        "file_path": s.local_path or None,
+                        "uri": None,
+                        "freesound_id": None,
+                        "relevance_score": 0,
+                        "source_priority": 1,
+                        "splice_catalog": True,
+                        "downloaded": bool(s.local_path),
+                        "file_hash": s.file_hash,
+                        "metadata": {
+                            "key": s.audio_key,
+                            "bpm": s.bpm,
+                            "tags": ",".join(s.tags) if s.tags else "",
+                            "genre": s.genre or None,
+                            "sample_type": s.sample_type,
+                            "material_type": "vocal" if "vocal" in (s.tags or []) else "unknown",
+                            "pack": s.provider_name,
+                            "pack_uuid": s.pack_uuid,
+                            "duration": s.duration_ms / 1000.0 if s.duration_ms else 0.0,
+                            "is_premium": s.is_premium,
+                            "chord_type": s.chord_type,
+                        },
+                    })
+                used_grpc = True
+            except Exception:
+                used_grpc = False
+
+        # Also query local index (if not already covered by gRPC) to surface
+        # downloaded-only samples that might not appear in catalog results.
+        if not used_grpc:
+            splice = SpliceSource()
+            if splice.enabled:
+                splice_results = splice.search(
+                    query=query,
+                    max_results=max_results,
+                    key=key,
+                    bpm_min=bpm_min,
+                    bpm_max=bpm_max,
+                )
+                for candidate in splice_results:
+                    d = candidate.to_dict()
+                    d["source_priority"] = 1
+                    results.append(d)
 
     # Browser search
     if source in (None, "browser"):
@@ -543,3 +602,296 @@ def plan_slice_workflow(
     plan["style_hint"] = style_hint
 
     return plan
+
+
+# ── v1.10.5 Splice online catalog tools ───────────────────────────────────
+#
+# These expose the SpliceGRPCClient's catalog capabilities as first-class MCP
+# tools so the agent can drive hunt→download→load without a standalone helper
+# script. See docs/2026-04-14-bugs-discovered.md — P0-2.
+#
+# Prerequisites:
+#   - Splice desktop app running (port.conf present in ~/Library/Application
+#     Support/com.splice.Splice/)
+#   - grpcio and protobuf installed (added to requirements.txt in v1.10.5)
+#
+# Credit model (as of 2026-04-14):
+#   - Even with `SoundsStatus: subscribed`, the gRPC `DownloadSample` endpoint
+#     always decrements a monthly credit counter (default 100/month on most
+#     subscription plans).
+#   - The "unlimited downloads in Ableton" the Splice marketing references
+#     only applies to the Splice Sounds.vst3 plugin, which uses a different
+#     HTTPS API that these tools cannot drive.
+#   - `CREDIT_HARD_FLOOR = 5` in client.py reserves 5 credits as a safety
+#     margin — downloads will refuse below the floor.
+
+
+_SPLICE_USER_LIB_DEST = "~/Music/Ableton/User Library/Samples/Splice"
+
+
+@mcp.tool()
+async def get_splice_credits(ctx: Context) -> dict:
+    """Get the user's current Splice credit balance and subscription tier.
+
+    Returns: {
+        "connected": bool,        # whether Splice desktop gRPC is reachable
+        "username": str,
+        "plan": str,              # e.g. "subscribed", "free"
+        "credits_remaining": int,
+        "credit_floor": int,      # safety reserve (typically 5)
+        "can_download": bool,     # credits_remaining > credit_floor
+    }
+
+    Returns connected=False (with zero credits) when the Splice desktop app
+    isn't running or grpcio isn't installed.
+    """
+    from ..splice_client.client import CREDIT_HARD_FLOOR
+
+    client = None
+    try:
+        client = ctx.lifespan_context.get("splice_client")
+    except AttributeError:
+        pass
+
+    if client is None or not getattr(client, "connected", False):
+        return {
+            "connected": False,
+            "username": "",
+            "plan": "",
+            "credits_remaining": 0,
+            "credit_floor": CREDIT_HARD_FLOOR,
+            "can_download": False,
+            "hint": (
+                "Splice gRPC not connected. Ensure Splice desktop app is "
+                "running and grpcio+protobuf are installed in the LivePilot "
+                "venv (pip install grpcio protobuf)."
+            ),
+        }
+
+    try:
+        info = await client.get_credits()
+    except Exception as exc:
+        return {
+            "connected": False,
+            "error": f"get_credits failed: {exc}",
+            "credit_floor": CREDIT_HARD_FLOOR,
+        }
+
+    remaining = int(info.credits)
+    return {
+        "connected": True,
+        "username": info.username,
+        "plan": info.plan,
+        "credits_remaining": remaining,
+        "credit_floor": CREDIT_HARD_FLOOR,
+        "can_download": remaining > CREDIT_HARD_FLOOR,
+    }
+
+
+@mcp.tool()
+async def splice_catalog_hunt(
+    ctx: Context,
+    query: str,
+    bpm_min: int = 0,
+    bpm_max: int = 0,
+    key: str = "",
+    sample_type: str = "",
+    genre: str = "",
+    per_page: int = 10,
+    page: int = 1,
+) -> dict:
+    """Search Splice's ONLINE catalog via gRPC.
+
+    Unlike `search_samples` which can fall back to the local SQLite index,
+    this tool ONLY queries the online catalog — if Splice isn't connected
+    it returns an error instead of local-only results. Use this when you
+    specifically want fresh catalog content.
+
+    query:       free-text search ("mellotron", "lofi chord", "soul vocal")
+    bpm_min:     minimum BPM (0 = no lower bound)
+    bpm_max:     maximum BPM (0 = no upper bound)
+    key:         musical key (e.g. "cm", "f#", "a")
+    sample_type: "loop", "oneshot", or "" for any
+    genre:       genre filter (e.g. "hip hop", "ambient")
+    per_page:    results per page (1-50)
+    page:        page number (1-indexed)
+
+    Returns: {
+        "connected": bool,
+        "total_hits": int,       # total catalog matches
+        "samples": [...],        # sample metadata with file_hash for download
+    }
+
+    Each sample entry contains `file_hash` which you can pass to
+    `splice_download_sample` to trigger a download.
+    """
+    client = None
+    try:
+        client = ctx.lifespan_context.get("splice_client")
+    except AttributeError:
+        pass
+
+    if client is None or not getattr(client, "connected", False):
+        return {
+            "connected": False,
+            "error": "Splice gRPC not connected",
+            "hint": (
+                "Ensure Splice desktop app is running. Also verify grpcio "
+                "and protobuf are installed: `pip install grpcio protobuf`."
+            ),
+            "samples": [],
+            "total_hits": 0,
+        }
+
+    try:
+        result = await client.search_samples(
+            query=query,
+            key=key.lower().rstrip("m") if key else "",
+            chord_type="minor" if key and key.lower().endswith("m") else "",
+            bpm_min=int(bpm_min),
+            bpm_max=int(bpm_max),
+            sample_type=sample_type,
+            genre=genre,
+            per_page=max(1, min(per_page, 50)),
+            page=max(1, int(page)),
+            purchased_only=False,
+        )
+    except Exception as exc:
+        return {
+            "connected": False,
+            "error": f"Splice search failed: {exc}",
+            "samples": [],
+        }
+
+    samples_out = []
+    for s in result.samples:
+        samples_out.append({
+            "file_hash": s.file_hash,
+            "filename": s.filename,
+            "key": s.audio_key,
+            "chord_type": s.chord_type,
+            "bpm": s.bpm,
+            "duration_sec": round((s.duration_ms or 0) / 1000.0, 2),
+            "genre": s.genre,
+            "sample_type": s.sample_type,
+            "tags": list(s.tags) if s.tags else [],
+            "pack": s.provider_name,
+            "pack_uuid": s.pack_uuid,
+            "is_premium": bool(s.is_premium),
+            "is_downloaded": bool(s.local_path),
+            "local_path": s.local_path or None,
+            "preview_url": s.preview_url,
+        })
+
+    return {
+        "connected": True,
+        "query": query,
+        "total_hits": result.total_hits,
+        "returned": len(samples_out),
+        "samples": samples_out,
+        "matching_tags": dict(result.matching_tags) if result.matching_tags else {},
+    }
+
+
+@mcp.tool()
+async def splice_download_sample(
+    ctx: Context,
+    file_hash: str,
+    copy_to_user_library: bool = True,
+) -> dict:
+    """Download a Splice sample by file_hash (costs 1 credit).
+
+    Use `splice_catalog_hunt` first to find samples and get their file_hash.
+    This tool will:
+      1. Check credit balance against the safety floor (refuses if < 5)
+      2. Trigger the download via the Splice desktop gRPC
+      3. Poll until the file appears on disk (up to 30s)
+      4. Optionally copy the file into `~/Music/Ableton/User Library/Samples/
+         Splice/` so Ableton's browser indexes it — this makes the sample
+         loadable via `load_browser_item` with a `query:UserLibrary#Samples:...`
+         URI.
+
+    Returns: {
+        "ok": bool,
+        "local_path": str,              # Splice's own download path
+        "user_library_path": str,       # if copy_to_user_library=True
+        "browser_uri": str,             # ready for load_browser_item
+        "credits_remaining": int,
+    }
+
+    Note: even with an "unlimited" subscription, this gRPC path always
+    decrements credits (typically 100/month allotment). The unlimited
+    downloads inside Ableton's Splice Sounds VST3 use a different API
+    that LivePilot cannot drive programmatically yet.
+    """
+    import shutil
+
+    client = None
+    try:
+        client = ctx.lifespan_context.get("splice_client")
+    except AttributeError:
+        pass
+
+    if client is None or not getattr(client, "connected", False):
+        return {
+            "ok": False,
+            "error": "Splice gRPC not connected",
+        }
+
+    # Credit safety check
+    try:
+        can, remaining = await client.can_afford(1, budget=10)
+    except Exception as exc:
+        return {"ok": False, "error": f"Credit check failed: {exc}"}
+    if not can:
+        return {
+            "ok": False,
+            "error": (
+                f"Credit safety floor hit (remaining={remaining}, "
+                f"hard floor=5). Skipping download."
+            ),
+            "credits_remaining": remaining,
+        }
+
+    # Trigger download
+    try:
+        local_path = await client.download_sample(file_hash, timeout=30.0)
+    except Exception as exc:
+        return {"ok": False, "error": f"Download failed: {exc}"}
+
+    if not local_path:
+        return {
+            "ok": False,
+            "error": "Download did not complete within 30s timeout",
+        }
+
+    response: dict = {
+        "ok": True,
+        "local_path": local_path,
+        "filename": os.path.basename(local_path),
+    }
+
+    # Copy into User Library so Ableton's browser indexes it
+    if copy_to_user_library:
+        dest_dir = os.path.expanduser(_SPLICE_USER_LIB_DEST)
+        try:
+            os.makedirs(dest_dir, exist_ok=True)
+            dest_path = os.path.join(dest_dir, os.path.basename(local_path))
+            if not os.path.exists(dest_path):
+                shutil.copy2(local_path, dest_path)
+            response["user_library_path"] = dest_path
+            # URI format Ableton uses for user_library samples
+            response["browser_uri"] = (
+                f"query:UserLibrary#Samples:Splice:{os.path.basename(local_path)}"
+            )
+        except Exception as exc:
+            response["copy_warning"] = f"Failed to copy to User Library: {exc}"
+
+    # Post-credit count
+    try:
+        info = await client.get_credits()
+        response["credits_remaining"] = int(info.credits)
+    except Exception:
+        pass
+
+    return response

@@ -1,6 +1,6 @@
 # The Intelligence Layer
 
-LivePilot has 12 engines that sit on top of 317 tools. This chapter explains how they work together — not what each one does in isolation, but how a production request flows through them.
+LivePilot has 12 engines that sit on top of 320 tools. This chapter explains how they work together — not what each one does in isolation, but how a production request flows through them.
 
 ---
 

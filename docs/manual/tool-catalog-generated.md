@@ -1,6 +1,6 @@
 # LivePilot Tool Catalog (Auto-Generated)
 
-317 tools across 43 domains.
+320 tools across 43 domains.
 
 - **add_arrangement_notes** — Add MIDI notes to an arrangement clip
 - **add_notes** — Add MIDI notes to a clip. notes is a JSON array: [{pitch, start_time, duration, velocity?, probability?, velocity_dev...

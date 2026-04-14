@@ -1,11 +1,11 @@
 ---
 name: livepilot-core
-description: Core discipline for LivePilot — agentic production system for Ableton Live 12. 317 tools across 43 domains. This skill should be used whenever working with Ableton Live through MCP tools. Provides golden rules, tool speed tiers, error handling protocol, and pointers to domain and engine skills.
+description: Core discipline for LivePilot — agentic production system for Ableton Live 12. 320 tools across 43 domains. This skill should be used whenever working with Ableton Live through MCP tools. Provides golden rules, tool speed tiers, error handling protocol, and pointers to domain and engine skills.
 ---
 
 # LivePilot Core — Ableton Live 12
 
-Agentic production system for Ableton Live 12. 317 tools across 43 domains, three layers:
+Agentic production system for Ableton Live 12. 320 tools across 43 domains, three layers:
 
 - **Device Atlas** — 1305 devices indexed (81 enriched with sonic intelligence, 683 drum kits). Consult `atlas_search` or `atlas_suggest` before loading any device. Never guess a device name.
 - **M4L Analyzer** — Real-time audio analysis on the master bus (8-band spectrum, RMS/peak, key detection). Optional — all core tools work without it.
@@ -39,7 +39,7 @@ Agentic production system for Ableton Live 12. 317 tools across 43 domains, thre
 ## Tool Speed Tiers
 
 ### Instant (<1s) — Use freely
-All 317 tools plus M4L perception tools.
+All 320 tools plus M4L perception tools.
 
 ### Fast (1-5s) — Use freely
 `analyze_loudness` · `analyze_mix` · `analyze_sound_design`
@@ -128,7 +128,7 @@ Deep production knowledge in `references/`:
 
 | File | Content |
 |------|---------|
-| `references/overview.md` | All 317 tools with params and ranges |
+| `references/overview.md` | All 320 tools with params and ranges |
 | `references/device-atlas/` | 280+ device corpus with URIs and presets |
 | `references/midi-recipes.md` | Drum patterns, chord voicings, humanization |
 | `references/sound-design.md` | Synth recipes, device chain patterns |

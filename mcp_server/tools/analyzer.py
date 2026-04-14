@@ -277,6 +277,128 @@ async def get_clip_file_path(
     return await bridge.send_command("get_clip_file_path", track_index, clip_index)
 
 
+import os  # for filename parsing in smart-defaults helper
+import re
+
+
+# ── Sample loading helpers (P0-1, P1-1, P2-6 fixes) ────────────────────────
+#
+# Critical bug 2026-04-14 (see docs/2026-04-14-bugs-discovered.md):
+#
+# The M4L bridge's `replace_simpler_sample` command can report success even
+# when the sample is still the bootstrap placeholder. The Simpler's display
+# name also does NOT refresh after a replace. After loading, Simpler's Snap
+# parameter is ON by default which causes the Sample Start position to
+# snap to a location outside the new sample's valid audio — resulting in
+# silent playback.
+#
+# The fixes below:
+#   1. After replace, verify by reading the actual device name via
+#      get_track_info and comparing to the expected filename stem. If the
+#      name doesn't match, return a clear error so the caller doesn't
+#      silently ship the wrong audio.
+#   2. Auto-set Snap=0 to disarm the zero-crossing snap that breaks playback.
+#   3. For WARPED LOOPS (detected by "NNbpm" in the filename), set
+#      S Start=0, S Length=1, S Loop On=1 so the full loop plays in its
+#      musical phrasing. For ONE-SHOTS, leave defaults alone.
+
+_BPM_IN_FILENAME_RE = re.compile(r"(\d{2,3})\s*bpm", re.IGNORECASE)
+
+
+def _is_warped_loop(file_path: str) -> bool:
+    """Return True if the filename contains a BPM marker (likely a tempo-locked loop)."""
+    stem = os.path.splitext(os.path.basename(file_path))[0]
+    return bool(_BPM_IN_FILENAME_RE.search(stem))
+
+
+def _filename_stem(file_path: str) -> str:
+    return os.path.splitext(os.path.basename(file_path))[0]
+
+
+async def _simpler_post_load_hygiene(
+    bridge,
+    ableton,
+    track_index: int,
+    device_index: int,
+    file_path: str,
+) -> dict:
+    """Apply post-load hygiene to a newly loaded Simpler and verify success.
+
+    Steps:
+      1. Read track info to verify the device's actual name matches the
+         expected sample stem. If it doesn't, return an error.
+      2. Set Snap=0 (Off) — required so sample playback works.
+      3. If filename indicates a warped loop, set S Start=0, S Length=1,
+         S Loop On=1 so the loop plays fully instead of being cropped.
+      4. Return a verified response dict.
+    """
+    expected_stem = _filename_stem(file_path)
+
+    # Step 1: verify device name matches expected file
+    try:
+        track_info = ableton.send_command(
+            "get_track_info", {"track_index": track_index}
+        )
+    except Exception as exc:
+        return {"error": f"Verification read failed: {exc}"}
+
+    devices = track_info.get("devices", []) or []
+    if device_index < 0 or device_index >= len(devices):
+        return {
+            "error": (
+                f"Device index {device_index} out of range after load "
+                f"(track has {len(devices)} devices)"
+            ),
+            "verified": False,
+        }
+    device = devices[device_index]
+    actual_name = str(device.get("name") or "")
+    verified = expected_stem in actual_name or actual_name in expected_stem
+    if not verified:
+        return {
+            "error": (
+                f"Sample verification FAILED — Simpler name '{actual_name}' "
+                f"does not match requested file '{expected_stem}'. The bridge "
+                f"reported success but the actual sample is different. "
+                f"Try `load_browser_item` with a user_library URI instead."
+            ),
+            "verified": False,
+            "actual_device_name": actual_name,
+            "expected_stem": expected_stem,
+        }
+
+    # Step 2: turn Snap OFF — required for reliable playback after replace
+    hygiene_params: list[dict] = [
+        {"name_or_index": "Snap", "value": 0},
+    ]
+
+    # Step 3: smart defaults for warped loops
+    if _is_warped_loop(file_path):
+        hygiene_params.extend([
+            {"name_or_index": "S Start", "value": 0.0},
+            {"name_or_index": "S Length", "value": 1.0},
+            {"name_or_index": "S Loop On", "value": 1},
+        ])
+
+    try:
+        ableton.send_command("batch_set_parameters", {
+            "track_index": track_index,
+            "device_index": device_index,
+            "parameters": hygiene_params,
+        })
+    except Exception:
+        # non-fatal — verification already succeeded
+        pass
+
+    return {
+        "verified": True,
+        "device_name": actual_name,
+        "track_index": track_index,
+        "device_index": device_index,
+        "warped_loop_defaults_applied": _is_warped_loop(file_path),
+    }
+
+
 @mcp.tool()
 async def replace_simpler_sample(
     ctx: Context,
@@ -292,6 +414,17 @@ async def replace_simpler_sample(
     manually first or use find_and_load_device to load a preset that already
     contains a sample.
 
+    **Prefer `load_browser_item(track, uri)` when possible** — see P0-1 in
+    docs/2026-04-14-bugs-discovered.md. The M4L bridge's replace path can
+    silently keep the bootstrap placeholder in some conditions; this tool
+    now verifies by reading back the device name and will return an error
+    if the replace didn't actually take effect.
+
+    Also auto-applies post-load hygiene:
+      - Sets Simpler Snap=0 (required for playback after replace)
+      - For warped loops (filename contains 'NNbpm'), sets S Start=0,
+        S Length=1, S Loop On=1
+
     Use get_clip_file_path to get the path of a resampled clip, then pass
     it here to load it into Simpler for slicing.
     Requires LivePilot Analyzer on master track.
@@ -299,6 +432,7 @@ async def replace_simpler_sample(
     cache = _get_spectral(ctx)
     _require_analyzer(cache)
     bridge = _get_m4l(ctx)
+    ableton = ctx.lifespan_context["ableton"]
     result = await bridge.send_command(
         "replace_simpler_sample", track_index, device_index, file_path
     )
@@ -312,6 +446,16 @@ async def replace_simpler_sample(
             "error": "Sample may not have loaded. Ensure the Simpler already "
             "has a sample loaded — replace_sample silently fails on empty Simplers."
         }
+
+    # Verify by reading back the device name — guards against the silent
+    # failure mode where the bridge reports success but keeps the placeholder.
+    hygiene = await _simpler_post_load_hygiene(
+        bridge, ableton, track_index, device_index, file_path
+    )
+    if not hygiene.get("verified"):
+        return hygiene
+
+    result.update(hygiene)
     return result
 
 
@@ -327,10 +471,18 @@ async def load_sample_to_simpler(
     This is the full workflow for programmatic sample loading:
     1. Loads a dummy sample via the browser (creates Simpler with a sample)
     2. Replaces the dummy with your audio file
-    3. Returns the Simpler ready for slicing/warping
+    3. Applies post-load hygiene (Snap=0, loop defaults for warped loops)
+    4. Verifies by reading back the device name — returns an error if
+       the Simpler still has the bootstrap placeholder (P0-1 guard)
 
     Use this instead of replace_simpler_sample when the track has no Simpler
     or the Simpler is empty. Works with any audio file path.
+
+    **For files that exist in Ableton's browser index** (Samples, User Library,
+    Packs), PREFER `load_browser_item(track, uri)` — it goes through Ableton's
+    native loading path and is more reliable. This tool is a workaround for
+    files that aren't browser-indexed.
+
     Requires LivePilot Analyzer on master track.
     """
     cache = _get_spectral(ctx)
@@ -380,6 +532,14 @@ async def load_sample_to_simpler(
     if not result.get("sample_loaded"):
         return {"error": "Sample replacement failed after bootstrap"}
 
+    # Step 4: Verify by reading back the device name (P0-1 guard)
+    hygiene = await _simpler_post_load_hygiene(
+        bridge, ableton, track_index, actual_device_index, file_path
+    )
+    if not hygiene.get("verified"):
+        return hygiene
+
+    result.update(hygiene)
     result["method"] = "bootstrap_and_replace"
     result["device_index"] = actual_device_index  # additive — for step-result binding
     result["track_index"] = track_index

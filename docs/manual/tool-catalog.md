@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog
 
-317 tools across 43 domains.
+320 tools across 43 domains.
 
 ---
 
@@ -574,17 +574,20 @@
 
 ---
 
-## Sample Engine (7)
+## Sample Engine (10)
 
 | Tool | Description |
 |------|-------------|
 | `analyze_sample` | Analyze sample characteristics — material, spectral profile, Simpler mode recommendation |
 | `evaluate_sample_fit` | 6-critic fitness battery — key, tempo, frequency, role, vibe, intent fit scores |
-| `search_samples` | Search library for samples matching criteria |
+| `search_samples` | Search library for samples matching criteria (prefers Splice online catalog via gRPC when connected) |
 | `suggest_sample_technique` | Suggest manipulation technique from the 29-technique library |
 | `plan_sample_workflow` | Plan multi-step sample manipulation workflow |
 | `get_sample_opportunities` | Find opportunities to add samples to the current session |
 | `plan_slice_workflow` | Plan an end-to-end slice workflow — Simpler strategy, MIDI mapping, starter pattern |
+| `get_splice_credits` | Query Splice subscription tier, credit balance, and download capability (v1.10.5) |
+| `splice_catalog_hunt` | Search Splice's ONLINE catalog via gRPC — 19,690+ hits unblocked in v1.10.5 |
+| `splice_download_sample` | Download a Splice sample by file_hash with credit-floor safety, copy into User Library (v1.10.5) |
 
 ---
 

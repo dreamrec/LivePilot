@@ -1,13 +1,13 @@
 # LivePilot Manual
 
 An agentic production system for Ableton Live 12.
-317 tools. 43 domains. Device atlas. Sample intelligence. Auto-composition. Spectral perception. Technique memory. Creative intelligence.
+320 tools. 43 domains. Device atlas. Sample intelligence. Auto-composition. Spectral perception. Technique memory. Creative intelligence.
 
 ---
 
 ## What LivePilot Is
 
-LivePilot is not a tool collection with an AI wrapper. It is a **production system** — three perception layers feed into 317 tools, which are orchestrated by 12 creative engines that understand song identity, learn your taste, diagnose session problems, and generate real musical options.
+LivePilot is not a tool collection with an AI wrapper. It is a **production system** — three perception layers feed into 320 tools, which are orchestrated by 12 creative engines that understand song identity, learn your taste, diagnose session problems, and generate real musical options.
 
 The difference: a tool collection executes "set volume to -6dB." LivePilot understands that turning down the drums might kill the groove that defines the track, suggests three genuinely different ways to create space instead, lets you preview each one, and remembers which approach you preferred.
 
@@ -27,7 +27,7 @@ AI Client  ──MCP──►  FastMCP Server  ──TCP/9878──►  Remote S
 The **atlas** resolves device names and browser URIs — the AI never hallucinates a preset.
 The **analyzer** feeds back spectral data from the master bus so the AI hears its own changes.
 The **memory** persists production decisions across sessions as searchable, replayable data structures.
-All three feed into 317 deterministic LOM calls on Ableton's main thread. Everything is reversible with undo.
+All three feed into 320 deterministic LOM calls on Ableton's main thread. Everything is reversible with undo.
 
 ---
 
