@@ -721,3 +721,88 @@ class TestFullPipeline:
         d = state.to_dict()
         # Should not raise
         json.dumps(d)
+
+
+# ── build_project_brain tool: notes_map fetch (Phase 8) ──────────────────
+
+class TestBuildProjectBrainToolFetchesNotes:
+    """Regression for Phase 8.
+
+    The tool used to call build_project_state_from_data without notes_map,
+    which forced role_graph into the 'assume all tracks active in every
+    section' fallback. This destroyed section-scoped role confidence.
+
+    The tool must now call get_notes for active (scene, track) pairs and
+    pass a populated notes_map into the builder.
+    """
+
+    def test_build_project_brain_calls_get_notes_for_scene_tracks(self):
+        from types import SimpleNamespace
+        from mcp_server.project_brain.tools import build_project_brain
+
+        calls = []
+
+        class _Ableton:
+            def send_command(self, cmd, params=None):
+                calls.append(cmd)
+                if cmd == "get_session_info":
+                    return {
+                        "tempo": 120,
+                        "tracks": [
+                            {"index": 0, "name": "Drums"},
+                            {"index": 1, "name": "Bass"},
+                        ],
+                        "scenes": [
+                            {"index": 0, "name": "Intro"},
+                        ],
+                    }
+                if cmd == "get_scenes_info":
+                    return {"scenes": [{"index": 0, "name": "Intro", "tempo": 120}]}
+                if cmd == "get_scene_matrix":
+                    return {"matrix": [[
+                        {"has_clip": True, "state": "stopped"},
+                        {"has_clip": True, "state": "stopped"},
+                    ]]}
+                if cmd == "get_track_info":
+                    return {
+                        "index": params["track_index"],
+                        "name": f"Track {params['track_index']}",
+                        "devices": [],
+                    }
+                if cmd == "get_arrangement_clips":
+                    return {"clips": []}
+                if cmd == "get_notes":
+                    return {"notes": [{"pitch": 60, "start_time": 0.0, "duration": 0.25}]}
+                return {}
+
+        ctx = SimpleNamespace(lifespan_context={"ableton": _Ableton()})
+        result = build_project_brain(ctx)
+
+        # The critical assertion: get_notes was called.
+        assert "get_notes" in calls, (
+            f"build_project_brain must fetch notes for role inference; calls: {calls}"
+        )
+        # Sanity: result still structurally sound
+        assert "project_id" in result
+        assert "role_graph" in result
+
+    def test_build_project_brain_graceful_when_get_notes_fails(self):
+        """Failing get_notes must not break the build — just yield empty notes_map."""
+        from types import SimpleNamespace
+        from mcp_server.project_brain.tools import build_project_brain
+
+        class _Ableton:
+            def send_command(self, cmd, params=None):
+                if cmd == "get_session_info":
+                    return {
+                        "tempo": 120,
+                        "tracks": [{"index": 0, "name": "Drums"}],
+                        "scenes": [{"index": 0, "name": "Intro"}],
+                    }
+                if cmd == "get_notes":
+                    raise RuntimeError("simulated get_notes failure")
+                return {}
+
+        ctx = SimpleNamespace(lifespan_context={"ableton": _Ableton()})
+        result = build_project_brain(ctx)  # should not raise
+        assert "project_id" in result

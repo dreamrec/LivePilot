@@ -78,6 +78,39 @@ def build_project_brain(ctx: Context) -> dict:
         except Exception:
             pass
 
+    # 5b. Build notes_map for role inference.
+    # Shape: {section_id: {track_index: [notes]}}. Without this, role_graph
+    # falls back to "assume all tracks active in every section" which destroys
+    # section-scoped role confidence.
+    notes_map: dict[str, dict[int, list[dict]]] = {}
+    try:
+        for scene_idx, scene in enumerate(scenes or []):
+            section_id = str(
+                scene.get("section_id")
+                or scene.get("name")
+                or f"scene_{scene_idx}"
+            )
+            per_track: dict[int, list[dict]] = {}
+            for track in tracks:
+                t_idx = track.get("index", 0)
+                try:
+                    notes_resp = ableton.send_command("get_notes", {
+                        "track_index": t_idx,
+                        "clip_index": scene_idx,
+                    })
+                    if isinstance(notes_resp, dict):
+                        notes = notes_resp.get("notes", [])
+                        if notes:
+                            per_track[t_idx] = notes
+                except Exception:
+                    # Individual note fetch failing is fine — continue with others
+                    continue
+            if per_track:
+                notes_map[section_id] = per_track
+    except Exception:
+        # Overall failure: empty map, degrade to "all tracks active" fallback
+        notes_map = {}
+
     # 6. Probe capabilities (direct SpectralCache access, not TCP)
     analyzer_ok = False
     analyzer_fresh = False
@@ -103,6 +136,7 @@ def build_project_brain(ctx: Context) -> dict:
         scenes=scenes if scenes and clip_matrix else None,
         clip_matrix=clip_matrix if clip_matrix else None,
         track_infos=track_infos if track_infos else None,
+        notes_map=notes_map if notes_map else None,
         arrangement_clips=arrangement_clips if arrangement_clips else None,
         analyzer_ok=analyzer_ok,
         flucoma_ok=flucoma_ok,
