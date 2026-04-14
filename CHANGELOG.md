@@ -1,5 +1,68 @@
 # Changelog
 
+## 1.10.2 — npm Distribution Fix + Tool-Count Audit (April 14 2026)
+
+Patch release. The orchestration hardening shipped in 1.10.1 was correct on
+GitHub releases but the **npm-published 1.10.1 tarball had a stale `.amxd`
+embedded at v1.9.14** because the package was published to npm BEFORE the
+M4L Analyzer device was re-exported. Users installing via `npm install
+livepilot` would have gotten the broken M4L analyzer.
+
+This release republishes the package to npm with the corrected `.amxd`
+(byte-identical to the GitHub release asset) and fixes a number of stale
+tool-count references that have been wrong since the 1.10.0 line bumped
+from 316 → 317.
+
+`livepilot@1.10.1` on npm is being deprecated with a pointer to 1.10.2.
+
+### Fixed
+- **npm package now ships the correct M4L Analyzer device.** `livepilot@1.10.2`
+  contains the re-exported `LivePilot_Analyzer.amxd` (6,723,726 bytes,
+  embeds v1.10.2 `livepilot_bridge.js` byte-perfect). `livepilot@1.10.1`
+  inadvertently shipped with the old v1.9.14 frozen device.
+- **Git tag for the release is now properly created.** v1.10.1 was missing
+  a git tag on origin (the GitHub release was created with `gh release
+  create` against `target_commitish: main` instead of an actual tag).
+  v1.10.2 has a proper annotated tag pushed to origin.
+- **Tool-count drift across docs** (had been wrong since 1.10.0):
+  - `tests/test_tools_contract.py` docstring said "316 MCP tools" while the
+    assertion correctly checked 317 — docstring fixed.
+  - `docs/patreon-content.md` said "316 tools" / "316-tool production system"
+    in two places — both fixed to 317.
+  - `README.md`, `docs/M4L_BRIDGE.md`, `docs/manual/getting-started.md` all
+    claimed "286 core tools + 30 bridge tools" which sums to 316 — and
+    contradicted the 317 total claim elsewhere. Recomputed from source:
+    actual split is **281 core + 36 bridge = 317** (more bridge tools than
+    we used to count because the spectral-cache readers were classified as
+    core, but they require the M4L analyzer device to be present and so
+    are correctly bridge-dependent).
+  - `livepilot/skills/livepilot-release/SKILL.md` release-checklist updated
+    to reference the correct 281/36 split.
+
+### Tests
+- 1740 passing, 1 skipped — same as 1.10.1, no functional code changes
+- `test_tools_contract.py::test_total_tool_count` still asserts 317 ✅
+
+### Note
+1.10.1 → 1.10.2 contains **no Python source changes** and **no functional
+M4L bridge changes**. The orchestration hardening fixes are unchanged from
+1.10.1. This release exists purely to correct the npm distribution, the
+git tag, and stale doc references.
+
+The bundled `.amxd` is the same byte-for-byte file shipped in 1.10.1 (its
+ping response still reports `"version": "1.10.1"`). The repo's
+`livepilot_bridge.js` source has the ping string at `1.10.2`, which is a
+one-line cosmetic difference; the .amxd will catch up on the next re-export.
+All functional code (`get_selected` ID matching, 4-byte UTF-8 decoder, every
+command handler) is identical between v1.10.1 and v1.10.2 — only the
+version number constant differs.
+
+If you're using LivePilot via the GitHub release `.mcpb` asset (not npm),
+you already have the correct M4L analyzer in v1.10.1 and don't need to
+upgrade for any user-visible functional reason.
+
+---
+
 ## 1.10.1 — Orchestration Hardening (April 14 2026)
 
 Pure correctness pass on the execution substrate. No new public tools,

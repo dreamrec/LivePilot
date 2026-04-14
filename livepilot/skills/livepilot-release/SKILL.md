@@ -34,7 +34,7 @@ Core (no M4L): **286**. Bridge (M4L): **30** (backed by 28 bridge commands).
 Verify: `grep -rc "@mcp.tool" mcp_server/tools/ | grep -v ":0" | awk -F: '{sum+=$2} END{print sum}'`
 
 Files that reference tool count:
-- [ ] `README.md` — header ("317 tools. 43 domains"), bridge section ("286 core...30 bridge")
+- [ ] `README.md` — header ("317 tools. 43 domains"), bridge section ("281 core...36 bridge")
 - [ ] `package.json` → `"description"`
 - [ ] `server.json` → `"description"`
 - [ ] `manifest.json` → `"description"`
@@ -46,12 +46,12 @@ Files that reference tool count:
 - [ ] `livepilot/skills/livepilot-core/SKILL.md` — tool/domain count
 - [ ] `livepilot/skills/livepilot-core/references/overview.md` — tool/domain count
 - [ ] `docs/manual/index.md` — domain table with correct per-domain counts
-- [ ] `docs/manual/getting-started.md` — "286 core tools...30 bridge"
+- [ ] `docs/manual/getting-started.md` — "281 core tools...36 bridge"
 - [ ] `docs/manual/tool-reference.md` — all domains present with correct counts
 - [ ] `docs/manual/tool-catalog.md` — all tools present (CI-tested)
 - [ ] `docs/manual/tool-catalog-generated.md` — regenerated from source
 - [ ] `docs/TOOL_REFERENCE.md` — all domains present with correct counts
-- [ ] `docs/M4L_BRIDGE.md` — "286 core tools...30 bridge"
+- [ ] `docs/M4L_BRIDGE.md` — "281 core tools...36 bridge"
 - [ ] `docs/social-banner.html`
 - [ ] `tests/test_tools_contract.py` → expected total count
 - [ ] `tests/test_skill_contracts.py` → catalog sync test passes
