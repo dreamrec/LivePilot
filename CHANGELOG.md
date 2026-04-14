@@ -9,12 +9,13 @@ no renames, no tool count change. Thirteen commits across thirteen phases
 **Test results:** 1690 → **1740 passing** (+50 net, +56 new tests, −6 sync-to-async
 rewrites). No regressions.
 
-**Known carryover:** `m4l_device/LivePilot_Analyzer.amxd` is lagging —
-its embedded JS is frozen at v1.9.14 while the repo source is at v1.10.1.
-This is a pre-existing drift (1.10.0 shipped the same stale .amxd). The
-Python/JS source in the repo is current; re-export from Max for Live at
-your convenience to pick up `get_selected` ID-matching and 4-byte UTF-8
-decoding in the embedded JS.
+**M4L Analyzer device re-exported.** `m4l_device/LivePilot_Analyzer.amxd`
+was previously frozen at v1.9.14 (shipped that way in v1.10.0). For 1.10.1
+the device was re-exported from Max for Live with the current
+`livepilot_bridge.js` source, so the bundled `.amxd` now embeds the v1.10.1
+JS including `get_selected` ID-matching (instead of name-matching, which
+broke when track names duplicated) and the 4-byte UTF-8 decoder for emoji
+in track/clip names. Embedded JS is byte-identical to the repo source.
 
 ### Fixed
 - **Execution router: `load_sample_to_simpler` reclassified as MCP tool.** It
