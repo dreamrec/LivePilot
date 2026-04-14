@@ -213,6 +213,7 @@ def test_analytical_refusal_in_wonder_context():
 
 def test_render_variant_uses_lifespan_spectral_cache_for_audible_preview(monkeypatch):
     """Audible preview should use the shared spectral cache from lifespan_context."""
+    import asyncio
     from mcp_server.preview_studio.tools import render_preview_variant
     import mcp_server.runtime.execution_router as execution_router
 
@@ -235,15 +236,18 @@ def test_render_variant_uses_lifespan_spectral_cache_for_audible_preview(monkeyp
 
     cache = SpectralCache()
     cache.update("spectrum", {"sub": 0.1})
-    monkeypatch.setattr(
-        execution_router,
-        "execute_plan_steps",
-        lambda steps, ableton=None, ctx=None, stop_on_failure=True: [SimpleNamespace(ok=True, tool="set_track_volume", backend="remote_command", result={"ok": True}, error="")],
-    )
+
+    async def _fake_exec_async(steps, ableton=None, bridge=None, mcp_registry=None, ctx=None, stop_on_failure=True):
+        return [SimpleNamespace(
+            ok=True, tool="set_track_volume",
+            backend="remote_command", result={"ok": True}, error="",
+        )]
+
+    monkeypatch.setattr(execution_router, "execute_plan_steps_async", _fake_exec_async)
     monkeypatch.setattr("time.sleep", lambda _seconds: None)
 
     ctx = SimpleNamespace(lifespan_context={"ableton": _Ableton(), "spectral": cache})
-    result = render_preview_variant(ctx, set_id=ps.set_id, variant_id=variant_id, bars=2)
+    result = asyncio.run(render_preview_variant(ctx, set_id=ps.set_id, variant_id=variant_id, bars=2))
 
     assert result["preview_mode"] == "audible_preview"
 
@@ -255,6 +259,7 @@ def test_render_preview_variant_captures_audible_before_undo(monkeypatch):
     so "audible_preview" was a lie — it captured pre-variant audio and labeled
     it as the variant's sound. This test asserts ordering via a call log.
     """
+    import asyncio
     from mcp_server.preview_studio.tools import render_preview_variant
     from mcp_server.preview_studio.engine import create_preview_set
     import mcp_server.runtime.execution_router as execution_router
@@ -283,18 +288,18 @@ def test_render_preview_variant_captures_audible_before_undo(monkeypatch):
     cache = _Spectral()
     cache.update("spectrum", {"sub": 0.1})
 
-    monkeypatch.setattr(
-        execution_router,
-        "execute_plan_steps",
-        lambda steps, ableton=None, ctx=None, stop_on_failure=True: (
-            calls.append("apply_plan"),
-            [SimpleNamespace(ok=True, tool="set_track_volume", backend="remote_command", result={"ok": True}, error="")],
-        )[1],
-    )
+    async def _fake_exec_async(steps, ableton=None, bridge=None, mcp_registry=None, ctx=None, stop_on_failure=True):
+        calls.append("apply_plan")
+        return [SimpleNamespace(
+            ok=True, tool="set_track_volume",
+            backend="remote_command", result={"ok": True}, error="",
+        )]
+
+    monkeypatch.setattr(execution_router, "execute_plan_steps_async", _fake_exec_async)
     monkeypatch.setattr("time.sleep", lambda _seconds: None)
 
     ctx = SimpleNamespace(lifespan_context={"ableton": _Ableton(), "spectral": cache})
-    result = render_preview_variant(ctx, set_id=ps.set_id, variant_id=variant_id, bars=2)
+    result = asyncio.run(render_preview_variant(ctx, set_id=ps.set_id, variant_id=variant_id, bars=2))
 
     assert result["preview_mode"] == "audible_preview"
 
@@ -314,5 +319,4 @@ def test_render_preview_variant_captures_audible_before_undo(monkeypatch):
         assert si < undo_idx, f"Spectral snapshot at {si} must precede undo at {undo_idx}; got {calls}"
 
     # There should be exactly one spectral_comparison in the result (before + after)
-    assert "spectral_comparison" in result
     assert "spectral_comparison" in result

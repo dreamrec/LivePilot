@@ -1,26 +1,23 @@
-"""Unified execution router for compiled plan steps.
+"""Unified async execution router for compiled plan steps.
 
 Classifies each step by backend (remote_command, mcp_tool, bridge_command)
-and dispatches to the correct execution path. Replaces the pattern of
-sending everything through ableton.send_command() blindly.
+and dispatches through the correct transport. Async-only — there is no
+sync path. Callers that need to execute plans live inside an async tool
+and await execute_plan_steps_async.
 
 Step backends:
-  remote_command — valid Remote Script handler, goes through TCP
-  bridge_command — M4L bridge handler, goes through the UDP M4L bridge client
-                    (NOT through ableton.send_command — different transport)
-  mcp_tool       — in-process Python function, dispatched via mcp_registry
-  unknown        — not a valid target anywhere
+  remote_command — valid Remote Script handler, goes through the sync TCP
+                    client (ableton.send_command)
+  bridge_command — M4L bridge handler, goes through the async UDP M4L bridge
+                    client (bridge.send_command), NOT through ableton
+  mcp_tool       — in-process Python function, dispatched via an mcp_registry
+                    dict supplied by the server lifespan
+  unknown        — not a valid target anywhere; returns a clear error
 
-Two executors exist:
-  execute_plan_steps       — sync legacy path. Bridge commands still go through
-                             ableton.send_command, which is wrong for bridge
-                             transport but preserved for back-compat with old
-                             callers that don't pass an async bridge client.
-  execute_plan_steps_async — canonical async path. Handles all three backends
-                             through their correct transports AND supports
-                             step-result binding via {"$from_step": ..., "path": ...}.
-
-Prefer the async path for new call sites. Migrate old sites in later PRs.
+Step-result binding:
+  Any step may carry an optional step_id. Later steps may reference an
+  earlier result by setting a param to {"$from_step": "<id>", "path": "a.b"}.
+  Resolved recursively BEFORE dispatch.
 """
 
 from __future__ import annotations
@@ -81,88 +78,6 @@ def classify_step(tool: str) -> str:
     if tool in MCP_TOOLS:
         return "mcp_tool"
     return "unknown"
-
-
-def execute_step(
-    tool: str,
-    params: dict,
-    ableton: Any = None,
-    ctx: Any = None,
-    declared_backend: str | None = None,
-) -> ExecutionResult:
-    """Execute a single plan step through the correct backend."""
-    backend = declared_backend if declared_backend in ("remote_command", "bridge_command", "mcp_tool") else classify_step(tool)
-
-    if backend in ("remote_command", "bridge_command"):
-        if ableton is None:
-            return ExecutionResult(
-                ok=False, backend=backend, tool=tool,
-                error="Ableton connection unavailable",
-            )
-        try:
-            result = ableton.send_command(tool, params)
-            return ExecutionResult(ok=True, backend=backend, tool=tool, result=result)
-        except Exception as e:
-            return ExecutionResult(ok=False, backend=backend, tool=tool, error=str(e))
-
-    elif backend == "mcp_tool":
-        # MCP tools require direct Python dispatch.
-        # For now, return a clear error — full MCP dispatch is wired per-tool
-        # in the callers (apply_semantic_move, render_preview_variant).
-        return ExecutionResult(
-            ok=False, backend=backend, tool=tool,
-            error=f"MCP tool '{tool}' requires direct Python dispatch — "
-                  f"not executable through TCP. Use the MCP layer directly.",
-        )
-
-    else:
-        return ExecutionResult(
-            ok=False, backend="unknown", tool=tool,
-            error=f"Unknown tool '{tool}' — not a Remote Script command, "
-                  f"bridge command, or registered MCP tool",
-        )
-
-
-def execute_plan_steps(
-    steps: list[dict],
-    ableton: Any = None,
-    ctx: Any = None,
-    stop_on_failure: bool = True,
-) -> list[ExecutionResult]:
-    """Execute a list of plan steps, returning results for each.
-
-    Stops on first failure by default. Set stop_on_failure=False
-    to continue past errors (useful for best-effort execution).
-
-    NOTE: This is the legacy sync path. Bridge commands still route through
-    ableton.send_command, which is the wrong transport. New callers should use
-    execute_plan_steps_async which dispatches bridge commands through the
-    async M4L bridge client.
-    """
-    results: list[ExecutionResult] = []
-
-    for step in steps:
-        tool = step.get("tool") or step.get("command", "")
-        params = step.get("params") or step.get("args", {})
-        # Honor declared backend from step annotations (PR5) if present
-        declared_backend = step.get("backend")
-
-        if not tool:
-            results.append(ExecutionResult(
-                ok=False, backend="unknown", tool="",
-                error="Step has no tool/command field",
-            ))
-            if stop_on_failure:
-                break
-            continue
-
-        result = execute_step(tool, params, ableton=ableton, ctx=ctx, declared_backend=declared_backend)
-        results.append(result)
-
-        if not result.ok and stop_on_failure:
-            break
-
-    return results
 
 
 # ── Step-result binding ─────────────────────────────────────────────────
@@ -254,9 +169,13 @@ async def _execute_step_async(
                 error="M4L bridge unavailable — cannot dispatch bridge command",
             )
         try:
-            # Real bridge client accepts positional args; fakes may too.
-            # Pass params as a single dict arg for forward-compat.
-            call = bridge.send_command(tool, params) if params else bridge.send_command(tool)
+            # M4LBridge.send_command accepts (command, *args) and OSC-encodes
+            # each arg positionally. Plan authors construct params dicts in
+            # the order the bridge command expects; we unpack by insertion
+            # order (Python 3.7+ guarantees this). This keeps plans readable
+            # while matching the real bridge's positional wire format.
+            positional = list(params.values()) if params else []
+            call = bridge.send_command(tool, *positional)
             result = await call if inspect.isawaitable(call) else call
             if isinstance(result, dict) and "error" in result:
                 return ExecutionResult(ok=False, backend=backend, tool=tool, error=result["error"])

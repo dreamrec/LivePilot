@@ -169,7 +169,7 @@ def propose_next_best_move(
 
 
 @mcp.tool()
-def apply_semantic_move(
+async def apply_semantic_move(
     ctx: Context,
     move_id: str,
     mode: str = "improve",
@@ -222,14 +222,22 @@ def apply_semantic_move(
         result["note"] = "Awaiting approval — present the plan to the user, then execute steps individually"
         return result
 
-    # explore mode — execute through unified router
-    from ..runtime.execution_router import execute_plan_steps
+    # explore mode — execute through the async router
+    from ..runtime.execution_router import execute_plan_steps_async
 
     step_dicts = [
         {"tool": step.tool, "params": step.params, "description": step.description}
         for step in plan.steps
     ]
-    exec_results = execute_plan_steps(step_dicts, ableton=ableton, ctx=ctx)
+    bridge = ctx.lifespan_context.get("m4l")
+    mcp_registry = ctx.lifespan_context.get("mcp_dispatch", {})
+    exec_results = await execute_plan_steps_async(
+        step_dicts,
+        ableton=ableton,
+        bridge=bridge,
+        mcp_registry=mcp_registry,
+        ctx=ctx,
+    )
 
     executed_steps = []
     for i, er in enumerate(exec_results):

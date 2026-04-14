@@ -76,11 +76,14 @@ async def _warm_analyzer_bridge(
 
 @asynccontextmanager
 async def lifespan(server):
-    """Create and yield the shared AbletonConnection + M4L bridge."""
+    """Create and yield the shared AbletonConnection + M4L bridge + registries."""
+    from .runtime.mcp_dispatch import build_mcp_dispatch_registry
+
     ableton = AbletonConnection()
     spectral = SpectralCache()
     receiver = SpectralReceiver(spectral)
     m4l = M4LBridge(spectral, receiver)
+    mcp_dispatch = build_mcp_dispatch_registry()
 
     # Start UDP listener for incoming M4L spectral data (port 9880)
     loop = asyncio.get_running_loop()
@@ -121,6 +124,7 @@ async def lifespan(server):
             "spectral": spectral,
             "m4l": m4l,
             "_bridge_state": bridge_state,
+            "mcp_dispatch": mcp_dispatch,
         }
     finally:
         if bridge_state["transport"]:

@@ -316,7 +316,7 @@ def commit_preview_variant(
 
 
 @mcp.tool()
-def render_preview_variant(
+async def render_preview_variant(
     ctx: Context,
     set_id: str = "",
     variant_id: str = "",
@@ -368,7 +368,7 @@ def render_preview_variant(
         plan = variant.compiled_plan
         steps = plan if isinstance(plan, list) else plan.get("steps", [])
 
-        from ..runtime.execution_router import execute_plan_steps
+        from ..runtime.execution_router import execute_plan_steps_async
 
         applied_count = 0
         playback_started = False
@@ -378,12 +378,21 @@ def render_preview_variant(
         before_info: dict = {}
         after_info: dict = {}
 
+        bridge = ctx.lifespan_context.get("m4l")
+        mcp_registry = ctx.lifespan_context.get("mcp_dispatch", {})
+
         try:
             # ── 1. Capture BEFORE metadata ──
             before_info = ableton.send_command("get_session_info", {}) or {}
 
             # ── 2. Apply the variant ──
-            exec_results = execute_plan_steps(steps, ableton=ableton, ctx=ctx)
+            exec_results = await execute_plan_steps_async(
+                steps,
+                ableton=ableton,
+                bridge=bridge,
+                mcp_registry=mcp_registry,
+                ctx=ctx,
+            )
             applied_count = sum(1 for r in exec_results if r.ok)
             if applied_count == 0 and steps:
                 return {
