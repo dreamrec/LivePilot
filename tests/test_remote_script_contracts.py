@@ -46,6 +46,39 @@ def _load_remote_modules():
     return router, arrangement, diagnostics
 
 
+def _load_remote_clips():
+    """Load remote_script.LivePilot.clips with its dependencies isolated."""
+    for name in [
+        "remote_script.LivePilot.clips",
+        "remote_script.LivePilot.router",
+        "remote_script.LivePilot.utils",
+        "remote_script.LivePilot",
+        "remote_script",
+    ]:
+        sys.modules.pop(name, None)
+
+    remote_pkg = types.ModuleType("remote_script")
+    remote_pkg.__path__ = [str(ROOT / "remote_script")]
+    sys.modules["remote_script"] = remote_pkg
+
+    live_pkg = types.ModuleType("remote_script.LivePilot")
+    live_pkg.__path__ = [str(REMOTE_ROOT)]
+    sys.modules["remote_script.LivePilot"] = live_pkg
+
+    def _load(name: str, path: Path):
+        spec = importlib.util.spec_from_file_location(name, path)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[name] = module
+        assert spec.loader is not None
+        spec.loader.exec_module(module)
+        return module
+
+    _load("remote_script.LivePilot.utils", REMOTE_ROOT / "utils.py")
+    router = _load("remote_script.LivePilot.router", REMOTE_ROOT / "router.py")
+    clips = _load("remote_script.LivePilot.clips", REMOTE_ROOT / "clips.py")
+    return router, clips
+
+
 def _load_remote_mixing():
     for name in [
         "remote_script.LivePilot.mixing",
@@ -255,3 +288,179 @@ def test_get_track_meters_zeroes_muted_tracks():
     assert result["tracks"][1]["level"] == 0.0
     assert result["tracks"][1]["left"] == 0.0
     assert result["tracks"][1]["right"] == 0.0
+
+
+# ─── BUG-A1 / A4 / A5 — Batch 2 regressions ─────────────────────────────────
+
+def _make_audio_clip(pitch_coarse=0, pitch_fine=0.0, gain=1.0):
+    """Minimal audio-clip stub that exposes the attributes get_clip_info touches."""
+    class _Clip:
+        pass
+    c = _Clip()
+    c.name = "audio"
+    c.color_index = 0
+    c.length = 4.0
+    c.is_playing = False
+    c.is_recording = False
+    c.is_midi_clip = False
+    c.is_audio_clip = True
+    c.looping = True
+    c.loop_start = 0.0
+    c.loop_end = 4.0
+    c.start_marker = 0.0
+    c.end_marker = 4.0
+    c.launch_mode = 0
+    c.launch_quantization = 0
+    c.warping = True
+    c.warp_mode = 4
+    c.pitch_coarse = pitch_coarse
+    c.pitch_fine = pitch_fine
+    c.gain = gain
+    return c
+
+
+def _song_with_clip(clip):
+    """Build a minimal Song-like object holding one track with one clip slot."""
+    class _Slot:
+        pass
+
+    class _Track:
+        pass
+
+    class _Song:
+        pass
+
+    slot = _Slot()
+    slot.clip = clip
+    track = _Track()
+    track.clip_slots = [slot]
+    song = _Song()
+    song.tracks = [track]
+    song.master_track = None
+    song.return_tracks = []
+    return song
+
+
+def test_bug_a4_get_clip_info_exposes_audio_pitch_and_gain():
+    """BUG-A4: get_clip_info on an audio clip must include pitch_coarse /
+    pitch_fine / gain so callers can detect sample-vs-session key drift."""
+    _router, clips = _load_remote_clips()
+    clip = _make_audio_clip(pitch_coarse=-1, pitch_fine=12.5, gain=0.85)
+    song = _song_with_clip(clip)
+
+    info = clips.get_clip_info(song, {"track_index": 0, "clip_index": 0})
+
+    assert info["is_audio_clip"] is True
+    assert info["pitch_coarse"] == -1
+    assert info["pitch_fine"] == 12.5
+    assert info["gain"] == 0.85
+
+
+def test_bug_a4_midi_clips_do_not_report_pitch_fields():
+    """Pitch fields are audio-only in Live — midi clips must not leak
+    fake values into the response."""
+    _router, clips = _load_remote_clips()
+
+    class _MidiClip:
+        name = "midi"
+        color_index = 0
+        length = 4.0
+        is_playing = False
+        is_recording = False
+        is_midi_clip = True
+        is_audio_clip = False
+        looping = True
+        loop_start = 0.0
+        loop_end = 4.0
+        start_marker = 0.0
+        end_marker = 4.0
+        launch_mode = 0
+        launch_quantization = 0
+
+    song = _song_with_clip(_MidiClip())
+    info = clips.get_clip_info(song, {"track_index": 0, "clip_index": 0})
+
+    assert info["is_midi_clip"] is True
+    assert "pitch_coarse" not in info
+    assert "pitch_fine" not in info
+    assert "gain" not in info
+
+
+def test_bug_a5_set_clip_pitch_writes_coarse_and_fine():
+    """BUG-A5: set_clip_pitch must mutate pitch_coarse / pitch_fine / gain."""
+    _router, clips = _load_remote_clips()
+    clip = _make_audio_clip()
+    song = _song_with_clip(clip)
+
+    result = clips.set_clip_pitch(song, {
+        "track_index": 0, "clip_index": 0,
+        "coarse": -1, "fine": -7.5, "gain": 0.5,
+    })
+
+    assert clip.pitch_coarse == -1
+    assert clip.pitch_fine == -7.5
+    assert clip.gain == 0.5
+    # Response should round-trip the new values
+    assert result["pitch_coarse"] == -1
+    assert result["pitch_fine"] == -7.5
+    assert result["gain"] == 0.5
+
+
+def test_bug_a5_set_clip_pitch_rejects_midi_clips():
+    """MIDI clips don't have sample pitch — caller mistake should error."""
+    import pytest
+    _router, clips = _load_remote_clips()
+
+    class _MidiClip:
+        is_midi_clip = True
+        is_audio_clip = False
+
+    slot = type("_Slot", (), {"clip": _MidiClip()})()
+    track = type("_Track", (), {"clip_slots": [slot]})()
+    song = type("_Song", (), {
+        "tracks": [track], "master_track": None, "return_tracks": [],
+    })()
+
+    with pytest.raises(ValueError, match="audio clips"):
+        clips.set_clip_pitch(song, {
+            "track_index": 0, "clip_index": 0, "coarse": 1,
+        })
+
+
+def test_bug_a5_set_clip_pitch_requires_at_least_one_param():
+    import pytest
+    _router, clips = _load_remote_clips()
+    song = _song_with_clip(_make_audio_clip())
+
+    with pytest.raises(ValueError, match="at least one"):
+        clips.set_clip_pitch(song, {"track_index": 0, "clip_index": 0})
+
+
+def test_bug_a5_set_clip_pitch_rejects_out_of_range_coarse():
+    import pytest
+    _router, clips = _load_remote_clips()
+    song = _song_with_clip(_make_audio_clip())
+
+    with pytest.raises(ValueError, match="semitones"):
+        clips.set_clip_pitch(song, {
+            "track_index": 0, "clip_index": 0, "coarse": 500,
+        })
+
+
+def test_bug_a1_ping_embeds_remote_script_version_and_commands():
+    """BUG-A1: ping response must include remote_script_version and the
+    handler set so the MCP server can detect stale installs."""
+    router, clips = _load_remote_clips()
+
+    # inject a known version onto the LivePilot pkg — mimics __init__.py
+    live_pkg = sys.modules["remote_script.LivePilot"]
+    live_pkg.__version__ = "1.10.6"
+
+    response = router.dispatch(None, {"id": "p", "type": "ping", "params": {}})
+    assert response["ok"] is True
+    result = response["result"]
+    assert result["pong"] is True
+    assert result["remote_script_version"] == "1.10.6"
+    # commands list should include the newly-added set_clip_pitch handler
+    assert "set_clip_pitch" in result["commands"]
+    assert "get_clip_info" in result["commands"]

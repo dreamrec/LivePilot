@@ -15,19 +15,22 @@ Status flags: `🔴 open` · `🟡 in-progress` · `🟢 fixed` · `⚪️ wontf
 
 ## A. Server / LOM gaps
 
-### BUG-A1 · `🔴 open` · insert_device returns "Unknown command type"
+### BUG-A1 · `🟢 fixed (Batch 2)` · insert_device returned "Unknown command type"
 
-**Reproducer:** `insert_device(track_index=3, device_name="Auto Filter", position=-1)` returns:
+**Reproducer:** `insert_device(track_index=3, device_name="Auto Filter", position=-1)` returned:
 ```
 [NOT_FOUND] Unknown command type: insert_device (while running 'insert_device')
 ```
-Skill description says Live 12.3+ supports `insert_device`, but the Remote Script's command router never registered a handler for this command type.
 
-**Expected:** Native-device insert in ~100ms (10× faster than browser search). Currently forced into `find_and_load_device` fallback (~1-2s).
+**Root cause (diagnosed):** NOT a missing handler — it already existed in `remote_script/LivePilot/devices.py` at `@register("insert_device")`. The bug was **install drift**: the installed Remote Script at `~/Music/Ableton/User Library/Remote Scripts/LivePilot/` was dated Apr 11 (before the handler was added Apr 14). Ableton loads Remote Scripts once at process start and caches them in `sys.modules`, so source-tree edits never reached the running Live process.
 
-**Fix direction:** Add an `@register("insert_device")` handler in `remote_script/LivePilot/devices.py` that calls `track.view.selected_device = ...` or the Live 12.3 `Track.insert_device` LOM method. The router and dispatcher are already in place — this is just a missing registration.
+**Fix (landed):**
+1. `remote_script/LivePilot/router.py` — `ping` response now embeds `remote_script_version` and the full `commands` list so stale installs are detectable.
+2. `mcp_server/server.py::_check_remote_script_version()` — called in the lifespan context after connect; logs a loud warning if the installed version doesn't match the MCP server version ("Run 'npx livepilot --install' and restart Ableton Live").
+3. Reinstalled the Remote Script at `~/Music/Ableton/User Library/Remote Scripts/LivePilot/` (devices.py 22KB→30KB, `version_detect.py` added, `clips.py` now contains `set_clip_pitch`). User must restart Ableton Live for the new code to take effect.
+4. Regression test `test_bug_a1_ping_embeds_remote_script_version_and_commands`.
 
-**Impact:** Medium. Works via fallback but slower. Every tool call that uses `insert_device` hits this.
+**Impact:** Future drift surfaces as a clear on-connect warning instead of mysterious "Unknown command type" errors mid-session.
 
 ---
 
@@ -113,31 +116,38 @@ function cmd_compressor_set_sidechain(args) {
 
 ---
 
-### BUG-A4 · `🔴 open` · get_clip_info missing audio-clip pitch offset
+### BUG-A4 · `🟢 fixed (Batch 2)` · get_clip_info missing audio-clip pitch offset
 
-**Reproducer:** `get_clip_info(track=6, clip=0)` on the Splice audio clip returns:
+**Reproducer:** `get_clip_info(track=6, clip=0)` on the Splice audio clip returned:
 ```json
 {"warping": true, "warp_mode": 4, "name": "...D#min", ...}
 ```
-No `pitch` / `transpose` / `detune` fields. Ableton's `Clip.pitch_coarse` and `Clip.pitch_fine` exist on audio clips.
+No `pitch_coarse` / `pitch_fine` / `gain` fields.
 
-**Impact:** Can't verify whether the sample is being played at its native pitch or already transposed to match session key. Blocks automatic key-alignment checks.
-
-**Fix direction:** In `remote_script/LivePilot/clips.py`, extend the clip-info response with:
+**Fix (landed) — `remote_script/LivePilot/clips.py::get_clip_info`:**
 ```python
 if clip.is_audio_clip:
-    info["pitch_coarse"] = clip.pitch_coarse
-    info["pitch_fine"] = clip.pitch_fine
-    info["gain"] = clip.gain
+    result["warping"] = clip.warping
+    result["warp_mode"] = clip.warp_mode
+    for attr in ("pitch_coarse", "pitch_fine", "gain"):
+        try:
+            result[attr] = getattr(clip, attr)
+        except AttributeError:
+            pass   # some Live builds omit these on fresh clips
 ```
+Regression tests: `test_bug_a4_get_clip_info_exposes_audio_pitch_and_gain` and `test_bug_a4_midi_clips_do_not_report_pitch_fields` (in `tests/test_remote_script_contracts.py`).
 
 ---
 
-### BUG-A5 · `🔴 open` · No programmatic way to set audio-clip pitch offset
+### BUG-A5 · `🟢 fixed (Batch 2)` · No programmatic way to set audio-clip pitch offset
 
-**Impact:** Partner bug to A4. Even if we could read the pitch, we can't set it. Blocks automatic "transpose -1 semi to fix D# → D" correction for the Splice clip.
+**Fix (landed):** New `set_clip_pitch(ctx, track_index, clip_index, coarse=None, fine=None, gain=None)` MCP tool in `mcp_server/tools/clips.py` plus matching `@register("set_clip_pitch")` handler in `remote_script/LivePilot/clips.py`. Audio-only; MIDI clips raise ValueError. Ranges enforced: coarse −48..+48 semitones, fine −50..+50 cents, gain 0..1.
 
-**Fix direction:** Add `set_clip_pitch(track, clip, coarse, fine=0)` tool that writes to `clip.pitch_coarse` / `clip.pitch_fine`. Audio clips only.
+**Registry/docs synced:** tool count 320→321, `remote_commands.py` allowlist, `tool-catalog.md`, `test_tools_contract.py`, and the full release-checklist doc sweep.
+
+Regression tests: `test_bug_a5_set_clip_pitch_writes_coarse_and_fine`, `test_bug_a5_set_clip_pitch_rejects_midi_clips`, `test_bug_a5_set_clip_pitch_requires_at_least_one_param`, `test_bug_a5_set_clip_pitch_rejects_out_of_range_coarse`.
+
+**Unblocks:** BUG-D1 — automatic "transpose −1 semi to fix D#min sample in Dm session" correction now possible. Re-run the Dabrye D#min Splice clip experiment once Ableton is restarted to pick up the new Remote Script.
 
 ---
 
@@ -317,7 +327,7 @@ Compare to the newer "Auto Filter" (class `AutoFilter2`) which uses 0-1 normaliz
 
 ---
 
-### BUG-B11 · `🔴 open` · SongBrain section_purposes internal inconsistency
+### BUG-B11 · `🟢 fixed (commit 7142319)` · SongBrain section_purposes internal inconsistency
 
 **Reproducer:** `build_song_brain()` returns section "Deep Flow" with:
 ```json
@@ -332,7 +342,7 @@ Compare to the newer "Auto Filter" (class `AutoFilter2`) which uses 0-1 normaliz
 
 ---
 
-### BUG-B12 · `🔴 open` · build_song_brain includes empty 8th section
+### BUG-B12 · `🟢 fixed (commit 7142319)` · build_song_brain includes empty 8th section
 
 **Reproducer:** `build_song_brain()` section_purposes includes:
 ```json
@@ -363,7 +373,7 @@ But the actual `energy_arc` is `[0.7, 0.9, 0.9, 0.5, 0.6, 0.9, 0.4, 0]` — peak
 
 ---
 
-### BUG-B14 · `🔴 open` · open_questions false positive — "No intro section"
+### BUG-B14 · `🟢 fixed (commit 7142319)` · open_questions false positive — "No intro section"
 
 **Reproducer:** `build_song_brain()` returns:
 ```json
@@ -381,7 +391,7 @@ But the session HAS "Intro Dust" as scene 0. The engine found it and even labele
 
 ---
 
-### BUG-B15 · `🔴 open` · analyze_transition archetype_section_mismatch ignores "any_section_change" wildcard
+### BUG-B15 · `🟢 fixed (commit 7142319)` · analyze_transition archetype_section_mismatch ignores "any_section_change" wildcard
 
 **Reproducer:** `analyze_transition(from="Intro Dust", to="Groove Build")` returns:
 ```json
@@ -609,7 +619,7 @@ D4→A#4 is a **minor 6th jump upward** — not smooth voice leading. For Dm→B
 
 ---
 
-### BUG-B31 · `🔴 open` · develop_hook ignores discovered primary hook when hook_id is default
+### BUG-B31 · `🟢 fixed (commit 7142319)` · develop_hook ignores discovered primary hook when hook_id is default
 
 **Reproducer:** `develop_hook(mode="chorus")` (no hook_id provided) returns:
 ```json
@@ -892,7 +902,7 @@ Every single dimension is identical. Different sections, different clip content,
 
 ---
 
-### BUG-B52 · `🔴 open` · export_clip_midi ignores custom filename parameter
+### BUG-B52 · `🟢 fixed (commit 7142319)` · export_clip_midi ignores custom filename parameter
 
 **Reproducer:** `export_clip_midi(track_index=3, clip_index=0, filename="/tmp/livepilot_debug_pad_intro.mid")` returns:
 ```json
@@ -1300,12 +1310,12 @@ Second project loaded in the same session (Prefuse73-adjacent, 10 tracks, 49 cli
 
 | Category | Open | Fixed | Notes |
 |---|---|---|---|
-| **A** server/LOM gaps | 5 | 0 | A2, A3 upgraded to "fixable via M4L bridge" |
-| **B** critics/analyzers | **46** | 0 | **B54 added in wave 9** (reference engine cascades B17 to end-to-end shell output) |
+| **A** server/LOM gaps | 2 | 3 | **Batch 2**: A1 (install-drift handshake), A4 (get_clip_info pitch), A5 (set_clip_pitch) closed. A2, A3 remain (M4L-bridge route). |
+| **B** critics/analyzers | **41** | **5** | **Batch 1 fix-sweep (commit 7142319)**: B11, B12, B14, B15, B31, B52 closed with regression tests. 46 - 5 = 41 open. |
 | **C** audit follow-ups | 4 | 0 | v1.10.6 deferred items |
-| **D** creative trackers | 2 | 1 | Dabrye session D3 fixed (VOX LEAD Warp) |
+| **D** creative trackers | 2 | 1 | Dabrye session D3 fixed (VOX LEAD Warp); D1 now unblocked by A5 |
 | **E** cross-engine consistency | 6 | 0 | project_brain / performance / composition / harmony_field / FluCoMa all disagree |
-| **Total** | **63** | **1** | Wave 9 was mostly green — many tools confirmed working (display_values, memory ops, evaluate_mix_move enforcing hard rules, etc.) |
+| **Total** | **54** | **10** | Batch 2 shipped — remote-script version handshake, audio-clip pitch/gain read+write, tool count 320→321. Batch 1: song_brain payoff derivation, empty section filter, intro detection, transition archetype wildcard, develop_hook primary-hook fallback, midi export absolute path. Plus v1.10.6 D3. |
 
 ### Additional findings (wave 3 — song brain + transitions + theory + FluCoMa)
 

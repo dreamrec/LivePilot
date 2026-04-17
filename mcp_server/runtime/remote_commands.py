@@ -21,10 +21,11 @@ REMOTE_COMMANDS: frozenset[str] = frozenset({
     "set_track_solo", "set_track_arm", "stop_track_clips",
     "set_group_fold", "set_track_input_monitoring",
     "get_freeze_status", "freeze_track", "flatten_track",
-    # clips (11)
+    # clips (12)
     "get_clip_info", "create_clip", "delete_clip", "duplicate_clip",
     "fire_clip", "stop_clip", "set_clip_name", "set_clip_color",
     "set_clip_loop", "set_clip_launch", "set_clip_warp_mode",
+    "set_clip_pitch",
     # notes (8)
     "add_notes", "get_notes", "remove_notes", "remove_notes_by_id",
     "modify_notes", "duplicate_notes", "transpose_notes", "quantize_clip",

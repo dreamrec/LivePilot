@@ -196,6 +196,51 @@ def set_clip_launch(
     return _get_ableton(ctx).send_command("set_clip_launch", params)
 
 
+@mcp.tool()
+def set_clip_pitch(
+    ctx: Context,
+    track_index: int,
+    clip_index: int,
+    coarse: Optional[int] = None,
+    fine: Optional[float] = None,
+    gain: Optional[float] = None,
+) -> dict:
+    """Set pitch transposition and/or gain on an audio clip (BUG-A5).
+
+    Audio clips only. Use this to correct sample pitch to match session key
+    (e.g. a D#min Splice clip in a Dm session -> coarse=-1).
+
+    coarse: semitones, -48..+48
+    fine:   cents, -50..+50
+    gain:   linear, 0..1 (Live's internal scale, not dB)
+
+    At least one of coarse/fine/gain must be provided.
+    """
+    _validate_track_index(track_index)
+    _validate_clip_index(clip_index)
+    if coarse is None and fine is None and gain is None:
+        raise ValueError(
+            "Provide at least one of: coarse (semitones), fine (cents), gain (0-1)"
+        )
+    if coarse is not None and not -48 <= coarse <= 48:
+        raise ValueError("coarse must be in -48..+48 semitones")
+    if fine is not None and not -50.0 <= fine <= 50.0:
+        raise ValueError("fine must be in -50..+50 cents")
+    if gain is not None and not 0.0 <= gain <= 1.0:
+        raise ValueError("gain must be in 0..1")
+    params: dict = {
+        "track_index": track_index,
+        "clip_index": clip_index,
+    }
+    if coarse is not None:
+        params["coarse"] = coarse
+    if fine is not None:
+        params["fine"] = fine
+    if gain is not None:
+        params["gain"] = gain
+    return _get_ableton(ctx).send_command("set_clip_pitch", params)
+
+
 _VALID_WARP_MODES = {0, 1, 2, 3, 4, 6}
 
 

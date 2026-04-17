@@ -40,6 +40,61 @@ def _identify_port_holder(port: int) -> str | None:
         return None
 
 
+def _check_remote_script_version(ableton: AbletonConnection) -> None:
+    """BUG-A1: detect stale Remote Script installs at startup.
+
+    The installed Remote Script is loaded by Ableton at its own launch time
+    and cached in Python's module system — source-tree edits don't take
+    effect until the user reinstalls + restarts Live. When the installed
+    copy lags behind the MCP-server source, commands added after the install
+    date (e.g. ``insert_device`` in v1.10.6) return "Unknown command type".
+
+    This check pings the Remote Script, compares its reported version to
+    the MCP server version, and logs a loud warning on mismatch. We don't
+    abort — the server should still work for whatever handlers the older
+    Remote Script does support — but we make the drift visible.
+    """
+    import sys
+
+    try:
+        from . import __version__ as mcp_version
+    except ImportError:
+        mcp_version = "unknown"
+
+    try:
+        pong = ableton.send_command("ping")
+    except Exception as exc:
+        import logging as _logging
+        _logging.getLogger(__name__).debug(
+            "Remote Script version check failed: %s", exc,
+        )
+        return
+
+    if not isinstance(pong, dict):
+        return
+    rs_version = pong.get("remote_script_version")
+    if rs_version is None:
+        # Remote Script is old enough that it doesn't even embed its version
+        # in ping responses — definitely stale.
+        msg = (
+            "LivePilot: Remote Script is out of date (pre-version-handshake). "
+            "Run 'npx livepilot --install' and restart Ableton Live to fix "
+            "'Unknown command type' errors for newer tools (insert_device, "
+            "set_clip_pitch, etc)."
+        )
+        print(msg, file=sys.stderr)
+        return
+
+    if str(rs_version) != str(mcp_version):
+        msg = (
+            f"LivePilot: Remote Script version {rs_version} does not match "
+            f"MCP server version {mcp_version}. Newer tools may fail with "
+            f"'Unknown command type'. Run 'npx livepilot --install' and "
+            f"restart Ableton Live to resync."
+        )
+        print(msg, file=sys.stderr)
+
+
 def _master_has_livepilot_analyzer(ableton: AbletonConnection) -> bool:
     """Check whether the analyzer device is currently on the master track."""
     try:
@@ -128,6 +183,9 @@ async def lifespan(server):
     }
 
     try:
+        # BUG-A1: detect stale Remote Script installs early so the user
+        # sees a clear message instead of cryptic "Unknown command type" errors.
+        _check_remote_script_version(ableton)
         if bridge_state["transport"] is not None:
             await _warm_analyzer_bridge(ableton, spectral)
         yield {

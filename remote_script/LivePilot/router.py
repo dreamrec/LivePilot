@@ -62,8 +62,20 @@ def dispatch(song, command):
         )
 
     # Built-in ping — no handler registration needed.
+    # BUG-A1: embed remote_script version + supported command set so the
+    # MCP server can detect stale installs. An old Remote Script (pre-12.3
+    # handler adds) would return an older version here; the MCP server
+    # compares and warns the user to reinstall.
     if cmd_type == "ping":
-        return success_response(request_id, {"pong": True})
+        try:
+            from . import __version__ as rs_version
+        except ImportError:
+            rs_version = "unknown"
+        return success_response(request_id, {
+            "pong": True,
+            "remote_script_version": rs_version,
+            "commands": sorted(_handlers.keys()),
+        })
 
     handler = _handlers.get(cmd_type)
     if handler is None:

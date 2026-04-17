@@ -36,6 +36,16 @@ def get_clip_info(song, params):
     if clip.is_audio_clip:
         result["warping"] = clip.warping
         result["warp_mode"] = clip.warp_mode
+        # BUG-A4: expose pitch/gain so callers can reason about sample
+        # transposition vs session key. Pitch is in semitones (int, -48..+48),
+        # pitch_fine in cents (-50..+50), gain linear (normalized 0..1 in Live).
+        # Some Live builds expose these as None on freshly-recorded clips
+        # before a warp pass; wrap in try/except for safety.
+        for attr in ("pitch_coarse", "pitch_fine", "gain"):
+            try:
+                result[attr] = getattr(clip, attr)
+            except AttributeError:
+                pass
 
     return result
 
@@ -200,6 +210,65 @@ def set_clip_launch(song, params):
         "launch_mode": clip.launch_mode,
         "launch_quantization": clip.launch_quantization,
     }
+
+
+@register("set_clip_pitch")
+def set_clip_pitch(song, params):
+    """Set pitch/gain on an audio clip (BUG-A5).
+
+    Audio clips only — MIDI clips raise ValueError.
+
+    Parameters
+    ----------
+    track_index, clip_index : int
+    coarse : int, optional        -- semitones, -48..+48
+    fine   : float, optional      -- cents, -50.0..+50.0
+    gain   : float, optional      -- linear normalized (0..1 in Live)
+
+    At least one of (coarse, fine, gain) must be provided.
+    """
+    track_index = int(params["track_index"])
+    clip_index = int(params["clip_index"])
+    clip = get_clip(song, track_index, clip_index)
+
+    if clip.is_midi_clip:
+        raise ValueError("set_clip_pitch only works on audio clips")
+
+    coarse = params.get("coarse")
+    fine = params.get("fine")
+    gain = params.get("gain")
+
+    if coarse is None and fine is None and gain is None:
+        raise ValueError(
+            "Provide at least one of: coarse (semitones), fine (cents), gain (0-1)"
+        )
+
+    if coarse is not None:
+        c = int(coarse)
+        if c < -48 or c > 48:
+            raise ValueError("coarse must be in -48..+48 semitones")
+        clip.pitch_coarse = c
+    if fine is not None:
+        f = float(fine)
+        if f < -50.0 or f > 50.0:
+            raise ValueError("fine must be in -50..+50 cents")
+        clip.pitch_fine = f
+    if gain is not None:
+        g = float(gain)
+        if g < 0.0 or g > 1.0:
+            raise ValueError("gain must be in 0..1")
+        clip.gain = g
+
+    result = {
+        "track_index": track_index,
+        "clip_index": clip_index,
+    }
+    for attr in ("pitch_coarse", "pitch_fine", "gain"):
+        try:
+            result[attr] = getattr(clip, attr)
+        except AttributeError:
+            pass
+    return result
 
 
 @register("set_clip_warp_mode")
