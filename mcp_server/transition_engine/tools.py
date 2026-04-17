@@ -14,6 +14,10 @@ from ..tools import _composition_engine as comp_engine
 from .archetypes import TRANSITION_ARCHETYPES, select_archetype
 from .critics import run_all_transition_critics
 from .models import TransitionBoundary, TransitionPlan, TransitionScore
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 
 # ── Helpers ───────────────────────────────────────────────────────────
@@ -29,7 +33,8 @@ def _build_sections_from_ableton(ctx: Context) -> list[comp_engine.SectionNode]:
     try:
         matrix_data = ableton.send_command("get_scene_matrix")
         clip_matrix = matrix_data.get("matrix", [])
-    except Exception:
+    except Exception as exc:
+        logger.debug("_build_sections_from_ableton failed: %s", exc)
         clip_matrix = [[] for _ in range(len(scenes))]
 
     return comp_engine.build_section_graph_from_scenes(

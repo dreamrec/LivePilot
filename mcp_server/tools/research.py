@@ -17,6 +17,9 @@ from fastmcp import Context
 from ..server import mcp
 from ..memory.technique_store import TechniqueStore
 from . import _research_engine as research_engine
+import logging
+
+logger = logging.getLogger(__name__)
 
 _memory_store = TechniqueStore()
 
@@ -66,8 +69,8 @@ def research_technique(
                 if ref and not ref.get("error") and ref.get("count", 0) > 0:
                     device_atlas_results.append(ref)
                     break  # Found in this category, skip others
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("research_technique failed: %s", exc)
 
     # 3. Search memory for related techniques (direct TechniqueStore)
     memory_results = []
@@ -75,16 +78,16 @@ def research_technique(
         memory_results.extend(
             _memory_store.list_techniques(type_filter="technique_card", sort_by="updated_at", limit=10)
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("research_technique failed: %s", exc)
 
     try:
         # "research" is not a valid type in TechniqueStore — search broadly
         memory_results.extend(
             _memory_store.search(query=query, limit=5)
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("research_technique failed: %s", exc)
 
     if scope == "targeted":
         result = research_engine.targeted_research(
@@ -159,7 +162,8 @@ def get_emotional_arc(ctx: Context) -> dict:
                     hf.mode = detected.get("mode", "")
                     hf.confidence = detected.get("confidence", 0.0)
                     break
-            except Exception:
+            except Exception as exc:
+                logger.debug("get_emotional_arc failed: %s", exc)
                 continue
         harmony_fields.append(hf)
 
@@ -185,7 +189,6 @@ def get_emotional_arc(ctx: Context) -> dict:
         "issue_count": len(issues),
         "section_count": len(sections),
     }
-
 
 # ── get_style_tactics (Round 4) ─────────────────────────────────────
 
@@ -213,8 +216,8 @@ def get_style_tactics(
         memory_tactics = _memory_store.search(
             query=artist_or_genre, limit=10,
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("get_style_tactics failed: %s", exc)
 
     tactics = research_engine.get_style_tactics(artist_or_genre, memory_tactics)
 

@@ -14,6 +14,10 @@ package-lock.json
 dist/
 build/
 
+# Release artifacts (shipped via GitHub Releases / npm, not git)
+livepilot.mcpb
+livepilot-*.tgz
+
 # Environment
 .env
 .env.*

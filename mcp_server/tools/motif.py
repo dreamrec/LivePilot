@@ -11,6 +11,10 @@ from fastmcp import Context
 
 from ..server import mcp
 from . import _motif_engine as motif_engine
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 
 def _get_ableton(ctx: Context):
@@ -46,8 +50,9 @@ def get_motif_graph(ctx: Context) -> dict:
                     "clip_index": clip_idx,
                 })
                 track_notes.extend(result.get("notes", []))
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("get_motif_graph failed: %s", exc)
+
         if track_notes:
             notes_by_track[t_idx] = track_notes
 

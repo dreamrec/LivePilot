@@ -22,7 +22,9 @@ import time
 from typing import Optional
 
 from .models import ExperimentSet, ExperimentBranch, BranchSnapshot
+import logging
 
+logger = logging.getLogger(__name__)
 
 # ── In-memory experiment store ───────────────────────────────────────────────
 
@@ -34,8 +36,8 @@ def _gen_id(prefix: str, seed: str) -> str:
     h = hashlib.sha256(f"{prefix}:{seed}:{time.time()}".encode()).hexdigest()[:8]
     return f"{prefix}_{h}"
 
-
 # ── Create experiments ───────────────────────────────────────────────────────
+
 
 def create_experiment(
     request_text: str,
@@ -83,8 +85,8 @@ def list_experiments() -> list[dict]:
     """List all experiment sets."""
     return [exp.to_dict() for exp in _EXPERIMENTS.values()]
 
-
 # ── Run experiments (requires Ableton connection) ────────────────────────────
+
 
 def run_branch(
     branch: ExperimentBranch,
@@ -143,7 +145,8 @@ def _run_branch_sync(branch, ableton, compiled_plan, capture_fn):
     for _ in range(steps_executed):
         try:
             ableton.send_command("undo", {})
-        except Exception:
+        except Exception as exc:
+            logger.debug("_run_branch_sync failed: %s", exc)
             break
 
     branch.status = "evaluated" if steps_executed > 0 else "failed"
@@ -215,7 +218,8 @@ async def run_branch_async(
     for _ in range(steps_executed):
         try:
             ableton.send_command("undo", {})
-        except Exception:
+        except Exception as exc:
+            logger.debug("run_branch_async failed: %s", exc)
             break
 
     # A branch is "evaluated" only if it actually applied at least one step.
@@ -244,8 +248,8 @@ def evaluate_branch(
     branch.score = result.get("score", 0.0)
     return branch
 
-
 # ── Commit / discard ─────────────────────────────────────────────────────────
+
 
 async def commit_branch_async(
     experiment: ExperimentSet,

@@ -14,6 +14,10 @@ from fastmcp import Context
 from ..server import mcp
 from .prompt_parser import parse_prompt
 from .engine import ComposerEngine
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 
 # Singleton engine — stateless, safe to reuse
@@ -29,8 +33,8 @@ def _get_search_roots(ctx: Context) -> list:
         cfg = ctx.lifespan_context.get("sample_search_roots") if hasattr(ctx, "lifespan_context") else None
         if cfg:
             roots.extend(cfg)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("_get_search_roots failed: %s", exc)
     return roots
 
 
@@ -52,7 +56,8 @@ async def _credit_safety_prelude(splice_client, max_credits: int) -> tuple[int, 
     try:
         info = await splice_client.get_credits()
         credits_remaining = getattr(info, "credits", None)
-    except Exception:
+    except Exception as exc:
+        logger.debug("_credit_safety_prelude failed: %s", exc)
         credits_remaining = None
 
     if credits_remaining is None:
@@ -153,9 +158,8 @@ async def augment_with_samples(
             info = ableton.send_command("get_session_info", {})
             session_context["tempo"] = info.get("tempo", 120)
             session_context["track_count"] = info.get("track_count", 0)
-    except Exception:
-        pass
-
+    except Exception as exc:
+        logger.debug("augment_with_samples failed: %s", exc)
     result = await _engine.augment(
         request=request,
         max_credits=max_credits,

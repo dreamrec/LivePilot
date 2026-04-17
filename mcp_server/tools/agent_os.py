@@ -10,6 +10,7 @@ These tools power the Agent OS cyclical loop:
 from __future__ import annotations
 
 import json
+import logging
 from typing import Optional
 
 from fastmcp import Context
@@ -17,6 +18,8 @@ from fastmcp import Context
 from ..server import mcp
 from ..memory.technique_store import TechniqueStore
 from . import _agent_os_engine as engine
+
+logger = logging.getLogger(__name__)
 
 _memory_store = TechniqueStore()
 
@@ -125,8 +128,9 @@ def build_world_model(ctx: Context) -> dict:
                 "track_index": track["index"]
             })
             track_infos.append(ti)
-        except Exception:
-            pass  # Skip tracks that fail — don't block world model build
+        except Exception as exc:
+            # Skip tracks that fail — don't block world model build
+            logger.debug("world-model track %s skipped: %s", track.get("index"), exc)
 
     # Fetch spectral data (may be unavailable)
     spectrum = None
@@ -184,13 +188,14 @@ def build_world_model(ctx: Context) -> dict:
         try:
             matrix_data = ableton.send_command("get_scene_matrix")
             clip_matrix = matrix_data.get("matrix", [])
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("scene_matrix fetch for structural critic skipped: %s", exc)
 
         sections = comp_engine.build_section_graph_from_scenes(scenes, clip_matrix, track_count)
         structural_issues = comp_engine.run_form_critic(sections)
-    except Exception:
-        pass  # Composition engine unavailable — degrade gracefully
+    except Exception as exc:
+        # Composition engine unavailable — degrade gracefully
+        logger.warning("structural critic unavailable: %s", exc)
 
     result = wm.to_dict()
     result["issues"] = {
@@ -276,7 +281,8 @@ def analyze_outcomes(
         techniques = _memory_store.list_techniques(
             type_filter="outcome", sort_by="updated_at", limit=limit,
         )
-    except Exception:
+    except Exception as exc:
+        logger.warning("analyze_outcomes list_techniques failed: %s", exc)
         techniques = []
 
     # Extract payloads from full technique records
@@ -288,8 +294,8 @@ def analyze_outcomes(
             payload = full.get("payload", {})
             if isinstance(payload, dict):
                 outcomes.append(payload)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("outcome payload %s skipped: %s", t.get("id"), exc)
 
     return engine.analyze_outcome_history(outcomes)
 
@@ -316,7 +322,8 @@ def get_technique_card(
         techniques = _memory_store.search(
             query=query, type_filter="technique_card", limit=limit,
         )
-    except Exception:
+    except Exception as exc:
+        logger.warning("technique_card search(%r) failed: %s", query, exc)
         techniques = []
 
     cards = []
@@ -333,8 +340,8 @@ def get_technique_card(
                     "rating": t.get("rating", 0),
                     "replay_count": t.get("replay_count", 0),
                 })
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("technique_card %s payload skipped: %s", t.get("id"), exc)
 
     return {
         "query": query,
@@ -367,7 +374,8 @@ def get_taste_profile(
         techniques = _memory_store.list_techniques(
             type_filter="outcome", sort_by="updated_at", limit=limit,
         )
-    except Exception:
+    except Exception as exc:
+        logger.warning("taste_profile list_techniques failed: %s", exc)
         techniques = []
 
     outcomes = []
@@ -377,8 +385,8 @@ def get_taste_profile(
             payload = full.get("payload", {})
             if isinstance(payload, dict):
                 outcomes.append(payload)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("taste_profile outcome %s skipped: %s", t.get("id"), exc)
 
     return engine.get_taste_profile(outcomes)
 

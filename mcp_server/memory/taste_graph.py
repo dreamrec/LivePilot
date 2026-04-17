@@ -17,6 +17,9 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass, field
 from typing import Optional
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -127,7 +130,8 @@ class TasteGraph:
         if self._persistent_store is not None:
             try:
                 self._persistent_store.record_move_outcome(move_id, family, kept, score)
-            except Exception:
+            except Exception as exc:
+                logger.debug("record_move_outcome failed: %s", exc)
                 pass  # persistence is best-effort
 
     def record_device_use(self, device_name: str, positive: bool = True) -> None:
@@ -249,8 +253,8 @@ class TasteGraph:
             "explanations": explanations,
         }
 
-
 # ── Builder ──────────────────────────────────────────────────────────────────
+
 
 def build_taste_graph(
     taste_store=None,   # TasteMemoryStore
@@ -299,6 +303,7 @@ def build_taste_graph(
         # Device affinities
         for dev_name, dev_data in persisted.get("device_affinities", {}).items():
             from .taste_graph import DeviceAffinity
+
             graph.device_affinities[dev_name] = DeviceAffinity(
                 device_name=dev_name,
                 affinity=dev_data.get("affinity", 0.0),

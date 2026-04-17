@@ -11,7 +11,9 @@ import tempfile
 from typing import Any
 
 import numpy as np
+import logging
 
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -34,10 +36,10 @@ BAND_EDGES: dict[str, tuple[float, float]] = {
     "air_16khz": (8000.0, 20000.0),
 }
 
-
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _load_audio(file_path: str) -> tuple[np.ndarray, int]:
     """Load an audio file as (ndarray, sample_rate). Ensures stereo output."""
@@ -67,7 +69,8 @@ def _normalize_to_lufs(
     os.close(tmp_fd)
     try:
         sf.write(tmp_path, normalized, sr)
-    except Exception:
+    except Exception as exc:
+        logger.debug("_normalize_to_lufs failed: %s", exc)
         # Clean up on failure to avoid orphan files
         try:
             os.unlink(tmp_path)
@@ -76,10 +79,10 @@ def _normalize_to_lufs(
         raise
     return tmp_path
 
-
 # ---------------------------------------------------------------------------
 # True-peak helper
 # ---------------------------------------------------------------------------
+
 
 def _true_peak_dbtp(data: np.ndarray, sr: int) -> float:
     """Estimate EBU R128 true peak via 4x oversampling.
@@ -95,10 +98,10 @@ def _true_peak_dbtp(data: np.ndarray, sr: int) -> float:
     peak_linear = float(np.max(np.abs(oversampled)))
     return float(20.0 * np.log10(max(peak_linear, 1e-10)))
 
-
 # ---------------------------------------------------------------------------
 # compute_loudness
 # ---------------------------------------------------------------------------
+
 
 def compute_loudness(file_path: str, detail: str = "summary") -> dict[str, Any]:
     """Analyze integrated loudness (LUFS), true peak, RMS, LRA, and streaming compliance.
@@ -151,7 +154,8 @@ def compute_loudness(file_path: str, detail: str = "summary") -> dict[str, Any]:
         try:
             st = meter.integrated_loudness(window)
             short_term_raw.append(float(st) if np.isfinite(st) else SILENCE_FLOOR)
-        except Exception:
+        except Exception as exc:
+            logger.debug("compute_loudness failed: %s", exc)
             short_term_raw.append(SILENCE_FLOOR)
         pos += hop_samples
 
@@ -197,10 +201,10 @@ def compute_loudness(file_path: str, detail: str = "summary") -> dict[str, Any]:
 
     return result
 
-
 # ---------------------------------------------------------------------------
 # compute_spectral
 # ---------------------------------------------------------------------------
+
 
 def compute_spectral(
     file_path: str,
@@ -289,10 +293,10 @@ def compute_spectral(
         "band_balance": band_balance,
     }
 
-
 # ---------------------------------------------------------------------------
 # compare_to_reference
 # ---------------------------------------------------------------------------
+
 
 def compare_to_reference(
     mix_path: str,
@@ -412,10 +416,10 @@ def compare_to_reference(
         "suggestions": suggestions,
     }
 
-
 # ---------------------------------------------------------------------------
 # read_audio_metadata
 # ---------------------------------------------------------------------------
+
 
 def read_audio_metadata(file_path: str) -> dict[str, Any]:
     """Read audio file metadata using mutagen (tags) and soundfile (format info).
@@ -451,6 +455,7 @@ def read_audio_metadata(file_path: str) -> dict[str, Any]:
     has_artwork = False
     try:
         import mutagen
+
         audio = mutagen.File(file_path)
         if audio is not None:
             for key, value in audio.tags.items() if audio.tags else []:
@@ -459,8 +464,9 @@ def read_audio_metadata(file_path: str) -> dict[str, Any]:
                     str_val = str(value)
                     if len(str_val) < 2048:
                         tags[str(key)] = str_val
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.debug("read_audio_metadata failed: %s", exc)
+
             # Detect artwork (common tag names)
             artwork_keys = {"APIC", "covr", "METADATA_BLOCK_PICTURE", "artwork"}
             if audio.tags:
@@ -468,7 +474,8 @@ def read_audio_metadata(file_path: str) -> dict[str, Any]:
                     if any(k in str(key) for k in artwork_keys):
                         has_artwork = True
                         break
-    except Exception:
+    except Exception as exc:
+        logger.debug("read_audio_metadata failed: %s", exc)
         pass  # mutagen can't parse — use soundfile info only
 
     return {

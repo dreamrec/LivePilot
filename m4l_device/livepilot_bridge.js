@@ -14,6 +14,17 @@
  *   - Chunk parameter reads: 4 per batch, 50ms delay
  *   - Base64 encode all JSON responses
  *   - Defer all LiveAPI operations via deferlow()
+ *
+ * OSC address convention:
+ *   - OUTGOING (this file → server via udpsend): use WITH leading slash,
+ *       e.g. outlet(0, "/response", encoded). The slash is part of the
+ *       OSC address that udpsend packs into the packet.
+ *   - INCOMING (server → this file via udpreceive): Max's udpreceive
+ *       routes on the selector, so the server's address string must be
+ *       "response"/"cmd" WITHOUT a leading slash (Max would otherwise
+ *       treat the slash as a literal selector character). See
+ *       mcp_server/m4l_bridge.py for the sending side and `_parse_osc`
+ *       for the tolerant normalization.
  */
 
 autowatch = 1;

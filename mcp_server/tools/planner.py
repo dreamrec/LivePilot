@@ -17,6 +17,9 @@ from fastmcp import Context
 from ..server import mcp
 from . import _composition_engine as comp_engine
 from . import _planner_engine as planner_engine
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def _get_ableton(ctx: Context):
@@ -67,7 +70,8 @@ def plan_arrangement(
         try:
             ti = ableton.send_command("get_track_info", {"track_index": t_idx})
             track_data.append(ti)
-        except Exception:
+        except Exception as exc:
+            logger.debug("plan_arrangement failed: %s", exc)
             track_data.append({"index": t_idx, "name": track.get("name", ""), "devices": []})
 
     for section in sections:
@@ -95,7 +99,6 @@ def plan_arrangement(
     result["loop_identity"] = loop_identity.to_dict()
     result["available_styles"] = sorted(planner_engine.VALID_STYLES)
     return result
-
 
 # ── transform_section (Round 4) ─────────────────────────────────────
 
@@ -130,6 +133,7 @@ def transform_section(
     track_count = session.get("track_count", 0)
 
     from .composition import _build_clip_matrix
+
     clip_matrix = _build_clip_matrix(ableton, len(scenes), track_count)
     sections = comp_engine.build_section_graph_from_scenes(scenes, clip_matrix, track_count)
 

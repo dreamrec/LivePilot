@@ -9,6 +9,9 @@ Pure computation — no I/O. Callers provide pre-fetched data.
 from __future__ import annotations
 
 from typing import Optional
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def get_motif_data(
@@ -28,13 +31,15 @@ def get_motif_data(
 
     try:
         from ..tools import _motif_engine as motif_engine
+
         motifs = motif_engine.detect_motifs(notes_by_track)
         return {
             "motifs": [m.to_dict() for m in motifs],
             "motif_count": len(motifs),
             "tracks_analyzed": len(notes_by_track),
         }
-    except Exception:
+    except Exception as exc:
+        logger.debug("get_motif_data failed: %s", exc)
         return {"motifs": [], "motif_count": 0, "tracks_analyzed": 0}
 
 
@@ -60,8 +65,9 @@ def fetch_notes_from_ableton(ableton, tracks: list[dict], max_clips: int = 8) ->
                     "clip_index": clip_idx,
                 })
                 track_notes.extend(result.get("notes", []))
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("fetch_notes_from_ableton failed: %s", exc)
+
         if track_notes:
             notes_by_track[t_idx] = track_notes
     return notes_by_track

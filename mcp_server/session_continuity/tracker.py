@@ -7,6 +7,7 @@ Separates taste (cross-session) from identity (in-song) ranking.
 from __future__ import annotations
 
 import hashlib
+import logging
 import time
 from typing import Optional
 
@@ -16,6 +17,8 @@ from .models import (
     TasteIdentityRanking,
     TurnResolution,
 )
+
+logger = logging.getLogger(__name__)
 
 
 # ── In-memory state ───────────────────────────────────────────────
@@ -129,9 +132,8 @@ def record_turn_resolution(
     if _project_store is not None:
         try:
             _project_store.save_turn(turn.to_dict())
-        except Exception:
-            pass
-
+        except Exception as exc:
+            logger.debug("record_turn_resolution failed: %s", exc)
     return turn
 
 
@@ -158,9 +160,8 @@ def open_thread(description: str, domain: str = "", priority: float = 0.5) -> Cr
     if _project_store is not None:
         try:
             _project_store.save_thread(thread.to_dict())
-        except Exception:
-            pass
-
+        except Exception as exc:
+            logger.debug("open_thread failed: %s", exc)
     return thread
 
 
@@ -173,8 +174,8 @@ def resolve_thread(thread_id: str) -> Optional[CreativeThread]:
         if _project_store is not None:
             try:
                 _project_store.save_thread(thread.to_dict())
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("resolve_thread failed: %s", exc)
     return thread
 
 

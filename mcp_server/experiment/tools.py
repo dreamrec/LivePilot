@@ -18,6 +18,9 @@ from fastmcp import Context
 from ..server import mcp
 from . import engine
 from .models import BranchSnapshot
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def _get_ableton(ctx: Context):
@@ -35,25 +38,22 @@ def _capture_snapshot(ctx: Context) -> BranchSnapshot:
     try:
         meters = ableton.send_command("get_track_meters", {"include_stereo": True})
         snapshot.track_meters = meters.get("tracks", [])
-    except Exception:
-        pass
-
+    except Exception as exc:
+        logger.debug("_capture_snapshot failed: %s", exc)
     # Spectral data (requires M4L analyzer)
     if spectral and spectral.is_connected:
         try:
             spec = spectral.get("spectrum")
             if spec:
                 snapshot.spectrum = spec.get("value", {})
-        except Exception:
-            pass
-
+        except Exception as exc:
+            logger.debug("_capture_snapshot failed: %s", exc)
         try:
             rms_data = spectral.get("rms")
             if rms_data:
                 snapshot.rms = rms_data.get("value")
-        except Exception:
-            pass
-
+        except Exception as exc:
+            logger.debug("_capture_snapshot failed: %s", exc)
     return snapshot
 
 

@@ -14,6 +14,9 @@ from fastmcp import Context
 
 from ..server import mcp
 from . import registry
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @mcp.tool()
@@ -80,7 +83,8 @@ def preview_semantic_move(
                 info = ableton.send_command("get_session_info")
                 if isinstance(info, dict):
                     session_info = info
-            except Exception:
+            except Exception as exc:
+                logger.debug("preview_semantic_move failed: %s", exc)
                 session_info = {}
 
         state = build_capability_state(

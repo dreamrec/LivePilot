@@ -11,6 +11,10 @@ from typing import Any, Optional
 from fastmcp import Context
 
 from ..server import mcp, _identify_port_holder
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 
 def _ensure_list(value: Any) -> list:
@@ -130,9 +134,9 @@ def _postflight_loaded_device(ctx: Context, result: dict) -> dict:
         track_info = _get_ableton(ctx).send_command("get_track_info", {
             "track_index": int(track_index),
         })
-    except Exception:
+    except Exception as exc:
+        logger.debug("_postflight_loaded_device failed: %s", exc)
         return annotated
-
     devices = track_info.get("devices", []) if isinstance(track_info, dict) else []
     if not isinstance(devices, list) or not devices:
         return annotated
@@ -156,9 +160,8 @@ def _postflight_loaded_device(ctx: Context, result: dict) -> dict:
                 "device_index": int(match["index"]),
             })
             param_count = full_info.get("parameter_count", 0)
-        except Exception:
-            pass
-
+        except Exception as exc:
+            logger.debug("_postflight_loaded_device failed: %s", exc)
     device_info = _annotate_device_info({
         "name": match.get("name"),
         "class_name": match.get("class_name"),
@@ -597,7 +600,8 @@ def _require_analyzer(cache) -> None:
                 ctx.lifespan_context["ableton"].send_command("get_master_track")
                 if ctx else {}
             )
-        except Exception:
+        except Exception as exc:
+            logger.debug("_require_analyzer failed: %s", exc)
             track = {}
 
         devices = track.get("devices", []) if isinstance(track, dict) else []

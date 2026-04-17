@@ -190,10 +190,23 @@ class SpliceGRPCClient:
     ) -> Optional[str]:
         """Download a sample by file_hash. Returns local path when complete.
 
-        Costs 1 credit. Checks credit floor before downloading.
-        Returns None on failure.
+        Costs 1 credit. Enforces CREDIT_HARD_FLOOR defensively — refuses the
+        download (returns None) if completing it would leave the user at or
+        below the floor, regardless of what the caller requested. Callers
+        should still gate on `can_afford` upstream for UX, but this guard
+        closes the hole if a future caller forgets.
         """
         if not self.connected:
+            return None
+
+        # Defensive floor guard — do not rely on callers alone.
+        can, remaining = await self.can_afford(1, budget=1)
+        if not can:
+            logger.warning(
+                "Splice download blocked by credit floor guard "
+                "(remaining=%s, floor=%s, file_hash=%s)",
+                remaining, CREDIT_HARD_FLOOR, file_hash,
+            )
             return None
 
         pb2 = self._pb2
@@ -221,8 +234,8 @@ class SpliceGRPCClient:
                 )
                 if response.Sample.LocalPath:
                     return response.Sample.LocalPath
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("_wait_for_download failed: %s", exc)
             await asyncio.sleep(0.5)
         logger.warning(f"Download timed out for {file_hash}")
         return None
@@ -304,9 +317,9 @@ class SpliceGRPCClient:
         try:
             await self.stub.SyncSounds(pb2.SyncSoundsRequest())
             return True
-        except Exception:
+        except Exception as exc:
+            logger.debug("sync_sounds failed: %s", exc)
             return False
-
     # ── Connection Helpers ──────────────────────────────────────────
 
     def _read_port(self) -> Optional[int]:

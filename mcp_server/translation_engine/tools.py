@@ -33,9 +33,8 @@ def _fetch_translation_data(ctx: Context) -> dict:
             spec_data = spectral.get("spectrum")
             if spec_data and isinstance(spec_data["value"], dict):
                 spectrum_bands = spec_data["value"]
-    except Exception:
-        pass
-
+    except Exception as exc:
+        logger.debug("_fetch_translation_data failed: %s", exc)
     # Estimate stereo width from track pans via session info
     stereo_width = 0.0
     center_strength = 0.5
@@ -61,9 +60,8 @@ def _fetch_translation_data(ctx: Context) -> dict:
 
             # Simple foreground detection: at least one unmuted, non-quiet track
             has_foreground = any(not t.get("muted", False) for t in tracks)
-    except Exception:
-        pass
-
+    except Exception as exc:
+        logger.debug("_get_pan failed: %s", exc)
     return {
         "stereo_width": stereo_width,
         "center_strength": center_strength,
@@ -99,6 +97,10 @@ def get_translation_issues(ctx: Context) -> dict:
 
     Lighter than check_translation — returns only detected issues
     from the 5 playback robustness critics.
+import logging
+
+logger = logging.getLogger(__name__)
+
     """
     mix_snapshot = _fetch_translation_data(ctx)
     issues = run_all_translation_critics(mix_snapshot)

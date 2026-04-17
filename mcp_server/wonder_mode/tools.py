@@ -7,10 +7,14 @@
 
 from __future__ import annotations
 
+import logging
+
 from fastmcp import Context
 
 from ..server import mcp
 from . import engine
+
+logger = logging.getLogger(__name__)
 
 
 def _get_song_brain_dict() -> dict:
@@ -18,8 +22,8 @@ def _get_song_brain_dict() -> dict:
         from ..song_brain.tools import _current_brain
         if _current_brain is not None:
             return _current_brain.to_dict()
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("song_brain lookup failed: %s", exc)
     return {}
 
 
@@ -37,8 +41,8 @@ def _get_taste_graph(ctx: Context):
             taste_store=taste_store, anti_store=anti_store,
             persistent_store=persistent,
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("taste_graph build failed: %s", exc)
     return None
 
 
@@ -47,7 +51,8 @@ def _get_active_constraints():
     try:
         from ..creative_constraints.tools import _active_constraints
         return _active_constraints
-    except Exception:
+    except Exception as exc:
+        logger.debug("creative_constraints not importable: %s", exc)
         return None
 
 
@@ -60,7 +65,8 @@ def _get_ledger_entries(ctx: Context) -> list[dict]:
         )
         entries = ledger.get_recent_moves(limit=20)
         return [e.to_dict() for e in entries]
-    except Exception:
+    except Exception as exc:
+        logger.warning("action_ledger recent_moves failed: %s", exc)
         return []
 
 
@@ -77,15 +83,16 @@ def _get_stuckness_report(ctx: Context, song_brain: dict) -> dict | None:
             ableton = ctx.lifespan_context.get("ableton")
             if ableton:
                 session_info = ableton.send_command("get_session_info", {})
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("session_info fetch for stuckness failed: %s", exc)
         report = detect_stuckness(
             action_history=action_ledger,
             session_info=session_info,
             song_brain=song_brain,
         )
         return report.to_dict()
-    except Exception:
+    except Exception as exc:
+        logger.warning("stuckness detection failed: %s", exc)
         return None
 
 
@@ -144,8 +151,9 @@ def enter_wonder_mode(
                     sample_context["sample_file_path"] = best.get("file_path", "")
                     sample_context["sample_name"] = best.get("name", "")
                     sample_context["material_type"] = best.get("material_type", "")
-        except Exception:
-            pass  # Graceful degradation — analytical variants still work
+        except Exception as exc:
+            # Graceful degradation — analytical variants still work
+            logger.warning("sample opportunity search failed: %s", exc)
 
     # 1c. Get session info for kernel
     session_info = {}
@@ -153,8 +161,8 @@ def enter_wonder_mode(
         ableton = ctx.lifespan_context.get("ableton")
         if ableton:
             session_info = ableton.send_command("get_session_info", {})
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("session_info fetch for kernel failed: %s", exc)
 
     # 2. Generate variants
     result = engine.generate_wonder_variants(
@@ -194,8 +202,8 @@ def enter_wonder_mode(
             domain=thread_domain,
         )
         ws.creative_thread_id = thread.thread_id
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("open creative thread failed: %s", exc)
 
     # 5. Store session
     store_wonder_session(ws)
@@ -290,8 +298,8 @@ def discard_wonder_session(
             identity_effect="",
             user_sentiment="disliked",
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("record_turn_resolution(rejected) failed: %s", exc)
 
     # Update taste graph — rejection is a negative signal for all executable variants
     try:
@@ -304,16 +312,16 @@ def discard_wonder_session(
                         family=v["family"],
                         kept=False,
                     )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("taste_graph negative-signal update failed: %s", exc)
 
     # Discard linked preview set
     if ws.preview_set_id:
         try:
             from ..preview_studio.engine import discard_set
             discard_set(ws.preview_set_id)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("discard_set(%s) failed: %s", ws.preview_set_id, exc)
 
     return {
         "discarded": True,

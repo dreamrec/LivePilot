@@ -15,6 +15,9 @@ from fastmcp import Context
 
 from ..server import mcp
 from . import tracker
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @mcp.tool()
@@ -200,7 +203,6 @@ def explain_preference_vs_identity(
         "note": "Identity has stronger weight inside a session (0.65 vs 0.35)",
     }
 
-
 # ── Helpers ───────────────────────────────────────────────────────
 
 
@@ -222,9 +224,11 @@ def _get_taste_graph(ctx: Context) -> dict:
         from ..memory.taste_graph import build_taste_graph
         from ..memory.taste_memory import TasteMemoryStore
         from ..memory.anti_memory import AntiMemoryStore
+
         taste_store = ctx.lifespan_context.setdefault("taste_memory", TasteMemoryStore())
         anti_store = ctx.lifespan_context.setdefault("anti_memory", AntiMemoryStore())
         return build_taste_graph(taste_store=taste_store, anti_store=anti_store).to_dict()
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("_get_taste_graph failed: %s", exc)
+
     return {}

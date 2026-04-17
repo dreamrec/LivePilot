@@ -15,6 +15,9 @@ from fastmcp import Context
 
 from ..server import mcp
 from . import engine
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def _get_ableton(ctx: Context):
@@ -39,10 +42,9 @@ def _find_wonder_session_by_preview(set_id: str):
     try:
         from ..wonder_mode.session import find_session_by_preview_set
         return find_session_by_preview_set(set_id)
-    except Exception:
+    except Exception as exc:
+        logger.debug("_find_wonder_session_by_preview failed: %s", exc)
         return None
-
-
 @mcp.tool()
 def create_preview_set(
     ctx: Context,
@@ -148,8 +150,8 @@ def create_preview_set(
         # Fallback: if no keyword match, take top 3 from full registry
         if not available_moves:
             available_moves = registry.list_moves()[:3]
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("create_preview_set failed: %s", exc)
 
     # Get song brain if available
     song_brain: dict = {}
@@ -177,8 +179,8 @@ def create_preview_set(
             persistent_store=persistent,
         )
         taste_graph = graph.to_dict()
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("create_preview_set failed: %s", exc)
 
     ps = engine.create_preview_set(
         request_text=request_text,
@@ -345,8 +347,8 @@ async def commit_preview_variant(
             )
             if ws.creative_thread_id:
                 resolve_thread(ws.creative_thread_id)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("commit_preview_variant failed: %s", exc)
 
         # Update taste graph (with persistent backing)
         try:
@@ -373,8 +375,8 @@ async def commit_preview_variant(
                     family=family,
                     kept=True,
                 )
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("commit_preview_variant failed: %s", exc)
 
         result["wonder_session_id"] = ws.session_id
 
@@ -488,6 +490,7 @@ async def render_preview_variant(
                     playback_started = True
 
                     import time as _time
+
                     _time.sleep(play_seconds)
 
                     spectral_after = cache.get_all()
@@ -496,7 +499,8 @@ async def render_preview_variant(
                     playback_started = False
 
                     preview_mode = "audible_preview"
-            except Exception:
+            except Exception as exc:
+                logger.debug("render_preview_variant failed: %s", exc)
                 # Spectral capture is best-effort; keep preview_mode as metadata_only
                 pass
 
@@ -507,12 +511,14 @@ async def render_preview_variant(
             if playback_started:
                 try:
                     ableton.send_command("stop_playback", {})
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.debug("render_preview_variant failed: %s", exc)
+
             for _ in range(applied_count):
                 try:
                     ableton.send_command("undo")
-                except Exception:
+                except Exception as exc:
+                    logger.debug("render_preview_variant failed: %s", exc)
                     break
 
         variant.status = "rendered"

@@ -14,6 +14,9 @@ from pydantic import BaseModel, Field
 
 from ..curves import generate_curve, generate_from_recipe, list_recipes
 from ..server import mcp
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def _get_ableton(ctx: Context):
@@ -23,6 +26,7 @@ def _get_ableton(ctx: Context):
 def _ensure_list(v: Any) -> list:
     if isinstance(v, str):
         import json
+
         try:
             return json.loads(v)
         except json.JSONDecodeError as exc:
@@ -372,7 +376,8 @@ def apply_automation_recipe(
                 if abs(p_max - p_min) > 1.5 or p_min < -0.5:
                     for pt in points:
                         pt["value"] = p_min + pt["value"] * (p_max - p_min)
-        except Exception:
+        except Exception as exc:
+            logger.debug("apply_automation_recipe failed: %s", exc)
             pass  # Fail open — write values as-is if we can't read the range
 
     # Safety clamp: auto_pan amplitude should be limited to avoid full L/R swing

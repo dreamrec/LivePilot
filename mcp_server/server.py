@@ -44,9 +44,9 @@ def _master_has_livepilot_analyzer(ableton: AbletonConnection) -> bool:
     """Check whether the analyzer device is currently on the master track."""
     try:
         track = ableton.send_command("get_master_track")
-    except Exception:
+    except Exception as exc:
+        logger.debug("_master_has_livepilot_analyzer failed: %s", exc)
         return False
-
     devices = track.get("devices", []) if isinstance(track, dict) else []
     for device in devices:
         normalized = " ".join(
@@ -92,7 +92,8 @@ async def lifespan(server):
     splice_client = SpliceGRPCClient()
     try:
         await splice_client.connect()
-    except Exception:
+    except Exception as exc:
+        logger.debug("lifespan failed: %s", exc)
         pass  # client remains in disconnected state
 
     # Start UDP listener for incoming M4L spectral data (port 9880)
@@ -144,10 +145,8 @@ async def lifespan(server):
         ableton.disconnect()
         try:
             await splice_client.disconnect()
-        except Exception:
-            pass
-
-
+        except Exception as exc:
+            logger.debug("lifespan failed: %s", exc)
 mcp = FastMCP("LivePilot", lifespan=lifespan)
 
 # Import tool modules so they register with `mcp`
@@ -199,7 +198,9 @@ from .device_forge import tools as device_forge_tools          # noqa: F401, E40
 from .sample_engine import tools as sample_engine_tools        # noqa: F401, E402
 from .atlas import tools as atlas_tools                        # noqa: F401, E402
 from .composer import tools as composer_tools                  # noqa: F401, E402
+import logging
 
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Schema coercion patch — accept strings for numeric parameters
@@ -212,6 +213,7 @@ from .composer import tools as composer_tools                  # noqa: F401, E40
 # also accept strings.  Server-side Pydantic validation (lax mode) coerces
 # "5" → 5 and "0.75" → 0.75 automatically, so no tool code changes needed.
 # ---------------------------------------------------------------------------
+
 
 def _coerce_schema_property(prop: dict) -> None:
     """Widen a single JSON Schema property to also accept strings."""
@@ -253,6 +255,7 @@ def _get_all_tools():
     if hasattr(mcp, "_local_provider") and hasattr(mcp._local_provider, "_components"):
         return list(mcp._local_provider._components.values())
     import sys
+
     print(
         "LivePilot: WARNING — could not access FastMCP tool registry, "
         "string-to-number schema coercion will not work",
@@ -273,14 +276,12 @@ def _patch_tool_schemas() -> None:
             if isinstance(definition, dict):
                 _coerce_schema_property(definition)
 
-
 _patch_tool_schemas()
 
 
 def main():
     """Run the MCP server over stdio."""
     mcp.run(transport="stdio")
-
 
 if __name__ == "__main__":
     main()

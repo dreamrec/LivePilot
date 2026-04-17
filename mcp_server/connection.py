@@ -11,6 +11,10 @@ import time
 import uuid
 from collections import deque
 from typing import Optional
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 CONNECT_TIMEOUT = 5
 RECV_TIMEOUT = 20
@@ -153,7 +157,8 @@ class AbletonConnection:
         """Send a ping and return True if a pong is received."""
         try:
             return self.send_command("ping").get("pong") is True
-        except Exception:
+        except Exception as exc:
+            logger.debug("ping failed: %s", exc)
             return False
 
     def send_command(self, command_type: str, params: Optional[dict] = None) -> dict:

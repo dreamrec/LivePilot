@@ -17,6 +17,9 @@ from fastmcp import Context
 
 from ..server import mcp
 from . import analyzer
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def _get_ableton(ctx: Context):
@@ -39,8 +42,8 @@ def _fetch_tracks_and_scenes(ctx: Context) -> tuple[list[dict], list[dict], dict
     try:
         session = ableton.send_command("get_session_info", {})
         tracks = session.get("tracks", [])
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("_fetch_tracks_and_scenes failed: %s", exc)
 
     try:
         matrix = ableton.send_command("get_scene_matrix")
@@ -50,15 +53,16 @@ def _fetch_tracks_and_scenes(ctx: Context) -> tuple[list[dict], list[dict], dict
                 zip(matrix.get("scenes", []), matrix.get("matrix", []))
             )
         ]
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("_fetch_tracks_and_scenes failed: %s", exc)
 
     # Fetch motif data — via shared motif service
     try:
         from ..services.motif_service import get_motif_data, fetch_notes_from_ableton
         notes_by_track = fetch_notes_from_ableton(ableton, tracks)
         motif_data = get_motif_data(notes_by_track)
-    except Exception:
+    except Exception as exc:
+        logger.debug("_fetch_tracks_and_scenes failed: %s", exc)
         pass  # Motif graph requires notes in clips; empty dict is valid fallback
 
     return tracks, scenes, motif_data
@@ -325,7 +329,6 @@ def suggest_payoff_repair(ctx: Context) -> dict:
         "repair_count": len(repairs),
     }
 
-
 # ── Helpers ───────────────────────────────────────────────────────
 
 
@@ -376,8 +379,8 @@ def _get_section_data(ableton) -> list[dict]:
                 "density": round(density, 3),
                 "has_drums": has_drums,
             })
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("_get_section_data failed: %s", exc)
 
     return sections
 
@@ -391,6 +394,7 @@ def _get_song_brain_dict() -> dict:
     except Exception as _e:
         if __debug__:
             import sys
+
             print(f"LivePilot: SongBrain unavailable in hook_hunter: {_e}", file=sys.stderr)
     return {}
 
@@ -421,7 +425,8 @@ def detect_hook_neglect(ctx: Context) -> dict:
 
     try:
         matrix = ableton.send_command("get_scene_matrix")
-    except Exception:
+    except Exception as exc:
+        logger.debug("detect_hook_neglect failed: %s", exc)
         return {
             "neglected": False,
             "hook": hook.to_dict(),

@@ -17,7 +17,9 @@ from fastmcp import Context
 from ..server import mcp
 from . import engine
 from .models import CONSTRAINT_MODES
+import logging
 
+logger = logging.getLogger(__name__)
 
 # Module-level cache for active constraints and distillations
 _active_constraints: Optional[engine.ConstraintSet] = None
@@ -110,9 +112,8 @@ def distill_reference_principles(
                     "groove_posture": tactics.get("groove_posture", {}),
                     "harmonic_character": tactics.get("harmonic_character", ""),
                 }
-        except Exception:
-            pass
-
+        except Exception as exc:
+            logger.debug("distill_reference_principles failed: %s", exc)
     # Try to get a reference profile from the reference engine
     if not reference_profile:
         try:
@@ -121,7 +122,8 @@ def distill_reference_principles(
                 style_name or reference_description
             )
             reference_profile = profile.to_dict()
-        except Exception:
+        except Exception as exc:
+            logger.debug("distill_reference_principles failed: %s", exc)
             # Fallback: build from description keywords
             reference_profile = _profile_from_description(reference_description)
 
@@ -204,9 +206,8 @@ def generate_constrained_variants(
             taste_store = ctx.lifespan_context.setdefault("taste_memory", TasteMemoryStore())
             anti_store = ctx.lifespan_context.setdefault("anti_memory", AntiMemoryStore())
             taste_graph = build_taste_graph(taste_store=taste_store, anti_store=anti_store).to_dict()
-        except Exception:
-            pass
-
+        except Exception as exc:
+            logger.debug("generate_constrained_variants failed: %s", exc)
         ps = ps_engine.create_preview_set(
             request_text=f"[Constrained: {', '.join(active.constraints)}] {request_text}",
             kernel_id=kernel_id,
@@ -293,7 +294,6 @@ def generate_reference_inspired_variants(
     except Exception as e:
         return {"error": f"Failed to generate reference-inspired variants: {e}"}
 
-
 # ── Helpers ───────────────────────────────────────────────────────
 
 
@@ -305,6 +305,7 @@ def _get_song_brain_dict() -> dict:
     except Exception as _e:
         if __debug__:
             import sys
+
             print(f"LivePilot: SongBrain unavailable in creative_constraints: {_e}", file=sys.stderr)
     return {}
 

@@ -6,12 +6,15 @@ direct Splice online catalog hunt/download via the gRPC client.
 
 from __future__ import annotations
 
+import logging
 import os
 from typing import Optional
 
 from fastmcp import Context
 
 from ..server import mcp
+
+logger = logging.getLogger(__name__)
 from .models import SampleProfile, SampleIntent, SampleFitReport
 from .analyzer import build_profile_from_filename
 from .critics import run_all_sample_critics
@@ -47,8 +50,8 @@ async def analyze_sample(
                 )
                 if not result.get("error"):
                     file_path = result.get("file_path")
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("m4l get_clip_file_path failed: %s", exc)
 
     if file_path is None:
         return {"error": "Could not determine file path — provide file_path directly"}
@@ -97,7 +100,8 @@ def evaluate_sample_fit(
                 name = track_info.get("name", "").lower()
                 if name:
                     existing_roles.append(name)
-            except Exception:
+            except Exception as exc:
+                logger.debug("get_track_info(%d) skipped: %s", i, exc)
                 continue
 
         # Detect key from MIDI tracks
@@ -119,12 +123,13 @@ def evaluate_sample_fit(
                             mode_suffix = "m" if "minor" in mode else ""
                             song_key = f"{key_result['tonic_name']}{mode_suffix}"
                             break
-                except Exception:
+                except Exception as exc:
+                    logger.debug("key detection on track %d skipped: %s", i, exc)
                     continue
         except ImportError:
             pass
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("session context for evaluate_sample_fit failed: %s", exc)
 
     critics = run_all_sample_critics(
         profile=profile,
@@ -243,7 +248,8 @@ async def search_samples(
                         },
                     })
                 used_grpc = True
-            except Exception:
+            except Exception as exc:
+                logger.warning("Splice gRPC search failed, falling back to SQL: %s", exc)
                 used_grpc = False
 
         # Also query local index (if not already covered by gRPC) to surface
@@ -282,10 +288,11 @@ async def search_samples(
                         d = candidate.to_dict()
                         d["source_priority"] = 2
                         results.append(d)
-                except Exception:
+                except Exception as exc:
+                    logger.debug("browser search %s skipped: %s", category, exc)
                     continue
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("browser search unavailable: %s", exc)
 
     # Filesystem search
     if source in (None, "filesystem"):
@@ -442,7 +449,8 @@ def get_sample_opportunities(ctx: Context) -> dict:
     try:
         ableton = ctx.lifespan_context["ableton"]
         info = ableton.send_command("get_session_info", {})
-    except Exception:
+    except Exception as exc:
+        logger.warning("get_sample_opportunities: Ableton not reachable: %s", exc)
         return {"opportunities": [], "note": "Cannot read session — Ableton not connected"}
 
     track_count = info.get("track_count", 0)
@@ -458,7 +466,8 @@ def get_sample_opportunities(ctx: Context) -> dict:
             for d in devices:
                 if d.get("class_name") in ("OriginalSimpler", "MultiSampler"):
                     has_sampler = True
-        except Exception:
+        except Exception as exc:
+            logger.debug("track scan idx=%d skipped: %s", i, exc)
             continue
 
     # No organic texture
@@ -542,8 +551,8 @@ def plan_slice_workflow(
         if ableton:
             info = ableton.send_command("get_session_info", {})
             tempo = float(info.get("tempo", 120.0))
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("plan_slice_workflow tempo fetch failed (using 120): %s", exc)
 
     # Read slice count from existing Simpler if track provided
     slice_count = 8  # Default transient slice count
@@ -556,8 +565,8 @@ def plan_slice_workflow(
                 })
                 if isinstance(slices, dict) and slices.get("slice_count"):
                     slice_count = slices["slice_count"]
-        except Exception:
-            pass  # Fall back to default
+        except Exception as exc:
+            logger.debug("get_simpler_slices failed (using default 8): %s", exc)
 
     # Build the plan
     plan = plan_slice_steps(
@@ -891,7 +900,7 @@ async def splice_download_sample(
     try:
         info = await client.get_credits()
         response["credits_remaining"] = int(info.credits)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("post-download credit check failed: %s", exc)
 
     return response

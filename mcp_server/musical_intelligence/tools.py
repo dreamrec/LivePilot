@@ -13,6 +13,9 @@ from fastmcp import Context
 
 from ..server import mcp
 from . import detectors
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def _get_ableton(ctx: Context):
@@ -34,7 +37,8 @@ def detect_repetition_fatigue(ctx: Context) -> dict:
     # Get scene matrix for clip reuse analysis
     try:
         matrix = ableton.send_command("get_scene_matrix")
-    except Exception:
+    except Exception as exc:
+        logger.debug("detect_repetition_fatigue failed: %s", exc)
         matrix = {}
 
     scenes = []
@@ -53,8 +57,8 @@ def detect_repetition_fatigue(ctx: Context) -> dict:
         track_list = session_info.get("tracks", [])
         notes_by_track = fetch_notes_from_ableton(ableton, track_list)
         motif_graph = get_motif_data(notes_by_track)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("detect_repetition_fatigue failed: %s", exc)
 
     report = detectors.detect_repetition_fatigue(scenes, motif_graph)
     return report.to_dict()
@@ -97,7 +101,8 @@ def infer_section_purposes(ctx: Context) -> dict:
     # Get scene matrix for density analysis
     try:
         matrix = ableton.send_command("get_scene_matrix")
-    except Exception:
+    except Exception as exc:
+        logger.debug("infer_section_purposes failed: %s", exc)
         matrix = {}
 
     scenes = []
@@ -132,7 +137,8 @@ def score_emotional_arc(ctx: Context) -> dict:
 
     try:
         matrix = ableton.send_command("get_scene_matrix")
-    except Exception:
+    except Exception as exc:
+        logger.debug("score_emotional_arc failed: %s", exc)
         matrix = {}
 
     scenes = []
@@ -146,7 +152,6 @@ def score_emotional_arc(ctx: Context) -> dict:
     purposes = detectors.infer_section_purposes(scenes, total_tracks)
     arc = detectors.score_emotional_arc(purposes)
     return arc.to_dict()
-
 
 # ── Phrase Evaluation ────────────────────────────────────────────────
 
@@ -179,14 +184,14 @@ def analyze_phrase_arc(
     try:
         from ..tools._perception_engine import compute_loudness
         loudness_data = compute_loudness(file_path, detail="full")
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("analyze_phrase_arc failed: %s", exc)
 
     try:
         from ..tools._perception_engine import compute_spectral
         spectrum_data = compute_spectral(file_path)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("analyze_phrase_arc failed: %s", exc)
 
     critique = phrase_critic.analyze_phrase(loudness_data, spectrum_data, target)
     critique.render_id = file_path.split("/")[-1] if "/" in file_path else file_path

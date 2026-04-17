@@ -13,7 +13,9 @@ from ..tools._research_engine import get_style_tactics
 from .profile_builder import build_audio_reference_profile, build_style_reference_profile
 from .gap_analyzer import analyze_gaps, classify_gap_relevance, detect_identity_warnings
 from .tactic_router import build_reference_plan
+import logging
 
+logger = logging.getLogger(__name__)
 
 # ── Helpers ────────────────────────────────────────────────────────
 
@@ -50,6 +52,7 @@ def _fetch_project_snapshot(ctx: Context) -> dict:
                 rms = rms_snap["value"] if isinstance(rms_snap["value"], (int, float)) else 0.0
                 if rms > 0:
                     import math
+
                     snapshot["loudness"] = round(20 * math.log10(max(rms, 1e-10)), 2)
 
             spec_data = spectral.get("spectrum")
@@ -58,8 +61,8 @@ def _fetch_project_snapshot(ctx: Context) -> dict:
                 key_data = spectral.get("key")
                 if key_data:
                     snapshot["spectral"]["detected_key"] = key_data["value"]
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("_fetch_project_snapshot failed: %s", exc)
 
     # Try to get session info for pacing / density
     try:
@@ -69,11 +72,10 @@ def _fetch_project_snapshot(ctx: Context) -> dict:
         # Rough density estimate
         snapshot["density"] = min(1.0, track_count / 20.0)
         snapshot["pacing"] = [{"label": f"scene_{i}", "bars": 8} for i in range(scene_count)]
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("_fetch_project_snapshot failed: %s", exc)
 
     return snapshot
-
 
 # ── MCP Tools ──────────────────────────────────────────────────────
 

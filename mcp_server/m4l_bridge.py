@@ -7,6 +7,17 @@ the M4L device on the master track. Sends commands back for deep LOM access.
 Architecture:
     M4L → UDP:9880 → SpectralReceiver → SpectralCache → MCP tools
     MCP tools → M4LBridge → UDP:9881 → M4L device
+
+OSC address convention:
+    - OUTGOING (this side → M4L): address string is sent WITHOUT a leading
+      slash because Max's `udpreceive` treats a literal '/' as part of the
+      selector. The JS side (livepilot_bridge.js) routes on bare selectors
+      like "cmd" / "ping".
+    - INCOMING (M4L → this side): the M4L side uses Max's `udpsend`, whose
+      outlet messages include the leading slash (e.g. "/response"). The
+      `_parse_osc` helper normalizes with `rest = "/" + rest.lstrip("/\\")`
+      so both forms are tolerated — keep that normalization; both sides
+      bend toward leniency but the outgoing convention here is slash-less.
 """
 
 from __future__ import annotations

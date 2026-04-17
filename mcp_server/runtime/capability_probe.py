@@ -9,6 +9,9 @@ from __future__ import annotations
 import os
 from pathlib import Path
 from typing import Any
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def probe_capabilities(
@@ -27,8 +30,9 @@ def probe_capabilities(
         try:
             info = ableton.send_command("ping")
             ableton_ok = info is not None
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("probe_capabilities failed: %s", exc)
+
     report["ableton"] = {
         "status": "ok" if ableton_ok else "unavailable",
         "detail": "TCP 9878 connection active" if ableton_ok else "Not connected",
@@ -40,8 +44,9 @@ def probe_capabilities(
         try:
             info = ableton.send_command("get_session_info")
             live_version_str = info.get("live_version", "12.0.0")
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("probe_capabilities failed: %s", exc)
+
     from .live_version import LiveVersionCapabilities
     version_caps = LiveVersionCapabilities.from_version_string(live_version_str)
     report["live_version"] = {
@@ -75,6 +80,7 @@ def probe_capabilities(
     numpy_ok = False
     try:
         import numpy  # noqa: F401
+
         numpy_ok = True
     except ImportError:
         pass

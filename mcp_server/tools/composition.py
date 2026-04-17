@@ -14,6 +14,7 @@ These tools power the composition intelligence layer:
 from __future__ import annotations
 
 import json
+import logging
 from typing import Optional
 
 from fastmcp import Context
@@ -21,6 +22,8 @@ from fastmcp import Context
 from ..server import mcp
 from ..memory.technique_store import TechniqueStore
 from . import _composition_engine as engine
+
+logger = logging.getLogger(__name__)
 
 _memory_store = TechniqueStore()
 
@@ -49,7 +52,8 @@ def _build_clip_matrix(ableton, scene_count: int, track_count: int) -> list[list
         matrix_data = ableton.send_command("get_scene_matrix")
         raw_matrix = matrix_data.get("matrix", [])
         return raw_matrix
-    except Exception:
+    except Exception as exc:
+        logger.warning("get_scene_matrix failed, using empty matrix: %s", exc)
         return [[] for _ in range(scene_count)]
 
 
@@ -95,8 +99,8 @@ def analyze_composition(ctx: Context) -> dict:
             clips = arr.get("clips", [])
             if clips:
                 arr_clips[track["index"]] = clips
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("arrangement_clips track=%s skipped: %s", track.get("index"), exc)
 
     if not sections and arr_clips:
         sections = engine.build_section_graph_from_arrangement(
@@ -111,7 +115,8 @@ def analyze_composition(ctx: Context) -> dict:
                 "track_index": track["index"]
             })
             track_data.append(ti)
-        except Exception:
+        except Exception as exc:
+            logger.debug("get_track_info track=%s fallback: %s", track.get("index"), exc)
             track_data.append({"index": track["index"], "name": track.get("name", ""),
                                "devices": []})
 
@@ -130,8 +135,8 @@ def analyze_composition(ctx: Context) -> dict:
                 })
                 notes = result.get("notes", [])
                 track_notes.extend(notes)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("get_notes t=%d s=%d skipped: %s", t_idx, s_idx, exc)
         all_notes_by_track[t_idx] = track_notes
 
     # Map notes to sections
@@ -244,7 +249,8 @@ def get_phrase_grid(
                 "clip_index": scene_idx,
             })
             notes_by_track[t_idx] = result.get("notes", [])
-        except Exception:
+        except Exception as exc:
+            logger.debug("get_notes t=%d s=%d empty: %s", t_idx, scene_idx, exc)
             notes_by_track[t_idx] = []
 
     phrases = engine.detect_phrases(section, notes_by_track)
@@ -464,8 +470,8 @@ def get_harmony_field(
                                     "pattern": pattern,
                                     "classification": classification,
                                 }
-                            except Exception:
-                                pass
+                            except Exception as exc:
+                                logger.warning("neo-Riemannian classify failed: %s", exc)
 
             # Populate voice_leading_info from chord groups
             if harmony_analysis and not voice_leading_info:
@@ -483,12 +489,13 @@ def get_harmony_field(
                             "issue_count": len(all_vl_issues),
                             "quality": "clean" if not all_vl_issues else "has_issues",
                         }
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.warning("voice_leading analysis failed: %s", exc)
 
             if scale_info and harmony_analysis:
                 break
-        except Exception:
+        except Exception as exc:
+            logger.debug("harmony scan on track %d skipped: %s", t_idx, exc)
             continue
 
     hf = engine.build_harmony_field(
@@ -535,7 +542,8 @@ def get_transition_analysis(ctx: Context) -> dict:
         try:
             ti = ableton.send_command("get_track_info", {"track_index": t_idx})
             track_data.append(ti)
-        except Exception:
+        except Exception as exc:
+            logger.debug("get_track_info transition t=%d fallback: %s", t_idx, exc)
             track_data.append({"index": t_idx, "name": track.get("name", ""), "devices": []})
 
     for section in sections:
@@ -623,7 +631,8 @@ def get_section_outcomes(
         techniques = _memory_store.list_techniques(
             type_filter="composition_outcome", sort_by="updated_at", limit=limit,
         )
-    except Exception:
+    except Exception as exc:
+        logger.warning("list_techniques(composition_outcome) failed: %s", exc)
         techniques = []
 
     outcomes = []
@@ -633,8 +642,8 @@ def get_section_outcomes(
             payload = full.get("payload", {})
             if isinstance(payload, dict):
                 outcomes.append(payload)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("technique %s payload read failed: %s", t.get("id"), exc)
 
     result = engine.analyze_section_outcomes(outcomes)
 

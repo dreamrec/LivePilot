@@ -45,6 +45,10 @@ from pathlib import Path
 from typing import Optional, Tuple
 
 from .layer_planner import LayerSpec
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 
 _AUDIO_EXTENSIONS = (".wav", ".aif", ".aiff", ".flac")
@@ -216,9 +220,9 @@ async def _splice_resolve(
             query=layer.search_query,
             per_page=5,
         )
-    except Exception:
+    except Exception as exc:
+        logger.debug("_splice_resolve failed: %s", exc)
         return None, "unresolved"
-
     samples = list(result.samples) if result and hasattr(result, "samples") else []
     if not samples:
         return None, "unresolved"
@@ -243,7 +247,8 @@ async def _splice_resolve(
             downloaded = await splice_client.download_sample(file_hash)
             if downloaded and Path(downloaded).exists():
                 return downloaded, "splice_remote"
-        except Exception:
+        except Exception as exc:
+            logger.debug("_splice_resolve failed: %s", exc)
             continue  # try next hit
 
     return None, "unresolved"
@@ -286,7 +291,6 @@ async def resolve_sample_for_layer(
                 lp = hit.get("file_path") if isinstance(hit, dict) else None
                 if lp and Path(lp).exists():
                     return lp, "browser"
-        except Exception:
-            pass
-
+        except Exception as exc:
+            logger.debug("resolve_sample_for_layer failed: %s", exc)
     return None, "unresolved"

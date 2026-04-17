@@ -11,6 +11,10 @@ from fastmcp import Context
 
 from ..server import mcp
 from .builder import build_project_state_from_data
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 
 def _get_ableton(ctx: Context):
@@ -39,7 +43,8 @@ def build_project_brain(ctx: Context) -> dict:
     try:
         scenes_resp = ableton.send_command("get_scenes_info")
         scenes = scenes_resp.get("scenes", [])
-    except Exception:
+    except Exception as exc:
+        logger.debug("build_project_brain failed: %s", exc)
         scenes = session_info.get("scenes", [])
 
     # 3. Get clip matrix (scene_matrix)
@@ -47,8 +52,8 @@ def build_project_brain(ctx: Context) -> dict:
     try:
         matrix_resp = ableton.send_command("get_scene_matrix")
         clip_matrix = matrix_resp.get("matrix", [])
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("build_project_brain failed: %s", exc)
 
     # 4. Gather per-track info with devices
     track_infos = []
@@ -58,7 +63,8 @@ def build_project_brain(ctx: Context) -> dict:
                 "track_index": track["index"],
             })
             track_infos.append(info)
-        except Exception:
+        except Exception as exc:
+            logger.debug("build_project_brain failed: %s", exc)
             track_infos.append({
                 "index": track.get("index", 0),
                 "name": track.get("name", ""),
@@ -75,8 +81,8 @@ def build_project_brain(ctx: Context) -> dict:
             clips = arr.get("clips", [])
             if clips:
                 arrangement_clips[track["index"]] = clips
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("build_project_brain failed: %s", exc)
 
     # 5b. Build notes_map for role inference.
     # Shape: {section_id: {track_index: [notes]}}. Without this, role_graph
@@ -102,12 +108,14 @@ def build_project_brain(ctx: Context) -> dict:
                         notes = notes_resp.get("notes", [])
                         if notes:
                             per_track[t_idx] = notes
-                except Exception:
+                except Exception as exc:
+                    logger.debug("build_project_brain failed: %s", exc)
                     # Individual note fetch failing is fine — continue with others
                     continue
             if per_track:
                 notes_map[section_id] = per_track
-    except Exception:
+    except Exception as exc:
+        logger.debug("build_project_brain failed: %s", exc)
         # Overall failure: empty map, degrade to "all tracks active" fallback
         notes_map = {}
 
@@ -127,8 +135,8 @@ def build_project_brain(ctx: Context) -> dict:
                 if spectral.get(key) is not None:
                     flucoma_ok = True
                     break
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("build_project_brain failed: %s", exc)
 
     # 7. Build state
     state = build_project_state_from_data(

@@ -12,7 +12,9 @@ from fastmcp import Context
 from ..server import mcp
 from . import builder
 from .models import SongBrain
+import logging
 
+logger = logging.getLogger(__name__)
 
 # Module-level fallback for consumers without ctx.
 # Prefer ctx.lifespan_context["current_brain"] when ctx is available.
@@ -67,7 +69,8 @@ def _fetch_session_data(ctx: Context) -> dict:
 
     try:
         data["session_info"] = ableton.send_command("get_session_info", {})
-    except Exception:
+    except Exception as exc:
+        logger.debug("_fetch_session_data failed: %s", exc)
         data["session_info"] = {"tempo": 120.0, "track_count": 0}
 
     try:
@@ -78,22 +81,23 @@ def _fetch_session_data(ctx: Context) -> dict:
                 zip(matrix.get("scenes", []), matrix.get("matrix", []))
             )
         ]
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("_fetch_session_data failed: %s", exc)
 
     try:
         info = data["session_info"]
         tracks_list = info.get("tracks", [])
         data["tracks"] = tracks_list if isinstance(tracks_list, list) else []
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("_fetch_session_data failed: %s", exc)
 
     # Motif data — via shared motif service (pure-Python, not TCP)
     try:
         from ..services.motif_service import get_motif_data, fetch_notes_from_ableton
         notes_by_track = fetch_notes_from_ableton(ableton, data.get("tracks", []))
         data["motif_data"] = get_motif_data(notes_by_track)
-    except Exception:
+    except Exception as exc:
+        logger.debug("_fetch_session_data failed: %s", exc)
         pass  # Motif graph requires notes in clips; empty is valid
 
     # Composition analysis — from musical intelligence detectors (pure computation)
@@ -106,8 +110,8 @@ def _fetch_session_data(ctx: Context) -> dict:
             "sections": [p.to_dict() for p in purposes],
             "emotional_arc": arc.to_dict(),
         }
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("_fetch_session_data failed: %s", exc)
 
     # Role graph — from semantic move resolvers (pure computation, no I/O)
     try:
@@ -118,8 +122,8 @@ def _fetch_session_data(ctx: Context) -> dict:
             role = infer_role(name)
             roles[name] = {"index": track.get("index", 0), "role": role}
         data["role_graph"] = roles
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("_fetch_session_data failed: %s", exc)
 
     # Recent moves — from session-scoped action ledger
     try:
@@ -128,8 +132,8 @@ def _fetch_session_data(ctx: Context) -> dict:
         if isinstance(ledger, SessionLedger):
             recent = ledger.get_recent_moves(limit=10)
             data["recent_moves"] = [e.to_dict() for e in recent]
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("_fetch_session_data failed: %s", exc)
 
     return data
 
@@ -152,6 +156,7 @@ def build_song_brain(ctx: Context) -> dict:
 
     # Capability reporting — what data was actually available
     from ..runtime.capability import build_capability
+
     cap = build_capability(
         required=["session_info", "scenes", "tracks", "motif_data", "composition_analysis", "role_graph"],
         available={

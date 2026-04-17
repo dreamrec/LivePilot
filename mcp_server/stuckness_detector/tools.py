@@ -11,6 +11,9 @@ from fastmcp import Context
 
 from ..server import mcp
 from . import detector
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def _get_ableton(ctx: Context):
@@ -30,8 +33,8 @@ def _get_action_history(ctx: Context) -> list[dict]:
         if isinstance(ledger, SessionLedger):
             recent = ledger.get_recent_moves(limit=20)
             return [e.to_dict() for e in recent]
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("_get_action_history failed: %s", exc)
     return []
 
 
@@ -45,9 +48,8 @@ def _get_session_and_brain(ctx: Context) -> tuple[dict, dict, int]:
     try:
         session_info = ableton.send_command("get_session_info", {})
         section_count = session_info.get("scene_count", 0)
-    except Exception:
-        pass
-
+    except Exception as exc:
+        logger.debug("_get_session_and_brain failed: %s", exc)
     try:
         from ..song_brain.tools import _current_brain
         if _current_brain is not None:
@@ -165,6 +167,7 @@ def start_rescue_workflow(
 
     # Build a rescue suggestion for this specific type
     from .models import StucknessReport
+
     report = StucknessReport(
         confidence=0.6,
         level="stuck",

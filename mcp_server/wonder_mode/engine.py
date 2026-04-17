@@ -9,8 +9,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import math
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 # ── Move discovery ───────────────────────────────────────────────
@@ -104,8 +107,9 @@ def discover_moves(
                 if validation["valid"]:
                     filtered.append(move)
             result = filtered
-        except Exception:
-            pass  # constraint filtering is optional
+        except Exception as exc:
+            # constraint filtering is optional — keep the unfiltered list
+            logger.warning("constraint filtering skipped: %s", exc)
 
     return result
 
@@ -212,7 +216,8 @@ def _compile_variant_plan(move_dict: dict, kernel: dict | None) -> dict | None:
     try:
         plan = sem_compile(move_obj, kernel)
         return plan.to_dict()
-    except Exception:
+    except Exception as exc:
+        logger.warning("sem_compile(%s) failed: %s", move_obj, exc)
         return None
 
 

@@ -12,6 +12,9 @@ from fastmcp import Context
 from ..server import mcp
 from ..memory.technique_store import TechniqueStore
 from .capability_state import build_capability_state
+import logging
+
+logger = logging.getLogger(__name__)
 
 _memory_store = TechniqueStore()
 
@@ -31,7 +34,8 @@ def get_capability_state(ctx: Context) -> dict:
     try:
         result = ableton.send_command("get_session_info")
         session_ok = isinstance(result, dict) and "error" not in result
-    except Exception:
+    except Exception as exc:
+        logger.debug("get_capability_state failed: %s", exc)
         session_ok = False
 
     # ── Probe analyzer (M4L bridge) ─────────────────────────────────
@@ -49,7 +53,8 @@ def get_capability_state(ctx: Context) -> dict:
     try:
         _memory_store.list_techniques(limit=1)
         memory_ok = True
-    except Exception:
+    except Exception as exc:
+        logger.debug("get_capability_state failed: %s", exc)
         memory_ok = False
 
     # ── Web / FluCoMa — not probed live, default to False ───────────
@@ -180,6 +185,7 @@ def get_session_kernel(
     if request_text.strip():
         try:
             from ..tools._conductor import classify_request
+
             plan = classify_request(request_text)
             kernel.recommended_engines = [r.engine for r in plan.routes[:3]]
             kernel.recommended_workflow = plan.workflow_mode

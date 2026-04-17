@@ -15,6 +15,10 @@ from ..evaluation.fabric import evaluate_sonic_move
 from .state_builder import build_mix_state
 from .critics import run_all_mix_critics
 from .planner import plan_mix_moves
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 
 # ── Helpers ─────────────────────────────────────────────────────────
@@ -32,7 +36,8 @@ def _fetch_mix_data(ctx: Context) -> dict:
         try:
             info = ableton.send_command("get_track_info", {"track_index": i})
             track_infos.append(info)
-        except Exception:
+        except Exception as exc:
+            logger.debug("_fetch_mix_data failed: %s", exc)
             continue
 
     # Get spectrum and RMS data directly from SpectralCache (not TCP)
@@ -51,8 +56,8 @@ def _fetch_mix_data(ctx: Context) -> dict:
             rms_snap = spectral.get("rms")
             if rms_snap:
                 rms_data = rms_snap["value"] if isinstance(rms_snap["value"], dict) else rms_snap["value"]
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("_fetch_mix_data failed: %s", exc)
 
     return {
         "session_info": session_info,

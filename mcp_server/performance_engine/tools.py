@@ -12,6 +12,10 @@ from ..server import mcp
 from .models import EnergyWindow, SceneRole
 from .planner import build_performance_state, plan_scene_transition, suggest_energy_moves
 from .safety import classify_move_safety, get_blocked_moves, get_safe_moves
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 
 # ── Helpers ─────────────────────────────────────────────────────────
@@ -87,8 +91,8 @@ def _fetch_scene_data(ctx: Context) -> tuple[list[SceneRole], int]:
             if s.get("is_triggered", False):
                 current_scene = i
                 break
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("_fetch_scene_data failed: %s", exc)
 
     return scene_roles, current_scene
 

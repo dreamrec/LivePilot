@@ -43,7 +43,8 @@ def _require_analyzer(cache) -> None:
                 ctx.lifespan_context["ableton"].send_command("get_master_track")
                 if ctx else {}
             )
-        except Exception:
+        except Exception as exc:
+            logger.debug("_require_analyzer failed: %s", exc)
             track = {}
 
         devices = track.get("devices", []) if isinstance(track, dict) else []
@@ -254,7 +255,6 @@ async def walk_device_tree(
     bridge = _get_m4l(ctx)
     return await bridge.send_command("walk_rack", track_index, device_index)
 
-
 # ── Phase 2: Sample Operations ─────────────────────────────────────────
 
 
@@ -276,10 +276,11 @@ async def get_clip_file_path(
     bridge = _get_m4l(ctx)
     return await bridge.send_command("get_clip_file_path", track_index, clip_index)
 
-
 import os  # for filename parsing in smart-defaults helper
 import re
+import logging
 
+logger = logging.getLogger(__name__)
 
 # ── Sample loading helpers (P0-1, P1-1, P2-6 fixes) ────────────────────────
 #
@@ -386,7 +387,8 @@ async def _simpler_post_load_hygiene(
             "device_index": device_index,
             "parameters": hygiene_params,
         })
-    except Exception:
+    except Exception as exc:
+        logger.debug("_simpler_post_load_hygiene failed: %s", exc)
         # non-fatal — verification already succeeded
         pass
 
@@ -617,7 +619,6 @@ async def warp_simpler(
     bridge = _get_m4l(ctx)
     return await bridge.send_command("warp_simpler", track_index, device_index, beats)
 
-
 # ── Phase 2: Warp Markers ──────────────────────────────────────────────
 
 
@@ -702,7 +703,6 @@ async def remove_warp_marker(
         "remove_warp_marker", track_index, clip_index, beat_time
     )
 
-
 # ── Phase 2: Clip & Display ────────────────────────────────────────────
 
 
@@ -759,7 +759,6 @@ async def get_display_values(
     _require_analyzer(cache)
     bridge = _get_m4l(ctx)
     return await bridge.send_command("get_display_values", track_index, device_index, timeout=15.0)
-
 
 # ── Phase 3: Audio Capture ─────────────────────────────────────────────
 
@@ -819,6 +818,7 @@ async def capture_audio(
                 dst_path = os.path.join(CAPTURE_DIR, dst_name)
                 try:
                     import shutil
+
                     shutil.move(src_path, dst_path)
                     result["file_path"] = dst_path
                 except OSError:
@@ -843,7 +843,6 @@ async def capture_stop(ctx: Context) -> dict:
     # Resolve the capture future so send_capture returns cleanly
     await bridge.cancel_capture_future()
     return await bridge.send_command("capture_stop")
-
 
 # ── Phase 4: FluCoMa Real-Time ───────────────────────────────────────────
 
