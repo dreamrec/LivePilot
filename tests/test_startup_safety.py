@@ -54,6 +54,24 @@ class TestStartupSafety:
         result = _identify_port_holder(59999)
         assert result is None
 
+    def test_identify_returns_none_on_lsof_timeout(self, monkeypatch):
+        """BUG from Batch-6 debug session: _identify_port_holder used to let
+        subprocess.TimeoutExpired propagate when lsof took >3s on a busy
+        system — stalling startup with an ugly stack trace. Caller should
+        see None just like any other identification failure."""
+        import subprocess
+        from mcp_server import server
+
+        def _boom(*args, **kwargs):
+            raise subprocess.TimeoutExpired(cmd=args[0] if args else "lsof",
+                                             timeout=3)
+        monkeypatch.setattr(server.subprocess, "check_output", _boom)
+
+        result = server._identify_port_holder(9999)
+        assert result is None, (
+            "Timeout during lsof must degrade to None, not raise"
+        )
+
     def test_no_signal_import(self):
         """The signal module should not be imported in server.py."""
         import inspect

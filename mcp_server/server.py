@@ -33,10 +33,18 @@ def _identify_port_holder(port: int) -> str | None:
                         text=True, timeout=2,
                     ).strip()
                     return f"{pid} ({cmdline[:60]})"
-                except (subprocess.CalledProcessError, FileNotFoundError):
+                except (subprocess.CalledProcessError,
+                        subprocess.TimeoutExpired,
+                        FileNotFoundError):
                     return str(pid)
         return None
-    except (subprocess.CalledProcessError, FileNotFoundError, ValueError):
+    except (subprocess.CalledProcessError,
+            subprocess.TimeoutExpired,
+            FileNotFoundError,
+            ValueError):
+        # TimeoutExpired catches the busy-system case where lsof exceeds
+        # the 3-second budget; we treat it as "can't identify" and return
+        # None so startup never stalls for slow host diagnostics.
         return None
 
 
