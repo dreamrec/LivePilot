@@ -8,30 +8,19 @@ from . import resolvers
 
 
 def _compile_increase_forward_motion(move: SemanticMove, kernel: dict) -> CompiledPlan:
-    """Compile 'increase_forward_motion': rising filter + rhythm push."""
+    """Compile 'increase_forward_motion': rhythm push + reverb wash.
+
+    Device-parameter automation (rising filter sweep) was removed: targeting
+    device_index=0, parameter_index=0 without a resolver lookup hits "Device
+    On" on every Ableton device and would disable the first effect. Re-enable
+    once resolvers.find_device_parameter can locate a filter cutoff by name.
+    """
     steps = []
     descriptions = []
+    warnings = []
 
     melodic = resolvers.find_tracks_by_role(kernel, ["chords", "lead", "pad"])
     drums = resolvers.find_tracks_by_role(kernel, ["drums", "percussion"])
-
-    for mt in melodic[:1]:
-        steps.append(CompiledStep(
-            tool="apply_automation_shape",
-            params={
-                "track_index": mt["index"],
-                "clip_index": 0,
-                "parameter_type": "device",
-                "device_index": 0,
-                "parameter_index": 0,
-                "curve_type": "exponential",
-                "start": 0.2,
-                "end": 0.7,
-                "duration": 4,
-            },
-            description=f"Rising filter sweep on {mt['name']} over 4 bars",
-        ))
-        descriptions.append(f"Rising filter on {mt['name']}")
 
     for dt in drums[:1]:
         steps.append(CompiledStep(
@@ -49,6 +38,9 @@ def _compile_increase_forward_motion(move: SemanticMove, kernel: dict) -> Compil
         ))
         descriptions.append(f"Reverb wash on {mt['name']}")
 
+    if not drums and not melodic:
+        warnings.append("No drum or melodic tracks — cannot build forward motion")
+
     steps.append(CompiledStep(
         tool="get_track_meters",
         params={"include_stereo": True},
@@ -62,6 +54,7 @@ def _compile_increase_forward_motion(move: SemanticMove, kernel: dict) -> Compil
         risk_level="low",
         summary="; ".join(descriptions) if descriptions else "No melodic tracks for motion",
         requires_approval=(kernel.get("mode", "improve") != "explore"),
+        warnings=warnings,
     )
 
 

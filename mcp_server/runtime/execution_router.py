@@ -50,6 +50,56 @@ MCP_TOOLS: frozenset[str] = frozenset({
 })
 
 
+# Tools that observe session state without mutating it. Executors use this set
+# to separate "apply pass" steps (writes) from "verification reads". Counting
+# reads toward applied_count and then calling undo that many times walks back
+# earlier user edits — see preview_studio/tools.py and experiment/engine.py.
+READ_ONLY_TOOLS: frozenset[str] = frozenset({
+    "get_track_meters",
+    "get_master_spectrum",
+    "get_master_meters",
+    "get_master_rms",
+    "get_mix_snapshot",
+    "get_session_info",
+    "get_track_info",
+    "get_track_routing",
+    "get_return_tracks",
+    "get_device_info",
+    "get_device_parameters",
+    "get_clip_info",
+    "get_notes",
+    "get_arrangement_notes",
+    "get_arrangement_clips",
+    "get_scenes_info",
+    "get_scene_matrix",
+    "get_playing_clips",
+    "get_cue_points",
+    "get_rack_chains",
+    "get_clip_automation",
+    "analyze_mix",
+    "get_emotional_arc",
+    "get_motif_graph",
+    "get_session_diagnostics",
+    "ping",
+})
+
+
+def filter_apply_steps(steps: list) -> list:
+    """Return only the steps that mutate session state.
+
+    Read-only steps (meters, spectrum, info) do not create undo points in
+    Ableton. Including them in an applied_count and then undoing that many
+    times walks back earlier user edits. Always filter writes from reads
+    before the apply pass and before the undo loop.
+    """
+    out = []
+    for s in steps:
+        tool = (s.get("tool") if isinstance(s, dict) else getattr(s, "tool", "")) or ""
+        if tool and tool not in READ_ONLY_TOOLS:
+            out.append(s)
+    return out
+
+
 @dataclass
 class ExecutionResult:
     """Result of executing a single plan step."""

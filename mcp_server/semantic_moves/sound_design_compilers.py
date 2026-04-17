@@ -14,9 +14,11 @@ from . import resolvers
 def _compile_add_warmth(move: SemanticMove, kernel: dict) -> CompiledPlan:
     """Compile 'add_warmth': volume boost + reverb send for perceived warmth.
 
-    SAFETY: Never blindly set device parameters — device_index=0, parameter_index=0
-    can kill audio if the first device isn't a Saturator. Only adjust device params
-    when find_device_on_track confirms a Saturator is present.
+    SAFETY: Never target device parameters by raw index. Ableton's parameter
+    index 0 is "Device On" on every device, so set_device_parameter(idx=0)
+    with any fractional value rounds to 0 and DISABLES the device. Use sends
+    and volume for warmth; device-param automation is only safe once the
+    resolver can look parameters up by name.
     """
     steps = []
     descriptions = []
@@ -30,24 +32,6 @@ def _compile_add_warmth(move: SemanticMove, kernel: dict) -> CompiledPlan:
     for t in targets[:2]:
         idx = t["index"]
         name = t["name"]
-
-        # Try to find a Saturator on the track (safe device adjustment)
-        saturator = resolvers.find_device_on_track(kernel, idx, "Saturator")
-        if saturator:
-            steps.append(CompiledStep(
-                tool="set_device_parameter",
-                params={
-                    "track_index": idx,
-                    "device_index": saturator["device_index"],
-                    "parameter_index": 0,
-                    "value": 0.3,
-                },
-                description=f"Gentle Saturator drive on {name}",
-            ))
-            descriptions.append(f"Saturate {name}")
-        else:
-            # No Saturator found — use volume + send instead of risky device params
-            warnings.append(f"No Saturator on {name} — using volume+reverb for warmth")
 
         # Boost volume slightly for perceived warmth
         steps.append(CompiledStep(
@@ -84,32 +68,22 @@ def _compile_add_warmth(move: SemanticMove, kernel: dict) -> CompiledPlan:
 
 
 def _compile_add_texture(move: SemanticMove, kernel: dict) -> CompiledPlan:
-    """Compile 'add_texture': perlin filter motion + delay send."""
+    """Compile 'add_texture': delay send for spatial texture.
+
+    Device-parameter automation (perlin filter motion) was removed because it
+    targeted device_index=0, parameter_index=0 without a resolver check — that
+    hits "Device On" on every Ableton device and would silently disable the
+    first device. Re-enable once resolvers.find_device_parameter lands.
+    """
     steps = []
     descriptions = []
+    warnings = []
 
     targets = resolvers.find_tracks_by_role(kernel, ["pad", "chords", "lead"])
 
     for t in targets[:1]:
         idx = t["index"]
         name = t["name"]
-        steps.append(CompiledStep(
-            tool="apply_automation_shape",
-            params={
-                "track_index": idx,
-                "clip_index": 0,
-                "parameter_type": "device",
-                "device_index": 0,
-                "parameter_index": 0,
-                "curve_type": "perlin",
-                "center": 0.4,
-                "amplitude": 0.2,
-                "duration": 8,
-                "density": 16,
-            },
-            description=f"Perlin filter motion on {name} for organic texture",
-        ))
-        descriptions.append(f"Perlin filter on {name}")
 
         # Add delay send
         steps.append(CompiledStep(
@@ -118,6 +92,9 @@ def _compile_add_texture(move: SemanticMove, kernel: dict) -> CompiledPlan:
             description=f"Add delay send on {name} for spatial texture",
         ))
         descriptions.append(f"Delay texture on {name}")
+
+    if not targets:
+        warnings.append("No pad/chords/lead tracks — texture needs a melodic bed")
 
     steps.append(CompiledStep(
         tool="get_track_meters",
@@ -132,14 +109,17 @@ def _compile_add_texture(move: SemanticMove, kernel: dict) -> CompiledPlan:
         risk_level="medium",
         summary="; ".join(descriptions) if descriptions else "No tracks for texture",
         requires_approval=(kernel.get("mode", "improve") != "explore"),
+        warnings=warnings,
     )
 
 
 def _compile_shape_transients(move: SemanticMove, kernel: dict) -> CompiledPlan:
     """Compile 'shape_transients': push drum volume for punch, adjust sends.
 
-    SAFETY: Never blindly set device parameters. Only adjust Compressor params
-    when find_device_on_track confirms one exists. Otherwise use volume for punch.
+    SAFETY: Never target device parameters by raw index. Index 0 on every
+    Ableton device is "Device On" — writing 0.2 rounds to 0 and disables the
+    device. Punch is achieved via volume + send shaping; Compressor attack
+    automation is only safe once the resolver can look parameters up by name.
     """
     steps = []
     descriptions = []
@@ -158,24 +138,7 @@ def _compile_shape_transients(move: SemanticMove, kernel: dict) -> CompiledPlan:
         idx = dt["index"]
         name = dt["name"]
 
-        # Try to find a Compressor on the track
-        compressor = resolvers.find_device_on_track(kernel, idx, "Compressor")
-        if compressor:
-            steps.append(CompiledStep(
-                tool="set_device_parameter",
-                params={
-                    "track_index": idx,
-                    "device_index": compressor["device_index"],
-                    "parameter_index": 0,
-                    "value": 0.2,
-                },
-                description=f"Faster Compressor attack on {name} for snap",
-            ))
-            descriptions.append(f"Shape {name} compressor")
-        else:
-            warnings.append(f"No Compressor on {name} — using volume push for punch")
-
-        # Push volume for transient punch regardless
+        # Push volume for transient punch
         steps.append(CompiledStep(
             tool="set_track_volume",
             params={"track_index": idx, "volume": 0.75},

@@ -14,18 +14,33 @@ To add a new in-process tool to plans:
   2. Add an _adapter function here that imports the real implementation and
      adapts its kwargs from a plan-style params dict.
   3. Register the adapter in build_mcp_dispatch_registry.
+
+Every entry in MCP_TOOLS must have a matching adapter here — the contract
+test tests/test_mcp_dispatch_contract.py enforces this.
 """
 
 from __future__ import annotations
 
+import inspect
 from typing import Any, Callable
 
 
-async def _load_sample_to_simpler(params: dict, ctx: Any = None) -> dict:
-    """Adapter for mcp_server.tools.analyzer.load_sample_to_simpler.
+async def _call(fn, ctx, params: dict) -> Any:
+    """Call an MCP tool with ctx + kwargs from a plan params dict.
 
-    Accepts the plan-step params dict and unpacks into the real tool's kwargs.
+    Filters params to the tool's declared parameters, awaits if coroutine.
+    Unknown params are dropped silently — plans may carry extra metadata.
     """
+    sig = inspect.signature(fn)
+    accepted = set(sig.parameters.keys())
+    kwargs = {k: v for k, v in params.items() if k in accepted}
+    result = fn(ctx, **kwargs)
+    if inspect.isawaitable(result):
+        result = await result
+    return result
+
+
+async def _load_sample_to_simpler(params: dict, ctx: Any = None) -> dict:
     from ..tools.analyzer import load_sample_to_simpler
     return await load_sample_to_simpler(
         ctx,
@@ -35,12 +50,69 @@ async def _load_sample_to_simpler(params: dict, ctx: Any = None) -> dict:
     )
 
 
+async def _apply_automation_shape(params: dict, ctx: Any = None) -> dict:
+    from ..tools.automation import apply_automation_shape
+    return await _call(apply_automation_shape, ctx, params)
+
+
+async def _apply_gesture_template(params: dict, ctx: Any = None) -> dict:
+    from ..tools.composition import apply_gesture_template
+    return await _call(apply_gesture_template, ctx, params)
+
+
+async def _analyze_mix(params: dict, ctx: Any = None) -> dict:
+    from ..mix_engine.tools import analyze_mix
+    return await _call(analyze_mix, ctx, params)
+
+
+async def _get_master_spectrum(params: dict, ctx: Any = None) -> dict:
+    from ..tools.analyzer import get_master_spectrum
+    return await _call(get_master_spectrum, ctx, params)
+
+
+async def _get_emotional_arc(params: dict, ctx: Any = None) -> dict:
+    from ..tools.research import get_emotional_arc
+    return await _call(get_emotional_arc, ctx, params)
+
+
+async def _get_motif_graph(params: dict, ctx: Any = None) -> dict:
+    from ..tools.motif import get_motif_graph
+    return await _call(get_motif_graph, ctx, params)
+
+
+async def _generate_m4l_effect(params: dict, ctx: Any = None) -> dict:
+    from ..device_forge.tools import generate_m4l_effect
+    return await _call(generate_m4l_effect, ctx, params)
+
+
+async def _install_m4l_device(params: dict, ctx: Any = None) -> dict:
+    from ..device_forge.tools import install_m4l_device
+    return await _call(install_m4l_device, ctx, params)
+
+
+async def _list_genexpr_templates(params: dict, ctx: Any = None) -> dict:
+    from ..device_forge.tools import list_genexpr_templates
+    return await _call(list_genexpr_templates, ctx, params)
+
+
 def build_mcp_dispatch_registry() -> dict[str, Callable]:
     """Return the canonical registry of MCP-only tools for plan execution.
 
     Callers (typically the server lifespan init) should call this once and
     pass the registry to execute_plan_steps_async via the mcp_registry kwarg.
+
+    INVARIANT: the set of keys here must equal MCP_TOOLS in execution_router.
+    Enforced by tests/test_mcp_dispatch_contract.py.
     """
     return {
         "load_sample_to_simpler": _load_sample_to_simpler,
+        "apply_automation_shape": _apply_automation_shape,
+        "apply_gesture_template": _apply_gesture_template,
+        "analyze_mix": _analyze_mix,
+        "get_master_spectrum": _get_master_spectrum,
+        "get_emotional_arc": _get_emotional_arc,
+        "get_motif_graph": _get_motif_graph,
+        "generate_m4l_effect": _generate_m4l_effect,
+        "install_m4l_device": _install_m4l_device,
+        "list_genexpr_templates": _list_genexpr_templates,
     }

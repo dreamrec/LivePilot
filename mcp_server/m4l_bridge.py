@@ -278,14 +278,26 @@ class SpectralReceiver(asyncio.DatagramProtocol):
             self._handle_chunk(int(args[0]), int(args[1]), str(args[2]))
 
     def _handle_response(self, encoded: str) -> None:
-        """Decode a single-packet base64 response."""
+        """Decode a single-packet base64 response.
+
+        Resolves _response_callback exactly once, then clears it. Without the
+        clear, a second late packet could overwrite a future belonging to a
+        different in-flight command. The protocol has no request id yet
+        (livepilot_bridge.js:666 emits bare /response), so correlation relies
+        on the single-command-in-flight invariant enforced by M4LBridge._cmd_lock
+        plus this one-shot clear.
+        """
         try:
             # URL-safe base64 decode (- and _ instead of + and /)
             padded = encoded + "=" * (-len(encoded) % 4)
             decoded = base64.urlsafe_b64decode(padded).decode('utf-8')
             result = _normalize_bridge_payload(json.loads(decoded))
-            if self._response_callback and not self._response_callback.done():
-                self._response_callback.set_result(result)
+            cb = self._response_callback
+            if cb and not cb.done():
+                cb.set_result(result)
+            # Clear regardless — either we consumed it, or it was already
+            # done/abandoned. Future packets with no owner get dropped.
+            self._response_callback = None
         except Exception as exc:
             import sys
             print(f"LivePilot: failed to decode bridge response: {exc}", file=sys.stderr)
@@ -376,11 +388,14 @@ class M4LBridge:
                 result = await asyncio.wait_for(future, timeout=timeout)
                 return result
             except asyncio.TimeoutError:
-                # Clear the stale future so a delayed response doesn't resolve
-                # a future that no caller is waiting on
+                return {"error": "M4L bridge timeout — device may be busy or removed"}
+            finally:
+                # Always clear the future — on success the receiver has already
+                # cleared it inside _handle_response, but calling again is a
+                # no-op. On timeout this is what prevents a delayed packet from
+                # resolving a future belonging to the next command.
                 if self.receiver:
                     self.receiver.set_response_future(None)
-                return {"error": "M4L bridge timeout — device may be busy or removed"}
 
     async def send_capture(self, command: str, *args: Any, timeout: float = 35.0) -> dict:
         """Send a capture command to the M4L device and wait for /capture_complete."""

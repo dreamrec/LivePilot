@@ -182,6 +182,16 @@ def create_preview_set(
     except Exception as exc:
         logger.debug("create_preview_set failed: %s", exc)
 
+    # Fetch a real session kernel so compilers resolve targets from the live
+    # set instead of an empty placeholder. Degrades gracefully when Ableton
+    # is unreachable (unit tests, no-connection environments).
+    live_kernel: dict = {}
+    try:
+        from ..runtime.tools import get_session_kernel
+        live_kernel = get_session_kernel(ctx, request_text=request_text) or {}
+    except Exception as exc:
+        logger.debug("create_preview_set: could not fetch session kernel: %s", exc)
+
     ps = engine.create_preview_set(
         request_text=request_text,
         kernel_id=kernel_id,
@@ -189,6 +199,7 @@ def create_preview_set(
         available_moves=available_moves,
         song_brain=song_brain,
         taste_graph=taste_graph,
+        kernel=live_kernel,
     )
 
     return ps.to_dict()
@@ -436,7 +447,12 @@ async def render_preview_variant(
         plan = variant.compiled_plan
         steps = plan if isinstance(plan, list) else plan.get("steps", [])
 
-        from ..runtime.execution_router import execute_plan_steps_async
+        from ..runtime.execution_router import execute_plan_steps_async, filter_apply_steps
+
+        # Read-only verification steps (meters/spectrum/info) don't create undo
+        # points in Ableton — counting them and then undoing walks back earlier
+        # user edits. Separate writes from reads before the apply pass.
+        apply_steps = filter_apply_steps(steps)
 
         applied_count = 0
         playback_started = False
@@ -453,16 +469,16 @@ async def render_preview_variant(
             # ── 1. Capture BEFORE metadata ──
             before_info = ableton.send_command("get_session_info", {}) or {}
 
-            # ── 2. Apply the variant ──
+            # ── 2. Apply the variant (write steps only) ──
             exec_results = await execute_plan_steps_async(
-                steps,
+                apply_steps,
                 ableton=ableton,
                 bridge=bridge,
                 mcp_registry=mcp_registry,
                 ctx=ctx,
             )
             applied_count = sum(1 for r in exec_results if r.ok)
-            if applied_count == 0 and steps:
+            if applied_count == 0 and apply_steps:
                 return {
                     "error": "Variant failed to apply any steps",
                     "variant_id": variant_id,
@@ -489,9 +505,9 @@ async def render_preview_variant(
                     ableton.send_command("start_playback", {})
                     playback_started = True
 
-                    import time as _time
+                    import asyncio as _asyncio
 
-                    _time.sleep(play_seconds)
+                    await _asyncio.sleep(play_seconds)
 
                     spectral_after = cache.get_all()
 

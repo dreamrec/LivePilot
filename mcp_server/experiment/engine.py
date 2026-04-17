@@ -122,6 +122,8 @@ def _run_branch_sync(branch, ableton, compiled_plan, capture_fn):
     branch.compiled_plan = compiled_plan
     branch.before_snapshot = capture_fn()
 
+    from ..runtime.execution_router import READ_ONLY_TOOLS
+
     steps_executed = 0
     log = []
     for step in compiled_plan.get("steps", []):
@@ -129,7 +131,7 @@ def _run_branch_sync(branch, ableton, compiled_plan, capture_fn):
         params = step.get("params", {})
         if not tool:
             continue
-        if tool in ("get_track_meters", "get_master_spectrum", "analyze_mix"):
+        if tool in READ_ONLY_TOOLS:
             continue
         try:
             result = ableton.send_command(tool, params)
@@ -173,21 +175,17 @@ async def run_branch_async(
     analyze_mix) are skipped in the apply pass — they're used for snapshot
     capture separately.
     """
-    from ..runtime.execution_router import execute_plan_steps_async
+    from ..runtime.execution_router import execute_plan_steps_async, filter_apply_steps
 
     branch.status = "running"
     branch.compiled_plan = compiled_plan
 
     branch.before_snapshot = capture_fn()
 
-    # Filter out read-only verification steps from the apply pass
+    # Filter out read-only verification steps from the apply pass (canonical
+    # list lives in execution_router.READ_ONLY_TOOLS).
     all_steps = compiled_plan.get("steps", []) or []
-    apply_steps = [
-        s for s in all_steps
-        if s.get("tool") and s.get("tool") not in (
-            "get_track_meters", "get_master_spectrum", "analyze_mix",
-        )
-    ]
+    apply_steps = filter_apply_steps(all_steps)
 
     exec_results = await execute_plan_steps_async(
         apply_steps,

@@ -42,11 +42,17 @@ def create_preview_set(
     available_moves: Optional[list[dict]] = None,
     song_brain: Optional[dict] = None,
     taste_graph: Optional[dict] = None,
+    kernel: Optional[dict] = None,
 ) -> PreviewSet:
     """Create a preview set with variant slots.
 
     For creative_triptych, generates 3 variants: safe, strong, unexpected.
     Each variant gets a move_id from available_moves ranked by novelty.
+
+    kernel: the live session kernel (track topology + device chains). Compilers
+        resolve targets from it — without it, variants degrade into no-ops or
+        generic reads. Callers that have a `ctx` should fetch a real kernel
+        via runtime.tools.get_session_kernel(ctx).
     """
     set_id = _compute_set_id(request_text, kernel_id)
     now = int(time.time() * 1000)
@@ -56,11 +62,15 @@ def create_preview_set(
     taste_graph = taste_graph or {}
 
     if strategy == "creative_triptych":
-        variants = _build_triptych(request_text, moves, song_brain, taste_graph, set_id, now)
+        variants = _build_triptych(
+            request_text, moves, song_brain, taste_graph, set_id, now, kernel,
+        )
     elif strategy == "binary":
         variants = _build_binary(request_text, moves, song_brain, set_id, now)
     else:
-        variants = _build_triptych(request_text, moves, song_brain, taste_graph, set_id, now)
+        variants = _build_triptych(
+            request_text, moves, song_brain, taste_graph, set_id, now, kernel,
+        )
 
     ps = PreviewSet(
         set_id=set_id,
@@ -81,6 +91,7 @@ def _build_triptych(
     taste_graph: dict,
     set_id: str,
     now: int,
+    kernel: Optional[dict] = None,
 ) -> list[PreviewVariant]:
     """Build safe / strong / unexpected variants."""
     identity = song_brain.get("identity_core", "")
@@ -114,6 +125,14 @@ def _build_triptych(
         },
     ]
 
+    # Normalize kernel for the compiler. If the caller supplied a real kernel
+    # use it; otherwise fall back to an empty-but-valid shape so compilers
+    # degrade to no-op steps and emit warnings instead of crashing.
+    compile_kernel = kernel if kernel else {
+        "session_info": {"tempo": 120, "tracks": []},
+        "mode": "improve",
+    }
+
     variants = []
     for i, profile in enumerate(profiles):
         # Pick a move if available
@@ -123,8 +142,7 @@ def _build_triptych(
             move_id = moves[i].get("move_id", "")
             # Compile through the semantic compiler — single source of truth
             from ..wonder_mode.engine import _compile_variant_plan
-            kernel = {"session_info": {"tempo": 120, "tracks": []}, "mode": "improve"}
-            compiled_plan = _compile_variant_plan(moves[i], kernel)
+            compiled_plan = _compile_variant_plan(moves[i], compile_kernel)
             # No fallback to plan_template — uncompilable moves stay analytical
 
         variants.append(PreviewVariant(
