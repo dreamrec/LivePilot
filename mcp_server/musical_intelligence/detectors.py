@@ -208,11 +208,43 @@ def detect_role_conflicts(
                   "Layer drum parts into one Drum Rack or pan them apart"),
     }
 
+    # BUG-B1 fix: intentional drum + percussion layering is the core
+    # aesthetic in hip-hop / Dilla / lo-fi / beat-scene music, not a
+    # conflict. Heuristic to demote drum-role conflicts when the track
+    # names make that layering obvious (one "DRUMS" + one "PERC/CONGA/
+    # SHAKER" is distinct instruments, not a fight for the same role).
+    _PERC_NAMES = {
+        "perc", "percussion", "conga", "congas", "shaker",
+        "tambourine", "cowbell", "triangle", "bongo",
+        "djembe", "claves", "hi-hat", "hihat", "hat",
+    }
+
+    def _looks_like_layering(group: list[dict]) -> bool:
+        """True if at least one of the tracks has a percussion-specific
+        name (distinct from the main drum kit)."""
+        if len(group) < 2:
+            return False
+        perc_track_count = 0
+        for track in group:
+            name = str(track.get("name", "")).lower()
+            if any(tok in name for tok in _PERC_NAMES):
+                perc_track_count += 1
+        # Needs at least one main "drums" track AND one perc track
+        return 1 <= perc_track_count < len(group)
+
     conflicts = []
     for role, (desc, rec) in UNIQUE_ROLES.items():
         group = role_groups.get(role, [])
         if len(group) > 1:
             severity = min(0.9, 0.3 + (len(group) - 1) * 0.2)
+            if role == "drums" and _looks_like_layering(group):
+                # Demote severity — this looks intentional, not a conflict
+                severity = max(0.1, severity - 0.4)
+                rec = (
+                    "Drum + percussion layering detected — if this is "
+                    "intentional (hip-hop / Dilla / lo-fi), ignore. "
+                    "Otherwise: " + rec
+                )
             conflicts.append(RoleConflict(
                 role=role,
                 tracks=group,

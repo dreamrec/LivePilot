@@ -112,6 +112,46 @@ def test_conflict_severity():
     assert lead_conflict[0].severity > 0.5  # 3 leads = high severity
 
 
+def test_bug_b1_drums_plus_perc_is_layering_not_conflict():
+    """BUG-B1: DRUMS + PERC is the core aesthetic of hip-hop / Dilla /
+    lo-fi — intentional layering, NOT a conflict. Severity should be
+    demoted when one track is clearly a percussion extension."""
+    tracks = [
+        {"index": 0, "name": "DRUMS"},       # main kit
+        {"index": 1, "name": "PERC"},        # percussion layer
+    ]
+    conflicts = detect_role_conflicts(tracks)
+    drum_conflict = [c for c in conflicts if c.role == "drums"
+                     and len(c.tracks) > 1]
+    assert len(drum_conflict) == 1
+    # Old behavior: severity=0.5. New behavior: demoted to ≤0.2 because
+    # PERC is a percussion-layer keyword.
+    assert drum_conflict[0].severity <= 0.2, (
+        f"BUG-B1 regressed — DRUMS + PERC still flagged at severity "
+        f"{drum_conflict[0].severity}"
+    )
+    # Recommendation must mention that the layering might be intentional
+    assert (
+        "intentional" in drum_conflict[0].recommendation.lower()
+        or "hip-hop" in drum_conflict[0].recommendation.lower()
+    )
+
+
+def test_bug_b1_two_main_kits_still_flagged_severely():
+    """Two tracks both named 'Drums' / 'DRUMS 2' — no percussion keyword —
+    should still register as a real conflict (severity unchanged)."""
+    tracks = [
+        {"index": 0, "name": "Drums"},
+        {"index": 1, "name": "Drums 2"},
+    ]
+    conflicts = detect_role_conflicts(tracks)
+    drum_conflict = [c for c in conflicts if c.role == "drums"
+                     and len(c.tracks) > 1]
+    assert len(drum_conflict) == 1
+    # Should stay at the original severity (0.3 + 0 * 0.2 = 0.3 or higher)
+    assert drum_conflict[0].severity >= 0.3
+
+
 # ═══ Section Purpose Inference ═══════════════════════════════════════
 
 def _make_scene(name, active_clips, total=6):

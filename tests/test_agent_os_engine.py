@@ -230,6 +230,48 @@ class TestSonicCritic:
         types = [i.type for i in issues]
         assert "low_mid_congestion" not in types
 
+    # ─── BUG-B42 regression — silent playback short-circuit ─────────────
+
+    def test_bug_b42_silent_spectrum_returns_playback_required(self):
+        """BUG-B42: when playback is stopped, all spectrum bands are 0
+        AND rms is 0. The old critic fired 'weak_foundation' (severity 0.6)
+        because sub band was 0 — a phantom issue. Now we short-circuit to
+        a single 'playback_required' advisory."""
+        sonic = {
+            "spectrum": {
+                "sub": 0, "low": 0, "low_mid": 0, "mid": 0,
+                "high_mid": 0, "high": 0, "presence": 0, "air": 0,
+            },
+            "rms": 0,
+            "peak": 0,
+        }
+        roles = {0: "kick", 1: "bass"}
+        issues = run_sonic_critic(sonic, self._make_goal(weight=1.0), roles)
+        types = [i.type for i in issues]
+        assert "playback_required" in types, (
+            f"BUG-B42 regressed — silent spectrum didn't trigger "
+            f"playback_required: {types}"
+        )
+        # Must NOT fire weak_foundation on an all-zero spectrum
+        assert "weak_foundation" not in types, (
+            f"BUG-B42 regressed — weak_foundation fired on silent "
+            f"spectrum: {types}"
+        )
+
+    def test_bug_b42_real_weak_foundation_still_fires_when_playing(self):
+        """With actual spectrum data present and sub < 0.15, weak_foundation
+        must still fire — the fix must not neutralize the real critic."""
+        sonic = {
+            "spectrum": {"sub": 0.05, "low": 0.5, "low_mid": 0.5,
+                         "mid": 0.4},
+            "rms": 0.5, "peak": 0.7,
+        }
+        roles = {0: "kick", 1: "bass"}
+        issues = run_sonic_critic(sonic, self._make_goal(weight=1.0), roles)
+        types = [i.type for i in issues]
+        assert "weak_foundation" in types
+        assert "playback_required" not in types
+
 
 # ── Technical Critic ──────────────────────────────────────────────────
 

@@ -37,6 +37,30 @@ def run_sonic_critic(
     peak = sonic.get("peak")
     target_dims = set(goal.targets.keys())
 
+    # BUG-B42: if every spectrum band is zero AND rms is zero, playback
+    # is stopped (or nothing is routing to master). Spectrum-based
+    # critics (weak_foundation, harsh_highs, low_mid_congestion, etc.)
+    # would fire on zero data, reporting "no bass!" when the real cause
+    # is "no audio". Short-circuit to a playback_required advisory so
+    # callers don't chase phantom mix issues during static inspection.
+    _all_bands = all(float(bands.get(b, 0) or 0) == 0 for b in
+                     ("sub", "low", "low_mid", "mid", "high_mid", "high",
+                      "presence", "air"))
+    _silent = _all_bands and (rms is None or float(rms or 0) == 0)
+    if _silent:
+        return [Issue(
+            type="playback_required",
+            critic="sonic",
+            severity=0.1,
+            confidence=1.0,
+            affected_dimensions=list(MEASURABLE_PROXIES.keys()),
+            evidence=["spectrum and RMS both zero — playback stopped or no signal"],
+            recommended_actions=[
+                "Start playback before calling build_world_model / "
+                "analyze_mix so spectrum-based critics can evaluate.",
+            ],
+        )]
+
     # 1. Mud detection: low_mid congestion
     low_mid = bands.get("low_mid", 0)
     if low_mid > 0.7 and {"clarity", "weight", "warmth"} & target_dims:

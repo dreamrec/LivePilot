@@ -444,3 +444,55 @@ class TestPlanner:
             moves = plan_sound_design_moves(issues, SoundDesignState())
             assert len(moves) == 1
             assert moves[0].move_type == mt
+
+
+# ─── BUG-B35 regressions — role-aware critic filtering ─────────────────────
+
+
+class TestBugB35RoleAwareFiltering:
+    """BUG-B35: analyze_sound_design used to flag 'too_few_blocks' and
+    'no_modulation_sources' for simple kick/drum/bass patches — but a
+    DS Kick + Saturator chain is textbook drum design, not weak identity.
+    The fix filters role-sensitive critics based on track name keywords."""
+
+    def test_simple_role_detection(self):
+        """_is_simple_role_track should match percussion/kick/snare/bass
+        names but not pads / leads / synths."""
+        from mcp_server.sound_design.tools import _is_simple_role_track
+        assert _is_simple_role_track("Kick")
+        assert _is_simple_role_track("DS Kick")
+        assert _is_simple_role_track("Snare Rim")
+        assert _is_simple_role_track("Perc Hats")
+        assert _is_simple_role_track("Sub Bass")
+        assert not _is_simple_role_track("Pad Lush")
+        assert not _is_simple_role_track("Lead Synth")
+        assert not _is_simple_role_track("Wavetable 1")
+        assert not _is_simple_role_track("Rhodes")
+
+    def test_filter_drops_too_few_blocks_on_kick(self):
+        """A kick track with too_few_blocks should have that issue
+        filtered out, but other issues pass through."""
+        from mcp_server.sound_design.tools import _filter_role_appropriate_issues
+        issues = [
+            SoundDesignIssue(issue_type="too_few_blocks", severity=0.5),
+            SoundDesignIssue(issue_type="no_modulation_sources", severity=0.3),
+            SoundDesignIssue(issue_type="masking_role", severity=0.6),
+        ]
+        filtered = _filter_role_appropriate_issues(issues, "Kick")
+        filtered_types = {i.issue_type for i in filtered}
+        assert "too_few_blocks" not in filtered_types
+        assert "no_modulation_sources" not in filtered_types
+        assert "masking_role" in filtered_types
+
+    def test_filter_preserves_issues_on_pad_track(self):
+        """Pad / Lead tracks SHOULD be flagged for simplicity — the
+        filter only activates on drum-family names."""
+        from mcp_server.sound_design.tools import _filter_role_appropriate_issues
+        issues = [
+            SoundDesignIssue(issue_type="too_few_blocks", severity=0.5),
+            SoundDesignIssue(issue_type="no_modulation_sources", severity=0.3),
+        ]
+        filtered = _filter_role_appropriate_issues(issues, "Pad Lush")
+        assert {i.issue_type for i in filtered} == {
+            "too_few_blocks", "no_modulation_sources",
+        }

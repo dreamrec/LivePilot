@@ -195,6 +195,46 @@ def _fetch_sound_design_data(ctx: Context, track_index: int) -> dict:
     }
 
 
+# BUG-B35: some roles are SUPPOSED to be simple. A kick, snare, or sub-bass
+# patch with one block + a saturator is textbook electronic drum design —
+# not "weak identity". Gate the "too_few_blocks" + "no_modulation_sources"
+# critics on track role so we don't pester users about their perfectly
+# serviceable DS Kick patches.
+_SIMPLE_ROLE_TOKENS = (
+    "kick", "snare", "clap", "rim", "hat", "hihat", "hi-hat",
+    "drum", "drums", "perc", "percussion", "conga", "shaker",
+    "tambourine", "cowbell", "tom", "crash", "ride", "cymbal",
+    "808", "sub", "sub bass", "sub_bass",
+)
+
+
+def _is_simple_role_track(track_name: str) -> bool:
+    """True when the track name matches a role where simple patches are
+    the correct creative choice (kick/snare/drums/sub)."""
+    if not track_name:
+        return False
+    lowered = str(track_name).lower()
+    return any(tok in lowered for tok in _SIMPLE_ROLE_TOKENS)
+
+
+_ROLE_SUPPRESSIBLE_ISSUES = frozenset({
+    "too_few_blocks",
+    "no_modulation_sources",
+})
+
+
+def _filter_role_appropriate_issues(
+    issues: list,
+    track_name: str,
+) -> list:
+    """Drop issues whose type is in _ROLE_SUPPRESSIBLE_ISSUES when the
+    track role (inferred from name) is one where simplicity is expected.
+    Issues pass through unchanged for pad / lead / synth / bass roles."""
+    if not _is_simple_role_track(track_name):
+        return issues
+    return [i for i in issues if i.issue_type not in _ROLE_SUPPRESSIBLE_ISSUES]
+
+
 # ── MCP Tools ────────────────────────────────────────────────────────
 
 
@@ -217,6 +257,10 @@ def analyze_sound_design(ctx: Context, track_index: int) -> dict:
         layers=layers,
     )
     issues = run_all_sound_design_critics(state)
+    # BUG-B35: gate role-sensitive critics by track name
+    issues = _filter_role_appropriate_issues(
+        issues, data["track_info"].get("name", "")
+    )
     moves = plan_sound_design_moves(issues, state)
 
     return {
@@ -246,6 +290,9 @@ def get_sound_design_issues(ctx: Context, track_index: int) -> dict:
         layers=layers,
     )
     issues = run_all_sound_design_critics(state)
+    issues = _filter_role_appropriate_issues(
+        issues, data["track_info"].get("name", "")
+    )
 
     return {
         "issues": [i.to_dict() for i in issues],
@@ -272,6 +319,9 @@ def plan_sound_design_move(ctx: Context, track_index: int) -> dict:
         layers=layers,
     )
     issues = run_all_sound_design_critics(state)
+    issues = _filter_role_appropriate_issues(
+        issues, data["track_info"].get("name", "")
+    )
     moves = plan_sound_design_moves(issues, state)
 
     return {

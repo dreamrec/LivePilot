@@ -100,13 +100,47 @@ def get_track_meters(
 
     track_index:    specific track (omit for all tracks)
     include_stereo: include left/right channel meters (adds GUI load)
+
+    BUG-B3: when playback is stopped, `level` reports peak-hold from the
+    last loud moment while `left`/`right` report instantaneous channel
+    levels (which decay to 0). The two fields then visibly disagree, and
+    callers debugging "is my filter killing the signal?" get false alarms.
+    We now tag each response with `is_playing` so callers can interpret
+    the levels correctly, and — when include_stereo=True AND playback is
+    stopped — we mark left/right as `null` instead of 0 so the semantic
+    is explicit.
     """
     params: dict = {}
     if track_index is not None:
         params["track_index"] = track_index
     if include_stereo:
         params["include_stereo"] = include_stereo
-    return _get_ableton(ctx).send_command("get_track_meters", params)
+    ableton = _get_ableton(ctx)
+    result = ableton.send_command("get_track_meters", params)
+
+    # Probe playback state once so we can annotate the response
+    try:
+        session = ableton.send_command("get_session_info", {})
+        is_playing = bool(session.get("is_playing", False))
+    except Exception:
+        is_playing = None  # unknown — leave left/right as reported
+
+    if not isinstance(result, dict):
+        return result
+    result["is_playing"] = is_playing
+    # When stopped AND stereo was requested, mark l/r as None so they
+    # don't look like a killed signal
+    if include_stereo and is_playing is False:
+        for t in result.get("tracks", []):
+            if isinstance(t, dict):
+                if t.get("left") == 0 and t.get("right") == 0:
+                    t["left"] = None
+                    t["right"] = None
+                    t["_stereo_note"] = (
+                        "left/right suppressed because playback is stopped; "
+                        "`level` is peak-hold from the last audio event"
+                    )
+    return result
 
 
 @mcp.tool()

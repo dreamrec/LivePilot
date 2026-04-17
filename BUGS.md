@@ -153,7 +153,7 @@ Regression tests: `test_bug_a5_set_clip_pitch_writes_coarse_and_fine`, `test_bug
 
 ## B. Analyzers / critics
 
-### BUG-B1 · `🟡 tuning needed` · detect_role_conflicts false positive on DRUMS + PERC
+### BUG-B1 · `🟢 fixed (Batch 10)` · detect_role_conflicts false positive on DRUMS + PERC
 
 **Reproducer:** Session has tracks 0 "DRUMS" (Boom Bap Kit) and 4 "PERC" (Percussion Core Kit). `detect_role_conflicts` returns:
 ```json
@@ -191,7 +191,7 @@ BUG-B2 input `[G3, Bb3, D4, F4, A4]` now returns **"G-minor seventh (add 9)"** (
 
 ---
 
-### BUG-B3 · `🟡 tuning needed` · get_track_meters level vs left/right desync
+### BUG-B3 · `🟢 fixed (Batch 10)` · get_track_meters level vs left/right desync
 
 **Reproducer:**
 1. Stop playback
@@ -649,7 +649,7 @@ Generic advice with empty hook_id.
 
 ---
 
-### BUG-B35 · `🟡 critic tuning` · analyze_sound_design flags simple Kick as "too_few_blocks"
+### BUG-B35 · `🟢 fixed (Batch 10)` · analyze_sound_design flagged simple Kick as "too_few_blocks"
 
 **Reproducer:** `analyze_sound_design(track=0)` on Kick (DS Kick + Saturator) returns:
 ```json
@@ -998,7 +998,7 @@ The file wrote to the default `~/Documents/LivePilot/outputs/midi/` directory, n
 
 ---
 
-### BUG-B42 · `🟡 critic tuning` · build_world_model.weak_foundation false-positive during stopped playback
+### BUG-B42 · `🟢 fixed (Batch 10)` · build_world_model.weak_foundation false-positive during stopped playback
 
 **Reproducer:** `build_world_model()` during `is_playing: false` returns:
 ```json
