@@ -3,6 +3,7 @@
 from mcp_server.song_brain.builder import (
     build_song_brain,
     detect_identity_drift,
+    _infer_identity_core,
 )
 from mcp_server.song_brain.models import SacredElement, SongBrain
 
@@ -368,3 +369,193 @@ def test_bug_b14_no_intro_still_flags_when_truly_missing():
     questions = [q.question for q in brain.open_questions]
     assert any("No intro section" in q for q in questions), \
         "Without an intro label/intent, the check SHOULD fire."
+
+
+# ─── BUG-B10 regressions — richer identity inference ──────────────────────
+
+
+def test_bug_b10_drums_dominant_texture_no_longer_wins():
+    """BUG-B10: 'Dominant texture: drums' used to win at confidence 0.5
+    on virtually every session. After the fix, drums are excluded from
+    that signal stream — the caller gets a more meaningful identity
+    (e.g. vocal hook / pad-led atmosphere / aesthetic keyword)."""
+    # Session where drums are the most-roled tracks, but a clear vocal
+    # track is present — expect vocal hook to win over "drums".
+    identity, conf = _infer_identity_core(
+        tracks=[
+            {"name": "Kick", "index": 0},
+            {"name": "Snare", "index": 1},
+            {"name": "Hi-Hat", "index": 2},
+            {"name": "VOX Hook", "index": 3},
+        ],
+        motif_data={},
+        composition={},
+        role_graph={
+            "Kick": {"role": "drums"},
+            "Snare": {"role": "drums"},
+            "Hi-Hat": {"role": "drums"},
+            "VOX Hook": {"role": "lead"},
+        },
+    )
+    # The drum-texture candidate is now explicitly skipped
+    assert "drums" not in identity.lower(), (
+        f"BUG-B10 regressed — drums still claimed identity: {identity!r}"
+    )
+    # And vocal-featured element should win
+    assert "vocal" in identity.lower()
+
+
+def test_bug_b10_blends_top_two_when_no_clear_winner():
+    """When no candidate crosses the 0.6 confidence threshold, the
+    builder blends the top 2 into a compound identity."""
+    identity, conf = _infer_identity_core(
+        tracks=[{"name": "Pad Lush", "index": 0}],
+        motif_data={},
+        composition={"sections": [{"name": "Intro Dust"}, {"name": "Outro Dust"}]},
+        role_graph={},
+    )
+    # Pad-led (0.55) + dust aesthetic (0.55) should blend
+    assert " + " in identity, (
+        f"BUG-B10 regressed — weak candidates should blend: {identity!r}"
+    )
+    # Confidence of the blend should be boosted above the raw max
+    assert conf > 0.55
+
+
+def test_bug_b10_fallback_when_no_signals():
+    """No data at all — fall back to 'Emerging piece' at low confidence."""
+    identity, conf = _infer_identity_core(
+        tracks=[], motif_data={}, composition={}, role_graph={},
+    )
+    assert "Emerging" in identity or "not yet" in identity
+    assert conf < 0.3
+
+
+# ─── BUG-B13 regressions — energy shape classifier ───────────────────────
+
+
+def test_bug_b13_dual_peak_not_labeled_front_loaded():
+    """BUG-B13: [0.7, 0.9, 0.9, 0.5, 0.6, 0.9, 0.4, 0] has peaks at
+    positions 1, 2, AND 5 — that's a dual-peak shape, not front-loaded.
+    The old classifier only checked max's first occurrence and mislabeled
+    it 'front-loaded — peaks early'."""
+    from mcp_server.song_brain.tools import classify_energy_shape
+    result = classify_energy_shape([0.7, 0.9, 0.9, 0.5, 0.6, 0.9, 0.4, 0])
+    assert "dual-peak" in result["shape"].lower(), (
+        f"BUG-B13 regressed — dual-peak arc still labeled '{result['shape']}'"
+    )
+
+
+def test_bug_b13_genuinely_front_loaded_stays_front_loaded():
+    """[0.9, 0.9, 0.5, 0.3, 0.2] — true front-loaded arc, should stay
+    labeled as such."""
+    from mcp_server.song_brain.tools import classify_energy_shape
+    result = classify_energy_shape([0.9, 0.9, 0.5, 0.3, 0.2])
+    assert result["shape"].startswith("front-loaded")
+
+
+def test_bug_b13_slow_burn_detected():
+    """[0.2, 0.3, 0.4, 0.6, 0.9, 0.9] — slow burn to late peak."""
+    from mcp_server.song_brain.tools import classify_energy_shape
+    result = classify_energy_shape([0.2, 0.3, 0.4, 0.6, 0.9, 0.9])
+    assert result["shape"].startswith("slow burn")
+
+
+def test_bug_b13_plateau_detected():
+    """[0.7, 0.8, 0.8, 0.75, 0.8, 0.75, 0.8] — tight dynamic range,
+    sustained energy → plateau."""
+    from mcp_server.song_brain.tools import classify_energy_shape
+    result = classify_energy_shape([0.7, 0.8, 0.8, 0.75, 0.8, 0.75, 0.8])
+    assert result["shape"].startswith("plateau")
+
+
+def test_bug_b13_peak_positions_returned():
+    """The classifier must expose peak positions so downstream tools
+    can reason about arrangement structure without re-computing."""
+    from mcp_server.song_brain.tools import classify_energy_shape
+    result = classify_energy_shape([0.7, 0.9, 0.9, 0.5, 0.6, 0.9, 0.4])
+    assert result["peak_positions"] is not None
+    assert len(result["peak_positions"]) >= 2
+
+
+def test_bug_b13_short_arc_falls_back_gracefully():
+    """Arcs of fewer than 3 points can't be classified meaningfully."""
+    from mcp_server.song_brain.tools import classify_energy_shape
+    assert "short form" in classify_energy_shape([0.5]).get("shape", "").lower()
+    assert "short form" in classify_energy_shape([0.5, 0.7]).get("shape", "").lower()
+
+
+# ─── BUG-B16 regressions — session_story wiring to song_brain ─────────────
+
+
+def test_bug_b16_session_story_includes_song_brain_id():
+    """BUG-B16: get_session_story used to leave song_brain_id empty —
+    users couldn't tell which brain generated the identity_summary.
+    The fix populates song_brain_id from the passed brain dict."""
+    from mcp_server.session_continuity.tracker import (
+        get_session_story, reset_story,
+    )
+    reset_story()
+    brain = {
+        "brain_id": "brain_abc123",
+        "identity_core": "vocal hook + dust aesthetic",
+    }
+    story = get_session_story(song_brain=brain)
+    assert story.song_brain_id == "brain_abc123"
+    assert story.identity_summary == "vocal hook + dust aesthetic"
+    # to_dict exposes the field so MCP clients see it
+    d = story.to_dict()
+    assert d.get("song_brain_id") == "brain_abc123"
+
+
+def test_bug_b16_empty_brain_leaves_song_brain_id_blank():
+    """When no brain is available, song_brain_id stays empty (not None)."""
+    from mcp_server.session_continuity.tracker import (
+        get_session_story, reset_story,
+    )
+    reset_story()
+    story = get_session_story(song_brain={})
+    assert story.song_brain_id == ""
+
+
+# ─── BUG-B22 regressions — phrase note_density accounts for clip looping ───
+
+
+def test_bug_b22_looped_clip_fills_whole_section():
+    """BUG-B22: a 4-bar looping clip in an 8-bar section used to leave
+    bars 4-7 with note_density=0 because the algorithm positioned notes
+    at absolute bars section.start_bar + clip_bar only. After the fix
+    notes repeat across the section via modulo projection."""
+    from mcp_server.tools._composition_engine import (
+        SectionNode,
+        SectionType,
+        detect_phrases,
+    )
+    # Section: bars 8..16 (8 bars), density 0.9
+    section = SectionNode(
+        section_id="sec_01",
+        start_bar=8,
+        end_bar=16,
+        section_type=SectionType.BUILD,
+        confidence=0.85,
+        energy=0.9,
+        density=0.9,
+        tracks_active=[0],
+        name="Groove Build",
+    )
+    # Single 4-bar clip with notes on beats 0, 4, 8, 12 (one per bar)
+    notes_by_track = {
+        0: [
+            {"pitch": 60, "start_time": 0.0, "duration": 0.5},
+            {"pitch": 60, "start_time": 4.0, "duration": 0.5},
+            {"pitch": 60, "start_time": 8.0, "duration": 0.5},
+            {"pitch": 60, "start_time": 12.0, "duration": 0.5},
+        ],
+    }
+    phrases = detect_phrases(section, notes_by_track)
+    # Every phrase inside an 8-bar section with a 4-bar looping clip
+    # should have non-zero note_density — the loop fills both halves.
+    densities = [p.note_density for p in phrases]
+    assert all(d > 0 for d in densities), (
+        f"BUG-B22 regressed — some phrase has zero density: {densities}"
+    )

@@ -165,3 +165,53 @@ def test_diagnosis_readable():
     report = detect_stuckness(action_history=[_undo_entry(i) for i in range(6)])
     assert report.diagnosis
     assert len(report.diagnosis) > 10
+
+
+# ─── BUG-B6 / B20 regressions — state signals merged into stuckness ────────
+
+
+def test_bug_b6_state_fatigue_triggers_stuckness():
+    """Empty ledger but high repetition fatigue — old code reported
+    'flowing'. After B6/B20 fix, state signals raise confidence."""
+    report = detect_stuckness(
+        action_history=[],
+        state_signals={"fatigue_level": 0.93, "motif_overuse_count": 8},
+    )
+    assert report.level != "flowing", (
+        f"BUG-B6 regressed — session with fatigue 0.93 still reads as "
+        f"'flowing': {report.to_dict()}"
+    )
+    signal_types = {s.signal_type for s in report.signals}
+    assert "state_repetition_fatigue" in signal_types
+
+
+def test_bug_b6_state_only_kept_under_ledger_weight():
+    """State-only stuckness must NOT produce a higher confidence than
+    ledger-driven stuckness for comparable signal magnitudes."""
+    ledger_heavy = detect_stuckness(
+        action_history=[_undo_entry(i) for i in range(6)],
+    )
+    state_heavy = detect_stuckness(
+        action_history=[],
+        state_signals={"fatigue_level": 0.93},
+    )
+    assert ledger_heavy.confidence >= state_heavy.confidence * 0.8
+
+
+def test_bug_b6_no_state_signals_preserves_old_behavior():
+    """When state_signals is absent, behavior must match the old code."""
+    report = detect_stuckness(action_history=[])
+    assert report.level == "flowing"
+    assert report.confidence == 0.0
+
+
+def test_bug_b6_transition_issues_contribute():
+    """Transition-issue count from a sibling engine should also
+    contribute to state-derived stuckness."""
+    report = detect_stuckness(
+        action_history=[],
+        state_signals={"transition_issues": 6},
+    )
+    signal_types = {s.signal_type for s in report.signals}
+    assert "state_transition_issues" in signal_types
+    assert report.confidence > 0

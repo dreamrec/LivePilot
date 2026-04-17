@@ -248,7 +248,7 @@ Regression tests (all in `tests/test_theory_engine.py::TestChordName`):
 
 ---
 
-### BUG-B6 · `🟡 design limitation` · detect_stuckness ignores current session state
+### BUG-B6 · `🟢 fixed (Batch 11)` · detect_stuckness ignored current session state
 
 **Reproducer:** `detect_stuckness()` returns `{"confidence": 0, "level": "flowing", "signals": [], "diagnosis": ""}` even though:
 - `detect_repetition_fatigue` reports `fatigue_level: 0.93` with 8 motif overuse issues
@@ -317,7 +317,7 @@ Compare to the newer "Auto Filter" (class `AutoFilter2`) which uses 0-1 normaliz
 
 ---
 
-### BUG-B10 · `🔴 open` · build_song_brain identity_core is lazy fallback
+### BUG-B10 · `🟢 fixed (Batch 11)` · build_song_brain identity_core was a lazy fallback
 
 **Reproducer:** `build_song_brain()` on a session with 10 named tracks ("Pad Lush", "Glitch Chops", "Atmo FX", etc.), clear D minor key, 119 BPM, named scenes ("Intro Dust" → "Sun Peak") returns:
 ```json
@@ -366,7 +366,7 @@ Compare to the newer "Auto Filter" (class `AutoFilter2`) which uses 0-1 normaliz
 
 ---
 
-### BUG-B13 · `🔴 open` · energy_shape description mismatches arc
+### BUG-B13 · `🟢 fixed (Batch 11)` · energy_shape description mismatched arc
 
 **Reproducer:** `explain_song_identity()` returns:
 ```json
@@ -485,7 +485,7 @@ But `memory_list()` shows the user has **3 saved Prefuse73 techniques** from Apr
 
 ---
 
-### BUG-B20 · `🔴 open (duplicate root)` · suggest_momentum_rescue wraps BUG-B6 (detect_stuckness blind to session state)
+### BUG-B20 · `🟢 fixed (Batch 11)` · suggest_momentum_rescue wrapped BUG-B6 (same fix)
 
 **Reproducer:** `suggest_momentum_rescue(mode="direct")` returns:
 ```json
@@ -527,7 +527,7 @@ Despite session having: 0.93 repetition fatigue + `peak_too_early` emotional arc
 
 ---
 
-### BUG-B22 · `🔴 open` · get_phrase_grid phrase note_density 0 for active section
+### BUG-B22 · `🟢 fixed (Batch 11)` · get_phrase_grid phrase note_density 0 for active section
 
 **Reproducer:** Section 1 ("Groove Build") has `tracks_active: [0,1,2,3,5,6,7,8,9]` (9 tracks playing, density 0.9). `get_phrase_grid(section_index=1)` returns:
 ```json
@@ -1064,7 +1064,7 @@ The file wrote to the default `~/Documents/LivePilot/outputs/midi/` directory, n
 
 ---
 
-### BUG-B16 · `🔴 open` · get_session_story returns empty after build_song_brain
+### BUG-B16 · `🟢 fixed (Batch 11)` · get_session_story returned empty after build_song_brain
 
 **Reproducer:** Just called `build_song_brain()` which returned `brain_id: "a7e6ef3b70a9"` with full identity_summary. Immediately after, `get_session_story()` returns:
 ```json

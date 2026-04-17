@@ -194,6 +194,15 @@ def detect_phrases(
 
     Uses note density changes and gap detection to find phrase boundaries.
     Falls back to regular grid (4 or 8 bar phrases).
+
+    BUG-B22 fix: most clips are 4-8 bar loops. In an 8-bar section with
+    4-bar clips, notes have start_time 0..16 (one clip cycle). The old
+    algorithm placed them at absolute bars section.start_bar + 0..4 only,
+    leaving bars 4..7 of the section reading as "empty" — which produced
+    note_density=0 for the second half even though Ableton loops those
+    clips to fill the section. We now infer each track's clip length
+    from its max note start_time and wrap note bars modulo that length,
+    so a looping clip's density spreads across the whole section.
     """
     section_length = section.length_bars()
     if section_length <= 0:
@@ -204,12 +213,46 @@ def detect_phrases(
     for bar in range(section.start_bar, section.end_bar):
         bar_densities[bar] = 0
 
+    section_bar_count = section.end_bar - section.start_bar
+
     for track_notes in notes_by_track.values():
+        if not track_notes:
+            continue
+        # Infer this track's clip span (in bars) from the max start_time.
+        # The clip LOOPS to fill the section, so notes at start_time=0
+        # repeat every span bars. Round UP so a 3.5-beat phrase counts
+        # as 1 bar (not 0).
+        max_start_beat = max(
+            float(n.get("start_time", 0) or 0) for n in track_notes
+        )
+        clip_span_bars = max(
+            1,
+            int((max_start_beat / beats_per_bar) + 1),
+        )
+        # If we can't determine a sensible span, fall back to section length
+        if clip_span_bars <= 0:
+            clip_span_bars = section_bar_count
+
         for note in track_notes:
-            start_beat = note.get("start_time", 0)
-            note_bar = section.start_bar + int(start_beat / beats_per_bar)
-            if section.start_bar <= note_bar < section.end_bar:
-                bar_densities[note_bar] = bar_densities.get(note_bar, 0) + 1
+            start_beat = float(note.get("start_time", 0) or 0)
+            clip_bar = int(start_beat / beats_per_bar)
+            # Fill-copy the note across all loop iterations that fit
+            # inside the section. For a 4-bar clip in an 8-bar section
+            # that means each note contributes to bars 0..3 AND 4..7.
+            if clip_span_bars >= section_bar_count:
+                # Clip is already section-long (or longer) — no looping
+                positions = [clip_bar]
+            else:
+                # Wrap by modulo — project across the section
+                positions = list(range(
+                    clip_bar % clip_span_bars,
+                    section_bar_count,
+                    clip_span_bars,
+                ))
+            for offset in positions:
+                note_bar = section.start_bar + offset
+                if section.start_bar <= note_bar < section.end_bar:
+                    bar_densities[note_bar] = bar_densities.get(note_bar, 0) + 1
 
     # Find phrase boundaries using density drops (gaps)
     boundaries = [section.start_bar]

@@ -20,14 +20,30 @@ def detect_stuckness(
     session_info: Optional[dict] = None,
     song_brain: Optional[dict] = None,
     section_count: int = 0,
+    state_signals: Optional[dict] = None,
 ) -> StucknessReport:
     """Detect whether the session is stuck.
 
     Analyzes action history for repeated undos, local tweaking,
     long loops without structural edits, and other stuckness signals.
+
+    BUG-B6 / B20 fix: also accepts `state_signals` — a dict of
+    current-session-state indicators that may reveal stuckness even
+    when the action ledger is empty. Known keys (all optional):
+        fatigue_level: float 0-1  (from detect_repetition_fatigue)
+        motif_overuse_count: int   (motifs exceeding overuse threshold)
+        emotional_arc_issues: list of issue-type strings
+        transition_issues: int
+        support_too_loud: bool     (from analyze_mix)
+        automation_density: float  (0 = no clip automation anywhere)
+
+    When state_signals are provided, they contribute to confidence
+    alongside ledger-based signals (ledger weighting is still
+    dominant — ledger signals indicate active-user-is-stuck behavior).
     """
     session_info = session_info or {}
     song_brain = song_brain or {}
+    state_signals = state_signals or {}
     signals: list[StucknessSignal] = []
 
     # 1. Repeated undos
@@ -59,6 +75,10 @@ def detect_stuckness(
     identity_signal = _check_identity_unclear(song_brain)
     if identity_signal:
         signals.append(identity_signal)
+
+    # 7. BUG-B6 / B20 — state critics
+    state_derived = _state_signals_to_signal_list(state_signals)
+    signals.extend(state_derived)
 
     # Compute overall confidence
     if not signals:
@@ -96,6 +116,76 @@ def detect_stuckness(
 
 
 # ── Signal checkers ───────────────────────────────────────────────
+
+
+def _state_signals_to_signal_list(state: dict) -> list[StucknessSignal]:
+    """Convert a state_signals dict (from sibling critics) into
+    StucknessSignal entries. BUG-B6 / B20: previously the detector
+    ignored session state entirely — so a session with fatigue_level=0.93
+    but an empty action ledger always reported "flowing". Now we surface
+    state-based stuckness but keep the signals at a slightly lower
+    weight than ledger signals (ledger = active-user-is-stuck behavior,
+    state = project-shape-is-stuck).
+    """
+    out: list[StucknessSignal] = []
+    if not state:
+        return out
+
+    # Fatigue / repetition
+    fatigue = state.get("fatigue_level")
+    if isinstance(fatigue, (int, float)) and fatigue >= 0.6:
+        out.append(StucknessSignal(
+            signal_type="state_repetition_fatigue",
+            # Scale from 0.6-1.0 → 0.5-0.85 (sub-ledger weight)
+            strength=min(0.85, 0.5 + (fatigue - 0.6) * 0.875),
+            evidence=(
+                f"repetition fatigue at {fatigue:.2f} — clips/sections "
+                f"overused"
+            ),
+        ))
+
+    motif_overuse = state.get("motif_overuse_count", 0)
+    if isinstance(motif_overuse, int) and motif_overuse >= 3:
+        out.append(StucknessSignal(
+            signal_type="state_motif_overuse",
+            strength=min(0.7, 0.3 + motif_overuse * 0.1),
+            evidence=f"{motif_overuse} motifs flagged as overused",
+        ))
+
+    arc_issues = state.get("emotional_arc_issues") or []
+    if isinstance(arc_issues, (list, tuple)) and arc_issues:
+        out.append(StucknessSignal(
+            signal_type="state_emotional_arc",
+            strength=min(0.7, 0.3 + len(arc_issues) * 0.1),
+            evidence=(
+                f"emotional-arc issues: {', '.join(str(i) for i in arc_issues[:3])}"
+            ),
+        ))
+
+    transition_issues = state.get("transition_issues", 0)
+    if isinstance(transition_issues, int) and transition_issues >= 3:
+        out.append(StucknessSignal(
+            signal_type="state_transition_issues",
+            strength=min(0.7, 0.25 + transition_issues * 0.08),
+            evidence=f"{transition_issues} transition issues detected",
+        ))
+
+    if state.get("support_too_loud"):
+        out.append(StucknessSignal(
+            signal_type="state_mix_imbalance",
+            strength=0.35,
+            evidence="mix critic flagged a support element as too loud",
+        ))
+
+    auto_density = state.get("automation_density")
+    if isinstance(auto_density, (int, float)) and auto_density <= 0.05:
+        out.append(StucknessSignal(
+            signal_type="state_no_automation",
+            strength=0.35,
+            evidence="no clip automation detected — arrangement is static",
+        ))
+
+    return out
 
 
 def _check_repeated_undos(history: list[dict]) -> Optional[StucknessSignal]:

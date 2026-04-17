@@ -50,10 +50,23 @@ def reset_story() -> None:
 def get_session_story(
     song_brain: Optional[dict] = None,
 ) -> SessionStory:
-    """Get the current session story with identity summary."""
+    """Get the current session story with identity summary.
+
+    BUG-B16: now also populates song_brain_id from the passed brain so
+    callers can tell which brain generated the identity_summary.
+    Previously the field was empty and users got a half-populated
+    response that read as "something's wrong" even though the partial
+    data was correct for a fresh session.
+    """
     song_brain = song_brain or {}
 
     _story.identity_summary = song_brain.get("identity_core", "")
+    _story.song_brain_id = str(song_brain.get("brain_id", "") or "")
+    # Carry song_id through when present on the brain — fresh sessions
+    # leave this empty, which is documented below.
+    if not _story.song_id and song_brain.get("song_id"):
+        _story.song_id = str(song_brain.get("song_id"))
+
     _story.threads = [t for t in _threads.values() if t.status == "open"]
     _story.turns = _turns
     _story.what_still_feels_open = [

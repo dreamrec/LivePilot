@@ -62,6 +62,43 @@ def _get_session_and_brain(ctx: Context) -> tuple[dict, dict, int]:
     return session_info, song_brain, section_count
 
 
+def _gather_state_signals(ctx: Context, song_brain: dict) -> dict:
+    """BUG-B6 / B20: collect current-session-state stuckness indicators
+    that the detector can merge with ledger-based signals.
+
+    All lookups are best-effort — if a sibling module isn't available
+    or its data is stale, we omit the signal (don't guess).
+    """
+    signals: dict = {}
+
+    # Repetition fatigue from musical_intelligence.detectors
+    try:
+        from ..musical_intelligence.tools import _current_fatigue_cache  # type: ignore
+        if isinstance(_current_fatigue_cache, dict):
+            fl = _current_fatigue_cache.get("fatigue_level")
+            if isinstance(fl, (int, float)):
+                signals["fatigue_level"] = float(fl)
+            overuse = _current_fatigue_cache.get("motif_overuse_count")
+            if isinstance(overuse, int):
+                signals["motif_overuse_count"] = overuse
+    except Exception as exc:
+        logger.debug("_gather_state_signals fatigue fetch failed: %s", exc)
+
+    # Emotional-arc issues directly from song brain (already fetched)
+    arc_issues = []
+    if isinstance(song_brain, dict):
+        oqs = song_brain.get("open_questions") or []
+        for q in oqs:
+            if isinstance(q, dict):
+                qtype = q.get("question_type") or q.get("type") or ""
+                if "arc" in str(qtype).lower() or "payoff" in str(qtype).lower():
+                    arc_issues.append(qtype)
+    if arc_issues:
+        signals["emotional_arc_issues"] = arc_issues
+
+    return signals
+
+
 @mcp.tool()
 def detect_stuckness(ctx: Context) -> dict:
     """Detect whether the session is losing momentum.
@@ -79,12 +116,14 @@ def detect_stuckness(ctx: Context) -> dict:
     """
     history = _get_action_history(ctx)
     session_info, song_brain, section_count = _get_session_and_brain(ctx)
+    state_signals = _gather_state_signals(ctx, song_brain)
 
     report = detector.detect_stuckness(
         action_history=history,
         session_info=session_info,
         song_brain=song_brain,
         section_count=section_count,
+        state_signals=state_signals,
     )
 
     return report.to_dict()
@@ -110,12 +149,14 @@ def suggest_momentum_rescue(
 
     history = _get_action_history(ctx)
     session_info, song_brain, section_count = _get_session_and_brain(ctx)
+    state_signals = _gather_state_signals(ctx, song_brain)
 
     report = detector.detect_stuckness(
         action_history=history,
         session_info=session_info,
         song_brain=song_brain,
         section_count=section_count,
+        state_signals=state_signals,
     )
 
     if report.level == "flowing":

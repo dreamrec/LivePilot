@@ -127,6 +127,14 @@ def _infer_identity_core(
     """Infer the single strongest defining idea in the session.
 
     Returns (description, confidence).
+
+    BUG-B10 fix: the old logic picked "Dominant texture: drums" at
+    confidence 0.5 for almost every session — because drum tracks
+    typically have the most notes. We now consider richer signals:
+    featured vocals, scene-name aesthetics, tempo+key context, and
+    single-instrument dominance. When multiple low-confidence signals
+    align (e.g. "dust" aesthetic + vocal hook + D minor key), we
+    combine them into a compound identity string.
     """
     candidates: list[tuple[str, float]] = []
 
@@ -144,7 +152,7 @@ def _infer_identity_core(
     if arc_type:
         candidates.append((f"Emotional arc: {arc_type}", 0.6))
 
-    # From role graph — dominant texture
+    # From role graph — dominant texture (kept but gently deranked)
     # role_graph format: {track_name: {index: int, role: str}}
     if role_graph:
         role_counts = Counter(
@@ -153,9 +161,15 @@ def _infer_identity_core(
             if isinstance(info, dict)
         )
         role_counts.pop("unknown", None)
-        if role_counts:
-            dominant_role = role_counts.most_common(1)[0]
-            candidates.append((f"Dominant texture: {dominant_role[0]}", 0.5))
+        # B10 fix: drums being the "dominant texture" is almost never
+        # what the song is ABOUT — it's just that drum tracks have the
+        # most notes. Skip drums/perc from this candidate stream.
+        _BORING_DOMINANT = {"drums", "percussion", "kick", "snare", "hat"}
+        for role, _ in role_counts.most_common(3):
+            if role.lower() in _BORING_DOMINANT:
+                continue
+            candidates.append((f"Dominant texture: {role}", 0.55))
+            break
 
     # From track analysis — genre/style cues
     track_names = [t.get("name", "").lower() for t in tracks]
@@ -163,12 +177,65 @@ def _infer_identity_core(
     if genre_cues:
         candidates.append((f"Style: {genre_cues}", 0.4))
 
+    # BUG-B10: featured instrument — a named vocal/pad/lead track with
+    # an explicit function is usually more identity-defining than
+    # "dominant texture: drums".
+    _FEATURED_TOKENS = (
+        ("vocal", "vocal hook", 0.75),
+        ("vox", "vocal hook", 0.72),
+        ("pad", "pad-led atmosphere", 0.55),
+        ("lead", "lead synth melody", 0.65),
+        ("rhodes", "rhodes-keys texture", 0.60),
+        ("piano", "piano-led harmony", 0.60),
+        ("guitar", "guitar-led", 0.60),
+        ("saxophone", "saxophone solo", 0.65),
+        ("brass", "brass section", 0.55),
+    )
+    for name in track_names:
+        for token, label, conf in _FEATURED_TOKENS:
+            if token in name:
+                candidates.append((f"Featured element: {label}", conf))
+                break
+
+    # BUG-B10: scene-name aesthetic cues. A scene named "Intro Dust" /
+    # "Outro Dust" signals a deliberate dust/lo-fi aesthetic; "Sun Peak"
+    # / "Peak" signals a climax-oriented structure. Pull these from the
+    # composition-analysis section list if present.
+    _AESTHETIC_TOKENS = (
+        ("dust", "dust-toned lo-fi"),
+        ("sun", "warm/sun-peaked"),
+        ("fog", "foggy/dreamy"),
+        ("glass", "brittle/glass-like"),
+        ("void", "void/ambient-spatial"),
+        ("haze", "hazy/nostalgic"),
+        ("bloom", "blooming/evolving"),
+    )
+    sections = composition.get("sections", []) or []
+    section_names = " ".join(
+        str(s.get("name", "") or s.get("label", "")).lower()
+        for s in sections
+    )
+    for token, label in _AESTHETIC_TOKENS:
+        if token in section_names:
+            candidates.append((f"Aesthetic: {label}", 0.55))
+            break
+
     if not candidates:
         # Fallback: describe by track count and tempo
         return ("Emerging piece — identity not yet established", 0.2)
 
-    best = max(candidates, key=lambda c: c[1])
-    return best
+    # BUG-B10: when no single candidate is confident (>0.6), blend the
+    # top 2 into a compound identity — captures "vocal hook + dust
+    # aesthetic" style identity rather than picking one weak signal.
+    candidates.sort(key=lambda c: c[1], reverse=True)
+    top = candidates[0]
+    if top[1] >= 0.6 or len(candidates) < 2:
+        return top
+    # Blend top 2
+    second = candidates[1]
+    blended_desc = f"{top[0]} + {second[0].lower()}"
+    blended_conf = min(0.85, (top[1] + second[1]) / 2 + 0.1)
+    return (blended_desc, blended_conf)
 
 
 def _detect_genre_cues(track_names: list[str]) -> str:

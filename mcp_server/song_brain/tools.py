@@ -187,6 +187,77 @@ def build_song_brain(ctx: Context) -> dict:
     }
 
 
+def classify_energy_shape(arc: list[float]) -> dict:
+    """Classify the shape of an energy arc for user-facing explanation.
+
+    BUG-B13 fix: the old single-max-position classifier labeled
+    [0.7, 0.9, 0.9, 0.5, 0.6, 0.9, 0.4] (peaks at 1-2 AND 5) as
+    "front-loaded" because max()'s first occurrence is at index 1.
+    We now find ALL peaks above a dynamic threshold and classify by
+    count + distribution.
+
+    Returns {"shape": str, "peak_positions": list[int] | None}.
+    """
+    arc = [x for x in (arc or []) if x is not None]
+    if len(arc) < 3:
+        return {"shape": "short form — limited arc data", "peak_positions": None}
+
+    max_energy = max(arc)
+    arc_min = min(arc)
+    dynamic_mid = (arc_min + max_energy) / 2.0
+    peak_threshold = max(max_energy * 0.9, dynamic_mid)
+    peak_indices = [i for i, v in enumerate(arc) if v >= peak_threshold]
+
+    # Collapse runs of adjacent peak indices into their starting index —
+    # [1, 2, 5] has peaks at "position ~1" and "position 5", NOT three
+    # distinct peaks. Without this, front-loaded arcs where bars 0 and 1
+    # are both above threshold would misfire the dual-peak branch.
+    distinct_peaks: list[int] = []
+    for idx in peak_indices:
+        if not distinct_peaks or idx - distinct_peaks[-1] > 1:
+            distinct_peaks.append(idx)
+
+    n = len(arc)
+    first_third = {i for i in range(0, n // 3 + 1)}
+    last_third = {i for i in range(2 * n // 3, n)}
+    in_first = any(i in first_third for i in peak_indices)
+    in_last = any(i in last_third for i in peak_indices)
+    in_middle = any(
+        i not in first_third and i not in last_third
+        for i in peak_indices
+    )
+
+    # Plateau FIRST — when the dynamic range is narrow (<0.3) and most
+    # of the arc sits at/near the max, it's a plateau, not a multi-peak
+    # shape. Has to win over dual-peak so [0.7, 0.8, 0.8, 0.75, 0.8, …]
+    # doesn't get labeled "dual-peak at 2 and 6" when it's clearly flat.
+    if len(peak_indices) >= max(n - 2, 2) and (
+        max_energy - arc_min < 0.3
+    ):
+        shape = "plateau — sustained energy with limited dynamic range"
+    # Multi-peak: at least 2 DISTINCT peaks (after collapsing adjacent runs),
+    # separated by >= n/3 positions. Adjacent peaks are a single plateau, not two.
+    elif len(distinct_peaks) >= 2 and (
+        max(distinct_peaks) - min(distinct_peaks) >= max(n // 3, 2)
+    ):
+        shape = (
+            f"dual-peak — energy peaks at positions "
+            f"{distinct_peaks[0]+1} and {distinct_peaks[-1]+1}"
+        )
+    elif in_first and not in_middle and not in_last:
+        shape = "front-loaded — peaks early"
+    elif in_last and not in_first and not in_middle:
+        shape = "slow burn — builds to late peak"
+    elif in_middle and not in_first and not in_last:
+        shape = "centered arc — peaks in the middle"
+    else:
+        shape = (
+            f"mixed — peaks at positions "
+            f"{', '.join(str(i+1) for i in peak_indices)}"
+        )
+    return {"shape": shape, "peak_positions": peak_indices}
+
+
 @mcp.tool()
 def explain_song_identity(ctx: Context) -> dict:
     """Explain the current song's identity in human musical language.
@@ -228,20 +299,13 @@ def explain_song_identity(ctx: Context) -> dict:
             for s in brain.section_purposes
         ]
 
-    # Energy shape
+    # Energy shape — BUG-B13 fix: dual-peak detection. See
+    # classify_energy_shape() for logic.
     if brain.energy_arc:
-        arc = brain.energy_arc
-        if len(arc) >= 3:
-            peak_idx = arc.index(max(arc))
-            peak_pct = peak_idx / max(len(arc) - 1, 1)
-            if peak_pct < 0.3:
-                explanation["energy_shape"] = "front-loaded — peaks early"
-            elif peak_pct > 0.7:
-                explanation["energy_shape"] = "slow burn — builds to late peak"
-            else:
-                explanation["energy_shape"] = "centered arc — peaks in the middle"
-        else:
-            explanation["energy_shape"] = "short form — limited arc data"
+        shape_info = classify_energy_shape(brain.energy_arc)
+        explanation["energy_shape"] = shape_info["shape"]
+        if shape_info["peak_positions"] is not None:
+            explanation["peak_positions"] = shape_info["peak_positions"]
 
     # Open questions
     if brain.open_questions:

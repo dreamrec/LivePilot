@@ -50,6 +50,9 @@ class SessionStory:
     """The narrative of the current session."""
 
     song_id: str = ""
+    # BUG-B16: link back to the SongBrain snapshot that generated the
+    # identity_summary so callers can tell which brain was used.
+    song_brain_id: str = ""
     identity_summary: str = ""
     what_changed_last: str = ""
     what_still_feels_open: list[str] = field(default_factory=list)
@@ -60,6 +63,7 @@ class SessionStory:
     def to_dict(self) -> dict:
         return {
             "song_id": self.song_id,
+            "song_brain_id": self.song_brain_id,
             "identity_summary": self.identity_summary,
             "what_changed_last": self.what_changed_last,
             "what_still_feels_open": self.what_still_feels_open,
