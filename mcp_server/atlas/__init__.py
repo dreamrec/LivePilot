@@ -115,26 +115,70 @@ class AtlasManager:
         query_words = query_lower.split()
         results: List[Dict[str, Any]] = []
 
+        # BUG-B39: the real atlas scanner emits "instruments" /
+        # "audio_effects" but older callers and test fixtures sometimes
+        # pass the singular "instrument" / "effect". Build a tolerant
+        # category alias set so both forms work.
+        _CAT_ALIASES = {
+            "instrument": {"instrument", "instruments"},
+            "instruments": {"instrument", "instruments"},
+            "effect": {"effect", "effects", "audio_effects"},
+            "effects": {"effect", "effects", "audio_effects"},
+            "audio_effect": {"effect", "effects", "audio_effects",
+                             "audio_effect"},
+            "audio_effects": {"effect", "effects", "audio_effects",
+                              "audio_effect"},
+        }
+        allowed_cats = (
+            _CAT_ALIASES.get(category, {category})
+            if category != "all" else None
+        )
+
         for dev in self._devices:
             # Category filter
-            if category != "all" and dev.get("category", "") != category:
+            if allowed_cats is not None and dev.get("category", "") not in allowed_cats:
                 continue
 
             score = 0
             dev_name = dev.get("name", "")
             dev_name_lower = dev_name.lower()
 
-            # Name scoring: 100pts exact, 50pts substring
+            # Name scoring. BUG-B41 fix: dropped weight dramatically
+            # (was 100 exact / 50 substring) so a device literally
+            # named "Bass" no longer blows past character-tag matches
+            # for a sonic query like "warm analog bass". An exact name
+            # match is still the strongest single signal, but a device
+            # with 2+ matching character-tags now beats a name-only
+            # accident.
             if dev_name_lower == query_lower:
-                score += 100
+                score += 45  # was 100
             elif query_lower in dev_name_lower:
-                score += 50
+                score += 20  # was 50
+            else:
+                # Partial: any query word present in name — small signal
+                for word in query_words:
+                    if len(word) >= 3 and word in dev_name_lower:
+                        score += 5
 
-            # Tag scoring: 30pts per matching tag
-            dev_tags = [t.lower() for t in dev.get("tags", [])]
+            # Tag scoring — prefer enriched character_tags.
+            # BUG-B40 / B41: also read character_tags so enriched devices
+            # actually compete with name-based matches.
+            dev_tags = [
+                t.lower() for t in (
+                    dev.get("character_tags") or dev.get("tags", [])
+                )
+            ]
+            # BUG-B41: bumped to 35pts per tag so multi-tag matches beat
+            # a single substring-name match.
             for word in query_words:
                 if word in dev_tags:
-                    score += 30
+                    score += 35
+                # Partial tag match (word appears as substring in a tag)
+                else:
+                    for tag in dev_tags:
+                        if word in tag:
+                            score += 10
+                            break
 
             # Use case scoring: 25pts per match
             for use_case in dev.get("use_cases", []):
@@ -142,10 +186,11 @@ class AtlasManager:
                 for word in query_words:
                     if word in use_lower:
                         score += 25
-                        break  # one match per use_case
+                        break
 
-            # Genre scoring: 20pts primary, 10pts secondary
-            genres = dev.get("genres", {})
+            # Genre scoring: 20pts primary, 10pts secondary.
+            # BUG-B40: also read genre_affinity (enriched field).
+            genres = dev.get("genre_affinity") or dev.get("genres", {}) or {}
             for genre in genres.get("primary", []):
                 if query_lower in genre.lower() or genre.lower() in query_lower:
                     score += 20
@@ -153,8 +198,11 @@ class AtlasManager:
                 if query_lower in genre.lower() or genre.lower() in query_lower:
                     score += 10
 
-            # Description keyword scoring: 15pts
-            description = dev.get("description", "").lower()
+            # Description keyword scoring: 15pts.
+            # BUG-B40: prefer sonic_description when present.
+            description = (
+                dev.get("sonic_description") or dev.get("description", "")
+            ).lower()
             for word in query_words:
                 if len(word) >= 3 and word in description:
                     score += 15
@@ -224,7 +272,13 @@ class AtlasManager:
     def chain_suggest(
         self, role: str, genre: str = ""
     ) -> Dict[str, Any]:
-        """Suggest a device chain for a given role (e.g., 'bass', 'lead', 'pad')."""
+        """Suggest a device chain for a given role (e.g., 'bass', 'lead', 'pad').
+
+        BUG-B39 fix: the old code passed category="instrument" (singular)
+        and category="effect" to self.search(), but the atlas stores
+        devices with category="instruments" / "audio_effects" (plural).
+        Every filtered search missed and the chain came back empty.
+        """
         chain: List[Dict[str, Any]] = []
         position = 0
 
@@ -244,8 +298,8 @@ class AtlasManager:
         intent = instrument_intents.get(role_lower, role_lower)
         search_q = f"{intent} {genre}" if genre else intent
 
-        # Find instrument
-        instrument_candidates = self.search(search_q, category="instrument", limit=3)
+        # Find instrument — atlas category is "instruments" (plural)
+        instrument_candidates = self.search(search_q, category="instruments", limit=3)
         if instrument_candidates:
             best = instrument_candidates[0]["device"]
             chain.append({
@@ -255,7 +309,7 @@ class AtlasManager:
             })
             position += 1
 
-        # Stage 2: Effects
+        # Stage 2: Effects — atlas category is "audio_effects"
         effect_stages = [
             ("eq", f"Shape the {role} tone"),
             ("compression", f"Control {role} dynamics"),
@@ -264,7 +318,9 @@ class AtlasManager:
 
         for effect_type, reason in effect_stages:
             effect_q = f"{effect_type} {genre}" if genre else effect_type
-            effect_candidates = self.search(effect_q, category="effect", limit=2)
+            effect_candidates = self.search(
+                effect_q, category="audio_effects", limit=2,
+            )
             if effect_candidates:
                 best = effect_candidates[0]["device"]
                 chain.append({
@@ -295,37 +351,48 @@ class AtlasManager:
             return {"error": f"Device not found: {device_b}"}
 
         def _summarize(dev: Dict[str, Any]) -> Dict[str, Any]:
+            # BUG-B40 fix: enriched atlas entries use character_tags /
+            # sonic_description / genre_affinity — the old _summarize
+            # looked for "tags" / "description" / "genres" which are
+            # the UN-enriched raw scanner fields. We prefer enriched
+            # fields, fall back to raw when enrichment is absent.
             return {
                 "name": dev.get("name", ""),
                 "category": dev.get("category", ""),
-                "tags": dev.get("tags", []),
-                "genres": dev.get("genres", {}),
+                "tags": dev.get("character_tags") or dev.get("tags", []),
+                "genres": dev.get("genre_affinity") or dev.get("genres", {}),
                 "use_cases": dev.get("use_cases", []),
-                "description": dev.get("description", ""),
+                "description": (
+                    dev.get("sonic_description")
+                    or dev.get("description", "")
+                ),
                 "cpu_weight": dev.get("cpu_weight", "unknown"),
                 "sweet_spot": dev.get("sweet_spot", ""),
+                "enriched": dev.get("enriched", False),
             }
 
         summary_a = _summarize(dev_a)
         summary_b = _summarize(dev_b)
 
-        # Recommendation logic: score each for the role
+        # Recommendation logic: score each for the role.
+        # BUG-B40: scorer also reads the enriched field names.
         score_a = 0
         score_b = 0
         if role:
             role_lower = role.lower()
-            # Check use_cases
             for uc in dev_a.get("use_cases", []):
                 if role_lower in uc.lower():
                     score_a += 20
             for uc in dev_b.get("use_cases", []):
                 if role_lower in uc.lower():
                     score_b += 20
-            # Check tags
-            for tag in dev_a.get("tags", []):
+            # Tag scoring — prefer character_tags (enriched)
+            a_tags = dev_a.get("character_tags") or dev_a.get("tags", [])
+            b_tags = dev_b.get("character_tags") or dev_b.get("tags", [])
+            for tag in a_tags:
                 if role_lower in tag.lower():
                     score_a += 10
-            for tag in dev_b.get("tags", []):
+            for tag in b_tags:
                 if role_lower in tag.lower():
                     score_b += 10
 

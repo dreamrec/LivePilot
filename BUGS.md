@@ -704,7 +704,7 @@ Generic advice with empty hook_id.
 
 ---
 
-### BUG-B39 · `🔴 open` · atlas_chain_suggest returns empty chain for standard role
+### BUG-B39 · `🟢 fixed (Batch 15)` · atlas_chain_suggest returned empty chain for standard role
 
 **Reproducer:** `atlas_chain_suggest(role="bass", genre="electronic")` returns:
 ```json
@@ -719,7 +719,7 @@ Generic advice with empty hook_id.
 
 ---
 
-### BUG-B40 · `🔴 open` · atlas_compare returns sparse data despite atlas_device_info having rich info
+### BUG-B40 · `🟢 fixed (Batch 15)` · atlas_compare returned sparse data — wrong field names
 
 **Reproducer:** `atlas_compare(device_a="Wavetable", device_b="Drift", role="pad")` returns:
 ```json
@@ -740,7 +740,7 @@ But `atlas_device_info("Wavetable")` returns rich character_tags, detailed sonic
 
 ---
 
-### BUG-B41 · `🟡 search ranking` · atlas_search ranks "Bass" device highest for "warm analog bass"
+### BUG-B41 · `🟢 fixed (Batch 15)` · atlas_search ranked "Bass" device highest for "warm analog bass"
 
 **Reproducer:** `atlas_search(query="warm analog bass")` returns:
 ```json

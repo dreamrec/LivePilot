@@ -153,7 +153,11 @@ def test_search_by_name_exact(atlas):
     results = atlas.search("Drift")
     assert len(results) >= 1
     assert results[0]["device"]["id"] == "drift"
-    assert results[0]["score"] >= 100  # exact name match
+    # BUG-B41: exact-name match score lowered from 100 to 45 so that
+    # character-tag matches can compete. Exact-name is still the
+    # single strongest signal; we just no longer let it smother
+    # sonic/tag matches.
+    assert results[0]["score"] >= 45
 
 
 def test_search_by_name_substring(atlas):
