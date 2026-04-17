@@ -210,7 +210,7 @@ BUG-B2 input `[G3, Bb3, D4, F4, A4]` now returns **"G-minor seventh (add 9)"** (
 
 ---
 
-### BUG-B4 · `🔴 open` · Auto Filter LFO Amount display scale mismatch
+### BUG-B4 · `🟢 documented (Batch 17)` · Auto Filter LFO Amount display scale mismatch
 
 **Reproducer:** `batch_set_parameters` on Auto Filter with `{"name_or_index": "LFO Amount", "value": 0.25}` returns:
 ```json
@@ -296,7 +296,7 @@ Regression tests (all in `tests/test_theory_engine.py::TestChordName`):
 
 ---
 
-### BUG-B9 · `🔴 open` · Auto Filter vs Auto Filter Legacy parameter scale mismatch
+### BUG-B9 · `🟢 documented (Batch 17)` · Auto Filter vs Auto Filter Legacy parameter scale mismatch
 
 **Reproducer:** Bass track (track 6) has device "Auto Filter Legacy" (class `AutoFilter`) with parameters:
 - `Frequency`: min 20, max 135 (Ableton's internal 20-135 index, NOT normalized)
@@ -503,7 +503,7 @@ Despite session having: 0.93 repetition fatigue + `peak_too_early` emotional arc
 
 ---
 
-### BUG-B21 · `🔴 open` · Three different energy metrics across engines
+### BUG-B21 · `🟢 closed (Batch 17)` · Three different energy metrics across engines — two unified, third is by-design
 
 **Reproducer:** Same session, three different "energy" readings for the 7 sections:
 

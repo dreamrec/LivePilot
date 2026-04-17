@@ -249,7 +249,28 @@ def set_device_parameter(
     parameter_index: Optional[int] = None,
 ) -> dict:
     """Set a device parameter by name or index.
-    track_index: 0+ for regular tracks, -1/-2/... for return tracks (A/B/...), -1000 for master."""
+
+    track_index: 0+ for regular tracks, -1/-2/... for return tracks (A/B/...), -1000 for master.
+
+    ⚠️ PARAMETER RANGES ARE NOT ALWAYS 0-1 (BUG-B4 / B9):
+      Ableton devices use MIXED units depending on the parameter. Always
+      read the `value_string` in the response (and the `min`/`max` from
+      get_device_parameters) before assuming 0-1 semantics:
+
+        - Auto Filter `Frequency`:      20-135 index (NOT normalized)
+        - Auto Filter Legacy `LFO Amount`: 0-30 absolute (displays as %)
+        - Auto Filter `Resonance`:      0-1.25 on legacy, 0-1 on AutoFilter2
+        - Auto Filter `Env. Modulation`: -127..+127 on legacy
+        - Compressor I, Dynamic Tube, Vocoder: pre-2010 units
+        - EQ Three `Frequency Hi/Lo`:    50Hz-15kHz absolute
+        - Wavetable `Osc 1 Pos`:         0-1 normalized ✓
+        - Drift / Analog / Operator macros: 0-1 normalized ✓
+
+      The `value_string` field in the response is the SOURCE OF TRUTH
+      for what the user sees. Automation recipes that assume 0-1 will
+      clamp on legacy devices. When in doubt, call
+      get_device_parameters first to inspect min/max/is_quantized.
+    """
     _validate_track_index(track_index)
     _validate_device_index(device_index)
     if parameter_name is None and parameter_index is None:

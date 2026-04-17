@@ -121,6 +121,30 @@ def get_emotional_arc(ctx: Context) -> dict:
     no resolution at the end, peak too early.
 
     Returns: tension curve and issues with recommended composition moves.
+
+    📌 On the `tension_curve` vs other energy metrics (BUG-B21 clarification):
+      LivePilot exposes THREE intentionally different "energy-like"
+      signals — they are NOT scaled versions of each other:
+
+        1. `get_section_graph.energy` / `get_performance_state.energy_level`
+           → density-based (active-track ratio per section). After the
+           Batch 6 cross-engine unification these two are identical.
+           Use when asking "how busy is this section?"
+
+        2. `get_emotional_arc.tension` (this tool)
+           → narrative-arc signal weighted by harmonic instability,
+           section placement, and payoff/contrast. Use when asking
+           "where does the song want to go emotionally?" — tension
+           can be HIGH in a sparse-but-anticipatory section (low
+           density) and LOW in a busy-but-resolved section (high
+           density).
+
+        3. `get_performance_state.energy_window.target_energy`
+           → forward-looking — next-scene target, not current state.
+
+      If the three readings disagree for the same section, that's the
+      DESIGN: density ≠ tension ≠ intended destination. Pick the one
+      that matches your question.
     """
     from . import _composition_engine as engine
 
