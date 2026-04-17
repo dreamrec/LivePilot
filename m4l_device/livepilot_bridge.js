@@ -648,8 +648,13 @@ function detect_key() {
     detected_key = note_names[best_key];
     detected_scale = best_scale;
 
-    // Send to UI
-    outlet(1, "key", detected_key + " " + detected_scale);
+    // Send to UI — use abbreviated scale ("min"/"maj") so text fits in the
+    // 72-pixel presentation widget, and pass a SINGLE symbol so Max's
+    // [route] + [prepend set] chain doesn't split atoms on the internal
+    // space. Max's [comment] displays whatever the `set` message carries.
+    var scale_abbr = (detected_scale === "minor") ? "min" : "maj";
+    var display = detected_key + " " + scale_abbr;  // e.g., "D min"
+    outlet(1, "key", display);
 }
 
 function correlate(a, b) {

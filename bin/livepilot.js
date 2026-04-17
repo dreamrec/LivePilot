@@ -402,26 +402,46 @@ async function setupFlucoma() {
   const https = require("https");
 
   const home = os.homedir();
-  const packagesDir = process.platform === "darwin"
-    ? path.join(home, "Documents", "Max 8", "Packages")
-    : path.join(process.env.USERPROFILE || home, "Documents", "Max 8", "Packages");
 
+  // Max 9 is the current release (the Ableton Live 12.3+ default); Max 8 is
+  // the legacy path. Check both — if FluCoMa is already installed in either,
+  // Max will find it via its package search path. For fresh installs, prefer
+  // Max 9. Users still on Max 8 get the legacy path.
+  const docsBase = process.platform === "darwin"
+    ? path.join(home, "Documents")
+    : path.join(process.env.USERPROFILE || home, "Documents");
+
+  const max9PackagesDir = path.join(docsBase, "Max 9", "Packages");
+  const max8PackagesDir = path.join(docsBase, "Max 8", "Packages");
+
+  // Prefer Max 9 if that directory exists, else Max 8
+  const packagesDir = fs.existsSync(max9PackagesDir) ? max9PackagesDir : max8PackagesDir;
   const flucomaDir = path.join(packagesDir, "FluidCorpusManipulation");
 
-  if (fs.existsSync(flucomaDir)) {
-    // Check version
-    const pkgInfo = path.join(flucomaDir, "package-info.json");
+  // Check BOTH locations for an existing install — a user may have Max 8
+  // FluCoMa from a prior install that still works
+  const altFlucomaDir = path.join(
+    packagesDir === max9PackagesDir ? max8PackagesDir : max9PackagesDir,
+    "FluidCorpusManipulation"
+  );
+
+  for (const candidateDir of [flucomaDir, altFlucomaDir]) {
+    if (!fs.existsSync(candidateDir)) continue;
+    const pkgInfo = path.join(candidateDir, "package-info.json");
     if (fs.existsSync(pkgInfo)) {
       try {
         const info = JSON.parse(fs.readFileSync(pkgInfo, "utf-8"));
         console.log("FluCoMa already installed: v%s", info.version || "unknown");
-        console.log("Location: %s", flucomaDir);
+        console.log("Location: %s", candidateDir);
         return;
       } catch {}
     }
-    console.log("FluCoMa already installed at %s", flucomaDir);
+    console.log("FluCoMa already installed at %s", candidateDir);
     return;
   }
+
+  // Ensure the parent Packages directory exists for the install target
+  fs.mkdirSync(packagesDir, { recursive: true });
 
   console.log("FluCoMa not found. Downloading from GitHub...");
   const crypto = require("crypto");

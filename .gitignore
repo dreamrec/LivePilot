@@ -66,3 +66,4 @@ docs/*.md
 # Worktrees
 .worktrees/
 docs/LivePilot-1.7-Perception/
+m4l_device/externals/
