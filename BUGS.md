@@ -81,7 +81,7 @@ Estimated: ~30 minutes work + .amxd re-freeze (per the `feedback_amxd_freeze_dri
 
 ---
 
-### BUG-A3 · `🟢 bridge-side fixed — awaiting .amxd re-freeze (Batch 18)` · Compressor sidechain INPUT ROUTING not programmable
+### BUG-A3 · `🟢 fixed Python-side (Batch 19) — awaiting Remote Script reload` · Compressor sidechain INPUT ROUTING not programmable
 
 **Reproducer:** `get_device_parameters(track=1, device=1)` on a Compressor returns `S/C On` parameter but no "Audio From" / input-routing source parameter.
 
@@ -116,7 +116,11 @@ function cmd_compressor_set_sidechain(args) {
 
 **Dependency:** Same `.amxd` re-freeze + version-string sync as BUG-A2.
 
-**Batch 18 landed (2026-04-17):** Bridge command `cmd_compressor_set_sidechain` added to `livepilot_bridge.js` — sets `sidechain_enabled` (try/catch for older Compressor builds), then `sidechain_input_routing_type` and `sidechain_input_routing_channel`, then reads them back for verification. Class-name guard accepts both `"Compressor2"` and `"Compressor"`. Python wrapper `compressor_set_sidechain(track_index, device_index, source_type, source_channel)` registered as `@mcp.tool()` in `mcp_server/tools/analyzer.py`. **Remaining:** user must re-freeze `LivePilot_Analyzer.amxd` in Max 9.
+**Batch 18 (2026-04-17) — attempted via M4L bridge, superseded by Batch 19:** Originally added `cmd_compressor_set_sidechain` to `livepilot_bridge.js` setting `sidechain_input_routing_type` directly. Two blockers emerged in live test: (1) Max JS LiveAPI's `get("available_sidechain_input_routing_types")` returned nothing in Live 12.3.6 / Max 9 — couldn't enumerate routing targets to match by display_name; (2) `set()` on RoutingType properties needs a structured `{identifier:N}` dict, not a raw string. The route was abandoned.
+
+**Batch 19 landed (2026-04-17) — Python Remote Script path:** Added `@register("set_compressor_sidechain")` handler to `remote_script/LivePilot/mixing.py` using the exact LOM pattern as `set_track_routing`: `list(device.available_sidechain_input_routing_types)` → match by `display_name` → assign directly (`device.sidechain_input_routing_type = matched`). Enables sidechain via `device.sidechain_enabled = True` with a `"S/C On"` parameter fallback for legacy builds. Raises `ValueError` with the full options list when the display_name doesn't match. MCP tool `compressor_set_sidechain(track_index, device_index, source_type, source_channel)` in `analyzer.py` now routes via `ableton.send_command("set_compressor_sidechain", ...)` on TCP instead of the M4L bridge. Added to the `REMOTE_COMMANDS` allowlist in `mcp_server/runtime/remote_commands.py` (mixing section 11 → 12). No longer requires the M4L Analyzer. **Remaining:** user must reload the Remote Script in Ableton Prefs (Link, Tempo & MIDI → Control Surface → LivePilot → None → LivePilot) to pick up the new handler, and restart Claude Code so the MCP server re-imports the updated `analyzer.py`.
+
+**Key insight (corrects Batch 18's premise):** The old claim "Python Remote Script ControlSurface API can only see automatable parameters" was an oversimplification. Python LOM exposes full device properties — the same `available_*_routing_types` family works on Compressor's sidechain as on Track's input. The M4L bridge is only needed for properties genuinely hidden from Python's LOM (like `SimplerDevice.sample.warping`, which BUG-A2 still uses). Trying to use the bridge for properties Python can reach adds serialization complexity, Live-version fragility, and depends on a frozen `.amxd` — for no benefit. Default to Python first, bridge second.
 
 ---
 

@@ -293,3 +293,120 @@ def set_track_routing(song, params):
         result["output_routing_channel"] = track.output_routing_channel.display_name
 
     return result
+
+
+@register("set_compressor_sidechain")
+def set_compressor_sidechain(song, params):
+    """Configure a Compressor's sidechain input routing (BUG-A3).
+
+    Same LOM pattern as set_track_routing — the sidechain properties
+    (available_sidechain_input_routing_types / _channels) are on the
+    device object and Python's Remote Script accesses them cleanly.
+    This used to be routed through the M4L bridge (v1.10.6) but Max JS
+    LiveAPI couldn't read the available_* lists in Live 12.3.6, so it's
+    back on the Python side where it belongs.
+
+    Params:
+        track_index: 0+ regular, -1/-2 returns, -1000 master
+        device_index: Compressor's position in the chain
+        source_type (optional): RoutingType display name
+                                (e.g. "1-DRUMS", "Ext. In", "No Input")
+        source_channel (optional): RoutingChannel display name
+                                   (e.g. "Post FX", "Pre FX", "Post Mixer")
+
+    Omit a param to leave that property unchanged.
+    """
+    track_index = int(params["track_index"])
+    device_index = int(params["device_index"])
+    source_type = params.get("source_type")
+    source_channel = params.get("source_channel")
+
+    track = get_track(song, track_index)
+    devices = list(track.devices)
+    if device_index < 0 or device_index >= len(devices):
+        raise ValueError(
+            "Device index %d out of range (track has %d devices)"
+            % (device_index, len(devices))
+        )
+    device = devices[device_index]
+
+    class_name = device.class_name
+    if class_name not in ("Compressor2", "Compressor"):
+        raise ValueError(
+            "Not a Compressor device (class is %s)" % class_name
+        )
+
+    # Older Compressor builds may not expose `sidechain_enabled` as a
+    # property; the automatable "S/C On" parameter is the fallback.
+    # Try both paths so the sidechain gets enabled whichever surface is
+    # available on this Live version.
+    try:
+        device.sidechain_enabled = True
+    except AttributeError:
+        # Fallback: find the "S/C On" parameter and toggle it
+        for param in device.parameters:
+            if param.name == "S/C On":
+                param.value = 1
+                break
+
+    result = {
+        "ok": True,
+        "track_index": track_index,
+        "device_index": device_index,
+    }
+
+    if source_type is not None and source_type != "":
+        if not hasattr(device, "available_sidechain_input_routing_types"):
+            raise ValueError(
+                "This Live build doesn't expose "
+                "device.available_sidechain_input_routing_types"
+            )
+        available = list(device.available_sidechain_input_routing_types)
+        matched = None
+        for rt in available:
+            if rt.display_name == source_type:
+                matched = rt
+                break
+        if matched is None:
+            options = [rt.display_name for rt in available]
+            raise ValueError(
+                "Sidechain input type '%s' not found. Available: %s"
+                % (source_type, ", ".join(options))
+            )
+        device.sidechain_input_routing_type = matched
+
+    if source_channel is not None and source_channel != "":
+        if not hasattr(device, "available_sidechain_input_routing_channels"):
+            raise ValueError(
+                "This Live build doesn't expose "
+                "device.available_sidechain_input_routing_channels"
+            )
+        available = list(device.available_sidechain_input_routing_channels)
+        matched = None
+        for ch in available:
+            if ch.display_name == source_channel:
+                matched = ch
+                break
+        if matched is None:
+            options = [ch.display_name for ch in available]
+            raise ValueError(
+                "Sidechain input channel '%s' not found. Available: %s"
+                % (source_channel, ", ".join(options))
+            )
+        device.sidechain_input_routing_channel = matched
+
+    # Read back canonical display names
+    try:
+        result["sidechain"] = {
+            "type": device.sidechain_input_routing_type.display_name,
+            "channel": device.sidechain_input_routing_channel.display_name,
+            "enabled": bool(getattr(device, "sidechain_enabled", True)),
+        }
+    except AttributeError:
+        # Very old Compressor — fall back to whatever we set above
+        result["sidechain"] = {
+            "type": source_type or "",
+            "channel": source_channel or "",
+            "enabled": True,
+        }
+    return result

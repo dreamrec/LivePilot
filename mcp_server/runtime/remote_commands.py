@@ -29,11 +29,12 @@ REMOTE_COMMANDS: frozenset[str] = frozenset({
     # notes (8)
     "add_notes", "get_notes", "remove_notes", "remove_notes_by_id",
     "modify_notes", "duplicate_notes", "transpose_notes", "quantize_clip",
-    # mixing (11)
+    # mixing (12)
     "set_track_volume", "set_track_pan", "set_track_send",
     "get_return_tracks", "get_master_track", "set_master_volume",
     "get_track_routing", "get_track_meters", "get_master_meters",
     "get_mix_snapshot", "set_track_routing",
+    "set_compressor_sidechain",  # BUG-A3 — Python LOM path (was M4L bridge)
     # scenes (12)
     "get_scenes_info", "create_scene", "delete_scene", "duplicate_scene",
     "fire_scene", "set_scene_name", "set_scene_color", "set_scene_tempo",

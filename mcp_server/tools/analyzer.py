@@ -1037,31 +1037,32 @@ async def compressor_set_sidechain(
     sidechain, this picks WHICH track/channel feeds the detector. The
     routing properties (`sidechain_input_routing_type`,
     `sidechain_input_routing_channel`) aren't in Compressor's automatable
-    parameter list so the Python Remote Script can't reach them — only
-    Max JS LiveAPI can.
+    parameter list, but Python's Remote Script reaches them directly as
+    device properties (same LOM pattern as set_track_routing).
 
     Args:
-        track_index: track containing the Compressor
+        track_index: 0+ regular, -1/-2 returns, -1000 master
         device_index: Compressor position in the chain
-        source_type:    sidechain source track name or input slot
-            (e.g. "1-Kick", "Ext. In", "Post Mixer", "No Input")
+        source_type: sidechain source display name
+            (e.g. "1-Kick", "Ext. In", "No Input")
         source_channel: tap point on the source
             (e.g. "Post FX", "Pre FX", "Post Mixer")
 
-    Pass empty strings to leave a property unchanged. Older Live builds
-    that don't expose these properties return a clean error instead of
-    a silent failure.
+    Omit a param to leave that property unchanged. If a display name
+    doesn't match, the error message includes the full list of available
+    options from the running Live session.
 
-    Requires LivePilot Analyzer on master track.
+    Routes through the Remote Script (TCP) — does NOT require the M4L
+    analyzer. This is the Python-side path introduced after the M4L
+    bridge approach hit LiveAPI shape issues in Live 12.3.6.
     """
-    cache = _get_spectral(ctx)
-    _require_analyzer(cache)
-    bridge = _get_m4l(ctx)
-    return await bridge.send_command(
-        "compressor_set_sidechain",
-        int(track_index),
-        int(device_index),
-        str(source_type or ""),
-        str(source_channel or ""),
-        timeout=10.0,
-    )
+    params: dict = {
+        "track_index": int(track_index),
+        "device_index": int(device_index),
+    }
+    if source_type:
+        params["source_type"] = str(source_type)
+    if source_channel:
+        params["source_channel"] = str(source_channel)
+    ableton = ctx.lifespan_context["ableton"]
+    return ableton.send_command("set_compressor_sidechain", params)

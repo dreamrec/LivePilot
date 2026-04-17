@@ -1086,39 +1086,108 @@ function cmd_compressor_set_sidechain(args) {
         return;
     }
 
+    // Helper: read a LiveAPI property that returns a JSON-serialized dict
+    // or list. Max's `get()` wraps results in a single-element array,
+    // and complex properties come back as JSON strings.
+    function read_json_prop(name) {
+        try {
+            var raw = cursor_a.get(name);
+            if (raw === null || raw === undefined) return null;
+            if (Object.prototype.toString.call(raw) === "[object Array]" && raw.length === 1) {
+                raw = raw[0];
+            }
+            if (typeof raw === "string") {
+                try { return JSON.parse(raw); } catch(e) { return raw; }
+            }
+            return raw;
+        } catch(e) {
+            return null;
+        }
+    }
+
+    function find_by_name(list, name) {
+        if (!list || !list.length || !name) return null;
+        for (var i = 0; i < list.length; i++) {
+            var entry = list[i];
+            if (!entry) continue;
+            var n = entry.display_name || entry.name;
+            if (n === name) return entry;
+        }
+        return null;
+    }
+
     try {
         // Enable sidechain first — Live rejects routing writes on a
-        // compressor with the sidechain disabled.
-        // `sidechain_enabled` is the modern property; older builds may
-        // use a parameter called "S/C On" which the Python side can
-        // already flip. We set it here for completeness.
-        try {
-            cursor_a.set("sidechain_enabled", 1);
-        } catch(e) {
-            // Older Compressor — property doesn't exist, ignore
-        }
+        // compressor with the sidechain disabled. Property is available
+        // on Live 10+. Try/catch for legacy builds.
+        try { cursor_a.set("sidechain_enabled", 1); } catch(e) {}
 
+        var debug = {};
+
+        // --- Routing TYPE (the source: "1-DRUMS", "Ext. In", "No Input", …)
         if (routing_type) {
-            cursor_a.set("sidechain_input_routing_type", routing_type);
-        }
-        if (routing_channel) {
-            cursor_a.set("sidechain_input_routing_channel", routing_channel);
+            var types = read_json_prop("available_sidechain_input_routing_types");
+            debug.requested_type = routing_type;
+            debug.type_count = types && types.length ? types.length : 0;
+            var t_match = find_by_name(types, routing_type);
+            if (t_match && t_match.identifier !== undefined) {
+                // LOM expects a RoutingType object; Max JS accepts a
+                // JSON-encoded {identifier: N} for the `set`.
+                cursor_a.set(
+                    "sidechain_input_routing_type",
+                    JSON.stringify({identifier: t_match.identifier})
+                );
+                debug.set_type = "ok (identifier=" + t_match.identifier + ")";
+            } else {
+                debug.set_type = "FAIL: no matching type";
+                if (types) {
+                    debug.available_types = [];
+                    for (var i = 0; i < types.length; i++) {
+                        debug.available_types.push(types[i].display_name || types[i].name || "?");
+                    }
+                }
+            }
         }
 
-        // Read back for verification
-        var read_type = "";
-        var read_channel = "";
-        try { read_type = String(cursor_a.get("sidechain_input_routing_type")); } catch(e) {}
-        try { read_channel = String(cursor_a.get("sidechain_input_routing_channel")); } catch(e) {}
+        // --- Routing CHANNEL (the tap point: "Post FX", "Pre FX", …)
+        if (routing_channel) {
+            var channels = read_json_prop("available_sidechain_input_routing_channels");
+            debug.requested_channel = routing_channel;
+            debug.channel_count = channels && channels.length ? channels.length : 0;
+            var c_match = find_by_name(channels, routing_channel);
+            if (c_match && c_match.identifier !== undefined) {
+                cursor_a.set(
+                    "sidechain_input_routing_channel",
+                    JSON.stringify({identifier: c_match.identifier})
+                );
+                debug.set_channel = "ok (identifier=" + c_match.identifier + ")";
+            } else {
+                debug.set_channel = "FAIL: no matching channel";
+                if (channels) {
+                    debug.available_channels = [];
+                    for (var j = 0; j < channels.length; j++) {
+                        debug.available_channels.push(channels[j].display_name || channels[j].name || "?");
+                    }
+                }
+            }
+        }
+
+        // Read back canonical display_name for confirmation
+        var cur_type = read_json_prop("sidechain_input_routing_type");
+        var cur_channel = read_json_prop("sidechain_input_routing_channel");
+        var read_type_name = (cur_type && cur_type.display_name) || "";
+        var read_channel_name = (cur_channel && cur_channel.display_name) || "";
 
         send_response({
             "ok": true,
             "track_index": track_idx,
             "device_index": device_idx,
             "sidechain": {
-                "type": read_type || routing_type,
-                "channel": read_channel || routing_channel,
+                "type": read_type_name,
+                "channel": read_channel_name,
+                "enabled": 1
             },
+            "debug": debug
         });
     } catch(e) {
         send_response({
