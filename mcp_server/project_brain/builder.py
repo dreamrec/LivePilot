@@ -23,6 +23,7 @@ def build_project_state_from_data(
     track_infos: Optional[list[dict]] = None,
     notes_map: Optional[dict[str, dict[int, list[dict]]]] = None,
     arrangement_clips: Optional[dict] = None,
+    clip_automation: Optional[list[dict]] = None,
     analyzer_ok: bool = False,
     flucoma_ok: bool = False,
     plugin_health: Optional[dict[str, Any]] = None,
@@ -105,6 +106,7 @@ def build_project_state_from_data(
     state.automation_graph = build_automation_graph(
         track_infos=track_infos or [],
         sections=section_dicts_for_auto,
+        clip_automation=clip_automation or [],
     )
     state.automation_graph.freshness.mark_fresh(state.revision)
 

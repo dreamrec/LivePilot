@@ -88,14 +88,20 @@ def build_project_brain(ctx: Context) -> dict:
     # Shape: {section_id: {track_index: [notes]}}. Without this, role_graph
     # falls back to "assume all tracks active in every section" which destroys
     # section-scoped role confidence.
+    #
+    # BUG-E1: section_id must match what build_section_graph_from_scenes emits.
+    # The composition engine emits `sec_{i:02d}` using the RAW enumerate index
+    # of the scene — it skips unnamed scenes (gap-preserving), so e.g. scenes
+    # ["Intro", "", "Verse"] become sections sec_00 and sec_02, not sec_01.
+    # Our notes_map must mirror that or keys won't align.
     notes_map: dict[str, dict[int, list[dict]]] = {}
     try:
         for scene_idx, scene in enumerate(scenes or []):
-            section_id = str(
-                scene.get("section_id")
-                or scene.get("name")
-                or f"scene_{scene_idx}"
-            )
+            scene_name = str(scene.get("name", "")).strip()
+            if not scene_name:
+                continue  # mirror _ce_build_sections: unnamed scenes skipped
+            section_id = f"sec_{scene_idx:02d}"
+
             per_track: dict[int, list[dict]] = {}
             for track in tracks:
                 t_idx = track.get("index", 0)
@@ -118,6 +124,49 @@ def build_project_brain(ctx: Context) -> dict:
         logger.debug("build_project_brain failed: %s", exc)
         # Overall failure: empty map, degrade to "all tracks active" fallback
         notes_map = {}
+
+    # 5c. Scan clip automation across the session (BUG-E2).
+    # Device-parameter is_automated flags only reflect whether a parameter
+    # is mapped somewhere — they don't reveal clip envelopes. Ableton's
+    # automation actually lives on each clip (session + arrangement). We
+    # walk every clip slot that has a clip and ask get_clip_automation, then
+    # aggregate into a flat list keyed by section.
+    clip_automation: list[dict] = []
+    try:
+        # Iterate session scenes x tracks, plus arrangement clips we already have.
+        # Use the raw enumerate index for section_id so it stays aligned with
+        # arrangement_graph sections (which use the same scheme — see E1 fix).
+        for scene_idx, scene in enumerate(scenes or []):
+            scene_name = str(scene.get("name", "")).strip()
+            if not scene_name:
+                continue
+            section_id = f"sec_{scene_idx:02d}"
+            for track in tracks:
+                t_idx = track.get("index", 0)
+                try:
+                    auto_resp = ableton.send_command("get_clip_automation", {
+                        "track_index": t_idx,
+                        "clip_index": scene_idx,
+                    })
+                except Exception as exc:
+                    # No clip in slot, or remote script rejected — skip
+                    logger.debug("build_project_brain automation skip: %s", exc)
+                    continue
+                if not isinstance(auto_resp, dict):
+                    continue
+                envs = auto_resp.get("envelopes") or []
+                for env in envs:
+                    clip_automation.append({
+                        "section_id": section_id,
+                        "track_index": t_idx,
+                        "track_name": track.get("name", ""),
+                        "clip_index": scene_idx,
+                        "parameter_name": env.get("parameter_name", ""),
+                        "parameter_type": env.get("parameter_type", ""),
+                        "device_name": env.get("device_name"),
+                    })
+    except Exception as exc:
+        logger.debug("build_project_brain automation scan failed: %s", exc)
 
     # 6. Probe capabilities (direct SpectralCache access, not TCP)
     analyzer_ok = False
@@ -146,6 +195,7 @@ def build_project_brain(ctx: Context) -> dict:
         track_infos=track_infos if track_infos else None,
         notes_map=notes_map if notes_map else None,
         arrangement_clips=arrangement_clips if arrangement_clips else None,
+        clip_automation=clip_automation if clip_automation else None,
         analyzer_ok=analyzer_ok,
         flucoma_ok=flucoma_ok,
         session_ok=True,

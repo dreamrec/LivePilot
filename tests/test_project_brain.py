@@ -806,3 +806,239 @@ class TestBuildProjectBrainToolFetchesNotes:
         ctx = SimpleNamespace(lifespan_context={"ableton": _Ableton()})
         result = build_project_brain(ctx)  # should not raise
         assert "project_id" in result
+
+
+# ─── BUG-E1 / E2 — Batch 3 regressions ──────────────────────────────────────
+
+
+class TestBugE1RoleGraphWiring:
+    """BUG-E1: project_brain.role_graph used to come back empty because the
+    notes_map was keyed on scene display names while the composition engine
+    emitted section IDs of the form 'sec_NN'. The key mismatch meant
+    role_graph always saw 'no notes in section' and skipped role assignment.
+    """
+
+    def test_notes_map_keys_match_section_ids(self):
+        """build_project_brain must key notes_map with sec_NN (zero-padded),
+        not with scene display names. Verifies the E1 wiring fix."""
+        from types import SimpleNamespace
+        from mcp_server.project_brain.tools import build_project_brain
+
+        captured_notes_calls: list[tuple[int, int]] = []
+
+        class _Ableton:
+            def send_command(self, cmd, params=None):
+                if cmd == "get_session_info":
+                    return {
+                        "tempo": 120,
+                        "tracks": [
+                            {"index": 0, "name": "Drums"},
+                            {"index": 1, "name": "Bass"},
+                        ],
+                    }
+                if cmd == "get_scenes_info":
+                    return {"scenes": [
+                        {"index": 0, "name": "Intro"},
+                        {"index": 1, "name": "Verse"},
+                    ]}
+                if cmd == "get_scene_matrix":
+                    return {"matrix": [
+                        [{"has_clip": True, "state": "stopped"},
+                         {"has_clip": True, "state": "stopped"}],
+                        [{"has_clip": True, "state": "stopped"},
+                         {"has_clip": True, "state": "stopped"}],
+                    ]}
+                if cmd == "get_track_info":
+                    return {"index": params["track_index"], "name": "t", "devices": []}
+                if cmd == "get_arrangement_clips":
+                    return {"clips": []}
+                if cmd == "get_notes":
+                    captured_notes_calls.append((params["track_index"], params["clip_index"]))
+                    return {"notes": [{"pitch": 60, "start_time": 0.0, "duration": 0.25}]}
+                if cmd == "get_clip_automation":
+                    return {"envelopes": []}
+                return {}
+
+        ctx = SimpleNamespace(lifespan_context={"ableton": _Ableton()})
+        result = build_project_brain(ctx)
+
+        # The arrangement graph should have 2 sections: sec_00 and sec_01
+        section_ids = [s["section_id"] for s in result["arrangement_graph"]["sections"]]
+        assert section_ids == ["sec_00", "sec_01"], section_ids
+
+        # The role_graph should have roles assigned (not empty)
+        roles = result["role_graph"]["roles"]
+        assert len(roles) > 0, (
+            f"role_graph.roles was empty — BUG-E1 regressed. "
+            f"notes_map/section_id key alignment broken."
+        )
+        role_sections = {r["section_id"] for r in roles}
+        assert role_sections.issubset({"sec_00", "sec_01"}), role_sections
+
+    def test_empty_scene_names_advance_section_counter_consistently(self):
+        """When a session has unnamed scenes, the composition engine skips
+        them. The notes_map counter must skip them too, so that sec_NN
+        stays aligned with arrangement_graph sections."""
+        from types import SimpleNamespace
+        from mcp_server.project_brain.tools import build_project_brain
+
+        class _Ableton:
+            def send_command(self, cmd, params=None):
+                if cmd == "get_session_info":
+                    return {
+                        "tempo": 120,
+                        "tracks": [{"index": 0, "name": "Drums"}],
+                    }
+                if cmd == "get_scenes_info":
+                    # Scene 1 is unnamed — must be skipped by both paths
+                    return {"scenes": [
+                        {"index": 0, "name": "Intro"},
+                        {"index": 1, "name": ""},
+                        {"index": 2, "name": "Verse"},
+                    ]}
+                if cmd == "get_scene_matrix":
+                    return {"matrix": [
+                        [{"has_clip": True, "state": "stopped"}],
+                        [{"has_clip": False, "state": "empty"}],
+                        [{"has_clip": True, "state": "stopped"}],
+                    ]}
+                if cmd == "get_track_info":
+                    return {"index": 0, "name": "Drums", "devices": []}
+                if cmd == "get_notes":
+                    return {"notes": [{"pitch": 60, "start_time": 0.0, "duration": 0.25}]}
+                if cmd == "get_clip_automation":
+                    return {"envelopes": []}
+                return {}
+
+        ctx = SimpleNamespace(lifespan_context={"ableton": _Ableton()})
+        result = build_project_brain(ctx)
+
+        section_ids = [s["section_id"] for s in result["arrangement_graph"]["sections"]]
+        # Scene 1 is unnamed → skipped. Composition engine uses the RAW
+        # enumerate index, so named scenes 0 and 2 become sec_00 and sec_02
+        # (not sec_00 and sec_01). The notes_map fix must honor that scheme.
+        assert section_ids == ["sec_00", "sec_02"]
+
+        roles = result["role_graph"]["roles"]
+        # All role.section_id values must be in the section_ids set —
+        # proving the notes_map keys aligned with the arrangement graph.
+        assert len(roles) > 0, "roles must not be empty when notes exist"
+        assert all(r["section_id"] in section_ids for r in roles), [
+            r["section_id"] for r in roles
+        ]
+
+
+class TestBugE2AutomationGraphWiring:
+    """BUG-E2: project_brain.automation_graph used to come back empty
+    because it only scanned device-parameter `is_automated` flags, which
+    reflect mapping state — not whether a clip actually has an envelope.
+    The fix adds per-clip envelope fetching via get_clip_automation.
+    """
+
+    def test_clip_envelopes_populate_automation_graph(self):
+        """When a clip exposes an envelope, build_project_brain must surface
+        it in automation_graph.automated_params."""
+        from types import SimpleNamespace
+        from mcp_server.project_brain.tools import build_project_brain
+
+        class _Ableton:
+            def send_command(self, cmd, params=None):
+                if cmd == "get_session_info":
+                    return {
+                        "tempo": 120,
+                        "tracks": [{"index": 3, "name": "Pad Lush"}],
+                    }
+                if cmd == "get_scenes_info":
+                    return {"scenes": [{"index": 0, "name": "Intro"}]}
+                if cmd == "get_scene_matrix":
+                    return {"matrix": [[{"has_clip": True, "state": "stopped"}]]}
+                if cmd == "get_track_info":
+                    # No device hints — only clip envelopes populate
+                    return {"index": params["track_index"], "name": "Pad Lush", "devices": []}
+                if cmd == "get_clip_automation":
+                    return {
+                        "envelope_count": 3,
+                        "envelopes": [
+                            {"parameter_name": "Send A", "parameter_type": "send"},
+                            {"parameter_name": "Osc 1 Pos",
+                             "parameter_type": "device", "device_name": "Wavetable"},
+                            {"parameter_name": "Filter 1 Freq",
+                             "parameter_type": "device", "device_name": "Wavetable"},
+                        ],
+                    }
+                if cmd == "get_notes":
+                    return {"notes": []}
+                return {}
+
+        ctx = SimpleNamespace(lifespan_context={"ableton": _Ableton()})
+        result = build_project_brain(ctx)
+
+        params = result["automation_graph"]["automated_params"]
+        assert len(params) == 3, (
+            f"Expected 3 envelopes (Send A, Osc 1 Pos, Filter 1 Freq), "
+            f"got {len(params)} — BUG-E2 regressed."
+        )
+        param_names = {p["param_name"] for p in params}
+        assert param_names == {"Send A", "Osc 1 Pos", "Filter 1 Freq"}
+        assert all(p["source"] == "clip_envelope" for p in params)
+
+    def test_no_duplicate_when_both_device_hint_and_envelope_match(self):
+        """If a device param has is_automated=True AND has a clip envelope,
+        we should record it exactly once (preferring the envelope entry)."""
+        from mcp_server.project_brain.automation_graph import build_automation_graph
+
+        track_infos = [{
+            "index": 3,
+            "name": "Pad Lush",
+            "devices": [{
+                "name": "Wavetable",
+                "parameters": [
+                    {"name": "Osc 1 Pos", "is_automated": True, "value": 0.5},
+                ],
+            }],
+        }]
+        clip_automation = [{
+            "section_id": "sec_00",
+            "track_index": 3,
+            "track_name": "Pad Lush",
+            "clip_index": 0,
+            "parameter_name": "Osc 1 Pos",
+            "parameter_type": "device",
+            "device_name": "Wavetable",
+        }]
+
+        graph = build_automation_graph(
+            track_infos=track_infos,
+            clip_automation=clip_automation,
+        )
+        assert len(graph.automated_params) == 1
+        assert graph.automated_params[0]["param_name"] == "Osc 1 Pos"
+        # Envelope takes precedence
+        assert graph.automated_params[0]["source"] == "clip_envelope"
+
+    def test_density_by_section_reflects_real_envelope_counts(self):
+        """When real per-section counts are available, density_by_section
+        should reflect them (not the old track-density approximation)."""
+        from mcp_server.project_brain.automation_graph import build_automation_graph
+
+        clip_automation = [
+            {"section_id": "sec_00", "track_index": 0,
+             "parameter_name": "Filter", "parameter_type": "device"},
+            {"section_id": "sec_00", "track_index": 1,
+             "parameter_name": "Volume", "parameter_type": "volume"},
+            {"section_id": "sec_01", "track_index": 0,
+             "parameter_name": "Send A", "parameter_type": "send"},
+        ]
+        sections = [
+            {"section_id": "sec_00", "density": 0.5},
+            {"section_id": "sec_01", "density": 0.5},
+        ]
+        graph = build_automation_graph(
+            track_infos=[],
+            sections=sections,
+            clip_automation=clip_automation,
+        )
+        # sec_00 has 2 envelopes, sec_01 has 1 — max=2, so normalized
+        # sec_00 = 1.0, sec_01 = 0.5
+        assert graph.density_by_section["sec_00"] == 1.0
+        assert graph.density_by_section["sec_01"] == 0.5

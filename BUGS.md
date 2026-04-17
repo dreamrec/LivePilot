@@ -1076,20 +1076,17 @@ The file wrote to the default `~/Documents/LivePilot/outputs/midi/` directory, n
 
 ## E. Cross-engine data consistency
 
-### BUG-E1 · `🔴 open` · project_brain.role_graph empty while analyze_composition returns 49 roles
+### BUG-E1 · `🟢 fixed (Batch 3)` · project_brain.role_graph empty — section_id key mismatch
 
-**Reproducer:** `build_project_brain()` returns:
-```json
-"role_graph": {"roles": [], "confidence": {"overall": 0, ...}}
-```
+**Reproducer:** `build_project_brain()` returned `role_graph: {"roles": [], "confidence": {"overall": 0, ...}}` while `analyze_composition()` on the same session returned 49 role assignments.
 
-But `analyze_composition()` on the same session returns 49 role assignments. Same underlying data, different access paths, inconsistent results.
+**Root cause:** `build_role_graph` expects a `notes_map` keyed on the same section IDs that `build_section_graph_from_scenes` emits (`sec_{i:02d}` using the raw enumerate index). `build_project_brain` in `tools.py` was building the notes_map keyed on the scene display name instead (`scene.get("section_id") or scene.get("name") or f"scene_{idx}"`). Every `notes_map.get("sec_00", {})` lookup missed, `active_tracks` stayed empty, and role inference produced zero entries.
 
-**Why it's a bug:** `project_brain` is supposed to be the canonical session snapshot for V2 engines. If it's missing the role data that composition analysis has, downstream engines that use `project_brain.role_graph` see an empty picture while those that use `analyze_composition.roles` see a full picture.
+Second related issue: `_ce_build_sections` skips unnamed scenes, which means section IDs can be non-contiguous (`sec_00`, `sec_02`). The notes_map loop must skip unnamed scenes *and* use the raw enumerate index to keep the IDs aligned.
 
-**Fix direction:** `build_project_brain` in `mcp_server/project_brain/role_graph.py` imports from `_composition_engine.build_role_graph` — likely missing a call or passing wrong inputs. Compare what inputs `analyze_composition` builds vs what `build_project_brain` builds.
+**Fix (landed):** `mcp_server/project_brain/tools.py::build_project_brain` now builds `notes_map` with the same `f"sec_{scene_idx:02d}"` scheme, skipping unnamed scenes but preserving the raw index. Regression tests `test_notes_map_keys_match_section_ids` and `test_empty_scene_names_advance_section_counter_consistently` in `tests/test_project_brain.py` enforce the alignment invariant.
 
-**Impact:** Medium. Engines that rely on `project_brain` for role info get wrong answers.
+**Impact:** Medium. Engines that rely on `project_brain` for role info now see the same data as `analyze_composition`.
 
 ---
 
@@ -1165,27 +1162,24 @@ See BUG-B21 for the full cross-engine energy table. This is the specific manifes
 
 ---
 
-### BUG-E2 · `🔴 open` · project_brain.automation_graph empty while get_clip_automation reveals real envelopes
+### BUG-E2 · `🟢 fixed (Batch 3)` · project_brain.automation_graph empty — didn't scan clip envelopes
 
-**Reproducer:** `build_project_brain()` returns:
-```json
-"automation_graph": {"automated_params": [], "density_by_section": {"sec_00": 0, ...}}
-```
+**Reproducer:** `build_project_brain()` returned `automation_graph.automated_params: []` while `get_clip_automation(track=3, clip=0)` on the same Pad Lush clip returned 3 real envelopes (Send A, Osc 1 Pos, Filter 1 Freq).
 
-But `get_clip_automation(track=3, clip=0)` on the same session's Pad Lush clip "Intro Wash" returns:
-```json
-{"envelope_count": 3, "envelopes": [
-  {"parameter_name": "Send A", "parameter_type": "send"},
-  {"parameter_name": "Osc 1 Pos", "device_name": "Wavetable"},
-  {"parameter_name": "Filter 1 Freq", "device_name": "Wavetable"}
-]}
-```
+**Root cause:** `build_automation_graph` was only scanning `track_infos[].devices[].parameters[].is_automated` — a flag that reflects mapping state (whether a parameter is routable to automation), NOT whether an actual envelope exists on any clip. Automation envelopes in Live live on the Clip object, not on the device parameter. The previous logic could never find them.
 
-**Why it's a bug:** Same root cause as BUG-E1 — `project_brain` doesn't actually enumerate clips to read automation. It just returns empty.
+**Fix (landed):**
+1. `mcp_server/project_brain/tools.py::build_project_brain` — walk each session clip slot, call `get_clip_automation(track, clip)`, aggregate the envelope descriptors into a list keyed by `sec_{scene_idx:02d}`.
+2. `mcp_server/project_brain/builder.py::build_project_state_from_data` — accepts new `clip_automation` param and forwards to automation graph builder.
+3. `mcp_server/project_brain/automation_graph.py::build_automation_graph` — now accepts `clip_automation`. Clip envelopes are the source of truth; device-hint entries are only added if they don't duplicate an envelope entry. Each entry is tagged `source="clip_envelope"` or `source="device_hint"` for downstream disambiguation.
+4. `density_by_section` is now computed from real per-section envelope counts (normalized by max) instead of the section-density × track-ratio approximation. Falls back to old logic if no clip data.
 
-**Fix direction:** In `build_project_brain`, iterate all session clips, call the automation-reading logic per clip, and populate `automation_graph.automated_params` + `density_by_section` correctly.
+Regression tests (in `tests/test_project_brain.py::TestBugE2AutomationGraphWiring`):
+- `test_clip_envelopes_populate_automation_graph`
+- `test_no_duplicate_when_both_device_hint_and_envelope_match`
+- `test_density_by_section_reflects_real_envelope_counts`
 
-**Impact:** Medium. Critics that reason about "is this track under-automated?" get wrong answers from `project_brain`.
+**Impact:** Medium. Critics that reason about "is this track under-automated?" now see reality.
 
 ---
 
@@ -1314,8 +1308,8 @@ Second project loaded in the same session (Prefuse73-adjacent, 10 tracks, 49 cli
 | **B** critics/analyzers | **41** | **5** | **Batch 1 fix-sweep (commit 7142319)**: B11, B12, B14, B15, B31, B52 closed with regression tests. 46 - 5 = 41 open. |
 | **C** audit follow-ups | 4 | 0 | v1.10.6 deferred items |
 | **D** creative trackers | 2 | 1 | Dabrye session D3 fixed (VOX LEAD Warp); D1 now unblocked by A5 |
-| **E** cross-engine consistency | 6 | 0 | project_brain / performance / composition / harmony_field / FluCoMa all disagree |
-| **Total** | **54** | **10** | Batch 2 shipped — remote-script version handshake, audio-clip pitch/gain read+write, tool count 320→321. Batch 1: song_brain payoff derivation, empty section filter, intro detection, transition archetype wildcard, develop_hook primary-hook fallback, midi export absolute path. Plus v1.10.6 D3. |
+| **E** cross-engine consistency | 4 | 2 | **Batch 3**: E1 (role_graph section_id alignment), E2 (automation_graph reads clip envelopes). E3-E6 remain. |
+| **Total** | **52** | **12** | Batch 3 shipped — project_brain data wiring: role_graph notes_map key alignment, automation_graph real-envelope aggregation. Batch 2: remote-script version handshake + audio-clip pitch/gain read+write (320→321 tools). Batch 1: 6 song_brain / transition / hook / midi_io fixes. Plus v1.10.6 D3. |
 
 ### Additional findings (wave 3 — song brain + transitions + theory + FluCoMa)
 
