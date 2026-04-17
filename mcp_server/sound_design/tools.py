@@ -307,6 +307,11 @@ def plan_sound_design_move(ctx: Context, track_index: int) -> dict:
     Runs critics and planner, returns sorted moves with
     estimated impact and risk scores.
 
+    BUG-B36 fix: when zero sound-design issues but sibling mix/
+    composition engines flag problems on the same track, returns a
+    `cross_engine_hint` pointing the user to the right tool instead
+    of silently reporting empty.
+
     Args:
         track_index: Index of the track to analyze.
     """
@@ -324,11 +329,67 @@ def plan_sound_design_move(ctx: Context, track_index: int) -> dict:
     )
     moves = plan_sound_design_moves(issues, state)
 
-    return {
+    result: dict = {
         "moves": [m.to_dict() for m in moves],
         "move_count": len(moves),
         "issue_count": len(issues),
     }
+
+    # BUG-B36: when nothing to do on the sound-design side, probe sibling
+    # engines for issues on this track and emit a discoverability hint.
+    if not moves:
+        cross_hint = _cross_engine_hint_for_track(ctx, track_index)
+        if cross_hint:
+            result["cross_engine_hint"] = cross_hint
+
+    return result
+
+
+def _cross_engine_hint_for_track(
+    ctx: Context, track_index: int,
+) -> Optional[str]:
+    """Look at mix issues for this track and emit a hint pointing to
+    the right sibling tool when sound-design has nothing to say.
+
+    Best-effort — any failure returns None so plan_sound_design_move
+    never breaks on telemetry hiccups. Calls into the mix-engine's
+    pure function directly (not an MCP round-trip) to avoid the
+    one-client-per-port contention.
+    """
+    try:
+        from ..mix_engine.critics import run_all_mix_critics
+        from ..mix_engine.state_builder import build_mix_state
+        from ..mix_engine.tools import _fetch_mix_data
+        data = _fetch_mix_data(ctx)
+        mix_state = build_mix_state(
+            session_info=data.get("session_info", {}),
+            track_infos=data.get("track_infos", []),
+            spectrum=data.get("spectrum"),
+            rms_data=data.get("rms_data"),
+        )
+        mix_issues = run_all_mix_critics(mix_state)
+    except Exception:
+        return None
+
+    if not mix_issues:
+        return None
+    track_issues = [
+        i for i in mix_issues
+        if getattr(i, "track_index", None) == track_index
+    ]
+    if not track_issues:
+        return None
+    top = max(
+        track_issues,
+        key=lambda i: float(getattr(i, "severity", 0) or 0),
+    )
+    issue_type = str(getattr(top, "issue_type", None) or getattr(top, "type", "issue"))
+    sev = float(getattr(top, "severity", 0) or 0)
+    return (
+        f"No sound-design issues on this track, but mix critic flagged "
+        f"'{issue_type}' (severity {sev:.2f}). "
+        f"Try plan_mix_move for the same track_index."
+    )
 
 
 @mcp.tool()

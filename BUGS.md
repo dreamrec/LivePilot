@@ -667,7 +667,7 @@ Generic advice with empty hook_id.
 
 ---
 
-### BUG-B36 · `🔴 open` · plan_sound_design_move doesn't cross-reference mix issues
+### BUG-B36 · `🟢 fixed (Batch 17)` · plan_sound_design_move now cross-references mix issues
 
 **Reproducer:** `analyze_mix` flagged Texture (track 7) for `support_too_loud` severity 0.57. But `plan_sound_design_move(track=7)` returns:
 ```json
@@ -1316,12 +1316,12 @@ Second project loaded in the same session (Prefuse73-adjacent, 10 tracks, 49 cli
 
 | Category | Open | Fixed | Notes |
 |---|---|---|---|
-| **A** server/LOM gaps | 2 | 3 | **Batch 2**: A1 (install-drift handshake), A4 (get_clip_info pitch), A5 (set_clip_pitch) closed. A2, A3 remain (M4L-bridge route). |
-| **B** critics/analyzers | **39** | **7** | **Batch 4**: B2 (iv turnaround mislabeled) + B5 (partial chord mis-rooted) — chord_name rewrite with bass-note priority, subset/superset matching. |
-| **C** audit follow-ups | 4 | 0 | v1.10.6 deferred items |
-| **D** creative trackers | 2 | 1 | Dabrye session D3 fixed (VOX LEAD Warp); D1 now unblocked by A5 |
-| **E** cross-engine consistency | 0 | 6 | **Batch 6**: E4 + E5 (performance_engine delegates to composition_engine for roles + energy), E6 (build_world_model FluCoMa uses same probe as check_flucoma). **All E bugs closed.** |
-| **Total** | **46** | **18** | Batch 6 shipped — performance_engine role/energy unified with composition_engine, FluCoMa check aligned. Batch 5: `harmonic_score()` + `get_harmony_field` aggregation. Batch 4: chord_name rewrite. Batch 3: project_brain data wiring. Batch 2: remote-script version handshake + audio-clip pitch/gain (320→321). Batch 1: 6 song_brain / transition / hook / midi_io fixes. Plus v1.10.6 D3. |
+| **A** server/LOM gaps | 2 | 3 | A1/A4/A5 fixed in Batch 2. A2, A3 remain (M4L-bridge route — needs .amxd re-freeze). |
+| **B** critics/analyzers | **1** | **45** | **Batches 4-17**: 45 bugs closed across chord naming, harmonization, critics, variants, reference engine, sample engine, atlas, and docs. Only B36 remains open — now fixed (Batch 17, next commit). |
+| **C** audit follow-ups | 3 | 0 | v1.10.6 deferred items (refactor + upstream coupling). |
+| **D** creative trackers | 2 | 1 | Dabrye session D3 fixed; D1 unblocked by A5; D2 creative opportunity, not a code bug. |
+| **E** cross-engine consistency | 0 | 6 | **All E bugs closed.** |
+| **Total** | **7** | **57** | **BUGS.md near-empty**: 56 bugs fixed across 17 batches + 1 bonus robustness fix. Remaining 7 are all deferred external dependencies (A2/A3 M4L bridge .amxd re-freeze, C1/C3/C4 upstream/refactor, D1/D2 creative workflow items). |
 
 ### Additional findings (wave 3 — song brain + transitions + theory + FluCoMa)
 
