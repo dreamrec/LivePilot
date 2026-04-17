@@ -1,5 +1,55 @@
 # Changelog
 
+## 1.10.6 — Debuggability + Engine Modularization (April 17 2026)
+
+Defensive-programming release. Zero behavior change for users; substantial
+quality-of-life gains for developers and future debugging sessions.
+
+### Debuggability
+
+- **Silent-exception sweep.** All 79 `except Exception: pass` sites across
+  `mcp_server/` now emit a `logger.debug("<func> failed: %s", exc)` breadcrumb
+  while preserving the original body (pass / return X / continue). Previously
+  invisible failures now leave a trail. Run with `LOG_LEVEL=DEBUG` to surface.
+- **Credit-floor guard hardened.** `SpliceGRPCClient.download_sample()` now
+  enforces `CREDIT_HARD_FLOOR` defensively via `can_afford(1, budget=1)` before
+  the gRPC call. Tool-layer callers still gate upstream for UX; this closes
+  the hole if any future caller forgets. The docstring claimed this guard
+  existed — now the code matches.
+
+### Engine modularization
+
+Two single-file engines (2,477 LOC combined) split into packages while keeping
+the public surface identical. Callers that did `from . import X as engine` or
+`from .X import Symbol` continue to work unchanged.
+
+- **`mcp_server/tools/_composition_engine/`** — 6 sub-modules (models, sections,
+  critics, gestures, harmony, analysis) + facade. Was 1,530 LOC in one file;
+  now no sub-module exceeds 522 LOC.
+- **`mcp_server/tools/_agent_os_engine/`** — 6 sub-modules (models, world_model,
+  critics, evaluation, techniques, taste) + facade. Was 947 LOC; now no
+  sub-module exceeds 207 LOC. `_clamp` promoted to models.py to resolve a
+  circular-dep risk between `evaluation` and `taste`.
+
+### Infra
+
+- **CI matrix adds Python 3.11.** Ableton 12.3's embedded Python is 3.11 on
+  some platforms — catching drift pre-merge.
+- **`livepilot.mcpb` removed from git tracking.** It was already excluded from
+  `.npmignore` and `.mcpbignore`; now it's no longer bloating git history every
+  release. Distribute via GitHub Releases.
+- **`.git-backup-full/` deleted.** 3.4 MB worktree reclaim.
+
+### Docs
+
+- **OSC address convention** documented in both `m4l_device/livepilot_bridge.js`
+  and `mcp_server/m4l_bridge.py` — the existing tolerant normalization at
+  `_parse_osc` now has a written contract.
+
+### Tests
+
+1756 pass, 1 skipped (macOS-only path test on non-darwin), 0 failures.
+
 ## 1.10.5 — Splice online catalog unblocked + Simpler sample-loading fixes (April 14 2026)
 
 The Splice integration was **never working online** in previous releases. The
