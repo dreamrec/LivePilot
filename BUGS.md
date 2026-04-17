@@ -429,7 +429,7 @@ if "any_section_change" in archetype.use_cases:
 
 ---
 
-### BUG-B17 · `🔴 open` · distill_reference_principles returns empty output
+### BUG-B17 · `🟢 fixed (Batch 13)` · distill_reference_principles returned empty output
 
 **Reproducer:** `distill_reference_principles(reference_description="cold 90s hip-hop with ghostly vocal chops and dusty drums", style_name="dabrye")` returns:
 ```json
@@ -452,7 +452,7 @@ A reference_id is generated but every principle field is empty.
 
 ---
 
-### BUG-B18 · `🔴 open` · get_style_tactics corpus disconnected from memory
+### BUG-B18 · `🟢 fixed (Batch 13)` · get_style_tactics corpus disconnected from memory
 
 **Reproducer:** `get_style_tactics(artist_or_genre="prefuse73")` returns:
 ```json
@@ -471,7 +471,7 @@ But `memory_list()` shows the user has **3 saved Prefuse73 techniques** from Apr
 
 ---
 
-### BUG-B19 · `🔴 open` · build_reference_profile + analyze_reference_gaps limited to 6 built-in styles
+### BUG-B19 · `🟢 fixed (Batch 13)` · build_reference_profile + analyze_reference_gaps limited to 6 built-in styles
 
 **Reproducer:** `build_reference_profile(style="prefuse73")` returns `NOT_FOUND`. Same for `analyze_reference_gaps(style="prefuse73")`.
 
@@ -978,7 +978,7 @@ The file wrote to the default `~/Documents/LivePilot/outputs/midi/` directory, n
 
 ---
 
-### BUG-B50 · `🟡 partial implementation` · build_reference_profile style corpus is incomplete
+### BUG-B50 · `🟢 fixed (Batch 13)` · build_reference_profile style corpus was incomplete
 
 **Reproducer:** `build_reference_profile(style="burial")` returns partial data:
 ```json

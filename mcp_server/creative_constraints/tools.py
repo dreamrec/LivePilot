@@ -94,10 +94,13 @@ def distill_reference_principles(
     if not reference_description.strip() and not style_name.strip():
         return {"error": "Provide reference_description or style_name"}
 
-    # Build a reference profile from available data
+    # BUG-B17 fix: collect profile fragments from all sources and MERGE.
+    # The old flow stopped at the first non-empty source, so if
+    # get_style_tactics returned a half-filled profile the text-keyword
+    # fallback never ran and the description's rich content was lost.
+    # Now we always run the text fallback too and fill missing fields.
     reference_profile: dict = {}
 
-    # Try to get style tactics if style_name is provided
     if style_name:
         try:
             from ..tools._research_engine import get_style_tactics
@@ -114,18 +117,34 @@ def distill_reference_principles(
                 }
         except Exception as exc:
             logger.debug("distill_reference_principles failed: %s", exc)
-    # Try to get a reference profile from the reference engine
+
+    # Try the built-in style profile builder
     if not reference_profile:
         try:
             from ..reference_engine.profile_builder import build_style_reference_profile
             profile = build_style_reference_profile(
                 style_name or reference_description
             )
-            reference_profile = profile.to_dict()
+            reference_profile = profile.to_dict() if profile else {}
         except Exception as exc:
             logger.debug("distill_reference_principles failed: %s", exc)
-            # Fallback: build from description keywords
-            reference_profile = _profile_from_description(reference_description)
+
+    # Text-keyword fallback ALWAYS merges in. Style tactics + profile
+    # builder typically leave some fields empty; the description's
+    # keywords fill those gaps. This is the B17 fix that makes the
+    # Dabrye reproducer produce non-empty principles.
+    if reference_description.strip():
+        text_profile = _profile_from_description(reference_description)
+        for key, value in text_profile.items():
+            existing = reference_profile.get(key)
+            is_empty = (
+                existing is None
+                or existing == ""
+                or existing == []
+                or existing == {}
+            )
+            if is_empty and value:
+                reference_profile[key] = value
 
     distillation = engine.distill_reference_principles(
         reference_profile=reference_profile,
@@ -375,32 +394,122 @@ def _get_song_brain_dict() -> dict:
 
 
 def _profile_from_description(description: str) -> dict:
-    """Build a rough reference profile from text description."""
+    """Build a rough reference profile from a free-text description.
+
+    BUG-B17 fix: the old version only mapped 8 emotion keywords and
+    left every other field empty, so distill_reference_principles
+    returned empty principles for any description that didn't include
+    exactly one of those 8 words. We now scan for a rich keyword set
+    across emotional / spectral / width / groove / harmonic / density
+    dimensions so a description like "cold 90s hip-hop with ghostly
+    vocal chops and dusty drums" actually produces principles.
+    """
     desc_lower = description.lower()
 
+    # Emotional stance
     emotional_map = {
-        "dark": "tense",
-        "bright": "euphoric",
-        "sad": "melancholic",
-        "aggressive": "aggressive",
-        "dreamy": "dreamy",
-        "chill": "relaxed",
-        "intense": "aggressive",
-        "minimal": "restrained",
+        "dark": "tense", "cold": "tense", "ominous": "tense", "eerie": "tense",
+        "bright": "euphoric", "warm": "warm", "sunny": "euphoric",
+        "sad": "melancholic", "longing": "melancholic", "wistful": "melancholic",
+        "nostalgic": "nostalgic", "dust": "nostalgic", "dusty": "nostalgic",
+        "aggressive": "aggressive", "violent": "aggressive", "intense": "aggressive",
+        "dreamy": "dreamy", "dream": "dreamy", "floaty": "dreamy",
+        "chill": "relaxed", "meditative": "relaxed",
+        "minimal": "restrained", "restrained": "restrained",
+        "ghostly": "haunted", "haunted": "haunted", "ghost": "haunted",
+        "euphoric": "euphoric", "ecstatic": "euphoric",
     }
-
     emotional = ""
     for keyword, stance in emotional_map.items():
         if keyword in desc_lower:
             emotional = stance
             break
 
+    # Spectral contour — from brightness / color keywords
+    spectral_contour: dict = {}
+    if any(k in desc_lower for k in ("dark", "muddy", "lo-fi", "lofi",
+                                      "dusty", "cold", "underwater",
+                                      "warm", "vintage")):
+        spectral_contour = {
+            "band_balance": {"sub": 0.4, "low": 0.5, "mid": 0.35,
+                             "high_mid": 0.2, "high": 0.1},
+            "centroid_hint": "dark / roll-off near 4kHz",
+        }
+    elif any(k in desc_lower for k in ("bright", "crisp", "shiny", "airy",
+                                        "glittery", "sparkly", "cinematic")):
+        spectral_contour = {
+            "band_balance": {"sub": 0.25, "low": 0.3, "mid": 0.4,
+                             "high_mid": 0.55, "high": 0.6},
+            "centroid_hint": "bright / open high shelf",
+        }
+
+    # Width / depth — mono vs wide vs deep
+    width_depth: dict = {}
+    if any(k in desc_lower for k in ("narrow", "mono", "focused", "tight",
+                                      "centered")):
+        width_depth = {"stereo_width": 0.25, "depth_hint": "close, upfront"}
+    elif any(k in desc_lower for k in ("wide", "spacious", "spatial",
+                                        "ambient", "washy", "drifting")):
+        width_depth = {"stereo_width": 0.85, "depth_hint": "deep, spatial"}
+    elif any(k in desc_lower for k in ("intimate", "dry")):
+        width_depth = {"stereo_width": 0.4, "depth_hint": "dry, intimate"}
+
+    # Groove posture — rhythm keywords
+    groove_posture: dict = {}
+    if any(k in desc_lower for k in ("swing", "shuffle", "dilla", "slouchy")):
+        groove_posture = {"feel": "swung", "stiffness": 0.25}
+    elif any(k in desc_lower for k in ("tight", "clean", "quantized",
+                                        "precise", "crispy")):
+        groove_posture = {"feel": "straight", "stiffness": 0.9}
+    elif any(k in desc_lower for k in ("loose", "sloppy", "drunk",
+                                        "organic", "human")):
+        groove_posture = {"feel": "humanized", "stiffness": 0.3}
+    elif any(k in desc_lower for k in ("driving", "motorik", "pulsing",
+                                        "throbbing", "hypnotic")):
+        groove_posture = {"feel": "driving", "stiffness": 0.8}
+
+    # Density motion — when the user hints at pacing
+    density_arc: list[float] = []
+    if any(k in desc_lower for k in ("slow burn", "patient", "gradually",
+                                      "builds", "buildup")):
+        density_arc = [0.2, 0.3, 0.5, 0.7, 0.9]
+    elif any(k in desc_lower for k in ("explodes", "immediate", "front-loaded",
+                                        "hits from the start")):
+        density_arc = [0.9, 0.85, 0.8, 0.5, 0.3]
+    elif any(k in desc_lower for k in ("dual drop", "return", "second wind")):
+        density_arc = [0.4, 0.8, 0.5, 0.3, 0.9]
+
+    # Harmonic character
+    harmonic = ""
+    if any(k in desc_lower for k in ("minor", "dorian", "phrygian",
+                                      "melancholic", "tense")):
+        harmonic = "minor_modal"
+    elif any(k in desc_lower for k in ("major", "ionian", "lydian",
+                                        "euphoric", "triumphant")):
+        harmonic = "major_modal"
+    elif any(k in desc_lower for k in ("dissonant", "dense", "clusters",
+                                        "microtonal")):
+        harmonic = "dissonant_clustered"
+    elif any(k in desc_lower for k in ("ambient", "drone", "pad",
+                                        "atmospheric", "washy")):
+        harmonic = "atmospheric_filtered"
+
+    # Payoff / section pacing
+    section_pacing: list[dict] = []
+    if any(k in desc_lower for k in ("sparse intro", "sparse", "slow start")):
+        section_pacing.append({"label": "sparse_intro", "bars": 16})
+    if any(k in desc_lower for k in ("buildup", "builds", "growing")):
+        section_pacing.append({"label": "gradual_buildup", "bars": 16})
+    if any(k in desc_lower for k in ("drop", "peak", "payoff",
+                                      "strip back", "pulled out")):
+        section_pacing.append({"label": "strip_back_payoff", "bars": 16})
+
     return {
         "emotional_stance": emotional,
-        "density_arc": [],
-        "section_pacing": [],
-        "width_depth": {},
-        "spectral_contour": {},
-        "groove_posture": {},
-        "harmonic_character": "",
+        "density_arc": density_arc,
+        "section_pacing": section_pacing,
+        "width_depth": width_depth,
+        "spectral_contour": spectral_contour,
+        "groove_posture": groove_posture,
+        "harmonic_character": harmonic,
     }

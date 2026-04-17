@@ -522,21 +522,60 @@ def get_style_tactics(
             if any(query in p.lower() for p in tactic.arrangement_patterns):
                 results.append(tactic)
 
-    # Search user memory tactics
+    # Search user memory tactics.
+    # BUG-B18 fix: TechniqueStore.search() strips the payload from
+    # summaries, so `mem.get("payload", {})` was always empty and the
+    # old match-by-payload.artist_or_genre code never fired. Users who
+    # saved 3 "Prefuse73" techniques via memory_learn got back 0
+    # tactics from get_style_tactics("prefuse73"). We now match on
+    # name + tags + qualities.summary + payload (if present) and
+    # adapt the memory-entry to a StyleTactic regardless of whether
+    # the caller formatted the payload in the exact style_tactic shape.
     if memory_tactics:
         for mem in memory_tactics:
-            payload = mem.get("payload", {})
-            if isinstance(payload, dict):
-                mem_genre = payload.get("artist_or_genre", "").lower()
-                mem_name = payload.get("tactic_name", "").lower()
-                if query in mem_genre or query in mem_name:
-                    results.append(StyleTactic(
-                        artist_or_genre=payload.get("artist_or_genre", ""),
-                        tactic_name=payload.get("tactic_name", ""),
-                        arrangement_patterns=payload.get("arrangement_patterns", []),
-                        device_chain=payload.get("device_chain", []),
-                        automation_gestures=payload.get("automation_gestures", []),
-                        verification=payload.get("verification", []),
-                    ))
+            if not isinstance(mem, dict):
+                continue
+            # Build the searchable text from whichever shape the memory
+            # entry uses. This is lenient on purpose — saved techniques
+            # don't need to pre-commit to a schema to surface here.
+            name = str(mem.get("name", ""))
+            tags = mem.get("tags", []) or []
+            qualities = mem.get("qualities", {}) or {}
+            summary = str(qualities.get("summary", "") or "")
+            payload = mem.get("payload", {}) or {}
+
+            searchable = " ".join([
+                name.lower(), summary.lower(),
+                " ".join(str(t).lower() for t in tags),
+                str(payload.get("artist_or_genre", "")).lower(),
+                str(payload.get("tactic_name", "")).lower(),
+            ])
+            if query not in searchable:
+                continue
+
+            # Adapt to StyleTactic — prefer payload fields when present,
+            # fall back to the summary for arrangement_patterns, etc.
+            artist_or_genre = str(
+                payload.get("artist_or_genre")
+                or next((t for t in tags if query in str(t).lower()), "")
+                or query
+            )
+            tactic_name = str(payload.get("tactic_name") or name or summary[:40])
+            arrangement_patterns = (
+                payload.get("arrangement_patterns")
+                or [summary] if summary else []
+            )
+            device_chain = payload.get("device_chain", []) or []
+            automation_gestures = payload.get("automation_gestures", []) or []
+            verification = payload.get("verification", []) or []
+
+            results.append(StyleTactic(
+                artist_or_genre=artist_or_genre,
+                tactic_name=tactic_name,
+                arrangement_patterns=arrangement_patterns,
+                device_chain=device_chain,
+                automation_gestures=automation_gestures,
+                verification=verification,
+            ))
 
     return results

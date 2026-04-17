@@ -30,6 +30,20 @@ def _fetch_comparison_data(ctx: Context, mix_path: str, reference_path: str) -> 
     return compare_to_reference(mix_path, reference_path, normalize=True)
 
 
+def _fetch_memory_tactics(style: str) -> list[dict]:
+    """BUG-B19: pull user-saved techniques tagged with *style* so they
+    feed into the reference-profile lookup path. Best-effort — returns
+    empty list when the memory store isn't available."""
+    if not style:
+        return []
+    try:
+        from ..tools.research import _memory_store
+        return _memory_store.search(query=style, limit=10)
+    except Exception as exc:
+        logger.debug("_fetch_memory_tactics failed for %r: %s", style, exc)
+        return []
+
+
 def _fetch_project_snapshot(ctx: Context) -> dict:
     """Build a lightweight project snapshot for gap analysis."""
     ableton = ctx.lifespan_context["ableton"]
@@ -110,10 +124,21 @@ def build_reference_profile(
         return profile.to_dict()
 
     if style:
-        tactics = get_style_tactics(style)
+        # BUG-B19 fix: also pass user-memory tactics so custom styles
+        # (e.g. "prefuse73" saved via memory_learn) resolve to real
+        # profiles instead of NOT_FOUND. Silently ignore if memory
+        # isn't available (keeps the built-in path working).
+        memory_tactics = _fetch_memory_tactics(style)
+        tactics = get_style_tactics(style, memory_tactics=memory_tactics)
         if not tactics:
             return {
-                "error": f"No style tactics found for '{style}'",
+                "error": (
+                    f"No style tactics found for '{style}' — neither in the "
+                    f"built-in library (burial / daft punk / techno / ambient / "
+                    f"trap / lo-fi) nor in your saved memories. Use "
+                    f"memory_learn to save a '{style}' technique or try "
+                    f"reference_path=<audio-file> for an audio-based profile."
+                ),
                 "code": "NOT_FOUND",
             }
         tactic_dicts = [t.to_dict() for t in tactics]
@@ -158,9 +183,17 @@ def analyze_reference_gaps(
             return comparison
         profile = build_audio_reference_profile(comparison)
     elif style:
-        tactics = get_style_tactics(style)
+        # BUG-B19: hydrate from saved memories too
+        memory_tactics = _fetch_memory_tactics(style)
+        tactics = get_style_tactics(style, memory_tactics=memory_tactics)
         if not tactics:
-            return {"error": f"No style tactics found for '{style}'", "code": "NOT_FOUND"}
+            return {
+                "error": (
+                    f"No style tactics found for '{style}' — neither in the "
+                    f"built-in library nor in saved memories."
+                ),
+                "code": "NOT_FOUND",
+            }
         tactic_dicts = [t.to_dict() for t in tactics]
         profile = build_style_reference_profile(tactic_dicts)
     else:
@@ -212,9 +245,17 @@ def plan_reference_moves(
             return comparison
         profile = build_audio_reference_profile(comparison)
     elif style:
-        tactics = get_style_tactics(style)
+        # BUG-B19: hydrate from saved memories too
+        memory_tactics = _fetch_memory_tactics(style)
+        tactics = get_style_tactics(style, memory_tactics=memory_tactics)
         if not tactics:
-            return {"error": f"No style tactics found for '{style}'", "code": "NOT_FOUND"}
+            return {
+                "error": (
+                    f"No style tactics found for '{style}' — neither in the "
+                    f"built-in library nor in saved memories."
+                ),
+                "code": "NOT_FOUND",
+            }
         tactic_dicts = [t.to_dict() for t in tactics]
         profile = build_style_reference_profile(tactic_dicts)
     else:
