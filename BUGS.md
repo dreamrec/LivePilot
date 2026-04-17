@@ -1099,27 +1099,30 @@ Second related issue: `_ce_build_sections` skips unnamed scenes, which means sec
 
 ---
 
-### BUG-E3 · `🔴 open` · get_harmony_field returns wrong key for section vs direct clip analysis
+### BUG-E3 · `🟢 fixed (Batch 5)` · get_harmony_field hijacked by percussion tracks
 
-**Reproducer:** `get_harmony_field(section_index=0)` on section "Intro Dust" returns:
-```json
-{"section_id": "sec_00", "key": "C", "mode": "major", "confidence": 0.684,
- "chord_progression": ["C chord", "C chord", "C chord", "C chord"]}
-```
+**Reproducer (live Dabrye session, section "Intro Dust"):**
+`get_harmony_field(section_index=0)` returned `{"key": "C", "mode": "major", "chord_progression": ["C chord"] × 4}` while `analyze_harmony(track=3, clip=0)` on the Pad Lush clip in the same section returned `{"key": "D minor", "chords": ["D-minor triad", ...]}`. Two tools, same section, contradictory answers.
 
-But `analyze_harmony(track=3, clip=0)` on the Pad Lush MIDI clip that's active in section 0 returns:
-```json
-{"key": "D minor", "confidence": 0.874,
- "chords": [{"chord_name": "D-minor triad", "roman_numeral": "i"}, {"chord_name": "C chord", "roman_numeral": "?"}]}
-```
+**Root cause (diagnosed on live session):** `get_harmony_field` iterated `section.tracks_active` in track-index order and took the **first track with notes** to lock in scale info (`if not scale_info:` guard). Track 1 "Perc Hats" came before track 3 "Pad Lush" in active_tracks. Perc Hats' Ghost Hats clip contained four MIDI notes all at pitch 60 (C4) with 0.1-beat durations — a single-pitch staccato percussion trigger. `detect_key` on that pool matched "C major" (C is in the C major scale and there's no disambiguation), then the loop never consulted the Pad Lush track's actual D/F/A harmony.
 
-**Why it's wrong:** Same section, same notes, different key. `get_harmony_field` says the section is in C major with 4 identical C chords — but the Pad Lush clip clearly has D-minor chord content. The section-wise harmony field must be reading empty clip positions (defaulting to C) or from the wrong track/time window.
+**Fix (landed):**
+1. New helper `harmonic_score(notes, track_name)` in `mcp_server/tools/_composition_engine/harmony.py` returning 0.0–1.0. Combines unique pitch classes, median duration, pitch range, minimum pitch, and track-name hints (`"kick"/"hat"/"perc"/"drum"` etc. vs `"pad"/"bass"/"lead"/"keys"`).
+2. `mcp_server/tools/composition.py::get_harmony_field` now builds a scored candidate list of all active tracks, sorts by score desc, **aggregates notes from every track ≥ 0.3** for key detection, and uses the **top-scoring single track** for chord extraction. Falls back to highest-scoring track if nothing passes threshold.
 
-**Fix direction:**
-- Audit `mcp_server/tools/_composition_engine/harmony.py::build_harmony_field` to confirm it reads notes from the RIGHT clip in each section (not just scene-view index 0 which may be empty on many tracks)
-- The 4 identical "C chord" entries suggest the algorithm is returning a default placeholder when no real notes found, then pattern-matching against an empty pitch collection
+**Verification (live session):** To be re-measured after plugin-cache sync. Scoring on the real data: Perc Hats `0.15` (below threshold), Pad Lush `0.95` (above) — aggregator consults only the pad.
 
-**Impact:** High. Every harmonic critic that uses `get_harmony_field` (transition analysis, voice-leading, chromatic-mediant suggestions) gets the wrong key and will make harmony recommendations based on a phantom C major.
+Regression tests (`tests/test_composition_engine.py::TestHarmonicScoreBugE3` + `tests/test_composition_tools.py::TestGetHarmonyFieldE3`):
+- Percussion hits score <0.3
+- Sustained Dm triad scores >0.6
+- Track-name nudges bounded in [0,1]
+- Monophonic bass passes threshold (harmonic, not drum)
+- Long drone note not misclassified as drum
+- Pad decisively beats perc in the Dabrye reproducer
+- Integration: full `get_harmony_field` on fake-Ableton with perc + pad returns D/F/A tonic, not "C major"
+- Integration: chord_progression reflects pad content, not perc
+
+**Impact:** High — now closed. Every harmonic critic that uses `get_harmony_field` (transition analysis, voice-leading, chromatic-mediant suggestions) gets the true key.
 
 ---
 
@@ -1317,8 +1320,8 @@ Second project loaded in the same session (Prefuse73-adjacent, 10 tracks, 49 cli
 | **B** critics/analyzers | **39** | **7** | **Batch 4**: B2 (iv turnaround mislabeled) + B5 (partial chord mis-rooted) — chord_name rewrite with bass-note priority, subset/superset matching. |
 | **C** audit follow-ups | 4 | 0 | v1.10.6 deferred items |
 | **D** creative trackers | 2 | 1 | Dabrye session D3 fixed (VOX LEAD Warp); D1 now unblocked by A5 |
-| **E** cross-engine consistency | 4 | 2 | **Batch 3**: E1 (role_graph section_id alignment), E2 (automation_graph reads clip envelopes). E3-E6 remain. |
-| **Total** | **50** | **14** | Batch 4 shipped — chord_name rewrite (bass-note root + subset/superset + exact-match preference). Batch 3: project_brain data wiring. Batch 2: remote-script version handshake + audio-clip pitch/gain (320→321). Batch 1: 6 song_brain / transition / hook / midi_io fixes. Plus v1.10.6 D3. |
+| **E** cross-engine consistency | 3 | 3 | **Batch 5**: E3 (harmony_field aggregates harmonic tracks, filters percussion). Batch 3: E1, E2. E4-E6 remain. |
+| **Total** | **49** | **15** | Batch 5 shipped — `harmonic_score()` helper + `get_harmony_field` aggregation rewrite. Batch 4: chord_name rewrite. Batch 3: project_brain data wiring. Batch 2: remote-script version handshake + audio-clip pitch/gain (320→321). Batch 1: 6 song_brain / transition / hook / midi_io fixes. Plus v1.10.6 D3. |
 
 ### Additional findings (wave 3 — song brain + transitions + theory + FluCoMa)
 

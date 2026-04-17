@@ -388,8 +388,13 @@ def get_harmony_field(
 
     section = sections[section_index]
 
-    # Find a track with notes to analyze harmony
-    # Use theory engine functions directly instead of TCP calls to MCP tools
+    # Find a track with notes to analyze harmony.
+    # BUG-E3 fix: score each active track for harmonic-ness and aggregate
+    # notes across all tracks that pass a threshold. Percussion tracks
+    # (all-single-pitch staccato stabs) scramble key detection when treated
+    # as the canonical harmonic source. Aggregating pad + bass notes yields
+    # the true key, and picking the highest-scoring single track for chord
+    # extraction gives the cleanest chord groupings.
     from . import _theory_engine as theory_engine
     from . import _harmony_engine as harmony_engine
 
@@ -398,27 +403,65 @@ def get_harmony_field(
     progression_info = None
     voice_leading_info = None
 
+    # Name lookup for track-name-based harmonic scoring hints
+    track_names = {t.get("index", i): t.get("name", "")
+                   for i, t in enumerate(tracks)}
+
+    # Per-track scan: fetch notes + score, then sort by score desc.
+    HARMONIC_THRESHOLD = 0.3
+    candidates: list[tuple[float, int, list[dict]]] = []
     for t_idx in section.tracks_active:
         try:
-            # Get notes via TCP (valid Remote Script command)
             result = ableton.send_command("get_notes", {
                 "track_index": t_idx, "clip_index": section_index,
             })
-            notes = result.get("notes", [])
-            if not notes:
-                continue
+        except Exception as exc:
+            logger.debug("harmony scan track %d: %s", t_idx, exc)
+            continue
+        notes = result.get("notes", []) if isinstance(result, dict) else []
+        if not notes:
+            continue
+        score = engine.harmonic_score(notes, track_names.get(t_idx, ""))
+        candidates.append((score, t_idx, notes))
 
-            # identify_scale: run key detection directly
-            if not scale_info:
-                detected = theory_engine.detect_key(notes, mode_detection=True)
-                top = {
-                    "key": f"{detected['tonic_name']} {detected['mode'].replace('_', ' ')}",
-                    "confidence": detected["confidence"],
-                    "mode": detected["mode"].replace("_", " "),
-                    "mode_id": detected["mode"],
-                    "tonic": detected["tonic_name"],
-                }
-                scale_info = {"top_match": top}
+    # Sort highest score first; ties broken by track index for stability.
+    candidates.sort(key=lambda c: (-c[0], c[1]))
+
+    # Aggregate harmonic notes for key detection; pick the top candidate
+    # for chord extraction.
+    harmonic_notes: list[dict] = []
+    harmonic_track_idx: Optional[int] = None
+    for score, t_idx, notes in candidates:
+        if score < HARMONIC_THRESHOLD:
+            continue
+        harmonic_notes.extend(notes)
+        if harmonic_track_idx is None:
+            harmonic_track_idx = t_idx
+
+    # If nothing passed the threshold, fall back to the highest-scoring
+    # track (or the first with any notes) to stay honest on edge cases.
+    if not harmonic_notes and candidates:
+        _, harmonic_track_idx, fallback_notes = candidates[0]
+        harmonic_notes = fallback_notes
+
+    if harmonic_notes and harmonic_track_idx is not None:
+        try:
+            # identify_scale on the AGGREGATED harmonic pool
+            detected = theory_engine.detect_key(harmonic_notes, mode_detection=True)
+            top = {
+                "key": f"{detected['tonic_name']} {detected['mode'].replace('_', ' ')}",
+                "confidence": detected["confidence"],
+                "mode": detected["mode"].replace("_", " "),
+                "mode_id": detected["mode"],
+                "tonic": detected["tonic_name"],
+            }
+            scale_info = {"top_match": top}
+
+            # Chord extraction: use the notes from the top-scoring track
+            # so chord groups don't get polluted by simultaneous notes
+            # across unrelated tracks (bass + pad + lead would fuse into
+            # chord aggregates that no single instrument actually plays).
+            notes = next(n for s, t, n in candidates if t == harmonic_track_idx)
 
             # analyze_harmony: chordify + roman numeral analysis directly
             if not harmony_analysis:
@@ -491,12 +534,12 @@ def get_harmony_field(
                         }
                 except Exception as exc:
                     logger.warning("voice_leading analysis failed: %s", exc)
-
-            if scale_info and harmony_analysis:
-                break
         except Exception as exc:
-            logger.debug("harmony scan on track %d skipped: %s", t_idx, exc)
-            continue
+            # Any per-track analysis failure — log and emit whatever we
+            # have. Unlike the old loop we're not iterating further, so
+            # there's nowhere to continue to.
+            logger.debug("harmony analysis on track %s failed: %s",
+                         harmonic_track_idx, exc)
 
     hf = engine.build_harmony_field(
         section_id=section.section_id,

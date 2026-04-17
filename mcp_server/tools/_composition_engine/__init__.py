@@ -44,7 +44,7 @@ from .gestures import (
     plan_gesture,
     resolve_gesture_template,
 )
-from .harmony import build_harmony_field
+from .harmony import build_harmony_field, harmonic_score
 from .analysis import (
     COMPOSITION_DIMENSIONS,
     analyze_section_outcomes,
@@ -61,7 +61,7 @@ __all__ = [
     "run_form_critic", "run_section_identity_critic", "run_phrase_critic",
     "run_transition_critic", "run_emotional_arc_critic", "run_cross_section_critic",
     "GESTURE_TEMPLATES", "plan_gesture", "resolve_gesture_template",
-    "build_harmony_field",
+    "build_harmony_field", "harmonic_score",
     "COMPOSITION_DIMENSIONS", "analyze_section_outcomes",
     "evaluate_composition_move", "build_composition_taste_model",
 ]

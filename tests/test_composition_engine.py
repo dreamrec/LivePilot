@@ -21,6 +21,7 @@ from mcp_server.tools._composition_engine import (
     infer_role_for_track,
     plan_gesture,
     build_harmony_field,
+    harmonic_score,
     run_form_critic,
     run_phrase_critic,
     run_section_identity_critic,
@@ -483,6 +484,101 @@ class TestHarmonyField:
         d = hf.to_dict()
         assert d["key"] == "C"
         assert d["section_id"] == "sec_01"
+
+
+# ─── BUG-E3 — Batch 5 regressions ──────────────────────────────────────────
+
+
+class TestHarmonicScoreBugE3:
+    """BUG-E3: get_harmony_field used to take the first active track with
+    notes and lock in its key — so a Perc Hats track (all-single-pitch
+    staccato) gave a bogus C major reading even when a Pad Lush in the
+    same section was clearly in D minor. harmonic_score() is the scoring
+    helper that lets the scanner aggregate only harmonic tracks.
+    """
+
+    def test_percussion_hits_score_low(self):
+        """Four identical pitches with 0.1-beat durations — classic drum
+        pattern. Must score below the 0.3 threshold."""
+        notes = [
+            {"pitch": 60, "start_time": i * 4, "duration": 0.1, "velocity": 90}
+            for i in range(4)
+        ]
+        score = harmonic_score(notes, track_name="Perc Hats")
+        assert score < 0.3, f"percussion should score <0.3, got {score}"
+
+    def test_sustained_dmin_triad_scores_high(self):
+        """Three pitches (D/F/A) sustained across 14 beats — a pad voicing
+        that defines the key. Must score well above the 0.3 threshold."""
+        notes = [
+            {"pitch": 50, "start_time": 0, "duration": 14, "velocity": 40},
+            {"pitch": 53, "start_time": 0, "duration": 14, "velocity": 38},
+            {"pitch": 57, "start_time": 0, "duration": 14, "velocity": 35},
+            {"pitch": 50, "start_time": 16, "duration": 14, "velocity": 42},
+            {"pitch": 53, "start_time": 16, "duration": 14, "velocity": 40},
+            {"pitch": 60, "start_time": 16, "duration": 14, "velocity": 35},
+        ]
+        score = harmonic_score(notes, track_name="Pad Lush")
+        assert score > 0.6, f"sustained pad should score >0.6, got {score}"
+
+    def test_empty_notes_score_zero(self):
+        assert harmonic_score([]) == 0.0
+        assert harmonic_score([], "Pad") == 0.0
+
+    def test_track_name_nudges_are_bounded(self):
+        """Score stays in [0, 1] even when name-hints push strongly."""
+        drum_notes = [
+            {"pitch": 36, "start_time": i * 1.0, "duration": 0.1, "velocity": 100}
+            for i in range(8)
+        ]
+        # Kick track name — strongest negative nudge
+        s = harmonic_score(drum_notes, track_name="Kick 808")
+        assert 0.0 <= s <= 1.0
+        # And actually in the low range
+        assert s < 0.3
+
+    def test_monophonic_bass_line_scores_mid_to_high(self):
+        """A simple bass line with stepwise motion should score above the
+        threshold — it carries harmonic information even without chords."""
+        notes = [
+            {"pitch": 38, "start_time": 0.0, "duration": 1.0, "velocity": 80},
+            {"pitch": 41, "start_time": 1.0, "duration": 1.0, "velocity": 80},
+            {"pitch": 43, "start_time": 2.0, "duration": 1.0, "velocity": 80},
+            {"pitch": 45, "start_time": 3.0, "duration": 1.0, "velocity": 80},
+        ]
+        s = harmonic_score(notes, track_name="Bass")
+        assert s >= 0.3, f"stepwise bass should pass threshold, got {s}"
+
+    def test_single_long_note_not_treated_as_drum(self):
+        """One sustained pitch (e.g., a drone) should NOT be classified as
+        percussion purely because it's a single pitch class."""
+        notes = [{"pitch": 48, "start_time": 0.0, "duration": 16.0, "velocity": 60}]
+        s = harmonic_score(notes, track_name="Drone")
+        # Duration boost should lift it off zero even without variety
+        assert s > 0.0
+
+    def test_real_dabrye_scenario_pad_beats_perc(self):
+        """The full BUG-E3 reproducer: Perc Hats must score *below* Pad
+        Lush so the aggregator aggregates pad notes first."""
+        perc_hats = [
+            {"pitch": 60, "start_time": 3.5, "duration": 0.1, "velocity": 25},
+            {"pitch": 60, "start_time": 7.25, "duration": 0.1, "velocity": 30},
+            {"pitch": 60, "start_time": 10.75, "duration": 0.1, "velocity": 22},
+            {"pitch": 60, "start_time": 14.5, "duration": 0.1, "velocity": 28},
+        ]
+        pad_lush = [
+            {"pitch": 50, "start_time": 0, "duration": 14, "velocity": 40},
+            {"pitch": 53, "start_time": 0, "duration": 14, "velocity": 38},
+            {"pitch": 57, "start_time": 0, "duration": 14, "velocity": 35},
+            {"pitch": 50, "start_time": 16, "duration": 14, "velocity": 42},
+            {"pitch": 53, "start_time": 16, "duration": 14, "velocity": 40},
+            {"pitch": 60, "start_time": 16, "duration": 14, "velocity": 35},
+        ]
+        perc_score = harmonic_score(perc_hats, track_name="Perc Hats")
+        pad_score = harmonic_score(pad_lush, track_name="Pad Lush")
+        assert pad_score > perc_score + 0.3, (
+            f"pad {pad_score} should decisively beat perc {perc_score}"
+        )
 
 
 # ── Round 1: Transition Critic ────────────────────────────────────────

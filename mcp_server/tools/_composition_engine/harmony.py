@@ -14,6 +14,96 @@ from typing import Any, Optional
 
 from .models import HarmonyField
 
+
+# ── BUG-E3: harmonic-ness scoring ────────────────────────────────────────
+# get_harmony_field used to take the FIRST track in section.tracks_active
+# that had notes and lock in its key detection. When that track was
+# percussion (all notes at a single pitch, staccato), detect_key would
+# return a bogus "C major" for the whole section. The fix: score every
+# track's notes for harmonic-ness, aggregate notes from tracks that pass
+# a threshold, and run key detection on the combined pool.
+
+_PERC_NAME_TOKENS = (
+    "kick", "snare", "clap", "hat", "hihat", "hi-hat", "hh", "drum",
+    "drums", "perc", "percussion", "rim", "crash", "ride", "tom",
+    "cymbal", "shaker", "tambourine", "cowbell", "808", "909",
+    "breakbeat", "break", "stick", "click",
+)
+_HARMONIC_NAME_TOKENS = (
+    "pad", "pads", "bass", "sub", "lead", "chord", "chords", "keys",
+    "synth", "piano", "rhodes", "organ", "lush", "string", "strings",
+    "brass", "pluck", "arp", "melody", "harmony", "voice", "choir",
+)
+
+
+def harmonic_score(notes: list[dict], track_name: str = "") -> float:
+    """Rate how likely a track's notes carry harmonic content (0.0 - 1.0).
+
+    Used by get_harmony_field to decide which tracks to include in
+    aggregate key detection. Percussion (single-pitch, staccato) scores
+    near 0. Sustained chordal/melodic material scores near 1.
+
+    Signals combined:
+      - unique pitch classes (chords vary, kicks don't)
+      - median note duration (sustain vs staccato)
+      - pitch range (melody moves, drums don't)
+      - minimum pitch (above the GM drum range)
+      - track-name hint tokens (soft nudge)
+
+    Returns a score in [0.0, 1.0]. Callers typically threshold at 0.3 or 0.4.
+    """
+    if not notes:
+        return 0.0
+
+    pitches = [int(n.get("pitch", 60)) for n in notes]
+    durations = [float(n.get("duration", 0.0)) for n in notes]
+    pcs = set(p % 12 for p in pitches)
+
+    # Use statistics.median for a more stable middle value. Falling back
+    # to a manual median keeps this file free of an extra import.
+    sorted_durs = sorted(durations)
+    median_dur = sorted_durs[len(sorted_durs) // 2] if sorted_durs else 0.0
+    unique_pcs = len(pcs)
+    pitch_range = max(pitches) - min(pitches) if pitches else 0
+    min_pitch = min(pitches) if pitches else 0
+
+    score = 0.0
+    # Unique pitch-class diversity: 3+ distinct pcs is a strong harmonic signal
+    if unique_pcs >= 4:
+        score += 0.45
+    elif unique_pcs >= 3:
+        score += 0.35
+    elif unique_pcs >= 2:
+        score += 0.15
+
+    # Duration: sustained notes carry harmony; staccato is rhythmic
+    if median_dur >= 1.0:
+        score += 0.30
+    elif median_dur >= 0.5:
+        score += 0.25
+    elif median_dur >= 0.25:
+        score += 0.10
+
+    # Pitch range: melody spans more than an octave often; drums don't
+    if pitch_range >= 12:
+        score += 0.20
+    elif pitch_range >= 5:
+        score += 0.10
+
+    # Minimum pitch out of the GM drum-map range (35–51) suggests melody
+    if min_pitch >= 48:
+        score += 0.10
+
+    # Track-name hints — mild nudges either way
+    name_lower = str(track_name or "").lower()
+    if any(tok in name_lower for tok in _PERC_NAME_TOKENS):
+        score -= 0.45
+    if any(tok in name_lower for tok in _HARMONIC_NAME_TOKENS):
+        score += 0.20
+
+    return max(0.0, min(1.0, score))
+
+
 def build_harmony_field(
     section_id: str,
     harmony_analysis: Optional[dict] = None,
