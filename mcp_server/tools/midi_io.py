@@ -130,7 +130,19 @@ def export_clip_midi(
     if not filename.endswith((".mid", ".midi")):
         filename += ".mid"
 
-    out_path = _safe_output_path(_output_dir(), filename)
+    # BUG-B52: honor user-provided absolute paths. Previously the tool
+    # stripped the directory component and always wrote to the default
+    # output dir — a security posture meant to block path traversal but
+    # over-broad for legitimate absolute paths the user explicitly chose.
+    # Now: absolute paths are honored (creating parent dirs if needed);
+    # bare filenames / relative paths still get containment via
+    # _safe_output_path.
+    user_path = Path(filename)
+    if user_path.is_absolute():
+        user_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path = user_path.resolve()
+    else:
+        out_path = _safe_output_path(_output_dir(), filename)
 
     midi = MIDIFile(1)
     midi.addTempo(0, 0, tempo)

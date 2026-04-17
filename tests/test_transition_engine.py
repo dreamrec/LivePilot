@@ -314,6 +314,45 @@ class TestGestureFitCritic:
         mismatch = [i for i in issues if i.issue_type == "archetype_section_mismatch"]
         assert len(mismatch) == 0
 
+    def test_bug_b15_any_section_change_wildcard_honored(self):
+        """BUG-B15: 'any_section_change' in archetype.use_cases is a wildcard
+        that matches every transition. Previously ignored, firing false
+        'archetype_section_mismatch' warnings on universal archetypes.
+        """
+        b = TransitionBoundary(
+            from_type="intro", to_type="build", energy_delta=0.2,
+        )
+        arch = TRANSITION_ARCHETYPES["fill_and_reset"]
+        assert "any_section_change" in arch.use_cases, (
+            "Test assumes fill_and_reset has any_section_change wildcard"
+        )
+        plan = TransitionPlan(boundary=b, archetype=arch)
+        issues = run_gesture_fit_critic(plan)
+        mismatch = [
+            i for i in issues if i.issue_type == "archetype_section_mismatch"
+        ]
+        assert len(mismatch) == 0, (
+            f"Wildcard 'any_section_change' should suppress mismatch, got: "
+            f"{[i.evidence for i in mismatch]}"
+        )
+
+    def test_bug_b15_non_wildcard_archetype_still_fires_on_mismatch(self):
+        """Without the wildcard, mismatch detection still works."""
+        b = TransitionBoundary(
+            from_type="intro", to_type="outro", energy_delta=-0.4,
+        )
+        arch = TransitionArchetype(
+            name="narrow_archetype", use_cases=["verse_to_chorus"],
+        )
+        plan = TransitionPlan(boundary=b, archetype=arch)
+        issues = run_gesture_fit_critic(plan)
+        mismatch = [
+            i for i in issues if i.issue_type == "archetype_section_mismatch"
+        ]
+        assert len(mismatch) >= 1, (
+            "A narrow archetype applied to an unrelated pair SHOULD mismatch"
+        )
+
 
 class TestRunAllCritics:
     def test_returns_list(self, flat_boundary):

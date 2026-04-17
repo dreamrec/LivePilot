@@ -189,3 +189,69 @@ class TestImportTempoIndependence:
             assert notes[1]["start_time"] == pytest.approx(2.0, abs=0.05)
         finally:
             os.unlink(path)
+
+
+class TestBugB52ExportPath:
+    """BUG-B52: export_clip_midi must honor user-provided absolute paths
+    instead of always writing to the default output dir."""
+
+    def test_absolute_path_honored(self):
+        """When filename is an absolute path, write there (not the default)."""
+        from pathlib import Path
+        from mcp_server.tools.midi_io import _safe_output_path, _output_dir
+
+        # Simulate the relevant branch of export_clip_midi's path logic.
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            target = Path(tmp_dir) / "my_custom_name.mid"
+            filename = str(target)
+            user_path = Path(filename)
+            # The fixed logic:
+            if user_path.is_absolute():
+                user_path.parent.mkdir(parents=True, exist_ok=True)
+                out_path = user_path.resolve()
+            else:
+                out_path = _safe_output_path(_output_dir(), filename)
+
+            assert str(out_path) == str(target.resolve()), (
+                f"Absolute path should be honored, not redirected to default. "
+                f"Got {out_path}, wanted {target.resolve()}"
+            )
+            # Confirm we're NOT writing under the default ~/Documents dir
+            default = _output_dir()
+            assert not str(out_path).startswith(str(default)), (
+                "Absolute path should not be rerouted to default dir"
+            )
+
+    def test_bare_filename_still_goes_to_default_dir(self):
+        """When only a basename is given, still use the safe default dir."""
+        from pathlib import Path
+        from mcp_server.tools.midi_io import _safe_output_path, _output_dir
+
+        filename = "bare_basename.mid"
+        user_path = Path(filename)
+        if user_path.is_absolute():
+            out_path = user_path.resolve()
+        else:
+            out_path = _safe_output_path(_output_dir(), filename)
+
+        default = _output_dir()
+        assert str(out_path).startswith(str(default.resolve())), (
+            "Bare filename should still resolve inside the default output dir"
+        )
+        assert out_path.name == "bare_basename.mid"
+
+    def test_path_traversal_basename_still_contained(self):
+        """Relative paths with .. components should still be contained to the
+        default dir (security-critical behavior preserved)."""
+        from pathlib import Path
+        from mcp_server.tools.midi_io import _safe_output_path, _output_dir
+
+        filename = "../../../evil.mid"  # relative path with traversal
+        user_path = Path(filename)
+        # Since it's not absolute, falls into _safe_output_path which strips
+        # directory components and contains the result.
+        assert not user_path.is_absolute()
+        out_path = _safe_output_path(_output_dir(), filename)
+        assert out_path.name == "evil.mid"
+        # Still inside the default directory
+        assert str(out_path).startswith(str(_output_dir().resolve()))

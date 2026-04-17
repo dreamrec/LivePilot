@@ -135,7 +135,18 @@ def develop_hook(
     # Look up the actual hook to adapt strategies by type
     hook_type = "melodic"  # default
     hook_description = "the hook"
-    if hook_id:
+    # BUG-B31: when no hook_id is provided, default to the session's primary
+    # hook. Previously the tool emitted generic advice even though
+    # find_primary_hook was already available — users had to manually chain
+    # find_primary_hook → develop_hook to get type-specific tactics.
+    if not hook_id:
+        tracks, scenes, motif_data = _fetch_tracks_and_scenes(ctx)
+        primary = analyzer.find_primary_hook(tracks, motif_data, scenes)
+        if primary is not None:
+            hook_id = primary.hook_id
+            hook_type = primary.hook_type
+            hook_description = primary.description
+    elif hook_id:
         tracks, scenes, motif_data = _fetch_tracks_and_scenes(ctx)
         candidates = analyzer.find_hook_candidates(tracks, motif_data, scenes)
         match = [c for c in candidates if c.hook_id == hook_id]

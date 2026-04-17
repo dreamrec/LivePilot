@@ -260,6 +260,12 @@ def _detect_sacred_elements(
 # ── Section purposes ──────────────────────────────────────────────
 
 
+# Section intents that imply this is a "payoff" / arrival moment.
+# Used by _infer_section_purposes to derive is_payoff consistently
+# when composition returns an intent label without the explicit flag.
+_PAYOFF_INTENTS = frozenset({"payoff", "drop", "chorus", "hook"})
+
+
 def _infer_section_purposes(
     scenes: list[dict],
     composition: dict,
@@ -271,12 +277,27 @@ def _infer_section_purposes(
     comp_sections = composition.get("sections", [])
     if comp_sections:
         for sec in comp_sections:
+            name = str(sec.get("name", ""))
+            # BUG-B12: skip empty placeholder sections that pollute the
+            # energy_arc and section_purposes list. A section with no name
+            # AND zero energy corresponds to an unnamed empty scene slot.
+            if not name.strip() and not sec.get("energy", 0):
+                continue
+            intent = sec.get("intent", sec.get("purpose", "")) or ""
+            # BUG-B11: derive is_payoff from the intent label when the
+            # explicit flag isn't set. Composition engine returns
+            # intent="drop"/"chorus"/"hook"/"payoff" — these all mean the
+            # section IS a payoff, so is_payoff must reflect that.
+            is_payoff = bool(
+                sec.get("is_payoff", False)
+                or intent.lower() in _PAYOFF_INTENTS
+            )
             sections.append(SectionPurpose(
-                section_id=sec.get("id", sec.get("name", "")),
-                label=sec.get("label", sec.get("name", "")),
-                emotional_intent=sec.get("intent", sec.get("purpose", "")),
+                section_id=sec.get("id", name),
+                label=sec.get("label", name),
+                emotional_intent=intent,
                 energy_level=sec.get("energy", 0.5),
-                is_payoff=sec.get("is_payoff", False),
+                is_payoff=is_payoff,
                 confidence=0.7,
             ))
         return sections
@@ -284,6 +305,10 @@ def _infer_section_purposes(
     # Fallback: infer from scene names
     for i, scene in enumerate(scenes):
         name = scene.get("name", f"Scene {i}")
+        # BUG-B12 (fallback path): skip empty scenes so they don't pollute
+        # the output even when no composition data is available.
+        if not str(name).strip():
+            continue
         label, intent, energy, is_payoff = _classify_scene_name(name, i, len(scenes))
         sections.append(SectionPurpose(
             section_id=f"scene_{i}",
@@ -389,8 +414,14 @@ def _detect_open_questions(
         ))
 
     # Missing sections (common gaps)
-    labels = {s.label for s in sections}
-    if len(sections) > 3 and "intro" not in labels:
+    # BUG-B14: check substrings across labels AND emotional intents
+    # (case-insensitive) so scene names like "Intro Dust" or intent "intro"
+    # both satisfy the check. Exact-match on the label set missed those.
+    signal_text = " ".join(
+        f"{s.label} {s.emotional_intent}".lower() for s in sections
+    )
+    has_intro = any(kw in signal_text for kw in ("intro", "opening", "opener"))
+    if len(sections) > 3 and not has_intro:
         questions.append(OpenQuestion(
             question="No intro section — does the track need an opening?",
             domain="arrangement",

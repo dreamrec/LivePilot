@@ -236,3 +236,135 @@ def test_summary_readable():
     )
     assert brain.summary  # Not empty
     assert isinstance(brain.summary, str)
+
+
+# ── Regression tests for BUG-B11 / B12 / B14 ─────────────────────
+
+
+def test_bug_b11_is_payoff_derived_from_intent():
+    """BUG-B11: is_payoff must be TRUE when emotional_intent == 'payoff'
+    even if the explicit flag isn't set. Composition engine returns
+    intent='drop'/'chorus'/'hook'/'payoff' — all are arrival moments.
+    """
+    brain = build_song_brain(
+        session_info={"tempo": 120, "track_count": 4},
+        composition_analysis={
+            "sections": [
+                {"name": "Intro", "id": "sec_00", "intent": "tension", "energy": 0.5},
+                {"name": "Drop", "id": "sec_01", "intent": "payoff", "energy": 0.9},
+                {"name": "Chorus", "id": "sec_02", "intent": "chorus", "energy": 0.9},
+                {"name": "Verse", "id": "sec_03", "intent": "verse", "energy": 0.6},
+                {"name": "Hook", "id": "sec_04", "intent": "hook", "energy": 0.85},
+                {"name": "Build", "id": "sec_05", "intent": "drop", "energy": 0.95},
+            ],
+        },
+    )
+    purposes = {s.section_id: s for s in brain.section_purposes}
+    assert purposes["sec_00"].is_payoff is False, "intro with intent='tension' is not payoff"
+    assert purposes["sec_01"].is_payoff is True, "intent='payoff' must mark is_payoff"
+    assert purposes["sec_02"].is_payoff is True, "intent='chorus' is a payoff moment"
+    assert purposes["sec_03"].is_payoff is False, "intent='verse' is not payoff"
+    assert purposes["sec_04"].is_payoff is True, "intent='hook' is a payoff moment"
+    assert purposes["sec_05"].is_payoff is True, "intent='drop' is a payoff moment"
+
+
+def test_bug_b11_explicit_is_payoff_flag_still_respected():
+    """Explicit is_payoff=true should always win, regardless of intent."""
+    brain = build_song_brain(
+        session_info={"tempo": 120, "track_count": 2},
+        composition_analysis={
+            "sections": [
+                {"name": "Oddball", "id": "sec_00", "intent": "tension",
+                 "energy": 0.6, "is_payoff": True},
+            ],
+        },
+    )
+    purposes = {s.section_id: s for s in brain.section_purposes}
+    assert purposes["sec_00"].is_payoff is True
+
+
+def test_bug_b12_empty_placeholder_sections_filtered():
+    """BUG-B12: empty-name sections with zero energy pollute the energy_arc
+    and section_purposes list. They should be filtered out.
+    """
+    brain = build_song_brain(
+        session_info={"tempo": 119, "track_count": 3},
+        composition_analysis={
+            "sections": [
+                {"name": "Intro", "id": "sec_00", "intent": "tension", "energy": 0.7},
+                {"name": "Drop", "id": "sec_01", "intent": "payoff", "energy": 0.9},
+                {"name": "", "id": "", "intent": "contrast", "energy": 0},  # empty
+            ],
+        },
+    )
+    # Only 2 sections should remain (the empty one is filtered)
+    assert len(brain.section_purposes) == 2
+    assert all(s.label for s in brain.section_purposes), \
+        "No section should have empty label after filtering"
+    # Energy arc shouldn't have a trailing zero from the empty section
+    assert brain.energy_arc == [0.7, 0.9]
+
+
+def test_bug_b12_fallback_path_filters_empty_scene_names():
+    """Fallback path (no composition data) should also skip empty scenes."""
+    brain = build_song_brain(
+        session_info={"tempo": 120, "track_count": 2},
+        scenes=[
+            {"name": "Intro Dust", "clips": [1, 1]},
+            {"name": "Groove", "clips": [1, 1]},
+            {"name": "", "clips": []},  # empty placeholder scene
+        ],
+    )
+    # No composition data → falls back to scene-based, empty scene filtered
+    assert len(brain.section_purposes) == 2
+
+
+def test_bug_b14_intro_detected_via_label_substring():
+    """BUG-B14: 'No intro section' should NOT fire when a section has
+    'intro' in its label, even when the intent is something else.
+    E.g., 'Intro Dust' with intent='tension' still has an intro.
+    """
+    brain = build_song_brain(
+        session_info={"tempo": 120, "track_count": 6},
+        composition_analysis={
+            "sections": [
+                {"name": "Intro Dust", "id": "sec_00", "intent": "tension",
+                 "energy": 0.7},
+                {"name": "Build", "id": "sec_01", "intent": "tension",
+                 "energy": 0.8},
+                {"name": "Drop", "id": "sec_02", "intent": "payoff",
+                 "energy": 0.9},
+                {"name": "Break", "id": "sec_03", "intent": "contrast",
+                 "energy": 0.5},
+                {"name": "Outro", "id": "sec_04", "intent": "contrast",
+                 "energy": 0.3},
+            ],
+        },
+    )
+    questions = [q.question for q in brain.open_questions]
+    assert not any("No intro section" in q for q in questions), \
+        f"'Intro Dust' label should satisfy the intro check. Got: {questions}"
+
+
+def test_bug_b14_no_intro_still_flags_when_truly_missing():
+    """When no section name or intent mentions intro, the check should fire."""
+    brain = build_song_brain(
+        session_info={"tempo": 120, "track_count": 6},
+        composition_analysis={
+            "sections": [
+                {"name": "Groove", "id": "sec_00", "intent": "tension",
+                 "energy": 0.7},
+                {"name": "Build", "id": "sec_01", "intent": "tension",
+                 "energy": 0.8},
+                {"name": "Drop", "id": "sec_02", "intent": "payoff",
+                 "energy": 0.9},
+                {"name": "Break", "id": "sec_03", "intent": "contrast",
+                 "energy": 0.5},
+                {"name": "Outro", "id": "sec_04", "intent": "contrast",
+                 "energy": 0.3},
+            ],
+        },
+    )
+    questions = [q.question for q in brain.open_questions]
+    assert any("No intro section" in q for q in questions), \
+        "Without an intro label/intent, the check SHOULD fire."

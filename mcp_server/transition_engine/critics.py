@@ -270,17 +270,24 @@ def run_gesture_fit_critic(
     boundary = plan.boundary
     archetype = plan.archetype
 
-    # Check if the section pair matches any of the archetype's use cases
-    pair_tags = {
-        f"{boundary.from_type}_to_{boundary.to_type}",
-        boundary.from_type,
-        boundary.to_type,
-    }
-    use_case_match = any(
-        tag in uc or uc in tag
-        for tag in pair_tags
-        for uc in archetype.use_cases
-    )
+    # Check if the section pair matches any of the archetype's use cases.
+    # BUG-B15: "any_section_change" is a wildcard that matches any transition —
+    # honor it explicitly so archetypes documented as universal don't get
+    # flagged as mismatched on specific pairs like intro→build.
+    WILDCARDS = {"any_section_change", "any"}
+    if any(uc in WILDCARDS for uc in archetype.use_cases):
+        use_case_match = True
+    else:
+        pair_tags = {
+            f"{boundary.from_type}_to_{boundary.to_type}",
+            boundary.from_type,
+            boundary.to_type,
+        }
+        use_case_match = any(
+            tag in uc or uc in tag
+            for tag in pair_tags
+            for uc in archetype.use_cases
+        )
 
     if not use_case_match:
         issues.append(TransitionIssue(
