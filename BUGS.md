@@ -172,18 +172,22 @@ Regression tests: `test_bug_a5_set_clip_pitch_writes_coarse_and_fine`, `test_bug
 
 ---
 
-### BUG-B2 · `🔴 open` · analyze_harmony mislabels iv turnaround chord
+### BUG-B2 · `🟢 fixed (Batch 4)` · analyze_harmony mislabeled iv turnaround chord
 
-**Reproducer:** In RHODES clip (track 2, clip 0), the chord at beat 13.5 has pitches `[G3, A#3, D4, F4, A4]` (i.e. G-Bb-D-F-A). `analyze_harmony` labels this:
-```json
-{"chord_name": "D chord", "roman_numeral": "i", "quality": "minor"}
-```
+**Reproducer:** RHODES clip beat 13.5 pitches `[G3, A#3, D4, F4, A4]` returned `{"chord_name": "D chord", ...}` instead of `Gm7` (= iv7 in Dm).
 
-**Why it's wrong:** G-Bb-D-F is a Gm7 triad-plus-seventh. The added A at the top is either an add-11 or passing color. In D minor, this is **iv7** (Gm7 = G as root = iv scale-degree). Labeling the root as D ("i") is a chord-naming regression — the tool is finding the lowest *chord-tone* in Dm's scale rather than the actual root stack.
+**Root cause:** `chord_name()` in `_theory_engine.py` only matched EXACT interval tuples in `CHORD_PATTERNS`. On miss, it returned `NOTE_NAMES[pcs[0]]` — the *numerically lowest pitch class*, not the bass note. Since `pcs_sorted = [2, 5, 7, 9, 10]`, `pcs[0] = 2` = D, so the chord was labeled "D chord".
 
-**Fix direction:** Chord root detection should use bass-note priority (lowest sounding pitch = likely root) OR try all notes as root and pick the one that matches a consistent chord quality (Gm7 from G-Bb-D-F). The current algorithm is probably looking at pitch-class aggregate weighted toward the key tonic, which misroots subdominant chords.
+**Fix (landed in `mcp_server/tools/_theory_engine.py::chord_name`):**
+Four-pass chord identification:
+1. Exact `CHORD_PATTERNS` match with bass-note-preferred root selection
+2. Subset match → partial chord labeled with `(no X)` annotation
+3. Superset match → extended chord labeled with `(add X)` annotation
+4. Final fallback names the bass pitch (not the numerically lowest pc)
 
-**Impact:** Medium. Misattributes the turnaround, which matters for composition critics that reason about harmonic function.
+BUG-B2 input `[G3, Bb3, D4, F4, A4]` now returns **"G-minor seventh (add 9)"** (pass 3: G-Bb-D-F = minor seventh pattern + A as added 9/11 tension).
+
+**Impact:** Medium — now closed.
 
 ---
 
@@ -224,18 +228,23 @@ Regression tests: `test_bug_a5_set_clip_pitch_writes_coarse_and_fine`, `test_bug
 
 ---
 
-### BUG-B5 · `🔴 open` · analyze_harmony chord naming on incomplete chords
+### BUG-B5 · `🟢 fixed (Batch 4)` · analyze_harmony chord naming on incomplete chords
 
-**Reproducer:** Pad Lush clip 0 "Intro Wash" contains pitches `[D3, F3, C4]` at bar 16. `analyze_harmony` returns:
-```json
-{"chord_name": "C chord", "roman_numeral": "?", "quality": "unknown", "scale_degree": 1}
-```
+**Reproducer:** Pad Lush clip 0 "Intro Wash" pitches `[D3, F3, C4]` returned `{"chord_name": "C chord", ...}` instead of `Dm7(no5)`.
 
-**Why it's wrong:** D-F-C is **Dm7 without the 5th** (root D + minor 3rd F + flat 7th C), or equivalently an F6/D inversion. It's NOT a C chord (which requires C-E-G notes). The chord-naming function mislabels chords when the root's 5th is absent. Same family of bug as BUG-B2 (iv turnaround mislabeled as i in the Dabrye session) — chord-root inference is weak on partial chords.
+**Root cause:** Same `chord_name()` fallback bug as BUG-B2. Pitch classes `{0, 2, 5}` (C, D, F) sorted numerically puts C first (pc 0), so the fallback returned "C chord".
 
-**Fix direction:** Add a root-guessing pass that weighs the lowest sounding pitch as the most likely root when the pitch-class collection matches multiple chord shapes. Fall back to interval analysis: root + minor third + minor seventh → "Dm7 (no 5)".
+**Fix (landed with BUG-B2 in Batch 4):** Subset-match pass now catches partial chords. D (bass, pc 2) → intervals `{0, 3, 10}` → subset of minor-seventh pattern `{0, 3, 7, 10}` → returns **"D-minor seventh (no 5)"**.
 
-**Impact:** Medium. Affects composition critics' ability to reason about harmony on pad / sustain clips that drop chord tones.
+Regression tests (all in `tests/test_theory_engine.py::TestChordName`):
+- `test_bug_b2_gm7_with_added_tension_rooted_on_bass`
+- `test_bug_b5_dm7_no5_rooted_on_bass_not_c`
+- `test_partial_minor_triad_still_rooted_on_bass`
+- `test_major_triad_with_added_ninth`
+- `test_exact_match_still_wins_over_subset_guess`
+- `test_empty_pitches_returns_unknown`
+
+**Impact:** Medium — now closed. Composition critics get correct chord names on pad/sustain clips that drop the fifth.
 
 ---
 
@@ -1305,11 +1314,11 @@ Second project loaded in the same session (Prefuse73-adjacent, 10 tracks, 49 cli
 | Category | Open | Fixed | Notes |
 |---|---|---|---|
 | **A** server/LOM gaps | 2 | 3 | **Batch 2**: A1 (install-drift handshake), A4 (get_clip_info pitch), A5 (set_clip_pitch) closed. A2, A3 remain (M4L-bridge route). |
-| **B** critics/analyzers | **41** | **5** | **Batch 1 fix-sweep (commit 7142319)**: B11, B12, B14, B15, B31, B52 closed with regression tests. 46 - 5 = 41 open. |
+| **B** critics/analyzers | **39** | **7** | **Batch 4**: B2 (iv turnaround mislabeled) + B5 (partial chord mis-rooted) — chord_name rewrite with bass-note priority, subset/superset matching. |
 | **C** audit follow-ups | 4 | 0 | v1.10.6 deferred items |
 | **D** creative trackers | 2 | 1 | Dabrye session D3 fixed (VOX LEAD Warp); D1 now unblocked by A5 |
 | **E** cross-engine consistency | 4 | 2 | **Batch 3**: E1 (role_graph section_id alignment), E2 (automation_graph reads clip envelopes). E3-E6 remain. |
-| **Total** | **52** | **12** | Batch 3 shipped — project_brain data wiring: role_graph notes_map key alignment, automation_graph real-envelope aggregation. Batch 2: remote-script version handshake + audio-clip pitch/gain read+write (320→321 tools). Batch 1: 6 song_brain / transition / hook / midi_io fixes. Plus v1.10.6 D3. |
+| **Total** | **50** | **14** | Batch 4 shipped — chord_name rewrite (bass-note root + subset/superset + exact-match preference). Batch 3: project_brain data wiring. Batch 2: remote-script version handshake + audio-clip pitch/gain (320→321). Batch 1: 6 song_brain / transition / hook / midi_io fixes. Plus v1.10.6 D3. |
 
 ### Additional findings (wave 3 — song brain + transitions + theory + FluCoMa)
 

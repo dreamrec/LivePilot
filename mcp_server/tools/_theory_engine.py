@@ -218,16 +218,98 @@ def detect_key(notes: list[dict], mode_detection: bool = True) -> dict:
 
 
 def chord_name(midi_pitches: list[int]) -> str:
-    """Identify chord from MIDI pitches -> 'C-major triad'."""
-    pcs = sorted(set(p % 12 for p in midi_pitches))
-    if not pcs:
+    """Identify chord from MIDI pitches -> 'C-major triad'.
+
+    Root-selection rules (BUG-B2 / BUG-B5):
+      1) Prefer the bass note (lowest MIDI pitch) as root — matches
+         musical convention and handles partial voicings correctly.
+      2) Accept exact CHORD_PATTERNS match first.
+      3) If no exact match, allow subset match (partial chord e.g.
+         Dm7(no5)) and superset match (add-tone e.g. Gm7(add11)).
+      4) Only fall back to the pitch-class-0 guess when nothing else
+         works — previous code always returned pcs[0] on miss, which
+         mis-labeled Dm7 as a "C chord" just because C has pc=0.
+    """
+    if not midi_pitches:
         return "unknown"
-    # Try each pitch class as potential root
-    for root in pcs:
-        intervals = tuple(sorted((pc - root) % 12 for pc in pcs))
+    pcs_set = set(p % 12 for p in midi_pitches)
+    pcs_sorted_pc = sorted(pcs_set)  # numerical pc order, used for fallback only
+    bass_pc = min(midi_pitches) % 12
+
+    # Ordered candidate roots: bass first, then remaining pcs (low→high).
+    # This gives musical priority to the bass note without ignoring cases
+    # where a non-bass root yields a cleaner exact match (2nd-pass scoring).
+    ordered_roots: list[int] = [bass_pc] + [pc for pc in pcs_sorted_pc if pc != bass_pc]
+
+    # ── Pass 1: exact CHORD_PATTERNS match ─────────────────────────────
+    exact_matches: list[tuple[int, tuple[int, ...]]] = []
+    for root in ordered_roots:
+        intervals = tuple(sorted((pc - root) % 12 for pc in pcs_set))
         if intervals in CHORD_PATTERNS:
-            return f"{NOTE_NAMES[root]}-{CHORD_PATTERNS[intervals]}"
-    return f"{NOTE_NAMES[pcs[0]]} chord"
+            exact_matches.append((root, intervals))
+
+    if exact_matches:
+        # Prefer the match where root == bass_pc
+        for root, intervals in exact_matches:
+            if root == bass_pc:
+                return f"{NOTE_NAMES[root]}-{CHORD_PATTERNS[intervals]}"
+        # Otherwise the first (bass-first iteration) wins
+        root, intervals = exact_matches[0]
+        return f"{NOTE_NAMES[root]}-{CHORD_PATTERNS[intervals]}"
+
+    # ── Pass 2: subset match (partial chord — missing tones) ───────────
+    # e.g. D-F-C → (0, 3, 10) is a subset of (0, 3, 7, 10) = minor seventh.
+    # Report the canonical name with "(no X)" where X is the missing interval.
+    interval_names = {
+        0: "root", 2: "2", 3: "♭3", 4: "3", 5: "4", 6: "♭5",
+        7: "5", 8: "♭6", 9: "6", 10: "♭7", 11: "7",
+    }
+    # Prefer bass-pc first.
+    for root in ordered_roots:
+        intervals_set = set((pc - root) % 12 for pc in pcs_set)
+        if 0 not in intervals_set:
+            continue
+        for pattern, label in CHORD_PATTERNS.items():
+            pattern_set = set(pattern)
+            if intervals_set.issubset(pattern_set) and intervals_set != pattern_set:
+                missing = sorted(pattern_set - intervals_set)
+                missing_names = ",".join(interval_names.get(m, str(m)) for m in missing)
+                return f"{NOTE_NAMES[root]}-{label} (no {missing_names})"
+
+    # ── Pass 3: superset match (extended chord — added tensions) ───────
+    # e.g. G-Bb-D-F-A → pattern minor-seventh (0,3,7,10) is a subset of
+    # {0,2,3,7,10}; the extra 2 is an added 9 (or 11 depending on voicing).
+    # Report "Gm7(add2)".
+    add_interval_names = {
+        1: "♭9", 2: "9", 4: "♯9", 5: "11", 6: "♯11",
+        8: "♭13", 9: "13", 11: "maj7",
+    }
+    for root in ordered_roots:
+        intervals_set = set((pc - root) % 12 for pc in pcs_set)
+        if 0 not in intervals_set:
+            continue
+        # Try each pattern as the core, extras as tensions. Track the
+        # chosen pattern size so we prefer 7ths over triads (the bug in
+        # the first draft was using len(set(label_string)) — chars, not
+        # intervals — which broke the tie-break for BUG-B2.
+        best_superset: tuple[str, list[int], int] | None = None
+        for pattern, label in CHORD_PATTERNS.items():
+            pattern_set = set(pattern)
+            if pattern_set.issubset(intervals_set) and pattern_set != intervals_set:
+                extras = sorted(intervals_set - pattern_set)
+                # Prefer the longest pattern (seventh chords win over triads)
+                if best_superset is None or len(pattern_set) > best_superset[2]:
+                    best_superset = (label, extras, len(pattern_set))
+        if best_superset is not None:
+            label, extras, _ = best_superset
+            add_names = ",".join(add_interval_names.get(e, str(e)) for e in extras)
+            return f"{NOTE_NAMES[root]}-{label} (add {add_names})"
+
+    # ── Pass 4: fallback — name by bass note, not pcs[0] ───────────────
+    # Previous behavior returned NOTE_NAMES[pcs[0]] (numerically lowest pc,
+    # which put C first for any chord containing C). Bass-note is musically
+    # correct — if we can't identify the quality, at least the root is right.
+    return f"{NOTE_NAMES[bass_pc]} chord"
 
 
 def roman_numeral(chord_pcs: list[int], tonic: int, mode: str) -> dict:

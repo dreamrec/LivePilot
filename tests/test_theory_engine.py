@@ -177,6 +177,52 @@ class TestChordName:
         result = chord_name([57, 60, 64, 67])
         assert "minor seventh" in result
 
+    # ─── BUG-B2 + BUG-B5 regression tests (Batch 4) ───────────────────────
+
+    def test_bug_b2_gm7_with_added_tension_rooted_on_bass(self):
+        """BUG-B2: G3 Bb3 D4 F4 A4 in a Dm key was labeled 'D chord' because
+        the old code returned NOTE_NAMES[pcs[0]] on miss (pc 2 = D). Now the
+        bass note (G) is the root, pattern match falls back to minor-seventh
+        + added-9 annotation."""
+        result = chord_name([55, 58, 62, 65, 69])
+        assert result.startswith("G-minor seventh"), (
+            f"expected G-minor seventh (...), got {result!r}"
+        )
+        assert "(add " in result
+
+    def test_bug_b5_dm7_no5_rooted_on_bass_not_c(self):
+        """BUG-B5: D3 F3 C4 is minor-seventh without the fifth (pc {0, 2, 5}).
+        The old code picked pc 0 = C as root and returned 'C chord'. Now the
+        bass note D (pc 2) is preferred, and subset pattern-match annotates
+        the missing fifth."""
+        result = chord_name([50, 53, 72])
+        assert result.startswith("D-minor seventh"), (
+            f"expected D-minor seventh (no 5), got {result!r}"
+        )
+        assert "(no " in result
+
+    def test_partial_minor_triad_still_rooted_on_bass(self):
+        """Bare D + F must read as a D-minor triad skeleton, not 'F chord'
+        (because F has pc 5, lower enumeration than D's pc 2 is a red
+        herring — bass priority wins)."""
+        result = chord_name([50, 53])
+        assert result.startswith("D-")
+
+    def test_major_triad_with_added_ninth(self):
+        """C E G D (C with added 9) must stay rooted on C, not on D."""
+        result = chord_name([60, 64, 67, 74])
+        assert result.startswith("C-major triad"), (
+            f"expected C-major triad (add ...), got {result!r}"
+        )
+        assert "add" in result or "add" in result.lower()
+
+    def test_exact_match_still_wins_over_subset_guess(self):
+        """Csus4 (C F G) must name 'C-sus4' exactly — no (no 5) decoration."""
+        assert chord_name([60, 65, 67]) == "C-sus4"
+
+    def test_empty_pitches_returns_unknown(self):
+        assert chord_name([]) == "unknown"
+
 
 class TestVoiceLeading:
     def test_parallel_fifths(self):
