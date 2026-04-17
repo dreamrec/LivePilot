@@ -7,6 +7,7 @@ These tools are optional — all core tools work without the device.
 from __future__ import annotations
 
 import os
+from typing import Optional
 
 from fastmcp import Context
 
@@ -968,3 +969,99 @@ def check_flucoma(ctx: Context) -> dict:
         streams[key] = cache.get(key) is not None
     active = sum(1 for v in streams.values() if v)
     return {"flucoma_available": active > 0, "active_streams": active, "streams": streams}
+
+
+# ── BUG-A2 + A3: deep-LOM properties via M4L bridge ──────────────────
+
+
+@mcp.tool()
+async def simpler_set_warp(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+    warping: bool,
+    warp_mode: Optional[int] = None,
+) -> dict:
+    """Toggle a Simpler's sample warping + set the warp algorithm (BUG-A2).
+
+    Python's Remote Script ControlSurface API can't reach Simpler's
+    `warping` or `warp_mode` — they live on the sample child object
+    (SimplerDevice.sample.*) that only Max for Live's JavaScript LiveAPI
+    can step into. This tool routes through the M4L bridge to do the
+    write.
+
+    When enabling warping, pass the desired warp_mode too so Live doesn't
+    default to whatever was there last:
+
+        warp_mode 0 = Beats      (good for drums / percussive loops)
+        warp_mode 1 = Tones      (mono harmonic material)
+        warp_mode 2 = Texture    (poly / ambient material)
+        warp_mode 3 = Re-Pitch   (classic pitch-shift feel)
+        warp_mode 4 = Complex    (music / full mixes — higher CPU)
+        warp_mode 6 = Complex Pro (highest quality — highest CPU)
+
+    Args:
+        track_index: 0+ for regular tracks
+        device_index: Simpler device's position in the chain
+        warping: True → enable sample warp; False → disable
+        warp_mode: 0-6 (omit to leave the current mode unchanged)
+
+    Requires LivePilot Analyzer on master track.
+    """
+    if warp_mode is not None and warp_mode not in (0, 1, 2, 3, 4, 6):
+        raise ValueError("warp_mode must be 0,1,2,3,4,6 (no 5 — Live skips it)")
+    cache = _get_spectral(ctx)
+    _require_analyzer(cache)
+    bridge = _get_m4l(ctx)
+    return await bridge.send_command(
+        "simpler_set_warp",
+        int(track_index),
+        int(device_index),
+        1 if warping else 0,
+        -1 if warp_mode is None else int(warp_mode),
+        timeout=10.0,
+    )
+
+
+@mcp.tool()
+async def compressor_set_sidechain(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+    source_type: str = "",
+    source_channel: str = "",
+) -> dict:
+    """Configure a Compressor's sidechain INPUT ROUTING (BUG-A3).
+
+    Complements set_device_parameter's `S/C On` toggle: that enables the
+    sidechain, this picks WHICH track/channel feeds the detector. The
+    routing properties (`sidechain_input_routing_type`,
+    `sidechain_input_routing_channel`) aren't in Compressor's automatable
+    parameter list so the Python Remote Script can't reach them — only
+    Max JS LiveAPI can.
+
+    Args:
+        track_index: track containing the Compressor
+        device_index: Compressor position in the chain
+        source_type:    sidechain source track name or input slot
+            (e.g. "1-Kick", "Ext. In", "Post Mixer", "No Input")
+        source_channel: tap point on the source
+            (e.g. "Post FX", "Pre FX", "Post Mixer")
+
+    Pass empty strings to leave a property unchanged. Older Live builds
+    that don't expose these properties return a clean error instead of
+    a silent failure.
+
+    Requires LivePilot Analyzer on master track.
+    """
+    cache = _get_spectral(ctx)
+    _require_analyzer(cache)
+    bridge = _get_m4l(ctx)
+    return await bridge.send_command(
+        "compressor_set_sidechain",
+        int(track_index),
+        int(device_index),
+        str(source_type or ""),
+        str(source_channel or ""),
+        timeout=10.0,
+    )

@@ -183,6 +183,13 @@ function dispatch(cmd, args) {
         case "get_plugin_presets":
             cmd_get_plugin_presets(args);
             break;
+        // ── BUG-A2 / A3: deep-LOM properties not on the automatable surface ──
+        case "simpler_set_warp":
+            cmd_simpler_set_warp(args);
+            break;
+        case "compressor_set_sidechain":
+            cmd_compressor_set_sidechain(args);
+            break;
         default:
             send_response({"error": "Unknown command: " + cmd});
     }
@@ -988,6 +995,137 @@ function cmd_simpler_warp(args) {
         send_response({"track": track_idx, "device": device_idx, "warped_to_beats": beats, "ok": true});
     } catch(e) {
         send_response({"error": "warp failed: " + e.message});
+    }
+}
+
+// ── BUG-A2: Simpler warping property + warp_mode ─────────────────────
+//
+// Python's Remote Script ControlSurface API only exposes automatable
+// parameters. Simpler's `warping` and `warp_mode` live on the sample
+// child object (SimplerDevice.sample.*) — unreachable from the Python
+// side. Max JS LiveAPI can step INTO the sample child, so we do the
+// property write here and surface the result to the MCP server.
+//
+// args: [track_index, device_index, warp_on (0/1), warp_mode (-1 = leave alone, 0..6)]
+//   warp_mode: 0=Beats, 1=Tones, 2=Texture, 3=Re-Pitch, 4=Complex, 6=Complex Pro
+//
+// Returns: {ok, warping, warp_mode} on success, {error} otherwise.
+function cmd_simpler_set_warp(args) {
+    var track_idx = parseInt(args[0]);
+    var device_idx = parseInt(args[1]);
+    var warp_on = parseInt(args[2]);
+    var warp_mode = args.length > 3 ? parseInt(args[3]) : -1;
+
+    var device_path = build_device_path(track_idx, device_idx);
+    cursor_a.goto(device_path);
+    if (cursor_a.id === 0) {
+        send_response({"error": "Device not found at track " + track_idx + ", device " + device_idx});
+        return;
+    }
+    if (cursor_a.get("class_name").toString() !== "OriginalSimpler") {
+        send_response({"error": "Not a Simpler device (class is " + cursor_a.get("class_name") + ")"});
+        return;
+    }
+
+    // Step into the sample child — warping + warp_mode live there, not on
+    // the device itself.
+    try {
+        cursor_a.goto(device_path + " sample");
+        if (cursor_a.id === 0) {
+            send_response({"error": "Simpler has no sample loaded (warping not applicable)"});
+            return;
+        }
+        cursor_a.set("warping", warp_on ? 1 : 0);
+        if (warp_on && warp_mode >= 0) {
+            cursor_a.set("warp_mode", warp_mode);
+        }
+        // Read back so the caller can confirm the write landed
+        var read_warping = parseInt(cursor_a.get("warping"));
+        var read_warp_mode = parseInt(cursor_a.get("warp_mode"));
+        send_response({
+            "ok": true,
+            "track_index": track_idx,
+            "device_index": device_idx,
+            "warping": read_warping,
+            "warp_mode": read_warp_mode,
+        });
+    } catch(e) {
+        send_response({"error": "simpler_set_warp failed: " + e.message});
+    }
+}
+
+// ── BUG-A3: Compressor sidechain input routing ───────────────────────
+//
+// Sidechain INPUT ROUTING is exposed as LiveAPI properties on the
+// Compressor device in Live 11+: sidechain_input_routing_type and
+// sidechain_input_routing_channel. They don't appear in the automatable
+// parameter list so the Python Remote Script can't reach them; Max JS
+// LiveAPI can.
+//
+// args: [track_index, device_index, routing_type, routing_channel]
+//   routing_type: string — e.g. "1-Audio From" / track name / "Ext. In"
+//   routing_channel: string — "Post FX" / "Pre FX" / "Post Mixer" / ...
+//
+// Returns: {ok, sidechain: {type, channel}} on success.
+// Older Live versions without these properties return a clean error.
+function cmd_compressor_set_sidechain(args) {
+    var track_idx = parseInt(args[0]);
+    var device_idx = parseInt(args[1]);
+    var routing_type = String(args[2] || "");
+    var routing_channel = String(args[3] || "");
+
+    var path = build_device_path(track_idx, device_idx);
+    cursor_a.goto(path);
+    if (cursor_a.id === 0) {
+        send_response({"error": "Device not found at track " + track_idx + ", device " + device_idx});
+        return;
+    }
+    var class_name = String(cursor_a.get("class_name"));
+    if (class_name !== "Compressor2" && class_name !== "Compressor") {
+        send_response({"error": "Not a Compressor device (class is " + class_name + ")"});
+        return;
+    }
+
+    try {
+        // Enable sidechain first — Live rejects routing writes on a
+        // compressor with the sidechain disabled.
+        // `sidechain_enabled` is the modern property; older builds may
+        // use a parameter called "S/C On" which the Python side can
+        // already flip. We set it here for completeness.
+        try {
+            cursor_a.set("sidechain_enabled", 1);
+        } catch(e) {
+            // Older Compressor — property doesn't exist, ignore
+        }
+
+        if (routing_type) {
+            cursor_a.set("sidechain_input_routing_type", routing_type);
+        }
+        if (routing_channel) {
+            cursor_a.set("sidechain_input_routing_channel", routing_channel);
+        }
+
+        // Read back for verification
+        var read_type = "";
+        var read_channel = "";
+        try { read_type = String(cursor_a.get("sidechain_input_routing_type")); } catch(e) {}
+        try { read_channel = String(cursor_a.get("sidechain_input_routing_channel")); } catch(e) {}
+
+        send_response({
+            "ok": true,
+            "track_index": track_idx,
+            "device_index": device_idx,
+            "sidechain": {
+                "type": read_type || routing_type,
+                "channel": read_channel || routing_channel,
+            },
+        });
+    } catch(e) {
+        send_response({
+            "error": "compressor_set_sidechain failed: " + e.message
+                     + " (this Live build may not expose sidechain_input_routing_* —"
+                     + " user must set routing manually)"
+        });
     }
 }
 

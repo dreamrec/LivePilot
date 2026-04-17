@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog
 
-321 tools across 43 domains.
+323 tools across 43 domains.
 
 ---
 
@@ -188,7 +188,7 @@
 | `memory_favorite` | Toggle favorite |
 | `memory_replay` | Replay saved technique |
 
-## Analyzer (30) `[M4L]`
+## Analyzer (32) `[M4L]`
 
 | Tool | Description |
 |------|-------------|
@@ -222,6 +222,8 @@
 | `check_flucoma` | Verify FluCoMa installation |
 | `capture_audio` | Record master output to WAV |
 | `capture_stop` | Cancel in-progress capture |
+| `simpler_set_warp` | Toggle Simpler sample warping + warp_mode (BUG-A2) |
+| `compressor_set_sidechain` | Set Compressor sidechain input routing (BUG-A3) |
 
 ## Devices — Plugin Deep Control (3) `[M4L]`
 

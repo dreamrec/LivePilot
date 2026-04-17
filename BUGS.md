@@ -34,7 +34,7 @@ Status flags: `🔴 open` · `🟡 in-progress` · `🟢 fixed` · `⚪️ wontf
 
 ---
 
-### BUG-A2 · `🟡 fixable via M4L bridge` (was: wontfix) · Simpler Warp mode not exposed via Python LOM
+### BUG-A2 · `🟢 bridge-side fixed — awaiting .amxd re-freeze (Batch 18)` · Simpler Warp mode not exposed via Python LOM
 
 **Reproducer:** `get_hidden_parameters(track=5, device=0)` returns all 83 Simpler params — no "Warp" / "Warp Mode". Python's Remote Script ControlSurface API doesn't surface it.
 
@@ -75,11 +75,13 @@ Estimated: ~30 minutes work + .amxd re-freeze (per the `feedback_amxd_freeze_dri
 
 **Dependency:** Bridge-side bump to `livepilot_bridge.js` requires .amxd re-freeze + version-string sync (per `feedback_amxd_freeze_drift`).
 
+**Batch 18 landed (2026-04-17):** Bridge command `cmd_simpler_set_warp` added to `livepilot_bridge.js` (dispatches via OSC to `SimplerDevice.sample.warping` and `warp_mode`, class-name-guarded with verification read-back). Python wrapper `simpler_set_warp(track_index, device_index, warping: bool, warp_mode: 0|1|2|3|4|6)` registered as `@mcp.tool()` in `mcp_server/tools/analyzer.py`. Tool count 321→323. `test_tools_contract` green. **Remaining:** user must re-freeze `LivePilot_Analyzer.amxd` in Max 9 so the frozen JS matches source (see `feedback_amxd_freeze_drift`).
+
 **UX polish (independent of the fix):** When we detect a tempo mismatch between Simpler sample and session — filename `<BPM>bpm` vs `tempo` — emit a friendly warning: "Simpler has a 86 BPM sample in a 90 BPM session. Either run `simpler_set_warp(warp_on=1, warp_mode=6)` or click Warp in the Sample tab."
 
 ---
 
-### BUG-A3 · `🟡 likely fixable via M4L bridge` (was: wontfix) · Compressor sidechain INPUT ROUTING not programmable
+### BUG-A3 · `🟢 bridge-side fixed — awaiting .amxd re-freeze (Batch 18)` · Compressor sidechain INPUT ROUTING not programmable
 
 **Reproducer:** `get_device_parameters(track=1, device=1)` on a Compressor returns `S/C On` parameter but no "Audio From" / input-routing source parameter.
 
@@ -113,6 +115,8 @@ function cmd_compressor_set_sidechain(args) {
 **Fallback if not accessible:** Use the existing `set_track_routing` pattern (which DOES work for tracks) as a model and see if a `set_device_sidechain_routing` command can be generalized.
 
 **Dependency:** Same `.amxd` re-freeze + version-string sync as BUG-A2.
+
+**Batch 18 landed (2026-04-17):** Bridge command `cmd_compressor_set_sidechain` added to `livepilot_bridge.js` — sets `sidechain_enabled` (try/catch for older Compressor builds), then `sidechain_input_routing_type` and `sidechain_input_routing_channel`, then reads them back for verification. Class-name guard accepts both `"Compressor2"` and `"Compressor"`. Python wrapper `compressor_set_sidechain(track_index, device_index, source_type, source_channel)` registered as `@mcp.tool()` in `mcp_server/tools/analyzer.py`. **Remaining:** user must re-freeze `LivePilot_Analyzer.amxd` in Max 9.
 
 ---
 

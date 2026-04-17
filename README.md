@@ -17,7 +17,7 @@
 
 <p align="center">
   An agentic production system for Ableton Live 12.<br>
-  321 tools. 43 domains. Device atlas. Splice integration. Auto-composition. Spectral perception. Technique memory.
+  323 tools. 43 domains. Device atlas. Splice integration. Auto-composition. Spectral perception. Technique memory.
 </p>
 
 <br>
@@ -79,7 +79,7 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 │         └─────────────────┼──────────────────┘                       │
 │                           ▼                                          │
 │                  ┌─────────────────┐                                  │
-│                  │   320 MCP Tools  │                                  │
+│                  │   323 MCP Tools  │                                  │
 │                  │   43 domains     │                                  │
 │                  └────────┬────────┘                                  │
 │                           │                                          │
@@ -120,7 +120,7 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 
 ## The Intelligence Layer
 
-12 engines sit on top of the 321 tools. They give the AI musical judgment, not just musical execution.
+12 engines sit on top of the 323 tools. They give the AI musical judgment, not just musical execution.
 
 ### SongBrain — What the Song Is
 
@@ -172,7 +172,7 @@ Every engine follows: **measure before → act → measure after → compare**. 
 
 ## Tools
 
-321 tools across 43 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
+323 tools across 43 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
 
 <br>
 
@@ -360,7 +360,7 @@ The V2 intelligence layer. These tools analyze, diagnose, plan, evaluate, and le
 | Creative Constraints | 5 | constraint activation, reference-inspired variants |
 | Preview Studio | 5 | variant creation, preview rendering, comparison, commit |
 
-> **[View all 321 tools →](docs/manual/tool-catalog.md)**
+> **[View all 323 tools →](docs/manual/tool-catalog.md)**
 
 <br>
 
@@ -585,7 +585,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for architecture details, code guidelines
 
 | Document | What's inside |
 |----------|---------------|
-| [Manual](docs/manual/index.md) | Complete reference: architecture, all 321 tools, workflows |
+| [Manual](docs/manual/index.md) | Complete reference: architecture, all 323 tools, workflows |
 | [Intelligence Layer](docs/manual/intelligence.md) | How the 12 engines connect — conductor, moves, preview, evaluation |
 | [Device Atlas](docs/manual/device-atlas.md) | 1305 devices indexed — search, suggest, chain building |
 | [Samples & Slicing](docs/manual/samples.md) | 3-source search, fitness critics, slice workflows |
