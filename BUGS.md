@@ -579,7 +579,7 @@ D4→A#4 is a **minor 6th jump upward** — not smooth voice leading. For Dm→B
 
 ---
 
-### BUG-B26 · `🔴 open` · harmonize_melody bass stuck on tonic pedal
+### BUG-B26 · `🟢 fixed (Batch 9)` · harmonize_melody bass stuck on tonic pedal
 
 **Reproducer:** `harmonize_melody(track=3, clip=0, voices=4)` on Pad Lush's Intro Wash returns:
 ```json
@@ -597,7 +597,7 @@ D4→A#4 is a **minor 6th jump upward** — not smooth voice leading. For Dm→B
 
 ---
 
-### BUG-B27 · `🔴 open` · harmonize_melody soprano duplicates original melody
+### BUG-B27 · `🟢 fixed (Batch 9)` · harmonize_melody soprano duplicates original melody
 
 **Reproducer:** Same call as B26. Input melody (from Pad Lush clip): `[D3, F3, A3, D3, F3, C4]` = `[50, 53, 57, 50, 53, 60]`. Output soprano:
 ```json
@@ -613,7 +613,7 @@ D4→A#4 is a **minor 6th jump upward** — not smooth voice leading. For Dm→B
 
 ---
 
-### BUG-B28 · `🟡 weak output` · generate_countermelody returns near-static pedal
+### BUG-B28 · `🟢 fixed (Batch 9)` · generate_countermelody returned near-static pedal
 
 **Reproducer:** `generate_countermelody(track=3, clip=0, species=1)` returns counter_notes with pitches `[50, 48, 50, 53, 50, 48]` — 3 distinct values across 6 positions, mostly D and C around the same octave as the bass.
 

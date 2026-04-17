@@ -458,11 +458,24 @@ def harmonize_melody(
 ) -> dict:
     """Generate a multi-voice harmonization of a melody from a MIDI clip.
 
-    Finds diatonic chords containing each melody note and voices them
-    following basic voice leading rules (smooth bass motion, no crossing).
+    Hymn-style SATB convention: the original melody IS the soprano voice.
+    The algorithm finds diatonic chords containing each melody note and
+    voices them below the melody (bass + tenor + alto for 4-voice mode;
+    just bass for 2-voice mode).
 
     voices: 2 (melody + bass) or 4 (SATB). Default 4.
-    Returns note data ready for add_notes on new tracks.
+
+    Response keys:
+      - melody: the input melody as passed in (identical pitches to soprano)
+      - soprano: same as melody (hymn-style convention)
+      - alto / tenor: inner voices (4-voice only)
+      - bass: root-aware bass line — BUG-B26 fix prevents tonic pedal
+      - chord_sequence: the chord chosen per melody note (degree + name)
+
+    BUG-B27: `soprano` and `melody` are intentionally identical — the
+    tool's job is to add harmony UNDER an existing melody, not replace
+    it. Both fields are returned so callers can pipe whichever makes
+    their downstream code cleaner.
 
     Processing time: 2-5s.
     """
@@ -485,6 +498,39 @@ def harmonize_melody(
         result_voices["tenor"] = []
 
     prev_bass_midi = None
+    prev_degree: Optional[int] = None
+
+    # BUG-B26 fix: the old chord-selection walked scale degrees in a fixed
+    # preference order [I, IV, V, vi, ii, iii, vii] and picked the FIRST
+    # one containing the melody note — in practice this meant I (tonic)
+    # won whenever the melody hit a chord tone of I, so the bass pedaled
+    # on the tonic. We now build ALL candidate diatonic chords that
+    # contain the note, then score them to prefer harmonic motion:
+    #   - strong penalty for picking the same chord twice in a row
+    #     (breaks the pedal pattern)
+    #   - mild preference for functional moves (I→IV, IV→V, V→I etc)
+    #   - fallback to the original [I, IV, V, …] order on ties
+    _DEGREE_ORDER = [0, 3, 4, 5, 1, 2, 6]  # I, IV, V, vi, ii, iii, vii
+
+    def _score_chord(degree: int, prev: Optional[int]) -> float:
+        score = 10.0 - _DEGREE_ORDER.index(degree) * 0.5
+        if prev is None:
+            return score
+        if degree == prev:
+            # Avoid repeating the same chord — the big lever for B26
+            score -= 20.0
+        # Functional pair bonuses (classical/pop voice-leading)
+        functional_pairs = {
+            (0, 3), (0, 4), (0, 5),  # I → IV, V, vi
+            (3, 4), (3, 0), (3, 1),  # IV → V, I, ii
+            (4, 0), (4, 5),          # V → I, vi
+            (5, 1), (5, 3),          # vi → ii, IV
+            (1, 4), (1, 6),          # ii → V, vii°
+            (6, 0), (6, 2),          # vii° → I, iii
+        }
+        if (prev, degree) in functional_pairs:
+            score += 5.0
+        return score
 
     for n in melody:
         melody_pitch = n["pitch"]
@@ -492,16 +538,23 @@ def harmonize_melody(
         dur = n["duration"]
         mel_pc = melody_pitch % 12
 
-        # Find the best diatonic chord containing this pitch
-        best_chord = None
-        for degree in [0, 3, 4, 5, 1, 2, 6]:  # I, IV, V, vi, ii, iii, vii
+        # Collect every diatonic chord that contains this melody note
+        candidates: list[tuple[int, dict]] = []
+        for degree in _DEGREE_ORDER:
             chord = engine.build_chord(degree, tonic, mode)
             if mel_pc in chord["pitch_classes"]:
-                best_chord = chord
-                break
+                candidates.append((degree, chord))
 
-        if best_chord is None:
-            best_chord = engine.build_chord(0, tonic, mode)
+        if not candidates:
+            candidates = [(0, engine.build_chord(0, tonic, mode))]
+
+        # Pick the highest-scoring candidate — break ties by preference order
+        candidates.sort(
+            key=lambda pair: (-_score_chord(pair[0], prev_degree),
+                              _DEGREE_ORDER.index(pair[0]))
+        )
+        best_degree, best_chord = candidates[0]
+        prev_degree = best_degree
 
         # Build MIDI pitches for the chord
         chord_midis = sorted([
@@ -561,10 +614,13 @@ def harmonize_melody(
                 "duration": dur, "velocity": int(vel * 0.7),
             })
 
+    # BUG-B27: expose the input melody under `melody` (alias of soprano)
+    # so downstream code doesn't have to guess which field carries it.
     result = {
         "key": _key_display(key_info),
         "voices": voices,
         "melody_notes": len(melody),
+        "melody": list(result_voices["soprano"]),
     }
     for voice_name, voice_notes in result_voices.items():
         if voice_notes:
@@ -616,9 +672,15 @@ def generate_countermelody(
 
     # Consonant intervals (semitones mod 12): P1, m3, M3, P4, P5, m6, M6, P8
     consonant = {0, 3, 4, 5, 7, 8, 9}
+    # BUG-B28: "imperfect" consonances (thirds + sixths) are more
+    # colorful than perfect ones (unison, 4th, 5th, octave). Prefer them
+    # so the countermelody doesn't collapse onto a static pedal of 1/4/5/8s.
+    imperfect_consonant = {3, 4, 8, 9}  # m3, M3, m6, M6
 
     counter_notes = []
     prev_cp = None
+    # Track recently-used pitches to reward range exploration (B28)
+    recent_pitches: list[int] = []
 
     for i, n in enumerate(melody):
         mel_pitch = n["pitch"]
@@ -634,28 +696,46 @@ def generate_countermelody(
 
                 score = 0.0
 
-                # Contrary motion bonus
+                # Prefer imperfect consonances (thirds + sixths) — more
+                # colorful than unison/4th/5th/octave. Without this the
+                # counter collapses onto perfect intervals (B28).
+                if iv in imperfect_consonant:
+                    score += 4.0
+
+                # Contrary motion bonus (amplified for B28)
                 if prev_cp is not None and i > 0:
                     mel_dir = mel_pitch - melody[i - 1]["pitch"]
                     cp_dir = cp - prev_cp
                     if (mel_dir > 0 and cp_dir < 0) or (mel_dir < 0 and cp_dir > 0):
-                        score += 10
+                        score += 15  # was 10 — make contrary motion dominant
                     # Penalize parallel perfect intervals
                     prev_iv = abs(prev_cp - melody[i - 1]["pitch"]) % 12
                     if prev_iv == iv and iv in (0, 7):
                         score -= 50
 
-                # Stepwise motion bonus
+                # Stepwise motion bonus — but don't let it pin us to one pitch
                 if prev_cp is not None:
                     step = abs(cp - prev_cp)
-                    if step <= 2:
+                    if step == 0:
+                        # Penalize exact repetition (was implicit-neutral)
+                        score -= 6
+                    elif step <= 2:
                         score += 5
                     elif step <= 4:
-                        score += 2
+                        score += 3
                     elif step > 7:
                         score -= 3
                 else:
                     score += 3
+
+                # BUG-B28: range-exploration bonus. Penalize pitches used
+                # in the last 4 notes; this forces the counter to walk
+                # through the pool instead of hovering on 2-3 pitches.
+                if cp in recent_pitches:
+                    score -= 4
+                # Modest bonus for pitches we haven't visited recently
+                if cp not in set(recent_pitches):
+                    score += 1
 
                 score += random.uniform(0, 2)
                 scored.append((cp, score))
@@ -665,6 +745,10 @@ def generate_countermelody(
 
             scored.sort(key=lambda x: -x[1])
             chosen = scored[0][0]
+            # Maintain a sliding window of the last 4 counter pitches
+            recent_pitches.append(chosen)
+            if len(recent_pitches) > 4:
+                recent_pitches.pop(0)
 
             counter_notes.append({
                 "pitch": chosen,
