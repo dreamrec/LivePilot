@@ -798,7 +798,7 @@ The tool's own output lists relevant devices in the `technique_card.devices` arr
 
 ---
 
-### BUG-B44 · `🔴 open` · create_preview_set "strong" variant missing compiled_plan
+### BUG-B44 · `🟢 fixed (Batch 12)` · create_preview_set "strong" variant missing compiled_plan
 
 **Reproducer:** `create_preview_set(request_text="make this more magical and dusty")` returns 3 variants:
 - **safe** — has `compiled_plan` with `move_id: "make_punchier"`, 2 steps
@@ -816,7 +816,7 @@ The strong variant is shown with `status: "pending"` and `executable`-implying l
 
 ---
 
-### BUG-B45 · `🔴 open` · create_preview_set variants have empty user-facing description fields
+### BUG-B45 · `🟢 fixed (Batch 12)` · create_preview_set variants had empty user-facing description fields
 
 **Reproducer:** Each variant in the preview set returns:
 ```json
@@ -841,7 +841,7 @@ variant["what_changed"] = compiled_plan.get("intent", "") or \
 
 ---
 
-### BUG-B46 · `🔴 open` · generate_constrained_variants returns empty-move variants
+### BUG-B46 · `🟢 fixed (Batch 12)` · generate_constrained_variants returned empty-move variants
 
 **Reproducer:** `generate_constrained_variants(request_text="reduce energy without losing groove", constraints=["subtraction_only"])` returns 3 variants all with:
 ```json
@@ -929,7 +929,7 @@ The file wrote to the default `~/Documents/LivePilot/outputs/midi/` directory, n
 
 ---
 
-### BUG-B54 · `🔴 open (cascades from B17)` · generate_reference_inspired_variants produces shell variants end-to-end
+### BUG-B54 · `🟢 fixed (Batch 12)` · generate_reference_inspired_variants refuses to run on empty principles
 
 **Reproducer:** Chain:
 1. `distill_reference_principles(reference_description="cold 90s hip-hop...")` → returns `principles: []` (BUG-B17)
@@ -947,7 +947,7 @@ The file wrote to the default `~/Documents/LivePilot/outputs/midi/` directory, n
 
 ---
 
-### BUG-B53 · `🟡 cross-tool inconsistency` · wonder_mode variants are rich, create_preview_set variants are shells
+### BUG-B53 · `🟢 fixed (Batch 12)` · wonder_mode vs create_preview_set parity — preview variants no longer shells
 
 **Reproducer:** Same session, two similar tools produce dramatically different quality:
 

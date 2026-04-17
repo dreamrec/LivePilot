@@ -440,3 +440,69 @@ def test_commit_preview_variant_analytical_only_returns_honest_status(monkeypatc
     assert "note" in result
     # execution_log should not be present because nothing ran
     assert "execution_log" not in result
+
+
+# ─── BUG-B44 / B45 regressions — variant description fields ────────────────
+
+
+class TestBugB44B45VariantDescriptions:
+    """BUG-B44: variants without a compiled_plan used to still be listed
+    with status='pending' — committing them hit a missing-plan error.
+    BUG-B45: variants had empty what_changed / summary, so users
+    couldn't tell what each variant actually did."""
+
+    def test_describe_variant_uses_move_intent(self):
+        from mcp_server.preview_studio.engine import _describe_variant
+        move = {"move_id": "make_punchier", "intent": "Tighten low end and boost punch"}
+        compiled = {"move_id": "make_punchier", "steps": [
+            {"description": "Read current levels"},
+            {"description": "Apply compressor"},
+        ]}
+        profile = {"label": "strong", "novelty": 0.5}
+        result = _describe_variant(move, compiled, profile)
+        assert "Tighten" in result["what_changed"]
+        assert result["summary"]
+
+    def test_describe_variant_falls_back_to_plan_steps(self):
+        """When the move has no intent/description, aggregate plan step
+        descriptions into what_changed."""
+        from mcp_server.preview_studio.engine import _describe_variant
+        compiled = {"move_id": "x", "steps": [
+            {"description": "Lower kick volume"},
+            {"description": "Boost bass sub"},
+        ]}
+        profile = {"label": "safe", "novelty": 0.2}
+        result = _describe_variant({}, compiled, profile)
+        assert "Lower kick volume" in result["what_changed"]
+        assert "Boost bass sub" in result["what_changed"]
+
+    def test_describe_variant_final_fallback_when_no_plan(self):
+        """No move, no plan — describe by profile so what_changed is
+        never empty."""
+        from mcp_server.preview_studio.engine import _describe_variant
+        profile = {"label": "unexpected", "novelty": 0.8}
+        result = _describe_variant(None, None, profile)
+        assert result["what_changed"]
+        assert "unexpected" in result["what_changed"].lower()
+
+    def test_triptych_blocks_variants_without_compiled_plan(self):
+        """BUG-B44: variants with compiled_plan=None should flip to
+        status='blocked' so callers can skip commit attempts."""
+        from mcp_server.preview_studio.engine import _build_triptych
+        variants = _build_triptych(
+            request_text="test",
+            moves=[],  # no moves → all variants uncompilable
+            song_brain={},
+            taste_graph={},
+            set_id="test_set",
+            now=0,
+            kernel=None,
+        )
+        assert len(variants) == 3
+        for v in variants:
+            assert v.compiled_plan is None
+            assert v.status == "blocked", (
+                f"BUG-B44 regressed — variant without plan still status="
+                f"{v.status}"
+            )
+            assert v.what_changed  # no empty descriptions

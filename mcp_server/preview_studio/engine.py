@@ -138,14 +138,21 @@ def _build_triptych(
         # Pick a move if available
         move_id = ""
         compiled_plan = None
-        if moves and i < len(moves):
-            move_id = moves[i].get("move_id", "")
+        move = moves[i] if moves and i < len(moves) else None
+        if move is not None:
+            move_id = move.get("move_id", "")
             # Compile through the semantic compiler — single source of truth
             from ..wonder_mode.engine import _compile_variant_plan
-            compiled_plan = _compile_variant_plan(moves[i], compile_kernel)
+            compiled_plan = _compile_variant_plan(move, compile_kernel)
             # No fallback to plan_template — uncompilable moves stay analytical
 
-        variants.append(PreviewVariant(
+        # BUG-B44 / B45: populate user-facing description fields and flag
+        # variants that lack a compiled_plan as not-executable (so callers
+        # don't commit shells).
+        description = _describe_variant(move, compiled_plan, profile)
+        executable = compiled_plan is not None and bool(move_id)
+
+        variant = PreviewVariant(
             variant_id=f"{set_id}_{profile['label']}",
             label=profile["label"],
             intent=profile["intent"],
@@ -157,9 +164,65 @@ def _build_triptych(
             compiled_plan=compiled_plan,
             taste_fit=_estimate_taste_fit(profile["novelty"], taste_graph),
             created_at_ms=now,
-        ))
+            what_changed=description["what_changed"],
+            summary=description["summary"],
+        )
+        # Non-executable variants get status='blocked' so callers know to
+        # skip preview/commit. Stored as status since executable/blocked_reason
+        # aren't modeled yet.
+        if not executable:
+            variant.status = "blocked"
+        variants.append(variant)
 
     return variants
+
+
+def _describe_variant(
+    move: Optional[dict],
+    compiled_plan: Optional[dict],
+    profile: dict,
+) -> dict:
+    """Build user-facing description fields for a variant (BUG-B45).
+
+    Priority order:
+      1. Move's `intent` or `description` — the authored one-liner
+      2. Compiled plan's step descriptions joined with " → "
+      3. The profile label + novelty level as a last-resort fallback
+
+    Returns {"what_changed": str, "summary": str}.
+    """
+    what_changed = ""
+    summary = ""
+    if move:
+        # Move-level narrative beats plan-level — captures intent, not execution
+        move_intent = str(move.get("intent") or move.get("description") or "")
+        if move_intent:
+            what_changed = move_intent
+            summary = move_intent[:120]
+
+    if not what_changed and compiled_plan:
+        steps = compiled_plan.get("steps") or []
+        step_descriptions = [
+            str(s.get("description") or s.get("summary") or s.get("intent") or "")
+            for s in steps
+        ]
+        step_descriptions = [d for d in step_descriptions if d]
+        if step_descriptions:
+            what_changed = " → ".join(step_descriptions[:4])
+            summary = (
+                step_descriptions[0][:120]
+                if step_descriptions else ""
+            )
+
+    if not what_changed:
+        # Final fallback — describe the profile so the UI has something
+        what_changed = (
+            f"{profile['label'].title()} variant at novelty "
+            f"{profile['novelty']:.1f} (no executable plan available)"
+        )
+        summary = what_changed
+
+    return {"what_changed": what_changed, "summary": summary}
 
 
 def _build_binary(

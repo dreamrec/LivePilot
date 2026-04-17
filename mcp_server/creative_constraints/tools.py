@@ -216,23 +216,65 @@ def generate_constrained_variants(
             taste_graph=taste_graph,
         )
 
-        # Validate each variant's compiled_plan against constraints
+        # Validate each variant's compiled_plan against constraints.
+        # BUG-B46: two problems in the old code —
+        #   1) iterating `for step in v.compiled_plan` yields dict KEYS
+        #      (compiled_plan is {'move_id': ..., 'steps': [...]}), so
+        #      the validation ran on strings and silently passed.
+        #   2) when a variant was filtered, we only blanked compiled_plan
+        #      and left status='pending' — callers had no way to tell
+        #      which variants became shells.
+        # Now we iterate .get("steps", []) correctly, flip filtered
+        # variants to status='blocked', and count blocked_count in the
+        # response so callers can detect the "all variants filtered" case.
+        blocked_count = 0
         for v in ps.variants:
-            v.what_preserved = f"{v.what_preserved} | Constraints: {', '.join(active.constraints)}"
+            v.what_preserved = (
+                f"{v.what_preserved} | Constraints: "
+                f"{', '.join(active.constraints)}"
+            )
             if v.compiled_plan:
-                plan = {"steps": [
-                    {"action": step.get("tool", ""), **step}
-                    for step in v.compiled_plan
-                ]}
-                validation = engine.validate_plan_against_constraints(plan, active)
+                steps = v.compiled_plan.get("steps", []) if isinstance(
+                    v.compiled_plan, dict
+                ) else []
+                plan = {
+                    "steps": [
+                        {"action": step.get("tool", ""), **step}
+                        for step in steps
+                    ]
+                }
+                validation = engine.validate_plan_against_constraints(
+                    plan, active,
+                )
                 if not validation["valid"]:
                     v.compiled_plan = None
-                    v.what_changed = f"[FILTERED] {v.what_changed} — violates {', '.join(active.constraints)}"
+                    v.status = "blocked"
+                    v.what_changed = (
+                        f"[FILTERED] {v.what_changed} — violates "
+                        f"{', '.join(active.constraints)}"
+                    )
+                    blocked_count += 1
+            elif v.status == "blocked":
+                # Already blocked upstream (no compilable move)
+                blocked_count += 1
+
+        note = (
+            f"Variants with violating plans have been filtered "
+            f"({blocked_count}/{len(ps.variants)} blocked)"
+        )
+        if blocked_count == len(ps.variants) and ps.variants:
+            note = (
+                f"All {blocked_count} variants violate constraints "
+                f"{active.constraints!r}. Try loosening constraints or a "
+                f"different request."
+            )
 
         return {
             "preview_set": ps.to_dict(),
             "constraints_applied": active.constraints,
-            "note": "Variants with violating plans have been filtered",
+            "blocked_count": blocked_count,
+            "executable_count": len(ps.variants) - blocked_count,
+            "note": note,
         }
     except Exception as e:
         return {"error": f"Failed to generate constrained variants: {e}"}
@@ -256,9 +298,29 @@ def generate_reference_inspired_variants(
     if _cached_distillation is None:
         return {"error": "No reference distilled yet — call distill_reference_principles first"}
 
+    # BUG-B54: the reference-engine chain (distill → map → generate_variants)
+    # used to silently degrade when distill_reference_principles returned
+    # empty principles (BUG-B17). Callers got 3 shell variants branded
+    # "reference-inspired" with no reference material driving them.
+    # Refuse to run when principles are empty — the user should fix the
+    # distillation step first.
+    principles_list = list(_cached_distillation.principles or [])
+    if not principles_list:
+        return {
+            "error": (
+                "distill_reference_principles returned no principles — "
+                "reference-inspired variant generation refuses to run on "
+                "empty input (would produce meaningless 'reference-inspired' "
+                "shell variants). Try a more specific reference description "
+                "or pick a reference covered by the built-in style corpus."
+            ),
+            "reference": _cached_distillation.reference_description,
+            "principles_applied": [],
+        }
+
     # Build request text from reference principles
     principles_text = ", ".join(
-        p.principle for p in _cached_distillation.principles[:3]
+        p.principle for p in principles_list[:3]
     )
     full_request = (
         f"Inspired by: {_cached_distillation.reference_description}. "
@@ -288,7 +350,9 @@ def generate_reference_inspired_variants(
         return {
             "preview_set": ps.to_dict(),
             "reference": _cached_distillation.reference_description,
-            "principles_applied": [p.to_dict() for p in _cached_distillation.principles[:5]],
+            "principles_applied": [
+                p.to_dict() for p in principles_list[:5]
+            ],
             "note": "Variants are shaped by reference principles, not surface imitation",
         }
     except Exception as e:
