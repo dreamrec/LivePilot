@@ -82,15 +82,32 @@ class SampleIntent:
 
 @dataclass
 class CriticResult:
-    """Result from a single sample critic."""
+    """Result from a single sample critic.
+
+    BUG-B38: added `available` + rating override so critics can
+    explicitly mark themselves as unevaluated (e.g. no mix snapshot
+    for frequency_fit) rather than returning a misleading 0.5 score.
+    Downstream aggregators check `available` before folding a critic's
+    score into the composite.
+    """
 
     critic_name: str
     score: float
     recommendation: str
     adjustments: list = field(default_factory=list)
+    # Explicit availability flag — False when critic couldn't evaluate
+    # (score will be -1.0 sentinel; aggregators should skip)
+    available: bool = True
+    # Optional hand-set rating label — overrides the score-based
+    # default when provided (used for "unavailable" status)
+    rating_override: str = ""
 
     @property
     def rating(self) -> str:
+        if self.rating_override:
+            return self.rating_override
+        if not self.available:
+            return "unavailable"
         if self.score >= 0.8:
             return "excellent"
         if self.score >= 0.6:
@@ -102,6 +119,8 @@ class CriticResult:
     def to_dict(self) -> dict:
         d = asdict(self)
         d["rating"] = self.rating
+        # Strip internal override from payload (not for consumers)
+        d.pop("rating_override", None)
         return d
 
 

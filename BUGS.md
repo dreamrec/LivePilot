@@ -686,7 +686,7 @@ Generic advice with empty hook_id.
 
 ---
 
-### BUG-B37 · `🔴 CRITICAL` · evaluate_sample_fit can't find session key despite Dm confirmed everywhere
+### BUG-B37 · `🟢 fixed (Batch 14)` · evaluate_sample_fit couldn't find session key — wrong field-name typo
 
 **Reproducer:** Session is in **D minor** (confirmed by `analyze_harmony`, `identify_scale`, `suggest_next_chord` — all return Dm with high confidence). `evaluate_sample_fit(file_path=..., intent="vocal")` returns:
 ```json
@@ -860,7 +860,7 @@ Compare to unconstrained `create_preview_set` which populated real `move_id` val
 
 ---
 
-### BUG-B49 · `🔴 open` · analyze_sample does filename-only analysis despite M4L bridge being available
+### BUG-B49 · `🟢 fixed (Batch 14)` · analyze_sample now runs real offline spectral analysis
 
 **Reproducer:** `analyze_sample(file_path="/Users/.../JJP_90SS2_86_vocal_lead_hurt_you_Dm.wav")` returns:
 ```json
@@ -1017,7 +1017,7 @@ The file wrote to the default `~/Documents/LivePilot/outputs/midi/` directory, n
 
 ---
 
-### BUG-B38 · `🔴 open (known stub)` · evaluate_sample_fit frequency_fit critic is a stub
+### BUG-B38 · `🟢 fixed (Batch 14)` · evaluate_sample_fit frequency_fit critic now marks itself unavailable
 
 **Reproducer:** Same call as B37. Output includes:
 ```json

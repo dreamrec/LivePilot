@@ -164,21 +164,36 @@ def run_frequency_fit_critic(
 ) -> CriticResult:
     """Score frequency fit against existing mix.
 
-    Without mix_snapshot (no M4L bridge), returns neutral 0.5.
+    BUG-B38 fix: the old stub branch returned a neutral 0.5 "fair"
+    score even when the analyzer had no spectral data at all —
+    misleading the user into thinking the sample was a middling fit
+    when in reality the critic couldn't evaluate anything. We now
+    mark the result as explicitly unavailable (score=-1 sentinel +
+    available=False + rating="unavailable") so downstream aggregators
+    can skip this critic rather than fold a fake 0.5 into the overall
+    score.
     """
     if mix_snapshot is None or not mix_snapshot:
         return CriticResult(
-            critic_name="frequency_fit", score=0.5,
-            recommendation="No spectral data — verify frequency fit by ear",
-            adjustments=[{"note": "stub — spectral overlap analysis not yet implemented"}],
+            critic_name="frequency_fit",
+            score=-1.0,
+            available=False,
+            rating_override="unavailable",
+            recommendation=(
+                "No mix snapshot available — load LivePilot_Analyzer on "
+                "master and call get_mix_snapshot first. Falling back to "
+                "by-ear verification."
+            ),
         )
 
     # Basic frequency overlap check using mix_snapshot track data
-    # mix_snapshot expected shape: {"tracks": [{"name": ..., "peak_frequency": ...}]}
     tracks = mix_snapshot.get("tracks", [])
     if not tracks:
         return CriticResult(
-            critic_name="frequency_fit", score=0.5,
+            critic_name="frequency_fit",
+            score=-1.0,
+            available=False,
+            rating_override="unavailable",
             recommendation="Mix snapshot has no track data",
         )
 
@@ -186,8 +201,14 @@ def run_frequency_fit_critic(
     sample_center = profile.frequency_center
     if sample_center <= 0:
         return CriticResult(
-            critic_name="frequency_fit", score=0.5,
-            recommendation="Sample has no spectral data — verify by ear",
+            critic_name="frequency_fit",
+            score=-1.0,
+            available=False,
+            rating_override="unavailable",
+            recommendation=(
+                "Sample has no spectral data — analyze_sample couldn't "
+                "decode the file, or it's a clip-only reference."
+            ),
         )
 
     # Count tracks with energy near the sample's center frequency

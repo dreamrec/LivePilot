@@ -188,13 +188,29 @@ def build_profile_from_filename(
     source: str = "filesystem",
     duration_seconds: float = 0.0,
 ) -> SampleProfile:
-    """Build a SampleProfile from filename metadata only (no spectral analysis).
+    """Build a SampleProfile from filename metadata + offline spectral
+    analysis (BUG-B49 fix).
 
-    This is the fallback when M4L bridge is unavailable.
+    Filename still supplies key / bpm / material-type hints when
+    present, but we now ALSO open the audio file via soundfile and
+    compute:
+        - duration_seconds (exact)
+        - frequency_center / frequency_spread (FFT-based centroid)
+        - brightness (high-band energy ratio)
+        - transient_density (RMS-gradient peak count)
+        - has_clear_downbeat (peak-interval consistency)
+    These used to be zeros regardless of file contents — downstream
+    critics had no real data.
+
+    If soundfile isn't available or the file can't be decoded, we
+    gracefully fall back to the filename-only path (legacy behavior).
     """
     name = os.path.splitext(os.path.basename(file_path))[0]
     metadata = parse_filename_metadata(file_path)
     material = classify_material_from_name(name)
+
+    # Offline spectral analysis — best-effort, never raises.
+    spectral = _analyze_audio_file(file_path)
 
     profile = SampleProfile(
         source=source,
@@ -206,7 +222,14 @@ def build_profile_from_filename(
         bpm_confidence=0.5 if metadata.get("bpm") else 0.0,
         material_type=material,
         material_confidence=0.4,  # filename-only is low confidence
-        duration_seconds=duration_seconds,
+        duration_seconds=(
+            spectral.get("duration_seconds") or duration_seconds
+        ),
+        frequency_center=spectral.get("frequency_center", 0.0),
+        frequency_spread=spectral.get("frequency_spread", 0.0),
+        brightness=spectral.get("brightness", 0.0),
+        transient_density=spectral.get("transient_density", 0.0),
+        has_clear_downbeat=spectral.get("has_clear_downbeat", False),
     )
 
     profile.suggested_mode = suggest_simpler_mode(profile)
@@ -214,3 +237,107 @@ def build_profile_from_filename(
     profile.suggested_warp_mode = suggest_warp_mode(profile)
 
     return profile
+
+
+def _analyze_audio_file(file_path: str) -> dict:
+    """Read an audio file and compute lightweight spectral/temporal
+    features via numpy. Returns {} if the file can't be decoded.
+
+    Uses soundfile (already a dependency) + numpy FFT — no librosa
+    required. Falls back cleanly so file-not-found / unsupported
+    format doesn't break the analyzer.
+    """
+    try:
+        import soundfile as sf
+        import numpy as np
+    except ImportError:
+        return {}
+
+    if not file_path or not os.path.exists(file_path):
+        return {}
+
+    try:
+        data, samplerate = sf.read(file_path, dtype="float32")
+    except Exception:
+        return {}
+
+    # Downmix to mono
+    if data.ndim > 1:
+        data = data.mean(axis=1)
+    if data.size == 0 or samplerate <= 0:
+        return {}
+
+    duration = float(data.size) / float(samplerate)
+
+    # Spectral centroid via magnitude-weighted frequency average.
+    # Use a Welch-style average over ~50ms windows to stabilize.
+    win_len = max(1024, int(samplerate * 0.05))
+    hop = win_len // 2
+    centroids: list[float] = []
+    spreads: list[float] = []
+    frames = range(0, max(len(data) - win_len, 1), hop)
+    for start in frames:
+        frame = data[start:start + win_len]
+        if len(frame) < 32:
+            continue
+        # Hann-window + FFT
+        mags = np.abs(np.fft.rfft(frame * np.hanning(len(frame))))
+        total = mags.sum()
+        if total <= 0:
+            continue
+        freqs = np.linspace(0, samplerate / 2, len(mags))
+        c = float((mags * freqs).sum() / total)
+        centroids.append(c)
+        # Spectral spread = sqrt(sum(mags * (freqs - c)**2) / total)
+        s = float(np.sqrt(((mags * (freqs - c) ** 2).sum()) / total))
+        spreads.append(s)
+
+    if not centroids:
+        return {"duration_seconds": duration}
+
+    frequency_center = float(np.mean(centroids))
+    frequency_spread = float(np.mean(spreads))
+    # Brightness: fraction of energy above 4kHz
+    # Use a single FFT on the whole signal for this (cheap)
+    full_mags = np.abs(np.fft.rfft(data * np.hanning(len(data))))
+    full_freqs = np.linspace(0, samplerate / 2, len(full_mags))
+    total_energy = full_mags.sum() or 1.0
+    high_energy = full_mags[full_freqs >= 4000].sum()
+    brightness = float(high_energy / total_energy)
+
+    # Transient density: peak count in rectified-RMS gradient
+    # Coarse envelope over ~20ms windows
+    env_win = max(256, int(samplerate * 0.02))
+    envelope = np.array([
+        float(np.sqrt(np.mean(data[i:i + env_win] ** 2)))
+        for i in range(0, len(data), env_win)
+    ])
+    if envelope.size > 1:
+        diffs = np.diff(envelope)
+        # Count upward transitions above a dynamic threshold
+        thresh = max(envelope.std() * 1.5, 1e-4)
+        peaks = int(np.sum(diffs > thresh))
+        transient_density = float(peaks / max(duration, 0.001))
+    else:
+        transient_density = 0.0
+
+    # Clear downbeat: peaks evenly spaced
+    has_clear_downbeat = False
+    if envelope.size > 4:
+        # Find top-N peaks and check interval stddev
+        peak_positions = np.argsort(envelope)[-8:]
+        peak_positions.sort()
+        if len(peak_positions) >= 3:
+            intervals = np.diff(peak_positions)
+            if intervals.size > 0 and float(np.mean(intervals)) > 0:
+                cv = float(np.std(intervals)) / float(np.mean(intervals))
+                has_clear_downbeat = cv < 0.5  # low variation → steady
+
+    return {
+        "duration_seconds": duration,
+        "frequency_center": frequency_center,
+        "frequency_spread": frequency_spread,
+        "brightness": brightness,
+        "transient_density": transient_density,
+        "has_clear_downbeat": has_clear_downbeat,
+    }

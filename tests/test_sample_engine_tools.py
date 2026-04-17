@@ -72,9 +72,14 @@ class TestEvaluateSampleFitPath:
             "key_fit", "tempo_fit", "frequency_fit",
             "role_fit", "vibe_fit", "intent_fit",
         }
-        # All scores should be 0.0-1.0
+        # BUG-B38: available critics must score 0..1. Unavailable
+        # critics return score=-1 sentinel + available=False.
         for name, result in critics.items():
-            assert 0.0 <= result.score <= 1.0, f"{name} score out of range"
+            if result.available:
+                assert 0.0 <= result.score <= 1.0, f"{name} score out of range"
+            else:
+                assert result.score == -1.0
+                assert result.rating == "unavailable"
 
     def test_fit_report_overall_score(self):
         profile = build_profile_from_filename("/samples/kick_120bpm.wav")

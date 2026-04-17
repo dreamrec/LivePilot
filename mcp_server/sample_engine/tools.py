@@ -104,30 +104,64 @@ def evaluate_sample_fit(
                 logger.debug("get_track_info(%d) skipped: %s", i, exc)
                 continue
 
-        # Detect key from MIDI tracks
+        # Detect key from MIDI tracks.
+        # BUG-B37 fix: the old code checked clip_info.get("is_midi") but
+        # the Remote Script returns is_midi_clip (different field name),
+        # so the check always failed and song_key stayed None —
+        # key_fit then reported "Song key unknown" even on obvious
+        # Dm sessions. Now we check both field names for safety AND
+        # aggregate notes from all harmonic tracks via harmonic_score
+        # (Batch 5 helper), so key detection uses the richest signal.
         try:
             from ..tools._theory_engine import detect_key
-            for i in range(min(track_count, 8)):
+            from ..tools._composition_engine.harmony import harmonic_score
+
+            # Collect all tracks' notes, scored by harmonic-ness
+            harmonic_pool: list[dict] = []
+            for i in range(min(track_count, 16)):
                 try:
                     clip_info = ableton.send_command("get_clip_info", {
                         "track_index": i, "clip_index": 0,
                     })
-                    if clip_info.get("is_midi"):
-                        notes_result = ableton.send_command("get_notes", {
-                            "track_index": i, "clip_index": 0,
-                        })
-                        notes = notes_result.get("notes", [])
-                        if notes:
-                            key_result = detect_key(notes)
-                            mode = key_result.get("mode", "")
-                            mode_suffix = "m" if "minor" in mode else ""
-                            song_key = f"{key_result['tonic_name']}{mode_suffix}"
-                            break
                 except Exception as exc:
-                    logger.debug("key detection on track %d skipped: %s", i, exc)
+                    logger.debug("get_clip_info(%d) skipped: %s", i, exc)
                     continue
+                # Accept either the new is_midi_clip field or the legacy
+                # is_midi (in case some install combines versions)
+                is_midi = (
+                    clip_info.get("is_midi_clip")
+                    or clip_info.get("is_midi")
+                    or False
+                )
+                if not is_midi:
+                    continue
+                try:
+                    notes_result = ableton.send_command("get_notes", {
+                        "track_index": i, "clip_index": 0,
+                    })
+                except Exception as exc:
+                    logger.debug("get_notes(%d) skipped: %s", i, exc)
+                    continue
+                notes = notes_result.get("notes", []) if isinstance(
+                    notes_result, dict
+                ) else []
+                if not notes:
+                    continue
+                track_name = (
+                    existing_roles[i] if i < len(existing_roles) else ""
+                )
+                if harmonic_score(notes, track_name) >= 0.3:
+                    harmonic_pool.extend(notes)
+
+            if harmonic_pool:
+                key_result = detect_key(harmonic_pool)
+                mode = key_result.get("mode", "")
+                mode_suffix = "m" if "minor" in mode else ""
+                song_key = f"{key_result['tonic_name']}{mode_suffix}"
         except ImportError:
             pass
+        except Exception as exc:
+            logger.debug("key aggregation failed: %s", exc)
     except Exception as exc:
         logger.warning("session context for evaluate_sample_fit failed: %s", exc)
 
