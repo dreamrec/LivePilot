@@ -263,7 +263,7 @@ Regression tests (all in `tests/test_theory_engine.py::TestChordName`):
 
 ---
 
-### BUG-B7 · `🔴 open` · get_motif_graph returns 90KB payload — exceeds inline limits
+### BUG-B7 · `🟢 fixed (Batch 7)` · get_motif_graph returned 90KB payload — exceeded inline limits
 
 **Reproducer:** `get_motif_graph()` on a 10-track session with 49 clips returns a 90,430-char JSON (Handler system wrote it to disk because it exceeded token limits).
 
@@ -275,7 +275,7 @@ Regression tests (all in `tests/test_theory_engine.py::TestChordName`):
 
 ---
 
-### BUG-B8 · `🔴 open` · rank_hook_candidates returns duplicate "motif_unknown" hooks
+### BUG-B8 · `🟢 fixed (Batch 7)` · rank_hook_candidates returned duplicate "motif_unknown" hooks
 
 **Reproducer:** `rank_hook_candidates(limit=5)` returns entries like:
 ```json

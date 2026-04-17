@@ -33,14 +33,30 @@ def find_hook_candidates(
     candidates: list[HookCandidate] = []
 
     # 1. Motif-based hooks
-    for motif in motif_data.get("motifs", []):
+    #
+    # BUG-B8 fix: the old code used motif.get('name', 'unknown'); the motif
+    # engine emits `motif_id` (not `name`), so every candidate collapsed
+    # onto hook_id="motif_unknown" and rank_hook_candidates returned 4+
+    # duplicate rows with empty location strings. We now prefer motif_id,
+    # then name, then a per-iteration index fallback to guarantee uniqueness.
+    # A final post-filter dedupes by (hook_id, hook_type, description) in
+    # case another producer slips a duplicate in.
+    for idx, motif in enumerate(motif_data.get("motifs", [])):
         salience = motif.get("salience", 0)
         recurrence = motif.get("recurrence", 0)
         if salience > 0.2 or recurrence > 0.3:
+            identifier = (
+                motif.get("motif_id")
+                or motif.get("name")
+                or f"idx{idx}"
+            )
             candidates.append(HookCandidate(
-                hook_id=f"motif_{motif.get('name', 'unknown')}",
+                hook_id=f"motif_{identifier}",
                 hook_type="melodic",
-                description=motif.get("description", motif.get("name", "motif")),
+                description=motif.get(
+                    "description",
+                    motif.get("name") or motif.get("motif_id") or f"motif #{idx}",
+                ),
                 location=motif.get("location", ""),
                 memorability=min(1.0, salience * 1.2),
                 recurrence=recurrence,
@@ -108,6 +124,20 @@ def find_hook_candidates(
             c.evidence_sources.append("track_name")
         if "groove" in c.hook_id:
             c.evidence_sources.append("clip_reuse")
+
+    # BUG-B8: post-filter dedupe. Even after the motif_id fix above, other
+    # producers (track-name, groove-pattern) could collide on the same
+    # hook_id if session conventions repeat (e.g. two tracks named "Lead").
+    # Keep the first occurrence (sorted by salience below picks the winner
+    # among the originals), drop later duplicates by hook_id.
+    seen_ids: set[str] = set()
+    unique_candidates: list[HookCandidate] = []
+    for c in candidates:
+        if c.hook_id in seen_ids:
+            continue
+        seen_ids.add(c.hook_id)
+        unique_candidates.append(c)
+    candidates = unique_candidates
 
     # Sort by salience
     candidates.sort(key=lambda c: c.salience, reverse=True)

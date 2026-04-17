@@ -168,3 +168,120 @@ class TestMotifTransformation:
         m = MotifUnit("test", "melodic", [2], [], [])  # No representative pitches
         notes = transform_motif(m, "inversion", 60)
         assert notes == []
+
+
+# ─── BUG-B7 regressions — get_motif_graph pagination + summary_only ────────
+
+
+class TestBugB7MotifGraphPagination:
+    """BUG-B7: get_motif_graph used to serialize every detected motif with
+    full occurrences arrays; a 10-track / 49-clip session produced a 90 KB
+    payload that exceeded inline tool-response limits. The fix adds
+    limit, offset, and summary_only parameters so callers can bound the
+    response size."""
+
+    def _fake_ctx_with_many_clips(self, num_tracks=3, num_scenes=8):
+        """Build a fake MCP context whose Ableton returns a handful of
+        repeated ascending-4-note clips — enough to produce multiple
+        motifs via detect_motifs."""
+        from types import SimpleNamespace
+
+        def send_command(cmd, params=None):
+            if cmd == "get_session_info":
+                return {
+                    "track_count": num_tracks,
+                    "scene_count": num_scenes,
+                    "tracks": [
+                        {"index": i, "name": f"t{i}", "has_midi_input": True}
+                        for i in range(num_tracks)
+                    ],
+                }
+            if cmd == "get_notes":
+                t = params["track_index"]
+                c = params["clip_index"]
+                # Vary the clip patterns so detect_motifs produces many
+                # distinct intervals. Cycle through 4 patterns.
+                patterns = [
+                    [60, 62, 64, 65],
+                    [60, 63, 66, 68],
+                    [60, 65, 67, 70],
+                    [60, 61, 63, 64],
+                ]
+                pat = patterns[(t * num_scenes + c) % len(patterns)]
+                return {"notes": [
+                    {"pitch": p, "start_time": i * 0.5, "duration": 0.4, "velocity": 100}
+                    for i, p in enumerate(pat)
+                ]}
+            return {}
+
+        return SimpleNamespace(
+            lifespan_context={"ableton": SimpleNamespace(send_command=send_command)}
+        )
+
+    def test_default_limit_50_never_returns_more(self):
+        """Default limit=50 must never return more than 50 motifs."""
+        from mcp_server.tools.motif import get_motif_graph
+        ctx = self._fake_ctx_with_many_clips(num_tracks=4, num_scenes=8)
+        result = get_motif_graph(ctx)
+        assert "motifs" in result
+        assert len(result["motifs"]) <= 50
+        assert result["limit"] == 50
+        assert result["offset"] == 0
+
+    def test_custom_limit_honored(self):
+        """Caller-provided limit bounds the page size."""
+        from mcp_server.tools.motif import get_motif_graph
+        ctx = self._fake_ctx_with_many_clips(num_tracks=4, num_scenes=8)
+        result = get_motif_graph(ctx, limit=2)
+        assert len(result["motifs"]) <= 2
+        assert result["limit"] == 2
+
+    def test_offset_pagination_skips_earlier_motifs(self):
+        """offset=N returns motifs N.. from the salience-sorted list."""
+        from mcp_server.tools.motif import get_motif_graph
+        ctx = self._fake_ctx_with_many_clips(num_tracks=4, num_scenes=8)
+        first_page = get_motif_graph(ctx, limit=2, offset=0)
+        second_page = get_motif_graph(ctx, limit=2, offset=2)
+        # Second-page motifs must NOT overlap first-page motifs (same ids)
+        first_ids = [m["motif_id"] for m in first_page["motifs"]]
+        second_ids = [m["motif_id"] for m in second_page["motifs"]]
+        assert not (set(first_ids) & set(second_ids)), (
+            f"pages overlap: first={first_ids}, second={second_ids}"
+        )
+
+    def test_summary_only_drops_heavy_fields(self):
+        """summary_only=True returns compact records: no occurrences,
+        no suggested_developments, no rhythm/representative_pitches arrays."""
+        from mcp_server.tools.motif import get_motif_graph
+        ctx = self._fake_ctx_with_many_clips(num_tracks=3, num_scenes=8)
+        result = get_motif_graph(ctx, summary_only=True)
+        for m in result["motifs"]:
+            assert set(m.keys()) == {
+                "motif_id", "kind", "salience", "fatigue_risk", "occurrence_count",
+            }, f"summary_only leaked extra fields: {list(m.keys())}"
+        assert result["summary_only"] is True
+
+    def test_has_more_flag_signals_additional_pages(self):
+        """has_more=True when offset+len<total; False when at end."""
+        from mcp_server.tools.motif import get_motif_graph
+        ctx = self._fake_ctx_with_many_clips(num_tracks=4, num_scenes=8)
+        result = get_motif_graph(ctx, limit=1, offset=0)
+        total = result["total_motifs"]
+        if total > 1:
+            assert result["has_more"] is True
+        # Last page: has_more False
+        if total >= 1:
+            last = get_motif_graph(ctx, limit=total, offset=0)
+            assert last["has_more"] is False
+
+    def test_negative_limit_rejected(self):
+        from mcp_server.tools.motif import get_motif_graph
+        ctx = self._fake_ctx_with_many_clips()
+        with pytest.raises(ValueError, match="limit"):
+            get_motif_graph(ctx, limit=-1)
+
+    def test_negative_offset_rejected(self):
+        from mcp_server.tools.motif import get_motif_graph
+        ctx = self._fake_ctx_with_many_clips()
+        with pytest.raises(ValueError, match="offset"):
+            get_motif_graph(ctx, offset=-5)

@@ -164,3 +164,73 @@ def test_payoff_repairs_generated():
         repairs = suggest_payoff_repairs(failures)
         assert isinstance(repairs, list)
         assert len(repairs) >= len(failures)
+
+
+# ─── BUG-B8 regression — hook candidate de-duplication ──────────────────────
+
+
+def test_bug_b8_motifs_without_name_field_use_motif_id():
+    """BUG-B8: motif_engine emits `motif_id`, not `name`, so the old code
+    (which read motif.get('name', 'unknown')) collapsed every motif onto
+    hook_id='motif_unknown'. After the fix each motif gets a unique hook_id
+    sourced from motif_id / name / per-iteration index fallback."""
+    candidates = find_hook_candidates(
+        tracks=[{"name": "Lead", "index": 0}],
+        motif_data={
+            "motifs": [
+                # Realistic motif engine output: motif_id, no 'name' key
+                {"motif_id": "m_001", "salience": 0.8, "recurrence": 0.6,
+                 "description": "Rising arpeggio"},
+                {"motif_id": "m_002", "salience": 0.7, "recurrence": 0.5,
+                 "description": "Descending sixth"},
+                {"motif_id": "m_003", "salience": 0.6, "recurrence": 0.4,
+                 "description": "Syncopated phrase"},
+            ]
+        },
+    )
+    motif_candidates = [c for c in candidates if c.hook_id.startswith("motif_")]
+    hook_ids = {c.hook_id for c in motif_candidates}
+    # All 3 motifs must produce distinct hook_ids (not collapsed to
+    # "motif_unknown" four times).
+    assert len(hook_ids) == len(motif_candidates), (
+        f"duplicate hook_ids: {[c.hook_id for c in motif_candidates]}"
+    )
+    # And none of them should be the old catch-all sentinel
+    assert "motif_unknown" not in hook_ids
+
+
+def test_bug_b8_motifs_missing_both_id_and_name_still_unique():
+    """Even fully-nameless motifs (neither motif_id nor name) must produce
+    distinct hook_ids via the per-iteration index fallback."""
+    candidates = find_hook_candidates(
+        tracks=[],
+        motif_data={
+            "motifs": [
+                {"salience": 0.8, "recurrence": 0.6},
+                {"salience": 0.7, "recurrence": 0.5},
+                {"salience": 0.6, "recurrence": 0.4},
+            ]
+        },
+    )
+    motif_candidates = [c for c in candidates if c.hook_id.startswith("motif_")]
+    hook_ids = {c.hook_id for c in motif_candidates}
+    assert len(hook_ids) == len(motif_candidates), (
+        f"index-fallback should dedupe: {[c.hook_id for c in motif_candidates]}"
+    )
+
+
+def test_bug_b8_final_dedupe_drops_collisions_from_other_producers():
+    """Even if duplicate hook_ids slip through from non-motif producers
+    (track-name / groove-pattern), the final-stage dedupe keeps only one
+    candidate per hook_id."""
+    candidates = find_hook_candidates(
+        tracks=[
+            {"name": "Lead", "index": 0},
+            {"name": "Lead", "index": 1},  # duplicate track name
+        ],
+    )
+    hook_ids = [c.hook_id for c in candidates]
+    # No duplicates in the output list
+    assert len(hook_ids) == len(set(hook_ids)), (
+        f"final dedupe failed: {hook_ids}"
+    )
