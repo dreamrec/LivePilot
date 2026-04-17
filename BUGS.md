@@ -1126,7 +1126,7 @@ Regression tests (`tests/test_composition_engine.py::TestHarmonicScoreBugE3` + `
 
 ---
 
-### BUG-E4 · `🔴 open` · get_performance_state role labels differ from analyze_composition
+### BUG-E4 · `🟢 fixed (Batch 6)` · get_performance_state role labels differed from analyze_composition
 
 **Reproducer:** Same sections, different role labels:
 
@@ -1148,7 +1148,7 @@ Regression tests (`tests/test_composition_engine.py::TestHarmonicScoreBugE3` + `
 
 ---
 
-### BUG-E6 · `🔴 open` · build_world_model vs check_flucoma disagree on FluCoMa availability
+### BUG-E6 · `🟢 fixed (Batch 6)` · build_world_model vs check_flucoma disagreed on FluCoMa availability
 
 **Reproducer:**
 ```
@@ -1166,7 +1166,7 @@ build_world_model().technical → {"flucoma_available": false}
 
 ---
 
-### BUG-E5 · `🔴 open` · get_performance_state energy_level values differ from get_section_graph.energy
+### BUG-E5 · `🟢 fixed (Batch 6)` · get_performance_state energy_level values differed from get_section_graph.energy
 
 See BUG-B21 for the full cross-engine energy table. This is the specific manifestation in the performance engine — it reports energies `[0.2, 0.6, 0.4, 0.3, 0.7, 0.7, 0.2]` while the section graph reports `[0.7, 0.9, 0.9, 0.5, 0.6, 0.9, 0.4]`. Not just scaled, but reordered (Deep Flow is peak in composition, mid-tier in performance).
 
@@ -1320,8 +1320,8 @@ Second project loaded in the same session (Prefuse73-adjacent, 10 tracks, 49 cli
 | **B** critics/analyzers | **39** | **7** | **Batch 4**: B2 (iv turnaround mislabeled) + B5 (partial chord mis-rooted) — chord_name rewrite with bass-note priority, subset/superset matching. |
 | **C** audit follow-ups | 4 | 0 | v1.10.6 deferred items |
 | **D** creative trackers | 2 | 1 | Dabrye session D3 fixed (VOX LEAD Warp); D1 now unblocked by A5 |
-| **E** cross-engine consistency | 3 | 3 | **Batch 5**: E3 (harmony_field aggregates harmonic tracks, filters percussion). Batch 3: E1, E2. E4-E6 remain. |
-| **Total** | **49** | **15** | Batch 5 shipped — `harmonic_score()` helper + `get_harmony_field` aggregation rewrite. Batch 4: chord_name rewrite. Batch 3: project_brain data wiring. Batch 2: remote-script version handshake + audio-clip pitch/gain (320→321). Batch 1: 6 song_brain / transition / hook / midi_io fixes. Plus v1.10.6 D3. |
+| **E** cross-engine consistency | 0 | 6 | **Batch 6**: E4 + E5 (performance_engine delegates to composition_engine for roles + energy), E6 (build_world_model FluCoMa uses same probe as check_flucoma). **All E bugs closed.** |
+| **Total** | **46** | **18** | Batch 6 shipped — performance_engine role/energy unified with composition_engine, FluCoMa check aligned. Batch 5: `harmonic_score()` + `get_harmony_field` aggregation. Batch 4: chord_name rewrite. Batch 3: project_brain data wiring. Batch 2: remote-script version handshake + audio-clip pitch/gain (320→321). Batch 1: 6 song_brain / transition / hook / midi_io fixes. Plus v1.10.6 D3. |
 
 ### Additional findings (wave 3 — song brain + transitions + theory + FluCoMa)
 

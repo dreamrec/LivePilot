@@ -21,34 +21,59 @@ logger = logging.getLogger(__name__)
 # ── Helpers ─────────────────────────────────────────────────────────
 
 
-def _infer_role(name: str, index: int, scene_count: int) -> str:
-    """Infer a scene's role from its name or position."""
-    lower = name.lower()
-    for role in ("intro", "verse", "chorus", "build", "drop", "breakdown", "outro", "transition"):
-        if role in lower:
-            return role
-    # Positional fallback
+# BUG-E4 / E5 fix: performance_engine used to have its own _infer_role() keyword
+# list and _infer_energy() static {role → number} table. Those diverged from
+# _composition_engine's richer section classifier, which caused
+# get_performance_state and analyze_composition to label the same scenes
+# differently (Deep Flow: drop vs verse, Sun Peak: drop vs chorus) and to
+# report dissimilar energies (composition derived from active-track density,
+# performance looked up a hard-coded 0.2/0.4/0.7 table). Now performance
+# consumes composition's section graph as the source of truth and only keeps
+# a positional fallback for scenes without enough data.
+_POSITIONAL_FALLBACK_ROLES = {
+    "first": "intro",
+    "last": "outro",
+    "early": "intro",
+    "middle_low": "verse",
+    "middle_high": "chorus",
+    "late": "outro",
+    "default": "verse",
+}
+
+
+def _positional_fallback_role(index: int, scene_count: int) -> str:
+    """Map a scene index to a role when no composition data is available.
+
+    Kept only as a last-resort so we still produce a sensible answer for
+    unnamed scenes or when build_section_graph_from_scenes returns empty.
+    Callers should prefer the composition-engine result when it exists.
+    """
+    if scene_count <= 0:
+        return _POSITIONAL_FALLBACK_ROLES["default"]
     if index == 0:
-        return "intro"
+        return _POSITIONAL_FALLBACK_ROLES["first"]
     if index == scene_count - 1:
-        return "outro"
+        return _POSITIONAL_FALLBACK_ROLES["last"]
     if scene_count > 4:
-        quarter = scene_count / 4
+        quarter = scene_count / 4.0
         if index < quarter:
-            return "intro"
-        elif index < quarter * 2:
-            return "verse"
-        elif index < quarter * 3:
-            return "chorus"
-        else:
-            return "outro"
-    return "verse"
+            return _POSITIONAL_FALLBACK_ROLES["early"]
+        if index < quarter * 2:
+            return _POSITIONAL_FALLBACK_ROLES["middle_low"]
+        if index < quarter * 3:
+            return _POSITIONAL_FALLBACK_ROLES["middle_high"]
+        return _POSITIONAL_FALLBACK_ROLES["late"]
+    return _POSITIONAL_FALLBACK_ROLES["default"]
 
 
-def _infer_energy(role: str) -> float:
-    """Infer energy level from scene role."""
-    energy_map = {
-        "intro": 0.2,
+def _positional_fallback_energy(role: str) -> float:
+    """Static energy map used only when density is unavailable.
+
+    Kept tiny and explicit so the fallback path is obvious — the primary
+    source of energy is _composition_engine's density-based value.
+    """
+    return {
+        "intro": 0.3,
         "verse": 0.4,
         "build": 0.6,
         "chorus": 0.7,
@@ -56,23 +81,82 @@ def _infer_energy(role: str) -> float:
         "breakdown": 0.3,
         "transition": 0.5,
         "outro": 0.2,
-    }
-    return energy_map.get(role, 0.5)
+    }.get(role, 0.5)
 
 
 def _fetch_scene_data(ctx: Context) -> tuple[list[SceneRole], int]:
-    """Fetch scene info from Ableton and build SceneRole list."""
+    """Fetch scene info + composition graph from Ableton and build SceneRole list.
+
+    BUG-E4 / E5 fix: roles + energies now flow from composition_engine's
+    build_section_graph_from_scenes, which uses keyword matching + active-
+    track density for energy. Unnamed scenes fall back to the positional
+    heuristic. This keeps get_performance_state in sync with
+    get_section_graph / analyze_composition.
+    """
+    from ..tools._composition_engine import (
+        build_section_graph_from_scenes,
+        SectionNode as CESectionNode,
+    )
+
     ableton = ctx.lifespan_context["ableton"]
 
     scenes_info = ableton.send_command("get_scenes_info", {})
     scenes_list = scenes_info.get("scenes", [])
     scene_count = len(scenes_list)
 
+    # Pull session topology + clip matrix so composition engine can compute
+    # active-track density. If any of these fails we fall back to the
+    # positional heuristic — preserving the old behavior as a safety net.
+    track_count = 0
+    clip_matrix: list[list[dict]] = []
+    try:
+        session_info = ableton.send_command("get_session_info", {})
+        track_count = int(session_info.get("track_count", 0))
+    except Exception as exc:
+        logger.debug("_fetch_scene_data session_info failed: %s", exc)
+    try:
+        mtx = ableton.send_command("get_scene_matrix", {})
+        if isinstance(mtx, dict):
+            clip_matrix = mtx.get("matrix", []) or []
+    except Exception as exc:
+        logger.debug("_fetch_scene_data scene_matrix failed: %s", exc)
+
+    # Build the composition section graph. Each SectionNode has
+    # section_id = f"sec_{raw_enumerate_index:02d}" per BUG-E1 fix, so we
+    # can index by scene position directly.
+    ce_sections: list[CESectionNode] = []
+    try:
+        if scenes_list and clip_matrix and track_count > 0:
+            ce_sections = build_section_graph_from_scenes(
+                scenes_list, clip_matrix, track_count,
+            )
+    except Exception as exc:
+        logger.debug("_fetch_scene_data section graph failed: %s", exc)
+
+    ce_by_scene_idx: dict[int, CESectionNode] = {}
+    for sec in ce_sections:
+        # section_id format "sec_02" → scene index 2 (raw enumerate index)
+        sid = str(sec.section_id)
+        if sid.startswith("sec_"):
+            try:
+                ce_by_scene_idx[int(sid[4:])] = sec
+            except ValueError:
+                pass
+
     scene_roles: list[SceneRole] = []
     for i, scene_data in enumerate(scenes_list):
         name = scene_data.get("name", f"Scene {i}")
-        role = _infer_role(name, i, scene_count)
-        energy = _infer_energy(role)
+        ce_sec = ce_by_scene_idx.get(i)
+        if ce_sec is not None:
+            # SectionType is an enum; .value gives the string vocabulary
+            stype = ce_sec.section_type
+            role = stype.value if hasattr(stype, "value") else str(stype)
+            energy = float(ce_sec.energy)
+        else:
+            # Unnamed scene or build failed — positional fallback
+            role = _positional_fallback_role(i, scene_count)
+            energy = _positional_fallback_energy(role)
+
         scene_roles.append(SceneRole(
             scene_index=i,
             name=name,
@@ -85,14 +169,13 @@ def _fetch_scene_data(ctx: Context) -> tuple[list[SceneRole], int]:
     current_scene = 0
     try:
         session_info = ableton.send_command("get_session_info", {})
-        # Check if any scene is marked as triggered/playing
         session_scenes = session_info.get("scenes", [])
         for i, s in enumerate(session_scenes):
             if s.get("is_triggered", False):
                 current_scene = i
                 break
     except Exception as exc:
-        logger.debug("_fetch_scene_data failed: %s", exc)
+        logger.debug("_fetch_scene_data current_scene failed: %s", exc)
 
     return scene_roles, current_scene
 

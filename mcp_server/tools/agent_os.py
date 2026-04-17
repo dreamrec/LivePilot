@@ -151,11 +151,28 @@ def build_world_model(ctx: Context) -> dict:
         if key_data:
             detected_key = key_data["value"] if isinstance(key_data["value"], dict) else {"key": key_data["value"]}
 
+        # BUG-E6 fix: derive flucoma_available from the same 6-stream probe
+        # that check_flucoma uses. Previously we read a dedicated
+        # "flucoma_status" key that the M4L bridge doesn't emit, so the
+        # fallback `{"flucoma_available": False}` always won even when all
+        # 6 FluCoMa streams were actively delivering data.
+        _flu_streams = ("spectral_shape", "mel_bands", "chroma",
+                        "onset", "novelty", "loudness")
+        active = sum(1 for k in _flu_streams if spectral.get(k) is not None)
+        flucoma_status = {
+            "flucoma_available": active > 0,
+            "active_streams": active,
+        }
+        # Keep any explicit flucoma_status payload the bridge may emit
+        # alongside as extra metadata — without letting it override the
+        # stream-based truth.
         flucoma_data = spectral.get("flucoma_status")
-        if flucoma_data:
-            flucoma_status = flucoma_data["value"] if isinstance(flucoma_data["value"], dict) else {}
+        if flucoma_data and isinstance(flucoma_data.get("value"), dict):
+            extras = {k: v for k, v in flucoma_data["value"].items()
+                      if k not in flucoma_status}
+            flucoma_status.update(extras)
     else:
-        flucoma_status = {"flucoma_available": False}
+        flucoma_status = {"flucoma_available": False, "active_streams": 0}
 
     # Build model
     wm = engine.build_world_model_from_data(

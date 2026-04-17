@@ -367,3 +367,139 @@ class TestBuildPerformanceState:
         assert "safe_moves" in d
         assert "blocked_moves" in d
         assert d["current_scene"] == 0
+
+
+# ─── BUG-E4 / E5 regressions ────────────────────────────────────────────────
+
+
+class TestFetchSceneDataE4E5:
+    """get_performance_state used to reimplement role + energy inference
+    with its own keyword list and a static role→energy table. That drifted
+    from _composition_engine.build_section_graph_from_scenes, producing
+    disagreements like (Sun Peak: drop vs chorus) and (Intro Dust: 0.7 vs 0.2).
+    The fix delegates to the composition engine so both tools agree."""
+
+    def _fake_ctx(self, scenes, matrix):
+        from types import SimpleNamespace
+
+        def send(cmd, params=None):
+            if cmd == "get_scenes_info":
+                return {"scenes": scenes}
+            if cmd == "get_scene_matrix":
+                return {"matrix": matrix}
+            if cmd == "get_session_info":
+                track_count = len(matrix[0]) if matrix else 0
+                return {
+                    "track_count": track_count,
+                    "tracks": [{"index": i, "name": f"t{i}"}
+                               for i in range(track_count)],
+                    "scenes": scenes,
+                }
+            return {}
+
+        return SimpleNamespace(
+            lifespan_context={"ableton": SimpleNamespace(send_command=send)}
+        )
+
+    def test_dabrye_session_role_labels_match_composition(self):
+        """Sun Peak must NOT be labeled 'chorus' (old positional fallback)
+        while composition says 'drop'. After the fix both tools agree."""
+        from mcp_server.performance_engine.tools import _fetch_scene_data
+
+        scenes = [
+            {"index": 0, "name": "Intro Dust"},
+            {"index": 1, "name": "Groove Build"},
+            {"index": 2, "name": "Deep Flow"},
+            {"index": 3, "name": "Breakdown"},
+            {"index": 4, "name": "Re-Entry"},
+            {"index": 5, "name": "Sun Peak"},
+            {"index": 6, "name": "Outro Dust"},
+        ]
+        def row(bits):
+            return [{"state": "stopped", "has_clip": bool(b)} for b in bits]
+        matrix = [
+            row([0, 1, 0, 1, 1, 0, 1, 1, 1, 1]),  # Intro — 7 active
+            row([1, 1, 1, 1, 0, 1, 1, 1, 1, 1]),  # Build — 9
+            row([1, 1, 1, 1, 1, 1, 1, 1, 1, 0]),  # Deep Flow — 9
+            row([0, 0, 0, 1, 1, 0, 1, 1, 1, 0]),  # Breakdown — 5
+            row([1, 1, 1, 0, 1, 0, 1, 0, 1, 0]),  # Re-Entry — 6
+            row([1, 1, 1, 1, 1, 1, 1, 1, 1, 0]),  # Sun Peak — 9
+            row([0, 0, 0, 1, 1, 0, 0, 1, 1, 0]),  # Outro — 4
+        ]
+
+        ctx = self._fake_ctx(scenes, matrix)
+        scene_roles, _ = _fetch_scene_data(ctx)
+
+        by_name = {s.name: s for s in scene_roles}
+        assert by_name["Intro Dust"].role == "intro"
+        assert by_name["Groove Build"].role == "build"
+        assert by_name["Breakdown"].role == "breakdown"
+        assert by_name["Outro Dust"].role == "outro"
+        # Sun Peak must NOT regress to "chorus" (positional fallback).
+        assert by_name["Sun Peak"].role != "chorus", (
+            f"BUG-E4 regressed — Sun Peak fell back to positional: "
+            f"{by_name['Sun Peak'].role}"
+        )
+
+    def test_energy_reflects_density_not_static_table(self):
+        """Intro Dust with 7/10 active tracks must report energy closer to
+        0.7 (composition's density) than to the old static 0.2 intro value."""
+        from mcp_server.performance_engine.tools import _fetch_scene_data
+
+        scenes = [{"index": 0, "name": "Intro Dust"}]
+        def row(bits):
+            return [{"state": "stopped", "has_clip": bool(b)} for b in bits]
+        matrix = [row([0, 1, 0, 1, 1, 0, 1, 1, 1, 1])]  # 7 of 10
+
+        ctx = self._fake_ctx(scenes, matrix)
+        scene_roles, _ = _fetch_scene_data(ctx)
+        assert scene_roles[0].energy_level >= 0.6, (
+            f"BUG-E5 regressed — Intro Dust density energy should be >=0.6, "
+            f"got {scene_roles[0].energy_level}."
+        )
+
+    def test_unnamed_scene_uses_positional_fallback(self):
+        """Unnamed scene — composition skips it, performance still yields
+        a SceneRole via fallback so scene_launch safe moves stay 1:1."""
+        from mcp_server.performance_engine.tools import _fetch_scene_data
+
+        scenes = [
+            {"index": 0, "name": "Intro"},
+            {"index": 1, "name": ""},
+            {"index": 2, "name": "Verse"},
+        ]
+        def row(bits):
+            return [{"state": "stopped", "has_clip": bool(b)} for b in bits]
+        matrix = [row([1, 1, 1, 1]), row([0, 0, 0, 0]), row([1, 1, 1, 1])]
+
+        ctx = self._fake_ctx(scenes, matrix)
+        scene_roles, _ = _fetch_scene_data(ctx)
+        assert [s.scene_index for s in scene_roles] == [0, 1, 2]
+        unnamed = scene_roles[1]
+        assert unnamed.role  # non-empty
+        assert 0.0 <= unnamed.energy_level <= 1.0
+
+    def test_graceful_when_composition_engine_fails(self):
+        """If get_scene_matrix errors, fall back to positional heuristic
+        without raising — live performance must survive telemetry hiccups."""
+        from types import SimpleNamespace
+        from mcp_server.performance_engine.tools import _fetch_scene_data
+
+        scenes = [{"index": 0, "name": "Intro"}, {"index": 1, "name": "Outro"}]
+
+        def send(cmd, params=None):
+            if cmd == "get_scenes_info":
+                return {"scenes": scenes}
+            if cmd == "get_scene_matrix":
+                raise RuntimeError("simulated matrix failure")
+            if cmd == "get_session_info":
+                return {"track_count": 4, "scenes": scenes}
+            return {}
+
+        ctx = SimpleNamespace(
+            lifespan_context={"ableton": SimpleNamespace(send_command=send)}
+        )
+        scene_roles, _ = _fetch_scene_data(ctx)
+        assert len(scene_roles) == 2
+        assert scene_roles[0].role == "intro"
+        assert scene_roles[1].role == "outro"

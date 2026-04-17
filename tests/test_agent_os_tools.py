@@ -76,3 +76,71 @@ class TestEvaluateMove:
         after = json.dumps({"spectrum": {"sub": 0.5}, "rms": 0.7, "peak": 0.9})
         result = evaluate_move(None, goal, before, after)
         assert "score" in result
+
+
+# ─── BUG-E6 — build_world_model vs check_flucoma consistency ────────────────
+
+
+class TestBuildWorldModelFluCoMaE6:
+    """BUG-E6: check_flucoma() reported flucoma_available=true (6 streams)
+    while build_world_model().technical.flucoma_available returned false
+    on the same session. Root cause: build_world_model read a dedicated
+    'flucoma_status' cache key that the M4L bridge doesn't emit, so the
+    fallback `{"flucoma_available": False}` always won. The fix derives
+    availability from the same 6-stream probe check_flucoma uses."""
+
+    def _make_ctx(self, streams_active: bool):
+        from types import SimpleNamespace
+
+        class _Cache:
+            is_connected = True
+            _flu_keys = {"spectral_shape", "mel_bands", "chroma",
+                         "onset", "novelty", "loudness"}
+
+            def get(self_inner, key):
+                if streams_active and key in self_inner._flu_keys:
+                    return {"value": [0.1] * 10}
+                return None
+
+        class _Ableton:
+            def send_command(self, cmd, params=None):
+                if cmd == "get_session_info":
+                    return {
+                        "tempo": 120, "time_signature": "4/4",
+                        "track_count": 1, "return_track_count": 0,
+                        "scene_count": 1,
+                        "tracks": [{
+                            "index": 0, "name": "A",
+                            "has_midi_input": True, "has_audio_input": False,
+                            "mute": False, "solo": False, "arm": False,
+                        }],
+                    }
+                if cmd == "get_track_info":
+                    return {"index": 0, "name": "A", "devices": []}
+                return {}
+
+        return SimpleNamespace(lifespan_context={
+            "ableton": _Ableton(),
+            "spectral": _Cache(),
+        })
+
+    def test_flucoma_available_true_when_streams_flow(self):
+        """With all 6 FluCoMa stream keys populated, build_world_model must
+        report flucoma_available=true — matching what check_flucoma says."""
+        from mcp_server.tools.agent_os import build_world_model
+        ctx = self._make_ctx(streams_active=True)
+        result = build_world_model(ctx)
+        technical = result.get("technical", {})
+        assert technical.get("flucoma_available") is True, (
+            f"BUG-E6 regressed — build_world_model says "
+            f"flucoma_available={technical.get('flucoma_available')} "
+            f"while streams ARE flowing. technical={technical!r}"
+        )
+
+    def test_flucoma_available_false_when_no_streams(self):
+        """With no FluCoMa streams, flucoma_available must stay false."""
+        from mcp_server.tools.agent_os import build_world_model
+        ctx = self._make_ctx(streams_active=False)
+        result = build_world_model(ctx)
+        technical = result.get("technical", {})
+        assert technical.get("flucoma_available") is False
