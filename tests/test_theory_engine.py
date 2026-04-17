@@ -266,3 +266,63 @@ class TestChordify:
         ]
         result = chordify(notes)
         assert result[0]["duration"] == 2.0
+
+
+# ─── BUG-B23 regressions — roman figure case matches quality ────────────────
+
+
+class TestBugB23FigureNormalization:
+    """BUG-B23: suggest_next_chord used to emit figures like IV (uppercase =
+    major convention) paired with chord_name="G-minor triad" and
+    quality="minor" — an internally contradictory output. The fix normalizes
+    the figure case to match the resolved chord quality."""
+
+    def test_iv_in_d_minor_returns_lowercase_iv(self):
+        """iv in D minor resolves to Gm (scale-derived). Figure must be
+        lowercase to agree with the minor quality."""
+        from mcp_server.tools._theory_engine import roman_figure_to_pitches
+        r = roman_figure_to_pitches("iv", 2, "minor")
+        assert r["figure"] == "iv"
+        assert r["quality"] == "minor"
+
+    def test_uppercase_caller_input_is_normalized_to_lowercase(self):
+        """If a caller passes 'IV' but the resolved triad is minor, the
+        output figure should be rewritten as 'iv' to match quality."""
+        from mcp_server.tools._theory_engine import roman_figure_to_pitches
+        r = roman_figure_to_pitches("IV", 2, "minor")
+        assert r["figure"] == "iv", (
+            f"BUG-B23 regressed — uppercase IV stayed uppercase with "
+            f"minor quality: {r!r}"
+        )
+        assert r["quality"] == "minor"
+        # The raw caller input is preserved for debugging
+        assert r["figure_requested"] == "IV"
+
+    def test_v_in_c_major_stays_uppercase(self):
+        """V in C major is G major. Uppercase should stay uppercase."""
+        from mcp_server.tools._theory_engine import roman_figure_to_pitches
+        r = roman_figure_to_pitches("V", 0, "major")
+        assert r["figure"] == "V"
+        assert r["quality"] == "major"
+
+    def test_diminished_numeral_lowercased_with_degree_marker(self):
+        """A vii° chord in C major — numeral should stay lowercase (B diminished)."""
+        from mcp_server.tools._theory_engine import roman_figure_to_pitches
+        r = roman_figure_to_pitches("vii\u00b0", 0, "major")
+        assert r["figure"].startswith("vii"), r
+        assert r["quality"] == "diminished"
+
+    def test_normalize_figure_preserves_accidentals(self):
+        """Leading accidentals (b/#) must survive the normalization."""
+        from mcp_server.tools._theory_engine import _normalize_figure_case
+        assert _normalize_figure_case("bVII", "major") == "bVII"
+        assert _normalize_figure_case("bVII", "minor") == "bvii"
+        assert _normalize_figure_case("#iv", "major") == "#IV"
+        assert _normalize_figure_case("#iv", "minor") == "#iv"
+
+    def test_normalize_figure_preserves_suffix(self):
+        """Seventh/extension suffixes must survive the normalization."""
+        from mcp_server.tools._theory_engine import _normalize_figure_case
+        assert _normalize_figure_case("V7", "major") == "V7"
+        assert _normalize_figure_case("V7", "minor seventh") == "v7"
+        assert _normalize_figure_case("IVmaj7", "major seventh") == "IVmaj7"

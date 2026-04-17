@@ -129,19 +129,37 @@ def find_voice_leading_path(
         }
 
     path_strs = [harmony.chord_to_str(*c) for c in result["path"]]
+
+    # BUG-B25 fix: optimize voice assignment. The old code emitted each
+    # chord at its root-position octave-4 voicing, so moving D minor →
+    # Bb major (D F A → Bb D F) appeared as a minor-6th jump instead of
+    # the smooth D→D / F→F / A→Bb voice leading a pianist would pick.
+    # We now walk the path keeping the FIRST chord at its default
+    # voicing and, for each subsequent chord, pick the permutation
+    # (inversion + octave offsets) that minimizes total semitone
+    # movement from the previous voicing.
     voice_leading = []
+    prev_voicing = harmony.chord_to_midi(*result["path"][0]) if result["path"] else []
+
     for i in range(len(result["path"]) - 1):
-        from_midi = harmony.chord_to_midi(*result["path"][i])
-        to_midi = harmony.chord_to_midi(*result["path"][i + 1])
+        next_chord = result["path"][i + 1]
+        candidate_voicing = harmony.chord_to_midi(*next_chord)
+        optimized_voicing = _optimize_voicing(prev_voicing, candidate_voicing)
+
         movements = []
-        for f, t in zip(from_midi, to_midi):
+        for f, t in zip(prev_voicing, optimized_voicing):
             if f != t:
                 movements.append(f"{theory.pitch_name(f)}→{theory.pitch_name(t)}")
+
         voice_leading.append({
-            "from": from_midi,
-            "to": to_midi,
+            "from": list(prev_voicing),
+            "to": list(optimized_voicing),
             "movement": ", ".join(movements) if movements else "no movement",
+            "total_semitone_movement": sum(
+                abs(t - f) for f, t in zip(prev_voicing, optimized_voicing)
+            ),
         })
+        prev_voicing = optimized_voicing
 
     return {
         "from": from_chord,
@@ -152,6 +170,40 @@ def find_voice_leading_path(
         "transforms": result["transforms"],
         "voice_leading": voice_leading,
     }
+
+
+def _optimize_voicing(prev_voicing: list[int], target_pitches: list[int]) -> list[int]:
+    """Pick an inversion/octave arrangement of *target_pitches* that
+    minimizes total semitone movement from *prev_voicing*.
+
+    Search space: for each permutation of target_pitches (3 voices →
+    6 permutations), for each voice try octave offsets in ±2 octaves.
+    That's 6 * 5^3 = 750 combinations per transition — trivial at runtime
+    but dramatically smoother output than fixed-octave voicings.
+
+    Assumes same voice-count on both sides; falls back to target_pitches
+    unchanged if lengths differ.
+    """
+    import itertools
+
+    if len(prev_voicing) != len(target_pitches) or not target_pitches:
+        return list(target_pitches)
+
+    best_voicing = list(target_pitches)
+    best_cost = sum(abs(t - f) for f, t in zip(prev_voicing, best_voicing))
+
+    # Each voice can float ±2 octaves (±24 semitones) from the base pitch
+    octave_offsets = (-24, -12, 0, 12, 24)
+
+    for perm in itertools.permutations(target_pitches):
+        for offs in itertools.product(octave_offsets, repeat=len(perm)):
+            candidate = [p + o for p, o in zip(perm, offs)]
+            cost = sum(abs(t - f) for f, t in zip(prev_voicing, candidate))
+            if cost < best_cost:
+                best_cost = cost
+                best_voicing = candidate
+
+    return best_voicing
 
 
 # -- Tool 3: classify_progression --------------------------------------------
@@ -191,24 +243,72 @@ def classify_progression(
 
     classification = "free neo-Riemannian progression"
     notable_usage = None
-    clean = pattern.replace("?", "")
 
-    if len(clean) >= 2:
-        pair = clean[:2]
-        if pair in ("PL", "LP") and all(c in "PL" for c in clean):
+    # BUG-B24: the old code did `clean = pattern.replace("?", "")` and
+    # then checked alphabet purity on the cleaned string. That gave
+    # a cheerful "diatonic cycle fragment" label to a pattern like
+    # "LR?LR" — silently ignoring the middle step motion.
+    # Now we check alphabet purity on the FULL pattern (only counting
+    # transforms that landed in the target alphabet) AND track whether
+    # any transforms were unclassified OR were step primitives that
+    # aren't part of the target cycle alphabet.
+
+    def _primitives(pat: str) -> list[str]:
+        """Split a concatenated pattern into its atomic tokens.
+
+        Tokens: P / L / R single letters, S1u/S1d/S2u/S2d step markers,
+        and ? for unknown. The tokenizer walks left-to-right matching
+        the longest known token at each position.
+        """
+        known = ("S1u", "S1d", "S2u", "S2d")
+        out = []
+        i = 0
+        while i < len(pat):
+            matched = None
+            for tok in known:
+                if pat.startswith(tok, i):
+                    matched = tok
+                    break
+            if matched is None:
+                out.append(pat[i])
+                i += 1
+            else:
+                out.append(matched)
+                i += len(matched)
+        return out
+
+    tokens = _primitives(pattern)
+    core_tokens = [t for t in tokens if t in ("P", "L", "R")]
+    step_tokens = [t for t in tokens if t.startswith("S")]
+    unknown_count = sum(1 for t in tokens if t == "?")
+
+    if len(core_tokens) >= 2:
+        alphabet = set(core_tokens)
+        if alphabet.issubset({"P", "L"}):
             classification = "hexatonic cycle fragment"
             notable_usage = "Radiohead, film scores (Zimmer, Howard)"
-        elif pair in ("PR", "RP") and all(c in "PR" for c in clean):
+        elif alphabet.issubset({"P", "R"}):
             classification = "octatonic cycle fragment"
             notable_usage = "late Romantic (Wagner, Strauss), horror film scores"
-        elif pair in ("LR", "RL") and all(c in "LR" for c in clean):
+        elif alphabet.issubset({"L", "R"}):
             classification = "diatonic cycle fragment"
             notable_usage = "functional harmony, common in classical and pop"
-
-    if len(clean) == 1:
+    elif len(core_tokens) == 1:
         names = {"P": "parallel transform", "L": "leading-tone transform",
                  "R": "relative transform"}
-        classification = names.get(clean, classification)
+        classification = names.get(core_tokens[0], classification)
+
+    # Annotate when the progression isn't purely in the classified alphabet
+    annotations = []
+    if step_tokens:
+        annotations.append("with diatonic step motion")
+    if unknown_count:
+        annotations.append(
+            f"with {unknown_count} unclassified transition"
+            + ("s" if unknown_count != 1 else "")
+        )
+    if annotations:
+        classification = f"{classification} ({', '.join(annotations)})"
 
     return {
         "chords": normalized,
@@ -216,6 +316,7 @@ def classify_progression(
         "pattern": pattern,
         "classification": classification,
         "notable_usage": notable_usage,
+        "unknown_transitions": unknown_count,
     }
 
 

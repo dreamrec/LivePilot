@@ -195,13 +195,45 @@ def find_shortest_path(
 # ---------------------------------------------------------------------------
 
 def classify_transform_sequence(chords: list[tuple[int, str]]) -> list[str]:
-    """Identify the PRL transform between each consecutive pair of chords.
+    """Identify the neo-Riemannian transform between each consecutive pair.
 
-    Tries single transforms (P, L, R) first, then 2-step compound
-    transforms (PL, PR, LP, LR, RP, RL) for richer classification.
+    Tries (in order):
+      1. Single transforms: P, L, R
+      2. 2-step compounds: PL, PR, LP, LR, RP, RL, PP, LL, RR
+      3. 3-step compounds: PLR, PRL, LPR, LRP, RLP, RPL, PLP, PRP, LPL, …
+         (BUG-B24: needed for progressions that step through mediants)
+      4. Diatonic-step primitives: S2↑ / S2↓ (whole-step root motion,
+         same quality) and S1↑ / S1↓ (half-step root motion, same
+         quality). These aren't classical neo-Riemannian transforms —
+         but Gm → Am (D minor iv → v) IS a valid progression, so the
+         transform alphabet needs SOME label for it. Marking it with a
+         dedicated symbol is cleaner than returning "?", which cascades
+         into misleading "diatonic cycle fragment" classifications
+         downstream.
     """
-    _COMPOUNDS = ["PL", "PR", "LP", "LR", "RP", "RL",
-                  "PP", "LL", "RR"]
+    _TWO_STEP = ["PL", "PR", "LP", "LR", "RP", "RL",
+                 "PP", "LL", "RR"]
+    _THREE_STEP = [
+        "PLR", "PRL", "LPR", "LRP", "RLP", "RPL",
+        "PLP", "LPL", "PRP", "RPR", "LRL", "RLR",
+    ]
+
+    def _try_primitive_step(a: tuple[int, str], b: tuple[int, str]) -> str:
+        """Detect same-quality step motion → S1/S2 primitive."""
+        if a[1] != b[1]:
+            return "?"
+        interval = (b[0] - a[0]) % 12
+        # Prefer the signed direction symbol for readability
+        if interval == 1:
+            return "S1u"  # semitone up
+        if interval == 11:
+            return "S1d"  # semitone down
+        if interval == 2:
+            return "S2u"  # whole-step up (Gm → Am in Dm)
+        if interval == 10:
+            return "S2d"  # whole-step down
+        return "?"
+
     result = []
     for i in range(len(chords) - 1):
         found = "?"
@@ -210,15 +242,27 @@ def classify_transform_sequence(chords: list[tuple[int, str]]) -> list[str]:
             if fn(*chords[i]) == chords[i + 1]:
                 found = label
                 break
-        # Try 2-step compound transforms
+        # Try 2-step compounds
         if found == "?":
-            for compound in _COMPOUNDS:
+            for compound in _TWO_STEP:
                 try:
                     if apply_transforms(*chords[i], compound) == chords[i + 1]:
                         found = compound
                         break
                 except (ValueError, KeyError):
                     continue
+        # Try 3-step compounds (BUG-B24)
+        if found == "?":
+            for compound in _THREE_STEP:
+                try:
+                    if apply_transforms(*chords[i], compound) == chords[i + 1]:
+                        found = compound
+                        break
+                except (ValueError, KeyError):
+                    continue
+        # Final fallback: same-quality step motion (BUG-B24)
+        if found == "?":
+            found = _try_primitive_step(chords[i], chords[i + 1])
         result.append(found)
     return result
 

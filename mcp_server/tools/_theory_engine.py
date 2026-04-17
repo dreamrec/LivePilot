@@ -481,13 +481,60 @@ def roman_figure_to_pitches(figure: str, tonic: int, mode: str) -> dict:
         p = base_midi + ((pc - root_pc) % 12)
         midi.append(p)
 
+    # BUG-B23: the original figure string's case can disagree with the
+    # resolved quality (e.g. "IV" resolving to a minor triad on the 4th
+    # scale degree of D minor). Convention says uppercase numerals encode
+    # major/augmented and lowercase encode minor/diminished. Return a
+    # normalized figure so callers receive internally consistent data;
+    # the raw input figure stays reflected in 'figure_requested' for
+    # debugging / compatibility.
+    normalized_figure = _normalize_figure_case(figure, quality)
+
     return {
-        "figure": figure,
+        "figure": normalized_figure,
+        "figure_requested": figure,
         "root_pc": root_pc,
         "pitches": [pitch_name(m) for m in midi],
         "midi_pitches": midi,
         "quality": quality,
     }
+
+
+def _normalize_figure_case(figure: str, quality: str) -> str:
+    """Return *figure* with its numeral's case matched to *quality*.
+
+    Uppercase numerals (I, II, …, VII) conventionally encode major-family
+    qualities; lowercase (i, ii, …, vii) encode minor-family. We preserve
+    any leading accidentals (b/#) and trailing suffix (7, maj7, °, etc.)
+    and only flip the numeral itself. Safe on edge cases: if the figure
+    doesn't start with a recognized numeral, it's returned unchanged.
+    """
+    if not figure:
+        return figure
+    # Split off leading accidentals
+    prefix = ""
+    remaining = figure
+    while remaining and remaining[0] in ("b", "#"):
+        prefix += remaining[0]
+        remaining = remaining[1:]
+    # Match numeral greedily (longest first so VII wins over VI wins over V)
+    numeral = ""
+    for rn in ["VII", "VI", "IV", "III", "II", "V", "I"]:
+        if remaining.upper().startswith(rn):
+            numeral = rn
+            break
+    if not numeral:
+        return figure
+    suffix = remaining[len(numeral):]
+    # Minor family: lowercase. Major family: uppercase.
+    q = quality.lower() if isinstance(quality, str) else ""
+    is_minor_family = (
+        q.startswith("minor")
+        or q.startswith("half-diminished")
+        or q.startswith("diminished")
+    )
+    new_numeral = numeral.lower() if is_minor_family else numeral
+    return prefix + new_numeral + suffix
 
 
 def check_voice_leading(prev_pitches: list[int], curr_pitches: list[int]) -> list[dict]:

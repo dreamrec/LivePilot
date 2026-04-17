@@ -546,7 +546,7 @@ Second phrase (bars 12-16) has note_density = 0 despite being in the highest-den
 
 ---
 
-### BUG-B24 · `🔴 open` · classify_progression returns "?" for valid transform
+### BUG-B24 · `🟢 fixed (Batch 8)` · classify_progression returned "?" for valid transform
 
 **Reproducer:** `classify_progression(chords=["Dm", "Gm", "Am", "Dm"])` returns:
 ```json
@@ -562,7 +562,7 @@ The middle transform (Gm → Am) returns "?" — the neo-Riemannian transform en
 
 ---
 
-### BUG-B25 · `🟡 tuning question` · find_voice_leading_path returns non-smooth leading
+### BUG-B25 · `🟢 fixed (Batch 8)` · find_voice_leading_path returned non-smooth leading
 
 **Reproducer:** `find_voice_leading_path(from="Dm", to="Bb", max_steps=4)` returns:
 ```json
@@ -1039,7 +1039,7 @@ The file wrote to the default `~/Documents/LivePilot/outputs/midi/` directory, n
 
 ---
 
-### BUG-B23 · `🔴 open` · suggest_next_chord figure/quality mismatch
+### BUG-B23 · `🟢 fixed (Batch 8)` · suggest_next_chord figure/quality mismatch
 
 **Reproducer:** `suggest_next_chord(track=3, clip=0)` on the Pad Lush D-minor clip returns:
 ```json

@@ -245,7 +245,15 @@ def suggest_next_chord(
                 candidates = style_map[k]
                 break
     if not candidates:
-        candidates = style_map.get("I", ["IV", "V"])
+        # BUG-B23: the old fallback hard-coded ["IV", "V"] — uppercase
+        # literals that lie about chord quality in a minor key (where
+        # both iv and v are minor triads). Pick the tonic key ("i" in
+        # minor, "I" in major) and let the style_map's own conventions
+        # populate a minor-appropriate default when available.
+        tonic_key = "i" if is_minor else "I"
+        candidates = style_map.get(tonic_key)
+        if not candidates:
+            candidates = ["iv", "v"] if is_minor else ["IV", "V"]
 
     # Build concrete suggestions with MIDI pitches
     suggestions = []
