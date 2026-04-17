@@ -184,17 +184,40 @@ def score_phrase_impact(
     # Anticipation: was there a dip before?
     anticipation = min(1.0, max(0.0, (0.5 - prev_energy) * 2)) if prev_energy < 0.5 else 0.2
 
-    # Contrast: density or energy change
-    contrast = min(1.0, abs(density - prev_density) + abs(energy_delta))
+    # BUG-B51: note-content signals differentiate sections with
+    # identical energy/density. Without these, compare_phrase_impact
+    # emitted identical scores for every pair of same-density sections.
+    pitch_classes = int(section_data.get("unique_pitch_classes", 0) or 0)
+    note_count = int(section_data.get("note_count", 0) or 0)
+    velocity_variance = float(section_data.get("velocity_variance", 0) or 0)
+    # Pitch-class diversity → contrast lift: 0 classes = 0, 7+ = +0.3
+    pc_contrast_bonus = min(0.3, pitch_classes * 0.04)
+    # Note-density signal: more notes = richer content
+    note_density_signal = min(1.0, note_count / 50.0)
+    # Velocity variance → dynamic interest
+    dynamic_interest = min(1.0, velocity_variance / 200.0)
 
-    # Repetition fatigue: high density with no change = fatiguing
-    fatigue = max(0.0, 1.0 - contrast) * 0.5
+    # Contrast: density / energy change + pitch-class diversity
+    contrast = min(
+        1.0,
+        abs(density - prev_density) + abs(energy_delta) + pc_contrast_bonus,
+    )
 
-    # Section clarity: does it have a clear role?
-    clarity = 0.7 if section_data.get("label") else 0.3
+    # Repetition fatigue: high density + low dynamic variance = fatiguing
+    base_fatigue = max(0.0, 1.0 - contrast) * 0.5
+    # Flat velocity → more fatigue; dynamic variation → less
+    fatigue = round(max(0.0, base_fatigue - dynamic_interest * 0.15), 3)
+
+    # Section clarity: does it have a clear role + content to back it up?
+    label_clarity = 0.7 if section_data.get("label") else 0.3
+    content_clarity = 0.1 * min(1.0, note_count / 20.0)
+    clarity = min(1.0, label_clarity + content_clarity)
 
     # Groove continuity: rhythm present
     groove = 0.7 if section_data.get("has_drums", True) else 0.3
+    # Boost groove continuity when the section has genuine rhythmic
+    # activity (note_density_signal nudges it up, flat sections down)
+    groove = min(1.0, groove + note_density_signal * 0.1)
 
     # Payoff balance
     payoff = min(1.0, (arrival + anticipation) / 2)

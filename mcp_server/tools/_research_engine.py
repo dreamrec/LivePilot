@@ -162,15 +162,52 @@ def targeted_research(
     findings: list[ResearchFinding] = []
     sources_searched = []
 
-    # 1. Device atlas findings
+    # 1. Device atlas findings.
+    # BUG-B43 fix: device_atlas_results is a list of search_browser
+    # RESPONSES (each with {path, items: [...], count, ...}) — NOT a
+    # list of device entries. The old code read response.get("name")
+    # which always returned "" because the response has no top-level
+    # name. Every finding came back as "Device: Unknown". We now
+    # flatten the responses, look up each item's real atlas metadata,
+    # and build one finding per resolved device.
     if device_atlas_results:
         sources_searched.append("device_atlas")
-        for entry in device_atlas_results:
+        flattened_entries: list[dict] = []
+        for response in device_atlas_results:
+            if not isinstance(response, dict):
+                continue
+            # Accept old shape (single device dict) for forward compat
+            if response.get("name") and not response.get("items"):
+                flattened_entries.append(response)
+                continue
+            items = response.get("items") or response.get("results") or []
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                flattened_entries.append({
+                    "name": item.get("name", ""),
+                    "uri": item.get("uri", ""),
+                    "category": response.get("path", ""),
+                    "is_loadable": item.get("is_loadable", False),
+                })
+
+        for entry in flattened_entries:
             name = entry.get("name", "")
+            if not name:
+                continue  # skip phantom empties
+            # Try to enrich with atlas lookup — gives real description,
+            # character_tags, genres.
+            try:
+                from ..atlas import _atlas_instance as _atlas
+                if _atlas is not None:
+                    full = _atlas.lookup(name)
+                    if full:
+                        entry = {**full, **entry}
+            except Exception:
+                pass
+
             text = _format_device_finding(entry)
             relevance = _score_finding_relevance(text, query_info["keywords"])
-
-            # Boost relevance if device was in our predicted list
             if name in query_info["likely_devices"]:
                 relevance = min(1.0, relevance + 0.3)
 
@@ -179,7 +216,10 @@ def targeted_research(
                 source_id=name,
                 relevance=round(relevance, 3),
                 content=text,
-                metadata={"device_name": name, "category": entry.get("category", "")},
+                metadata={
+                    "device_name": name,
+                    "category": entry.get("category", ""),
+                },
             ))
 
     # 2. Memory findings (technique cards, outcomes, research notes)

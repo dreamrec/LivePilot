@@ -344,7 +344,14 @@ def suggest_payoff_repair(ctx: Context) -> dict:
 
 
 def _get_section_data(ableton) -> list[dict]:
-    """Build section data from Ableton scenes with real energy/density/has_drums."""
+    """Build section data from Ableton scenes with real energy/density/has_drums.
+
+    BUG-B51 fix: also fetches per-section note signals (unique pitch
+    count, note count, velocity-variance) so compare_phrase_impact can
+    differentiate two sections that share energy/density but have
+    different clip contents. Without these, the old comparator emitted
+    identical scores for every pair of same-density sections.
+    """
     sections: list[dict] = []
     try:
         matrix = ableton.send_command("get_scene_matrix")
@@ -353,11 +360,6 @@ def _get_section_data(ableton) -> list[dict]:
 
         # Detect drum track indices by name
         drum_keywords = {"drum", "beat", "kick", "hat", "perc", "snare"}
-        track_names = []
-        # tracks may be in matrix metadata or session_info
-        for ti, row_entry in enumerate(matrix_rows[0] if matrix_rows else []):
-            track_names.append("")  # placeholder — we'll use scenes_list tracks if available
-        # Use scene matrix track info if available
         track_info = matrix.get("tracks", [])
         drum_indices = set()
         for ti, track in enumerate(track_info):
@@ -372,15 +374,48 @@ def _get_section_data(ableton) -> list[dict]:
             clip_count = sum(1 for c in row if c)
             total_tracks = max(len(row), 1)
 
-            # has_drums: check if any drum track has a clip in this scene
             has_drums = any(
                 di < len(row) and row[di]
                 for di in drum_indices
             ) if drum_indices else False
 
             density = min(1.0, clip_count / total_tracks)
-            # energy: density + drum bonus
             energy = min(1.0, density + (0.1 if has_drums else 0.0))
+
+            # BUG-B51: cheap per-section note signals. Sample up to 3
+            # non-drum tracks in this scene for a flavor of the
+            # section's harmonic/rhythmic content. Keeps the call
+            # count bounded so compare_phrase_impact doesn't explode.
+            unique_pitches: set = set()
+            note_count = 0
+            velocity_variance = 0.0
+            sampled = 0
+            for t_idx, cell in enumerate(row):
+                if sampled >= 3 or not cell:
+                    continue
+                if t_idx in drum_indices:
+                    continue
+                try:
+                    notes_resp = ableton.send_command("get_notes", {
+                        "track_index": t_idx, "clip_index": i,
+                    })
+                except Exception:
+                    continue
+                notes = notes_resp.get("notes", []) if isinstance(
+                    notes_resp, dict
+                ) else []
+                if not notes:
+                    continue
+                sampled += 1
+                note_count += len(notes)
+                for n in notes:
+                    unique_pitches.add(int(n.get("pitch", 0)) % 12)
+                vels = [int(n.get("velocity", 0)) for n in notes]
+                if len(vels) >= 2:
+                    mean_v = sum(vels) / len(vels)
+                    velocity_variance += sum(
+                        (v - mean_v) ** 2 for v in vels
+                    ) / len(vels)
 
             sections.append({
                 "id": f"scene_{i}",
@@ -389,6 +424,11 @@ def _get_section_data(ableton) -> list[dict]:
                 "energy": round(energy, 3),
                 "density": round(density, 3),
                 "has_drums": has_drums,
+                # BUG-B51: these three differentiate otherwise-identical
+                # sections. Downstream phrase scorer reads them.
+                "unique_pitch_classes": len(unique_pitches),
+                "note_count": note_count,
+                "velocity_variance": round(velocity_variance, 3),
             })
     except Exception as exc:
         logger.debug("_get_section_data failed: %s", exc)

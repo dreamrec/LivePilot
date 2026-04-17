@@ -765,7 +765,7 @@ The scoring clearly weights the device NAME "Bass" as a perfect match for the wo
 
 ---
 
-### BUG-B43 · `🔴 open` · research_technique returns phantom "Unknown Device" findings
+### BUG-B43 · `🟢 fixed (Batch 16)` · research_technique returned phantom "Unknown Device" findings
 
 **Reproducer:** `research_technique(query="sidechain bass to kick for tight low end", scope="targeted")` returns:
 ```json
@@ -886,7 +886,7 @@ M4L bridge isn't even the right dependency for file-based analysis — that's wh
 
 ---
 
-### BUG-B51 · `🔴 open` · compare_phrase_impact returns identical scores for distinct sections
+### BUG-B51 · `🟢 fixed (Batch 16)` · compare_phrase_impact returned identical scores for distinct sections
 
 **Reproducer:** `compare_phrase_impact(section_indices=[2, 5], target="drop")` on Deep Flow (sec_02) vs Sun Peak (sec_05):
 ```json

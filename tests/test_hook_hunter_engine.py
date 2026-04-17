@@ -219,6 +219,43 @@ def test_bug_b8_motifs_missing_both_id_and_name_still_unique():
     )
 
 
+# ─── BUG-B51 regression — phrase impact differentiates distinct sections ──
+
+
+def test_bug_b51_distinct_note_content_produces_different_scores():
+    """BUG-B51: compare_phrase_impact used to return identical scores
+    for sections sharing energy/density because score_phrase_impact
+    never looked at note content. After the fix, unique_pitch_classes +
+    note_count + velocity_variance differentiate otherwise-identical
+    sections."""
+    from mcp_server.hook_hunter.analyzer import score_phrase_impact
+
+    # Section A: dense, varied
+    a = {
+        "id": "sec_a", "name": "Deep Flow", "label": "drop",
+        "energy": 0.9, "density": 0.9, "has_drums": True,
+        "unique_pitch_classes": 7, "note_count": 60, "velocity_variance": 180.0,
+    }
+    # Section B: same energy/density but sparse, flat
+    b = {
+        "id": "sec_b", "name": "Sun Peak", "label": "drop",
+        "energy": 0.9, "density": 0.9, "has_drums": True,
+        "unique_pitch_classes": 2, "note_count": 8, "velocity_variance": 5.0,
+    }
+    prev = {"energy": 0.5, "density": 0.5}
+
+    impact_a = score_phrase_impact(a, target="drop", prev_section=prev)
+    impact_b = score_phrase_impact(b, target="drop", prev_section=prev)
+
+    assert impact_a.composite_impact != impact_b.composite_impact, (
+        f"BUG-B51 regressed — identical composite impact for distinct "
+        f"sections: a={impact_a.composite_impact}, b={impact_b.composite_impact}"
+    )
+    # Richer content (A) should score higher or at least show clarity
+    # advantage over sparse-but-labeled B.
+    assert impact_a.section_clarity > impact_b.section_clarity
+
+
 def test_bug_b8_final_dedupe_drops_collisions_from_other_producers():
     """Even if duplicate hook_ids slip through from non-motif producers
     (track-name / groove-pattern), the final-stage dedupe keeps only one
