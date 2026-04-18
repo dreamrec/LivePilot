@@ -305,3 +305,65 @@ def set_clip_warp_mode(song, params):
         "warp_mode": clip.warp_mode,
         "warping": clip.warping,
     }
+
+
+@register("get_clip_scale")
+def get_clip_scale(song, params):
+    """Read a clip's per-clip scale override (Live 12.0+).
+
+    Per-clip scale is independent of Song.scale_* and lets each clip
+    carry its own key/mode.
+    """
+    from .version_detect import has_feature
+    if not has_feature("song_scale_api"):
+        raise RuntimeError("Per-clip scale requires Live 12.0+.")
+    clip_slot = get_clip_slot(song, int(params["track_index"]), int(params["clip_index"]))
+    if not clip_slot.has_clip:
+        raise ValueError("Clip slot is empty")
+    clip = clip_slot.clip
+    return {
+        "root_note": int(clip.root_note),
+        "scale_mode": bool(clip.scale_mode),
+        "scale_name": str(clip.scale_name),
+    }
+
+
+@register("set_clip_scale")
+def set_clip_scale(song, params):
+    """Set a clip's per-clip scale override (Live 12.0+)."""
+    from .version_detect import has_feature
+    if not has_feature("song_scale_api"):
+        raise RuntimeError("Per-clip scale requires Live 12.0+.")
+    clip_slot = get_clip_slot(song, int(params["track_index"]), int(params["clip_index"]))
+    if not clip_slot.has_clip:
+        raise ValueError("Clip slot is empty")
+    clip = clip_slot.clip
+    root = int(params["root_note"])
+    if not 0 <= root <= 11:
+        raise ValueError("root_note must be 0-11 (C=0, C#=1, ... B=11)")
+    scale_name = str(params["scale_name"])
+    # scale_name validation against Song.scale_names — clip uses the same list
+    available = list(song.scale_names)
+    if scale_name not in available:
+        raise ValueError(
+            "Unknown scale '%s'. Available: %s" % (scale_name, ", ".join(available))
+        )
+    clip.root_note = root
+    clip.scale_name = scale_name
+    return {
+        "root_note": int(clip.root_note),
+        "scale_name": str(clip.scale_name),
+    }
+
+
+@register("set_clip_scale_mode")
+def set_clip_scale_mode(song, params):
+    """Enable/disable Scale Mode on a single clip (Live 12.0+)."""
+    from .version_detect import has_feature
+    if not has_feature("song_scale_api"):
+        raise RuntimeError("Per-clip scale requires Live 12.0+.")
+    clip_slot = get_clip_slot(song, int(params["track_index"]), int(params["clip_index"]))
+    if not clip_slot.has_clip:
+        raise ValueError("Clip slot is empty")
+    clip_slot.clip.scale_mode = bool(params["enabled"])
+    return {"scale_mode": bool(clip_slot.clip.scale_mode)}

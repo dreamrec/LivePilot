@@ -503,3 +503,68 @@ async def check_clip_key_consistency(
             f"{mode_note}"
         ),
     }
+
+
+@mcp.tool()
+def get_clip_scale(ctx: Context, track_index: int, clip_index: int) -> dict:
+    """Read a clip's per-clip scale override (Live 12.0+).
+
+    Per-clip scales are independent of Song.scale_*. A clip can have
+    Scale Mode enabled with a different root/name than the Song.
+
+    Returns {root_note (0-11), scale_mode (bool), scale_name (str)}.
+    Raises if the clip slot is empty.
+    """
+    return _get_ableton(ctx).send_command("get_clip_scale", {
+        "track_index": track_index,
+        "clip_index": clip_index,
+    })
+
+
+@mcp.tool()
+def set_clip_scale(
+    ctx: Context,
+    track_index: int,
+    clip_index: int,
+    root_note: int,
+    scale_name: str,
+) -> dict:
+    """Set a clip's per-clip scale override (Live 12.0+).
+
+    Overrides the Song-level scale for this clip only. Useful for
+    key changes within a set, or for clips that live in a different
+    mode than the rest of the arrangement.
+
+    root_note:   0-11 (C=0, C#=1, ... B=11)
+    scale_name:  must match one of Live's built-in scales
+                 (call list_available_scales() if unsure)
+    """
+    if not 0 <= root_note <= 11:
+        raise ValueError("root_note must be 0-11")
+    if not scale_name.strip():
+        raise ValueError("scale_name cannot be empty")
+    return _get_ableton(ctx).send_command("set_clip_scale", {
+        "track_index": track_index,
+        "clip_index": clip_index,
+        "root_note": root_note,
+        "scale_name": scale_name,
+    })
+
+
+@mcp.tool()
+def set_clip_scale_mode(
+    ctx: Context,
+    track_index: int,
+    clip_index: int,
+    enabled: bool,
+) -> dict:
+    """Enable or disable Scale Mode on a single clip (Live 12.0+).
+
+    When enabled on a clip, its notes are constrained/highlighted
+    by the clip's own root_note + scale_name (set via set_clip_scale).
+    """
+    return _get_ableton(ctx).send_command("set_clip_scale_mode", {
+        "track_index": track_index,
+        "clip_index": clip_index,
+        "enabled": enabled,
+    })
