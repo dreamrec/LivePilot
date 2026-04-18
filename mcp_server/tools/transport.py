@@ -62,7 +62,7 @@ def start_playback(ctx: Context) -> dict:
 
 @mcp.tool()
 def stop_playback(ctx: Context) -> dict:
-    """Stop playback."""
+    """Stop playback — halts the session transport and the arrangement cursor returns to its last position."""
     return _get_ableton(ctx).send_command("stop_playback")
 
 

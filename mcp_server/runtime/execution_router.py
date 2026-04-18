@@ -326,8 +326,22 @@ async def execute_plan_steps_async(
         results.append(result)
 
         # Record successful step result for future bindings
-        if result.ok and step_id and isinstance(result.result, dict):
-            step_results[step_id] = result.result
+        if result.ok and step_id:
+            if isinstance(result.result, dict):
+                step_results[step_id] = result.result
+            else:
+                # Log but DO NOT silently drop the binding without telling
+                # anyone — the previous version let non-dict results slip
+                # past, which meant any downstream {"$from_step": step_id}
+                # reference blew up with a confusing "step_id not found"
+                # instead of the real "result wasn't a dict" cause.
+                import logging as _logging
+                _logging.getLogger(__name__).warning(
+                    "step_results: dropping non-dict result for "
+                    "step_id=%s tool=%s type=%s. Any $from_step refs to "
+                    "this step_id will fail with 'step_id not found'.",
+                    step_id, tool, type(result.result).__name__,
+                )
 
         if not result.ok and stop_on_failure:
             break

@@ -199,17 +199,22 @@ def toggle_device(song, params):
     track = get_track(song, track_index)
     device = get_device(track, device_index)
 
-    # Find the "Device On" parameter by name (safer than assuming index 0)
+    # Find the "Device On" parameter by name — the previous fallback
+    # blindly assumed parameters[0] was an on/off switch, which for many
+    # devices is actually "Filter Frequency", "Gain", or similar. The
+    # fallback silently mutated an arbitrary parameter while reporting
+    # is_active as if toggling had worked. Now refuse to guess.
     on_param = None
     for p in device.parameters:
         if p.name == "Device On":
             on_param = p
             break
     if on_param is None:
-        # Fallback to parameter 0 for devices that don't use "Device On"
-        if not list(device.parameters):
-            raise ValueError("Device '%s' has no parameters to toggle" % device.name)
-        on_param = device.parameters[0]
+        raise ValueError(
+            "Device '%s' exposes no 'Device On' parameter and cannot be "
+            "toggled programmatically. Use delete_device or disable it "
+            "through the UI." % device.name
+        )
 
     on_param.value = 1.0 if active else 0.0
     return {"name": device.name, "is_active": on_param.value > 0.5}

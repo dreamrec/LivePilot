@@ -303,13 +303,43 @@ class SpectralReceiver(asyncio.DatagramProtocol):
             print(f"LivePilot: failed to decode bridge response: {exc}", file=sys.stderr)
 
     def _handle_chunk(self, index: int, total: int, encoded: str) -> None:
-        """Reassemble chunked responses."""
+        """Reassemble chunked responses.
+
+        The previous implementation incremented ``_chunk_id`` only when
+        ``index == 0`` and assumed the first chunk always arrived first.
+        Under UDP reordering (rare on loopback but possible under system
+        load), a chunk with ``index > 0`` arriving before ``index 0`` would
+        be dropped into the PREVIOUS sequence's bucket — silently corrupting
+        that earlier response's payload.
+
+        Until the wire protocol adds an explicit sequence id, the safer
+        behavior is: if we see an out-of-order first-chunk (``index > 0``
+        with no open bucket), start a fresh bucket but log a warning. That
+        way we never poison a prior sequence, and the problem surfaces in
+        logs if it happens.
+        """
         if index == 0:
             self._chunk_id += 1
-        key = str(self._chunk_id)
-        if key not in self._chunks:
+            key = str(self._chunk_id)
             self._chunks[key] = {"parts": {}, "total": total}
             self._chunk_times[key] = time.monotonic()
+        else:
+            key = str(self._chunk_id)
+            if key not in self._chunks:
+                # Out-of-order arrival. Start a new bucket rather than append
+                # to the previous sequence's parts — that's the corruption
+                # path. Log once so it's diagnosable.
+                import sys
+                print(
+                    f"LivePilot: chunk index={index}/{total} arrived before "
+                    f"index=0 — starting fresh bucket. UDP reordering on "
+                    f"loopback suggests system load.",
+                    file=sys.stderr,
+                )
+                self._chunk_id += 1
+                key = str(self._chunk_id)
+                self._chunks[key] = {"parts": {}, "total": total}
+                self._chunk_times[key] = time.monotonic()
 
         self._chunks[key]["parts"][index] = encoded
 
@@ -369,14 +399,26 @@ class M4LBridge:
         if not self.cache.is_connected:
             return {"error": "LivePilot Analyzer not connected. Drop it on the master track."}
 
+        # Fail fast if there is no receiver to correlate the response. The
+        # previous version sent the OSC packet anyway, dropped the reply
+        # inside _handle_response (no future registered), and waited out
+        # the full 5s timeout before returning a misleading "device may be
+        # busy or removed" error. The real cause was "no receiver wired",
+        # which the caller should see immediately.
+        if self.receiver is None:
+            return {
+                "error": "M4L bridge has no active receiver — the UDP 9880 "
+                         "listener did not start. Check server startup logs "
+                         "for a bind failure on port 9880."
+            }
+
         if self._cmd_lock is None:
             self._cmd_lock = asyncio.Lock()
         async with self._cmd_lock:
             # Create a future for the response
             loop = asyncio.get_running_loop()
             future = loop.create_future()
-            if self.receiver:
-                self.receiver.set_response_future(future)
+            self.receiver.set_response_future(future)
 
             # Build and send OSC message (no leading / — Max udpreceive
             # passes messagename with / intact to JS, breaking dispatch)
@@ -394,8 +436,7 @@ class M4LBridge:
                 # cleared it inside _handle_response, but calling again is a
                 # no-op. On timeout this is what prevents a delayed packet from
                 # resolving a future belonging to the next command.
-                if self.receiver:
-                    self.receiver.set_response_future(None)
+                self.receiver.set_response_future(None)
 
     async def send_capture(self, command: str, *args: Any, timeout: float = 35.0) -> dict:
         """Send a capture command to the M4L device and wait for /capture_complete."""

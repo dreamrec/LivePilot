@@ -155,12 +155,23 @@ def modify_notes(song, params):
     for note in all_notes:
         note_map[note.note_id] = note
 
+    # Two-pass: validate every note_id BEFORE mutating any notes. The previous
+    # one-pass version raised ValueError mid-loop after some notes had already
+    # been mutated in place on the C++ NoteVector — yielding a half-modified
+    # state where the caller saw an error but earlier edits silently stuck
+    # (until apply_note_modifications was called, which it never was in the
+    # error path). Fail-all or apply-all is the safer contract.
+    missing = [int(mod["note_id"]) for mod in modifications
+               if int(mod["note_id"]) not in note_map]
+    if missing:
+        raise ValueError(
+            "Note IDs not found in clip: %s. No modifications applied." % missing
+        )
+
     # Apply modifications in-place on the original NoteVector's objects
     modified_count = 0
     for mod in modifications:
         note_id = int(mod["note_id"])
-        if note_id not in note_map:
-            raise ValueError("Note ID %d not found in clip" % note_id)
         note = note_map[note_id]
         if "pitch" in mod:
             note.pitch = int(mod["pitch"])

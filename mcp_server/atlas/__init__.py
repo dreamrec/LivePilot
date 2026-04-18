@@ -411,14 +411,46 @@ class AtlasManager:
 
 
 # ── Module-level lazy loader ───────────────────────────────────────
+#
+# Thread-safe via services.singletons.Singleton. The previous check-then-set
+# pattern raced under FastMCP concurrency (two handlers could both construct
+# AtlasManager) and never refreshed the in-memory index after a rebuild of
+# device_atlas.json on disk. The Singleton helper handles both.
+#
+# The ``_atlas_instance`` module attribute is preserved for backward
+# compatibility with call sites that read it directly (atlas/tools.py),
+# but new code should call ``get_atlas()`` / ``invalidate_atlas()`` instead.
 
-_atlas_instance: Optional[AtlasManager] = None
+from pathlib import Path
+from ..services.singletons import Singleton
+
+ATLAS_PATH = Path(__file__).parent / "device_atlas.json"
+
+_atlas_instance: Optional[AtlasManager] = None  # kept for legacy imports
+
+
+def _build_atlas() -> AtlasManager:
+    return AtlasManager(str(ATLAS_PATH))
+
+
+_atlas_holder = Singleton(_build_atlas)
+
+
+def get_atlas() -> AtlasManager:
+    """Thread-safe accessor. Re-reads device_atlas.json if its mtime advanced."""
+    global _atlas_instance
+    instance = _atlas_holder.get(reload_if_newer=ATLAS_PATH)
+    _atlas_instance = instance   # keep legacy attribute in sync
+    return instance
+
+
+def invalidate_atlas() -> None:
+    """Force the next get_atlas() to re-read device_atlas.json from disk."""
+    global _atlas_instance
+    _atlas_holder.invalidate()
+    _atlas_instance = None
 
 
 def _load_atlas() -> AtlasManager:
-    """Lazy-load the atlas from device_atlas.json in the same directory."""
-    global _atlas_instance
-    if _atlas_instance is None:
-        atlas_path = os.path.join(os.path.dirname(__file__), "device_atlas.json")
-        _atlas_instance = AtlasManager(atlas_path)
-    return _atlas_instance
+    """Legacy shim — kept so atlas/tools.py still works. Prefer get_atlas()."""
+    return get_atlas()

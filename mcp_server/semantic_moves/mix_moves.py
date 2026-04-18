@@ -92,7 +92,7 @@ REDUCE_REPETITION = SemanticMove(
     ],
     verification_plan=[
         {"tool": "get_track_meters", "check": "all tracks still producing audio", "backend": "remote_command"},
-        {"tool": "capture_audio", "check": "LRA > 2 LU (dynamic range should increase)", "backend": "mcp_tool"},
+        {"tool": "capture_audio", "check": "LRA > 2 LU (dynamic range should increase)", "backend": "bridge_command"},
     ],
 )
 

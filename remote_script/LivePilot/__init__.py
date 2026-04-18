@@ -5,7 +5,7 @@ Entry point for the ControlSurface. Ableton calls create_instance(c_instance)
 when this script is selected in Preferences > Link, Tempo & MIDI.
 """
 
-__version__ = "1.10.7"
+__version__ = "1.10.8"
 
 from _Framework.ControlSurface import ControlSurface
 from . import router
@@ -46,26 +46,46 @@ _HANDLER_MODULES = (
 )
 
 
-def _force_reload_handlers():
+def _force_reload_handlers(cs=None):
     """Force Python to re-read the handler modules from disk.
 
     Called on every create_instance() except the first, so edits to
     handler files take effect via Control Surface toggle without
     restarting Ableton. Order matters: router first (clears _handlers),
     then each handler module (re-registers its @register decorators).
+
+    When ``cs`` is provided, reload exceptions are logged through the
+    ControlSurface so a SyntaxError / NameError in an edited handler is
+    surfaced in Live's status log instead of silently swallowed. The
+    previous ``except Exception: pass`` turned any bad handler into a
+    silent NOT_FOUND at dispatch time with no hint that reload had failed.
     """
     import importlib
+    def _log(msg):
+        if cs is None:
+            return
+        try:
+            cs.log_message("[LivePilot] " + msg)
+        except Exception:
+            pass
+
     try:
         importlib.reload(router)
-    except Exception:
-        pass
+    except Exception as exc:
+        _log("reload(router) FAILED — %s: %s. Handlers will be "
+             "stale until Ableton restart." % (type(exc).__name__, exc))
     for mod in _HANDLER_MODULES:
         try:
             importlib.reload(mod)
-        except Exception:
-            # Don't block Ableton startup on a single bad reload —
-            # the stale version will still work for that handler
-            pass
+        except Exception as exc:
+            # Don't block Ableton startup on a single bad reload, but do
+            # tell the user what happened — the stale handler will keep
+            # serving the OLD code until a full restart.
+            _log("reload(%s) FAILED — %s: %s. Handler is stale." % (
+                getattr(mod, "__name__", "?"),
+                type(exc).__name__,
+                exc,
+            ))
 
 
 def create_instance(c_instance):
@@ -78,7 +98,7 @@ def create_instance(c_instance):
     """
     global _FIRST_CREATE_INSTANCE
     if not _FIRST_CREATE_INSTANCE:
-        _force_reload_handlers()
+        _force_reload_handlers(cs=c_instance)
     _FIRST_CREATE_INSTANCE = False
     return LivePilot(c_instance)
 

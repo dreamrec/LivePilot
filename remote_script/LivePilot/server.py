@@ -197,21 +197,45 @@ class LivePilotServer(object):
             self._log("Client disconnected")
 
     def _handle_client(self, client):
-        """Read newline-delimited JSON from a connected client."""
+        """Read newline-delimited JSON from a connected client.
+
+        Accumulate raw bytes and only attempt UTF-8 decode on newline-framed
+        lines — the previous implementation decoded each recv chunk eagerly
+        with ``errors="replace"``, which silently corrupted JSON when a
+        multi-byte UTF-8 sequence (non-ASCII filename or rack name) straddled
+        the 4096-byte recv boundary. Trailing bytes of the split codepoint
+        were converted to U+FFFD, breaking JSON parsing.
+        """
         client.settimeout(1.0)
-        buf = ""
+        buf = bytearray()
+        MAX_BUF = 4 * 1024 * 1024  # 4 MB
         while self._running:
             try:
                 data = client.recv(4096)
                 if not data:
                     break
-                buf += data.decode("utf-8", errors="replace")
-                if len(buf) > 4 * 1024 * 1024:  # 4 MB
+                buf.extend(data)
+                if len(buf) > MAX_BUF:
                     self._log("Client buffer overflow — disconnecting")
                     break
-                while "\n" in buf:
-                    line, buf = buf.split("\n", 1)
-                    line = line.strip()
+                while True:
+                    nl = buf.find(b"\n")
+                    if nl < 0:
+                        break
+                    raw_line = bytes(buf[:nl])
+                    del buf[: nl + 1]
+                    try:
+                        line = raw_line.decode("utf-8").strip()
+                    except UnicodeDecodeError as exc:
+                        self._send(client, {
+                            "id": "unknown",
+                            "ok": False,
+                            "error": {
+                                "code": "INVALID_PARAM",
+                                "message": "Invalid UTF-8 in request: %s" % exc,
+                            },
+                        })
+                        continue
                     if line:
                         self._process_line(client, line)
             except socket.timeout:
@@ -253,12 +277,26 @@ class LivePilotServer(object):
         try:
             self._cs.schedule_message(0, self._process_next_command)
         except AssertionError:
-            # ControlSurface is disconnecting — return error instead of
-            # running LOM calls on the TCP thread (which would be unsafe)
-            try:
-                self._command_queue.get_nowait()
-            except queue.Empty:
-                pass
+            # ControlSurface is disconnecting — return an error instead of
+            # running LOM calls on the TCP thread (which would be unsafe).
+            #
+            # The previous version called get_nowait() unconditionally, which
+            # would happily drain a different item if one had been enqueued
+            # concurrently (e.g. if _drain_queue had just put another). Under
+            # the current single-client model the race is theoretical, but the
+            # filtered-rebuild below is correct regardless and defends against
+            # any future multi-path enqueue.
+            remaining = []
+            while True:
+                try:
+                    item = self._command_queue.get_nowait()
+                except queue.Empty:
+                    break
+                # Drop only OUR own pending item; preserve anything else
+                if item[1] is not response_queue:
+                    remaining.append(item)
+            for item in remaining:
+                self._command_queue.put(item)
             self._send(client, {
                 "id": request_id,
                 "ok": False,

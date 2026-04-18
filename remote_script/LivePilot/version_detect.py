@@ -33,7 +33,10 @@ def get_live_version():
     """Return (major, minor, patch) of the running Live instance.
 
     Uses Live.Application.get_application() to read version info.
-    Falls back to (12, 0, 0) if detection fails.
+    Returns a conservative (12, 0, 0) fallback on detection failure BUT
+    does NOT cache the fallback — earlier versions cached any failure,
+    which pinned the whole session to the oldest capability tier even
+    after Live finished initializing. Only successful reads are cached.
     """
     global _cached_version
     if _cached_version is not None:
@@ -49,10 +52,10 @@ def get_live_version():
         except AttributeError:
             patch = 0
         _cached_version = (int(major), int(minor), int(patch))
+        return _cached_version
     except Exception:
-        _cached_version = (12, 0, 0)
-
-    return _cached_version
+        # Don't cache failures — next call may succeed once Live is fully up.
+        return (12, 0, 0)
 
 
 def has_feature(feature_name):

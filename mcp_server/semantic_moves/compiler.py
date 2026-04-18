@@ -24,14 +24,22 @@ class CompiledStep:
     params: dict                 # Concrete params, e.g. {"track_index": 0, "volume": 0.72}
     description: str             # Human-readable, e.g. "Push Drums from 0.65 → 0.72"
     verify_after: bool = True    # Whether to check meters after this step
+    # Optional explicit backend. If set, the execution router uses it verbatim
+    # and skips classify_step(). Leave None to let the router auto-classify at
+    # dispatch time — safe because test_move_annotations enforces every
+    # registered move's steps map to a known backend.
+    backend: Optional[str] = None
 
     def to_dict(self) -> dict:
-        return {
+        d = {
             "tool": self.tool,
             "params": self.params,
             "description": self.description,
             "verify_after": self.verify_after,
         }
+        if self.backend:
+            d["backend"] = self.backend
+        return d
 
 
 @dataclass

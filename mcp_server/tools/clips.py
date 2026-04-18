@@ -114,7 +114,7 @@ def stop_clip(ctx: Context, track_index: int, clip_index: int) -> dict:
 
 @mcp.tool()
 def set_clip_name(ctx: Context, track_index: int, clip_index: int, name: str) -> dict:
-    """Rename a clip."""
+    """Rename a clip in the Session view. The new name appears on the clip slot and in Device Chain displays."""
     _validate_track_index(track_index)
     _validate_clip_index(clip_index)
     if not name.strip():

@@ -407,11 +407,21 @@ def modify_arrangement_notes(song, params):
     for note in all_notes:
         note_map[note.note_id] = note
 
+    # Two-pass: validate all note_ids BEFORE mutating any notes. See the
+    # identical fix in notes.py:modify_notes — partial mid-loop mutation on
+    # the C++ NoteVector was leaving the clip in a half-modified state that
+    # never got committed.
+    missing = [int(mod["note_id"]) for mod in modifications
+               if int(mod["note_id"]) not in note_map]
+    if missing:
+        raise ValueError(
+            "Note IDs not found in arrangement clip: %s. "
+            "No modifications applied." % missing
+        )
+
     modified_count = 0
     for mod in modifications:
         note_id = int(mod["note_id"])
-        if note_id not in note_map:
-            raise ValueError("Note ID %d not found in clip" % note_id)
         note = note_map[note_id]
         if "pitch" in mod:
             note.pitch = int(mod["pitch"])

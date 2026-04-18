@@ -19,15 +19,17 @@ def _get_ableton(ctx: Context):
 
 
 def _get_atlas():
-    """Get the global AtlasManager instance, loading lazily if needed."""
-    from . import _atlas_instance, _load_atlas
-    if _atlas_instance is None:
-        try:
-            _load_atlas()
-        except FileNotFoundError:
-            return None
-    from . import _atlas_instance as inst
-    return inst
+    """Get the global AtlasManager instance, loading lazily if needed.
+
+    Uses the thread-safe singleton helper — concurrent FastMCP tool calls no
+    longer race on the check-then-set, and the atlas auto-reloads from disk
+    if device_atlas.json's mtime advanced (e.g. after scan_full_library).
+    """
+    from . import get_atlas
+    try:
+        return get_atlas()
+    except FileNotFoundError:
+        return None
 
 
 @mcp.tool()
@@ -197,23 +199,44 @@ def scan_full_library(ctx: Context, force: bool = False) -> dict:
         stats[cat] = stats.get(cat, 0) + 1
     stats["enriched_devices"] = sum(1 for d in devices if d.get("enriched"))
 
+    # Read the actual running Live version from the session rather than
+    # hardcoding "12.3.6" — the hardcoded string was baking last year's
+    # version into every new user's atlas until they forced a rescan.
+    try:
+        session_info = ableton.send_command("get_session_info", {}) or {}
+        live_version = session_info.get("live_version", "unknown")
+    except Exception:
+        live_version = "unknown"
+
     # Build atlas
     atlas_data = {
         "version": "2.0.0",
-        "live_version": "12.3.6",
+        "live_version": live_version,
         "scanned_at": time.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "stats": stats,
         "devices": devices,
         "packs": [],
     }
 
-    # Write
-    with open(atlas_path, "w") as f:
+    # Atomic write: tmp + rename. Same pattern as PersistentJsonStore. Previous
+    # version used open(atlas_path, "w") + json.dump with no fsync, so a crash
+    # mid-write produced a truncated JSON file that the next AtlasManager init
+    # silently read as empty-dict — devices vanished from memory.
+    tmp_path = atlas_path + ".tmp"
+    with open(tmp_path, "w") as f:
         json.dump(atlas_data, f, indent=2)
+        f.flush()
+        try:
+            os.fsync(f.fileno())
+        except OSError:
+            # fsync may be unavailable on some filesystems/Windows paths —
+            # best-effort; the rename below is still atomic on POSIX.
+            pass
+    os.replace(tmp_path, atlas_path)
 
-    # Reload into global
+    # Invalidate singleton so next get_atlas() picks up the new file.
     import mcp_server.atlas as atlas_mod
-    atlas_mod._atlas_instance = AtlasManager(atlas_path)
+    atlas_mod.invalidate_atlas()
 
     return {
         "status": "scanned",
@@ -221,4 +244,22 @@ def scan_full_library(ctx: Context, force: bool = False) -> dict:
         "enriched_count": stats["enriched_devices"],
         "stats": stats,
         "atlas_path": atlas_path,
+    }
+
+
+@mcp.tool()
+def reload_atlas(ctx: Context) -> dict:
+    """Force the atlas to re-read device_atlas.json from disk.
+
+    Useful after an out-of-band rebuild (e.g. a manual edit to the JSON file,
+    or a scan that crashed before invalidating the cache). The next search /
+    suggest / compare call will see the fresh data. No-op if the atlas has
+    never been loaded — the first real call will load it fresh anyway.
+    """
+    from . import invalidate_atlas, get_atlas
+    invalidate_atlas()
+    atlas = get_atlas()
+    return {
+        "reloaded": True,
+        "device_count": atlas.device_count if atlas else 0,
     }

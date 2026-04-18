@@ -144,6 +144,16 @@ def export_clip_midi(
     else:
         out_path = _safe_output_path(_output_dir(), filename)
 
+    # Extension guard: after path resolution, confirm the final file really
+    # has a MIDI extension. Blocks a model-supplied path like
+    # "/etc/cron.d/evil" that accidentally drops its extension through the
+    # resolve() step, or a caller that passed "evil.mid/../evil".
+    if out_path.suffix.lower() not in {".mid", ".midi"}:
+        raise ValueError(
+            f"Refusing to write non-MIDI file: {out_path}. "
+            f"export_clip_midi requires a .mid or .midi extension."
+        )
+
     midi = MIDIFile(1)
     midi.addTempo(0, 0, tempo)
 

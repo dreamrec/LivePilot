@@ -365,13 +365,23 @@ def load_corpus() -> Corpus:
 
 
 # ── Module-level lazy singleton ─────────────────────────────────────────
+#
+# Thread-safe via services.singletons.Singleton — concurrent FastMCP
+# handlers can no longer both trigger load_corpus() (which did heavy
+# filesystem I/O) on a cold start.
 
+from ..services.singletons import Singleton
+
+_corpus_holder = Singleton(load_corpus)
+
+# Preserved for backward compatibility with any code that reads the legacy
+# attribute directly.
 _corpus_instance: Optional[Corpus] = None
 
 
 def get_corpus() -> Corpus:
-    """Get the global corpus instance (lazy-loaded on first call)."""
+    """Get the global corpus instance (lazy-loaded, thread-safe)."""
     global _corpus_instance
-    if _corpus_instance is None:
-        _corpus_instance = load_corpus()
-    return _corpus_instance
+    instance = _corpus_holder.get()
+    _corpus_instance = instance
+    return instance

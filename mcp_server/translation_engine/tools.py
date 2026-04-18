@@ -6,10 +6,18 @@ then delegates to pure-computation critics.
 
 from __future__ import annotations
 
+import logging
+
 from fastmcp import Context
 
 from ..server import mcp
 from .critics import build_translation_report, run_all_translation_critics
+
+# Logger defined at module top: _fetch_translation_data below calls
+# logger.debug on an exception path. The previous version buried the logger
+# definition inside a docstring mid-file, which meant the name was never
+# actually bound at module level — any exception path would raise NameError.
+logger = logging.getLogger(__name__)
 
 
 # ── Helpers ─────────────────────────────────────────────────────────
@@ -97,10 +105,6 @@ def get_translation_issues(ctx: Context) -> dict:
 
     Lighter than check_translation — returns only detected issues
     from the 5 playback robustness critics.
-import logging
-
-logger = logging.getLogger(__name__)
-
     """
     mix_snapshot = _fetch_translation_data(ctx)
     issues = run_all_translation_critics(mix_snapshot)

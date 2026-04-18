@@ -139,11 +139,30 @@ class SampleFitReport:
 
     @property
     def overall_score(self) -> float:
+        """Average over AVAILABLE critics only.
+
+        BUG-B38 reshaped frequency_fit to report ``-1.0`` with
+        ``available=False`` when no mix snapshot is present. The previous
+        aggregator mean-folded that sentinel into the overall score,
+        dropping it by ~17 points (one critic out of six). The fix is to
+        respect the ``available`` flag — same contract every other caller
+        uses.
+        """
         if not self.critics:
             return 0.0
-        scores = [c.score if isinstance(c, CriticResult) else c.get("score", 0)
-                  for c in self.critics.values()]
-        return sum(scores) / len(scores) if scores else 0.0
+        available_scores = []
+        for c in self.critics.values():
+            if isinstance(c, CriticResult):
+                if c.available is False:
+                    continue
+                available_scores.append(c.score)
+            else:  # legacy dict shape
+                if c.get("available") is False:
+                    continue
+                available_scores.append(c.get("score", 0))
+        if not available_scores:
+            return 0.0
+        return sum(available_scores) / len(available_scores)
 
     def to_dict(self) -> dict:
         return {

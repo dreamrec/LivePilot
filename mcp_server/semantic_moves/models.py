@@ -24,6 +24,10 @@ class SemanticMove:
     plan_template: list = field(default_factory=list)  # [{tool, params, description}] — static metadata, NOT runtime truth
     verification_plan: list = field(default_factory=list)  # [{tool, check}]
     confidence: float = 0.7
+    # analytical_only: move is intentionally metadata-only — no compiler is
+    # expected. Surfaces in discovery/wonder_mode but never executes. Set this
+    # to True for moves that are deliberate "hints" rather than orphan-by-bug.
+    analytical_only: bool = False
 
     def to_dict(self) -> dict:
         return {
@@ -36,6 +40,7 @@ class SemanticMove:
             "required_capabilities": self.required_capabilities,
             "plan_template_steps": len(self.plan_template),
             "confidence": self.confidence,
+            "analytical_only": self.analytical_only,
         }
 
     def to_full_dict(self) -> dict:

@@ -14,3 +14,4 @@ from . import transition_compilers  # noqa: F401
 from . import sound_design_compilers  # noqa: F401
 from . import performance_compilers  # noqa: F401
 from . import sample_compilers  # noqa: F401
+from . import device_creation_compilers  # noqa: F401

@@ -213,9 +213,17 @@ class AbletonConnection:
             # The single-client guard can briefly reject an immediate reconnect
             # after this process closes a previous socket. Retry once after a
             # short delay when the command was rejected before execution.
-            if fresh_connect and _is_single_client_state_error(response):
-                self.disconnect()
-                time.sleep(SINGLE_CLIENT_RETRY_DELAY)
+            #
+            # IMPORTANT: release the lock around the sleep so concurrent tool
+            # calls are not blocked on an idle timer. The previous version
+            # slept 250ms while holding the lock, which stalled every other
+            # async MCP handler in the server.
+            needs_retry = fresh_connect and _is_single_client_state_error(response)
+
+        if needs_retry:
+            self.disconnect()
+            time.sleep(SINGLE_CLIENT_RETRY_DELAY)
+            with self._lock:
                 self.connect()
                 response = self._send_raw(
                     command,

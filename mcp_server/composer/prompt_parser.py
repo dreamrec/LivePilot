@@ -202,9 +202,15 @@ _ELEMENT_PATTERNS: list[tuple[str, str]] = [
 
 _TEMPO_RE = re.compile(r"\b(\d{2,3})\s*bpm\b", re.IGNORECASE)
 
-# Key patterns: C, Cm, C#, C# minor, Db, Dbm, F# minor, Bb major
+# Key patterns: must have either an accidental (C#, Db) OR an explicit
+# quality word (C minor, F major, Am). The previous regex made the
+# quality group optional AND allowed a bare letter — so "dark ambient"
+# matched D as a key root, silently overwriting any mood-inferred key.
 _KEY_RE = re.compile(
-    r"\b([A-Ga-g][#b]?)\s*(minor|major|min|maj|m)?\b"
+    # Case 1: root + quality word (explicit minor/major/min/maj/m suffix)
+    r"\b([A-Ga-g])\s*(minor|major|min|maj|m)\b"
+    # Case 2: root + accidental (optional quality)
+    r"|\b([A-Ga-g][#b])\s*(minor|major|min|maj|m)?\b"
 )
 
 
@@ -228,19 +234,22 @@ def parse_prompt(text: str) -> CompositionIntent:
         intent.tempo = int(tempo_match.group(1))
 
     # 2. Extract key (search original text to preserve case)
+    # Regex has TWO alternations (root+quality OR root-with-accidental
+    # +optional-quality). Take whichever branch matched.
     key_match = _KEY_RE.search(text)
     if key_match:
-        root = key_match.group(1)
-        # Normalize root: uppercase first letter
+        root = key_match.group(1) or key_match.group(3)
+        quality = key_match.group(2) or key_match.group(4) or ""
+        # Normalize root: uppercase first letter, preserve accidental
         root = root[0].upper() + root[1:] if len(root) > 1 else root.upper()
-        quality = key_match.group(2) or ""
         quality_lower = quality.lower()
         if quality_lower in ("minor", "min", "m"):
             intent.key = f"{root}m"
         elif quality_lower in ("major", "maj"):
             intent.key = root
         else:
-            # Standalone note — check if followed by 'm' in the original
+            # Only reached when Case 2 matched without quality — an
+            # accidental was present (C#, Db), so this IS a legit key root.
             intent.key = root
 
     # 3. Match genre (check aliases first, then canonical names)

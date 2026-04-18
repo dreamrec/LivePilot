@@ -6,12 +6,19 @@ These tools are optional — all core tools work without the device.
 
 from __future__ import annotations
 
+import logging
 import os
+import re  # used below in filename parsing helpers
 from typing import Optional
 
 from fastmcp import Context
 
 from ..server import mcp, _identify_port_holder
+
+# Logger must be defined before any helper that uses it — _require_analyzer
+# below calls logger.debug on an exception path, so defining the logger later
+# in the file risked NameError under unusual import orderings.
+logger = logging.getLogger(__name__)
 
 CAPTURE_DIR = os.path.expanduser("~/Documents/LivePilot/captures")
 
@@ -276,12 +283,6 @@ async def get_clip_file_path(
     _require_analyzer(cache)
     bridge = _get_m4l(ctx)
     return await bridge.send_command("get_clip_file_path", track_index, clip_index)
-
-import os  # for filename parsing in smart-defaults helper
-import re
-import logging
-
-logger = logging.getLogger(__name__)
 
 # ── Sample loading helpers (P0-1, P1-1, P2-6 fixes) ────────────────────────
 #

@@ -287,11 +287,20 @@ def load_browser_item(song, params):
     # and use the subcategory or the full fragment for matching
     if "FileId_" in device_name:
         # URI contains an internal file ID — name-based search won't work.
-        # Try one more URI pass with a much higher iteration limit.
+        # We fall back to one URI walk, but with a TIGHT iteration budget:
+        # this runs synchronously on Ableton's audio/main thread, and the
+        # previous 200 000-node walk could stall audio and GUI for several
+        # seconds on large libraries (documented in CLAUDE.md).
+        #
+        # If the item isn't found inside the budget, we return a clean
+        # STATE_ERROR pointing the caller at search_browser(), which does
+        # the same walk lazily from a cached Python-side index without
+        # hogging the audio thread.
         _iterations[0] = 0
-        DEEP_MAX = 200000
+        DEEP_MAX = 20000        # was 200_000 — 10x reduction
+        DEEP_DEPTH_MAX = 8       # was 12 — shallower depth is usually enough
         def find_by_uri_deep(parent, target_uri, depth=0):
-            if depth > 12 or _iterations[0] > DEEP_MAX:
+            if depth > DEEP_DEPTH_MAX or _iterations[0] > DEEP_MAX:
                 return None
             try:
                 children = list(parent.children)
@@ -326,9 +335,10 @@ def load_browser_item(song, params):
                 }
 
         raise ValueError(
-            "Item '%s' not found in browser (FileId URI — try "
-            "search_browser to find the item, then use find_and_load_device "
-            "with the exact name instead)" % uri
+            "Item '%s' not found inside deep-scan budget (FileId URI). "
+            "Use search_browser(query=...) to locate it without stalling "
+            "Ableton's audio thread, then call load_browser_item with the "
+            "returned URI." % uri
         )
 
     for sep in (":", "/"):

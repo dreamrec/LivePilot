@@ -397,6 +397,44 @@ async function doctor() {
 // FluCoMa installer
 // ---------------------------------------------------------------------------
 
+/**
+ * Detect whether Max (major version) is installed on the system. Returns the
+ * highest installed major version number, or 0 if Max is not installed.
+ *
+ * macOS: checks /Applications/Max.app/Contents/Info.plist for CFBundleShortVersionString.
+ * Windows: checks standard install locations under Program Files.
+ */
+function detectMaxMajorVersion() {
+  try {
+    if (process.platform === "darwin") {
+      const infoPlist = "/Applications/Max.app/Contents/Info.plist";
+      if (!fs.existsSync(infoPlist)) return 0;
+      const out = execFileSync("defaults", ["read", infoPlist, "CFBundleShortVersionString"], {
+        encoding: "utf-8",
+        timeout: 3000,
+      }).trim();
+      const m = out.match(/^(\d+)/);
+      return m ? parseInt(m[1], 10) : 0;
+    }
+    if (process.platform === "win32") {
+      const candidates = [
+        "C:\\Program Files\\Cycling '74\\Max 9",
+        "C:\\Program Files\\Cycling '74\\Max 8",
+      ];
+      for (const candidate of candidates) {
+        if (fs.existsSync(candidate)) {
+          const m = candidate.match(/Max (\d+)/);
+          if (m) return parseInt(m[1], 10);
+        }
+      }
+      return 0;
+    }
+  } catch {
+    return 0;
+  }
+  return 0;
+}
+
 async function setupFlucoma() {
   const os = require("os");
   const https = require("https");
@@ -404,9 +442,10 @@ async function setupFlucoma() {
   const home = os.homedir();
 
   // Max 9 is the current release (the Ableton Live 12.3+ default); Max 8 is
-  // the legacy path. Check both — if FluCoMa is already installed in either,
-  // Max will find it via its package search path. For fresh installs, prefer
-  // Max 9. Users still on Max 8 get the legacy path.
+  // the legacy path. Select based on which major Max is actually installed —
+  // NOT on whether the Packages directory exists. A fresh Max 9 install often
+  // has no Packages folder yet, so the old fs.existsSync() check silently
+  // steered fresh Max 9 machines onto the Max 8 legacy path.
   const docsBase = process.platform === "darwin"
     ? path.join(home, "Documents")
     : path.join(process.env.USERPROFILE || home, "Documents");
@@ -414,8 +453,24 @@ async function setupFlucoma() {
   const max9PackagesDir = path.join(docsBase, "Max 9", "Packages");
   const max8PackagesDir = path.join(docsBase, "Max 8", "Packages");
 
-  // Prefer Max 9 if that directory exists, else Max 8
-  const packagesDir = fs.existsSync(max9PackagesDir) ? max9PackagesDir : max8PackagesDir;
+  const maxMajor = detectMaxMajorVersion();
+  let packagesDir;
+  if (maxMajor >= 9) {
+    packagesDir = max9PackagesDir;
+  } else if (maxMajor === 8) {
+    packagesDir = max8PackagesDir;
+  } else {
+    // Max not detected — fall back to whichever Packages dir already exists,
+    // preferring Max 9. If neither exists, default to Max 9 (future-proof).
+    if (fs.existsSync(max9PackagesDir)) {
+      packagesDir = max9PackagesDir;
+    } else if (fs.existsSync(max8PackagesDir)) {
+      packagesDir = max8PackagesDir;
+    } else {
+      console.log("Could not detect Max installation. Defaulting to Max 9 Packages path.");
+      packagesDir = max9PackagesDir;
+    }
+  }
   const flucomaDir = path.join(packagesDir, "FluidCorpusManipulation");
 
   // Check BOTH locations for an existing install — a user may have Max 8
@@ -440,19 +495,29 @@ async function setupFlucoma() {
     return;
   }
 
-  // Ensure the parent Packages directory exists for the install target
+  // Ensure the parent Packages directory exists for the install target — Max
+  // lazily creates Packages/ on first package install, so it may be absent on
+  // a fresh Max 9 system.
   fs.mkdirSync(packagesDir, { recursive: true });
 
   console.log("FluCoMa not found. Downloading from GitHub...");
   const crypto = require("crypto");
 
   // Pin to a known release tag for reproducibility and security.
-  // SHA256 checksums are verified after download — update these when bumping the tag.
+  //
+  // IMPORTANT: FluCoMa 1.0.7 ships as a single universal zip that contains
+  // both the macOS externals (.mxo) and the Windows externals (.mxe64).
+  // There is ONE hash to pin, not two. If a future release reverts to
+  // per-platform zips, convert FLUCOMA_SHA256 back to a {Mac, Windows}
+  // dict and restore the platform-specific asset finder.
+  //
+  // To re-pin after a version bump:
+  //   curl -L -o flucoma.zip <release-zip-url>
+  //   shasum -a 256 flucoma.zip      # macOS
+  //   CertUtil -hashfile flucoma.zip SHA256   # Windows
+  // then paste the 64-char hex digest into FLUCOMA_SHA256 below.
   const FLUCOMA_TAG = "1.0.7";
-  const FLUCOMA_SHA256 = {
-    Mac: "ACCEPT_FIRST_RUN",   // Set to actual hash after first verified download
-    Windows: "ACCEPT_FIRST_RUN",
-  };
+  const FLUCOMA_SHA256 = "1a5cb7340e8816a9983b981a5a84ddb95b63e6d71446f278b9dc81c3cc1206a2";
   const FLUCOMA_URL = `https://api.github.com/repos/flucoma/flucoma-max/releases/tags/${FLUCOMA_TAG}`;
 
   // Fetch pinned release info
@@ -476,12 +541,16 @@ async function setupFlucoma() {
     }).on("error", reject);
   });
 
-  const platform = process.platform === "darwin" ? "Mac" : "Windows";
-  const zipAsset = releaseInfo.assets.find(a => a.name.endsWith(".zip") && a.name.includes(platform));
+  // FluCoMa 1.0.7 publishes a single universal zip — pick the first .zip
+  // asset on the release page. If upstream starts shipping per-platform
+  // zips again, reintroduce the filename filter here.
+  const platform = process.platform === "darwin" ? "macOS" : "Windows";
+  const zipAsset = (releaseInfo.assets || []).find(a => a.name.endsWith(".zip"));
   if (!zipAsset) {
-    console.error("Error: no %s zip asset found in FluCoMa release %s", platform, FLUCOMA_TAG);
+    console.error("Error: no .zip asset found in FluCoMa release %s", FLUCOMA_TAG);
     process.exit(1);
   }
+  console.log("Target platform: %s (zip contains externals for both)", platform);
 
   console.log("Downloading %s (v%s, %sMB)...", zipAsset.name, FLUCOMA_TAG,
     Math.round(zipAsset.size / 1024 / 1024));
@@ -512,22 +581,50 @@ async function setupFlucoma() {
   const hash = crypto.createHash("sha256");
   hash.update(fs.readFileSync(zipPath));
   const sha256 = hash.digest("hex");
-  const expectedHash = FLUCOMA_SHA256[platform];
+  const expectedHash = FLUCOMA_SHA256;
   console.log("SHA256: %s", sha256);
 
-  if (expectedHash && expectedHash !== "ACCEPT_FIRST_RUN") {
-    if (sha256 !== expectedHash) {
-      console.error("ERROR: SHA256 mismatch! Expected %s", expectedHash);
-      console.error("The downloaded file may be corrupted or tampered with.");
-      console.error("Aborting installation. Delete %s and retry.", zipPath);
+  const isPinned = expectedHash && expectedHash !== "UNPINNED"
+    && /^[0-9a-f]{64}$/i.test(expectedHash);
+
+  if (isPinned) {
+    if (sha256.toLowerCase() !== expectedHash.toLowerCase()) {
+      console.error("");
+      console.error("  SHA256 MISMATCH — refusing to install.");
+      console.error("  expected: %s", expectedHash);
+      console.error("  actual:   %s", sha256);
+      console.error("");
+      console.error("  The downloaded file does not match the pinned hash.");
+      console.error("  Either the release changed upstream, or the download was tampered with.");
+      console.error("  Verify at https://github.com/flucoma/flucoma-max/releases/tag/%s", FLUCOMA_TAG);
+      console.error("");
       try { fs.rmSync(tmpDir, { recursive: true }); } catch {}
       process.exit(1);
     }
     console.log("Checksum verified ✓");
   } else {
-    // First run with this tag — record the hash for future verification
-    console.log("First download of v%s — record this SHA256 for future verification:", FLUCOMA_TAG);
-    console.log("Update FLUCOMA_SHA256['%s'] in bin/livepilot.js to: '%s'", platform, sha256);
+    // Hash is not yet pinned. Require an explicit opt-in so unverified
+    // installs are never silent — the previous "ACCEPT_FIRST_RUN" sentinel
+    // auto-accepted every run.
+    const allowUnverified = process.env.LIVEPILOT_ALLOW_UNVERIFIED_FLUCOMA === "1";
+    if (!allowUnverified) {
+      console.error("");
+      console.error("  FluCoMa SHA256 is not pinned.");
+      console.error("  Downloaded hash: %s", sha256);
+      console.error("");
+      console.error("  Refusing to install an unverified binary by default.");
+      console.error("  To proceed (and help pin the hash), re-run with:");
+      console.error("    LIVEPILOT_ALLOW_UNVERIFIED_FLUCOMA=1 npx livepilot --setup-flucoma");
+      console.error("");
+      console.error("  Then open a PR that sets FLUCOMA_SHA256 in bin/livepilot.js to:");
+      console.error("    '%s'", sha256);
+      console.error("");
+      try { fs.rmSync(tmpDir, { recursive: true }); } catch {}
+      process.exit(1);
+    }
+    console.warn("⚠ Installing unverified FluCoMa — LIVEPILOT_ALLOW_UNVERIFIED_FLUCOMA=1 was set.");
+    console.warn("  Record this SHA256 in FLUCOMA_SHA256:");
+    console.warn("    '%s'", sha256);
   }
 
   console.log("Extracting to %s...", packagesDir);
@@ -601,9 +698,22 @@ async function setup() {
   console.log("");
   console.log("Step 2/5: Installing Remote Script...");
   try {
-    const { install } = require(path.join(ROOT, "installer", "install.js"));
-    install();
-    console.log("  ✓ Remote Script installed");
+    const { install, InstallerAbort } = require(path.join(ROOT, "installer", "install.js"));
+    try {
+      install();
+      console.log("  ✓ Remote Script installed");
+    } catch (err) {
+      if (err instanceof InstallerAbort && err.recoverable) {
+        // Recoverable — don't bail the wizard. The user can rerun
+        // --install manually, and later steps (Python env, M4L Analyzer,
+        // diagnostics) may still succeed or at least inform them.
+        console.log("  ⚠ Skipped: %s", err.message.split("\n")[0]);
+        console.log("    (Continuing with remaining setup steps.)");
+        ok = false;
+      } else {
+        throw err;
+      }
+    }
   } catch (err) {
     console.log("  ✗ Failed: %s", err.message);
     ok = false;
@@ -720,8 +830,16 @@ async function main() {
 
   // --install
   if (flag === "--install") {
-    const { install } = require(path.join(ROOT, "installer", "install.js"));
-    install();
+    const { install, InstallerAbort } = require(path.join(ROOT, "installer", "install.js"));
+    try {
+      install();
+    } catch (err) {
+      if (err instanceof InstallerAbort) {
+        console.error(err.message);
+        process.exit(err.recoverable ? 2 : 1);
+      }
+      throw err;
+    }
     return;
   }
 

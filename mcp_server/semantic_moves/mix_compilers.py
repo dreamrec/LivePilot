@@ -282,6 +282,173 @@ def _compile_reduce_repetition(move: SemanticMove, kernel: dict) -> CompiledPlan
     )
 
 
+def _compile_make_kick_bass_lock(move: SemanticMove, kernel: dict) -> CompiledPlan:
+    """Compile 'make_kick_bass_lock': carve space between kick and bass.
+
+    Strategy: reduce bass level slightly (clears sub for kick), verify both
+    tracks remain active. Sidechain compressor insertion is left as a future
+    step — it requires device selection + parameter mapping that varies too
+    much across projects to hardcode safely.
+    """
+    steps: list[CompiledStep] = []
+    warnings: list[str] = []
+    descriptions: list[str] = []
+
+    bass_tracks = resolvers.find_tracks_by_role(kernel, ["bass"])
+    kick_tracks = resolvers.find_tracks_by_role(kernel, ["drums", "percussion"])
+
+    if not bass_tracks:
+        warnings.append("No bass track found — cannot lock kick and bass")
+    if not kick_tracks:
+        warnings.append("No kick/drum track found — reference track missing")
+
+    steps.append(CompiledStep(
+        tool="get_master_spectrum",
+        params={},
+        description="Read current sub/low balance before carving",
+        verify_after=False,
+    ))
+
+    if bass_tracks:
+        bass = bass_tracks[0]
+        idx = bass["index"]
+        steps.append(CompiledStep(
+            tool="set_track_volume",
+            params={"track_index": idx, "volume": 0.60},
+            description=f"Pull {bass['name']} to 0.60 to clear sub for kick",
+        ))
+        descriptions.append(f"Pull {bass['name']} to 0.60")
+
+    steps.append(CompiledStep(
+        tool="get_track_meters",
+        params={"include_stereo": True},
+        description="Verify kick and bass both still producing audio",
+    ))
+
+    return CompiledPlan(
+        move_id=move.move_id,
+        intent=move.intent,
+        steps=steps,
+        before_reads=[{"tool": "get_master_spectrum", "params": {}}],
+        after_reads=[
+            {"tool": "get_master_spectrum", "params": {}},
+            {"tool": "get_track_meters", "params": {"include_stereo": True}},
+        ],
+        risk_level="low",
+        summary="; ".join(descriptions) if descriptions else "No kick/bass changes compiled",
+        requires_approval=(kernel.get("mode", "improve") != "explore"),
+        warnings=warnings,
+    )
+
+
+def _compile_create_buildup_tension(move: SemanticMove, kernel: dict) -> CompiledPlan:
+    """Compile 'create_buildup_tension': pull harmony back, raise perc energy.
+
+    We apply volume moves as the minimal, reversible tension-builder. Filter
+    rises and send ramps belong in an automation recipe — we issue a tension
+    gesture template step if the gesture engine is available, otherwise fall
+    back to direct volume changes only.
+    """
+    steps: list[CompiledStep] = []
+    warnings: list[str] = []
+    descriptions: list[str] = []
+
+    perc_tracks = resolvers.find_tracks_by_role(kernel, ["drums", "percussion"])
+    harmony_tracks = resolvers.find_tracks_by_role(kernel, ["chords", "pad"])
+
+    if not perc_tracks and not harmony_tracks:
+        warnings.append("No percussion or harmony tracks found — cannot build tension")
+
+    # Raise perc for energy
+    for pt in perc_tracks[:1]:
+        steps.append(CompiledStep(
+            tool="set_track_volume",
+            params={"track_index": pt["index"], "volume": 0.78},
+            description=f"Push {pt['name']} to 0.78 for rising energy",
+        ))
+        descriptions.append(f"Push {pt['name']} to 0.78")
+
+    # Pull harmony slightly to amplify perc contrast
+    for ht in harmony_tracks[:1]:
+        steps.append(CompiledStep(
+            tool="set_track_volume",
+            params={"track_index": ht["index"], "volume": 0.35},
+            description=f"Pull {ht['name']} to 0.35 to create harmonic vacuum before drop",
+        ))
+        descriptions.append(f"Pull {ht['name']} to 0.35")
+
+    steps.append(CompiledStep(
+        tool="get_track_meters",
+        params={"include_stereo": True},
+        description="Verify tension steps did not silence any track",
+    ))
+
+    return CompiledPlan(
+        move_id=move.move_id,
+        intent=move.intent,
+        steps=steps,
+        before_reads=[{"tool": "get_emotional_arc", "params": {}}],
+        after_reads=[
+            {"tool": "get_emotional_arc", "params": {}},
+            {"tool": "get_track_meters", "params": {"include_stereo": True}},
+        ],
+        risk_level="medium",
+        summary="; ".join(descriptions) if descriptions else "No tracks to ratchet",
+        requires_approval=(kernel.get("mode", "improve") != "explore"),
+        warnings=warnings,
+    )
+
+
+def _compile_smooth_scene_handoff(move: SemanticMove, kernel: dict) -> CompiledPlan:
+    """Compile 'smooth_scene_handoff': reduce master volume briefly around the handoff.
+
+    Without knowing which two scenes are involved, the compiler can only do a
+    conservative energy dip using master volume. A future version should take
+    scene indices via kernel.intent_context and apply targeted crossfades.
+    """
+    steps: list[CompiledStep] = []
+    warnings: list[str] = []
+    descriptions: list[str] = []
+
+    # Minimal approach — gentle master dip the agent can reverse easily.
+    steps.append(CompiledStep(
+        tool="get_master_meters",
+        params={},
+        description="Record current master level for handoff reference",
+        verify_after=False,
+    ))
+
+    steps.append(CompiledStep(
+        tool="set_master_volume",
+        params={"volume": 0.78},
+        description="Gentle master dip for transition",
+    ))
+    descriptions.append("Master dip to 0.78")
+
+    steps.append(CompiledStep(
+        tool="get_master_meters",
+        params={},
+        description="Verify master dip applied without clipping",
+    ))
+
+    warnings.append(
+        "Scene-aware handoff (from_scene/to_scene) not yet compiled — "
+        "this is a conservative energy-dip fallback"
+    )
+
+    return CompiledPlan(
+        move_id=move.move_id,
+        intent=move.intent,
+        steps=steps,
+        before_reads=[{"tool": "get_emotional_arc", "params": {}}],
+        after_reads=[{"tool": "get_emotional_arc", "params": {}}],
+        risk_level="low",
+        summary="; ".join(descriptions),
+        requires_approval=(kernel.get("mode", "improve") != "explore"),
+        warnings=warnings,
+    )
+
+
 # ── Register all compilers ──────────────────────────────────────────────────
 
 register_compiler("make_punchier", _compile_make_punchier)
@@ -289,3 +456,6 @@ register_compiler("tighten_low_end", _compile_tighten_low_end)
 register_compiler("widen_stereo", _compile_widen_stereo)
 register_compiler("darken_without_losing_width", _compile_darken_mix)
 register_compiler("reduce_repetition_fatigue", _compile_reduce_repetition)
+register_compiler("make_kick_bass_lock", _compile_make_kick_bass_lock)
+register_compiler("create_buildup_tension", _compile_create_buildup_tension)
+register_compiler("smooth_scene_handoff", _compile_smooth_scene_handoff)

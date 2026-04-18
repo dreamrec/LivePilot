@@ -106,7 +106,7 @@ def duplicate_track(ctx: Context, track_index: int) -> dict:
 
 @mcp.tool()
 def set_track_name(ctx: Context, track_index: int, name: str) -> dict:
-    """Rename a track."""
+    """Rename a track. The new name appears in both the Session and Arrangement views and survives session save."""
     _validate_track_index(track_index)
     if not name.strip():
         raise ValueError("Track name cannot be empty")

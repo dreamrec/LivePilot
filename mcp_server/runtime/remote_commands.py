@@ -82,6 +82,12 @@ BRIDGE_COMMANDS: frozenset[str] = frozenset({
     "remove_warp_marker", "capture_audio", "capture_stop",
     "check_flucoma", "scrub_clip", "stop_scrub", "get_display_values",
     "get_plugin_params", "map_plugin_param", "get_plugin_presets",
+    # Deep-LOM writes that the Python Remote Script cannot reach (live on
+    # the sample child object or require device-selection semantics that
+    # only Max JS LiveAPI exposes). See mcp_server/tools/analyzer.py for
+    # the matching MCP tools that route through bridge.send_command.
+    "simpler_set_warp",
+    "compressor_set_sidechain",
     # NOTE: load_sample_to_simpler used to live here, but it's actually an
     # async Python MCP tool in mcp_server/tools/analyzer.py, not a bridge
     # command. It has no case in livepilot_bridge.js and no @register handler

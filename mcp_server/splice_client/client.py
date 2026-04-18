@@ -27,6 +27,16 @@ _SPLICE_APP_SUPPORT = os.path.expanduser(
 # Credit safety floor — never drain below this
 CREDIT_HARD_FLOOR = 5
 
+# Per-call gRPC timeouts. The previous implementation passed no timeout, so
+# a hung Splice process could block the MCP event loop until gRPC's default
+# (often infinite) deadline fired. Keep generous enough for cold searches
+# but bounded enough that a dead socket fails the tool call, not the server.
+SEARCH_TIMEOUT = 10.0
+INFO_TIMEOUT = 5.0
+CREDITS_TIMEOUT = 5.0
+SYNC_TIMEOUT = 30.0
+DOWNLOAD_TRIGGER_TIMEOUT = 5.0
+
 
 def _try_import_grpc():
     """Import grpcio lazily — graceful degradation if not installed."""
@@ -148,7 +158,7 @@ class SpliceGRPCClient:
                 Page=page,
                 Purchased=purchased,
             )
-            response = await self.stub.SearchSamples(request)
+            response = await self.stub.SearchSamples(request, timeout=SEARCH_TIMEOUT)
             return self._parse_search_response(response)
         except Exception as exc:
             logger.warning(f"Splice search failed: {exc}")
@@ -213,7 +223,8 @@ class SpliceGRPCClient:
         try:
             # Trigger download
             await self.stub.DownloadSample(
-                pb2.DownloadSampleRequest(FileHash=file_hash)
+                pb2.DownloadSampleRequest(FileHash=file_hash),
+                timeout=DOWNLOAD_TRIGGER_TIMEOUT,
             )
             # Wait for file to appear on disk
             return await self._wait_for_download(file_hash, timeout)
@@ -226,11 +237,16 @@ class SpliceGRPCClient:
     ) -> Optional[str]:
         """Poll SampleInfo until LocalPath is populated."""
         pb2 = self._pb2
-        deadline = asyncio.get_event_loop().time() + timeout
-        while asyncio.get_event_loop().time() < deadline:
+        # asyncio.get_event_loop() is deprecated when called inside an
+        # already-running coroutine on Python 3.10+. Use get_running_loop()
+        # which is the documented replacement.
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + timeout
+        while loop.time() < deadline:
             try:
                 response = await self.stub.SampleInfo(
-                    pb2.SampleInfoRequest(FileHash=file_hash)
+                    pb2.SampleInfoRequest(FileHash=file_hash),
+                    timeout=INFO_TIMEOUT,
                 )
                 if response.Sample.LocalPath:
                     return response.Sample.LocalPath
@@ -250,7 +266,8 @@ class SpliceGRPCClient:
         pb2 = self._pb2
         try:
             response = await self.stub.SampleInfo(
-                pb2.SampleInfoRequest(FileHash=file_hash)
+                pb2.SampleInfoRequest(FileHash=file_hash),
+                timeout=INFO_TIMEOUT,
             )
             s = response.Sample
             return SpliceSample(
@@ -282,7 +299,8 @@ class SpliceGRPCClient:
         pb2 = self._pb2
         try:
             response = await self.stub.ValidateLogin(
-                pb2.ValidateLoginRequest()
+                pb2.ValidateLoginRequest(),
+                timeout=CREDITS_TIMEOUT,
             )
             return SpliceCredits(
                 credits=response.User.Credits,
@@ -315,7 +333,10 @@ class SpliceGRPCClient:
             return False
         pb2 = self._pb2
         try:
-            await self.stub.SyncSounds(pb2.SyncSoundsRequest())
+            await self.stub.SyncSounds(
+                pb2.SyncSoundsRequest(),
+                timeout=SYNC_TIMEOUT,
+            )
             return True
         except Exception as exc:
             logger.debug("sync_sounds failed: %s", exc)

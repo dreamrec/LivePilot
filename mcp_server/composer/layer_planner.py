@@ -403,6 +403,33 @@ def plan_sections(intent: CompositionIntent) -> list[dict]:
         })
         current_bar += scaled_bars
 
+    # Clamp overshoot. Rounding each section up to the nearest 4 bars plus
+    # the min-of-4-bars floor means a short duration_bars (e.g. 16) against
+    # a 6-section template could produce 24+ bars of sections — a 50%
+    # overshoot that pushed arrangement clips into unexpected territory.
+    # Trim from the longest non-intro section until we fit.
+    total_placed = sum(s["bars"] for s in sections)
+    overshoot = total_placed - intent.duration_bars
+    if overshoot > 0 and sections:
+        # Sort indices by section length desc, skipping the first section
+        # (usually intro) which we'd rather preserve at its snapped length.
+        trimmable = sorted(
+            range(1, len(sections)),
+            key=lambda i: -sections[i]["bars"],
+        ) or [0]
+        i = 0
+        while overshoot > 0 and i < len(trimmable) * 4:
+            idx = trimmable[i % len(trimmable)]
+            if sections[idx]["bars"] > 4:
+                sections[idx]["bars"] -= 4
+                overshoot -= 4
+            i += 1
+        # Recompute start_bar values after any trim
+        running = 0
+        for s in sections:
+            s["start_bar"] = running
+            running += s["bars"]
+
     return sections
 
 

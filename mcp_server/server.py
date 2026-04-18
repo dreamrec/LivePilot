@@ -2,6 +2,7 @@
 
 from contextlib import asynccontextmanager
 import asyncio
+import logging
 import os
 import subprocess
 
@@ -9,6 +10,12 @@ from fastmcp import FastMCP, Context  # noqa: F401
 
 from .connection import AbletonConnection
 from .m4l_bridge import SpectralCache, SpectralReceiver, M4LBridge
+
+# Logger must be defined before any function uses it — several module-level
+# helpers below (e.g. _master_has_livepilot_analyzer) call logger.debug on
+# the import-time code path, so defining logger later raised NameError when
+# those helpers fired from a tool module's module-level init.
+logger = logging.getLogger(__name__)
 
 
 def _identify_port_holder(port: int) -> str | None:
@@ -264,9 +271,6 @@ from .device_forge import tools as device_forge_tools          # noqa: F401, E40
 from .sample_engine import tools as sample_engine_tools        # noqa: F401, E402
 from .atlas import tools as atlas_tools                        # noqa: F401, E402
 from .composer import tools as composer_tools                  # noqa: F401, E402
-import logging
-
-logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Schema coercion patch — accept strings for numeric parameters

@@ -229,10 +229,21 @@ async def apply_semantic_move(
     # explore mode — execute through the async router
     from ..runtime.execution_router import execute_plan_steps_async
 
-    step_dicts = [
-        {"tool": step.tool, "params": step.params, "description": step.description}
-        for step in plan.steps
-    ]
+    # Propagate the optional backend annotation through to the router so a
+    # compiler that's certain about a step's backend (e.g. bridge_command for
+    # capture_audio) can short-circuit classify_step(). Steps without backend
+    # fall back to the classifier as before.
+    def _step_to_dict(step):
+        d = {
+            "tool": step.tool,
+            "params": step.params,
+            "description": step.description,
+        }
+        if getattr(step, "backend", None):
+            d["backend"] = step.backend
+        return d
+
+    step_dicts = [_step_to_dict(step) for step in plan.steps]
     bridge = ctx.lifespan_context.get("m4l")
     mcp_registry = ctx.lifespan_context.get("mcp_dispatch", {})
     exec_results = await execute_plan_steps_async(
