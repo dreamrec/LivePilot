@@ -1,7 +1,7 @@
 {
   "name": "livepilot",
-  "version": "1.10.9",
-  "description": "Agentic production system for Ableton Live 12 — 325 tools, 45 domains, device atlas, sample intelligence, auto-composition, spectral perception, technique memory, neo-Riemannian harmony, Euclidean rhythm, species counterpoint, MIDI I/O",
+  "version": "1.11.0",
+  "description": "Agentic production system for Ableton Live 12 — 393 tools, 50 domains, device atlas, sample intelligence, auto-composition, spectral perception, technique memory, neo-Riemannian harmony, Euclidean rhythm, species counterpoint, MIDI I/O",
   "author": {
     "name": "Pilot Studio"
   }

@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog
 
-325 tools across 45 domains.
+393 tools across 50 domains.
 
 ---
 
@@ -603,3 +603,155 @@
 | `compose` | Create a full multi-layer composition from a text prompt — searches samples, loads devices, arranges sections |
 | `augment_with_samples` | Add sample-based layers to the existing session with Splice-aware credit safety |
 | `get_composition_plan` | Dry-run preview of what compose would do — no execution, no credits spent |
+
+---
+
+## Scales (8) — Song-level Scale Mode + microtonal tuning (Live 12.0+ / 12.1+)
+
+| Tool | Description |
+|------|-------------|
+| `get_song_scale` | Read Live's current Scale Mode state (Live 12.0+) |
+| `set_song_scale` | Set the Song-level Scale Mode root + scale name (Live 12.0+) |
+| `set_song_scale_mode` | Enable or disable Scale Mode on the current set (Live 12.0+) |
+| `list_available_scales` | Return Live's built-in scale names (Live 12.0+) |
+| `get_tuning_system` | Read the current Tuning System state (Live 12.1+) |
+| `set_tuning_reference_pitch` | Set the Tuning System's reference pitch in Hz (Live 12.1+) |
+| `set_tuning_note` | Adjust the cent offset for a single scale degree (Live 12.1+) |
+| `reset_tuning_system` | Reset all per-degree tuning offsets to 12-TET (Live 12.1+) |
+
+---
+
+## Clips — Scale overrides (3, Live 12.0+)
+
+| Tool | Description |
+|------|-------------|
+| `get_clip_scale` | Read a clip's per-clip scale override (Live 12.0+) |
+| `set_clip_scale` | Set a clip's per-clip scale override (Live 12.0+) |
+| `set_clip_scale_mode` | Enable or disable Scale Mode on a single clip (Live 12.0+) |
+
+---
+
+## Follow Actions (8) — Clip 12.0 revamp + scene 12.2+
+
+| Tool | Description |
+|------|-------------|
+| `get_clip_follow_action` | Read a clip's follow-action state (Live 12.0+) |
+| `set_clip_follow_action` | Set a clip's follow action (Live 12.0+). Any omitted arg preserves |
+| `clear_clip_follow_action` | Disable follow action on a clip (Live 12.0+) |
+| `apply_follow_action_preset` | Apply a named follow-action preset to a clip (Live 12.0+) |
+| `list_follow_action_types` | List valid follow-action names (Live 12.0+) |
+| `get_scene_follow_action` | Read a scene's follow-action state (Live 12.2+) |
+| `set_scene_follow_action` | Set a scene's follow action (Live 12.2+). Any omitted arg preserves |
+| `clear_scene_follow_action` | Disable a scene's follow action (Live 12.2+) |
+
+---
+
+## Grooves (7) — Groove Pool + master dial (Live 11+)
+
+| Tool | Description |
+|------|-------------|
+| `list_grooves` | List all grooves in the Groove Pool (Live 11+) |
+| `get_groove_info` | Read a single groove's parameters (Live 11+) |
+| `set_groove_params` | Adjust a groove's parameters (Live 11+). Omitted args preserve |
+| `assign_clip_groove` | Assign a groove to a clip (Live 11+) |
+| `get_clip_groove` | Read a clip's current groove assignment (Live 11+) |
+| `get_song_groove_amount` | Read the master groove amount dial (Live 11+) |
+| `set_song_groove_amount` | Set the master groove amount dial (Live 11+) |
+
+---
+
+## Take Lanes (6) — Live 12.0 read / 12.2 write
+
+| Tool | Description |
+|------|-------------|
+| `get_take_lanes` | List all take lanes on a track (Live 12.0+) |
+| `get_take_lane_clips` | List the arrangement clips on a specific take lane (Live 12.0+) |
+| `create_take_lane` | Create a new take lane on a track (Live 12.2+) |
+| `set_take_lane_name` | Rename an existing take lane (Live 12.2+) |
+| `create_midi_clip_on_take_lane` | Create an arrangement MIDI clip on a specific take lane (Live 12.2+) |
+| `create_audio_clip_on_take_lane` | Create an arrangement audio clip on a specific take lane (Live 12.2+) |
+
+---
+
+## Devices — Rack Variations + Macro CRUD (8, Live 11+)
+
+| Tool | Description |
+|------|-------------|
+| `get_rack_variations` | Get the Rack's variation count, currently selected variation index, and visible macro count (Live 11+) |
+| `store_rack_variation` | Store the Rack's current macro values as a new variation (Live 11+) |
+| `recall_rack_variation` | Select and recall a stored Rack variation by index (Live 11+) |
+| `delete_rack_variation` | Delete a Rack variation by index (Live 11+) |
+| `add_rack_macro` | Add one macro to a Rack, raising visible_macro_count by 1 (Live 11+) |
+| `remove_rack_macro` | Remove the last macro from a Rack, lowering visible_macro_count by 1 (Live 11+) |
+| `set_rack_visible_macros` | Set the Rack's visible_macro_count directly (1-16, Live 11+) |
+| `randomize_rack_macros` | Randomize the Rack's macro values using Live's built-in randomize dice (Live 11+) |
+
+---
+
+## Devices — Simpler Slice CRUD (6, Live 11+)
+
+| Tool | Description |
+|------|-------------|
+| `insert_simpler_slice` | Insert a slice at a sample-frame position on a Simpler (Live 11+) |
+| `move_simpler_slice` | Move an existing slice from one sample-frame position to another (Live 11+) |
+| `remove_simpler_slice` | Remove a slice at an exact sample-frame position (Live 11+) |
+| `clear_simpler_slices` | Remove all manual slices from the Simpler (Live 11+) |
+| `reset_simpler_slices` | Reset the Simpler's slices to Live's default detection (Live 11+) |
+| `import_slices_from_onsets` | Force Transient slicing mode, set sensitivity, and re-detect (Live 11+) |
+
+---
+
+## Devices — Wavetable Modulation Matrix (5, Live 11+)
+
+| Tool | Description |
+|------|-------------|
+| `get_wavetable_mod_targets` | Enumerate visible modulation target parameter names on a Wavetable (Live 11+) |
+| `get_wavetable_mod_matrix` | Dump all non-zero modulation routings on a Wavetable device (Live 11+) |
+| `get_wavetable_mod_amount` | Read the current modulation amount for a Wavetable source→target routing (Live 11+) |
+| `set_wavetable_mod_amount` | Set the modulation amount for a Wavetable source→target routing (Live 11+) |
+| `add_wavetable_mod_route` | Create a modulation routing on a Wavetable device (Live 11+) |
+
+---
+
+## Devices — A/B Compare (3, Live 12.3+)
+
+| Tool | Description |
+|------|-------------|
+| `get_device_ab_state` | Read a device's A/B compare state (Live 12.3+) |
+| `toggle_device_ab` | Swap a device's A/B state (Live 12.3+) |
+| `copy_device_state` | Copy one A/B state to the other (Live 12.3+) |
+
+---
+
+## Transport — Long-tail primitives (9)
+
+| Tool | Description |
+|------|-------------|
+| `tap_tempo` | Tap the tempo (one tap). Live averages consecutive taps to set BPM |
+| `nudge_tempo` | Nudge tempo up or down by Live's internal nudge delta. direction: 'up' or 'down' |
+| `capture_and_insert_scene` | Capture currently-playing clips and insert them as a new scene. Distinct from capture_midi |
+| `set_count_in_duration` | Set pre-record count-in duration (0-4 bars) |
+| `set_exclusive_arm` | Enable/disable exclusive arm mode (only one track armed at a time) |
+| `set_exclusive_solo` | Enable/disable exclusive solo mode (only one track soloed at a time) |
+| `get_link_state` | Read Ableton Link + count-in state (enabled, start/stop sync, tempo follower, is_counting_in) |
+| `set_link_enabled` | Enable or disable Ableton Link (network tempo synchronization) |
+| `force_link_beat_time` | Force Ableton Link to a specific beat time (if supported by this Live version) |
+
+---
+
+## Tracks — Long-tail primitives (3)
+
+| Tool | Description |
+|------|-------------|
+| `jump_in_session_clip` | Jump playhead within a running session clip, in beats from start |
+| `get_track_performance_impact` | Read a track's CPU performance impact metric |
+| `get_appointed_device` | Return the Blue Hand (appointed/focused) device location as (track_index, device_index, track_name, device_name) |
+
+---
+
+## Diagnostics (2) — ControlSurface enumeration
+
+| Tool | Description |
+|------|-------------|
+| `list_control_surfaces` | List all active ControlSurface instances (Push, APC, Launchkey, etc.) |
+| `get_control_surface_info` | Read detailed info about a single control surface |

@@ -1,5 +1,90 @@
 # Changelog
 
+## 1.11.0 — Live 12 LOM completeness (April 18 2026)
+
+Twelve of fourteen planned chunks closing the gap between LivePilot and Ableton
+Live 12.3.6's Live Object Model. 325 → 393 tools (+68). 45 → 50 domains (+5).
+Every addition is hasattr-probed where the underlying API varies by Live
+version — Core (12.0+), Enhanced (12.1.10+), and Full Intelligence (12.3+)
+tiers keep their graceful degradation contract.
+
+### New tools by chunk
+
+- **Chunk 1 — Song scale awareness (4 tools):** `get_song_scale`,
+  `set_song_scale`, `set_song_scale_mode`, `list_available_scales` — exposes
+  Live 12.0's Scale Mode at the song level. Remote Script probes
+  `song.scale_name` / `song.root_note`; missing on pre-12 falls back to
+  "Scale awareness unavailable".
+- **Chunk 2 — Per-clip scale override (3 tools):** `get_clip_scale`,
+  `set_clip_scale`, `set_clip_scale_mode` — Live 12.0 MIDI clip-level override
+  for the song scale. Honors `clip.scale_name` and `clip.scale_mode`.
+- **Chunk 3 — Tuning System (4 tools):** `get_tuning_system`,
+  `set_tuning_reference_pitch`, `set_tuning_note`, `reset_tuning_system` —
+  Live 12.1 microtonal tuning. Writes to `song.tuning_system`,
+  `tuning.reference_pitch`, and individual tuning-note cents.
+- **Chunk 4 — Follow Actions (8 tools):** Clip-level Live 12.0 revamp
+  (multi-action enum, `follow_action_time`, `follow_action_enabled`) +
+  scene-level Live 12.2+ (`scene.follow_action`, `scene.follow_action_time`)
+  + preset wrapper for "A→B→C chain" common shapes.
+- **Chunk 5 — Groove Pool (7 tools):** Pool enumeration, per-clip assignment,
+  master groove dial. Exposes Live 11+ `song.groove_pool` and the swing /
+  timing / random / velocity amount on each groove.
+- **Chunk 6 — Take Lanes (6 tools):** Enumeration, creation, per-lane clip
+  creation. Live 12.0 read surface + 12.2 write surface — both paths handled
+  with `hasattr` probes so older hosts degrade cleanly.
+- **Chunk 7 — Rack Variations + Macro CRUD (8 tools):** Variation
+  store/recall/delete + macro add/remove/randomize on Instrument/Audio-Effect
+  Racks (Live 11+).
+- **Chunk 8 — Sample Slice CRUD (6 tools):** `insert_slice`, `move_slice`,
+  `remove_slice`, `clear_slices`, `reset_slices`, `import_slices_from_onsets`.
+  Writes to `SimplerDevice.sample.slices` (Live 11+).
+- **Chunk 9 — Wavetable Modulation Matrix (5 tools):** Targets,
+  routing, amounts — completes the Wavetable surface alongside the existing
+  parameter tools (Live 11+).
+- **Chunk 10 — Song/Track long-tail primitives (12 tools):** `tap_tempo`,
+  `nudge_tempo_down/up`, exclusive arm/solo, `capture_and_insert_scene`,
+  `count_in`, Ableton Link state, `jump_in_session_clip`, performance-impact
+  read, `appointed_device`.
+- **Chunk 11 — Device A/B Compare (3 tools):** State read, toggle, copy
+  direction. Uses Live 12.3+ `Device.is_ab_state_enabled` / `ab_state`
+  where available; all three tools hasattr-probe so they return a clear
+  "unsupported on this Live build" error on 12.2 and older.
+- **Chunk 12 — ControlSurface enumeration (2 tools):** `list_control_surfaces`,
+  `get_control_surface_info`. Always-available diagnostic for multi-surface
+  setups.
+
+### New domains (45 → 50)
+
+Source of truth is module layout — five new files registered @mcp.tool()
+decorators:
+
+- `mcp_server/tools/scales.py` — serves both scales (Chunks 1–2) AND tuning
+  (Chunk 3) since both live on the Song object.
+- `mcp_server/tools/follow_actions.py` — Chunk 4.
+- `mcp_server/tools/grooves.py` — Chunk 5.
+- `mcp_server/tools/take_lanes.py` — Chunk 6.
+- `mcp_server/tools/diagnostics.py` — Chunk 12.
+
+Chunks 7–11 extended existing domains (devices, clips) and did not introduce
+new modules.
+
+### Deferred
+
+- **Chunk 13 — MIDI Tools via M4L bridge** is intentionally deferred. It
+  requires authoring a Max 9 .amxd patcher, which can only be produced in a
+  live Max session; it's tracked as a follow-up for when the user is at the
+  Max workstation.
+- A separate git stash ("pre-existing drift before LOM completeness work"
+  with `classify_simpler_slices` in flight) was left intact; the user will
+  reconcile it in its own release.
+
+### Not a breaking change
+
+Every new tool is additive. No existing tool names, parameters, or return
+shapes changed. Remote Script still boots cleanly on Live 12.0 — the 12.1+
+and 12.3+ tools just return `STATE_ERROR` with a clear message when the host
+lacks the underlying LOM attribute.
+
 ## 1.10.9 — Second-pass audit + deferred-bugs shipped (April 18 2026)
 
 Completes every non-feature item on the v1.10.8 audit backlog. 2116 → 2132
