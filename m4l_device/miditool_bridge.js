@@ -99,17 +99,58 @@ function list() {
 }
 
 function dictionary(name) {
-    // live.miditool.in emits context as a dictionary. Max JS receives the
-    // dictionary name here; we resolve to an actual JS object via Dict.
+    // live.miditool.in emits BOTH outlets as Max dictionaries:
+    //   - Inlet 1 (right outlet of live.miditool.in): context dict
+    //     {grid, selection:{start,end}, scale:{root,name,mode}, seed, tuning:{...}}
+    //   - Inlet 2 (left outlet of live.miditool.in):  notes dict
+    //     {notes: [{pitch, start_time, duration, ...}]}
+    //
+    // The notes path is SYNCHRONOUS: when notes arrive, we MUST emit
+    // transformed notes via live.miditool.out (outlet 1) before returning
+    // from this function — Live is waiting on the same scheduler tick.
     if (inlet === 1) {
         try {
-            var d = new Dict(name);
-            var obj = JSON.parse(d.stringify());
+            var dctx = new Dict(name);
+            var obj = JSON.parse(dctx.stringify());
             _apply_context(obj);
+            post("LivePilot MIDI Tool: got context — keys=" + Object.keys(obj).join(",") + "\n");
         } catch (e) {
-            post("LivePilot MIDI Tool Bridge: context dict parse error: " + e + "\n");
+            post("LivePilot MIDI Tool: context parse error: " + e + "\n");
+        }
+    } else if (inlet === 2) {
+        try {
+            var dnotes = new Dict(name);
+            var obj = JSON.parse(dnotes.stringify());
+            latest_notes = (obj && obj.notes) ? obj.notes : [];
+            post("LivePilot MIDI Tool: got " + latest_notes.length + " notes, target=" + target_tool + "\n");
+            _process_and_emit();
+        } catch (e) {
+            post("LivePilot MIDI Tool: notes parse error: " + e + "\n");
+            // Fail-safe: emit empty notes dict so Live doesn't time out
+            _emit_notes([]);
         }
     }
+}
+
+function _process_and_emit() {
+    // Run the configured generator on latest_notes + latest_context,
+    // emit the result synchronously to live.miditool.out.
+    var out_notes;
+    try {
+        if (target_tool && _GENERATORS[target_tool]) {
+            out_notes = _GENERATORS[target_tool](latest_notes, latest_context, target_params);
+            post("LivePilot MIDI Tool: " + target_tool + " produced " + out_notes.length + " notes\n");
+        } else {
+            out_notes = latest_notes.slice();
+            post("LivePilot MIDI Tool: no target configured, passthrough " + out_notes.length + " notes\n");
+        }
+    } catch (e) {
+        post("LivePilot MIDI Tool: generator '" + target_tool + "' failed: " + e + "\n");
+        out_notes = latest_notes.slice();
+    }
+    _emit_notes(out_notes);
+    // Fire-and-forget async log to the server (for get_miditool_context)
+    try { _send_request_async(out_notes); } catch (e) { /* silent */ }
 }
 
 // ── Server → bridge dispatch ───────────────────────────────────────────────
@@ -188,45 +229,16 @@ function _apply_context(obj) {
 }
 
 function _handle_notes(name, args) {
-    // live.miditool.in emits notes as a list of dictionaries. Each dict
-    // has {pitch, start_time, duration, velocity, mute, probability,
-    // velocity_deviation, release_velocity, note_id}.
-    //
-    // IMPORTANT: Live's MIDI Tool protocol is SYNCHRONOUS. We must emit
-    // transformed notes via live.miditool.out (outlet 1) within this same
-    // scheduler dispatch — an async UDP round trip to the server would
-    // arrive too late and trigger "Did not receive a Note dictionary in
-    // time" in Live.
-    //
-    // So the generators are implemented here in JS. The server's role is
-    // just config dispatch: set_miditool_target pushes {target_tool,
-    // target_params} to us via /miditool/config, and we use that to pick
-    // which generator runs on each fire.
+    // LEGACY PATH: kept for backward compat if live.miditool.in ever emits
+    // notes as a list rather than a dictionary. In Live 12.3.6 the left
+    // outlet emits a 'dictionary' message — handled by dictionary() above.
+    // This function fires only if Max routes via anything().
     if (!args || args.length === 0) {
         latest_notes = [];
     } else {
         latest_notes = _normalize_notes(args);
     }
-
-    // Run the configured generator SYNCHRONOUSLY and emit immediately.
-    var out_notes;
-    try {
-        if (target_tool && _GENERATORS[target_tool]) {
-            out_notes = _GENERATORS[target_tool](latest_notes, latest_context, target_params);
-        } else {
-            // No target configured — identity passthrough.
-            out_notes = latest_notes.slice();
-        }
-    } catch (e) {
-        post("LivePilot MIDI Tool Bridge: generator '" + target_tool + "' failed: " + e + "\n");
-        out_notes = latest_notes.slice();
-    }
-    _emit_notes(out_notes);
-
-    // Also send a best-effort async ping to the server for logging/learning
-    // (the server's response is no longer load-bearing but we keep the wire
-    // for introspection via get_miditool_context()).
-    _send_request_async(out_notes);
+    _process_and_emit();
 }
 
 
