@@ -98,20 +98,22 @@ Prefix with `fix:`, `feat:`, `docs:`, `refactor:`, `test:`, or `chore:`.
 
 ## Tool Count Discipline
 
-Currently **323 tools**. If you add or remove a `@mcp.tool()` decorator, update all of these files:
+Currently **324 tools**. If you add or remove a `@mcp.tool()` decorator, the
+`sync_metadata.py` script will propagate the new count automatically:
 
-- `README.md`
-- `CLAUDE.md`
-- `package.json` description
-- `livepilot/.Codex-plugin/plugin.json`
-- `livepilot/.claude-plugin/plugin.json`
-- `server.json`
-- `livepilot/skills/livepilot-core/SKILL.md`
-- `livepilot/skills/livepilot-core/references/overview.md`
-- `CHANGELOG.md`
-- `tests/test_tools_contract.py`
-- `docs/manual/index.md`
-- `docs/manual/tool-reference.md`
+```bash
+# Update the expected count in tests/test_tools_contract.py first:
+#   assert len(tools) == 325   # for example
+python scripts/sync_metadata.py --fix
+```
+
+This updates `README.md`, `CLAUDE.md`, `package.json`, both `plugin.json`
+files, `server.json`, SKILL.md, overview.md, tool-catalog.md, and the
+related docs in one pass.
+
+CI enforces sync — `python scripts/sync_metadata.py --check` runs on every
+PR and fails if any file is out of date. Version string bumps still require
+a manual edit to `package.json` (the source of truth).
 
 ## Areas Where Help Is Welcome
 

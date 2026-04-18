@@ -1,8 +1,8 @@
 {
   "name": "livepilot",
-  "version": "1.10.7",
+  "version": "1.10.8",
   "mcpName": "io.github.dreamrec/livepilot",
-  "description": "Agentic production system for Ableton Live 12 — 323 tools, 45 domains. Device atlas (1305 devices), sample engine (Splice + browser + filesystem), auto-composition, spectral perception, technique memory, creative intelligence (12 engines)",
+  "description": "Agentic production system for Ableton Live 12 — 324 tools, 45 domains. Device atlas (1305 devices), sample engine (Splice + browser + filesystem), auto-composition, spectral perception, technique memory, creative intelligence (12 engines)",
   "author": "Pilot Studio",
   "license": "BSL-1.1",
   "type": "commonjs",
@@ -43,5 +43,27 @@
   ],
   "engines": {
     "node": ">=18.0.0"
-  }
+  },
+  "files": [
+    "bin/**/*.js",
+    "installer/**/*.js",
+    "mcp_server/**/*.py",
+    "mcp_server/**/*.json",
+    "mcp_server/**/*.yaml",
+    "mcp_server/**/*.md",
+    "mcp_server/**/*.db",
+    "remote_script/**/*.py",
+    "m4l_device/LivePilot_Analyzer.amxd",
+    "m4l_device/LivePilot_Analyzer.adv",
+    "m4l_device/livepilot_bridge.js",
+    "m4l_device/BUILD_GUIDE.md",
+    "requirements.txt",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "server.json",
+    "!**/__pycache__/**",
+    "!**/*.pyc",
+    "!**/.DS_Store"
+  ]
 }

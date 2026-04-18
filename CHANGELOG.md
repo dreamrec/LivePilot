@@ -1,5 +1,131 @@
 # Changelog
 
+## 1.10.8 — Deep audit fix pass (April 18 2026)
+
+Outcome of a cross-subsystem audit (Remote Script, MCP server, M4L bridge,
+Sample/Splice/Atlas, Composer/Router, Installer, Tests). 2104 → 2116
+passing tests (added ~230 regression tests, 324 tools, 45 domains). New
+MCP tool: `reload_atlas`. Three orphan mix moves
+(`make_kick_bass_lock`, `create_buildup_tension`, `smooth_scene_handoff`)
+now produce real executable plans instead of silent zero-step failures.
+A family compiler handles all device-creation moves. CI now enforces
+metadata drift and `.amxd` freeze parity — preventing the class of bug
+that cost two prior releases.
+
+### Ship-stoppers
+
+- **`capture_audio` backend annotation** fixed in `REDUCE_REPETITION` —
+  was declared `mcp_tool`, is actually `bridge_command` (matched your
+  memory note about the backend-annotation invariant).
+- **Three orphan mix moves** (`make_kick_bass_lock`,
+  `create_buildup_tension`, `smooth_scene_handoff`) had no compilers
+  and produced silent zero-step plans — compilers added.
+- **Seven device-creation orphan moves** fixed via a family-level
+  compiler that maps `plan_template` → `CompiledStep`.
+- **`logger` used before definition** in `mcp_server/server.py`,
+  `mcp_server/tools/analyzer.py`, and
+  `mcp_server/translation_engine/tools.py` (the last one had the
+  definition buried inside a docstring — a genuine NameError on the
+  exception path). All three fixed; new regression test
+  `test_import_hygiene.py` will catch recurrences.
+- **FluCoMa SHA256 bypass** removed — `ACCEPT_FIRST_RUN` sentinel is
+  gone. Verification is now mandatory; a fresh run with unpinned
+  hashes requires explicit
+  `LIVEPILOT_ALLOW_UNVERIFIED_FLUCOMA=1` opt-in.
+- **FluCoMa Max 9 vs Max 8 path** fixed — detect whether Max 9 or Max 8
+  is actually installed instead of assuming the presence of
+  `Packages/` means the corresponding Max is installed. Fresh Max 9
+  machines were landing in the Max 8 legacy path.
+
+### Correctness
+
+- **Remote Script TCP UTF-8 boundary corruption** — accumulate raw bytes,
+  decode only on newline-framed lines. Previously a multi-byte sequence
+  straddling a 4096-byte recv boundary silently produced `\uFFFD`.
+- **`_command_queue.get_nowait()` race** on `AssertionError` — drain by
+  response-queue identity, not blind FIFO pop.
+- **`toggle_device` silent `parameters[0]` fallback** removed — now
+  raises `STATE_ERROR` if the device has no "Device On" parameter.
+- **`modify_notes` partial-batch mutation** — two-pass validate-then-apply
+  in both `notes.py` and `arrangement.py`.
+- **Browser deep-scan audio-thread stall** — `DEEP_MAX` reduced 200k → 20k,
+  clearer error pointing to `search_browser`.
+- **`_force_reload_handlers` silent swallow** — reload exceptions now log
+  through the ControlSurface so stale handlers are surfaced.
+- **`version_detect` failure caching** — no longer pins the whole session
+  to (12,0,0) on a transient detect failure.
+- **Atlas non-atomic write** — tmp + fsync + rename pattern.
+- **Atlas and corpus check-then-set race** — wrapped in the shared
+  `services.singletons.Singleton` helper. Atlas also auto-reloads when
+  `device_atlas.json` mtime advances. New `reload_atlas` MCP tool forces
+  a manual refresh.
+- **`time.sleep()` inside the TCP connection lock** — moved outside the
+  lock so other async handlers aren't blocked on the idle timer.
+- **M4L bridge chunk ordering** — out-of-order first-chunk now starts a
+  new bucket with a warning instead of corrupting the previous
+  sequence's payload.
+- **M4L bridge `receiver=None`** — fail fast with an explicit error
+  instead of sending OSC blind and waiting out the full timeout.
+- **Sample critic `-1.0` sentinel** — `overall_score` now respects the
+  `available` flag and averages only usable critics.
+- **Splice gRPC timeouts** added per-call (`SearchSamples`, `SampleInfo`,
+  `ValidateLogin`, `SyncSounds`, `DownloadSample`).
+- **Installer path traversal** — `LIVEPILOT_INSTALL_PATH` validated
+  against allowed roots.
+- **Installer overlay upgrade** — rename existing install to
+  `LivePilot.backup-<ts>/` before fresh copy, auto-prune old backups.
+  Stale files from renamed modules no longer survive upgrades.
+- **Installer `process.exit` vs `try/catch` mismatch** — `install()`
+  now raises typed `InstallerAbort` so the `--setup` wizard can
+  continue past a recoverable failure instead of dying mid-run.
+- **`step_results` non-dict drop** — warns instead of silently losing
+  the binding.
+- **Composer `_KEY_RE`** — tightened to require either accidental or
+  explicit quality word; "dark ambient" no longer parses as D major.
+- **Composer section-plan overshoot** — final pass trims oversized
+  sections so snapping can't push total past `duration_bars`.
+- **`export_clip_midi` extension guard** — refuses to write
+  non-`.mid`/`.midi` files after path resolution.
+
+### CI + test hygiene
+
+- `scripts/sync_metadata.py --check` is now a CI gate (three prior
+  drift releases were preventable).
+- `.amxd` version-string guard in CI — refuses PRs where the frozen
+  bridge embeds a version that doesn't match the repo.
+- `npm pack` cleanliness gate — fails on `.disabled`, `.backup`,
+  `.pre-*`, `.DS_Store`, or `.pyc` entries.
+- `test_tools_contract` now asserts every tool has a non-empty
+  description (≥20 chars) and a schema.
+- `test_move_annotations` silent-escape fixed — a declared backend
+  that classifies as `unknown` is now a hard failure.
+- `test_bridge_parity` promoted from `INFO:` print to hard assertion.
+- `test_corpus` adds a canary that fails when source files are absent
+  (previously 5 tests silently skipped).
+- `tests/test_splice_client.py` scaffolded — credit floor, timeout
+  constants, port.conf parsing, graceful-degrade fallback (10 tests).
+- `package.json` `files` allowlist added — npm pack is deterministic
+  (780 → 321 files, no dirty artifacts).
+- CHANGELOG + `capability-modes.md` added to `VERSION_FILES` in
+  `sync_metadata.py`.
+
+### Deferred (follow-up PR)
+
+- Mechanical `lifespan_context.setdefault(...)` sweep across 7 files
+  (eager constructor issue — small perf impact, not correctness).
+- `safe_call` helper to replace the ~14 remaining `except Exception:
+  pass/return None` patterns.
+- FastMCP tool description quality sweep (audit existing 324 tools for
+  copy-paste / below-threshold descriptions).
+
+### Release-process changes
+
+- **FluCoMa SHA256 pinned** to `1a5cb73…6a2` (the universal zip containing
+  both macOS `.mxo` and Windows `.mxe64` externals). Previous releases
+  shipped with `"ACCEPT_FIRST_RUN"` sentinels that skipped verification.
+- **`.amxd` refrozen** with matching `1.10.8` ping bytes. CI guard
+  (`amxd-freeze-drift`) enforces this on every push.
+
 ## 1.10.7 — npm .amxd parity + domain-count consistency (April 18 2026)
 
 Shipping release. Brings npm's tarball back in line with the fresh `.amxd`

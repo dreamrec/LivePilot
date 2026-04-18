@@ -17,7 +17,7 @@
 
 <p align="center">
   An agentic production system for Ableton Live 12.<br>
-  323 tools. 45 domains. Device atlas. Splice integration. Auto-composition. Spectral perception. Technique memory.
+  324 tools. 45 domains. Device atlas. Splice integration. Auto-composition. Spectral perception. Technique memory.
 </p>
 
 <br>
@@ -79,7 +79,7 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 │         └─────────────────┼──────────────────┘                       │
 │                           ▼                                          │
 │                  ┌─────────────────┐                                  │
-│                  │   323 MCP Tools  │                                  │
+│                  │   324 MCP Tools  │                                  │
 │                  │   45 domains     │                                  │
 │                  └────────┬────────┘                                  │
 │                           │                                          │
@@ -100,13 +100,13 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 
 **MCP Server** (`mcp_server/`) — Python FastMCP server. Validates inputs, routes commands to the Remote Script over TCP, manages the M4L bridge, runs the atlas, sample engine, composer, and all intelligence engines. This is what your AI client connects to.
 
-**M4L Bridge** (`m4l_device/`) — Optional Max for Live Audio Effect on the master track. Provides deep LOM access through Max's LiveAPI that the ControlSurface API can't reach. UDP 9880 (M4L to server) carries spectral data and LiveAPI responses. OSC 9881 (server to M4L) sends commands. 36 bridge tools (backed by 27 bridge commands) for hidden parameters, Simpler internals, warp markers, and display values.
+**M4L Bridge** (`m4l_device/`) — Optional Max for Live Audio Effect on the master track. Provides deep LOM access through Max's LiveAPI that the ControlSurface API can't reach. UDP 9880 (M4L to server) carries spectral data and LiveAPI responses. OSC 9881 (server to M4L) sends commands. 36 bridge tools (backed by 29 bridge commands) for hidden parameters, Simpler internals, warp markers, display values, and Simpler warp / Compressor sidechain writes that live on child objects Python can't reach.
 
 **Device Atlas** (`mcp_server/atlas/`) — In-memory indexed JSON database. 1305 devices with browser URIs, 81 enriched with YAML sonic intelligence profiles (mood, genre, texture, recommended chains). 6 indexes: by_id, by_name, by_uri, by_category, by_tag, by_genre. The AI never hallucinates a device name or preset — it always resolves against the atlas first.
 
 **Sample Engine** (`mcp_server/sample_engine/`) — Searches three sources simultaneously: BrowserSource (Ableton's library), SpliceSource (local Splice catalog via SQLite), FilesystemSource (user directories). Every result passes through a 6-critic fitness battery (key, tempo, spectral, genre, mood, technical). 29 processing techniques (Surgeon precision vs. Alchemist experimentation). Builds complete sample processing plans with warp, slice, and effect recommendations.
 
-**Splice Client** (`mcp_server/splice_client/`) — Reads Splice's local SQLite database (`sounds.db`) for searching downloaded samples with full metadata (key, BPM, genre, tags). A gRPC client for the Splice desktop API exists but is not yet wired into the server lifespan — currently all Splice integration is local-only via SQLite. No API key needed.
+**Splice Client** (`mcp_server/splice_client/`) — Searches Splice's catalog through two layers: the local SQLite database (`sounds.db`, already-downloaded samples) and the live gRPC API (full catalog, including samples you haven't downloaded yet). The gRPC client auto-detects Splice's dynamic port via `port.conf`, handles self-signed TLS, and enforces a 5-credit safety floor before any download. Per-call timeouts (5–10s) prevent a hung Splice process from stalling the MCP event loop. Graceful fallback to SQL-only if grpcio isn't installed. No API key needed — authentication comes from the running Splice desktop app.
 
 **Composer** (`mcp_server/composer/`) — Prompt-to-plan pipeline. Parses natural language ("dark minimal techno 128bpm with industrial textures") into a CompositionIntent (genre, mood, tempo, key). Plans layers using role templates (kick, bass, percussion, texture, lead, pad, fx). Compiles to a step-by-step plan of tool calls that the agent executes. Does not execute autonomously — returns the plan. 7 genre defaults (techno, house, ambient, hip-hop, dnb, dub, experimental).
 
@@ -120,7 +120,7 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 
 ## The Intelligence Layer
 
-12 engines sit on top of the 323 tools. They give the AI musical judgment, not just musical execution.
+12 engines sit on top of the 324 tools. They give the AI musical judgment, not just musical execution.
 
 ### SongBrain — What the Song Is
 
@@ -172,7 +172,7 @@ Every engine follows: **measure before → act → measure after → compare**. 
 
 ## Tools
 
-323 tools across 45 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
+324 tools across 45 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
 
 <br>
 
@@ -287,7 +287,7 @@ LivePilot reads Splice's local SQLite database to search your downloaded samples
 
 **How it works:** The Sample Engine's `SpliceSource` reads `~/Library/Application Support/com.splice.Splice/users/default/*/sounds.db` — Splice's local SQLite catalog of downloaded samples. Read-only, no network calls.
 
-**Requirements:** Splice desktop app installed with some downloaded samples. A gRPC client for Splice's live API exists in `mcp_server/splice_client/` but is not yet wired into the server runtime.
+**Requirements:** Splice desktop app running (the MCP server talks to it over gRPC at a dynamic port advertised via `port.conf`, with self-signed TLS). For fully offline search, previously-downloaded samples are always searchable via the local SQLite fallback even if the Splice app isn't running.
 
 <br>
 
@@ -360,7 +360,7 @@ The V2 intelligence layer. These tools analyze, diagnose, plan, evaluate, and le
 | Creative Constraints | 5 | constraint activation, reference-inspired variants |
 | Preview Studio | 5 | variant creation, preview rendering, comparison, commit |
 
-> **[View all 323 tools →](docs/manual/tool-catalog.md)**
+> **[View all 324 tools →](docs/manual/tool-catalog.md)**
 
 <br>
 
@@ -572,6 +572,8 @@ npx livepilot --version    # Show version
 git clone https://github.com/dreamrec/LivePilot.git
 cd LivePilot
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+# Test runner is not in requirements.txt (runtime-only deps) — install it explicitly:
+.venv/bin/pip install pytest pytest-asyncio
 .venv/bin/pytest tests/ -v
 ```
 
@@ -585,7 +587,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for architecture details, code guidelines
 
 | Document | What's inside |
 |----------|---------------|
-| [Manual](docs/manual/index.md) | Complete reference: architecture, all 323 tools, workflows |
+| [Manual](docs/manual/index.md) | Complete reference: architecture, all 324 tools, workflows |
 | [Intelligence Layer](docs/manual/intelligence.md) | How the 12 engines connect — conductor, moves, preview, evaluation |
 | [Device Atlas](docs/manual/device-atlas.md) | 1305 devices indexed — search, suggest, chain building |
 | [Samples & Slicing](docs/manual/samples.md) | 3-source search, fitness critics, slice workflows |

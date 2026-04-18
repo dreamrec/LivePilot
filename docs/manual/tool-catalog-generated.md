@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog (Generated)
 
-323 tools across 45 domains.
+324 tools across 45 domains.
 
 > Auto-generated from `mcp.list_tools()`. Do not hand-edit.
 > Regenerate: `python3 scripts/generate_tool_catalog.py`
@@ -83,7 +83,7 @@
 | `toggle_cue_point` | Set or delete a cue point at the current playback position. |
 | `transpose_arrangement_notes` | Transpose notes in an arrangement clip by semitones (positive=up, negative=down). |
 
-## Atlas (6)
+## Atlas (7)
 
 | Tool | Description |
 |------|-------------|
@@ -92,6 +92,7 @@
 | `atlas_device_info` | Get complete atlas knowledge about a device — parameters, recipes, pairings, gotchas. |
 | `atlas_search` | Search the device atlas for instruments, effects, kits, or plugins. |
 | `atlas_suggest` | Suggest devices for a production intent. |
+| `reload_atlas` | Force the atlas to re-read device_atlas.json from disk. |
 | `scan_full_library` | Scan the full Ableton browser and rebuild the device atlas. |
 
 ## Automation (8)
@@ -556,4 +557,4 @@
 | `rank_wonder_variants` | Rank wonder-mode variants by taste + identity + novelty + coherence. |
 
 ---
-*Generated from 323 registered tools.*
+*Generated from 324 registered tools.*

@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog
 
-323 tools across 45 domains.
+324 tools across 45 domains.
 
 ---
 
@@ -564,7 +564,7 @@
 
 ---
 
-## Device Atlas (6)
+## Device Atlas (7)
 
 | Tool | Description |
 |------|-------------|
@@ -574,6 +574,7 @@
 | `atlas_chain_suggest` | Suggest a full device chain for a track role and genre |
 | `atlas_compare` | Compare two devices — strengths, weaknesses, recommendation |
 | `scan_full_library` | Scan Ableton browser and rebuild the device atlas |
+| `reload_atlas` | Force re-read of device_atlas.json from disk (post-rebuild refresh) |
 
 ---
 
