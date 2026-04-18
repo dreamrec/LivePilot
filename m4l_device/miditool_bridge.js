@@ -190,18 +190,249 @@ function _apply_context(obj) {
 function _handle_notes(name, args) {
     // live.miditool.in emits notes as a list of dictionaries. Each dict
     // has {pitch, start_time, duration, velocity, mute, probability,
-    // velocity_deviation, release_velocity, note_id}. We forward the
-    // list unchanged so no field gets dropped.
+    // velocity_deviation, release_velocity, note_id}.
+    //
+    // IMPORTANT: Live's MIDI Tool protocol is SYNCHRONOUS. We must emit
+    // transformed notes via live.miditool.out (outlet 1) within this same
+    // scheduler dispatch — an async UDP round trip to the server would
+    // arrive too late and trigger "Did not receive a Note dictionary in
+    // time" in Live.
+    //
+    // So the generators are implemented here in JS. The server's role is
+    // just config dispatch: set_miditool_target pushes {target_tool,
+    // target_params} to us via /miditool/config, and we use that to pick
+    // which generator runs on each fire.
     if (!args || args.length === 0) {
         latest_notes = [];
     } else {
         latest_notes = _normalize_notes(args);
     }
-    // Bundling + send happens as soon as we have BOTH a notes list and
-    // a context. Since Live fires the two outlets in quick succession,
-    // we fire the request on notes arrival and let the most-recent
-    // context ride along.
-    _send_request();
+
+    // Run the configured generator SYNCHRONOUSLY and emit immediately.
+    var out_notes;
+    try {
+        if (target_tool && _GENERATORS[target_tool]) {
+            out_notes = _GENERATORS[target_tool](latest_notes, latest_context, target_params);
+        } else {
+            // No target configured — identity passthrough.
+            out_notes = latest_notes.slice();
+        }
+    } catch (e) {
+        post("LivePilot MIDI Tool Bridge: generator '" + target_tool + "' failed: " + e + "\n");
+        out_notes = latest_notes.slice();
+    }
+    _emit_notes(out_notes);
+
+    // Also send a best-effort async ping to the server for logging/learning
+    // (the server's response is no longer load-bearing but we keep the wire
+    // for introspection via get_miditool_context()).
+    _send_request_async(out_notes);
+}
+
+
+// ── Synchronous generators (JS) ────────────────────────────────────────────
+//
+// Live 12 MIDI Tools must respond synchronously, so we can't delegate to
+// the Python server. Each generator below is a pure function:
+//   fn(notes_in: [dict], context: dict, params: dict) -> notes_out: [dict]
+//
+// Notes have Live's clip-note shape:
+//   {pitch, start_time, duration, velocity, mute, probability,
+//    velocity_deviation, release_velocity, note_id}
+
+function _gen_euclidean_rhythm(notes_in, context, params) {
+    // Bjorklund pattern over the selection. Ignores input notes (Generator).
+    var steps = Math.max(1, Math.round(params.steps || 16));
+    var pulses = Math.max(0, Math.min(steps, Math.round(params.pulses || 5)));
+    var rotation = Math.round(params.rotation || 0);
+    var note_pitch = Math.round(params.note !== undefined ? params.note : 36);
+    var velocity = (params.velocity !== undefined) ? params.velocity : 0.9;
+
+    // Selection length in beats (fallback to 4 beats if missing)
+    var sel = context.selection || {};
+    var sel_start = (typeof sel.start === "number") ? sel.start : 0.0;
+    var sel_end = (typeof sel.end === "number") ? sel.end : 4.0;
+    var sel_len = Math.max(0.01, sel_end - sel_start);
+    var step_dur = sel_len / steps;
+
+    // Compute Bjorklund pattern iteratively (euclidean distribution)
+    var pattern = _bjorklund(steps, pulses);
+
+    // Rotate
+    if (rotation !== 0) {
+        rotation = ((rotation % steps) + steps) % steps;
+        pattern = pattern.slice(rotation).concat(pattern.slice(0, rotation));
+    }
+
+    var out = [];
+    for (var i = 0; i < steps; i++) {
+        if (pattern[i] === 1) {
+            out.push({
+                pitch: note_pitch,
+                start_time: sel_start + i * step_dur,
+                duration: step_dur * 0.9,
+                velocity: velocity,
+                mute: 0,
+                probability: 1.0,
+                velocity_deviation: 0.0,
+                release_velocity: 0.5,
+                note_id: -1
+            });
+        }
+    }
+    return out;
+}
+
+function _bjorklund(steps, pulses) {
+    // Classic Bjorklund / Euclidean rhythm algorithm.
+    // Distributes `pulses` hits as evenly as possible across `steps`.
+    if (pulses <= 0) {
+        var zeros = [];
+        for (var i = 0; i < steps; i++) zeros.push(0);
+        return zeros;
+    }
+    if (pulses >= steps) {
+        var ones = [];
+        for (var i = 0; i < steps; i++) ones.push(1);
+        return ones;
+    }
+    var pattern = [];
+    var counts = [];
+    var remainders = [pulses];
+    var divisor = steps - pulses;
+    var level = 0;
+    while (true) {
+        counts.push(Math.floor(divisor / remainders[level]));
+        remainders.push(divisor % remainders[level]);
+        divisor = remainders[level];
+        level += 1;
+        if (remainders[level] <= 1) break;
+    }
+    counts.push(divisor);
+
+    function build(lev) {
+        if (lev === -1) return [0];
+        if (lev === -2) return [1];
+        var out = [];
+        for (var k = 0; k < counts[lev]; k++) {
+            out = out.concat(build(lev - 1));
+        }
+        if (remainders[lev] !== 0) {
+            out = out.concat(build(lev - 2));
+        }
+        return out;
+    }
+    pattern = build(level);
+    while (pattern.length < steps) pattern.push(0);
+    return pattern.slice(0, steps);
+}
+
+function _gen_humanize(notes_in, context, params) {
+    // Perturb timing + velocity of input notes. Deterministic with seed.
+    var timing_spread = (params.timing_spread !== undefined) ? params.timing_spread : 0.05;
+    var velocity_spread = (params.velocity_spread !== undefined) ? params.velocity_spread : 0.1;
+    var seed = (context.seed !== undefined && context.seed !== null)
+        ? parseInt(context.seed, 10)
+        : 42;
+    var rng = _make_rng(seed);
+
+    var out = [];
+    for (var i = 0; i < notes_in.length; i++) {
+        var src = notes_in[i];
+        var dt = (rng() * 2 - 1) * timing_spread;
+        var dv = (rng() * 2 - 1) * velocity_spread;
+        var copy = {};
+        for (var k in src) if (src.hasOwnProperty(k)) copy[k] = src[k];
+        copy.start_time = Math.max(0.0, (copy.start_time || 0) + dt);
+        copy.velocity = Math.max(0.0, Math.min(1.0, (copy.velocity || 0.8) + dv));
+        out.push(copy);
+    }
+    return out;
+}
+
+function _gen_tintinnabuli(notes_in, context, params) {
+    // Add a companion voice drawn from a triad. For each input note,
+    // add a note at the nearest triad member above (default) or below.
+    var triad = params.t_voice_triad || [0, 4, 7];
+    var direction = params.direction || "above";
+
+    var out = [];
+    for (var i = 0; i < notes_in.length; i++) {
+        out.push(notes_in[i]);
+    }
+    for (var j = 0; j < notes_in.length; j++) {
+        var src = notes_in[j];
+        var p = src.pitch || 60;
+        var companion_pitch;
+        if (direction === "above") {
+            // Smallest strictly-positive offset such that (p + offset) mod 12 is in triad
+            companion_pitch = p + 12;
+            for (var off = 1; off <= 12; off++) {
+                if (triad.indexOf((p + off) % 12) >= 0) {
+                    companion_pitch = p + off;
+                    break;
+                }
+            }
+        } else if (direction === "below") {
+            companion_pitch = p - 12;
+            for (var off2 = 1; off2 <= 12; off2++) {
+                if (triad.indexOf(((p - off2) % 12 + 12) % 12) >= 0) {
+                    companion_pitch = p - off2;
+                    break;
+                }
+            }
+        } else {
+            // alternate
+            companion_pitch = p + ((triad[j % triad.length] - (p % 12) + 12) % 12);
+            if (companion_pitch === p) companion_pitch += 12;
+        }
+        var comp = {};
+        for (var k in src) if (src.hasOwnProperty(k)) comp[k] = src[k];
+        comp.pitch = Math.max(0, Math.min(127, companion_pitch));
+        comp.note_id = -1;
+        out.push(comp);
+    }
+    return out;
+}
+
+function _make_rng(seed) {
+    // Simple mulberry32 PRNG — deterministic, good distribution.
+    var a = seed >>> 0;
+    return function() {
+        a = (a + 0x6D2B79F5) >>> 0;
+        var t = a;
+        t = (t ^ (t >>> 15)) * (t | 1);
+        t ^= t + ((t ^ (t >>> 7)) * (t | 61));
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+
+var _GENERATORS = {
+    euclidean_rhythm: _gen_euclidean_rhythm,
+    humanize: _gen_humanize,
+    tintinnabuli: _gen_tintinnabuli
+};
+
+
+function _send_request_async(out_notes) {
+    // Fire-and-forget ping to the server so get_miditool_context() on the
+    // MCP side sees connected:true and a recent context. Not load-bearing.
+    request_counter += 1;
+    var req_id = String(Date.now()) + "_" + String(request_counter);
+    var payload = {
+        request_id: req_id,
+        context: latest_context,
+        notes: latest_notes,
+        emitted: out_notes,
+        target_tool: target_tool,
+        target_params: target_params
+    };
+    try {
+        var encoded = base64_encode(JSON.stringify(payload));
+        outlet(0, "/miditool/request", encoded);
+    } catch (e) {
+        // Silent — this is best-effort
+    }
 }
 
 function _normalize_notes(args) {
