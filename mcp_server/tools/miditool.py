@@ -35,15 +35,21 @@ _M4L_DIR = os.path.normpath(
     )
 )
 
-# Two .amxd variants — same JS bridge, different live.miditool.in @mode.
+# Two .amxd variants. Live 12 classifies them as Generator or Transformation
+# via the 'nagg' vs 'natt' amxdtype marker in project.amxdtype. They install
+# into DIFFERENT User Library subfolders for each role — Live's MIDI Tool
+# indexer treats the folder as the authoritative category.
 _AMXD_VARIANTS = (
-    "LivePilot_MIDITool_Transform.amxd",
-    "LivePilot_MIDITool_Generate.amxd",
+    ("LivePilot_MIDITool_Generate.amxd",  "MIDI Tools/Max Generators"),
+    ("LivePilot_MIDITool_Transform.amxd", "MIDI Tools/Max Transformations"),
 )
 
-_MACOS_DEST_DIR = os.path.expanduser(
-    "~/Music/Ableton/User Library/Presets/MIDI Effects/Max MIDI Effect"
-)
+# Also copy the JS bridge alongside the .amxd so Max can find it — the
+# device references `js miditool_bridge.js` and Max searches relative to
+# the .amxd's location.
+_BRIDGE_JS = "miditool_bridge.js"
+
+_MACOS_USER_LIB = os.path.expanduser("~/Music/Ableton/User Library")
 
 _BUILD_GUIDE_REL = "m4l_device/MIDITOOL_BUILD_GUIDE.md"
 
@@ -72,20 +78,28 @@ def _get_m4l_bridge(ctx: Context):
 def install_miditool_device(ctx: Context) -> dict:
     """Install LivePilot MIDI Tool .amxd files into Ableton's User Library.
 
-    Copies both variants from ``m4l_device/`` to the macOS MIDI Effects
-    User Library:
-      - ``LivePilot_MIDITool_Transform.amxd`` → Transformations menu
-      - ``LivePilot_MIDITool_Generate.amxd``  → Generators menu
+    Copies both variants from ``m4l_device/`` to the correct MIDI Tools
+    subfolders. Live 12 classifies a device as Generator vs Transformation
+    via the ``project.amxdtype`` marker ('nagg' vs 'natt') inside the .amxd,
+    AND indexes them from these specific folders:
 
-    Variants that aren't present on disk yet are skipped (reported in
-    ``skipped``). Build them first by opening the matching ``.maxpat``
-    files in Max 9, saving as ``.amxd``, and optionally freezing to
-    bundle ``miditool_bridge.js`` — see ``m4l_device/MIDITOOL_BUILD_GUIDE.md``.
+      - ``Generate.amxd``  → ``User Library/MIDI Tools/Max Generators/``
+      - ``Transform.amxd`` → ``User Library/MIDI Tools/Max Transformations/``
 
-    Returns ``{installed: [...], skipped: [...], dest_dir}``. Raises
-    ``FileNotFoundError`` only if NEITHER variant is present.
+    Also copies ``miditool_bridge.js`` alongside each .amxd so the ``[js]``
+    object can find it (Max searches relative to the .amxd's location).
 
-    macOS-only for this chunk. Windows support is pending.
+    Build the .amxd files first with ``scripts/build_miditool_amxd.py``,
+    which patches Live's factory Max MIDI Generator/Transformation
+    templates with our bridge wiring while preserving the amxdtype marker.
+
+    After running this, right-click User Library in Live's browser →
+    Refresh. Then open a MIDI clip's Generators or Transformations
+    dropdown — ``LivePilot MIDI Tool (Generate/Transform)`` will be listed
+    under User:.
+
+    Returns ``{installed: [...], skipped: [...], user_library}``.
+    macOS-only for this chunk.
     """
     if platform.system() != "Darwin":
         raise NotImplementedError(
@@ -94,43 +108,57 @@ def install_miditool_device(ctx: Context) -> dict:
             "— copy manually until Windows support ships."
         )
 
-    os.makedirs(_MACOS_DEST_DIR, exist_ok=True)
+    bridge_src = os.path.join(_M4L_DIR, _BRIDGE_JS)
+    if not os.path.isfile(bridge_src):
+        raise FileNotFoundError(
+            f"Bridge JS not found at {bridge_src}. Source tree is missing "
+            "miditool_bridge.js — re-clone or check out the branch."
+        )
+
     installed = []
     skipped = []
-    for variant in _AMXD_VARIANTS:
-        src = os.path.join(_M4L_DIR, variant)
+    for filename, subfolder in _AMXD_VARIANTS:
+        src = os.path.join(_M4L_DIR, filename)
         if not os.path.isfile(src):
             skipped.append({
-                "variant": variant,
-                "reason": f"source not found at {src}",
+                "variant": filename,
+                "reason": f"source not found at {src}. Run "
+                          "scripts/build_miditool_amxd.py to build it.",
             })
             continue
-        dest = os.path.join(_MACOS_DEST_DIR, variant)
+        dest_dir = os.path.join(_MACOS_USER_LIB, subfolder)
+        os.makedirs(dest_dir, exist_ok=True)
+        dest = os.path.join(dest_dir, filename)
         existed_before = os.path.isfile(dest)
         shutil.copy2(src, dest)
+        # Also copy the bridge JS into the same folder so Max's [js] object
+        # can find it at runtime.
+        shutil.copy2(bridge_src, os.path.join(dest_dir, _BRIDGE_JS))
         installed.append({
-            "variant": variant,
+            "variant": filename,
             "installed_path": dest,
             "existed_before": existed_before,
+            "category": subfolder.split("/")[-1],
         })
 
     if not installed:
         raise FileNotFoundError(
-            "No .amxd variants found in m4l_device/. Build at least one "
-            f"by following {_BUILD_GUIDE_REL}, then re-run "
-            "install_miditool_device()."
+            "No .amxd variants found in m4l_device/. Run "
+            "scripts/build_miditool_amxd.py first to build them from "
+            "Live's factory templates, then re-run install_miditool_device()."
         )
 
     return {
         "installed": installed,
         "skipped": skipped,
-        "dest_dir": _MACOS_DEST_DIR,
+        "user_library": _MACOS_USER_LIB,
         "hint": (
-            "Devices now appear in Live's browser under MIDI Effects > "
-            "Max MIDI Effect. Drop Transform onto an existing-notes clip "
-            "(Transformations button), Generate onto an empty selection "
-            "(Generators button), then call set_miditool_target() to "
-            "configure which LivePilot generator handles the request."
+            "Right-click User Library in Live's browser → Refresh, then "
+            "open a MIDI clip's Generators (for Generate.amxd) or "
+            "Transformations (for Transform.amxd) dropdown. The LivePilot "
+            "devices appear in the User section. Call set_miditool_target() "
+            "to configure which generator handles incoming requests "
+            "before firing the tool on a clip."
         ),
     }
 
