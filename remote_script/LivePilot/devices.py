@@ -1232,3 +1232,97 @@ def get_wavetable_mod_matrix(song, params):
                     routings.append({"source": src, "target": str(tgt),
                                      "amount": amt})
     return {"routings": routings}
+
+
+# ── Device A/B compare (Live 12.3+) ─────────────────────────────────────
+#
+# Live 12.3 added A/B compare on every device but the LOM surface was not
+# comprehensively documented in the 12.3 release notes. The exact attribute
+# names vary across 12.3.x patches, so all three handlers use hasattr probes
+# over several plausible names. If the Live build doesn't expose the API,
+# get_device_ab_state returns "unknown" with a diagnostic note and the
+# toggle/copy handlers raise a clear error instead of faking the behavior
+# through UI shortcuts.
+
+def _probe_ab_attr(device, *names):
+    """Return the first attribute name that exists on device, or None."""
+    for n in names:
+        if hasattr(device, n):
+            return n
+    return None
+
+
+@register("get_device_ab_state")
+def get_device_ab_state(song, params):
+    from .version_detect import has_feature
+    if not has_feature("device_ab_compare"):
+        raise RuntimeError("Device A/B compare requires Live 12.3+.")
+    track = get_track(song, int(params["track_index"]))
+    device = get_device(track, int(params["device_index"]))
+
+    # Probe for the A/B state attribute — names vary by Live 12.3.x patch
+    state_attr = _probe_ab_attr(device, "ab_state", "current_ab_state",
+                                 "ab_current", "compare_state")
+    has_b_attr = _probe_ab_attr(device, "has_b_state", "has_ab_state",
+                                 "ab_has_b")
+    if state_attr is None:
+        return {"current_state": "unknown", "has_b": False,
+                "note": "LOM A/B attribute not exposed; UI-only in this Live build."}
+    state_val = getattr(device, state_attr)
+    # Normalize boolean or int to "A"/"B"
+    if isinstance(state_val, bool):
+        current = "B" if state_val else "A"
+    elif isinstance(state_val, int):
+        current = "B" if state_val else "A"
+    else:
+        current = str(state_val)
+    has_b = bool(getattr(device, has_b_attr, True)) if has_b_attr else True
+    return {"current_state": current, "has_b": has_b}
+
+
+@register("toggle_device_ab")
+def toggle_device_ab(song, params):
+    from .version_detect import has_feature
+    if not has_feature("device_ab_compare"):
+        raise RuntimeError("Device A/B compare requires Live 12.3+.")
+    track = get_track(song, int(params["track_index"]))
+    device = get_device(track, int(params["device_index"]))
+
+    toggle_fn = _probe_ab_attr(device, "toggle_ab", "toggle_ab_state",
+                                "swap_ab")
+    if toggle_fn is None:
+        raise RuntimeError(
+            "Device has no A/B toggle method in this Live version."
+        )
+    getattr(device, toggle_fn)()
+    # Re-read state (best-effort)
+    state_attr = _probe_ab_attr(device, "ab_state", "current_ab_state",
+                                 "ab_current", "compare_state")
+    if state_attr is None:
+        return {"current_state": "unknown"}
+    v = getattr(device, state_attr)
+    current = ("B" if (v if isinstance(v, bool) else bool(v)) else "A")
+    return {"current_state": current}
+
+
+@register("copy_device_state")
+def copy_device_state(song, params):
+    from .version_detect import has_feature
+    if not has_feature("device_ab_compare"):
+        raise RuntimeError("Device A/B compare requires Live 12.3+.")
+    track = get_track(song, int(params["track_index"]))
+    device = get_device(track, int(params["device_index"]))
+
+    direction = str(params["direction"]).lower()
+    if direction == "a_to_b":
+        fn = _probe_ab_attr(device, "copy_a_to_b", "copy_to_b")
+    elif direction == "b_to_a":
+        fn = _probe_ab_attr(device, "copy_b_to_a", "copy_to_a")
+    else:
+        raise ValueError("direction must be 'a_to_b' or 'b_to_a'")
+    if fn is None:
+        raise RuntimeError(
+            "Device has no copy-%s method in this Live version." % direction
+        )
+    getattr(device, fn)()
+    return {"ok": True, "direction": direction}

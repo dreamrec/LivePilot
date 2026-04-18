@@ -61,6 +61,8 @@ REMOTE_COMMANDS: frozenset[str] = frozenset({
     "get_wavetable_mod_targets", "add_wavetable_mod_route",
     "set_wavetable_mod_amount", "get_wavetable_mod_amount",
     "get_wavetable_mod_matrix",
+    # device A/B compare (Live 12.3+)
+    "get_device_ab_state", "toggle_device_ab", "copy_device_state",
     # clip_automation (3)
     "get_clip_automation", "set_clip_automation", "clear_clip_automation",
     # browser (6)

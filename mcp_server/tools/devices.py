@@ -1135,3 +1135,49 @@ def get_wavetable_mod_matrix(
         "track_index": track_index,
         "device_index": device_index,
     })
+
+
+# ── Device A/B compare (Live 12.3+) ─────────────────────────────────────
+
+
+@mcp.tool()
+def get_device_ab_state(ctx: Context, track_index: int, device_index: int) -> dict:
+    """Read a device's A/B compare state (Live 12.3+).
+
+    Returns current_state ('A'|'B'|'unknown') and has_b (bool).
+    If the LOM doesn't expose A/B attributes, returns 'unknown' with
+    a 'note' field explaining the limitation.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    return _get_ableton(ctx).send_command("get_device_ab_state",
+        {"track_index": track_index, "device_index": device_index})
+
+
+@mcp.tool()
+def toggle_device_ab(ctx: Context, track_index: int, device_index: int) -> dict:
+    """Swap a device's A/B state (Live 12.3+)."""
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    return _get_ableton(ctx).send_command("toggle_device_ab",
+        {"track_index": track_index, "device_index": device_index})
+
+
+@mcp.tool()
+def copy_device_state(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+    direction: str,
+) -> dict:
+    """Copy one A/B state to the other (Live 12.3+).
+
+    direction: 'a_to_b' or 'b_to_a'.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    if direction not in ("a_to_b", "b_to_a"):
+        raise ValueError("direction must be 'a_to_b' or 'b_to_a'")
+    return _get_ableton(ctx).send_command("copy_device_state",
+        {"track_index": track_index, "device_index": device_index,
+         "direction": direction})
