@@ -1,5 +1,75 @@
 # Changelog
 
+## 1.12.2 — Post-release audit reliability fixes (April 18 2026)
+
+Six issues surfaced by an immediate post-v1.12.0 deep audit (parallel
+code-reviewer subagents + manual verification). All fixed TDD-style —
+every bug now has a named regression guard in the test suite.
+
+**No tool count change** (still 398). **+11 regression tests**
+(2195 → 2206 passing, 1 skipped, 0 failed).
+
+### Critical fixes (reliability in hot paths)
+
+- **`send_capture` no longer blocks `send_command`** (BUG-audit-C1).
+  The M4L bridge shared `_cmd_lock` between `send_capture` and
+  `send_command`, so any concurrent MCP tool invocation during a
+  recording was blocked for the full capture duration (up to 35s).
+  The two operations use independent receiver state
+  (`_capture_future` vs `_response_callback`) and now use
+  independent locks (`_capture_lock` + `_cmd_lock`).
+  [`mcp_server/m4l_bridge.py:780-790, 912-913`](mcp_server/m4l_bridge.py).
+- **`_parse_osc` no longer crashes on malformed packets**
+  (BUG-audit-C2). `data.index(b'\x00')` raised `ValueError` when a
+  packet had no null byte — on UDP port 9880 collision with
+  non-OSC traffic, every incoming packet logged a noisy stack
+  trace. Replaced with `data.find(...)` + bounds checks on every
+  offset; malformed packets drop silently.
+  [`mcp_server/m4l_bridge.py:513-565`](mcp_server/m4l_bridge.py).
+- **`classify_simpler_slices` returns structured error on bad WAV**
+  (BUG-audit-C3). `sf.read()` was unguarded — corrupt or missing
+  files raised `soundfile.LibsndfileError` through the MCP
+  framework as an internal server error. Every other tool in the
+  module returns `{"error": ...}` dicts. Now wrapped in
+  `try/except` for consistent error shape.
+  [`mcp_server/tools/analyzer.py:571-581`](mcp_server/tools/analyzer.py).
+
+### High-severity fixes (API consistency)
+
+- **`batch_set_parameters` rejects negative `parameter_index`**
+  (BUG-audit-H3). `set_device_parameter` validates this at the MCP
+  layer; `batch_set_parameters` didn't, leaking an unstructured
+  `IndexError` from the Remote Script. Now rejected with a clear
+  ValueError at normalisation time.
+  [`mcp_server/tools/devices.py:318-328`](mcp_server/tools/devices.py).
+
+### Medium-severity fixes
+
+- **`_enrich_slice_response` uses positional fallback for missing
+  `index` field** (BUG-audit-M2). Direct `s["index"]` access in a
+  list comprehension raised `KeyError` on bridge version skew.
+  Now uses `s.get("index", i)` with `enumerate` fallback.
+  [`mcp_server/tools/analyzer.py:57-62`](mcp_server/tools/analyzer.py).
+- **`test_identify_returns_none_for_free_port` is no longer flaky**
+  (BUG-audit-M4). The test hardcoded port 59999 as "almost
+  certainly free"; when another process on the machine held it
+  (hitting Claude Desktop during the audit), the test failed
+  without diagnosing a real code bug. Now uses
+  `socket.bind(("127.0.0.1", 0))` to get a kernel-assigned free
+  port, releases it, then verifies.
+  [`tests/test_startup_safety.py:50-70`](tests/test_startup_safety.py).
+
+### .amxd binary patched in place
+
+- `m4l_device/LivePilot_Analyzer.amxd` had the `ping` response
+  version string patched from `"1.12.0"` → `"1.12.2"` via direct
+  byte replacement (same-length delta, size preserved). No Max
+  re-export needed.
+- `m4l_device/livepilot_bridge.js` source version also updated for
+  the next full rebuild.
+
+---
+
 ## 1.12.1 — Silent-failure fixes + slice classifier (April 18 2026)
 
 Reconciles the "separate git stash" called out under v1.12.0's Known
