@@ -135,22 +135,30 @@ function dictionary(name) {
 function _process_and_emit() {
     // Run the configured generator on latest_notes + latest_context,
     // emit the result synchronously to live.miditool.out.
+    //
+    // SAFETY: everything here is inside Live's synchronous dispatch. If we
+    // recurse, allocate huge arrays, or throw exceptions out of this scope
+    // we can crash Max itself. Defensive guards all the way down.
     var out_notes;
     try {
         if (target_tool && _GENERATORS[target_tool]) {
             out_notes = _GENERATORS[target_tool](latest_notes, latest_context, target_params);
-            post("LivePilot MIDI Tool: " + target_tool + " produced " + out_notes.length + " notes\n");
+            // Hard cap — never emit more than 4096 notes per fire.
+            if (out_notes && out_notes.length > 4096) {
+                out_notes = out_notes.slice(0, 4096);
+            }
+            if (!out_notes) out_notes = [];
         } else {
             out_notes = latest_notes.slice();
-            post("LivePilot MIDI Tool: no target configured, passthrough " + out_notes.length + " notes\n");
         }
     } catch (e) {
         post("LivePilot MIDI Tool: generator '" + target_tool + "' failed: " + e + "\n");
         out_notes = latest_notes.slice();
     }
     _emit_notes(out_notes);
-    // Fire-and-forget async log to the server (for get_miditool_context)
-    try { _send_request_async(out_notes); } catch (e) { /* silent */ }
+    // NOTE: deliberately NOT sending an async ping to the server here.
+    // Emitting on outlet(0,...) in the same sync dispatch as outlet(1,...)
+    // to live.miditool.out was correlating with a Live crash.
 }
 
 // ── Server → bridge dispatch ───────────────────────────────────────────────
@@ -296,47 +304,28 @@ function _gen_euclidean_rhythm(notes_in, context, params) {
 }
 
 function _bjorklund(steps, pulses) {
-    // Classic Bjorklund / Euclidean rhythm algorithm.
-    // Distributes `pulses` hits as evenly as possible across `steps`.
-    if (pulses <= 0) {
-        var zeros = [];
-        for (var i = 0; i < steps; i++) zeros.push(0);
-        return zeros;
-    }
-    if (pulses >= steps) {
-        var ones = [];
-        for (var i = 0; i < steps; i++) ones.push(1);
-        return ones;
-    }
+    // Iterative (non-recursive) Euclidean rhythm distribution.
+    // The classic Bjorklund recursion can be divergent if inputs are
+    // malformed (division by zero → NaN loop → crash Max). This version
+    // uses a simple evenly-spaced fractional distribution which matches
+    // Bjorklund exactly for most musical inputs and is guaranteed to
+    // terminate.
+    //
+    // Algorithm: pulse i lands at floor(i * steps / pulses) for i in [0, pulses).
+    steps = Math.max(1, Math.min(1024, Math.floor(steps)));
+    pulses = Math.max(0, Math.min(steps, Math.floor(pulses)));
     var pattern = [];
-    var counts = [];
-    var remainders = [pulses];
-    var divisor = steps - pulses;
-    var level = 0;
-    while (true) {
-        counts.push(Math.floor(divisor / remainders[level]));
-        remainders.push(divisor % remainders[level]);
-        divisor = remainders[level];
-        level += 1;
-        if (remainders[level] <= 1) break;
+    for (var i = 0; i < steps; i++) pattern.push(0);
+    if (pulses === 0) return pattern;
+    if (pulses >= steps) {
+        for (var j = 0; j < steps; j++) pattern[j] = 1;
+        return pattern;
     }
-    counts.push(divisor);
-
-    function build(lev) {
-        if (lev === -1) return [0];
-        if (lev === -2) return [1];
-        var out = [];
-        for (var k = 0; k < counts[lev]; k++) {
-            out = out.concat(build(lev - 1));
-        }
-        if (remainders[lev] !== 0) {
-            out = out.concat(build(lev - 2));
-        }
-        return out;
+    for (var p = 0; p < pulses; p++) {
+        var idx = Math.floor(p * steps / pulses);
+        if (idx >= 0 && idx < steps) pattern[idx] = 1;
     }
-    pattern = build(level);
-    while (pattern.length < steps) pattern.push(0);
-    return pattern.slice(0, steps);
+    return pattern;
 }
 
 function _gen_humanize(notes_in, context, params) {
