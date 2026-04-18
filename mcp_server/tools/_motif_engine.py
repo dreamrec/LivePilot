@@ -201,24 +201,39 @@ def detect_motifs(
         salience = _score_salience(pattern, len(occurrences), total_note_count)
         fatigue = _score_fatigue(len(occurrences), total_bars)
 
-        # Get representative pitches from first occurrence
+        # Get representative pitches + inter-onset intervals from first occurrence.
+        # Rhythm is the list of start_time deltas between successive notes in
+        # the pattern window; until v1.10.9 this field was left empty with a
+        # "TODO: Phase 3" marker, which is what forced Hook Hunter's rhythm
+        # side to fall back to drum-track-name regex. Populating it here lets
+        # downstream code actually reason about rhythmic distinctiveness.
         first_occ = occurrences[0] if occurrences else {}
         first_track = first_occ.get("track", 0)
         first_pos = first_occ.get("start_position", 0)
-        rep_pitches = []
+        rep_pitches: list[int] = []
+        rhythm_intervals: list[float] = []
         if first_track in notes_by_track:
             sorted_notes = sorted(notes_by_track[first_track],
                                   key=lambda n: n.get("start_time", 0))
+            span = min(len(pattern) + 1, len(sorted_notes) - first_pos)
             rep_pitches = [
                 sorted_notes[first_pos + j].get("pitch", 60)
-                for j in range(min(len(pattern) + 1, len(sorted_notes) - first_pos))
+                for j in range(span)
+            ]
+            rhythm_intervals = [
+                round(
+                    float(sorted_notes[first_pos + j + 1].get("start_time", 0.0))
+                    - float(sorted_notes[first_pos + j].get("start_time", 0.0)),
+                    4,
+                )
+                for j in range(span - 1)
             ]
 
         motif = MotifUnit(
             motif_id=f"motif_{len(motifs):03d}",
             kind="melodic" if any(abs(i) > 0 for i in pattern) else "rhythmic",
             intervals=list(pattern),
-            rhythm=[],  # TODO: rhythm detection in Phase 3
+            rhythm=rhythm_intervals,
             representative_pitches=rep_pitches,
             occurrences=occurrences,
             salience=salience,

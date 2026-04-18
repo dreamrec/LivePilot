@@ -1,5 +1,133 @@
 # Changelog
 
+## 1.10.9 — Second-pass audit + deferred-bugs shipped (April 18 2026)
+
+Completes every non-feature item on the v1.10.8 audit backlog. 2116 → 2132
+passing tests (+16 regression guards). 324 → 325 tools (`check_clip_key_consistency`
+lands from BUG-D1). Every deferred BUG-C and BUG-D entry either ships or is
+scoped to a follow-up feature; BUG-C4 is filed upstream as
+[PrefectHQ/fastmcp#3967](https://github.com/PrefectHQ/fastmcp/issues/3967).
+
+### Ship-stoppers fixed
+
+- **`send_capture` phantom 35s hang when receiver is None** —
+  [`mcp_server/m4l_bridge.py:441`](mcp_server/m4l_bridge.py). `send_command`
+  had a receiver-None guard; `send_capture` didn't. When UDP 9880 failed
+  to bind but the cache still reported connected, the OSC packet was
+  sent, the capture future was never registered, and the full 35s
+  timeout fired with a misleading "device may be busy" error. Added the
+  matching 5-line guard so the real cause surfaces immediately.
+- **`utils.py` stale after Control Surface toggle** —
+  [`remote_script/LivePilot/__init__.py:43`](remote_script/LivePilot/__init__.py).
+  Every handler does `from .utils import get_track, get_device`.
+  `importlib.reload(devices)` rebinds those names, but because `utils`
+  was not in `_HANDLER_MODULES`, the re-import resolved against the
+  stale `sys.modules["LivePilot.utils"]`. Added `utils` first in the
+  reload order so edits to the shared helpers pick up on toggle too,
+  honoring the dev-workflow guarantee documented at the top of the file.
+
+### New tools
+
+- **`check_clip_key_consistency`** (BUG-D1) — parses Splice-style
+  filename key tokens (`_D#min`, `_Ebmaj`, `_Cm`, …), cross-checks
+  against `get_detected_key`, returns the exact `set_clip_pitch(coarse=±N)`
+  call that would realign on mismatch. Handles `#`/`b` accidentals,
+  `min`/`m`/`maj` suffixes, absent tokens gracefully.
+- **`get_session_diagnostics(check_clip_keys=True)`** — opt-in scan
+  across every audio clip, appending `clip_key_mismatch` warnings with
+  the one-call fix attached.
+
+### Features shipped
+
+- **Session continuity persistence wired at startup** (BUG from external
+  audit). `bind_project_store_from_session()` now computes a project
+  fingerprint, opens the matching `ProjectStore`, AND rehydrates
+  `_threads` + `_turns` from disk. Wired into `server.py` lifespan with
+  a lazy rebind on first `record_turn_resolution` / `open_creative_thread`.
+  Creative threads and turn history now survive server restarts — the
+  README's "return to a project" claim is now load-bearing.
+- **Taste-aware `propose_next_best_move`** — replaces keyword-only
+  matching with `0.55 × keyword + 0.30 × taste_alignment + 0.15 ×
+  (1 − avoidance) ± 0.10 × family_bonus`. Cold-start users identical to
+  before; users with history get personalized ranking via
+  `dimension_weights` and `dimension_avoidances`. New return fields:
+  `score_breakdown`, `taste_active`, `taste_evidence_count`.
+- **Evaluation `taste_fit`** — previously hardcoded to `0.0`. Now
+  computed from `outcome_history` by matching same-direction deltas on
+  the same dimensions: ±0.2 per kept/undone match, neutral 0.5 baseline.
+- **`AutomationGraph.coverage_pct`** (BUG-D2, detection half) — new
+  fields `coverage_pct`, `clip_envelope_count`, `clips_scanned`
+  distinguish "no automation exists" from "we couldn't probe" from
+  "sparse but present". Surfaced in `get_project_brain_summary` as
+  `automation_coverage_pct`.
+
+### Refactor (BUG-C1)
+
+- **`mcp_server/tools/analyzer.py`** 1069 → 913 LOC. All 32
+  `@mcp.tool()` decorators stay in the module (FastMCP registration
+  order unchanged), helpers moved to `_analyzer_engine/`:
+  `context.py` (SpectralCache/bridge accessors, analyzer health check),
+  `sample.py` (Simpler post-load hygiene, filename heuristics),
+  `flucoma.py` (FluCoMa hint text, pitch-name table). Same
+  package-facade pattern as `_composition_engine` and `_agent_os_engine`.
+- **`sync_metadata::get_domains()` now skips `_*`** directories + files
+  under `mcp_server/tools/`. Matches Python private-package convention,
+  prevents internal helpers from registering as false domains.
+
+### Resilience (BUG-C3)
+
+- **`_get_all_tools()` probe chain extended** in `mcp_server/server.py`
+  to 4 paths: existing `_tool_manager._tools` and
+  `_local_provider._components`, plus speculative 3.3+ rename
+  `_local_provider._tools` and the future public `mcp.list_tools()`.
+  Each wrapped in try/except. All-empty fall-through now prints
+  `fastmcp.__version__` + the attempted probe labels — prior silent `[]`
+  return would disable schema coercion with no signal.
+- **New `_assert_tool_registry_accessible()`** self-test runs at module
+  import. Empty registry or a count mismatch against
+  `tests/test_tools_contract.py` fails loudly via stderr.
+
+### Upstream (BUG-C4)
+
+- **FastMCP feature request filed** —
+  [PrefectHQ/fastmcp#3967](https://github.com/PrefectHQ/fastmcp/issues/3967)
+  "Feature request: public tool-enumeration API". Migration is a
+  no-op once upstream lands a `mcp.list_tools()` or `mcp.tools`
+  surface — the probe chain already anticipates both.
+
+### Metadata + docs
+
+- **`sync_metadata.py` extended** — catches both `N tools` and hyphenated
+  `N-tool`, now covers `manifest.json` + `docs/manual/intelligence.md` +
+  `.claude-plugin/marketplace.json`. New prose-claim checks for
+  bridge-command count, enriched-device YAML count, and `GENRE_DEFAULTS`
+  key count — every narrative number now traces to a code derivation.
+- **README / CLAUDE.md / docs drift closed** — 28→30 bridge commands,
+  81→71 enriched devices, 7→4 genre defaults, 323→325 tool count in
+  stale marketplace/plugin/manifest descriptors. Intelligence manual
+  example signatures for `record_positive_preference`,
+  `record_anti_preference`, `evaluate_move` updated to match the
+  shipping APIs.
+- **Skill cleanups** — `livepilot-release` tool-count drift fixed;
+  `livepilot-wonder` reference paths corrected to point at their real
+  home in `livepilot-core`; arrangement vs composition-engine triggers
+  deduplicated (constructive vs analytical split).
+- **New test** `tests/test_claim_consistency.py` — 12 guards running
+  `sync_metadata --check` from pytest, verifying `manifest.json` and
+  `intelligence.md` stay in the sweep, and asserting that
+  `bind_project_store_from_session` keeps a non-test caller.
+
+### Quality-of-life
+
+- **`scripts/test.sh`** — blessed test entrypoint always uses `.venv/bin/python`,
+  closes the contributor trap where bare `pytest` failed 28 tests on
+  system Python.
+- **`.gitignore`** additions: `m4l_device/*.pre-presentation-backup`,
+  `m4l_device/*.pre-*-backup`, `.mcp.json.disabled`.
+- **Stale `livepilot-1.10.5.tgz`** removed from the repo root.
+
+---
+
 ## 1.10.8 — Deep audit fix pass (April 18 2026)
 
 Outcome of a cross-subsystem audit (Remote Script, MCP server, M4L bridge,

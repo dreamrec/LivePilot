@@ -1,6 +1,6 @@
 # The Intelligence Layer
 
-LivePilot has 12 engines that sit on top of 323 tools. This chapter explains how they work together — not what each one does in isolation, but how a production request flows through them.
+LivePilot has 12 engines that sit on top of 325 tools. This chapter explains how they work together — not what each one does in isolation, but how a production request flows through them.
 
 ---
 
@@ -202,8 +202,8 @@ get_taste_graph()
 ```
 
 ```
-record_positive_preference(dimension="punch", context="drum bus compression")
-record_anti_preference(dimension="harsh_highs", context="too much air EQ")
+record_positive_preference(dimension="punch", direction="increase", evidence="drum bus compression")
+record_anti_preference(dimension="harsh_highs", direction="increase")
 ```
 
 Two producers using the same tools get different recommendations because their taste graphs diverge.
@@ -216,13 +216,13 @@ Every engine follows: measure before → act → measure after → compare.
 
 ```
 evaluate_move(
-    move_description="Added parallel compression to drums",
-    before_snapshot={...},
-    after_snapshot={...}
+    goal_vector={"targets": {"punch": 0.7, "cohesion": 0.6}},
+    before_snapshot={"spectrum": {...}, "rms": -14.2, "peak": -3.1},
+    after_snapshot={"spectrum": {...}, "rms": -13.1, "peak": -2.0}
 )
-→ improved: ["punch", "cohesion"]
-→ degraded: ["headroom"]
-→ recommendation: "keep — punch improvement outweighs slight headroom reduction"
+→ score: 0.78
+→ keep_change: true
+→ reasoning: "punch improvement outweighs slight headroom reduction"
 ```
 
 If a change made things worse, the system flags it before you move on.

@@ -1,6 +1,6 @@
 ---
 name: livepilot-composition-engine
-description: This skill should be used when the user asks to "analyze song structure", "improve transitions", "check song flow", "plan an arrangement", "detect motifs", "transform a section", or wants compositional analysis, transition planning, and translation checking.
+description: Compositional analysis, transition planning, and translation checking — the diagnostic/analytical side of form. Use when the user wants to "analyze song structure", "improve transitions", "check song flow", "detect motifs", "transform a section", or "score phrase impact". For constructive arrangement work (arrange, build a verse, add an intro, scene-to-arrangement), use livepilot-arrangement instead.
 ---
 
 # Composition Engine — Structure, Transitions, and Form

@@ -18,6 +18,14 @@ build/
 livepilot.mcpb
 livepilot-*.tgz
 
+# .amxd freeze-workflow scratch files (thin/fat variants kept locally only)
+m4l_device/*.pre-presentation-backup
+m4l_device/*.amxd.backup
+m4l_device/*.pre-*-backup
+
+# Local-only toggles
+.mcp.json.disabled
+
 # Environment
 .env
 .env.*

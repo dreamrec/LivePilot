@@ -28,30 +28,30 @@ Run this checklist EVERY time the user says "update everything", "push", "releas
 
 ## 2. Tool Count (must ALL match)
 
-Current: **323 tools across 45 domains**.
-Core (no M4L): **289**. Bridge (M4L): **30** (backed by 28 bridge commands).
+Current: **325 tools across 45 domains**.
+Spectral/analyzer (bridge-only): **32**. All others: **292** (work without bridge, some with graceful fallbacks). Backed by 30 bridge commands.
 
 Verify: `grep -rc "@mcp.tool" mcp_server/tools/ | grep -v ":0" | awk -F: '{sum+=$2} END{print sum}'`
 
 Files that reference tool count:
-- [ ] `README.md` — header ("323 tools. 45 domains"), bridge section ("281 core...36 bridge")
+- [ ] `README.md` — header ("325 tools. 45 domains"), bridge section ("32 spectral/analyzer tools require bridge")
 - [ ] `package.json` → `"description"`
 - [ ] `server.json` → `"description"`
 - [ ] `manifest.json` → `"description"`
 - [ ] `livepilot/.Codex-plugin/plugin.json` → `"description"` (primary Codex manifest)
 - [ ] `livepilot/.claude-plugin/plugin.json` → `"description"` (must match Codex plugin)
 - [ ] `.claude-plugin/marketplace.json` → `"description"`
-- [ ] `CLAUDE.md` → "323 tools across 45 domains"
+- [ ] `CLAUDE.md` → "325 tools across 45 domains"
 - [ ] `CONTRIBUTING.md` → tool count in intro
 - [ ] `livepilot/skills/livepilot-core/SKILL.md` — tool/domain count
 - [ ] `livepilot/skills/livepilot-core/references/overview.md` — tool/domain count
 - [ ] `docs/manual/index.md` — domain table with correct per-domain counts
-- [ ] `docs/manual/getting-started.md` — "281 core tools...36 bridge"
+- [ ] `docs/manual/getting-started.md` — bridge copy (avoid hard numeric core/bridge split — use "32 spectral tools require bridge")
 - [ ] `docs/manual/tool-reference.md` — all domains present with correct counts
 - [ ] `docs/manual/tool-catalog.md` — all tools present (CI-tested)
 - [ ] `docs/manual/tool-catalog-generated.md` — regenerated from source
 - [ ] `docs/TOOL_REFERENCE.md` — all domains present with correct counts
-- [ ] `docs/M4L_BRIDGE.md` — "281 core tools...36 bridge"
+- [ ] `docs/M4L_BRIDGE.md` — bridge copy (avoid hard numeric core/bridge split — use "32 spectral tools require bridge")
 - [ ] `docs/social-banner.html`
 - [ ] `tests/test_tools_contract.py` → expected total count
 - [ ] `tests/test_skill_contracts.py` → catalog sync test passes
@@ -93,7 +93,7 @@ Current: **45 domains**: transport, tracks, clips, notes, devices, scenes, mixin
 
 - [ ] `README.md` — features match current capabilities, "Coming" section is accurate
 - [ ] `docs/manual/getting-started.md` — install instructions current
-- [ ] `docs/manual/tool-reference.md` — all 45 domains listed, all 323 tools present
+- [ ] `docs/manual/tool-reference.md` — all 45 domains listed, all 325 tools present
 - [ ] `docs/TOOL_REFERENCE.md` — all 45 domains present with correct counts
 - [ ] `docs/M4L_BRIDGE.md` — architecture accurate, core/bridge counts correct
 

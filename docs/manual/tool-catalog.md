@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog
 
-324 tools across 45 domains.
+325 tools across 45 domains.
 
 ---
 
@@ -43,7 +43,7 @@
 | `flatten_track` | Flatten frozen track (commit audio permanently) |
 | `get_freeze_status` | Check if track is frozen |
 
-## Clips (12)
+## Clips (13)
 
 | Tool | Description |
 |------|-------------|
@@ -59,6 +59,7 @@
 | `set_clip_launch` | Launch mode and quantization |
 | `set_clip_warp_mode` | Set warp algorithm |
 | `set_clip_pitch` | Transpose an audio clip (semitones/cents) + gain |
+| `check_clip_key_consistency` | Cross-check a clip's filename-encoded key against the detected session key (Splice-style `_D#min.wav` tokens); returns the exact `set_clip_pitch` call to realign on mismatch (BUG-D1) |
 
 ## Notes (8)
 

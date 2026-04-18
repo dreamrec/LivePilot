@@ -205,16 +205,35 @@ class RoleGraph:
 
 @dataclass
 class AutomationGraph:
-    """Automation presence and gesture density."""
+    """Automation presence and gesture density.
+
+    ``coverage_pct`` is the fraction of scanned clips that have at least
+    one automation envelope (0.0–1.0). Introduced in v1.10.9 to close
+    BUG-D2's "is this session missing automation?" signal — downstream
+    engines (Wonder Mode, Sound Design, etc.) can branch on a low
+    coverage value to recommend filter sweeps, volume crescendos, and
+    dub-style handoffs that the producer hasn't written yet.
+
+    ``clip_envelope_count`` is the raw total of per-clip envelopes
+    discovered; distinguishes "no automation in the project at all"
+    (count=0) from "automation exists but is lightly used" (count>0 but
+    coverage_pct<0.2).
+    """
 
     automated_params: list[dict] = field(default_factory=list)
     density_by_section: dict[str, float] = field(default_factory=dict)
+    coverage_pct: float = 0.0
+    clip_envelope_count: int = 0
+    clips_scanned: int = 0
     freshness: FreshnessInfo = field(default_factory=FreshnessInfo)
 
     def to_dict(self) -> dict:
         return {
             "automated_params": list(self.automated_params),
             "density_by_section": dict(self.density_by_section),
+            "coverage_pct": round(self.coverage_pct, 3),
+            "clip_envelope_count": self.clip_envelope_count,
+            "clips_scanned": self.clips_scanned,
             "freshness": self.freshness.to_dict(),
         }
 

@@ -65,6 +65,7 @@ def record_turn_resolution(
     identity_effect: "preserves", "evolves", "contrasts", or "resets"
     user_sentiment: "loved", "liked", "neutral", "disliked", or "hated"
     """
+    tracker.ensure_project_store_bound(ctx)
     turn = tracker.record_turn_resolution(
         request_text=request_text,
         outcome=outcome,
@@ -130,6 +131,7 @@ def open_creative_thread(
     if not description.strip():
         return {"error": "description cannot be empty"}
 
+    tracker.ensure_project_store_bound(ctx)
     thread = tracker.open_thread(description, domain=domain, priority=priority)
     return thread.to_dict()
 

@@ -17,7 +17,7 @@
 
 <p align="center">
   An agentic production system for Ableton Live 12.<br>
-  324 tools. 45 domains. Device atlas. Splice integration. Auto-composition. Spectral perception. Technique memory.
+  325 tools. 45 domains. Device atlas. Splice integration. Auto-composition. Spectral perception. Technique memory.
 </p>
 
 <br>
@@ -38,7 +38,7 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 | Layer | What it provides |
 |-------|-----------------|
 | **Deterministic Tools** | Direct control: transport, tracks, clips, notes, devices, scenes, mixing, arrangement, browser, automation |
-| **Device Atlas** | Knowledge of every device in Ableton's library — 1305 devices indexed by name, URI, category, tag, and genre. 81 enriched with sonic intelligence. 683 drum kits mapped |
+| **Device Atlas** | Knowledge of every device in Ableton's library — 1305 devices indexed by name, URI, category, tag, and genre. 71 enriched with sonic intelligence. 683 drum kits mapped |
 | **Sample Engine** | Three-source sample intelligence — searches Ableton's browser, your filesystem, and Splice's catalog simultaneously. 6 fitness critics score every result. 29 processing techniques |
 | **Spectral Perception** | Real-time ears via M4L — 8-band FFT, RMS/peak metering, Krumhansl-Schmuckler key detection, pitch tracking. Closes the feedback loop so the AI hears its own changes |
 | **Technique Memory** | Persistent library of production decisions. Save a beat pattern, device chain, or mix template. Recall by mood, genre, or texture across sessions |
@@ -58,7 +58,7 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 │                                                                      │
 │  Device Atlas            8-band FFT              recall by mood,     │
 │  1305 devices            RMS / peak              genre, texture      │
-│  81 enriched             pitch tracking          29 techniques       │
+│  71 enriched             pitch tracking          29 techniques       │
 │  683 drum kits           key detection           replay into session │
 │                                                                      │
 │  Sample Engine           Corpus Intelligence     Taste Graph          │
@@ -79,7 +79,7 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 │         └─────────────────┼──────────────────┘                       │
 │                           ▼                                          │
 │                  ┌─────────────────┐                                  │
-│                  │   324 MCP Tools  │                                  │
+│                  │   325 MCP Tools  │                                  │
 │                  │   45 domains     │                                  │
 │                  └────────┬────────┘                                  │
 │                           │                                          │
@@ -100,15 +100,15 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 
 **MCP Server** (`mcp_server/`) — Python FastMCP server. Validates inputs, routes commands to the Remote Script over TCP, manages the M4L bridge, runs the atlas, sample engine, composer, and all intelligence engines. This is what your AI client connects to.
 
-**M4L Bridge** (`m4l_device/`) — Optional Max for Live Audio Effect on the master track. Provides deep LOM access through Max's LiveAPI that the ControlSurface API can't reach. UDP 9880 (M4L to server) carries spectral data and LiveAPI responses. OSC 9881 (server to M4L) sends commands. 36 bridge tools (backed by 29 bridge commands) for hidden parameters, Simpler internals, warp markers, display values, and Simpler warp / Compressor sidechain writes that live on child objects Python can't reach.
+**M4L Bridge** (`m4l_device/`) — Optional Max for Live Audio Effect on the master track. Provides deep LOM access through Max's LiveAPI that the ControlSurface API can't reach. UDP 9880 (M4L to server) carries spectral data and LiveAPI responses. OSC 9881 (server to M4L) sends commands. The 32 spectral/analyzer tools strictly require the bridge; device and sample tools that call the bridge also have graceful fallbacks, so core functionality works without it. Backed by 30 bridge commands for hidden parameters, Simpler internals, warp markers, display values, and Simpler warp / Compressor sidechain writes that live on child objects Python can't reach.
 
-**Device Atlas** (`mcp_server/atlas/`) — In-memory indexed JSON database. 1305 devices with browser URIs, 81 enriched with YAML sonic intelligence profiles (mood, genre, texture, recommended chains). 6 indexes: by_id, by_name, by_uri, by_category, by_tag, by_genre. The AI never hallucinates a device name or preset — it always resolves against the atlas first.
+**Device Atlas** (`mcp_server/atlas/`) — In-memory indexed JSON database. 1305 devices with browser URIs, 71 enriched with YAML sonic intelligence profiles (mood, genre, texture, recommended chains). 6 indexes: by_id, by_name, by_uri, by_category, by_tag, by_genre. The AI never hallucinates a device name or preset — it always resolves against the atlas first.
 
 **Sample Engine** (`mcp_server/sample_engine/`) — Searches three sources simultaneously: BrowserSource (Ableton's library), SpliceSource (local Splice catalog via SQLite), FilesystemSource (user directories). Every result passes through a 6-critic fitness battery (key, tempo, spectral, genre, mood, technical). 29 processing techniques (Surgeon precision vs. Alchemist experimentation). Builds complete sample processing plans with warp, slice, and effect recommendations.
 
 **Splice Client** (`mcp_server/splice_client/`) — Searches Splice's catalog through two layers: the local SQLite database (`sounds.db`, already-downloaded samples) and the live gRPC API (full catalog, including samples you haven't downloaded yet). The gRPC client auto-detects Splice's dynamic port via `port.conf`, handles self-signed TLS, and enforces a 5-credit safety floor before any download. Per-call timeouts (5–10s) prevent a hung Splice process from stalling the MCP event loop. Graceful fallback to SQL-only if grpcio isn't installed. No API key needed — authentication comes from the running Splice desktop app.
 
-**Composer** (`mcp_server/composer/`) — Prompt-to-plan pipeline. Parses natural language ("dark minimal techno 128bpm with industrial textures") into a CompositionIntent (genre, mood, tempo, key). Plans layers using role templates (kick, bass, percussion, texture, lead, pad, fx). Compiles to a step-by-step plan of tool calls that the agent executes. Does not execute autonomously — returns the plan. 7 genre defaults (techno, house, ambient, hip-hop, dnb, dub, experimental).
+**Composer** (`mcp_server/composer/`) — Prompt-to-plan pipeline. Parses natural language ("dark minimal techno 128bpm with industrial textures") into a CompositionIntent (genre, mood, tempo, key). Plans layers using role templates (kick, bass, percussion, texture, lead, pad, fx). Compiles to a step-by-step plan of tool calls that the agent executes. Does not execute autonomously — returns the plan. 4 genre defaults (house, techno, trap, ambient) — genres outside this set fall back to a neutral layer plan.
 
 **Corpus** (`mcp_server/corpus/`) — Parsed device-knowledge markdown converted to queryable Python structures: EmotionalRecipe, GenreChain, PhysicalModelRecipe, AutomationGesture. Feeds Wonder Mode, Sound Design critics, and the Composer with deep creative knowledge at runtime — not just LLM prompts, actual structured data.
 
@@ -120,7 +120,7 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 
 ## The Intelligence Layer
 
-12 engines sit on top of the 324 tools. They give the AI musical judgment, not just musical execution.
+12 engines sit on top of the 325 tools. They give the AI musical judgment, not just musical execution.
 
 ### SongBrain — What the Song Is
 
@@ -156,7 +156,7 @@ When a session is stuck — repeated undos, overpolished loops, no structural pr
 
 ### Hook Hunter
 
-Identifies the most salient musical idea — ranks by rhythmic distinctiveness, melodic contour, repetition. Tracks whether hooks are developed, neglected, or undermined. Flags when a transition fails to deliver expected payoff.
+Identifies the most salient musical idea — ranks candidates by recurrence across scenes, motif salience, and section placement (payoff-section boost). Tracks whether hooks are developed, neglected, or undermined, and flags when a transition fails to deliver expected payoff. Rhythm-side ranking is currently heuristic (drum-track detection + clip reuse); true onset-based rhythmic features are on the roadmap.
 
 ### Session Continuity
 
@@ -172,7 +172,7 @@ Every engine follows: **measure before → act → measure after → compare**. 
 
 ## Tools
 
-324 tools across 45 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
+325 tools across 45 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
 
 <br>
 
@@ -204,7 +204,7 @@ Every engine follows: **measure before → act → measure after → compare**. 
 The M4L Analyzer sits on the master track. UDP 9880 carries spectral data to the server. OSC 9881 sends commands back.
 
 > [!TIP]
-> All 281 core tools work without the analyzer — it adds 36 bridge tools and closes the feedback loop.
+> Most tools work without the analyzer — it adds 32 spectral/analyzer tools (frequency, loudness, perception) and closes the feedback loop.
 
 ```
 SPECTRAL ─────── 8-band frequency decomposition (sub → air)
@@ -232,7 +232,7 @@ The atlas is an in-memory indexed database of Ableton's entire device library.
 
 ```
 1305 devices total
-  81 enriched with sonic intelligence (mood, genre, texture, chains)
+  71 enriched with sonic intelligence (mood, genre, texture, chains)
  683 drum kits mapped with note assignments
    6 indexes: by_id, by_name, by_uri, by_category, by_tag, by_genre
 ```
@@ -317,7 +317,7 @@ Prompt-to-plan auto-composition engine.
 └─────────────────┘
 ```
 
-- 7 genre defaults: techno, house, ambient, hip-hop, dnb, dub, experimental
+- 4 genre defaults: house, techno, trap, ambient (unknown genres fall back to a neutral plan)
 - Returns step-by-step plans — the agent executes each tool call in sequence
 - `compose` — plan a multi-layer composition from text prompt
 - `augment_with_samples` — plan sample-based layers for existing session
@@ -360,7 +360,7 @@ The V2 intelligence layer. These tools analyze, diagnose, plan, evaluate, and le
 | Creative Constraints | 5 | constraint activation, reference-inspired variants |
 | Preview Studio | 5 | variant creation, preview rendering, comparison, commit |
 
-> **[View all 324 tools →](docs/manual/tool-catalog.md)**
+> **[View all 325 tools →](docs/manual/tool-catalog.md)**
 
 <br>
 
@@ -587,7 +587,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for architecture details, code guidelines
 
 | Document | What's inside |
 |----------|---------------|
-| [Manual](docs/manual/index.md) | Complete reference: architecture, all 324 tools, workflows |
+| [Manual](docs/manual/index.md) | Complete reference: architecture, all 325 tools, workflows |
 | [Intelligence Layer](docs/manual/intelligence.md) | How the 12 engines connect — conductor, moves, preview, evaluation |
 | [Device Atlas](docs/manual/device-atlas.md) | 1305 devices indexed — search, suggest, chain building |
 | [Samples & Slicing](docs/manual/samples.md) | 3-source search, fitness critics, slice workflows |

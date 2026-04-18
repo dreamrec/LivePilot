@@ -144,6 +144,28 @@ async def _warm_analyzer_bridge(
         await asyncio.sleep(0.05)
 
 
+def _bind_session_continuity(ableton: AbletonConnection) -> None:
+    """Hydrate the session-continuity tracker from persistent per-project state.
+
+    Fetches a minimal session fingerprint (tempo, signature, track/scene
+    layout) from the Remote Script, computes a project hash, and asks the
+    tracker to bind the matching ProjectStore + restore any previously-saved
+    creative threads and turn resolutions from disk.
+
+    Never raises: startup must succeed even if Ableton isn't reachable. In
+    that case, the tracker stays in-memory and the first ``record_turn_*`` /
+    ``open_thread`` call will lazy-bind via ``ensure_project_store_bound()``.
+    """
+    try:
+        from .session_continuity.tracker import bind_project_store_from_session
+
+        info = ableton.send_command("get_session_info")
+        if isinstance(info, dict) and not info.get("error"):
+            bind_project_store_from_session(info)
+    except Exception as exc:
+        logger.debug("_bind_session_continuity: lazy-bind (reason: %s)", exc)
+
+
 @asynccontextmanager
 async def lifespan(server):
     """Create and yield the shared AbletonConnection + M4L bridge + registries."""
@@ -203,6 +225,12 @@ async def lifespan(server):
         _check_remote_script_version(ableton)
         if bridge_state["transport"] is not None:
             await _warm_analyzer_bridge(ableton, spectral)
+        # Bind per-project persistent store so creative threads and turn
+        # history survive server restarts. Until v1.10.9 this was plumbed
+        # through the tracker but never called — threads/turns were effectively
+        # in-memory only. If Ableton isn't reachable yet, tools will lazy-bind
+        # on first write via ensure_project_store_bound().
+        _bind_session_continuity(ableton)
         yield {
             "ableton": ableton,
             "spectral": spectral,
@@ -312,26 +340,123 @@ def _coerce_schema_property(prop: dict) -> None:
 
 
 def _get_all_tools():
-    """Get all registered tools, compatible with FastMCP 0.x and 3.x.
+    """Get all registered tools — defends against FastMCP internal drift.
 
-    WARNING: Accesses FastMCP private internals (_tool_manager, _local_provider).
-    Pinned to fastmcp>=3.0.0,<3.3.0 in requirements.txt. If upgrading FastMCP,
-    verify these attributes still exist or update this function.
+    FastMCP's public API doesn't expose the registry as of 3.2.x (see
+    docs/FASTMCP_UPSTREAM_FR.md). Until it does, we probe known internal
+    attribute paths. Each probe fires in try/except so a structural
+    rearrangement (e.g. ``_components`` renamed under 3.3+) falls through
+    to the next path rather than exploding.
+
+    WARNING: Accesses FastMCP private internals. Pinned to
+    fastmcp>=3.0.0,<3.3.0 in requirements.txt. The startup self-test
+    (_assert_tool_registry_accessible) will fail loudly if every probe
+    returns empty — better than silently returning [] and disabling
+    schema coercion.
     """
-    # FastMCP 0.x: mcp._tool_manager._tools (dict of name -> Tool)
-    if hasattr(mcp, "_tool_manager"):
-        return list(mcp._tool_manager._tools.values())
-    # FastMCP 3.x: mcp._local_provider._components (dict of key -> Tool)
-    if hasattr(mcp, "_local_provider") and hasattr(mcp._local_provider, "_components"):
-        return list(mcp._local_provider._components.values())
-    import sys
+    probes = [
+        # FastMCP 0.x: mcp._tool_manager._tools (dict of name -> Tool)
+        ("_tool_manager._tools", lambda: list(mcp._tool_manager._tools.values())),
+        # FastMCP 3.0–3.2: mcp._local_provider._components
+        (
+            "_local_provider._components",
+            lambda: list(mcp._local_provider._components.values()),
+        ),
+        # FastMCP 3.3+ speculative: mcp._local_provider._tools (anticipated
+        # rename based on naming conventions in other providers). Kept here
+        # so a future bump surfaces a partial match rather than a full miss.
+        (
+            "_local_provider._tools",
+            lambda: list(mcp._local_provider._tools.values()),
+        ),
+        # Public-API future path (what we're asking for in the upstream FR);
+        # harmless to probe now so that once it ships we can lift the ceiling
+        # without touching this function again.
+        ("list_tools", lambda: list(mcp.list_tools())),
+    ]
+    for label, fn in probes:
+        try:
+            tools = fn()
+        except (AttributeError, TypeError):
+            continue
+        except Exception:  # noqa: BLE001 — any error from an internal probe means "skip"
+            continue
+        if tools:
+            return tools
 
+    # All probes empty. Surface fastmcp version + attempted paths so the
+    # breakage is diagnosable without re-reading the code.
+    import sys
+    try:
+        import fastmcp as _fm
+        fm_version = getattr(_fm, "__version__", "unknown")
+    except Exception:  # noqa: BLE001
+        fm_version = "unknown"
     print(
-        "LivePilot: WARNING — could not access FastMCP tool registry, "
-        "string-to-number schema coercion will not work",
+        "LivePilot: ERROR — could not access FastMCP tool registry "
+        f"(fastmcp=={fm_version}). Tried: "
+        + ", ".join(label for label, _ in probes)
+        + ". Schema coercion and tool-catalog generation will be broken. "
+        "If FastMCP updated its internals, see docs/FASTMCP_UPSTREAM_FR.md.",
         file=sys.stderr,
     )
     return []
+
+
+def _assert_tool_registry_accessible() -> None:
+    """Loudly fail startup if the FastMCP registry probe returns nothing.
+
+    Called once at module import, just before schema patching. The schema
+    patch silently no-ops on an empty registry, so without this assertion
+    a FastMCP-internals rename would degrade silently and produce a server
+    with 324 tools but no string-to-number coercion — a subtle, hard-to-
+    diagnose class of failure we've paid for once already.
+
+    Reads the expected count from ``tests/test_tools_contract.py`` (same
+    source of truth sync_metadata.py uses), so no second magic number.
+    """
+    import re
+    import sys
+
+    try:
+        contract_src = (
+            (__file__.rsplit("/", 2)[0] + "/tests/test_tools_contract.py")
+            if "__file__" in globals() else None
+        )
+        # Prefer an absolute path via Path for reliability:
+        from pathlib import Path
+        contract_path = Path(__file__).resolve().parents[1] / "tests" / "test_tools_contract.py"
+        expected = None
+        if contract_path.exists():
+            match = re.search(
+                r"assert len\(tools\) == (\d+)",
+                contract_path.read_text(encoding="utf-8"),
+            )
+            if match:
+                expected = int(match.group(1))
+    except Exception:  # noqa: BLE001 — self-test must not block startup
+        expected = None
+
+    actual = len(_get_all_tools())
+    if actual == 0:
+        # Registry probe returned empty — this is the regression the test guards.
+        # Don't sys.exit (some test harnesses import server.py without a live
+        # FastMCP); print a loud diagnostic and let downstream code react.
+        print(
+            "LivePilot: STARTUP SELF-TEST FAILED — _get_all_tools() returned 0. "
+            "FastMCP internals likely changed. Verify requirements.txt pin "
+            "(fastmcp>=3.0.0,<3.3.0) matches the installed version.",
+            file=sys.stderr,
+        )
+        return
+    if expected is not None and actual != expected:
+        print(
+            f"LivePilot: STARTUP SELF-TEST WARNING — _get_all_tools() "
+            f"returned {actual} tools, tests/test_tools_contract.py expects "
+            f"{expected}. If you've added/removed tools, update the contract "
+            "and run scripts/sync_metadata.py --fix.",
+            file=sys.stderr,
+        )
 
 
 def _patch_tool_schemas() -> None:
@@ -346,6 +471,7 @@ def _patch_tool_schemas() -> None:
             if isinstance(definition, dict):
                 _coerce_schema_property(definition)
 
+_assert_tool_registry_accessible()
 _patch_tool_schemas()
 
 

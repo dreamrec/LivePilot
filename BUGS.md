@@ -1207,11 +1207,18 @@ Regression tests (in `tests/test_project_brain.py::TestBugE2AutomationGraphWirin
 
 ## C. Audit follow-ups (from fresh-audit pass, v1.10.6)
 
-### BUG-C1 · `🔴 open (deferred)` · analyzer.py refactor skipped
+### BUG-C1 · `🟢 fixed (Batch 23)` · analyzer.py refactor landed
 
-`mcp_server/tools/analyzer.py` is 971 LOC. Deferred from the 1.10.6 engine-modularization pass because the file has `@mcp.tool()` decorations and relocating them could disturb FastMCP's tool-registration order.
+`mcp_server/tools/analyzer.py` was 1069 LOC with 32 `@mcp.tool()` decorators plus 6 inline helpers. Split per the recipe in BUGS.md: the tool file keeps all decorators (so FastMCP registration order stays identical), and helpers moved to a sibling `_analyzer_engine/` package.
 
-**Fix direction:** Same package-facade pattern as `_composition_engine` and `_agent_os_engine`, but leave the `@mcp.tool()` functions in a single sub-module and split only the helpers (cursor management, patch utilities, spectrum adapters).
+**Shipped (v1.10.9):**
+- New package `mcp_server/tools/_analyzer_engine/` with three themed modules:
+  - `context.py` — `_get_spectral`, `_get_m4l`, `_require_analyzer` (lifespan accessors + actionable error formatting for the analyzer health check)
+  - `sample.py` — `_BPM_IN_FILENAME_RE`, `_is_warped_loop`, `_filename_stem`, `_simpler_post_load_hygiene` (Simpler post-load verification + Snap=0 + warped-loop defaults)
+  - `flucoma.py` — `PITCH_NAMES`, `_flucoma_hint` (FluCoMa status hint text)
+- `analyzer.py` slimmed from 1069 → 913 LOC, contains only the 32 tools + logger/CAPTURE_DIR constants. All helpers re-exported via the package `__init__.py` so existing test imports keep working.
+- `scripts/sync_metadata.py::get_domains()` gained an explicit rule — files/dirs under `mcp_server/tools/` whose name starts with `_` are private helpers, not public domains. Matches how `_composition_engine` and `_agent_os_engine` already behave, prevents private packages from falsely registering as 46th/47th domains.
+- 2132 tests pass unchanged. `test_tools_contract::test_total_tool_count` still asserts 325 — the structural move was invisible to FastMCP.
 
 ---
 
@@ -1223,47 +1230,62 @@ Regression tests (in `tests/test_project_brain.py::TestBugE2AutomationGraphWirin
 
 ---
 
-### BUG-C3 · `🟡 open` · FastMCP private-internals coupling
+### BUG-C3 · `🟢 resilience shipped — coupling still pending upstream (Batch 23)` · FastMCP private-internals coupling
 
 `mcp_server/server.py::_get_all_tools()` reaches into FastMCP private attributes (`_tool_manager._tools` for 0.x, `_local_provider._components` for 3.x) to iterate the tool registry. Pinned to `fastmcp>=3.0.0,<3.3.0` specifically because of this fragility.
 
-**Fix direction:**
-1. File the upstream FR (see BUG-C4)
-2. When upstream adds a public API, migrate + remove the version ceiling
+**What shipped (v1.10.9):**
+- Probe chain extended with `_local_provider._tools` (speculative 3.3+ rename) and `mcp.list_tools()` (the public API we're asking upstream for, so lifting the ceiling will be a no-op once it lands).
+- All-empty fall-through now prints `fastmcp.__version__` + the attempted probe labels to stderr instead of silently returning `[]`.
+- New `_assert_tool_registry_accessible()` self-test runs at import. Empty registry or a count mismatch against `tests/test_tools_contract.py` prints a loud stderr diagnostic — the prior silent failure would disable schema coercion and tool-catalog generation with no signal.
+
+**Still pending (blocked on C4):**
+Remove the coupling entirely once FastMCP exposes a public tool-enumeration API. Until then, the probe is hardened but still private-internal.
 
 ---
 
-### BUG-C4 · `🔴 open` · Upstream FastMCP FR not filed
+### BUG-C4 · `🟢 filed (Batch 23)` · Upstream FastMCP FR filed
 
-Draft lives at `docs/FASTMCP_UPSTREAM_FR.md` (local-only per `docs/*.md` gitignore). Needs to be filed as a GitHub issue on https://github.com/jlowin/fastmcp asking for a public tool-enumeration API.
+Filed: [PrefectHQ/fastmcp#3967](https://github.com/PrefectHQ/fastmcp/issues/3967) — "Feature request: public tool-enumeration API" (2026-04-18).
 
-**Action:** `gh issue create --repo jlowin/fastmcp --body-file docs/FASTMCP_UPSTREAM_FR.md --title "Feature request: public tool-enumeration API"`
+Note: the `jlowin/fastmcp` URL in the original action now redirects to `PrefectHQ/fastmcp` (Prefect took over upstream maintenance). Re-runs of the `gh issue create` command silently resolve through the redirect.
+
+**Follow-through:**
+1. Watch the issue for maintainer response / direction signal.
+2. Once a public API lands (any of: `mcp.tools` property, `mcp.list_tools_sync()`, or a synchronous wrapper around the existing async `list_tools`), migrate `_get_all_tools()` in `mcp_server/server.py` and lift the `fastmcp<3.3.0` ceiling in `requirements.txt`.
+3. The probe chain already includes an `mcp.list_tools()` path (see C3), so if upstream lands the sync flavor under that name, migration is effectively a no-op.
 
 ---
 
 ## D. Current session (Dabrye Core) creative trackers
 
-### BUG-D1 · `🟡 needs listen-test` · Splice vocal D#min vs Dm session
+### BUG-D1 · `🟢 detection + auto-correction shipped (Batch 23)` · Splice vocal D#min vs Dm session
 
 Track 6 is the Splice audio clip `AU_THF2_128_vocal_full_female_chorus_brains_in_the_body_dry_D#min.wav`. Filename claims D#min but session is Dm.
 
-**Decision tree:**
-1. Unmute, listen — if the D# reads as ambient fog (at volume 0.48, no sends, dry), keep as-is
-2. If it reads as dissonant, open the clip's Sample tab, set Transpose (coarse) to **−1 semitone**
-3. Alternative if Option 2 glitches the audio: insert a pitch-shift M4L device
+**What shipped (v1.10.9):**
+- New `check_clip_key_consistency(track_index, clip_index)` MCP tool parses Splice-style filename key tokens (`_D#min`, `_Ebmaj`, `_Cm`, …), cross-checks against `get_detected_key`, and returns an explicit `set_clip_pitch(coarse=...)` recommendation when they disagree. Handles both accidentals (`#`/`b`), multiple mode suffixes (`min`/`m`/`maj`), and absent keys (returns `status="unknown"` without erroring).
+- `get_session_diagnostics(check_clip_keys=True)` opt-in mode scans every (track, scene) slot, emitting a `clip_key_mismatch` warning per mismatch with the one-call auto-correction attached. Off by default to keep the fast path fast.
+- Reuses the existing `set_clip_pitch` tool shipped in A5, so correction is a single MCP call away — no Remote Script changes needed.
 
-Blocked on BUG-A4 + A5 to automate detection/correction.
+**Still needs:** Actual listen-test on the original Dabrye session to decide whether `−1 semitone` is the right move or whether the D# should stay as ambient fog (volume 0.48, no sends, dry). The tool makes the decision explicit; the creative choice is still human.
 
 ---
 
-### BUG-D2 · `🔴 open (creative opportunity)` · No clip automation
+### BUG-D2 · `🟡 coverage signal shipped — creative variant generation is its own feature (Batch 23)` · No clip automation
 
 `build_project_brain`'s automation_graph is empty — no filter sweeps, volume curves, or energy arc in any clip. Missing classic Dabrye-style automation moves:
 - Filter sweep on RHODES before VOX LEAD entry ("vacuum before reveal")
 - Volume crescendo on PERC into a drop
 - Delay feedback automation on VOX LEAD for dub-style handoffs
 
-**Action:** After VOX LEAD is unmuted + balanced, write automation envelopes to fill the emotional-arc gap (currently scored 0.637 with payoff_strength 0.0).
+**What shipped (v1.10.9):**
+- Verified the LOM-reading path: `build_project_brain` already walks every (track, scene) slot and calls `get_clip_automation`. The empty-graph symptom was session-specific — the producer genuinely hadn't written automation yet.
+- New `AutomationGraph.coverage_pct`, `.clip_envelope_count`, and `.clips_scanned` fields distinguish "session has zero automation" from "we couldn't probe" from "some automation exists but sparse". Exposed in both `build_project_brain` and `get_project_brain_summary` (new `automation_coverage_pct` field in the summary).
+- Downstream engines (Wonder Mode, Sound Design critics, Composer) can now branch on `coverage_pct < 0.1` to recommend automation moves as a concrete creative opportunity instead of silently treating the empty graph as "fine".
+
+**Still open (scoped as its own feature):**
+Wonder Mode doesn't yet GENERATE automation variants (filter sweeps, crescendos, delay-feedback envelopes). The `coverage_pct` signal unblocks the detection half; the generation half is a standalone PR — likely a `wonder_mode/variants/automation.py` that compiles from `device-knowledge/automation-as-music.md` templates into `set_clip_automation` calls.
 
 ---
 

@@ -21,7 +21,7 @@ MCP Server  <=============>  Remote Script (ControlSurface)
 - **UDP 9880** — M4L device sends spectral data stream and LiveAPI responses to MCP Server
 - **OSC 9881** — MCP Server sends LiveAPI commands to M4L device
 
-The bridge is optional. All 281 core tools work without it. The 36 bridge tools (backed by 27 bridge commands) require the device on the master track.
+The bridge is optional. Most tools work without it. The 32 spectral/analyzer tools strictly require the bridge, and device/sample tools that call the bridge have graceful fallbacks. Backed by 30 bridge commands.
 
 ## Audio Signal Chain
 
@@ -85,7 +85,7 @@ Commands are sent WITHOUT a leading `/` in the OSC address. This is critical —
 
 | Command | Args | Description |
 |---------|------|-------------|
-| `ping` | (none) | Health check, returns `{ok: true, version: "1.10.8"}` |
+| `ping` | (none) | Health check, returns `{ok: true, version: "1.10.9"}` |
 | `get_params` | track_idx, device_idx | All parameters with value, range, automation state |
 | `get_hidden_params` | track_idx, device_idx | All parameters including hidden ones, with display string |
 | `get_auto_state` | track_idx, device_idx | Only parameters that have automation (active or overridden) |

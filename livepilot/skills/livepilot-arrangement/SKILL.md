@@ -1,6 +1,6 @@
 ---
 name: livepilot-arrangement
-description: This skill should be used when the user asks to "arrange", "structure a song", "add an intro", "build a verse", "create sections", "scene to arrangement", "cue points", "record to arrangement", or wants to organize song structure in Ableton Live.
+description: Constructive arrangement — actually building song structure in Ableton. Use when the user asks to "arrange", "structure a song", "add an intro", "build a verse", "create sections", "scene to arrangement", "record to arrangement", or wants to place clips on the timeline or organize scenes. For analysis of existing structure ("improve transitions", "detect motifs", "analyze composition"), use livepilot-composition-engine instead.
 ---
 
 # Arrangement — Song Structure and Session Organization
@@ -139,15 +139,9 @@ Adapt these to the user's needs. Use `plan_arrangement` from the planner domain 
 
 Use `plan_sample_workflow(section_type=..., desired_role=...)` to generate concrete sample plans for each role. Use `plan_slice_workflow(intent=..., target_section=...)` for slice-based patterns.
 
-## Composition Engine
+## When to hand off to composition-engine
 
-For deeper compositional analysis beyond basic arrangement:
-
-- `plan_gesture(type, parameters)` — plan a musical gesture (build, release, tension, resolution)
-- `apply_gesture_template(track_index, gesture)` — apply a gesture pattern to a track
-- `evaluate_composition_move(proposed_change)` — score a proposed structural change before making it
-- `get_harmony_field(section)` — see the harmonic landscape of a section
-- `get_transition_analysis(from_section, to_section)` — analyze how two sections connect
+This skill covers **constructive** arrangement. For analytical work — scoring a proposed move, analyzing transitions, inspecting the harmony field, detecting motifs, transforming sections — invoke `livepilot-composition-engine`. Don't re-implement its tools here; they are documented there with full context.
 
 ## Reference
 

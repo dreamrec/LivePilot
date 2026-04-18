@@ -5,11 +5,12 @@ Entry point for the ControlSurface. Ableton calls create_instance(c_instance)
 when this script is selected in Preferences > Link, Tempo & MIDI.
 """
 
-__version__ = "1.10.8"
+__version__ = "1.10.9"
 
 from _Framework.ControlSurface import ControlSurface
 from . import router
 from .server import LivePilotServer
+from . import utils        # noqa: F401  — shared helpers (get_track, get_device)
 from . import transport    # noqa: F401  — registers transport handlers
 from . import tracks       # noqa: F401  — registers track handlers
 from . import clips        # noqa: F401  — registers clip handlers
@@ -36,10 +37,16 @@ from . import version_detect    # noqa: F401  — version detection
 # @register decorators with the updated code). Result: a Control Surface
 # toggle now behaves like a fresh module reload, so live-editing mixing.py
 # / devices.py / etc. and re-toggling is enough — no Ableton restart.
+#
+# Order matters: utils comes first because every handler imports
+# ``from .utils import get_track, get_device``. If utils isn't reloaded
+# first, those re-imports during ``importlib.reload(devices)`` still
+# resolve to the stale ``utils`` module object in ``sys.modules``.
 
 _FIRST_CREATE_INSTANCE = True
 
 _HANDLER_MODULES = (
+    utils,
     transport, tracks, clips, notes, devices, scenes,
     mixing, browser, arrangement, diagnostics,
     clip_automation, version_detect,

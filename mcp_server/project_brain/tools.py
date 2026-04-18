@@ -131,11 +131,15 @@ def build_project_brain(ctx: Context) -> dict:
     # automation actually lives on each clip (session + arrangement). We
     # walk every clip slot that has a clip and ask get_clip_automation, then
     # aggregate into a flat list keyed by section.
+    #
+    # clips_scanned is the denominator for coverage_pct (BUG-D2) — it
+    # counts how many (track, scene) slots we probed, regardless of
+    # whether an envelope came back. Without this, a session with zero
+    # automation would be indistinguishable from a session where we
+    # failed to probe, which is exactly the ambiguity BUG-D2 flagged.
     clip_automation: list[dict] = []
+    clips_scanned = 0
     try:
-        # Iterate session scenes x tracks, plus arrangement clips we already have.
-        # Use the raw enumerate index for section_id so it stays aligned with
-        # arrangement_graph sections (which use the same scheme — see E1 fix).
         for scene_idx, scene in enumerate(scenes or []):
             scene_name = str(scene.get("name", "")).strip()
             if not scene_name:
@@ -143,6 +147,7 @@ def build_project_brain(ctx: Context) -> dict:
             section_id = f"sec_{scene_idx:02d}"
             for track in tracks:
                 t_idx = track.get("index", 0)
+                clips_scanned += 1
                 try:
                     auto_resp = ableton.send_command("get_clip_automation", {
                         "track_index": t_idx,
@@ -196,6 +201,7 @@ def build_project_brain(ctx: Context) -> dict:
         notes_map=notes_map if notes_map else None,
         arrangement_clips=arrangement_clips if arrangement_clips else None,
         clip_automation=clip_automation if clip_automation else None,
+        clips_scanned=clips_scanned,
         analyzer_ok=analyzer_ok,
         flucoma_ok=flucoma_ok,
         session_ok=True,
@@ -230,6 +236,7 @@ def get_project_brain_summary(ctx: Context) -> dict:
         "section_count": len(state.arrangement_graph.sections),
         "role_count": len(state.role_graph.roles),
         "automated_param_count": len(state.automation_graph.automated_params),
+        "automation_coverage_pct": round(state.automation_graph.coverage_pct, 3),
         "tempo": state.session_graph.tempo,
         "time_signature": state.session_graph.time_signature,
         "is_stale": state.is_stale(),

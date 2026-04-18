@@ -443,17 +443,28 @@ class M4LBridge:
         if not self.cache.is_connected:
             return {"error": "LivePilot Analyzer not connected. Drop it on the master track."}
 
+        # Fail fast if there is no receiver to correlate the reply. Prior
+        # versions sent the OSC packet anyway, never registered a future,
+        # and then waited out the full 35s timeout with a misleading
+        # "device may be busy or removed" diagnosis — the real cause was
+        # "no receiver wired" (UDP 9880 failed to bind at startup).
+        if self.receiver is None:
+            return {
+                "error": "M4L bridge has no active receiver — the UDP 9880 "
+                         "listener did not start. Check server startup logs "
+                         "for a bind failure on port 9880."
+            }
+
         if self._cmd_lock is None:
             self._cmd_lock = asyncio.Lock()
         async with self._cmd_lock:
             # Cancel any stale capture future before creating a new one
-            if self.receiver and self.receiver._capture_future and not self.receiver._capture_future.done():
+            if self.receiver._capture_future and not self.receiver._capture_future.done():
                 self.receiver._capture_future.cancel()
 
             loop = asyncio.get_running_loop()
             future = loop.create_future()
-            if self.receiver:
-                self.receiver.set_capture_future(future)
+            self.receiver.set_capture_future(future)
 
             osc_data = self._build_osc(command, args)
             self._sock.sendto(osc_data, self._m4l_addr)
@@ -463,8 +474,7 @@ class M4LBridge:
                 return result
             except asyncio.TimeoutError:
                 # Clean up the dangling future
-                if self.receiver:
-                    self.receiver._capture_future = None
+                self.receiver._capture_future = None
                 return {"error": "M4L capture timeout — device may be busy or removed"}
 
     async def cancel_capture_future(self) -> None:

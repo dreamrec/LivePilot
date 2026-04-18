@@ -107,16 +107,137 @@ def preview_semantic_move(
     return result
 
 
+def _build_taste_context(ctx: Context) -> dict:
+    """Pull the active taste graph for ranking, with defensive fallbacks.
+
+    Returns a dict with ``dimension_weights``, ``dimension_avoidances``,
+    ``move_family_scores`` (family → score), and ``evidence_count``.
+    Empty dicts when no taste has been recorded yet — the ranker then
+    collapses to pure keyword matching, which is the correct behavior for
+    a cold-start user with no history.
+    """
+    try:
+        from ..memory.taste_graph import build_taste_graph
+        from ..memory.taste_memory import TasteMemoryStore
+        from ..memory.anti_memory import AntiMemoryStore
+
+        taste_store = ctx.lifespan_context.setdefault("taste_memory", TasteMemoryStore())
+        anti_store = ctx.lifespan_context.setdefault("anti_memory", AntiMemoryStore())
+        graph = build_taste_graph(taste_store=taste_store, anti_store=anti_store)
+
+        move_family_scores: dict[str, float] = {}
+        for family, entry in getattr(graph, "move_family_scores", {}).items():
+            score = getattr(entry, "score", None)
+            if isinstance(score, (int, float)):
+                move_family_scores[family] = float(score)
+
+        return {
+            "dimension_weights": dict(getattr(graph, "dimension_weights", {}) or {}),
+            "dimension_avoidances": dict(getattr(graph, "dimension_avoidances", {}) or {}),
+            "move_family_scores": move_family_scores,
+            "evidence_count": int(getattr(graph, "evidence_count", 0) or 0),
+        }
+    except Exception as exc:
+        logger.debug("_build_taste_context failed: %s", exc)
+        return {
+            "dimension_weights": {},
+            "dimension_avoidances": {},
+            "move_family_scores": {},
+            "evidence_count": 0,
+        }
+
+
+def _score_move_for_request(move, request_lower: str, request_words: set, taste: dict) -> tuple[float, dict]:
+    """Compute the composite score for a single move.
+
+    Composition:
+        0.55 × keyword overlap (intent + move_id + targets)
+        0.30 × taste alignment (from taste_graph.dimension_weights on move.targets)
+        0.15 × (1 - anti avoidance penalty) (from dimension_avoidances)
+
+        ± up to 0.10 family bonus/penalty from move_family_scores[family].
+
+    When the user has no recorded taste (evidence_count == 0), the taste
+    and anti-penalty components collapse to neutral 0.5 so cold-start
+    behavior stays identical to the old keyword-only ranker.
+    """
+    # ── Keyword overlap component (0..1) ──────────────────────────────
+    intent_lower = move.intent.lower()
+    move_words = set(move.move_id.replace("_", " ").split())
+    intent_words = set(intent_lower.split())
+
+    overlap = request_words & (move_words | intent_words)
+    keyword_score = min(1.0, len(overlap) * 0.3)
+
+    for dim in move.targets:
+        if dim.lower() in request_lower:
+            keyword_score = min(1.0, keyword_score + 0.2)
+
+    if move.move_id.replace("_", " ") in request_lower:
+        keyword_score = 1.0
+
+    # ── Taste alignment component (0..1) ──────────────────────────────
+    evidence_count = taste["evidence_count"]
+    dim_weights = taste["dimension_weights"]
+    dim_avoid = taste["dimension_avoidances"]
+
+    if evidence_count > 0 and move.targets:
+        # Average dimension_weights for this move's targets; weights are
+        # -1..1 with 0 meaning unknown. Remap to 0..1 so "neutral" is 0.5.
+        raw_taste = [
+            dim_weights.get(dim, 0.0) for dim in move.targets
+        ]
+        taste_alignment = sum((w + 1.0) / 2.0 for w in raw_taste) / len(raw_taste)
+        avoidance = sum(
+            dim_avoid.get(dim, 0.0) for dim in move.targets
+        ) / len(move.targets)
+        avoidance = max(0.0, min(1.0, avoidance))
+    else:
+        taste_alignment = 0.5
+        avoidance = 0.0
+
+    composite = (
+        0.55 * keyword_score
+        + 0.30 * taste_alignment
+        + 0.15 * (1.0 - avoidance)
+    )
+
+    # ── Family bonus/penalty (±0.1) ────────────────────────────────────
+    family_bonus = 0.0
+    family_score = taste["move_family_scores"].get(move.family)
+    if family_score is not None:
+        # family score is 0..1 with 0.5 neutral; remap to -0.1..+0.1
+        family_bonus = (family_score - 0.5) * 0.2
+        composite += family_bonus
+
+    composite = max(0.0, min(1.0, composite))
+
+    breakdown = {
+        "keyword_score": round(keyword_score, 3),
+        "taste_alignment": round(taste_alignment, 3),
+        "avoidance_penalty": round(avoidance, 3),
+        "family_bonus": round(family_bonus, 3),
+        "evidence_count": evidence_count,
+    }
+    return composite, breakdown
+
+
 @mcp.tool()
 def propose_next_best_move(
     ctx: Context,
     request_text: str,
     limit: int = 3,
 ) -> dict:
-    """Propose the best semantic moves for a natural language request.
+    """Propose the best semantic moves for a natural language request, ranked
+    by keyword fit AND the active taste graph.
 
-    Analyzes the request text and ranks available semantic moves by
-    relevance. Returns up to `limit` suggestions with confidence scores.
+    Shipped in v1.10.9: ranking is no longer pure keyword overlap — it now
+    blends keyword match with taste alignment (``dimension_weights`` on each
+    move's targets), an anti-preference penalty (``dimension_avoidances``),
+    and a small family bonus from ``move_family_scores``. Cold-start users
+    with zero recorded evidence get the same ranking as before; users with
+    history see recommendations pulled toward dimensions they've kept and
+    away from ones they've undone.
 
     request_text: what the user wants (e.g., "make this punchier",
                   "tighten the low end", "reduce repetition")
@@ -125,50 +246,37 @@ def propose_next_best_move(
     if not request_text.strip():
         return {"error": "request_text cannot be empty"}
 
-    # Simple keyword matching for now — will be replaced by conductor
-    # routing + taste ranking in V2 Step 7
     request_lower = request_text.lower()
+    request_words = set(request_lower.split())
+    taste = _build_taste_context(ctx)
     all_moves = list(registry._REGISTRY.values())
 
-    scored = []
+    scored: list[tuple[object, float, dict]] = []
     for move in all_moves:
-        score = 0.0
-        # Match keywords from intent and move_id
-        intent_lower = move.intent.lower()
-        move_words = set(move.move_id.replace("_", " ").split())
-        intent_words = set(intent_lower.split())
-        request_words = set(request_lower.split())
+        score, breakdown = _score_move_for_request(
+            move, request_lower, request_words, taste,
+        )
+        # Keep only moves that had any keyword signal or strong taste pull —
+        # a move with zero keyword overlap AND neutral taste would be noise.
+        if breakdown["keyword_score"] > 0 or taste["evidence_count"] >= 5:
+            scored.append((move, score, breakdown))
 
-        # Word overlap scoring
-        overlap = request_words & (move_words | intent_words)
-        score += len(overlap) * 0.3
-
-        # Dimension matching
-        for dim in move.targets:
-            if dim in request_lower:
-                score += 0.2
-
-        # Boost exact intent matches
-        if move.move_id.replace("_", " ") in request_lower:
-            score += 1.0
-
-        if score > 0:
-            scored.append((move, min(score, 1.0)))
-
-    # Sort by score descending
     scored.sort(key=lambda x: -x[1])
     top = scored[:limit]
 
     suggestions = []
-    for move, score in top:
+    for move, score, breakdown in top:
         d = move.to_dict()
         d["match_score"] = round(score, 3)
+        d["score_breakdown"] = breakdown
         suggestions.append(d)
 
     return {
         "request": request_text,
         "suggestions": suggestions,
         "count": len(suggestions),
+        "taste_active": taste["evidence_count"] > 0,
+        "taste_evidence_count": taste["evidence_count"],
     }
 
 

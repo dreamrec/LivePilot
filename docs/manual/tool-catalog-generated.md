@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog (Generated)
 
-324 tools across 45 domains.
+325 tools across 45 domains.
 
 > Auto-generated from `mcp.list_tools()`. Do not hand-edit.
 > Regenerate: `python3 scripts/generate_tool_catalog.py`
@@ -117,10 +117,11 @@
 | `load_browser_item` | Load a browser item (instrument/effect) onto a track by URI. |
 | `search_browser` | Search the browser tree under a path, optionally filtering by name. |
 
-## Clips (12)
+## Clips (13)
 
 | Tool | Description |
 |------|-------------|
+| `check_clip_key_consistency` | Cross-check a clip's filename-encoded key against the session key (BUG-D1). |
 | `create_clip` | Create an empty MIDI clip in a clip slot (length in beats). |
 | `delete_clip` | Delete a clip from a clip slot. This removes all notes and automation. Use undo to revert. |
 | `duplicate_clip` | Duplicate a clip from one slot to another. |
@@ -129,7 +130,7 @@
 | `set_clip_color` | Set clip color (0-69, Ableton's color palette). |
 | `set_clip_launch` | Set clip launch mode (0=Trigger, 1=Gate, 2=Toggle, 3=Repeat) and optional quantization. |
 | `set_clip_loop` | Enable/disable clip looping and optionally set loop start/end (in beats). |
-| `set_clip_name` | Rename a clip. |
+| `set_clip_name` | Rename a clip in the Session view. The new name appears on the clip slot and in Device Chain displays. |
 | `set_clip_pitch` | Set pitch transposition and/or gain on an audio clip (BUG-A5). |
 | `set_clip_warp_mode` | Set warp mode for an audio clip (0=Beats, 1=Tones, 2=Texture, 3=Re-Pitch, 4=Complex, 6=Complex Pro). |
 | `stop_clip` | Stop a playing clip. |
@@ -443,7 +444,7 @@
 | `apply_semantic_move` | Compile and optionally execute a semantic move against the current session. |
 | `list_semantic_moves` | List available semantic moves — high-level musical intents. |
 | `preview_semantic_move` | Preview what a semantic move will do before applying it. |
-| `propose_next_best_move` | Propose the best semantic moves for a natural language request. |
+| `propose_next_best_move` | Propose the best semantic moves for a natural language request, ranked |
 
 ## Session Continuity (7)
 
@@ -512,7 +513,7 @@
 | `set_track_color` | Set track color (0-69, Ableton's color palette). |
 | `set_track_input_monitoring` | Set input monitoring (0=In, 1=Auto, 2=Off). Only for regular tracks, not return tracks. |
 | `set_track_mute` | Mute or unmute a track. |
-| `set_track_name` | Rename a track. |
+| `set_track_name` | Rename a track. The new name appears in both the Session and Arrangement views and survives session save. |
 | `set_track_solo` | Solo or unsolo a track. |
 | `stop_track_clips` | Stop all playing clips on a track. |
 
@@ -544,7 +545,7 @@
 | `set_tempo` | Set the song tempo in BPM (20-999). |
 | `set_time_signature` | Set the time signature (e.g., 4/4, 3/4, 6/8). |
 | `start_playback` | Start playback from the beginning. |
-| `stop_playback` | Stop playback. |
+| `stop_playback` | Stop playback — halts the session transport and the arrangement cursor returns to its last position. |
 | `toggle_metronome` | Enable or disable the metronome click. |
 | `undo` | Undo the last action in Ableton. |
 
@@ -557,4 +558,4 @@
 | `rank_wonder_variants` | Rank wonder-mode variants by taste + identity + novelty + coherence. |
 
 ---
-*Generated from 324 registered tools.*
+*Generated from 325 registered tools.*

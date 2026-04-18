@@ -95,7 +95,7 @@ function anything() {
 function dispatch(cmd, args) {
     switch(cmd) {
         case "ping":
-            send_response({"ok": true, "version": "1.10.8"});
+            send_response({"ok": true, "version": "1.10.9"});
             break;
         case "get_params":
             cmd_get_params(args);

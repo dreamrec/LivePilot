@@ -44,6 +44,99 @@ def reset_story() -> None:
     _project_store = None
 
 
+def bind_project_store_from_session(session_info: dict) -> Optional[str]:
+    """Bind a per-project persistent store and hydrate in-memory state.
+
+    Computes a project fingerprint from ``session_info`` (tempo, time sig,
+    song length, track/scene/return layout), opens the matching
+    ``ProjectStore`` under ``~/.livepilot/projects/<hash>/``, and rehydrates
+    the in-memory ``_threads`` and ``_turns`` from disk so that restarting
+    the MCP server preserves the user's creative threads and turn history.
+
+    Returns the project_id (12-char hash) on success, ``None`` on failure
+    (so callers can log without aborting startup). If the hash hasn't
+    changed since the last bind, this is a no-op — hot path is safe to
+    call on every turn.
+
+    Without this function, ``set_project_store()`` existed but nobody
+    called it, meaning README's "return to a project with prior creative
+    threads intact" was literally false — threads/turns were in-memory
+    only and reset on every server restart.
+    """
+    global _threads, _turns, _project_store
+
+    try:
+        from ..persistence.project_store import ProjectStore, project_hash
+    except Exception as exc:
+        logger.debug("bind_project_store_from_session: import failed: %s", exc)
+        return None
+
+    try:
+        new_id = project_hash(session_info or {})
+    except Exception as exc:
+        logger.debug("bind_project_store_from_session: hash failed: %s", exc)
+        return None
+
+    # Already bound to this project? Nothing to do.
+    if _project_store is not None and getattr(_project_store, "project_id", None) == new_id:
+        return new_id
+
+    try:
+        store = ProjectStore(new_id)
+    except Exception as exc:
+        logger.debug("bind_project_store_from_session: store open failed: %s", exc)
+        return None
+
+    # Hydrate in-memory threads + turns from the persisted store. We only
+    # rebuild what the tracker keeps live — SessionStory is recomputed on
+    # each get_session_story() call, so it doesn't need a direct restore.
+    try:
+        raw_threads = store.get_threads()
+        raw_turns = store.get_turns()
+    except Exception as exc:
+        logger.debug("bind_project_store_from_session: read failed: %s", exc)
+        raw_threads, raw_turns = [], []
+
+    _threads = {
+        t["thread_id"]: CreativeThread.from_dict(t)
+        for t in raw_threads
+        if isinstance(t, dict) and "thread_id" in t
+    }
+    _turns = [
+        TurnResolution.from_dict(t)
+        for t in raw_turns
+        if isinstance(t, dict)
+    ]
+    _project_store = store
+    logger.info(
+        "session_continuity: bound project %s (%d threads, %d turns restored)",
+        new_id, len(_threads), len(_turns),
+    )
+    return new_id
+
+
+def ensure_project_store_bound(ctx) -> Optional[str]:
+    """Lazy bind on first use — for tools called before lifespan could reach Ableton.
+
+    ``ctx`` is a FastMCP Context; reads the ``ableton`` connection from
+    ``ctx.lifespan_context`` and fetches session info to compute the project
+    hash. Safe to call on every turn — if already bound to this project, it's
+    a no-op. Returns the project_id or ``None`` on failure.
+    """
+    if _project_store is not None:
+        return getattr(_project_store, "project_id", None)
+    try:
+        ableton = ctx.lifespan_context.get("ableton")
+        if ableton is None:
+            return None
+        info = ableton.send_command("get_session_info")
+        if isinstance(info, dict) and not info.get("error"):
+            return bind_project_store_from_session(info)
+    except Exception as exc:
+        logger.debug("ensure_project_store_bound: %s", exc)
+    return None
+
+
 # ── Session story ─────────────────────────────────────────────────
 
 

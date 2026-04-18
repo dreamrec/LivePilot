@@ -1,10 +1,13 @@
 """Clip MCP tools — info, create, delete, duplicate, fire, stop, properties, warp.
 
-11 tools matching the Remote Script clips domain.
+11 tools matching the Remote Script clips domain, plus a key-consistency
+diagnostic (BUG-D1) that cross-references filename-encoded keys against
+the analyzer-detected session key.
 """
 
 from __future__ import annotations
 
+import re
 from typing import Optional
 
 from fastmcp import Context
@@ -15,6 +18,72 @@ from ..server import mcp
 def _get_ableton(ctx: Context):
     """Extract AbletonConnection from lifespan context."""
     return ctx.lifespan_context["ableton"]
+
+
+# ── Key-token parsing (BUG-D1) ─────────────────────────────────────────
+#
+# Splice filenames encode the key as one of:
+#   _D#min   _Dmin   _Dm       → minor
+#   _Dmaj    _DMaj   _D        → major (trailing nothing or just "maj")
+#   _Eb      _Ebmin   _Dbm     → accidentals accepted as # or b
+#
+# We accept any of those forms and emit a canonical (root, mode) tuple.
+
+# Note → semitone offset from C (C=0, C#=1, D=2, ...)
+_NOTE_TO_SEMI = {
+    "c": 0, "c#": 1, "db": 1, "d": 2, "d#": 3, "eb": 3, "e": 4, "fb": 4,
+    "e#": 5, "f": 5, "f#": 6, "gb": 6, "g": 7, "g#": 8, "ab": 8,
+    "a": 9, "a#": 10, "bb": 10, "b": 11, "cb": 11,
+}
+
+# Match the trailing key token in a filename stem (everything before the
+# extension, underscore-delimited). We anchor to the end of the stem so
+# an earlier "D" in the filename (e.g. "Dabrye_...") doesn't match.
+_KEY_RE = re.compile(
+    r"(?P<root>[A-Ga-g][#b]?)(?P<mode>maj|min|m|Maj|Min)?$",
+    flags=re.IGNORECASE,
+)
+
+
+def _parse_key_from_filename(filename: str) -> Optional[dict]:
+    """Extract key info from a Splice-style filename.
+
+    Returns ``{"root": "D#", "mode": "minor", "semi": 3, "token": "D#min"}``
+    or ``None`` if no recognizable key token is present in the final
+    underscore-segment of the filename stem.
+    """
+    if not filename:
+        return None
+    stem = filename.rsplit(".", 1)[0]
+    last = stem.split("_")[-1]
+    match = _KEY_RE.fullmatch(last)
+    if not match:
+        return None
+    root_raw = match.group("root").lower()
+    mode_raw = (match.group("mode") or "").lower()
+    # Normalize the root to lookup form. Canonicalize B# → C, etc. (rare
+    # but possible in hand-named samples).
+    semi = _NOTE_TO_SEMI.get(root_raw)
+    if semi is None:
+        return None
+    # Without an explicit mode suffix, Splice convention defaults to major.
+    mode = "minor" if mode_raw in ("min", "m") else "major"
+    # Canonical display: capitalize root, preserve #/b.
+    root_display = root_raw[0].upper() + root_raw[1:]
+    return {
+        "root": root_display,
+        "mode": mode,
+        "semi": semi,
+        "token": last,
+    }
+
+
+def _key_to_semi(root: str, mode: str = "major") -> Optional[int]:
+    """Convert a session-reported key like ``"D"`` + ``"minor"`` to 0..11 semis."""
+    if not root:
+        return None
+    semi = _NOTE_TO_SEMI.get(root.strip().lower())
+    return semi
 
 
 def _validate_track_index(track_index: int):
@@ -265,3 +334,172 @@ def set_clip_warp_mode(
     if warping is not None:
         params["warping"] = warping
     return _get_ableton(ctx).send_command("set_clip_warp_mode", params)
+
+
+@mcp.tool()
+async def check_clip_key_consistency(
+    ctx: Context,
+    track_index: int,
+    clip_index: int,
+) -> dict:
+    """Cross-check a clip's filename-encoded key against the session key (BUG-D1).
+
+    Splice-style sample filenames encode the sample's key (e.g.
+    ``AU_THF2_128_vocal_..._D#min.wav``). This tool parses that token,
+    compares it to the analyzer-detected session key, and — when they
+    disagree — computes the semitone delta needed to realign, returning
+    the exact ``set_clip_pitch(coarse=...)`` call that would correct it.
+
+    Return shape::
+
+        {
+            "track_index": 6,
+            "clip_index": 0,
+            "filename_key": {"root": "D#", "mode": "minor", "token": "D#min"},
+            "session_key": {"root": "D", "mode": "minor"},
+            "status": "mismatch" | "match" | "unknown",
+            "semitone_delta": -1,          # clip needs to shift DOWN 1
+            "recommended_fix": {
+                "tool": "set_clip_pitch",
+                "args": {"track_index": 6, "clip_index": 0, "coarse": -1}
+            },
+            "reason": "Clip is D#min, session is Dm — shift -1 semitone."
+        }
+
+    Returns ``status="unknown"`` (not an error) when:
+      - the clip is MIDI (no audio file path)
+      - the filename has no parseable key token
+      - the analyzer hasn't detected a session key yet
+
+    Requires the M4L bridge for both ``get_clip_file_path`` and
+    ``get_detected_key``. Degrades gracefully without it.
+    """
+    _validate_track_index(track_index)
+    _validate_clip_index(clip_index)
+
+    # 1) Resolve the clip's file path. Relies on the M4L bridge.
+    try:
+        from .analyzer import get_clip_file_path as _get_path
+        # get_clip_file_path is an @mcp.tool, but FastMCP decorators preserve
+        # the underlying function — we can call it directly for composition.
+        path_resp = await _get_path.fn(ctx, track_index, clip_index)
+    except Exception as exc:
+        return {
+            "track_index": track_index,
+            "clip_index": clip_index,
+            "status": "unknown",
+            "reason": f"Could not resolve clip file path: {exc}",
+        }
+    if not isinstance(path_resp, dict) or path_resp.get("error"):
+        return {
+            "track_index": track_index,
+            "clip_index": clip_index,
+            "status": "unknown",
+            "reason": path_resp.get("error", "No file path available (MIDI clip?)."),
+        }
+    file_path = path_resp.get("path") or path_resp.get("file_path") or ""
+
+    # 2) Parse key token from the filename.
+    import os
+    filename_key = _parse_key_from_filename(os.path.basename(file_path))
+    if filename_key is None:
+        return {
+            "track_index": track_index,
+            "clip_index": clip_index,
+            "file_path": file_path,
+            "status": "unknown",
+            "reason": "Filename has no recognizable key token.",
+        }
+
+    # 3) Query the session-detected key (needs the analyzer).
+    try:
+        from .analyzer import get_detected_key as _get_key
+        key_resp = await _get_key.fn(ctx)
+    except Exception as exc:
+        return {
+            "track_index": track_index,
+            "clip_index": clip_index,
+            "file_path": file_path,
+            "filename_key": filename_key,
+            "status": "unknown",
+            "reason": f"Analyzer unavailable: {exc}",
+        }
+    if not isinstance(key_resp, dict) or key_resp.get("error") or not key_resp.get("key"):
+        return {
+            "track_index": track_index,
+            "clip_index": clip_index,
+            "file_path": file_path,
+            "filename_key": filename_key,
+            "status": "unknown",
+            "reason": key_resp.get(
+                "error", "Session key not yet detected — play 4-8 bars."
+            ),
+        }
+    session_root = str(key_resp.get("key", ""))
+    session_mode = str(key_resp.get("scale", "major")).lower()
+    session_semi = _key_to_semi(session_root)
+
+    # 4) Classify + compute fix.
+    file_semi = filename_key["semi"]
+    if session_semi is None or file_semi is None:
+        return {
+            "track_index": track_index,
+            "clip_index": clip_index,
+            "file_path": file_path,
+            "filename_key": filename_key,
+            "session_key": {"root": session_root, "mode": session_mode},
+            "status": "unknown",
+            "reason": "Could not resolve semitone offsets for comparison.",
+        }
+
+    if filename_key["mode"] != session_mode:
+        mode_note = (
+            f" (clip is {filename_key['mode']}, session is {session_mode} — "
+            "mode mismatch is often OK for ambient/background use)"
+        )
+    else:
+        mode_note = ""
+
+    if file_semi == session_semi and filename_key["mode"] == session_mode:
+        return {
+            "track_index": track_index,
+            "clip_index": clip_index,
+            "file_path": file_path,
+            "filename_key": filename_key,
+            "session_key": {"root": session_root, "mode": session_mode},
+            "status": "match",
+            "semitone_delta": 0,
+            "recommended_fix": None,
+            "reason": "Clip key matches session.",
+        }
+
+    # Semitone delta: how much the clip should shift to align with the
+    # session root. Choose the smaller magnitude (shift up or down).
+    raw_delta = (session_semi - file_semi) % 12
+    if raw_delta > 6:
+        raw_delta -= 12  # prefer the nearer direction (−1 over +11)
+    delta = raw_delta
+
+    return {
+        "track_index": track_index,
+        "clip_index": clip_index,
+        "file_path": file_path,
+        "filename_key": filename_key,
+        "session_key": {"root": session_root, "mode": session_mode},
+        "status": "mismatch",
+        "semitone_delta": delta,
+        "recommended_fix": {
+            "tool": "set_clip_pitch",
+            "args": {
+                "track_index": track_index,
+                "clip_index": clip_index,
+                "coarse": delta,
+            },
+        },
+        "reason": (
+            f"Clip is {filename_key['root']}{filename_key['mode'][:3]}, "
+            f"session is {session_root}{session_mode[:3]} — "
+            f"shift {delta:+d} semitone{'' if abs(delta) == 1 else 's'}."
+            f"{mode_note}"
+        ),
+    }

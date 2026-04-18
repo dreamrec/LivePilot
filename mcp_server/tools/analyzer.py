@@ -2,88 +2,36 @@
 
 30 tools requiring the LivePilot Analyzer M4L device on the master track.
 These tools are optional — all core tools work without the device.
+
+Helpers live in ``_analyzer_engine/`` (context accessors, Simpler
+post-load hygiene, FluCoMa hint formatting). This file contains the
+``@mcp.tool()`` surface only — keeping decorator order stable was
+important for BUG-C1's refactor.
 """
 
 from __future__ import annotations
 
 import logging
 import os
-import re  # used below in filename parsing helpers
 from typing import Optional
 
 from fastmcp import Context
 
 from ..server import mcp, _identify_port_holder
+from ._analyzer_engine import (
+    PITCH_NAMES,
+    _filename_stem,
+    _flucoma_hint,
+    _get_m4l,
+    _get_spectral,
+    _is_warped_loop,
+    _require_analyzer,
+    _simpler_post_load_hygiene,
+)
 
-# Logger must be defined before any helper that uses it — _require_analyzer
-# below calls logger.debug on an exception path, so defining the logger later
-# in the file risked NameError under unusual import orderings.
 logger = logging.getLogger(__name__)
 
 CAPTURE_DIR = os.path.expanduser("~/Documents/LivePilot/captures")
-
-
-def _get_spectral(ctx: Context):
-    """Get SpectralCache from lifespan context."""
-    cache = ctx.lifespan_context.get("spectral")
-    if not cache:
-        raise ValueError("Spectral cache not initialized — restart the MCP server")
-    # Keep the active request context attached so analyzer error paths can
-    # distinguish "device missing" from "bridge disconnected".
-    setattr(cache, "_livepilot_ctx", ctx)
-    return cache
-
-
-def _get_m4l(ctx: Context):
-    """Get M4LBridge from lifespan context."""
-    bridge = ctx.lifespan_context.get("m4l")
-    if not bridge:
-        raise ValueError("M4L bridge not initialized — restart the MCP server")
-    return bridge
-
-
-def _require_analyzer(cache) -> None:
-    """Raise a helpful error if the analyzer is not connected."""
-    if not cache.is_connected:
-        ctx = getattr(cache, "_livepilot_ctx", None)
-        try:
-            track = (
-                ctx.lifespan_context["ableton"].send_command("get_master_track")
-                if ctx else {}
-            )
-        except Exception as exc:
-            logger.debug("_require_analyzer failed: %s", exc)
-            track = {}
-
-        devices = track.get("devices", []) if isinstance(track, dict) else []
-        analyzer_loaded = False
-        for device in devices:
-            normalized = " ".join(
-                str(device.get("name") or "").replace("_", " ").replace("-", " ").lower().split()
-            )
-            if normalized == "livepilot analyzer":
-                analyzer_loaded = True
-                break
-
-        if analyzer_loaded:
-            holder = _identify_port_holder(9880)
-            detail = (
-                "LivePilot Analyzer is loaded on the master track, but its UDP bridge is not connected. "
-            )
-            if holder:
-                detail += (
-                    "UDP port 9880 is currently held by another LivePilot instance "
-                    f"({holder}). Close the other client/server, then retry."
-                )
-            else:
-                detail += "Reload the analyzer device or restart the MCP server."
-            raise ValueError(detail)
-
-        raise ValueError(
-            "LivePilot Analyzer not detected. "
-            "Drag 'LivePilot Analyzer' onto the master track from "
-            "Audio Effects > Max Audio Effect."
-        )
 
 
 @mcp.tool()
@@ -305,102 +253,10 @@ async def get_clip_file_path(
 #      S Start=0, S Length=1, S Loop On=1 so the full loop plays in its
 #      musical phrasing. For ONE-SHOTS, leave defaults alone.
 
-_BPM_IN_FILENAME_RE = re.compile(r"(\d{2,3})\s*bpm", re.IGNORECASE)
-
-
-def _is_warped_loop(file_path: str) -> bool:
-    """Return True if the filename contains a BPM marker (likely a tempo-locked loop)."""
-    stem = os.path.splitext(os.path.basename(file_path))[0]
-    return bool(_BPM_IN_FILENAME_RE.search(stem))
-
-
-def _filename_stem(file_path: str) -> str:
-    return os.path.splitext(os.path.basename(file_path))[0]
-
-
-async def _simpler_post_load_hygiene(
-    bridge,
-    ableton,
-    track_index: int,
-    device_index: int,
-    file_path: str,
-) -> dict:
-    """Apply post-load hygiene to a newly loaded Simpler and verify success.
-
-    Steps:
-      1. Read track info to verify the device's actual name matches the
-         expected sample stem. If it doesn't, return an error.
-      2. Set Snap=0 (Off) — required so sample playback works.
-      3. If filename indicates a warped loop, set S Start=0, S Length=1,
-         S Loop On=1 so the loop plays fully instead of being cropped.
-      4. Return a verified response dict.
-    """
-    expected_stem = _filename_stem(file_path)
-
-    # Step 1: verify device name matches expected file
-    try:
-        track_info = ableton.send_command(
-            "get_track_info", {"track_index": track_index}
-        )
-    except Exception as exc:
-        return {"error": f"Verification read failed: {exc}"}
-
-    devices = track_info.get("devices", []) or []
-    if device_index < 0 or device_index >= len(devices):
-        return {
-            "error": (
-                f"Device index {device_index} out of range after load "
-                f"(track has {len(devices)} devices)"
-            ),
-            "verified": False,
-        }
-    device = devices[device_index]
-    actual_name = str(device.get("name") or "")
-    verified = expected_stem in actual_name or actual_name in expected_stem
-    if not verified:
-        return {
-            "error": (
-                f"Sample verification FAILED — Simpler name '{actual_name}' "
-                f"does not match requested file '{expected_stem}'. The bridge "
-                f"reported success but the actual sample is different. "
-                f"Try `load_browser_item` with a user_library URI instead."
-            ),
-            "verified": False,
-            "actual_device_name": actual_name,
-            "expected_stem": expected_stem,
-        }
-
-    # Step 2: turn Snap OFF — required for reliable playback after replace
-    hygiene_params: list[dict] = [
-        {"name_or_index": "Snap", "value": 0},
-    ]
-
-    # Step 3: smart defaults for warped loops
-    if _is_warped_loop(file_path):
-        hygiene_params.extend([
-            {"name_or_index": "S Start", "value": 0.0},
-            {"name_or_index": "S Length", "value": 1.0},
-            {"name_or_index": "S Loop On", "value": 1},
-        ])
-
-    try:
-        ableton.send_command("batch_set_parameters", {
-            "track_index": track_index,
-            "device_index": device_index,
-            "parameters": hygiene_params,
-        })
-    except Exception as exc:
-        logger.debug("_simpler_post_load_hygiene failed: %s", exc)
-        # non-fatal — verification already succeeded
-        pass
-
-    return {
-        "verified": True,
-        "device_name": actual_name,
-        "track_index": track_index,
-        "device_index": device_index,
-        "warped_loop_defaults_applied": _is_warped_loop(file_path),
-    }
+# _BPM_IN_FILENAME_RE, _is_warped_loop, _filename_stem, and the
+# _simpler_post_load_hygiene coroutine now live in
+# ``_analyzer_engine/sample.py`` — re-exported via this module's imports
+# at the top of the file so tests importing them by name still resolve.
 
 
 @mcp.tool()
@@ -847,21 +703,9 @@ async def capture_stop(ctx: Context) -> dict:
     return await bridge.send_command("capture_stop")
 
 # ── Phase 4: FluCoMa Real-Time ───────────────────────────────────────────
-
-PITCH_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
-
-
-def _flucoma_hint(cache) -> str:
-    """Return an error hint if no FluCoMa data has arrived.
-
-    If ANY stream has data, FluCoMa is working and the specific stream just
-    hasn't updated yet — return a 'play audio' hint. If NO streams have data,
-    FluCoMa may not be installed — return an install hint.
-    """
-    for key in ("spectral_shape", "mel_bands", "chroma", "loudness"):
-        if cache.get(key):
-            return "play some audio"
-    return "FluCoMa may not be installed. Install via: npx livepilot --setup-flucoma"
+#
+# PITCH_NAMES + _flucoma_hint now live in ``_analyzer_engine/flucoma.py``
+# and are re-exported via the top-of-file imports for tests/subclassers.
 
 
 @mcp.tool()

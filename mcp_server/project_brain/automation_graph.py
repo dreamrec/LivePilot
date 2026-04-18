@@ -12,6 +12,7 @@ def build_automation_graph(
     track_infos: list[dict],
     sections: list[dict] | None = None,
     clip_automation: list[dict] | None = None,
+    clips_scanned: int = 0,
 ) -> AutomationGraph:
     """Build an AutomationGraph covering both device-parameter automation
     hints and real clip envelopes (BUG-E2).
@@ -27,11 +28,17 @@ def build_automation_graph(
               parameter_name, parameter_type, device_name}].
             This is the ground truth — `device.parameters[i].is_automated`
             only reflects mapping state, not the presence of an envelope.
+        clips_scanned: total number of session clips the caller actually
+            probed for envelopes. Used to compute ``coverage_pct``; pass 0
+            when the caller couldn't enumerate clips (unknown → 0.0).
 
     Returns:
-        AutomationGraph with automated_params and density_by_section.
+        AutomationGraph with automated_params, density_by_section, and
+        the v1.10.9 coverage signals (coverage_pct, clip_envelope_count,
+        clips_scanned).
     """
     graph = AutomationGraph()
+    graph.clips_scanned = max(0, int(clips_scanned))
 
     if not track_infos and not clip_automation:
         return graph
@@ -120,5 +127,20 @@ def build_automation_graph(
                 )
             else:
                 graph.density_by_section[section_id] = 0.0
+
+    # BUG-D2 coverage signals.
+    # clip_envelope_count = distinct (track, clip) slots containing any envelope.
+    clip_slots_with_envelope: set[tuple[int, int | None]] = set()
+    for env in clip_automation or []:
+        clip_slots_with_envelope.add(
+            (int(env.get("track_index", -1)), env.get("clip_index"))
+        )
+    graph.clip_envelope_count = len(clip_slots_with_envelope)
+    if graph.clips_scanned > 0:
+        graph.coverage_pct = min(
+            1.0, graph.clip_envelope_count / float(graph.clips_scanned)
+        )
+    else:
+        graph.coverage_pct = 0.0
 
     return graph

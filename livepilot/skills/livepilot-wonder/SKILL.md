@@ -63,11 +63,11 @@ For the recommendation, explain:
 
 ## Creative Intelligence (consult before generating variants)
 
-Wonder Mode should produce musically interesting results, not just technically correct ones. Before generating or applying any variant:
+Wonder Mode should produce musically interesting results, not just technically correct ones. Before generating or applying any variant, read the shared device-knowledge references (they live in the `livepilot-core` skill, not in this one):
 
-1. Read `references/device-knowledge/automation-as-music.md` for automation shapes and macro gestures
-2. Read `references/device-knowledge/creative-thinking.md` for emotional-to-technical mapping
-3. Read `references/device-knowledge/chains-genre.md` if the session has a genre identity
+1. `livepilot-core/references/device-knowledge/automation-as-music.md` — automation shapes and macro gestures
+2. `livepilot-core/references/device-knowledge/creative-thinking.md` — emotional-to-technical mapping
+3. `livepilot-core/references/device-knowledge/chains-genre.md` — if the session has a genre identity
 
 When reviewing Wonder variants, aim for musical depth:
 - **Filter arcs** — evolving filter across sections adds movement

@@ -486,7 +486,7 @@ def test_safety_tools_registered():
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 324, f"Expected 324 tools, got {len(tools)}"
+    assert len(tools) == 325, f"Expected 325 tools, got {len(tools)}"
 
 
 def test_every_tool_has_description_and_schema():

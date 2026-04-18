@@ -31,6 +31,66 @@ from .policy import apply_hard_rules
 # ── Sonic Evaluator ──────────────────────────────────────────────────
 
 
+def _compute_taste_fit(
+    dimension_changes: dict[str, dict],
+    outcome_history: Optional[list[dict]],
+) -> float:
+    """Score how well this move aligns with the user's recent taste.
+
+    Shipped in v1.10.9 — previously hardcoded to 0.0.
+
+    For each dimension that moved (in ``dimension_changes``), look at the
+    user's last few kept/undone outcomes for the same dimension:
+      * kept with the same direction of delta → +0.2 per match
+      * undone with the same direction of delta → −0.2 per match
+
+    Returns a value in 0..1 (0.5 = neutral, neither signal). Empty history
+    returns 0.5, which is the correct "no information yet" neutral the
+    composite score already expects.
+
+    ``outcome_history`` entries are dicts of the shape::
+
+        {"dimension": "punch", "delta": 0.12, "kept": True}
+
+    Callers that pass a richer shape should extract those three fields.
+    Malformed entries are skipped silently so a schema bump upstream can't
+    break the evaluator.
+    """
+    if not outcome_history or not dimension_changes:
+        return 0.5
+
+    # Only weigh the most recent slice — taste drifts, and older signals
+    # shouldn't veto a current evaluation.
+    recent = outcome_history[-10:]
+
+    adjustment = 0.0
+    matched = 0
+    for dim, change in dimension_changes.items():
+        current_delta = change.get("delta", 0.0)
+        current_sign = 1 if current_delta > 0 else (-1 if current_delta < 0 else 0)
+        if current_sign == 0:
+            continue
+        for entry in recent:
+            if not isinstance(entry, dict):
+                continue
+            if entry.get("dimension") != dim:
+                continue
+            past_delta = entry.get("delta")
+            if not isinstance(past_delta, (int, float)):
+                continue
+            past_sign = 1 if past_delta > 0 else (-1 if past_delta < 0 else 0)
+            if past_sign != current_sign:
+                continue
+            kept = bool(entry.get("kept", False))
+            adjustment += 0.2 if kept else -0.2
+            matched += 1
+
+    if matched == 0:
+        return 0.5
+    # Neutral baseline 0.5 + averaged adjustment, clamped to [0, 1].
+    return _clamp(0.5 + adjustment / matched)
+
+
 def evaluate_sonic_move(
     request: EvaluationRequest,
     outcome_history: Optional[list[dict]] = None,
@@ -109,12 +169,13 @@ def evaluate_sonic_move(
     measurable_component = _clamp(0.5 + measurable_delta)
     preservation = _clamp(1.0 - collateral_damage * 5)
     confidence = measurable_count / max(len(targets), 1)
+    taste_fit = _compute_taste_fit(dimension_changes, outcome_history)
 
     score = (
         0.30 * goal_fit
         + 0.25 * measurable_component
         + 0.15 * preservation
-        + 0.10 * 0.0   # taste_fit: placeholder, no history in fabric v1
+        + 0.10 * taste_fit
         + 0.10 * confidence
         + 0.10 * 1.0   # reversibility: 1.0 for undo-able moves
     )

@@ -22,6 +22,13 @@ class CreativeThread:
     def to_dict(self) -> dict:
         return asdict(self)
 
+    @classmethod
+    def from_dict(cls, data: dict) -> "CreativeThread":
+        """Rehydrate from persisted dict; unknown keys are ignored so a future
+        schema bump won't break load on older on-disk state."""
+        allowed = {f for f in cls.__dataclass_fields__}
+        return cls(**{k: v for k, v in data.items() if k in allowed})
+
     @property
     def is_stale(self) -> bool:
         """A thread is stale if untouched for >30 minutes."""
@@ -43,6 +50,12 @@ class TurnResolution:
 
     def to_dict(self) -> dict:
         return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "TurnResolution":
+        """Rehydrate from persisted dict; unknown keys are ignored."""
+        allowed = {f for f in cls.__dataclass_fields__}
+        return cls(**{k: v for k, v in data.items() if k in allowed})
 
 
 @dataclass
