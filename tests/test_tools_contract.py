@@ -1,4 +1,4 @@
-"""Verify all 393 MCP tools are registered across 50 domains."""
+"""Verify all 397 MCP tools are registered across 51 domains."""
 
 import asyncio
 import sys
@@ -630,7 +630,19 @@ def test_control_surfaces_tools_registered():
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 393, f"Expected 393 tools, got {len(tools)}"
+    assert len(tools) == 397, f"Expected 397 tools, got {len(tools)}"
+
+
+def test_miditool_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "install_miditool_device",
+        "set_miditool_target",
+        "get_miditool_context",
+        "list_miditool_generators",
+    }
+    missing = expected - names
+    assert not missing, f"Missing MIDI Tool tools: {missing}"
 
 
 def test_song_track_primitives_registered():

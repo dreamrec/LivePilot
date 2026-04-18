@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog
 
-393 tools across 50 domains.
+397 tools across 51 domains.
 
 ---
 
@@ -755,3 +755,16 @@
 |------|-------------|
 | `list_control_surfaces` | List all active ControlSurface instances (Push, APC, Launchkey, etc.) |
 | `get_control_surface_info` | Read detailed info about a single control surface |
+
+---
+
+## MIDI Tool bridge (4, Live 12.0+ MIDI Generators / Transformations)
+
+Requires `LivePilot_MIDITool.amxd` (see `m4l_device/MIDITOOL_BUILD_GUIDE.md`).
+
+| Tool | Description |
+|------|-------------|
+| `install_miditool_device` | Copy LivePilot_MIDITool.amxd into Ableton's User Library (macOS) |
+| `set_miditool_target` | Configure which LivePilot generator runs on MIDI Tool requests |
+| `get_miditool_context` | Read the last context (grid/selection/scale/seed/tuning) received from the bridge |
+| `list_miditool_generators` | Enumerate registered generators: euclidean_rhythm, tintinnabuli, humanize |

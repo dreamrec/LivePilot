@@ -138,6 +138,14 @@ BRIDGE_COMMANDS: frozenset[str] = frozenset({
     # async Python MCP tool in mcp_server/tools/analyzer.py, not a bridge
     # command. It has no case in livepilot_bridge.js and no @register handler
     # in remote_script. See mcp_server/runtime/execution_router.MCP_TOOLS.
+    # NOTE: MIDI Tool bridge commands (Live 12.0+ MIDI Generators /
+    # Transformations, requires LivePilot_MIDITool.amxd) do NOT belong in
+    # this set. They ride OSC prefixes /miditool/request, /miditool/ready
+    # (bridge→server) and miditool/config, miditool/response (server→bridge),
+    # dispatched through m4l_device/miditool_bridge.js (a separate JS, not
+    # livepilot_bridge.js) and pushed directly via M4LBridge.send_miditool_*
+    # helpers rather than through send_command. BRIDGE_COMMANDS is reserved
+    # for send_command targets that dispatch inside livepilot_bridge.js.
 })
 
 # Combined: all valid send_command targets

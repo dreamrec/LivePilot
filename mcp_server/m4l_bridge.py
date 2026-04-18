@@ -25,11 +25,12 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import random
 import socket
 import struct
 import threading
 import time
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 
 def _encode_string_arg(value: str) -> str:
@@ -135,6 +136,336 @@ class SpectralCache:
             return result
 
 
+# ─── MIDI Tool bridge (Live 12.0+ MIDI Generators / Transformations) ─────────
+
+
+class MidiToolCache:
+    """Thread-safe cache for MIDI Tool requests from live.miditool.in.
+
+    Mirrors SpectralCache semantics: entries age out after max_age seconds
+    (default 5). Distinct cache so MIDI-Tool state doesn't get mixed in with
+    analyzer spectrum/RMS/pitch data that tools read by key.
+
+    The last-received request payload carries ``{context, notes}`` where
+    ``context`` is ``{grid, selection, scale, seed, tuning}`` emitted by
+    Live's ``live.miditool.in`` right outlet, and ``notes`` is the note
+    list from the left outlet.
+    """
+
+    def __init__(self, max_age: float = 5.0):
+        self._lock = threading.Lock()
+        self._max_age = max_age
+        self._context: Optional[dict] = None
+        self._notes: Optional[list] = None
+        self._last_seen = 0.0
+        self._connected = False
+        self._target_tool: Optional[str] = None
+        self._target_params: dict = {}
+
+    def set_request(self, context: dict, notes: list) -> None:
+        with self._lock:
+            self._context = context
+            self._notes = notes
+            self._last_seen = time.monotonic()
+            self._connected = True
+
+    def mark_ready(self) -> None:
+        """Called when the bridge announces itself (``/miditool/ready``)."""
+        with self._lock:
+            self._last_seen = time.monotonic()
+            self._connected = True
+
+    def get_last_context(self) -> Optional[dict]:
+        with self._lock:
+            if self._context is None:
+                return None
+            age = time.monotonic() - self._last_seen
+            if age > self._max_age:
+                return None
+            return dict(self._context)
+
+    def get_last_notes(self) -> Optional[list]:
+        with self._lock:
+            if self._notes is None:
+                return None
+            age = time.monotonic() - self._last_seen
+            if age > self._max_age:
+                return None
+            return list(self._notes)
+
+    @property
+    def is_connected(self) -> bool:
+        with self._lock:
+            if not self._connected:
+                return False
+            return (time.monotonic() - self._last_seen) < self._max_age
+
+    def set_target(self, tool_name: Optional[str], params: Optional[dict]) -> None:
+        with self._lock:
+            self._target_tool = tool_name
+            self._target_params = dict(params or {})
+
+    def get_target(self) -> tuple[Optional[str], dict]:
+        with self._lock:
+            return self._target_tool, dict(self._target_params)
+
+
+# ─── Built-in generator implementations ──────────────────────────────────────
+#
+# These run in-process when a MIDI Tool request arrives. Each takes
+# ``(notes, context, params)`` and returns a new notes list. Notes are dicts
+# matching Live's live.miditool.in format:
+#   {pitch, start_time, duration, velocity, mute, probability,
+#    velocity_deviation, release_velocity, note_id}
+#
+# Generators should preserve unknown fields so Live's richer note data round-
+# trips unchanged through the bridge.
+
+
+def _bjorklund(pulses: int, steps: int) -> list[int]:
+    """Classic Bjorklund equidistribution. Returns [0, 1] pattern of length steps."""
+    if steps <= 0:
+        return []
+    if pulses <= 0:
+        return [0] * steps
+    if pulses >= steps:
+        return [1] * steps
+
+    counts: list[int] = []
+    remainders: list[int] = [pulses]
+    divisor = steps - pulses
+    level = 0
+    while True:
+        counts.append(divisor // remainders[level])
+        remainders.append(divisor % remainders[level])
+        divisor = remainders[level]
+        level += 1
+        if remainders[level] <= 1:
+            break
+    counts.append(divisor)
+
+    def build(lv: int) -> list[int]:
+        if lv == -1:
+            return [0]
+        if lv == -2:
+            return [1]
+        out: list[int] = []
+        for _ in range(counts[lv]):
+            out += build(lv - 1)
+        if remainders[lv] != 0:
+            out += build(lv - 2)
+        return out
+
+    pattern = build(level)
+    return pattern[:steps] if len(pattern) >= steps else pattern + [0] * (steps - len(pattern))
+
+
+def _euclidean_rhythm(notes: list, context: dict, params: dict) -> list:
+    """Replace the selection with a Bjorklund-distributed rhythm.
+
+    params:
+      steps (int, required)         — subdivisions of the selection
+      pulses (int, required)        — hits to distribute
+      rotation (int, optional)      — pattern rotation, default 0
+      note (int, optional)          — MIDI pitch, default 36 (C1)
+      velocity (float, optional)    — 0.0..1.0, default 0.8
+
+    Selection span comes from context["selection"] if present, otherwise
+    falls back to min/max of input note start_times.
+    """
+    steps = int(params.get("steps", 16))
+    pulses = int(params.get("pulses", 4))
+    rotation = int(params.get("rotation", 0))
+    pitch = int(params.get("note", 36))
+    velocity = float(params.get("velocity", 0.8))
+
+    if steps <= 0:
+        return list(notes)
+    pulses = max(0, min(pulses, steps))
+
+    pattern = _bjorklund(pulses, steps)
+    if rotation:
+        rotation = rotation % steps
+        pattern = pattern[rotation:] + pattern[:rotation]
+
+    selection = context.get("selection") or {}
+    try:
+        start = float(selection.get("start", 0.0))
+        end = float(selection.get("end", start + float(steps)))
+    except (TypeError, ValueError):
+        start = 0.0
+        end = float(steps)
+    if end <= start:
+        # Fall back to input note span, else a bar at current tempo.
+        if notes:
+            start = min(float(n.get("start_time", 0.0)) for n in notes)
+            end = max(
+                float(n.get("start_time", 0.0)) + float(n.get("duration", 0.25))
+                for n in notes
+            )
+        if end <= start:
+            end = start + 4.0
+
+    step_dur = (end - start) / float(steps)
+    velocity = max(0.0, min(1.0, velocity))
+
+    out: list[dict] = []
+    for i, hit in enumerate(pattern):
+        if not hit:
+            continue
+        out.append({
+            "pitch": max(0, min(127, pitch)),
+            "start_time": round(start + i * step_dur, 6),
+            "duration": round(step_dur, 6),
+            "velocity": velocity,
+            "mute": False,
+            "probability": 1.0,
+            "velocity_deviation": 0.0,
+            "release_velocity": 0.5,
+            "note_id": -1,
+        })
+    return out
+
+
+def _tintinnabuli(notes: list, context: dict, params: dict) -> list:
+    """Add an Arvo Pärt-style companion voice on the tonic triad.
+
+    For each input note, emit the input plus a companion note locked to
+    the nearest member of the supplied triad (above / below / alternating).
+
+    params:
+      t_voice_triad (list[int], optional) — semitone offsets from scale root.
+                                             default [0, 4, 7] (major triad)
+      direction (str, optional)            — "above" | "below" | "alternate".
+                                             default "above"
+    """
+    triad = params.get("t_voice_triad")
+    if not triad:
+        triad = [0, 4, 7]
+    triad = [int(t) % 12 for t in triad]
+    direction = str(params.get("direction", "above")).lower()
+
+    scale = context.get("scale") or {}
+    try:
+        scale_root = int(scale.get("root", 0)) % 12
+    except (TypeError, ValueError):
+        scale_root = 0
+
+    out: list[dict] = []
+    for i, n in enumerate(notes):
+        out.append(dict(n))  # preserve the melody
+        try:
+            pitch = int(n.get("pitch", 60))
+        except (TypeError, ValueError):
+            continue
+
+        # Build absolute candidate triad pitches within ±1 octave of the note.
+        candidates = []
+        for octave in range(-2, 3):
+            for t in triad:
+                cand = ((pitch // 12) + octave) * 12 + ((scale_root + t) % 12)
+                if 0 <= cand <= 127 and cand != pitch:
+                    candidates.append(cand)
+        if not candidates:
+            continue
+
+        if direction == "below":
+            below = [c for c in candidates if c < pitch]
+            companion = max(below) if below else min(candidates)
+        elif direction == "alternate":
+            if i % 2 == 0:
+                above = [c for c in candidates if c > pitch]
+                companion = min(above) if above else max(candidates)
+            else:
+                below = [c for c in candidates if c < pitch]
+                companion = max(below) if below else min(candidates)
+        else:  # "above" (default)
+            above = [c for c in candidates if c > pitch]
+            companion = min(above) if above else max(candidates)
+
+        comp = dict(n)
+        comp["pitch"] = max(0, min(127, companion))
+        comp["note_id"] = -1  # new note
+        out.append(comp)
+    return out
+
+
+def _humanize(notes: list, context: dict, params: dict) -> list:
+    """Humanize timing + velocity of existing notes.
+
+    params:
+      timing_spread (float, optional)   — beats, default 0.05
+      velocity_spread (float, optional) — 0.0..1.0, default 0.1
+
+    Uses context["seed"] for deterministic jitter when present, otherwise
+    system randomness.
+    """
+    timing = float(params.get("timing_spread", 0.05))
+    vel_spread = float(params.get("velocity_spread", 0.1))
+
+    seed = context.get("seed")
+    rng = random.Random()
+    if seed is not None:
+        try:
+            rng.seed(int(seed))
+        except (TypeError, ValueError):
+            rng.seed(str(seed))
+
+    out: list[dict] = []
+    for n in notes:
+        m = dict(n)
+        try:
+            start = float(m.get("start_time", 0.0))
+        except (TypeError, ValueError):
+            start = 0.0
+        try:
+            vel = float(m.get("velocity", 0.8))
+        except (TypeError, ValueError):
+            vel = 0.8
+        m["start_time"] = round(max(0.0, start + rng.uniform(-timing, timing)), 6)
+        m["velocity"] = round(max(0.0, min(1.0, vel + rng.uniform(-vel_spread, vel_spread))), 4)
+        out.append(m)
+    return out
+
+
+# Registry: name -> callable(notes, context, params) -> list[note_dict]
+_GENERATORS: dict[str, Callable[[list, dict, dict], list]] = {
+    "euclidean_rhythm": _euclidean_rhythm,
+    "tintinnabuli": _tintinnabuli,
+    "humanize": _humanize,
+}
+
+
+# Metadata for list_miditool_generators.
+GENERATOR_METADATA: dict[str, dict] = {
+    "euclidean_rhythm": {
+        "description": "Bjorklund-distributed rhythm over the selection",
+        "required_params": ["steps", "pulses"],
+        "optional_params": ["rotation", "note", "velocity"],
+    },
+    "tintinnabuli": {
+        "description": "Pärt-style voice with tintinnabuli companion",
+        "required_params": ["t_voice_triad"],
+        "optional_params": ["direction"],
+    },
+    "humanize": {
+        "description": "Humanize timing + velocity of existing notes",
+        "required_params": [],
+        "optional_params": ["timing_spread", "velocity_spread"],
+    },
+}
+
+
+def available_generators() -> list[str]:
+    """List registered generator names."""
+    return sorted(_GENERATORS.keys())
+
+
+def run_generator(tool_name: str, notes: list, context: dict, params: dict) -> list:
+    """Invoke a registered generator by name. Raises KeyError if unknown."""
+    fn = _GENERATORS[tool_name]
+    return fn(list(notes or []), dict(context or {}), dict(params or {}))
+
 
 class SpectralReceiver(asyncio.DatagramProtocol):
     """Receives OSC-formatted UDP packets from the M4L device.
@@ -150,13 +481,24 @@ class SpectralReceiver(asyncio.DatagramProtocol):
 
     BAND_NAMES = ["sub", "low", "low_mid", "mid", "high_mid", "high", "presence", "air"]
 
-    def __init__(self, cache: SpectralCache):
+    def __init__(self, cache: SpectralCache, miditool_cache: Optional["MidiToolCache"] = None):
         self.cache = cache
+        self.miditool_cache = miditool_cache
         self._chunks: dict[str, dict] = {}  # Reassembly buffer for chunked responses
         self._chunk_times: dict[str, float] = {}  # Monotonic timestamp per chunk sequence
         self._chunk_id = 0
         self._response_callback: Optional[asyncio.Future] = None
         self._capture_future: Optional[asyncio.Future] = None
+        self._miditool_handler: Optional[Callable[[str, dict, list], None]] = None
+
+    def set_miditool_handler(self, handler: Optional[Callable[[str, dict, list], None]]) -> None:
+        """Register a callback invoked on each /miditool/request packet.
+
+        Signature: ``handler(request_id, context, notes) -> None``.
+        The handler is expected to run the configured generator and push
+        a ``/miditool/response`` OSC back via M4LBridge.send_miditool_response.
+        """
+        self._miditool_handler = handler
 
     def connection_made(self, transport: asyncio.DatagramTransport) -> None:
         self.transport = transport
@@ -277,6 +619,13 @@ class SpectralReceiver(asyncio.DatagramProtocol):
         elif address == "/response_chunk" and len(args) >= 3:
             self._handle_chunk(int(args[0]), int(args[1]), str(args[2]))
 
+        elif address == "/miditool/request" and len(args) >= 1:
+            self._handle_miditool_request(str(args[0]))
+
+        elif address == "/miditool/ready":
+            if self.miditool_cache is not None:
+                self.miditool_cache.mark_ready()
+
     def _handle_response(self, encoded: str) -> None:
         """Decode a single-packet base64 response.
 
@@ -301,6 +650,37 @@ class SpectralReceiver(asyncio.DatagramProtocol):
         except Exception as exc:
             import sys
             print(f"LivePilot: failed to decode bridge response: {exc}", file=sys.stderr)
+
+    def _handle_miditool_request(self, encoded: str) -> None:
+        """Decode a /miditool/request packet and dispatch to the configured handler.
+
+        Payload: base64(JSON({request_id, context, notes})).
+        Packet arrives on the UDP receive thread; the registered handler is
+        expected to schedule work on an event loop rather than block here.
+        """
+        try:
+            padded = encoded + "=" * (-len(encoded) % 4)
+            decoded = base64.urlsafe_b64decode(padded).decode("utf-8")
+            payload = json.loads(decoded)
+        except Exception as exc:
+            import sys
+            print(f"LivePilot: failed to decode miditool request: {exc}", file=sys.stderr)
+            return
+
+        request_id = str(payload.get("request_id", ""))
+        context = payload.get("context") or {}
+        notes = payload.get("notes") or []
+
+        if self.miditool_cache is not None:
+            self.miditool_cache.set_request(context, notes)
+
+        handler = self._miditool_handler
+        if handler is not None:
+            try:
+                handler(request_id, context, notes)
+            except Exception as exc:
+                import sys
+                print(f"LivePilot: miditool handler error: {exc}", file=sys.stderr)
 
     def _handle_chunk(self, index: int, total: int, encoded: str) -> None:
         """Reassemble chunked responses.
@@ -387,12 +767,81 @@ class M4LBridge:
     and are handled by the SpectralReceiver.
     """
 
-    def __init__(self, cache: SpectralCache, receiver: Optional[SpectralReceiver] = None):
+    def __init__(
+        self,
+        cache: SpectralCache,
+        receiver: Optional[SpectralReceiver] = None,
+        miditool_cache: Optional[MidiToolCache] = None,
+    ):
         self.cache = cache
         self.receiver = receiver
+        self.miditool_cache = miditool_cache
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._m4l_addr = ("127.0.0.1", 9881)
         self._cmd_lock: Optional[asyncio.Lock] = None
+
+        # Wire the miditool dispatch: receiver calls us on /miditool/request,
+        # we look up the configured generator and push the response back.
+        if self.receiver is not None:
+            self.receiver.set_miditool_handler(self._dispatch_miditool_request)
+            if self.receiver.miditool_cache is None and miditool_cache is not None:
+                self.receiver.miditool_cache = miditool_cache
+
+    def _dispatch_miditool_request(
+        self, request_id: str, context: dict, notes: list,
+    ) -> None:
+        """Handle a decoded /miditool/request: run the configured generator,
+        send /miditool/response back with {request_id, notes}.
+
+        Invoked from SpectralReceiver on the UDP receive thread. We do not
+        await anything here — generators are synchronous, pure Python.
+        If no target is configured, pass notes through unchanged (identity).
+        """
+        if self.miditool_cache is None:
+            return
+        tool_name, params = self.miditool_cache.get_target()
+
+        try:
+            if tool_name and tool_name in _GENERATORS:
+                out_notes = run_generator(tool_name, notes, context, params)
+            else:
+                out_notes = list(notes)
+        except Exception as exc:
+            import sys
+            print(
+                f"LivePilot: miditool generator '{tool_name}' failed: {exc} — "
+                f"passing input unchanged.",
+                file=sys.stderr,
+            )
+            out_notes = list(notes)
+
+        try:
+            self.send_miditool_response(request_id, out_notes)
+        except Exception as exc:
+            import sys
+            print(f"LivePilot: failed to send miditool response: {exc}", file=sys.stderr)
+
+    def send_miditool_config(self, tool_name: Optional[str], params: Optional[dict]) -> None:
+        """Push the currently-selected generator config to the JS bridge.
+
+        Sends ``miditool/config`` OSC with a JSON blob. The underlying
+        ``_build_osc`` applies the standard ``b64:`` prefix encoding to the
+        string arg, so we just pass the raw JSON — single-encoded on the wire.
+        The JS side decodes via ``_decode_b64_arg`` like every other command.
+        """
+        payload = {"tool_name": tool_name or "", "params": params or {}}
+        osc = self._build_osc("miditool/config", (json.dumps(payload),))
+        self._sock.sendto(osc, self._m4l_addr)
+
+    def send_miditool_response(self, request_id: str, notes: list) -> None:
+        """Send transformed notes back to the JS bridge.
+
+        Packet: ``miditool/response`` <b64-encoded JSON({request_id, notes})>.
+        The JS side matches request_id and emits notes out live.miditool.out.
+        """
+        payload = {"request_id": str(request_id or ""), "notes": list(notes or [])}
+        osc = self._build_osc("miditool/response", (json.dumps(payload),))
+        self._sock.sendto(osc, self._m4l_addr)
 
     async def send_command(self, command: str, *args: Any, timeout: float = 5.0) -> dict:
         """Send an OSC command to the M4L device and wait for the response."""

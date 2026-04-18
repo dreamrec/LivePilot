@@ -12,6 +12,7 @@ import Live
 FEATURES = {
     "song_scale_api": (12, 0, 0),
     "clip_follow_action_v2": (12, 0, 0),
+    "miditool_api": (12, 0, 0),
     "create_midi_clip_arrangement": (12, 1, 10),
     "looper_export": (12, 1, 0),
     "tuning_system": (12, 1, 0),

@@ -9,7 +9,7 @@ import subprocess
 from fastmcp import FastMCP, Context  # noqa: F401
 
 from .connection import AbletonConnection
-from .m4l_bridge import SpectralCache, SpectralReceiver, M4LBridge
+from .m4l_bridge import SpectralCache, SpectralReceiver, M4LBridge, MidiToolCache
 
 # Logger must be defined before any function uses it — several module-level
 # helpers below (e.g. _master_has_livepilot_analyzer) call logger.debug on
@@ -174,8 +174,9 @@ async def lifespan(server):
 
     ableton = AbletonConnection()
     spectral = SpectralCache()
-    receiver = SpectralReceiver(spectral)
-    m4l = M4LBridge(spectral, receiver)
+    miditool = MidiToolCache()
+    receiver = SpectralReceiver(spectral, miditool_cache=miditool)
+    m4l = M4LBridge(spectral, receiver, miditool_cache=miditool)
     mcp_dispatch = build_mcp_dispatch_registry()
 
     # Splice gRPC client — graceful degradation if Splice desktop isn't
@@ -234,6 +235,7 @@ async def lifespan(server):
         yield {
             "ableton": ableton,
             "spectral": spectral,
+            "miditool": miditool,
             "m4l": m4l,
             "_bridge_state": bridge_state,
             "mcp_dispatch": mcp_dispatch,
@@ -304,6 +306,7 @@ from .sample_engine import tools as sample_engine_tools        # noqa: F401, E40
 from .atlas import tools as atlas_tools                        # noqa: F401, E402
 from .composer import tools as composer_tools                  # noqa: F401, E402
 from .tools import diagnostics   # noqa: F401, E402
+from .tools import miditool       # noqa: F401, E402
 
 # ---------------------------------------------------------------------------
 # Schema coercion patch — accept strings for numeric parameters
