@@ -1,5 +1,47 @@
 # Changelog
 
+## 1.10.7 — npm .amxd parity + domain-count consistency (April 18 2026)
+
+Shipping release. Brings npm's tarball back in line with the fresh `.amxd`
+freeze that landed on `main` after v1.10.6 tagged, and unifies the three
+formerly-disagreeing sources of the domain count.
+
+### Fixed
+
+- **npm tarball parity with the GitHub release.** v1.10.6's npm publish
+  predated commit `b0463ea` (the real fat `.amxd` freeze with matching ping
+  bytes), so `npm install livepilot@1.10.6` shipped the stale Batch-22
+  `.amxd` and `simpler_set_warp` silently no-op'd. v1.10.7 republishes with
+  the fresh `.amxd` already present in the GitHub release assets.
+- **Domain count unified at 45.** Three formerly-disagreeing sources: prose
+  docs claimed "43 domains", `generate_tool_catalog.py` inferred "36" (via
+  a hand-maintained whitelist that silently dropped ~10 domains —
+  `atlas`, `composer`, `creative_constraints`, `device_forge`,
+  `hook_hunter`, `preview_studio`, `sample_engine`, `session_continuity`,
+  `song_brain`, `stuckness_detector`, `wonder_mode` — into an "Other"
+  bucket), runtime module layout has 45. All three now agree.
+- **Inline domain lists completed.** `CLAUDE.md:31` was missing
+  `experiment`, `musical_intelligence`, and `semantic_moves`;
+  `livepilot/skills/livepilot-release/SKILL.md:63` was missing
+  `semantic_moves`.
+
+### Infra
+
+- **`scripts/sync_metadata.py` extended** with `check_domain_count()` and
+  `check_domain_list()` that derive truth from `mcp_server` module paths.
+  `--fix` mode now auto-corrects stale tool/domain counts and appends
+  missing inline-list entries; extra entries are never auto-removed so a
+  pattern miss can't silently delete a legitimate domain.
+- **`scripts/generate_tool_catalog.py`** now uses the same module-layout
+  rule (`mcp_server.<X>` / `mcp_server.tools.<Y>`) as `sync_metadata.py`
+  so the two tools can't disagree on the domain set again.
+- **`.mcpbignore`** excludes `m4l_device/*.pre-*-backup` rollback artifacts
+  from the packaged `.mcpb`, keeping release bundles pristine across
+  future freeze cycles.
+- **`CLAUDE.md` gains `## Domain Count` section** documenting the drift
+  enforcer alongside the existing `## Tool Count` and `## Version Bump`
+  sections.
+
 ## 1.10.6 — Debuggability + Engine Modularization (April 17 2026)
 
 Defensive-programming release. Zero behavior change for users; substantial
