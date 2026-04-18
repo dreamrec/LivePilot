@@ -47,8 +47,13 @@ def _python_files():
 @pytest.mark.parametrize("path", list(_python_files()), ids=lambda p: str(p.relative_to(REPO_ROOT)))
 def test_logger_defined_before_use(path):
     """Every mcp_server module that uses logger.X must define logger at
-    module top before the first use."""
-    src = path.read_text()
+    module top before the first use.
+
+    Explicit utf-8 decode: Python's default encoding on Windows is cp1252,
+    which fails on bytes in the 0x80-0x9F range that legitimately appear
+    in UTF-8-encoded em-dashes and similar in our source comments.
+    """
+    src = path.read_text(encoding="utf-8")
     cleaned = _strip_strings_and_comments(src)
 
     use_lines = [i for i, line in enumerate(cleaned.splitlines(), 1)

@@ -1,2 +1,2 @@
 """LivePilot MCP Server — bridges MCP protocol to Ableton Live."""
-__version__ = "1.10.7"
+__version__ = "1.10.8"
