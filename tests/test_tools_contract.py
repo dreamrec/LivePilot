@@ -518,10 +518,26 @@ def test_tuning_tools_registered():
     assert not missing, f"Missing tuning tools: {missing}"
 
 
+def test_follow_actions_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "get_clip_follow_action",
+        "set_clip_follow_action",
+        "clear_clip_follow_action",
+        "list_follow_action_types",
+        "apply_follow_action_preset",
+        "get_scene_follow_action",
+        "set_scene_follow_action",
+        "clear_scene_follow_action",
+    }
+    missing = expected - names
+    assert not missing, f"Missing follow action tools: {missing}"
+
+
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 336, f"Expected 336 tools, got {len(tools)}"
+    assert len(tools) == 344, f"Expected 344 tools, got {len(tools)}"
 
 
 def test_every_tool_has_description_and_schema():

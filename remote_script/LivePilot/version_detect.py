@@ -11,12 +11,14 @@ import Live
 
 FEATURES = {
     "song_scale_api": (12, 0, 0),
+    "clip_follow_action_v2": (12, 0, 0),
     "create_midi_clip_arrangement": (12, 1, 10),
     "looper_export": (12, 1, 0),
     "tuning_system": (12, 1, 0),
     "display_value": (12, 2, 0),
     "clip_start_time_observable": (12, 2, 0),
     "take_lanes_api": (12, 2, 0),
+    "scene_follow_actions": (12, 2, 0),
     "insert_device": (12, 3, 0),
     "insert_chain": (12, 3, 0),
     "drum_chain_in_note": (12, 3, 0),
