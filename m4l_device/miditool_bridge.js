@@ -496,25 +496,16 @@ function _cancel_pending_timer() {
 // ── Outbound: notes back into Live ─────────────────────────────────────────
 
 function _emit_notes(notes) {
-    // live.miditool.out accepts notes one at a time as dictionary messages.
-    // The "done" bang tells Live we're finished writing this batch.
-    if (!notes || notes.length === 0) {
-        outlet(1, "done");
-        return;
-    }
-    for (var i = 0; i < notes.length; i++) {
-        var n = notes[i];
-        if (n && typeof n === "object") {
-            var d = new Dict();
-            for (var k in n) {
-                if (n.hasOwnProperty(k)) {
-                    d.replace(k, n[k]);
-                }
-            }
-            outlet(1, "dictionary", d.name);
-        }
-    }
-    outlet(1, "done");
+    // live.miditool.out expects ONE dictionary message with a "notes" key
+    // mapping to an array of note dicts. Per Cycling '74 docs:
+    //   { "notes": [{pitch, start_time, duration, ...}, ...] }
+    // Only pitch, start_time, duration are required; rest are optional.
+    //
+    // The emission must be synchronous (same scheduler dispatch as the
+    // incoming live.miditool.in notes/context).
+    var d = new Dict();
+    d.replace("notes", notes || []);
+    outlet(1, "dictionary", d.name);
 }
 
 // ── Base64 helpers (shared shape with livepilot_bridge.js) ─────────────────
