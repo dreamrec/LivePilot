@@ -24,6 +24,9 @@ package-lock.json
 # Untracked Ableton presets (saved by users into m4l_device/)
 m4l_device/*.adv
 
+# Local .amxd backups from re-freeze / rollback sessions
+m4l_device/*.pre-*-backup
+
 # Credentials and tokens
 .mcpregistry_*
 .env
