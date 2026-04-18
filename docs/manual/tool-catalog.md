@@ -204,7 +204,8 @@
 | `get_clip_file_path` | Audio file path on disk |
 | `replace_simpler_sample` | Load audio into Simpler |
 | `load_sample_to_simpler` | Bootstrap Simpler + load sample |
-| `get_simpler_slices` | Slice point positions |
+| `get_simpler_slices` | Slice point positions (includes `base_midi_pitch` + per-slice `midi_pitch`) |
+| `classify_simpler_slices` | Classify each slice as KICK / SNARE / HAT / ghost via FFT |
 | `crop_simpler` | Crop to active region |
 | `reverse_simpler` | Reverse sample |
 | `warp_simpler` | Time-stretch to N beats |
