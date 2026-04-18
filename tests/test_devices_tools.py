@@ -78,3 +78,28 @@ def test_normalize_batch_entry_preserves_value_type():
     assert _normalize_batch_entry({"parameter_index": 1, "value": 0})["value"] == 0
     assert _normalize_batch_entry({"parameter_index": 1, "value": 1.5})["value"] == 1.5
     assert _normalize_batch_entry({"parameter_index": 1, "value": "On"})["value"] == "On"
+
+
+# ---------------------------------------------------------------------------
+# BUG-audit-H3: negative parameter_index must be rejected at the MCP layer
+# (matches set_device_parameter's validation at devices.py:278), not leak
+# through to the Remote Script as an unstructured IndexError.
+# ---------------------------------------------------------------------------
+
+
+def test_normalize_batch_entry_rejects_negative_parameter_index():
+    """parameter_index < 0 is invalid — must raise structured error."""
+    with pytest.raises(ValueError, match="parameter_index"):
+        _normalize_batch_entry({"parameter_index": -1, "value": 0.5})
+
+
+def test_normalize_batch_entry_accepts_zero_parameter_index():
+    """parameter_index = 0 is valid (Device On is usually index 0)."""
+    result = _normalize_batch_entry({"parameter_index": 0, "value": 1})
+    assert result == {"name_or_index": 0, "value": 1}
+
+
+def test_normalize_batch_entry_rejects_negative_legacy_name_or_index():
+    """Legacy name_or_index with negative int should also be rejected."""
+    with pytest.raises(ValueError, match="parameter_index|name_or_index"):
+        _normalize_batch_entry({"name_or_index": -5, "value": 0.5})

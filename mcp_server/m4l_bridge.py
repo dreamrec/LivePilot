@@ -511,10 +511,19 @@ class SpectralReceiver(asyncio.DatagramProtocol):
             print(f"LivePilot: malformed OSC packet from {addr}: {exc}", file=sys.stderr)
 
     def _parse_osc(self, data: bytes) -> None:
-        """Parse a minimal OSC message (address + typed args)."""
+        """Parse a minimal OSC message (address + typed args).
+
+        BUG-audit-C2: earlier versions used `data.index(b'\\x00')` directly,
+        which raises ValueError on malformed/truncated packets. When UDP
+        port 9880 gets traffic from a non-OSC source (port collision,
+        corrupt sender), every packet was logging a noisy stack trace.
+        Now we bounds-check null terminators and drop bad packets silently.
+        """
         # OSC address is a null-terminated string, padded to 4-byte boundary
-        null_pos = data.index(b'\x00')
-        address = data[:null_pos].decode('ascii')
+        null_pos = data.find(b'\x00')
+        if null_pos < 0:
+            return  # No null byte at all — not an OSC packet, drop silently
+        address = data[:null_pos].decode('ascii', errors='replace')
 
         # Skip to type tag string (after address padding)
         offset = null_pos + 1
@@ -523,8 +532,10 @@ class SpectralReceiver(asyncio.DatagramProtocol):
 
         # Type tag string starts with ','
         if offset < len(data) and data[offset] == ord(','):
-            tag_null = data.index(b'\x00', offset)
-            type_tags = data[offset + 1:tag_null].decode('ascii')
+            tag_null = data.find(b'\x00', offset)
+            if tag_null < 0:
+                return  # Tag string missing terminator — drop silently
+            type_tags = data[offset + 1:tag_null].decode('ascii', errors='replace')
             offset = tag_null + 1
             while offset % 4 != 0:
                 offset += 1
@@ -535,16 +546,22 @@ class SpectralReceiver(asyncio.DatagramProtocol):
         args = []
         for tag in type_tags:
             if tag == 'f':
+                if offset + 4 > len(data):
+                    return  # Truncated float arg
                 val = struct.unpack('>f', data[offset:offset + 4])[0]
                 args.append(val)
                 offset += 4
             elif tag == 'i':
+                if offset + 4 > len(data):
+                    return  # Truncated int arg
                 val = struct.unpack('>i', data[offset:offset + 4])[0]
                 args.append(val)
                 offset += 4
             elif tag == 's':
-                s_null = data.index(b'\x00', offset)
-                val = data[offset:s_null].decode('ascii')
+                s_null = data.find(b'\x00', offset)
+                if s_null < 0:
+                    return  # String arg missing terminator — drop silently
+                val = data[offset:s_null].decode('ascii', errors='replace')
                 args.append(val)
                 offset = s_null + 1
                 while offset % 4 != 0:
@@ -779,6 +796,11 @@ class M4LBridge:
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._m4l_addr = ("127.0.0.1", 9881)
         self._cmd_lock: Optional[asyncio.Lock] = None
+        # BUG-audit-C1: send_capture uses _capture_future, which is
+        # independent of _response_callback used by send_command.
+        # They must be serialised independently — sharing a lock made
+        # send_command block for the entire capture duration (up to 35s).
+        self._capture_lock: Optional[asyncio.Lock] = None
 
         # Wire the miditool dispatch: receiver calls us on /miditool/request,
         # we look up the configured generator and push the response back.
@@ -904,9 +926,13 @@ class M4LBridge:
                          "for a bind failure on port 9880."
             }
 
-        if self._cmd_lock is None:
-            self._cmd_lock = asyncio.Lock()
-        async with self._cmd_lock:
+        # BUG-audit-C1: use a dedicated _capture_lock (not _cmd_lock) so
+        # concurrent send_command calls are not blocked for the full
+        # recording duration. _capture_future and _response_callback are
+        # independent receiver state and can be driven concurrently.
+        if self._capture_lock is None:
+            self._capture_lock = asyncio.Lock()
+        async with self._capture_lock:
             # Cancel any stale capture future before creating a new one
             if self.receiver._capture_future and not self.receiver._capture_future.done():
                 self.receiver._capture_future.cancel()

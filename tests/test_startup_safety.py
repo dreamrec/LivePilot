@@ -48,11 +48,29 @@ class TestStartupSafety:
         )
 
     def test_identify_returns_none_for_free_port(self):
-        """When no process holds the port, should return None."""
+        """When no process holds the port, should return None.
+
+        BUG-audit-M4: earlier versions of this test hardcoded port 59999
+        as "almost certainly free" — which failed intermittently when
+        another process (e.g., the hosting Claude Desktop app) happened
+        to be listening there. Instead, bind-and-release a kernel-
+        assigned port to get a guaranteed-free port number.
+        """
+        import socket
+
         from mcp_server.server import _identify_port_holder
-        # Use an unlikely high port that's almost certainly free
-        result = _identify_port_holder(59999)
-        assert result is None
+
+        # Bind to an OS-assigned ephemeral port, read the number, then
+        # release. The kernel won't immediately reassign it, so it's
+        # genuinely free when _identify_port_holder queries lsof.
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.bind(("127.0.0.1", 0))
+            free_port = s.getsockname()[1]
+        # Socket closed → port free
+        result = _identify_port_holder(free_port)
+        assert result is None, (
+            f"Port {free_port} was just freed but lsof reports: {result}"
+        )
 
     def test_identify_returns_none_on_lsof_timeout(self, monkeypatch):
         """BUG from Batch-6 debug session: _identify_port_holder used to let

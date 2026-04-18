@@ -163,6 +163,25 @@ def test_enrich_slice_response_handles_missing_slices_key():
     assert enriched["slices"] == []
 
 
+def test_enrich_slice_response_handles_missing_index_field():
+    """BUG-audit-M2: if a slice entry is missing the `index` field
+    (bridge version skew), fall back to the position in the list
+    rather than raising KeyError mid list-comprehension."""
+    bridge_response = {
+        "slice_count": 3,
+        "slices": [
+            # no 'index' field — bridge might rename or omit in a future version
+            {"frame": 0, "seconds": 0.0},
+            {"frame": 13774, "seconds": 0.312},
+            {"frame": 28944, "seconds": 0.656},
+        ],
+    }
+    enriched = _enrich_slice_response(bridge_response)
+    # Should fall back to positional index (0, 1, 2) → pitches 36, 37, 38
+    pitches = [s["midi_pitch"] for s in enriched["slices"]]
+    assert pitches == [36, 37, 38]
+
+
 # ---------------------------------------------------------------------------
 # Task 6: classify_simpler_slices MCP tool — end-to-end with synthetic WAV.
 # ---------------------------------------------------------------------------
@@ -230,6 +249,83 @@ def test_classify_simpler_slices_end_to_end(tmp_path):
     pitches = [s["midi_pitch"] for s in result["slices"]]
     assert pitches == [36, 37]
     assert result["classifier_version"] == "v1.0"
+
+
+def test_classify_simpler_slices_returns_error_on_missing_wav(tmp_path):
+    """BUG-audit-C3: when file_path points to a non-existent file,
+    return a structured error dict instead of raising soundfile.SoundFileError."""
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from mcp_server.tools.analyzer import classify_simpler_slices
+
+    slice_response = {
+        "track": 0,
+        "device": 0,
+        "sample_rate": 44100,
+        "sample_length_frames": 10000,
+        "slice_count": 1,
+        "slices": [{"index": 0, "frame": 0, "seconds": 0.0}],
+    }
+
+    bridge = MagicMock()
+    bridge.send_command = AsyncMock(side_effect=[slice_response])
+    ctx = MagicMock()
+    with patch("mcp_server.tools.analyzer._get_m4l", return_value=bridge), patch(
+        "mcp_server.tools.analyzer._get_spectral", return_value={"analyzer": True}
+    ), patch("mcp_server.tools.analyzer._require_analyzer"):
+        import asyncio
+
+        missing = tmp_path / "does_not_exist.wav"
+        result = asyncio.run(
+            classify_simpler_slices(
+                ctx,
+                track_index=0,
+                device_index=0,
+                file_path=str(missing),
+            )
+        )
+
+    assert "error" in result, "Missing WAV should return error dict, not raise"
+    # Slices still returned for caller inspection
+    assert "slices" in result
+
+
+def test_classify_simpler_slices_returns_error_on_corrupt_wav(tmp_path):
+    """BUG-audit-C3: corrupt/non-audio files return structured error, don't raise."""
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from mcp_server.tools.analyzer import classify_simpler_slices
+
+    corrupt = tmp_path / "not_actually_audio.wav"
+    corrupt.write_bytes(b"this is not a WAV file at all, just random bytes" * 100)
+
+    slice_response = {
+        "track": 0,
+        "device": 0,
+        "sample_rate": 44100,
+        "slice_count": 1,
+        "slices": [{"index": 0, "frame": 0, "seconds": 0.0}],
+    }
+
+    bridge = MagicMock()
+    bridge.send_command = AsyncMock(side_effect=[slice_response])
+    ctx = MagicMock()
+    with patch("mcp_server.tools.analyzer._get_m4l", return_value=bridge), patch(
+        "mcp_server.tools.analyzer._get_spectral", return_value={"analyzer": True}
+    ), patch("mcp_server.tools.analyzer._require_analyzer"):
+        import asyncio
+
+        result = asyncio.run(
+            classify_simpler_slices(
+                ctx,
+                track_index=0,
+                device_index=0,
+                file_path=str(corrupt),
+            )
+        )
+
+    assert "error" in result
+    assert "slices" in result
 
 
 def test_classify_simpler_slices_returns_error_when_no_file_path():

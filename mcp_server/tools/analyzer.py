@@ -55,9 +55,11 @@ def _enrich_slice_response(response: Optional[dict]) -> Optional[dict]:
     enriched = dict(response)
     enriched["base_midi_pitch"] = SIMPLER_SLICE_BASE_PITCH
     slices = enriched.get("slices") or []
+    # BUG-audit-M2: fall back to positional index when the bridge response
+    # omits the `index` field (protects against bridge version skew).
     enriched["slices"] = [
-        {**s, "midi_pitch": SIMPLER_SLICE_BASE_PITCH + s["index"]}
-        for s in slices
+        {**s, "midi_pitch": SIMPLER_SLICE_BASE_PITCH + s.get("index", i)}
+        for i, s in enumerate(slices)
     ]
     return enriched
 
@@ -568,7 +570,16 @@ async def classify_simpler_slices(
         }
 
     # 3. Load WAV and build frame boundaries
-    audio, sr = sf.read(wav_path)
+    try:
+        audio, sr = sf.read(wav_path)
+    except (sf.LibsndfileError, sf.SoundFileError, RuntimeError, OSError) as exc:
+        # BUG-audit-C3: corrupt / missing / non-audio files must return a
+        # structured error dict instead of raising through the MCP framework
+        # (inconsistent with every other tool in this module).
+        return {
+            **enriched,
+            "error": f"Could not load WAV at {wav_path!r}: {exc}",
+        }
     slices = enriched["slices"]
     frame_boundaries = [s["frame"] for s in slices] + [len(audio)]
 

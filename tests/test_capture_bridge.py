@@ -196,6 +196,132 @@ async def test_bridge_send_capture_uses_capture_future():
     assert receiver._response_callback is None
 
 
+# ── BUG-audit-C2: _parse_osc must not crash on malformed packets ───────────
+
+
+def test_parse_osc_handles_packet_with_no_null_byte():
+    """BUG-audit-C2: a packet with no null byte in the address would
+    raise `ValueError: substring not found` from data.index(). The
+    outer datagram_received catches Exception, but error storms in
+    the log are noisy. The parser should detect missing null early
+    and skip the packet cleanly."""
+    cache = SpectralCache()
+    receiver = SpectralReceiver(cache)
+
+    # No null byte anywhere — this should not raise
+    bad_packet = b"this is not a valid OSC packet and has no null at all"
+    # Parser returns normally (no handler dispatched); no exception
+    receiver._parse_osc(bad_packet)
+
+    # Cache untouched
+    assert cache.get("spectrum") is None
+
+
+def test_parse_osc_handles_truncated_string_arg():
+    """Packet with a type-tag 's' but no null terminator in the string
+    argument should not raise — the packet is malformed and should be
+    silently dropped (with the caller's Exception catch acting as the
+    ultimate guard)."""
+    cache = SpectralCache()
+    receiver = SpectralReceiver(cache)
+
+    # Build a packet with address "/foo" + type-tag ",s" but no string null.
+    # addr: /foo\x00\x00\x00\x00 (padded to 8)
+    # tag: ,s\x00\x00 (padded to 4)
+    # string arg: bytes without a null terminator
+    packet = b"/foo\x00\x00\x00\x00,s\x00\x00stringwithoutnull"
+
+    # Must not raise out of _parse_osc
+    try:
+        receiver._parse_osc(packet)
+    except ValueError:
+        raise AssertionError(
+            "Malformed OSC packet with unterminated string arg raised "
+            "ValueError — parser should detect and drop cleanly."
+        )
+
+
+def test_parse_osc_handles_truncated_tag_string():
+    """Type-tag string without a null terminator."""
+    cache = SpectralCache()
+    receiver = SpectralReceiver(cache)
+
+    # addr + comma but no tag-string terminator
+    packet = b"/foo\x00\x00\x00\x00,ffff_no_terminator_at_all"
+    try:
+        receiver._parse_osc(packet)
+    except ValueError:
+        raise AssertionError(
+            "Malformed OSC packet with unterminated tag string raised "
+            "ValueError — parser should detect and drop cleanly."
+        )
+
+
+def test_parse_osc_valid_packet_still_works():
+    """Regression: valid OSC packets must still parse correctly after the fix."""
+    cache = SpectralCache()
+    receiver = SpectralReceiver(cache)
+    # Valid /peak packet with one float
+    packet = _build_osc("/peak", 0.42)
+    receiver._parse_osc(packet)
+    assert cache.get("peak") is not None
+    assert abs(cache.get("peak")["value"] - 0.42) < 0.001
+
+
+# ── BUG-audit-C1: send_capture must NOT block concurrent send_command ──────
+
+
+@pytest.mark.asyncio
+async def test_send_capture_does_not_block_send_command():
+    """BUG-audit-C1: send_capture previously held _cmd_lock for the entire
+    recording duration (up to 35s), so any concurrent send_command would
+    block. send_capture uses _capture_future and send_command uses
+    _response_callback — they are independent and must run concurrently.
+    """
+    import unittest.mock as mock
+
+    cache = SpectralCache()
+    cache.update("rms", 0.1)  # mark connected
+    receiver = SpectralReceiver(cache)
+    bridge = M4LBridge(cache, receiver)
+    bridge._sock = mock.MagicMock()
+
+    # Kick off a send_capture that we will NEVER resolve — it must sit
+    # on its future until timeout. If it holds _cmd_lock, the concurrent
+    # send_command below will block for the same duration.
+    capture_task = asyncio.create_task(
+        bridge.send_capture("capture_audio", 10000, "test.wav", timeout=3.0)
+    )
+    # Let the capture coroutine reach its await point
+    await asyncio.sleep(0.05)
+
+    # Now fire a send_command — it must NOT block on the capture's lock.
+    # We resolve its _response_callback (which IS the future itself —
+    # see m4l_bridge.py _handle_response) immediately so it returns fast.
+    async def _resolve_response_soon():
+        await asyncio.sleep(0.05)
+        cb = receiver._response_callback
+        if cb is not None and not cb.done():
+            cb.set_result({"ok": True, "from": "cmd"})
+
+    resolver = asyncio.create_task(_resolve_response_soon())
+    # If capture holds the lock, this will time out ~30s from now.
+    # With the fix, it should return in ~0.05s.
+    cmd_result = await asyncio.wait_for(
+        bridge.send_command("get_params", timeout=2.0),
+        timeout=1.0,  # strict upper bound — fails if blocked on capture
+    )
+    await resolver
+
+    assert cmd_result.get("from") == "cmd"
+    assert cmd_result.get("ok") is True
+
+    # Clean up: resolve the capture so the task doesn't leak
+    receiver._capture_future.set_result({"ok": True, "stopped_early": True})
+    capture_result = await capture_task
+    assert capture_result.get("ok") is True
+
+
 # ── Task 10 Tests — FluCoMa OSC handlers ──────────────────────────────────
 
 

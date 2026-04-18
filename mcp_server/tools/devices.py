@@ -324,6 +324,14 @@ def _normalize_batch_entry(entry: dict) -> dict:
     else:
         key = entry["parameter_name"]
 
+    # BUG-audit-H3: match set_device_parameter's validation so negative
+    # indices are rejected at the MCP layer rather than leaking through to
+    # the Remote Script as unstructured IndexError.
+    if isinstance(key, int) and key < 0:
+        raise ValueError(
+            "parameter_index must be >= 0 (got {})".format(key)
+        )
+
     return {"name_or_index": key, "value": entry["value"]}
 
 
