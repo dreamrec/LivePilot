@@ -17,6 +17,7 @@ from . import clips        # noqa: F401  — registers clip handlers
 from . import notes        # noqa: F401  — registers note handlers
 from . import devices      # noqa: F401  — registers device handlers
 from . import scenes       # noqa: F401  — registers scene handlers
+from . import scales       # noqa: F401  — registers song scale handlers (12.0+)
 from . import mixing       # noqa: F401  — registers mixing handlers
 from . import browser      # noqa: F401  — registers browser handlers
 from . import arrangement  # noqa: F401  — registers arrangement handlers
@@ -47,7 +48,7 @@ _FIRST_CREATE_INSTANCE = True
 
 _HANDLER_MODULES = (
     utils,
-    transport, tracks, clips, notes, devices, scenes,
+    transport, tracks, clips, notes, devices, scenes, scales,
     mixing, browser, arrangement, diagnostics,
     clip_automation, version_detect,
 )

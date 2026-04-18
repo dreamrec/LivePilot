@@ -10,6 +10,7 @@ import Live
 # ── Feature version requirements ────────────────────────────────────────
 
 FEATURES = {
+    "song_scale_api": (12, 0, 0),
     "create_midi_clip_arrangement": (12, 1, 10),
     "looper_export": (12, 1, 0),
     "tuning_system": (12, 1, 0),
