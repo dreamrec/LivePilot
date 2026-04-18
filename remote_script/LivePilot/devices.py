@@ -882,3 +882,133 @@ def set_chain_volume(song, params):
         "volume": chain.mixer_device.volume.value,
         "pan": chain.mixer_device.panning.value,
     }
+
+
+# ── Rack Variations + Macro CRUD (Live 11+) ─────────────────────────────
+
+
+def _get_rack(song, params):
+    """Resolve (track, device) and validate it is a Rack (can_have_chains)."""
+    track = get_track(song, int(params["track_index"]))
+    device = get_device(track, int(params["device_index"]))
+    if not getattr(device, "can_have_chains", False):
+        raise ValueError(
+            "Device '%s' is not a Rack (can_have_chains=False)" % device.name
+        )
+    return device
+
+
+@register("get_rack_variations")
+def get_rack_variations(song, params):
+    """Return variation count, selected index, and visible macro count for a Rack."""
+    from .version_detect import has_feature
+    if not has_feature("rack_variations_api"):
+        raise RuntimeError("Rack variations require Live 11+.")
+    rack = _get_rack(song, params)
+    return {
+        "count": int(getattr(rack, "variation_count", 0)),
+        "selected_index": int(getattr(rack, "selected_variation_index", -1)),
+        "visible_macro_count": int(getattr(rack, "visible_macro_count", 0)),
+    }
+
+
+@register("store_rack_variation")
+def store_rack_variation(song, params):
+    """Store current macro values as a new variation on a Rack."""
+    from .version_detect import has_feature
+    if not has_feature("rack_variations_api"):
+        raise RuntimeError("Rack variations require Live 11+.")
+    rack = _get_rack(song, params)
+    rack.store_variation()
+    count = int(rack.variation_count)
+    return {
+        "count": count,
+        "new_index": count - 1,
+    }
+
+
+@register("recall_rack_variation")
+def recall_rack_variation(song, params):
+    """Select and recall a variation on a Rack by index."""
+    from .version_detect import has_feature
+    if not has_feature("rack_variations_api"):
+        raise RuntimeError("Rack variations require Live 11+.")
+    rack = _get_rack(song, params)
+    idx = int(params["variation_index"])
+    count = int(rack.variation_count)
+    if count <= 0:
+        raise IndexError("Rack has no variations stored")
+    if not 0 <= idx < count:
+        raise IndexError(
+            "variation_index %d out of range (0..%d)" % (idx, count - 1)
+        )
+    rack.selected_variation_index = idx
+    rack.recall_selected_variation()
+    return {"selected_index": int(rack.selected_variation_index)}
+
+
+@register("delete_rack_variation")
+def delete_rack_variation(song, params):
+    """Delete a variation on a Rack by index (selects it first, then deletes)."""
+    from .version_detect import has_feature
+    if not has_feature("rack_variations_api"):
+        raise RuntimeError("Rack variations require Live 11+.")
+    rack = _get_rack(song, params)
+    idx = int(params["variation_index"])
+    count = int(rack.variation_count)
+    if count <= 0:
+        raise IndexError("Rack has no variations to delete")
+    if not 0 <= idx < count:
+        raise IndexError(
+            "variation_index %d out of range (0..%d)" % (idx, count - 1)
+        )
+    rack.selected_variation_index = idx
+    rack.delete_selected_variation()
+    return {"count": int(rack.variation_count)}
+
+
+@register("randomize_rack_macros")
+def randomize_rack_macros(song, params):
+    """Randomize the macro values on a Rack (Live's built-in dice)."""
+    from .version_detect import has_feature
+    if not has_feature("rack_variations_api"):
+        raise RuntimeError("Rack variations require Live 11+.")
+    rack = _get_rack(song, params)
+    rack.randomize_macros()
+    return {"ok": True}
+
+
+@register("add_rack_macro")
+def add_rack_macro(song, params):
+    """Add one macro to a Rack (raises visible_macro_count by 1, max 16)."""
+    from .version_detect import has_feature
+    if not has_feature("rack_variations_api"):
+        raise RuntimeError("Rack variations require Live 11+.")
+    rack = _get_rack(song, params)
+    rack.add_macro()
+    return {"visible_macro_count": int(rack.visible_macro_count)}
+
+
+@register("remove_rack_macro")
+def remove_rack_macro(song, params):
+    """Remove the last macro from a Rack (lowers visible_macro_count by 1, min 1)."""
+    from .version_detect import has_feature
+    if not has_feature("rack_variations_api"):
+        raise RuntimeError("Rack variations require Live 11+.")
+    rack = _get_rack(song, params)
+    rack.remove_macro()
+    return {"visible_macro_count": int(rack.visible_macro_count)}
+
+
+@register("set_rack_visible_macros")
+def set_rack_visible_macros(song, params):
+    """Set visible_macro_count on a Rack directly (1-16)."""
+    from .version_detect import has_feature
+    if not has_feature("rack_variations_api"):
+        raise RuntimeError("Rack variations require Live 11+.")
+    rack = _get_rack(song, params)
+    count = int(params["count"])
+    if not 1 <= count <= 16:
+        raise ValueError("count must be 1-16")
+    rack.visible_macro_count = count
+    return {"visible_macro_count": int(rack.visible_macro_count)}

@@ -563,10 +563,26 @@ def test_take_lanes_tools_registered():
     assert not missing, f"Missing take lane tools: {missing}"
 
 
+def test_rack_variations_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "get_rack_variations",
+        "store_rack_variation",
+        "recall_rack_variation",
+        "delete_rack_variation",
+        "randomize_rack_macros",
+        "add_rack_macro",
+        "remove_rack_macro",
+        "set_rack_visible_macros",
+    }
+    missing = expected - names
+    assert not missing, f"Missing rack variation tools: {missing}"
+
+
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 357, f"Expected 357 tools, got {len(tools)}"
+    assert len(tools) == 365, f"Expected 365 tools, got {len(tools)}"
 
 
 def test_every_tool_has_description_and_schema():

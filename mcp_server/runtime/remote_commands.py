@@ -48,6 +48,11 @@ REMOTE_COMMANDS: frozenset[str] = frozenset({
     "insert_device",           # 12.3+ native device insertion
     "insert_rack_chain",       # 12.3+ rack chain insertion
     "set_drum_chain_note",     # 12.3+ drum chain note assignment
+    # rack variations + macro CRUD (Live 11+)
+    "get_rack_variations", "store_rack_variation",
+    "recall_rack_variation", "delete_rack_variation",
+    "randomize_rack_macros", "add_rack_macro",
+    "remove_rack_macro", "set_rack_visible_macros",
     # clip_automation (3)
     "get_clip_automation", "set_clip_automation", "clear_clip_automation",
     # browser (6)
