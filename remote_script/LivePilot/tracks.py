@@ -1,5 +1,5 @@
 """
-LivePilot - Track domain handlers (17 commands).
+LivePilot - Track domain handlers (20 commands).
 """
 
 from .router import register
@@ -404,3 +404,61 @@ def flatten_track(song, params):
         "track_index": track_index,
         "flattened": True,
     }
+
+
+# ── Track long-tail primitives ──────────────────────────────────────────
+
+
+@register("jump_in_session_clip")
+def jump_in_session_clip(song, params):
+    """Jump playhead within a running session clip, in beats from start."""
+    track = get_track(song, int(params["track_index"]))
+    beats = float(params["beats"])
+    if not hasattr(track, "jump_in_running_session_clip"):
+        raise RuntimeError("jump_in_running_session_clip not exposed")
+    track.jump_in_running_session_clip(beats)
+    return {"track_index": int(params["track_index"]), "beats": beats}
+
+
+@register("get_track_performance_impact")
+def get_track_performance_impact(song, params):
+    """Read a track's CPU performance impact metric."""
+    track = get_track(song, int(params["track_index"]))
+    val = float(getattr(track, "performance_impact", 0.0))
+    return {"performance_impact": val}
+
+
+@register("get_appointed_device")
+def get_appointed_device(song, params):
+    """Return the Blue Hand (appointed/focused) device location.
+
+    Maps the Device object back to (track_index, device_index) by
+    scanning all tracks. Normalized track indices: 0..N-1 for regular
+    tracks, -1=A, -2=B, etc. for returns, -1000 for the master track.
+    """
+    dev = getattr(song, "appointed_device", None)
+    if dev is None:
+        return {"track_index": -1, "device_index": -1,
+                "track_name": "", "device_name": ""}
+    tracks = list(song.tracks)
+    returns = list(song.return_tracks)
+    master = song.master_track
+    for ti, track in enumerate(tracks):
+        for di, d in enumerate(track.devices):
+            if d == dev:
+                return {"track_index": ti, "device_index": di,
+                        "track_name": str(track.name),
+                        "device_name": str(d.name)}
+    for ti, track in enumerate(returns):
+        for di, d in enumerate(track.devices):
+            if d == dev:
+                return {"track_index": -1 - ti, "device_index": di,
+                        "track_name": str(track.name),
+                        "device_name": str(d.name)}
+    for di, d in enumerate(master.devices):
+        if d == dev:
+            return {"track_index": -1000, "device_index": di,
+                    "track_name": str(master.name),
+                    "device_name": str(d.name)}
+    return {"track_index": -1, "device_index": -1,
+            "track_name": "", "device_name": str(getattr(dev, "name", ""))}

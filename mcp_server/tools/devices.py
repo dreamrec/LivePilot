@@ -719,3 +719,465 @@ async def get_plugin_presets(
     _require_analyzer(cache)
     bridge = _get_m4l(ctx)
     return await bridge.send_command("get_plugin_presets", track_index, device_index, timeout=15.0)
+
+
+# ── Rack Variations + Macro CRUD (Live 11+) ─────────────────────────────
+
+
+@mcp.tool()
+def get_rack_variations(ctx: Context, track_index: int, device_index: int) -> dict:
+    """Get the Rack's variation count, currently selected variation index, and visible macro count (Live 11+).
+
+    Variations are macro snapshots — store a scene of macro values, recall later.
+    Returns {count, selected_index, visible_macro_count}. selected_index may be -1
+    if no variation is currently selected. Errors if the device is not a Rack
+    (Instrument/Audio Effect/Drum Rack).
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    return _get_ableton(ctx).send_command("get_rack_variations", {
+        "track_index": track_index,
+        "device_index": device_index,
+    })
+
+
+@mcp.tool()
+def store_rack_variation(ctx: Context, track_index: int, device_index: int) -> dict:
+    """Store the Rack's current macro values as a new variation (Live 11+).
+
+    Appends a new variation at the end of the list. Returns the new total
+    {count, new_index} where new_index = count - 1.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    return _get_ableton(ctx).send_command("store_rack_variation", {
+        "track_index": track_index,
+        "device_index": device_index,
+    })
+
+
+@mcp.tool()
+def recall_rack_variation(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+    variation_index: int,
+) -> dict:
+    """Select and recall a stored Rack variation by index (Live 11+).
+
+    Sets selected_variation_index then calls recall_selected_variation(),
+    immediately pushing the stored macro values to the live Rack.
+    Returns {selected_index}.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    if variation_index < 0:
+        raise ValueError("variation_index must be >= 0")
+    return _get_ableton(ctx).send_command("recall_rack_variation", {
+        "track_index": track_index,
+        "device_index": device_index,
+        "variation_index": variation_index,
+    })
+
+
+@mcp.tool()
+def delete_rack_variation(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+    variation_index: int,
+) -> dict:
+    """Delete a Rack variation by index (Live 11+).
+
+    Selects the given index first then deletes it. Returns the new {count}
+    after removal.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    if variation_index < 0:
+        raise ValueError("variation_index must be >= 0")
+    return _get_ableton(ctx).send_command("delete_rack_variation", {
+        "track_index": track_index,
+        "device_index": device_index,
+        "variation_index": variation_index,
+    })
+
+
+@mcp.tool()
+def randomize_rack_macros(ctx: Context, track_index: int, device_index: int) -> dict:
+    """Randomize the Rack's macro values using Live's built-in randomize dice (Live 11+).
+
+    Does not store a variation — just scrambles the current macros. Combine
+    with store_rack_variation to snapshot the random state.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    return _get_ableton(ctx).send_command("randomize_rack_macros", {
+        "track_index": track_index,
+        "device_index": device_index,
+    })
+
+
+@mcp.tool()
+def add_rack_macro(ctx: Context, track_index: int, device_index: int) -> dict:
+    """Add one macro to a Rack, raising visible_macro_count by 1 (Live 11+).
+
+    Maxes at 16 macros. Returns the new {visible_macro_count}.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    return _get_ableton(ctx).send_command("add_rack_macro", {
+        "track_index": track_index,
+        "device_index": device_index,
+    })
+
+
+@mcp.tool()
+def remove_rack_macro(ctx: Context, track_index: int, device_index: int) -> dict:
+    """Remove the last macro from a Rack, lowering visible_macro_count by 1 (Live 11+).
+
+    Minimum is 1 macro. Returns the new {visible_macro_count}.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    return _get_ableton(ctx).send_command("remove_rack_macro", {
+        "track_index": track_index,
+        "device_index": device_index,
+    })
+
+
+@mcp.tool()
+def set_rack_visible_macros(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+    count: int,
+) -> dict:
+    """Set the Rack's visible_macro_count directly (1-16, Live 11+).
+
+    Faster than calling add_rack_macro/remove_rack_macro repeatedly to reach
+    a target count. Returns the new {visible_macro_count}.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    if not 1 <= count <= 16:
+        raise ValueError("count must be 1-16")
+    return _get_ableton(ctx).send_command("set_rack_visible_macros", {
+        "track_index": track_index,
+        "device_index": device_index,
+        "count": count,
+    })
+
+
+# ── Simpler Slice CRUD (Live 11+) ───────────────────────────────────────
+
+
+@mcp.tool()
+def insert_simpler_slice(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+    time_samples: int,
+) -> dict:
+    """Insert a slice at a sample-frame position on a Simpler (Live 11+).
+
+    time_samples is in raw sample frames (NOT beats, NOT seconds). Call
+    get_simpler_slices first to see existing slice positions. The Simpler
+    must be in Slice playback mode for slices to matter musically, but this
+    tool does not force that — errors only if the device is not a Simpler
+    or has no sample loaded.
+
+    Returns {slice_count} after insertion.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    if time_samples < 0:
+        raise ValueError("time_samples must be >= 0")
+    return _get_ableton(ctx).send_command("insert_simpler_slice", {
+        "track_index": track_index,
+        "device_index": device_index,
+        "time_samples": time_samples,
+    })
+
+
+@mcp.tool()
+def move_simpler_slice(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+    old_time_samples: int,
+    new_time_samples: int,
+) -> dict:
+    """Move an existing slice from one sample-frame position to another (Live 11+).
+
+    Both values are in raw sample frames. old_time_samples must match an
+    existing slice exactly — use get_simpler_slices to read current
+    positions. Returns {ok, old_time_samples, new_time_samples}.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    if old_time_samples < 0 or new_time_samples < 0:
+        raise ValueError("time values must be >= 0")
+    return _get_ableton(ctx).send_command("move_simpler_slice", {
+        "track_index": track_index,
+        "device_index": device_index,
+        "old_time_samples": old_time_samples,
+        "new_time_samples": new_time_samples,
+    })
+
+
+@mcp.tool()
+def remove_simpler_slice(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+    time_samples: int,
+) -> dict:
+    """Remove a slice at an exact sample-frame position (Live 11+).
+
+    time_samples must EXACTLY match an existing slice position. Read current
+    positions with get_simpler_slices first. Returns {slice_count} after
+    removal.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    if time_samples < 0:
+        raise ValueError("time_samples must be >= 0")
+    return _get_ableton(ctx).send_command("remove_simpler_slice", {
+        "track_index": track_index,
+        "device_index": device_index,
+        "time_samples": time_samples,
+    })
+
+
+@mcp.tool()
+def clear_simpler_slices(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+) -> dict:
+    """Remove all manual slices from the Simpler (Live 11+).
+
+    Clears the slice list outright. Combine with reset_simpler_slices or
+    import_slices_from_onsets to regenerate. Returns {slice_count: 0}.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    return _get_ableton(ctx).send_command("clear_simpler_slices", {
+        "track_index": track_index,
+        "device_index": device_index,
+    })
+
+
+@mcp.tool()
+def reset_simpler_slices(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+) -> dict:
+    """Reset the Simpler's slices to Live's default detection (Live 11+).
+
+    Re-runs detection under the CURRENT slicing_style and sensitivity. Use
+    import_slices_from_onsets instead if you want to force Transient mode
+    AND set sensitivity in one call. Returns the resulting {slice_count}.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    return _get_ableton(ctx).send_command("reset_simpler_slices", {
+        "track_index": track_index,
+        "device_index": device_index,
+    })
+
+
+@mcp.tool()
+def import_slices_from_onsets(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+    sensitivity: float = 0.5,
+) -> dict:
+    """Force Transient slicing mode, set sensitivity, and re-detect (Live 11+).
+
+    Writes slicing_style=Transient and slicing_sensitivity, then calls
+    reset_slices(). sensitivity must be 0.0-1.0; 0.5 is moderate, higher
+    produces more slices. Returns {slice_count, sensitivity}.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    if not 0.0 <= sensitivity <= 1.0:
+        raise ValueError("sensitivity must be 0.0-1.0")
+    return _get_ableton(ctx).send_command("import_slices_from_onsets", {
+        "track_index": track_index,
+        "device_index": device_index,
+        "sensitivity": sensitivity,
+    })
+
+
+# ── Wavetable modulation matrix (Live 11+) ──────────────────────────────
+
+
+@mcp.tool()
+def get_wavetable_mod_targets(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+) -> dict:
+    """Enumerate visible modulation target parameter names on a Wavetable (Live 11+).
+
+    Returns {targets: [...]} — the list depends on the current patch
+    configuration (e.g. which oscillators are active). Feed these strings
+    into add_wavetable_mod_route / set_wavetable_mod_amount as the target
+    argument.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    return _get_ableton(ctx).send_command("get_wavetable_mod_targets", {
+        "track_index": track_index,
+        "device_index": device_index,
+    })
+
+
+@mcp.tool()
+def add_wavetable_mod_route(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+    source: str,
+    target: str,
+) -> dict:
+    """Create a modulation routing on a Wavetable device (Live 11+).
+
+    source must be one of: "Env 2", "Env 3", "LFO 1", "LFO 2",
+    "MIDI Key", "MIDI Velocity", "MIDI Aftertouch", "MIDI Pitchbend",
+    "Macro 1".."Macro 8". target must be a name from
+    get_wavetable_mod_targets — valid targets depend on the current patch.
+    Returns {source, target, actual_target} where actual_target is the
+    parameter name Live resolved the routing to.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    return _get_ableton(ctx).send_command("add_wavetable_mod_route", {
+        "track_index": track_index,
+        "device_index": device_index,
+        "source": source,
+        "target": target,
+    })
+
+
+@mcp.tool()
+def set_wavetable_mod_amount(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+    source: str,
+    target: str,
+    amount: float,
+) -> dict:
+    """Set the modulation amount for a Wavetable source→target routing (Live 11+).
+
+    amount is bipolar: -1.0 to 1.0. 0.0 effectively disables the routing.
+    source and target use the same names documented on
+    add_wavetable_mod_route. Returns {source, target, amount}.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    if not -1.0 <= amount <= 1.0:
+        raise ValueError("amount must be -1.0 to 1.0")
+    return _get_ableton(ctx).send_command("set_wavetable_mod_amount", {
+        "track_index": track_index,
+        "device_index": device_index,
+        "source": source,
+        "target": target,
+        "amount": amount,
+    })
+
+
+@mcp.tool()
+def get_wavetable_mod_amount(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+    source: str,
+    target: str,
+) -> dict:
+    """Read the current modulation amount for a Wavetable source→target routing (Live 11+).
+
+    Returns {source, target, amount, actual_target}. amount is -1.0 to 1.0.
+    actual_target is the parameter name Live resolved the routing to — use
+    it to confirm the routing went where you expected.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    return _get_ableton(ctx).send_command("get_wavetable_mod_amount", {
+        "track_index": track_index,
+        "device_index": device_index,
+        "source": source,
+        "target": target,
+    })
+
+
+@mcp.tool()
+def get_wavetable_mod_matrix(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+) -> dict:
+    """Dump all non-zero modulation routings on a Wavetable device (Live 11+).
+
+    Iterates every source × visible target and returns any routing with a
+    non-zero amount. O(sources × targets) but safe — useful to audit a
+    patch or snapshot its modulation state. Returns
+    {routings: [{source, target, amount}, ...]}.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    return _get_ableton(ctx).send_command("get_wavetable_mod_matrix", {
+        "track_index": track_index,
+        "device_index": device_index,
+    })
+
+
+# ── Device A/B compare (Live 12.3+) ─────────────────────────────────────
+
+
+@mcp.tool()
+def get_device_ab_state(ctx: Context, track_index: int, device_index: int) -> dict:
+    """Read a device's A/B compare state (Live 12.3+).
+
+    Returns current_state ('A'|'B'|'unknown') and has_b (bool).
+    If the LOM doesn't expose A/B attributes, returns 'unknown' with
+    a 'note' field explaining the limitation.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    return _get_ableton(ctx).send_command("get_device_ab_state",
+        {"track_index": track_index, "device_index": device_index})
+
+
+@mcp.tool()
+def toggle_device_ab(ctx: Context, track_index: int, device_index: int) -> dict:
+    """Swap a device's A/B state (Live 12.3+)."""
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    return _get_ableton(ctx).send_command("toggle_device_ab",
+        {"track_index": track_index, "device_index": device_index})
+
+
+@mcp.tool()
+def copy_device_state(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+    direction: str,
+) -> dict:
+    """Copy one A/B state to the other (Live 12.3+).
+
+    direction: 'a_to_b' or 'b_to_a'.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    if direction not in ("a_to_b", "b_to_a"):
+        raise ValueError("direction must be 'a_to_b' or 'b_to_a'")
+    return _get_ableton(ctx).send_command("copy_device_state",
+        {"track_index": track_index, "device_index": device_index,
+         "direction": direction})

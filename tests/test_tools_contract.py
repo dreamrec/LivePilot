@@ -1,4 +1,4 @@
-"""Verify all 323 MCP tools are registered across 45 domains."""
+"""Verify all 397 MCP tools are registered across 51 domains."""
 
 import asyncio
 import sys
@@ -483,10 +483,188 @@ def test_safety_tools_registered():
     assert not missing, f"Missing safety tools: {missing}"
 
 
+def test_scales_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "get_song_scale",
+        "set_song_scale",
+        "set_song_scale_mode",
+        "list_available_scales",
+    }
+    missing = expected - names
+    assert not missing, f"Missing scales tools: {missing}"
+
+
+def test_clip_scales_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "get_clip_scale",
+        "set_clip_scale",
+        "set_clip_scale_mode",
+    }
+    missing = expected - names
+    assert not missing, f"Missing clip scale tools: {missing}"
+
+
+def test_tuning_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "get_tuning_system",
+        "set_tuning_reference_pitch",
+        "set_tuning_note",
+        "reset_tuning_system",
+    }
+    missing = expected - names
+    assert not missing, f"Missing tuning tools: {missing}"
+
+
+def test_follow_actions_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "get_clip_follow_action",
+        "set_clip_follow_action",
+        "clear_clip_follow_action",
+        "list_follow_action_types",
+        "apply_follow_action_preset",
+        "get_scene_follow_action",
+        "set_scene_follow_action",
+        "clear_scene_follow_action",
+    }
+    missing = expected - names
+    assert not missing, f"Missing follow action tools: {missing}"
+
+
+def test_grooves_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "list_grooves",
+        "get_groove_info",
+        "set_groove_params",
+        "assign_clip_groove",
+        "get_clip_groove",
+        "get_song_groove_amount",
+        "set_song_groove_amount",
+    }
+    missing = expected - names
+    assert not missing, f"Missing groove tools: {missing}"
+
+
+def test_take_lanes_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "get_take_lanes",
+        "create_take_lane",
+        "set_take_lane_name",
+        "create_audio_clip_on_take_lane",
+        "create_midi_clip_on_take_lane",
+        "get_take_lane_clips",
+    }
+    missing = expected - names
+    assert not missing, f"Missing take lane tools: {missing}"
+
+
+def test_rack_variations_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "get_rack_variations",
+        "store_rack_variation",
+        "recall_rack_variation",
+        "delete_rack_variation",
+        "randomize_rack_macros",
+        "add_rack_macro",
+        "remove_rack_macro",
+        "set_rack_visible_macros",
+    }
+    missing = expected - names
+    assert not missing, f"Missing rack variation tools: {missing}"
+
+
+def test_simpler_slice_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "insert_simpler_slice",
+        "move_simpler_slice",
+        "remove_simpler_slice",
+        "clear_simpler_slices",
+        "reset_simpler_slices",
+        "import_slices_from_onsets",
+    }
+    missing = expected - names
+    assert not missing, f"Missing simpler slice tools: {missing}"
+
+
+def test_wavetable_mod_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "get_wavetable_mod_targets",
+        "add_wavetable_mod_route",
+        "set_wavetable_mod_amount",
+        "get_wavetable_mod_amount",
+        "get_wavetable_mod_matrix",
+    }
+    missing = expected - names
+    assert not missing, f"Missing wavetable mod tools: {missing}"
+
+
+def test_device_ab_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "get_device_ab_state",
+        "toggle_device_ab",
+        "copy_device_state",
+    }
+    missing = expected - names
+    assert not missing, f"Missing device A/B compare tools: {missing}"
+
+
+def test_control_surfaces_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "list_control_surfaces",
+        "get_control_surface_info",
+    }
+    missing = expected - names
+    assert not missing, f"Missing ControlSurface diagnostic tools: {missing}"
+
+
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 325, f"Expected 325 tools, got {len(tools)}"
+    assert len(tools) == 397, f"Expected 397 tools, got {len(tools)}"
+
+
+def test_miditool_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "install_miditool_device",
+        "set_miditool_target",
+        "get_miditool_context",
+        "list_miditool_generators",
+    }
+    missing = expected - names
+    assert not missing, f"Missing MIDI Tool tools: {missing}"
+
+
+def test_song_track_primitives_registered():
+    names = _get_tool_names()
+    expected = {
+        # Song / Transport primitives (9)
+        "tap_tempo",
+        "nudge_tempo",
+        "set_exclusive_arm",
+        "set_exclusive_solo",
+        "capture_and_insert_scene",
+        "set_count_in_duration",
+        "get_link_state",
+        "set_link_enabled",
+        "force_link_beat_time",
+        # Track primitives (3)
+        "jump_in_session_clip",
+        "get_track_performance_impact",
+        "get_appointed_device",
+    }
+    missing = expected - names
+    assert not missing, f"Missing Song/Track primitives tools: {missing}"
 
 
 def test_every_tool_has_description_and_schema():

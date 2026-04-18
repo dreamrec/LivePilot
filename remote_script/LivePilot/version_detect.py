@@ -10,17 +10,26 @@ import Live
 # ── Feature version requirements ────────────────────────────────────────
 
 FEATURES = {
+    "song_scale_api": (12, 0, 0),
+    "clip_follow_action_v2": (12, 0, 0),
+    "miditool_api": (12, 0, 0),
     "create_midi_clip_arrangement": (12, 1, 10),
     "looper_export": (12, 1, 0),
     "tuning_system": (12, 1, 0),
     "display_value": (12, 2, 0),
     "clip_start_time_observable": (12, 2, 0),
     "take_lanes_api": (12, 2, 0),
+    "scene_follow_actions": (12, 2, 0),
     "insert_device": (12, 3, 0),
     "insert_chain": (12, 3, 0),
     "drum_chain_in_note": (12, 3, 0),
     "stem_separation": (12, 3, 0),
+    "device_ab_compare": (12, 3, 0),
     "replace_sample_native": (12, 4, 0),
+    "groove_pool_api": (11, 0, 0),
+    "rack_variations_api": (11, 0, 0),
+    "simpler_slice_crud": (11, 0, 0),
+    "wavetable_mod_matrix": (11, 0, 0),
 }
 
 

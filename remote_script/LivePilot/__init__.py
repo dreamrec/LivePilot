@@ -5,7 +5,7 @@ Entry point for the ControlSurface. Ableton calls create_instance(c_instance)
 when this script is selected in Preferences > Link, Tempo & MIDI.
 """
 
-__version__ = "1.10.9"
+__version__ = "1.12.0"
 
 from _Framework.ControlSurface import ControlSurface
 from . import router
@@ -17,10 +17,14 @@ from . import clips        # noqa: F401  — registers clip handlers
 from . import notes        # noqa: F401  — registers note handlers
 from . import devices      # noqa: F401  — registers device handlers
 from . import scenes       # noqa: F401  — registers scene handlers
+from . import scales       # noqa: F401  — registers song scale handlers (12.0+)
 from . import mixing       # noqa: F401  — registers mixing handlers
 from . import browser      # noqa: F401  — registers browser handlers
 from . import arrangement  # noqa: F401  — registers arrangement handlers
 from . import diagnostics       # noqa: F401  — registers diagnostics handler
+from . import follow_actions    # noqa: F401  — registers follow action handlers (12.0+, 12.2+)
+from . import grooves           # noqa: F401  — registers groove pool handlers (11+)
+from . import take_lanes        # noqa: F401  — registers take lane handlers (12.0+ read, 12.2+ write)
 from . import clip_automation   # noqa: F401  — registers clip automation handlers
 from . import version_detect    # noqa: F401  — version detection
 
@@ -47,9 +51,9 @@ _FIRST_CREATE_INSTANCE = True
 
 _HANDLER_MODULES = (
     utils,
-    transport, tracks, clips, notes, devices, scenes,
-    mixing, browser, arrangement, diagnostics,
-    clip_automation, version_detect,
+    transport, tracks, clips, notes, devices, scenes, scales,
+    mixing, browser, arrangement, diagnostics, follow_actions,
+    grooves, take_lanes, clip_automation, version_detect,
 )
 
 

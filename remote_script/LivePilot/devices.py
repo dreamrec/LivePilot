@@ -882,3 +882,447 @@ def set_chain_volume(song, params):
         "volume": chain.mixer_device.volume.value,
         "pan": chain.mixer_device.panning.value,
     }
+
+
+# ── Rack Variations + Macro CRUD (Live 11+) ─────────────────────────────
+
+
+def _get_rack(song, params):
+    """Resolve (track, device) and validate it is a Rack (can_have_chains)."""
+    track = get_track(song, int(params["track_index"]))
+    device = get_device(track, int(params["device_index"]))
+    if not getattr(device, "can_have_chains", False):
+        raise ValueError(
+            "Device '%s' is not a Rack (can_have_chains=False)" % device.name
+        )
+    return device
+
+
+@register("get_rack_variations")
+def get_rack_variations(song, params):
+    """Return variation count, selected index, and visible macro count for a Rack."""
+    from .version_detect import has_feature
+    if not has_feature("rack_variations_api"):
+        raise RuntimeError("Rack variations require Live 11+.")
+    rack = _get_rack(song, params)
+    return {
+        "count": int(getattr(rack, "variation_count", 0)),
+        "selected_index": int(getattr(rack, "selected_variation_index", -1)),
+        "visible_macro_count": int(getattr(rack, "visible_macro_count", 0)),
+    }
+
+
+@register("store_rack_variation")
+def store_rack_variation(song, params):
+    """Store current macro values as a new variation on a Rack."""
+    from .version_detect import has_feature
+    if not has_feature("rack_variations_api"):
+        raise RuntimeError("Rack variations require Live 11+.")
+    rack = _get_rack(song, params)
+    rack.store_variation()
+    count = int(rack.variation_count)
+    return {
+        "count": count,
+        "new_index": count - 1,
+    }
+
+
+@register("recall_rack_variation")
+def recall_rack_variation(song, params):
+    """Select and recall a variation on a Rack by index."""
+    from .version_detect import has_feature
+    if not has_feature("rack_variations_api"):
+        raise RuntimeError("Rack variations require Live 11+.")
+    rack = _get_rack(song, params)
+    idx = int(params["variation_index"])
+    count = int(rack.variation_count)
+    if count <= 0:
+        raise IndexError("Rack has no variations stored")
+    if not 0 <= idx < count:
+        raise IndexError(
+            "variation_index %d out of range (0..%d)" % (idx, count - 1)
+        )
+    rack.selected_variation_index = idx
+    rack.recall_selected_variation()
+    return {"selected_index": int(rack.selected_variation_index)}
+
+
+@register("delete_rack_variation")
+def delete_rack_variation(song, params):
+    """Delete a variation on a Rack by index (selects it first, then deletes)."""
+    from .version_detect import has_feature
+    if not has_feature("rack_variations_api"):
+        raise RuntimeError("Rack variations require Live 11+.")
+    rack = _get_rack(song, params)
+    idx = int(params["variation_index"])
+    count = int(rack.variation_count)
+    if count <= 0:
+        raise IndexError("Rack has no variations to delete")
+    if not 0 <= idx < count:
+        raise IndexError(
+            "variation_index %d out of range (0..%d)" % (idx, count - 1)
+        )
+    rack.selected_variation_index = idx
+    rack.delete_selected_variation()
+    return {"count": int(rack.variation_count)}
+
+
+@register("randomize_rack_macros")
+def randomize_rack_macros(song, params):
+    """Randomize the macro values on a Rack (Live's built-in dice)."""
+    from .version_detect import has_feature
+    if not has_feature("rack_variations_api"):
+        raise RuntimeError("Rack variations require Live 11+.")
+    rack = _get_rack(song, params)
+    rack.randomize_macros()
+    return {"ok": True}
+
+
+@register("add_rack_macro")
+def add_rack_macro(song, params):
+    """Add one macro to a Rack (raises visible_macro_count by 1, max 16)."""
+    from .version_detect import has_feature
+    if not has_feature("rack_variations_api"):
+        raise RuntimeError("Rack variations require Live 11+.")
+    rack = _get_rack(song, params)
+    rack.add_macro()
+    return {"visible_macro_count": int(rack.visible_macro_count)}
+
+
+@register("remove_rack_macro")
+def remove_rack_macro(song, params):
+    """Remove the last macro from a Rack (lowers visible_macro_count by 1, min 1)."""
+    from .version_detect import has_feature
+    if not has_feature("rack_variations_api"):
+        raise RuntimeError("Rack variations require Live 11+.")
+    rack = _get_rack(song, params)
+    rack.remove_macro()
+    return {"visible_macro_count": int(rack.visible_macro_count)}
+
+
+@register("set_rack_visible_macros")
+def set_rack_visible_macros(song, params):
+    """Set visible_macro_count on a Rack directly (1-16)."""
+    from .version_detect import has_feature
+    if not has_feature("rack_variations_api"):
+        raise RuntimeError("Rack variations require Live 11+.")
+    rack = _get_rack(song, params)
+    count = int(params["count"])
+    if not 1 <= count <= 16:
+        raise ValueError("count must be 1-16")
+    rack.visible_macro_count = count
+    return {"visible_macro_count": int(rack.visible_macro_count)}
+
+
+# ── Simpler Slice CRUD (Live 11+) ───────────────────────────────────────
+
+
+def _get_simpler(song, params):
+    """Resolve (track, device, sample) for a Simpler and validate.
+
+    Simpler's class_name is "OriginalSimpler". We match on "Simpler" so
+    third-party simpler-like devices (if any ever surface) aren't silently
+    accepted — but the common Original Simpler path is covered.
+    """
+    track = get_track(song, int(params["track_index"]))
+    device = get_device(track, int(params["device_index"]))
+    if "Simpler" not in str(getattr(device, "class_name", "")):
+        raise ValueError(
+            "Device at %d is not a Simpler (class_name=%s)"
+            % (int(params["device_index"]),
+               getattr(device, "class_name", "?"))
+        )
+    sample = getattr(device, "sample", None)
+    if sample is None:
+        raise RuntimeError("Simpler has no sample loaded")
+    return device, sample
+
+
+@register("insert_simpler_slice")
+def insert_simpler_slice(song, params):
+    """Insert a slice at the given sample-frame position."""
+    from .version_detect import has_feature
+    if not has_feature("simpler_slice_crud"):
+        raise RuntimeError("Simpler slice CRUD requires Live 11+.")
+    device, sample = _get_simpler(song, params)
+    t = int(params["time_samples"])
+    if t < 0:
+        raise ValueError("time_samples must be >= 0")
+    sample.insert_slice(t)
+    slices = list(getattr(sample, "slices", []))
+    return {"slice_count": len(slices)}
+
+
+@register("move_simpler_slice")
+def move_simpler_slice(song, params):
+    """Move a slice from old_time_samples to new_time_samples (both sample frames)."""
+    from .version_detect import has_feature
+    if not has_feature("simpler_slice_crud"):
+        raise RuntimeError("Simpler slice CRUD requires Live 11+.")
+    device, sample = _get_simpler(song, params)
+    old_t = int(params["old_time_samples"])
+    new_t = int(params["new_time_samples"])
+    if old_t < 0 or new_t < 0:
+        raise ValueError("time values must be >= 0")
+    sample.move_slice(old_t, new_t)
+    return {"ok": True, "old_time_samples": old_t, "new_time_samples": new_t}
+
+
+@register("remove_simpler_slice")
+def remove_simpler_slice(song, params):
+    """Remove the slice at the exact sample-frame position."""
+    from .version_detect import has_feature
+    if not has_feature("simpler_slice_crud"):
+        raise RuntimeError("Simpler slice CRUD requires Live 11+.")
+    device, sample = _get_simpler(song, params)
+    t = int(params["time_samples"])
+    sample.remove_slice(t)
+    slices = list(getattr(sample, "slices", []))
+    return {"slice_count": len(slices)}
+
+
+@register("clear_simpler_slices")
+def clear_simpler_slices(song, params):
+    """Remove all manual slices from the Simpler."""
+    from .version_detect import has_feature
+    if not has_feature("simpler_slice_crud"):
+        raise RuntimeError("Simpler slice CRUD requires Live 11+.")
+    device, sample = _get_simpler(song, params)
+    sample.clear_slices()
+    return {"slice_count": 0}
+
+
+@register("reset_simpler_slices")
+def reset_simpler_slices(song, params):
+    """Reset slices to Live's default detection for the current slicing_style."""
+    from .version_detect import has_feature
+    if not has_feature("simpler_slice_crud"):
+        raise RuntimeError("Simpler slice CRUD requires Live 11+.")
+    device, sample = _get_simpler(song, params)
+    sample.reset_slices()
+    slices = list(getattr(sample, "slices", []))
+    return {"slice_count": len(slices)}
+
+
+@register("import_slices_from_onsets")
+def import_slices_from_onsets(song, params):
+    """Set Transient-mode slicing and trigger re-detection.
+
+    Writes slicing_style=0 (Transient) and slicing_sensitivity, then calls
+    reset_slices() so Live re-scans the sample with the new settings.
+    Returns the resulting slice_count and the sensitivity that was applied.
+    """
+    from .version_detect import has_feature
+    if not has_feature("simpler_slice_crud"):
+        raise RuntimeError("Simpler slice CRUD requires Live 11+.")
+    device, sample = _get_simpler(song, params)
+    sensitivity = float(params.get("sensitivity", 0.5))
+    if not 0.0 <= sensitivity <= 1.0:
+        raise ValueError("sensitivity must be 0.0-1.0")
+    # slicing_style: 0=Transient, 1=Beats, 2=Region, 3=Manual
+    if hasattr(sample, "slicing_style"):
+        sample.slicing_style = 0
+    if hasattr(sample, "slicing_sensitivity"):
+        sample.slicing_sensitivity = sensitivity
+    if hasattr(sample, "reset_slices"):
+        sample.reset_slices()
+    slices = list(getattr(sample, "slices", []))
+    return {"slice_count": len(slices), "sensitivity": sensitivity}
+
+
+# ── Wavetable modulation matrix (Live 11+) ──────────────────────────────
+
+_WAVETABLE_SOURCES = [
+    "Env 2", "Env 3", "LFO 1", "LFO 2",
+    "MIDI Key", "MIDI Velocity", "MIDI Aftertouch", "MIDI Pitchbend",
+    "Macro 1", "Macro 2", "Macro 3", "Macro 4",
+    "Macro 5", "Macro 6", "Macro 7", "Macro 8",
+]
+
+
+def _get_wavetable(song, params):
+    track = get_track(song, int(params["track_index"]))
+    device = get_device(track, int(params["device_index"]))
+    class_name = str(getattr(device, "class_name", ""))
+    if "Wavetable" not in class_name:
+        raise ValueError("Device at index %d is not Wavetable (class_name=%s)"
+                         % (int(params["device_index"]), class_name))
+    return device
+
+
+@register("get_wavetable_mod_targets")
+def get_wavetable_mod_targets(song, params):
+    from .version_detect import has_feature
+    if not has_feature("wavetable_mod_matrix"):
+        raise RuntimeError("Wavetable modulation matrix requires Live 11+.")
+    wt = _get_wavetable(song, params)
+    targets = list(getattr(wt, "visible_modulation_target_names", []))
+    return {"targets": [str(t) for t in targets]}
+
+
+@register("add_wavetable_mod_route")
+def add_wavetable_mod_route(song, params):
+    from .version_detect import has_feature
+    if not has_feature("wavetable_mod_matrix"):
+        raise RuntimeError("Wavetable modulation matrix requires Live 11+.")
+    wt = _get_wavetable(song, params)
+    source = str(params["source"])
+    target = str(params["target"])
+    if not hasattr(wt, "add_parameter_to_modulation_matrix"):
+        raise RuntimeError("add_parameter_to_modulation_matrix not exposed")
+    wt.add_parameter_to_modulation_matrix(source, target)
+    actual = ""
+    if hasattr(wt, "get_modulation_target_parameter_name"):
+        actual = str(wt.get_modulation_target_parameter_name(source, target))
+    return {"source": source, "target": target, "actual_target": actual}
+
+
+@register("set_wavetable_mod_amount")
+def set_wavetable_mod_amount(song, params):
+    from .version_detect import has_feature
+    if not has_feature("wavetable_mod_matrix"):
+        raise RuntimeError("Wavetable modulation matrix requires Live 11+.")
+    wt = _get_wavetable(song, params)
+    source = str(params["source"])
+    target = str(params["target"])
+    amount = float(params["amount"])
+    if not -1.0 <= amount <= 1.0:
+        raise ValueError("amount must be -1.0 to 1.0")
+    if not hasattr(wt, "set_modulation_value"):
+        raise RuntimeError("set_modulation_value not exposed")
+    wt.set_modulation_value(source, target, amount)
+    return {"source": source, "target": target, "amount": amount}
+
+
+@register("get_wavetable_mod_amount")
+def get_wavetable_mod_amount(song, params):
+    from .version_detect import has_feature
+    if not has_feature("wavetable_mod_matrix"):
+        raise RuntimeError("Wavetable modulation matrix requires Live 11+.")
+    wt = _get_wavetable(song, params)
+    source = str(params["source"])
+    target = str(params["target"])
+    amount = 0.0
+    actual = ""
+    if hasattr(wt, "get_modulation_value"):
+        amount = float(wt.get_modulation_value(source, target))
+    if hasattr(wt, "get_modulation_target_parameter_name"):
+        actual = str(wt.get_modulation_target_parameter_name(source, target))
+    return {"source": source, "target": target, "amount": amount,
+            "actual_target": actual}
+
+
+@register("get_wavetable_mod_matrix")
+def get_wavetable_mod_matrix(song, params):
+    """Dump all non-zero modulation routings on this Wavetable."""
+    from .version_detect import has_feature
+    if not has_feature("wavetable_mod_matrix"):
+        raise RuntimeError("Wavetable modulation matrix requires Live 11+.")
+    wt = _get_wavetable(song, params)
+    targets = list(getattr(wt, "visible_modulation_target_names", []))
+    routings = []
+    if hasattr(wt, "get_modulation_value"):
+        for src in _WAVETABLE_SOURCES:
+            for tgt in targets:
+                try:
+                    amt = float(wt.get_modulation_value(src, tgt))
+                except Exception:
+                    continue
+                if abs(amt) > 1e-6:
+                    routings.append({"source": src, "target": str(tgt),
+                                     "amount": amt})
+    return {"routings": routings}
+
+
+# ── Device A/B compare (Live 12.3+) ─────────────────────────────────────
+#
+# Live 12.3 added A/B compare on every device but the LOM surface was not
+# comprehensively documented in the 12.3 release notes. The exact attribute
+# names vary across 12.3.x patches, so all three handlers use hasattr probes
+# over several plausible names. If the Live build doesn't expose the API,
+# get_device_ab_state returns "unknown" with a diagnostic note and the
+# toggle/copy handlers raise a clear error instead of faking the behavior
+# through UI shortcuts.
+
+def _probe_ab_attr(device, *names):
+    """Return the first attribute name that exists on device, or None."""
+    for n in names:
+        if hasattr(device, n):
+            return n
+    return None
+
+
+@register("get_device_ab_state")
+def get_device_ab_state(song, params):
+    from .version_detect import has_feature
+    if not has_feature("device_ab_compare"):
+        raise RuntimeError("Device A/B compare requires Live 12.3+.")
+    track = get_track(song, int(params["track_index"]))
+    device = get_device(track, int(params["device_index"]))
+
+    # Probe for the A/B state attribute — names vary by Live 12.3.x patch
+    state_attr = _probe_ab_attr(device, "ab_state", "current_ab_state",
+                                 "ab_current", "compare_state")
+    has_b_attr = _probe_ab_attr(device, "has_b_state", "has_ab_state",
+                                 "ab_has_b")
+    if state_attr is None:
+        return {"current_state": "unknown", "has_b": False,
+                "note": "LOM A/B attribute not exposed; UI-only in this Live build."}
+    state_val = getattr(device, state_attr)
+    # Normalize boolean or int to "A"/"B"
+    if isinstance(state_val, bool):
+        current = "B" if state_val else "A"
+    elif isinstance(state_val, int):
+        current = "B" if state_val else "A"
+    else:
+        current = str(state_val)
+    has_b = bool(getattr(device, has_b_attr, True)) if has_b_attr else True
+    return {"current_state": current, "has_b": has_b}
+
+
+@register("toggle_device_ab")
+def toggle_device_ab(song, params):
+    from .version_detect import has_feature
+    if not has_feature("device_ab_compare"):
+        raise RuntimeError("Device A/B compare requires Live 12.3+.")
+    track = get_track(song, int(params["track_index"]))
+    device = get_device(track, int(params["device_index"]))
+
+    toggle_fn = _probe_ab_attr(device, "toggle_ab", "toggle_ab_state",
+                                "swap_ab")
+    if toggle_fn is None:
+        raise RuntimeError(
+            "Device has no A/B toggle method in this Live version."
+        )
+    getattr(device, toggle_fn)()
+    # Re-read state (best-effort)
+    state_attr = _probe_ab_attr(device, "ab_state", "current_ab_state",
+                                 "ab_current", "compare_state")
+    if state_attr is None:
+        return {"current_state": "unknown"}
+    v = getattr(device, state_attr)
+    current = ("B" if (v if isinstance(v, bool) else bool(v)) else "A")
+    return {"current_state": current}
+
+
+@register("copy_device_state")
+def copy_device_state(song, params):
+    from .version_detect import has_feature
+    if not has_feature("device_ab_compare"):
+        raise RuntimeError("Device A/B compare requires Live 12.3+.")
+    track = get_track(song, int(params["track_index"]))
+    device = get_device(track, int(params["device_index"]))
+
+    direction = str(params["direction"]).lower()
+    if direction == "a_to_b":
+        fn = _probe_ab_attr(device, "copy_a_to_b", "copy_to_b")
+    elif direction == "b_to_a":
+        fn = _probe_ab_attr(device, "copy_b_to_a", "copy_to_a")
+    else:
+        raise ValueError("direction must be 'a_to_b' or 'b_to_a'")
+    if fn is None:
+        raise RuntimeError(
+            "Device has no copy-%s method in this Live version." % direction
+        )
+    getattr(device, fn)()
+    return {"ok": True, "direction": direction}

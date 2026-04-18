@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog (Generated)
 
-325 tools across 45 domains.
+393 tools across 51 domains.
 
 > Auto-generated from `mcp.list_tools()`. Do not hand-edit.
 > Regenerate: `python3 scripts/generate_tool_catalog.py`
@@ -117,7 +117,7 @@
 | `load_browser_item` | Load a browser item (instrument/effect) onto a track by URI. |
 | `search_browser` | Search the browser tree under a path, optionally filtering by name. |
 
-## Clips (13)
+## Clips (16)
 
 | Tool | Description |
 |------|-------------|
@@ -127,11 +127,14 @@
 | `duplicate_clip` | Duplicate a clip from one slot to another. |
 | `fire_clip` | Launch/fire a clip slot. |
 | `get_clip_info` | Get detailed info about a clip: name, length, loop, launch settings. |
+| `get_clip_scale` | Read a clip's per-clip scale override (Live 12.0+). |
 | `set_clip_color` | Set clip color (0-69, Ableton's color palette). |
 | `set_clip_launch` | Set clip launch mode (0=Trigger, 1=Gate, 2=Toggle, 3=Repeat) and optional quantization. |
 | `set_clip_loop` | Enable/disable clip looping and optionally set loop start/end (in beats). |
 | `set_clip_name` | Rename a clip in the Session view. The new name appears on the clip slot and in Device Chain displays. |
 | `set_clip_pitch` | Set pitch transposition and/or gain on an audio clip (BUG-A5). |
+| `set_clip_scale` | Set a clip's per-clip scale override (Live 12.0+). |
+| `set_clip_scale_mode` | Enable or disable Scale Mode on a single clip (Live 12.0+). |
 | `set_clip_warp_mode` | Set warp mode for an audio clip (0=Beats, 1=Tones, 2=Texture, 3=Re-Pitch, 4=Complex, 6=Complex Pro). |
 | `stop_clip` | Stop a playing clip. |
 
@@ -175,29 +178,58 @@
 | `install_m4l_device` | Copy a .amxd file to Ableton's User Library. |
 | `list_genexpr_templates` | List available gen~ DSP building block templates. |
 
-## Devices (19)
+## Devices (41)
 
 | Tool | Description |
 |------|-------------|
+| `add_rack_macro` | Add one macro to a Rack, raising visible_macro_count by 1 (Live 11+). |
+| `add_wavetable_mod_route` | Create a modulation routing on a Wavetable device (Live 11+). |
 | `batch_set_parameters` | Set multiple device parameters in one call. parameters is a JSON array of objects: [{"name_or_index": "Dry/Wet", "value" |
+| `clear_simpler_slices` | Remove all manual slices from the Simpler (Live 11+). |
+| `copy_device_state` | Copy one A/B state to the other (Live 12.3+). |
 | `delete_device` | Delete a device from a track. Use undo to revert if needed. |
+| `delete_rack_variation` | Delete a Rack variation by index (Live 11+). |
 | `find_and_load_device` | Search the browser for a device by name and load it onto a track. |
+| `get_device_ab_state` | Read a device's A/B compare state (Live 12.3+). |
 | `get_device_info` | Get info about a device: name, class, type, active state, parameter count. |
 | `get_device_parameters` | Get all parameters for a device with names, values, and ranges. |
 | `get_device_presets` | List available presets for an Ableton device (e.g. 'Corpus', 'Drum Buss', 'Wavetable'). |
 | `get_plugin_parameters` | Get ALL parameters from a VST/AU plugin including unconfigured ones. |
 | `get_plugin_presets` | List a VST/AU plugin's internal presets and banks. |
 | `get_rack_chains` | Get all chains in a rack device with volume, pan, mute, solo. |
+| `get_rack_variations` | Get the Rack's variation count, currently selected variation index, and visible macro count (Live 11+). |
+| `get_wavetable_mod_amount` | Read the current modulation amount for a Wavetable source→target routing (Live 11+). |
+| `get_wavetable_mod_matrix` | Dump all non-zero modulation routings on a Wavetable device (Live 11+). |
+| `get_wavetable_mod_targets` | Enumerate visible modulation target parameter names on a Wavetable (Live 11+). |
+| `import_slices_from_onsets` | Force Transient slicing mode, set sensitivity, and re-detect (Live 11+). |
 | `insert_device` | Insert a native Live device by name — 10x faster than browser search (Live 12.3+). |
 | `insert_rack_chain` | Insert a new chain into a Rack device — Instrument Rack, Audio Effect Rack, or Drum Rack (Live 12.3+). |
+| `insert_simpler_slice` | Insert a slice at a sample-frame position on a Simpler (Live 11+). |
 | `load_device_by_uri` | Load a device onto a track using a browser URI string. |
 | `map_plugin_parameter` | Add a plugin parameter to Ableton's Configure list for automation. |
 | `move_device` | Move a device to a new position on the same or different track. |
+| `move_simpler_slice` | Move an existing slice from one sample-frame position to another (Live 11+). |
+| `randomize_rack_macros` | Randomize the Rack's macro values using Live's built-in randomize dice (Live 11+). |
+| `recall_rack_variation` | Select and recall a stored Rack variation by index (Live 11+). |
+| `remove_rack_macro` | Remove the last macro from a Rack, lowering visible_macro_count by 1 (Live 11+). |
+| `remove_simpler_slice` | Remove a slice at an exact sample-frame position (Live 11+). |
+| `reset_simpler_slices` | Reset the Simpler's slices to Live's default detection (Live 11+). |
 | `set_chain_volume` | Set volume and/or pan for a chain in a rack device. |
 | `set_device_parameter` | Set a device parameter by name or index. |
 | `set_drum_chain_note` | Set which MIDI note triggers a Drum Rack chain (Live 12.3+). |
+| `set_rack_visible_macros` | Set the Rack's visible_macro_count directly (1-16, Live 11+). |
 | `set_simpler_playback_mode` | Set Simpler's playback mode. playback_mode: 0=Classic, 1=One-Shot, 2=Slice. slice_by (Slice only): 0=Transient, 1=Beat, |
+| `set_wavetable_mod_amount` | Set the modulation amount for a Wavetable source→target routing (Live 11+). |
+| `store_rack_variation` | Store the Rack's current macro values as a new variation (Live 11+). |
 | `toggle_device` | Enable or disable a device. |
+| `toggle_device_ab` | Swap a device's A/B state (Live 12.3+). |
+
+## Diagnostics (2)
+
+| Tool | Description |
+|------|-------------|
+| `get_control_surface_info` | Read detailed info about a single control surface. |
+| `list_control_surfaces` | List all active ControlSurface instances (Push, APC, Launchkey, etc.). |
 
 ## Evaluation (1)
 
@@ -215,6 +247,19 @@
 | `discard_experiment` | Discard an entire experiment — no changes are kept. |
 | `run_experiment` | Run all pending branches in an experiment. |
 
+## Follow Actions (8)
+
+| Tool | Description |
+|------|-------------|
+| `apply_follow_action_preset` | Apply a named follow-action preset to a clip (Live 12.0+). |
+| `clear_clip_follow_action` | Disable follow action on a clip (Live 12.0+). |
+| `clear_scene_follow_action` | Disable a scene's follow action (Live 12.2+). |
+| `get_clip_follow_action` | Read a clip's follow-action state (Live 12.0+). |
+| `get_scene_follow_action` | Read a scene's follow-action state (Live 12.2+). |
+| `list_follow_action_types` | List valid follow-action names (Live 12.0+). |
+| `set_clip_follow_action` | Set a clip's follow action (Live 12.0+). Any omitted arg preserves. |
+| `set_scene_follow_action` | Set a scene's follow action (Live 12.2+). Any omitted arg preserves. |
+
 ## Generative (5)
 
 | Tool | Description |
@@ -224,6 +269,18 @@
 | `generate_phase_shift` | Generate a phase-shifted canon (Steve Reich technique). |
 | `generate_tintinnabuli` | Generate a tintinnabuli voice (Arvo Pärt technique). |
 | `layer_euclidean_rhythms` | Stack multiple Euclidean rhythms for polyrhythmic textures. |
+
+## Grooves (7)
+
+| Tool | Description |
+|------|-------------|
+| `assign_clip_groove` | Assign a groove to a clip (Live 11+). |
+| `get_clip_groove` | Read a clip's current groove assignment (Live 11+). |
+| `get_groove_info` | Read a single groove's parameters (Live 11+). |
+| `get_song_groove_amount` | Read the master groove amount dial (Live 11+). |
+| `list_grooves` | List all grooves in the Groove Pool (Live 11+). |
+| `set_groove_params` | Adjust a groove's parameters (Live 11+). Omitted args preserve. |
+| `set_song_groove_amount` | Set the master groove amount dial (Live 11+). |
 
 ## Harmony (4)
 
@@ -420,6 +477,19 @@
 | `splice_download_sample` | Download a Splice sample by file_hash (costs 1 credit). |
 | `suggest_sample_technique` | Suggest sample manipulation techniques from the technique library. |
 
+## Scales (8)
+
+| Tool | Description |
+|------|-------------|
+| `get_song_scale` | Read Live's current Scale Mode state (Live 12.0+). |
+| `get_tuning_system` | Read the current Tuning System state (Live 12.1+). |
+| `list_available_scales` | Return Live's built-in scale names (Live 12.0+). |
+| `reset_tuning_system` | Reset all per-degree tuning offsets to 12-TET (Live 12.1+). |
+| `set_song_scale` | Set the Song-level Scale Mode root + scale name (Live 12.0+). |
+| `set_song_scale_mode` | Enable or disable Scale Mode on the current set (Live 12.0+). |
+| `set_tuning_note` | Adjust the cent offset for a single scale degree (Live 12.1+). |
+| `set_tuning_reference_pitch` | Set the Tuning System's reference pitch in Hz (Live 12.1+). |
+
 ## Scenes (12)
 
 | Tool | Description |
@@ -483,6 +553,17 @@
 | `start_rescue_workflow` | Start a structured rescue workflow for a specific stuckness type. |
 | `suggest_momentum_rescue` | Suggest strategic moves to restore session momentum. |
 
+## Take Lanes (6)
+
+| Tool | Description |
+|------|-------------|
+| `create_audio_clip_on_take_lane` | Create an arrangement audio clip on a specific take lane (Live 12.2+). |
+| `create_midi_clip_on_take_lane` | Create an arrangement MIDI clip on a specific take lane (Live 12.2+). |
+| `create_take_lane` | Create a new take lane on a track (Live 12.2+). |
+| `get_take_lane_clips` | List the arrangement clips on a specific take lane (Live 12.0+). |
+| `get_take_lanes` | List all take lanes on a track (Live 12.0+). |
+| `set_take_lane_name` | Rename an existing take lane (Live 12.2+). |
+
 ## Theory (7)
 
 | Tool | Description |
@@ -495,7 +576,7 @@
 | `suggest_next_chord` | Suggest the next chord based on the current progression. |
 | `transpose_smart` | Transpose a MIDI clip to a new key with musical intelligence. |
 
-## Tracks (17)
+## Tracks (20)
 
 | Tool | Description |
 |------|-------------|
@@ -506,8 +587,11 @@
 | `duplicate_track` | Duplicate a track (copies all clips, devices, and settings). |
 | `flatten_track` | Flatten a frozen track — commit rendered audio permanently. |
 | `freeze_track` | Freeze a track — render all devices to audio for CPU savings. |
+| `get_appointed_device` | Return the Blue Hand (appointed/focused) device location as (track_index, device_index, track_name, device_name). |
 | `get_freeze_status` | Check if a track is frozen. |
 | `get_track_info` | Get detailed info about a track: clips, devices, mixer state. |
+| `get_track_performance_impact` | Read a track's CPU performance impact metric. |
+| `jump_in_session_clip` | Jump playhead within a running session clip, in beats from start. |
 | `set_group_fold` | Fold or unfold a group track to show/hide its children. |
 | `set_track_arm` | Arm or disarm a track for recording. |
 | `set_track_color` | Set track color (0-69, Ableton's color palette). |
@@ -532,20 +616,29 @@
 | `check_translation` | Check playback robustness — mono safety, small speakers, harshness. |
 | `get_translation_issues` | Get just the translation issues without the full report. |
 
-## Transport (12)
+## Transport (21)
 
 | Tool | Description |
 |------|-------------|
+| `capture_and_insert_scene` | Capture currently-playing clips and insert them as a new scene. Distinct from capture_midi. |
 | `continue_playback` | Continue playback from the current position. |
+| `force_link_beat_time` | Force Ableton Link to a specific beat time (if supported by this Live version). |
+| `get_link_state` | Read Ableton Link + count-in state (enabled, start/stop sync, tempo follower, is_counting_in). |
 | `get_recent_actions` | Get a log of recent commands sent to Ableton (newest first). Useful for reviewing what was changed. |
 | `get_session_diagnostics` | Analyze the session for potential issues: armed tracks, solo/mute leftovers, unnamed tracks, empty clips/scenes, MIDI tr |
 | `get_session_info` | Get comprehensive Ableton session state: tempo, tracks, scenes, transport. |
+| `nudge_tempo` | Nudge tempo up or down by Live's internal nudge delta. direction: 'up' or 'down'. |
 | `redo` | Redo the last undone action in Ableton. |
+| `set_count_in_duration` | Set pre-record count-in duration (0-4 bars). |
+| `set_exclusive_arm` | Enable/disable exclusive arm mode (only one track armed at a time). |
+| `set_exclusive_solo` | Enable/disable exclusive solo mode (only one track soloed at a time). |
+| `set_link_enabled` | Enable or disable Ableton Link (network tempo synchronization). |
 | `set_session_loop` | Set loop on/off and optional loop region (start beat, length in beats). |
 | `set_tempo` | Set the song tempo in BPM (20-999). |
 | `set_time_signature` | Set the time signature (e.g., 4/4, 3/4, 6/8). |
 | `start_playback` | Start playback from the beginning. |
 | `stop_playback` | Stop playback — halts the session transport and the arrangement cursor returns to its last position. |
+| `tap_tempo` | Tap the tempo (one tap). Live averages consecutive taps to set BPM. |
 | `toggle_metronome` | Enable or disable the metronome click. |
 | `undo` | Undo the last action in Ableton. |
 
@@ -558,4 +651,4 @@
 | `rank_wonder_variants` | Rank wonder-mode variants by taste + identity + novelty + coherence. |
 
 ---
-*Generated from 325 registered tools.*
+*Generated from 393 registered tools.*

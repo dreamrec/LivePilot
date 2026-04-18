@@ -219,8 +219,13 @@ DOMAIN_COUNT_FILES = [
 
 # Files that enumerate the domain list inline as ``N domains: a, b, c, ...``.
 # Each file's enumeration must match the derived domain set exactly.
+#
+# AGENTS.md was missed in the v1.12.0 release — it claimed "51 domains"
+# then listed 50 (missing ``miditool``). Adding it to the check set closes
+# that false-green hole.
 DOMAIN_LIST_FILES = [
     "CLAUDE.md",
+    "AGENTS.md",
     "livepilot/skills/livepilot-release/SKILL.md",
 ]
 
@@ -245,13 +250,18 @@ def check_version(version: str) -> list[str]:
 def check_tool_count(count: int) -> list[str]:
     """Check all tool count files for staleness.
 
-    Catches both "N tools" and the hyphenated "N-tool" form (e.g.
-    ``server.json`` historically had ``"323-tool agentic ..."``, which the
-    old ``\\s+`` pattern missed entirely and let ship).
+    Catches:
+      - ``325 tools`` / ``325-tool``  (plain forms)
+      - ``325 MCP Tools``             (one word between count and 'tools')
+      - ``325 Tool``                  (capitalized)
+
+    Older pattern ``(\\d+)[-\\s]+tools?\\b`` missed ``325 MCP Tools`` (in
+    README's ASCII diagram) because ``MCP`` was between the number and the
+    noun. Broadening to allow an optional capitalized word catches it.
     """
     issues = []
     count_str = str(count)
-    pattern = re.compile(r"(\d+)[-\s]+tools?\b")
+    pattern = re.compile(r"(\d+)[-\s]+(?:[A-Z][A-Za-z]*\s+)?[Tt]ools?\b")
     for rel_path in TOOL_COUNT_FILES:
         path = ROOT / rel_path
         if not path.exists():

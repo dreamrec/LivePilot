@@ -1,9 +1,12 @@
 """
-LivePilot - Session diagnostics handler (1 command).
+LivePilot - Session diagnostics handler (3 commands).
 
 Analyzes the current session and flags potential issues:
 armed tracks, mute/solo leftovers, empty clips, unnamed tracks,
 empty scenes, and device-less instrument tracks.
+
+Also enumerates active ControlSurface instances (Push, APC, Launchkey,
+etc.) so the agent can reason about user-facing hardware.
 """
 
 from .router import register
@@ -271,4 +274,52 @@ def get_session_diagnostics(song, params):
         "info": severity_counts.get("info", 0),
         "issues": issues,
         "stats": stats,
+    }
+
+
+# ── ControlSurface enumeration ──────────────────────────────────────────
+# Read-only listing of active control surfaces (Push, APC, Launchkey,
+# Launchpad, etc.). Import Live lazily inside each handler — the rest of
+# this module operates on the `song` passed in and doesn't need the Live
+# package at import time. Keeping the import local preserves that.
+
+
+@register("list_control_surfaces")
+def list_control_surfaces(song, params):
+    """Enumerate all active Live.ControlSurface instances."""
+    from Live import Application
+    app = Application.get_application()
+    surfaces = list(getattr(app, "control_surfaces", []) or [])
+    out = []
+    for i, cs in enumerate(surfaces):
+        out.append({
+            "index": i,
+            "name": str(getattr(cs, "name", "") or cs.__class__.__name__),
+            "class_name": cs.__class__.__name__,
+        })
+    return {"surfaces": out}
+
+
+@register("get_control_surface_info")
+def get_control_surface_info(song, params):
+    """Return detailed info about a single control surface by index."""
+    from Live import Application
+    app = Application.get_application()
+    surfaces = list(getattr(app, "control_surfaces", []) or [])
+    idx = int(params["index"])
+    if not 0 <= idx < len(surfaces):
+        upper = len(surfaces) - 1 if surfaces else -1
+        raise IndexError("index %d out of range (0..%d)" % (idx, upper))
+    cs = surfaces[idx]
+    component_count = 0
+    if hasattr(cs, "components"):
+        try:
+            component_count = len(list(cs.components))
+        except Exception:
+            component_count = 0
+    return {
+        "index": idx,
+        "name": str(getattr(cs, "name", "") or cs.__class__.__name__),
+        "class_name": cs.__class__.__name__,
+        "component_count": component_count,
     }

@@ -48,6 +48,21 @@ REMOTE_COMMANDS: frozenset[str] = frozenset({
     "insert_device",           # 12.3+ native device insertion
     "insert_rack_chain",       # 12.3+ rack chain insertion
     "set_drum_chain_note",     # 12.3+ drum chain note assignment
+    # rack variations + macro CRUD (Live 11+)
+    "get_rack_variations", "store_rack_variation",
+    "recall_rack_variation", "delete_rack_variation",
+    "randomize_rack_macros", "add_rack_macro",
+    "remove_rack_macro", "set_rack_visible_macros",
+    # simpler slice CRUD (Live 11+)
+    "insert_simpler_slice", "move_simpler_slice",
+    "remove_simpler_slice", "clear_simpler_slices",
+    "reset_simpler_slices", "import_slices_from_onsets",
+    # wavetable modulation matrix (Live 11+)
+    "get_wavetable_mod_targets", "add_wavetable_mod_route",
+    "set_wavetable_mod_amount", "get_wavetable_mod_amount",
+    "get_wavetable_mod_matrix",
+    # device A/B compare (Live 12.3+)
+    "get_device_ab_state", "toggle_device_ab", "copy_device_state",
     # clip_automation (3)
     "get_clip_automation", "set_clip_automation", "clear_clip_automation",
     # browser (6)
@@ -65,8 +80,39 @@ REMOTE_COMMANDS: frozenset[str] = frozenset({
     "capture_midi", "start_recording", "stop_recording",
     "get_cue_points", "jump_to_cue", "toggle_cue_point",
     "back_to_arranger", "force_arrangement",
+    # scales — Song + per-clip scale awareness (Live 12.0+)
+    "get_song_scale", "set_song_scale", "set_song_scale_mode",
+    "list_available_scales",
+    "get_clip_scale", "set_clip_scale", "set_clip_scale_mode",
+    # tuning system (Live 12.1+)
+    "get_tuning_system", "set_tuning_reference_pitch",
+    "set_tuning_note", "reset_tuning_system",
+    # follow actions — clip (Live 12.0 revamp) + scene (Live 12.2+)
+    "get_clip_follow_action", "set_clip_follow_action",
+    "clear_clip_follow_action", "list_follow_action_types",
+    "apply_follow_action_preset",
+    "get_scene_follow_action", "set_scene_follow_action",
+    "clear_scene_follow_action",
+    # groove pool (Live 11+)
+    "list_grooves", "get_groove_info", "set_groove_params",
+    "assign_clip_groove", "get_clip_groove",
+    "get_song_groove_amount", "set_song_groove_amount",
+    # take lanes (Live 12.0 UI / 12.2 API)
+    "get_take_lanes", "create_take_lane", "set_take_lane_name",
+    "create_audio_clip_on_take_lane", "create_midi_clip_on_take_lane",
+    "get_take_lane_clips",
     # diagnostics (1)
     "get_session_diagnostics",
+    # control surfaces (diagnostic)
+    "list_control_surfaces", "get_control_surface_info",
+    # song primitives — transport/link
+    "tap_tempo", "nudge_tempo",
+    "set_exclusive_arm", "set_exclusive_solo",
+    "capture_and_insert_scene", "set_count_in_duration",
+    "get_link_state", "set_link_enabled", "force_link_beat_time",
+    # track primitives
+    "jump_in_session_clip", "get_track_performance_impact",
+    "get_appointed_device",
     # ping (built-in)
     "ping",
 })
@@ -92,6 +138,14 @@ BRIDGE_COMMANDS: frozenset[str] = frozenset({
     # async Python MCP tool in mcp_server/tools/analyzer.py, not a bridge
     # command. It has no case in livepilot_bridge.js and no @register handler
     # in remote_script. See mcp_server/runtime/execution_router.MCP_TOOLS.
+    # NOTE: MIDI Tool bridge commands (Live 12.0+ MIDI Generators /
+    # Transformations, requires LivePilot_MIDITool.amxd) do NOT belong in
+    # this set. They ride OSC prefixes /miditool/request, /miditool/ready
+    # (bridge→server) and miditool/config, miditool/response (server→bridge),
+    # dispatched through m4l_device/miditool_bridge.js (a separate JS, not
+    # livepilot_bridge.js) and pushed directly via M4LBridge.send_miditool_*
+    # helpers rather than through send_command. BRIDGE_COMMANDS is reserved
+    # for send_command targets that dispatch inside livepilot_bridge.js.
 })
 
 # Combined: all valid send_command targets

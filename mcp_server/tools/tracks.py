@@ -1,6 +1,6 @@
 """Track MCP tools — create, delete, rename, mute, solo, arm, group fold, monitor, freeze, flatten.
 
-17 tools matching the Remote Script tracks domain.
+20 tools matching the Remote Script tracks domain.
 """
 
 from __future__ import annotations
@@ -231,3 +231,31 @@ def get_freeze_status(ctx: Context, track_index: int) -> dict:
     return _get_ableton(ctx).send_command("get_freeze_status", {
         "track_index": track_index,
     })
+
+
+# ── Track long-tail primitives ──────────────────────────────────────────
+
+
+@mcp.tool()
+def jump_in_session_clip(ctx: Context, track_index: int, beats: float) -> dict:
+    """Jump playhead within a running session clip, in beats from start."""
+    _validate_track_index(track_index, allow_return=False)
+    return _get_ableton(ctx).send_command("jump_in_session_clip", {
+        "track_index": track_index,
+        "beats": beats,
+    })
+
+
+@mcp.tool()
+def get_track_performance_impact(ctx: Context, track_index: int) -> dict:
+    """Read a track's CPU performance impact metric."""
+    _validate_track_index(track_index)
+    return _get_ableton(ctx).send_command("get_track_performance_impact", {
+        "track_index": track_index,
+    })
+
+
+@mcp.tool()
+def get_appointed_device(ctx: Context) -> dict:
+    """Return the Blue Hand (appointed/focused) device location as (track_index, device_index, track_name, device_name)."""
+    return _get_ableton(ctx).send_command("get_appointed_device", {})

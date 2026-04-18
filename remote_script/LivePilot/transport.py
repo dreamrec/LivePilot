@@ -1,5 +1,5 @@
 """
-LivePilot - Transport domain handlers (10 commands).
+LivePilot - Transport domain handlers (19 commands).
 """
 
 from .router import register
@@ -152,3 +152,92 @@ def redo(song, params):
     """Redo the last undone action."""
     song.redo()
     return {"redone": True}
+
+
+# ── Song / Transport long-tail primitives ─────────────────────────────
+
+
+@register("tap_tempo")
+def tap_tempo(song, params):
+    """Tap the tempo (one tap); Live averages consecutive taps."""
+    song.tap_tempo()
+    return {"tempo": float(song.tempo)}
+
+
+@register("nudge_tempo")
+def nudge_tempo(song, params):
+    """Nudge tempo up or down by Live's internal nudge delta."""
+    direction = str(params["direction"]).lower()
+    if direction == "up":
+        song.nudge_up()
+    elif direction == "down":
+        song.nudge_down()
+    else:
+        raise ValueError("direction must be 'up' or 'down'")
+    return {"tempo": float(song.tempo)}
+
+
+@register("set_exclusive_arm")
+def set_exclusive_arm(song, params):
+    """Enable/disable exclusive arm (only one track armed at a time)."""
+    song.exclusive_arm = bool(params["enabled"])
+    return {"exclusive_arm": bool(song.exclusive_arm)}
+
+
+@register("set_exclusive_solo")
+def set_exclusive_solo(song, params):
+    """Enable/disable exclusive solo mode."""
+    song.exclusive_solo = bool(params["enabled"])
+    return {"exclusive_solo": bool(song.exclusive_solo)}
+
+
+@register("capture_and_insert_scene")
+def capture_and_insert_scene(song, params):
+    """Capture currently-playing clips and insert them as a new scene."""
+    before_count = len(list(song.scenes))
+    song.capture_and_insert_scene()
+    scenes = list(song.scenes)
+    new_idx = len(scenes) - 1
+    # capture_and_insert_scene inserts at a specific position — find the new one.
+    # Safest: if count grew by 1, the new scene is at the end; otherwise return -1.
+    if len(scenes) > before_count:
+        return {"scene_index": new_idx, "scene_name": str(scenes[new_idx].name)}
+    return {"scene_index": -1, "scene_name": ""}
+
+
+@register("set_count_in_duration")
+def set_count_in_duration(song, params):
+    """Set pre-record count-in (0-4 bars)."""
+    bars = int(params["bars"])
+    if not 0 <= bars <= 4:
+        raise ValueError("bars must be 0-4")
+    song.count_in_duration = bars
+    return {"count_in_duration": int(song.count_in_duration)}
+
+
+@register("get_link_state")
+def get_link_state(song, params):
+    """Read Ableton Link + count-in state."""
+    return {
+        "enabled": bool(getattr(song, "is_ableton_link_enabled", False)),
+        "start_stop_sync": bool(getattr(song, "is_ableton_link_start_stop_sync_enabled", False)),
+        "tempo_follower": bool(getattr(song, "tempo_follower_enabled", False)),
+        "is_counting_in": bool(getattr(song, "is_counting_in", False)),
+    }
+
+
+@register("set_link_enabled")
+def set_link_enabled(song, params):
+    """Enable or disable Ableton Link."""
+    song.is_ableton_link_enabled = bool(params["enabled"])
+    return {"enabled": bool(song.is_ableton_link_enabled)}
+
+
+@register("force_link_beat_time")
+def force_link_beat_time(song, params):
+    """Force Link to a specific beat time (if supported)."""
+    if not hasattr(song, "force_link_beat_time"):
+        raise RuntimeError("force_link_beat_time is not exposed in this Live version.")
+    beat_time = float(params["beat_time"])
+    song.force_link_beat_time(beat_time)
+    return {"ok": True, "beat_time": beat_time}
