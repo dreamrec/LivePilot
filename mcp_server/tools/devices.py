@@ -1011,3 +1011,127 @@ def import_slices_from_onsets(
         "device_index": device_index,
         "sensitivity": sensitivity,
     })
+
+
+# ── Wavetable modulation matrix (Live 11+) ──────────────────────────────
+
+
+@mcp.tool()
+def get_wavetable_mod_targets(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+) -> dict:
+    """Enumerate visible modulation target parameter names on a Wavetable (Live 11+).
+
+    Returns {targets: [...]} — the list depends on the current patch
+    configuration (e.g. which oscillators are active). Feed these strings
+    into add_wavetable_mod_route / set_wavetable_mod_amount as the target
+    argument.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    return _get_ableton(ctx).send_command("get_wavetable_mod_targets", {
+        "track_index": track_index,
+        "device_index": device_index,
+    })
+
+
+@mcp.tool()
+def add_wavetable_mod_route(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+    source: str,
+    target: str,
+) -> dict:
+    """Create a modulation routing on a Wavetable device (Live 11+).
+
+    source must be one of: "Env 2", "Env 3", "LFO 1", "LFO 2",
+    "MIDI Key", "MIDI Velocity", "MIDI Aftertouch", "MIDI Pitchbend",
+    "Macro 1".."Macro 8". target must be a name from
+    get_wavetable_mod_targets — valid targets depend on the current patch.
+    Returns {source, target, actual_target} where actual_target is the
+    parameter name Live resolved the routing to.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    return _get_ableton(ctx).send_command("add_wavetable_mod_route", {
+        "track_index": track_index,
+        "device_index": device_index,
+        "source": source,
+        "target": target,
+    })
+
+
+@mcp.tool()
+def set_wavetable_mod_amount(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+    source: str,
+    target: str,
+    amount: float,
+) -> dict:
+    """Set the modulation amount for a Wavetable source→target routing (Live 11+).
+
+    amount is bipolar: -1.0 to 1.0. 0.0 effectively disables the routing.
+    source and target use the same names documented on
+    add_wavetable_mod_route. Returns {source, target, amount}.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    if not -1.0 <= amount <= 1.0:
+        raise ValueError("amount must be -1.0 to 1.0")
+    return _get_ableton(ctx).send_command("set_wavetable_mod_amount", {
+        "track_index": track_index,
+        "device_index": device_index,
+        "source": source,
+        "target": target,
+        "amount": amount,
+    })
+
+
+@mcp.tool()
+def get_wavetable_mod_amount(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+    source: str,
+    target: str,
+) -> dict:
+    """Read the current modulation amount for a Wavetable source→target routing (Live 11+).
+
+    Returns {source, target, amount, actual_target}. amount is -1.0 to 1.0.
+    actual_target is the parameter name Live resolved the routing to — use
+    it to confirm the routing went where you expected.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    return _get_ableton(ctx).send_command("get_wavetable_mod_amount", {
+        "track_index": track_index,
+        "device_index": device_index,
+        "source": source,
+        "target": target,
+    })
+
+
+@mcp.tool()
+def get_wavetable_mod_matrix(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+) -> dict:
+    """Dump all non-zero modulation routings on a Wavetable device (Live 11+).
+
+    Iterates every source × visible target and returns any routing with a
+    non-zero amount. O(sources × targets) but safe — useful to audit a
+    patch or snapshot its modulation state. Returns
+    {routings: [{source, target, amount}, ...]}.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    return _get_ableton(ctx).send_command("get_wavetable_mod_matrix", {
+        "track_index": track_index,
+        "device_index": device_index,
+    })

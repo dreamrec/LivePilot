@@ -1128,3 +1128,107 @@ def import_slices_from_onsets(song, params):
         sample.reset_slices()
     slices = list(getattr(sample, "slices", []))
     return {"slice_count": len(slices), "sensitivity": sensitivity}
+
+
+# ── Wavetable modulation matrix (Live 11+) ──────────────────────────────
+
+_WAVETABLE_SOURCES = [
+    "Env 2", "Env 3", "LFO 1", "LFO 2",
+    "MIDI Key", "MIDI Velocity", "MIDI Aftertouch", "MIDI Pitchbend",
+    "Macro 1", "Macro 2", "Macro 3", "Macro 4",
+    "Macro 5", "Macro 6", "Macro 7", "Macro 8",
+]
+
+
+def _get_wavetable(song, params):
+    track = get_track(song, int(params["track_index"]))
+    device = get_device(track, int(params["device_index"]))
+    class_name = str(getattr(device, "class_name", ""))
+    if "Wavetable" not in class_name:
+        raise ValueError("Device at index %d is not Wavetable (class_name=%s)"
+                         % (int(params["device_index"]), class_name))
+    return device
+
+
+@register("get_wavetable_mod_targets")
+def get_wavetable_mod_targets(song, params):
+    from .version_detect import has_feature
+    if not has_feature("wavetable_mod_matrix"):
+        raise RuntimeError("Wavetable modulation matrix requires Live 11+.")
+    wt = _get_wavetable(song, params)
+    targets = list(getattr(wt, "visible_modulation_target_names", []))
+    return {"targets": [str(t) for t in targets]}
+
+
+@register("add_wavetable_mod_route")
+def add_wavetable_mod_route(song, params):
+    from .version_detect import has_feature
+    if not has_feature("wavetable_mod_matrix"):
+        raise RuntimeError("Wavetable modulation matrix requires Live 11+.")
+    wt = _get_wavetable(song, params)
+    source = str(params["source"])
+    target = str(params["target"])
+    if not hasattr(wt, "add_parameter_to_modulation_matrix"):
+        raise RuntimeError("add_parameter_to_modulation_matrix not exposed")
+    wt.add_parameter_to_modulation_matrix(source, target)
+    actual = ""
+    if hasattr(wt, "get_modulation_target_parameter_name"):
+        actual = str(wt.get_modulation_target_parameter_name(source, target))
+    return {"source": source, "target": target, "actual_target": actual}
+
+
+@register("set_wavetable_mod_amount")
+def set_wavetable_mod_amount(song, params):
+    from .version_detect import has_feature
+    if not has_feature("wavetable_mod_matrix"):
+        raise RuntimeError("Wavetable modulation matrix requires Live 11+.")
+    wt = _get_wavetable(song, params)
+    source = str(params["source"])
+    target = str(params["target"])
+    amount = float(params["amount"])
+    if not -1.0 <= amount <= 1.0:
+        raise ValueError("amount must be -1.0 to 1.0")
+    if not hasattr(wt, "set_modulation_value"):
+        raise RuntimeError("set_modulation_value not exposed")
+    wt.set_modulation_value(source, target, amount)
+    return {"source": source, "target": target, "amount": amount}
+
+
+@register("get_wavetable_mod_amount")
+def get_wavetable_mod_amount(song, params):
+    from .version_detect import has_feature
+    if not has_feature("wavetable_mod_matrix"):
+        raise RuntimeError("Wavetable modulation matrix requires Live 11+.")
+    wt = _get_wavetable(song, params)
+    source = str(params["source"])
+    target = str(params["target"])
+    amount = 0.0
+    actual = ""
+    if hasattr(wt, "get_modulation_value"):
+        amount = float(wt.get_modulation_value(source, target))
+    if hasattr(wt, "get_modulation_target_parameter_name"):
+        actual = str(wt.get_modulation_target_parameter_name(source, target))
+    return {"source": source, "target": target, "amount": amount,
+            "actual_target": actual}
+
+
+@register("get_wavetable_mod_matrix")
+def get_wavetable_mod_matrix(song, params):
+    """Dump all non-zero modulation routings on this Wavetable."""
+    from .version_detect import has_feature
+    if not has_feature("wavetable_mod_matrix"):
+        raise RuntimeError("Wavetable modulation matrix requires Live 11+.")
+    wt = _get_wavetable(song, params)
+    targets = list(getattr(wt, "visible_modulation_target_names", []))
+    routings = []
+    if hasattr(wt, "get_modulation_value"):
+        for src in _WAVETABLE_SOURCES:
+            for tgt in targets:
+                try:
+                    amt = float(wt.get_modulation_value(src, tgt))
+                except Exception:
+                    continue
+                if abs(amt) > 1e-6:
+                    routings.append({"source": src, "target": str(tgt),
+                                     "amount": amt})
+    return {"routings": routings}

@@ -57,6 +57,10 @@ REMOTE_COMMANDS: frozenset[str] = frozenset({
     "insert_simpler_slice", "move_simpler_slice",
     "remove_simpler_slice", "clear_simpler_slices",
     "reset_simpler_slices", "import_slices_from_onsets",
+    # wavetable modulation matrix (Live 11+)
+    "get_wavetable_mod_targets", "add_wavetable_mod_route",
+    "set_wavetable_mod_amount", "get_wavetable_mod_amount",
+    "get_wavetable_mod_matrix",
     # clip_automation (3)
     "get_clip_automation", "set_clip_automation", "clear_clip_automation",
     # browser (6)

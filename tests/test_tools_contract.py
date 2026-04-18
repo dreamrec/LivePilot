@@ -593,10 +593,23 @@ def test_simpler_slice_tools_registered():
     assert not missing, f"Missing simpler slice tools: {missing}"
 
 
+def test_wavetable_mod_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "get_wavetable_mod_targets",
+        "add_wavetable_mod_route",
+        "set_wavetable_mod_amount",
+        "get_wavetable_mod_amount",
+        "get_wavetable_mod_matrix",
+    }
+    missing = expected - names
+    assert not missing, f"Missing wavetable mod tools: {missing}"
+
+
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 371, f"Expected 371 tools, got {len(tools)}"
+    assert len(tools) == 376, f"Expected 376 tools, got {len(tools)}"
 
 
 def test_every_tool_has_description_and_schema():

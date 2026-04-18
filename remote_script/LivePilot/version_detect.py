@@ -27,6 +27,7 @@ FEATURES = {
     "groove_pool_api": (11, 0, 0),
     "rack_variations_api": (11, 0, 0),
     "simpler_slice_crud": (11, 0, 0),
+    "wavetable_mod_matrix": (11, 0, 0),
 }
 
 
