@@ -22,6 +22,13 @@ PROJECT_M4L = "/Users/visansilviugeorge/Desktop/DREAM AI/LivePilot/m4l_device"
 USER_LIB_GEN = os.path.expanduser("~/Music/Ableton/User Library/MIDI Tools/Max Generators")
 USER_LIB_TRANS = os.path.expanduser("~/Music/Ableton/User Library/MIDI Tools/Max Transformations")
 
+# The [js] object is referenced by ABSOLUTE PATH in the .amxd so Max can
+# always find it regardless of its file-search behavior. We install the JS
+# to a canonical location that's guaranteed to persist and stay writable.
+_ABSOLUTE_JS_PATH = os.path.expanduser(
+    "~/Music/Ableton/User Library/MIDI Tools/Max Generators/miditool_bridge.js"
+)
+
 
 def parse_amxd(path: str):
     """Parse a Max for Live .amxd.
@@ -210,9 +217,16 @@ def bridge_objects(variant: str):
             "patching_rect": [360.0, 240.0, 120.0, 22.0],
         }},
         # JS bridge
+        # NOTE: use the ABSOLUTE PATH here. When Live instantiates a MIDI
+        # Tool from the Generators dropdown, Max's [js] file-search doesn't
+        # reliably find files in the Ableton User Library subfolders even
+        # when they sit alongside the .amxd. An absolute path bypasses the
+        # search. Trade-off: the .amxd is tied to this install location;
+        # for redistribution, Max's File Preferences would need the JS
+        # folder added to its search path instead.
         {"box": {
             "id": "obj-js", "maxclass": "newobj",
-            "text": "js miditool_bridge.js",
+            "text": "js \"" + _ABSOLUTE_JS_PATH + "\"",
             "numinlets": 3, "numoutlets": 2,
             "outlettype": ["", ""],
             "patching_rect": [140.0, 320.0, 180.0, 22.0],
