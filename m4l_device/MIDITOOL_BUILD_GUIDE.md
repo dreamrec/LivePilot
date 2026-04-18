@@ -1,12 +1,34 @@
 # LivePilot MIDI Tool — Max for Live Build Guide
 
-Step-by-step instructions to build `LivePilot_MIDITool.amxd` in Max 9.
-The device is a Live 12 MIDI Tool (Generator or Transformation) that
-bridges a clip's note list + context to LivePilot's MCP server, so
+Step-by-step instructions to build the LivePilot MIDI Tool devices in
+Max 9. These are Live 12 MIDI Tools (Generator + Transformation) that
+bridge a clip's note list + context to LivePilot's MCP server, so
 LivePilot generators (euclidean, tintinnabuli, humanize, ...) run
 inside Live's native scale / selection / seed / tuning context.
 
-Budget: ~15 minutes in Max if you follow the steps verbatim.
+## Two variants (one file each)
+
+Live 12 MIDI Tools register in EITHER the **Transformations** or the
+**Generators** menu based on `live.miditool.in @mode`. One .amxd per
+mode, same bridge JS underneath:
+
+- `LivePilot_MIDITool_Transform.amxd` — operates on existing selected
+  notes (humanize, tintinnabuli, any server transformer)
+- `LivePilot_MIDITool_Generate.amxd` — creates new notes over the clip
+  selection (euclidean_rhythm, any server generator)
+
+**Fast path (2 min):** pre-built `.maxpat` files exist at
+`m4l_device/LivePilot_MIDITool_Transform.maxpat` and
+`m4l_device/LivePilot_MIDITool_Generate.maxpat`. Open each in Max 9,
+`File → Save As…` to `.amxd` (same basename), `File → Freeze Device`,
+done. Skip to Step 7 for the save details.
+
+**Scratch path:** follow every step below for each variant. For the
+Generate variant, change the `live.miditool.in` Inspector `mode` to
+`generator` (or edit its text to `live.miditool.in @mode generator`).
+
+Budget: ~15 minutes per variant from scratch, ~2 minutes each from
+the pre-built `.maxpat`.
 
 ## Prerequisites
 

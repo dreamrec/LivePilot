@@ -38,9 +38,9 @@
 		"enablehscroll": 1,
 		"enablevscroll": 1,
 		"devicewidth": 350.0,
-		"description": "LivePilot MIDI Tool — bridges clip notes + context to LivePilot MCP server; LivePilot generators (euclidean, tintinnabuli, humanize) run as Live 12 MIDI Tools.",
-		"digest": "Live 12 MIDI Tool bridge for LivePilot generators",
-		"tags": "livepilot miditool bridge generator transformation",
+		"description": "LivePilot MIDI Tool (Generator) — creates notes from scratch over the clip selection. Pairs euclidean_rhythm / any generator from the server.",
+		"digest": "Live 12 MIDI Generator — LivePilot bridge",
+		"tags": "livepilot miditool bridge generator",
 		"style": "",
 		"subpatcher_template": "",
 		"assistshowspatchername": 0,
@@ -84,7 +84,7 @@
 				"box": {
 					"id": "obj-title",
 					"maxclass": "comment",
-					"text": "LivePilot MIDI Tool",
+					"text": "LivePilot MIDI Tool (Generate)",
 					"numinlets": 1,
 					"numoutlets": 0,
 					"fontsize": 16.0,
@@ -114,7 +114,7 @@
 				"box": {
 					"id": "obj-subtitle",
 					"maxclass": "comment",
-					"text": "Bridges clip notes to LivePilot generators",
+					"text": "Generates new notes via LivePilot server",
 					"numinlets": 1,
 					"numoutlets": 0,
 					"fontsize": 11.0,
@@ -202,7 +202,7 @@
 				"box": {
 					"id": "obj-hint",
 					"maxclass": "comment",
-					"text": "Set target via Codex: set_miditool_target(tool_name='euclidean_rhythm', params={...})",
+					"text": "Codex: set_miditool_target(tool_name='euclidean_rhythm', params={'steps':16,'pulses':5})",
 					"numinlets": 1,
 					"numoutlets": 0,
 					"fontsize": 10.0,
@@ -284,7 +284,7 @@
 				"box": {
 					"id": "obj-miditool-in",
 					"maxclass": "newobj",
-					"text": "live.miditool.in",
+					"text": "live.miditool.in @mode generator",
 					"numinlets": 1,
 					"numoutlets": 2,
 					"outlettype": [
@@ -294,7 +294,7 @@
 					"patching_rect": [
 						140.0,
 						240.0,
-						115.0,
+						215.0,
 						22.0
 					]
 				}
