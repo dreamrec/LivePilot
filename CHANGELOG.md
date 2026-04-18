@@ -1,5 +1,78 @@
 # Changelog
 
+## 1.12.1 — Silent-failure fixes + slice classifier (April 18 2026)
+
+Reconciles the "separate git stash" called out under v1.12.0's Known
+limitations — the 2026-04-18 Villalobos-groove session surfaced four
+silent-failure bugs and the need for a drum-slice spectral classifier.
+
+**+1 tool (397 → 398): `classify_simpler_slices`.** +43 regression
+guards (pure-Python, run without a live Ableton).
+
+### Ship-stoppers fixed
+
+- **`get_master_rms.pitch.midi_note` clamped** (BUG-F1) — polyphonic
+  pitch detector emitted values up to 319.15 with amplitude 0. Now
+  drops readings with zero amplitude or out-of-range MIDI.
+  [`mcp_server/tools/analyzer.py:128-147`](mcp_server/tools/analyzer.py).
+- **`get_simpler_slices` discloses base MIDI pitch** (BUG-F2) — Simpler
+  Slice mode uses C1 (MIDI 36) as slice 0, NOT C3. Response now
+  includes `base_midi_pitch` at top level and `midi_pitch` per slice.
+  Prevents the class of silent-audio bugs where MIDI notes at pitch
+  60+ trigger nothing. Docstring updated to mandate using the
+  returned `midi_pitch`.
+  [`mcp_server/tools/analyzer.py:37-62, 462-487`](mcp_server/tools/analyzer.py).
+- **`delete_track` last-track error message** (BUG-F3) — Ableton's
+  default rejection message was unrelated to the real cause ("you
+  can't add notes to a clip that doesn't exist yet"). Now pre-checks
+  `track_count` and raises a clear ValueError.
+  [`mcp_server/tools/tracks.py:93-112`](mcp_server/tools/tracks.py).
+- **`batch_set_parameters` accepts aligned schema** (BUG-F4) — supports
+  `parameter_index` / `parameter_name` (matching `set_device_parameter`)
+  in addition to the legacy `name_or_index`. Rejects ambiguous entries
+  with clear errors.
+  [`mcp_server/tools/devices.py:292-328`](mcp_server/tools/devices.py).
+
+### New tool
+
+- **`classify_simpler_slices(track, device, file_path?)`** — runs
+  FFT-based spectral analysis on a Simpler's slice boundaries, returns
+  each slice labeled as KICK / SNARE / HAT / ghost plus feature
+  breakdown (peak, rms, band %). Validated thresholds from the
+  2026-04-18 Villalobos-groove session on "Break Ghosts 90 bpm":
+    - KICK: sub+low ≥ 45%, high < 40%
+    - HAT: high ≥ 70% AND mid < 25%
+    - SNARE: mid ≥ 25% AND high ≥ 40% AND peak ≥ 0.6
+    - ghost: peak < 0.35
+  Eliminates the "assume slice 0 = kick" class of bug.
+
+### New module
+
+- **`mcp_server/sample_engine/slice_classifier.py`** — pure-Python
+  band-energy + peak classifier. Testable without Ableton
+  (`tests/test_slice_classifier.py` uses synthesized drum hits).
+  Exported `classify_segment()` and `classify_slices()` for direct
+  use outside MCP as well.
+
+### Documented bug entries
+
+- `BUGS.md` gains a new **"F. 2026-04-18 Villalobos-groove creative
+  session"** section: F1-F4 fixed here, F5-F7 scoped to v1.13+, F8
+  wontfix (workaround documented).
+
+### Not included in this release
+
+- `package.json` / `server.json` / plugin manifests / skill tool-count
+  sync — release-discipline is a separate task per CLAUDE.md's
+  "Version Bump" section. Run `python3 scripts/sync_metadata.py --fix`
+  before the next release.
+- Registering `classify_simpler_slices` in
+  `tests/test_tools_contract.py::test_analyzer_tools_registered` — the
+  total-count assertion there already passes if regenerated; the
+  registration list is additive and can land with the metadata sync.
+
+---
+
 ## 1.12.0 — Live 12 LOM completeness (April 18 2026)
 
 Thirteen chunks closing the gap between LivePilot and Ableton Live 12.3.6's

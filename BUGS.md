@@ -1579,6 +1579,121 @@ This is what `create_preview_set` SHOULD be producing. The shared variant-builde
 
 ---
 
+## F. 2026-04-18 Villalobos-groove creative session
+
+Session context: deep surreal groove at 122 BPM in F# minor, 7 tracks
+(DRUMS, SUB, STAB, PERC, TEXTURE, GHOST, HOOK). User caught several
+silent-failure bugs during iterative composition.
+
+### BUG-F1 · `🟢 fixed (v1.11)` · `get_master_rms.pitch.midi_note` returned impossible values
+
+**Reproducer:** During dense polyphonic mix, `get_master_rms()` returned
+`{"pitch": {"midi_note": 319.15, "amplitude": 0}}`. Across the session
+I saw `319.15`, `89.55` (near-valid-looking), `0`, `648.65`. MIDI note
+numbers are 0-127 only. Users saw bogus readings.
+
+**Root cause:** The polyphonic pitch detector in the M4L analyzer can't
+latch on dense mixes. Its output is undefined in that case. The
+`amplitude` field is the reliable signal — when the detector was sure,
+amplitude is non-zero.
+
+**Fix (v1.11):** `_sanitize_pitch()` helper drops readings with
+amplitude <= 0 OR midi_note outside [0, 127].
+[`mcp_server/tools/analyzer.py:128-147`](mcp_server/tools/analyzer.py).
+Tests: `tests/test_analyzer_tools.py` (10 cases).
+
+### BUG-F2 · `🟢 fixed (v1.11)` · `get_simpler_slices` didn't expose base MIDI pitch
+
+**Reproducer:** Loaded "Break Ghosts 90 bpm" into Simpler Slice mode.
+`get_simpler_slices` returned slice indices 0-20. Programmed MIDI at
+pitch 60 expecting slice 0. DRUMS track played silent — slice N
+actually triggers on pitch 36+N (C1 base, not C3). Took diagnosing
+via `get_track_meters` showing 0 output while `is_playing=true`.
+
+**Root cause:** Live 12 Simpler Slice mode uses C1 (MIDI 36) as slice
+0's trigger pitch. Undocumented in both Ableton's and LivePilot's
+public APIs. The Remote Script's `get_simpler_slices` response only
+included slice indices, not the pitch mapping.
+
+**Fix (v1.11):** `_enrich_slice_response()` adds `base_midi_pitch: 36`
+at top level + `midi_pitch` on every slice entry. `get_simpler_slices`
+docstring updated to mandate using the returned `midi_pitch`.
+[`mcp_server/tools/analyzer.py:37-62, 462-487`](mcp_server/tools/analyzer.py).
+Tests: 7 cases in `tests/test_analyzer_tools.py`.
+
+### BUG-F3 · `🟢 fixed (v1.11)` · `delete_track` on last track had misleading error
+
+**Reproducer:** Session with 1 track. Call `delete_track(0)`. Got
+`STATE_ERROR: "you can't add notes to a clip that doesn't exist yet"` —
+a generic invalid-operation fallback message completely unrelated to
+the real cause (Ableton requires >=1 track).
+
+**Fix (v1.11):** Pre-check via `get_session_info.track_count` and
+raise ValueError with actionable guidance. Defensive: if the session
+info call doesn't return a track count, fall through to the Remote
+Script rather than blocking.
+[`mcp_server/tools/tracks.py:93-112`](mcp_server/tools/tracks.py).
+Tests: 4 cases in `tests/test_tracks_tools.py`.
+
+### BUG-F4 · `🟢 fixed (v1.11)` · `batch_set_parameters` schema didn't match `set_device_parameter`
+
+**Reproducer:** `set_device_parameter` takes `parameter_index` or
+`parameter_name`. `batch_set_parameters` only took `name_or_index`.
+Users writing code against one tool hit schema errors switching to
+the other.
+
+**Fix (v1.11):** `_normalize_batch_entry()` accepts either shape and
+normalizes to the Remote Script's expected `{name_or_index, value}`.
+Legacy callers still work. Ambiguous entries (multiple parameter
+keys) are rejected with a clear error.
+[`mcp_server/tools/devices.py:292-328`](mcp_server/tools/devices.py).
+Tests: 9 cases in `tests/test_devices_tools.py`.
+
+### BUG-F5 · `🟡 scoped to v1.12` · Nested rack-chain devices not addressable
+
+**Reproducer:** Faux Microtonal Glass Mallet is an Instrument Rack
+containing Meld + Roar + Shifter + 2 Hybrid Reverbs + Limiter.
+`walk_device_tree` reveals the structure. `get_device_parameters(track=2, device=0)` only returns rack MACROS (18 params), not the 129
+Meld params inside. Real synth-level sound design on rack presets
+is blocked.
+
+**Scope:** v1.12 — requires Remote Script work to expose
+`rack.chains[i].devices[j]`. See
+`docs/superpowers/plans/2026-04-18-livepilot-v112-roadmap.md` P1.
+
+### BUG-F6 · `🟡 scoped to v1.12` · `fire_clip` phase misalignment with polymeter
+
+**Reproducer:** HOOK clip (16 beats) and STAB clip (16 beats) both
+designed to polyrhythm against 8-beat groove. Firing clips individually
+via `fire_clip` started them at different transport positions. User
+reported "hook is in the same time with the stab." Fixing required
+`stop_all_clips` + `fire_scene`.
+
+**Scope:** v1.12 — either warn when firing a clip that's longer than
+the session loop, or auto-launch-quantize polymeter clips. See roadmap P4.
+
+### BUG-F7 · `🟡 scoped to v1.12` · Wonder Mode missed percussion creative intent
+
+**Reproducer:** User asked for percussion creativity on track 3.
+Wonder returned `add_warmth`, `kick_bass_lock`, and one analytical-only
+`create_stochastic_texture`. None targeted percussion source material.
+
+**Scope:** v1.12 — add `swap_track_source` / `slice_foley_source`
+semantic-move family + per-track diagnosis. See roadmap P2.
+
+### BUG-F8 · `⚪️ wontfix / by-design` · `get_device_parameters` "Invalid display value"
+
+**Reproducer:** `get_device_parameters` on some Simpler states errors
+with `STATE_ERROR: Invalid display value`. Workaround: use
+`get_display_values` which returns the human-readable string form.
+
+**Resolution:** `get_display_values` is the canonical read path; the
+"Invalid display value" error from the raw call is genuine Ableton
+state (certain params are un-queryable mid-transition). Not worth
+masking — `get_display_values` is strictly better and already exists.
+
+---
+
 ## How to use this file across sessions
 
 New session startup:
