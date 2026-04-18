@@ -143,7 +143,7 @@ you explicitly freeze again.
 
 ## Step 8: Install into Ableton's User Library
 
-From the MCP server (Codex, Claude Code, etc.):
+From any MCP client connected to the LivePilot server:
 
 ```
 install_miditool_device()

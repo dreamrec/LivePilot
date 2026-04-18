@@ -202,7 +202,7 @@
 				"box": {
 					"id": "obj-hint",
 					"maxclass": "comment",
-					"text": "Codex: set_miditool_target(tool_name='euclidean_rhythm', params={'steps':16,'pulses':5})",
+					"text": "Call set_miditool_target(tool_name='euclidean_rhythm', params={'steps':16,'pulses':5})",
 					"numinlets": 1,
 					"numoutlets": 0,
 					"fontsize": 10.0,
