@@ -70,6 +70,27 @@ REMOTE_COMMANDS: frozenset[str] = frozenset({
     "capture_midi", "start_recording", "stop_recording",
     "get_cue_points", "jump_to_cue", "toggle_cue_point",
     "back_to_arranger", "force_arrangement",
+    # scales — Song + per-clip scale awareness (Live 12.0+)
+    "get_song_scale", "set_song_scale", "set_song_scale_mode",
+    "list_available_scales",
+    "get_clip_scale", "set_clip_scale", "set_clip_scale_mode",
+    # tuning system (Live 12.1+)
+    "get_tuning_system", "set_tuning_reference_pitch",
+    "set_tuning_note", "reset_tuning_system",
+    # follow actions — clip (Live 12.0 revamp) + scene (Live 12.2+)
+    "get_clip_follow_action", "set_clip_follow_action",
+    "clear_clip_follow_action", "list_follow_action_types",
+    "apply_follow_action_preset",
+    "get_scene_follow_action", "set_scene_follow_action",
+    "clear_scene_follow_action",
+    # groove pool (Live 11+)
+    "list_grooves", "get_groove_info", "set_groove_params",
+    "assign_clip_groove", "get_clip_groove",
+    "get_song_groove_amount", "set_song_groove_amount",
+    # take lanes (Live 12.0 UI / 12.2 API)
+    "get_take_lanes", "create_take_lane", "set_take_lane_name",
+    "create_audio_clip_on_take_lane", "create_midi_clip_on_take_lane",
+    "get_take_lane_clips",
     # diagnostics (1)
     "get_session_diagnostics",
     # ping (built-in)
