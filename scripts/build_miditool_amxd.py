@@ -24,34 +24,56 @@ USER_LIB_TRANS = os.path.expanduser("~/Music/Ableton/User Library/MIDI Tools/Max
 
 
 def parse_amxd(path: str):
-    """Parse a Max for Live .amxd. Returns (file_bytes, ptch_idx, ptch_len, parsed_patcher_json)."""
+    """Parse a Max for Live .amxd.
+
+    The ampf/ptch container is IFF-like but has TWO counter-intuitive quirks:
+      - Chunk length field is LITTLE-endian (not BE as most IFF formats use)
+      - Length field counts PAYLOAD BYTES ONLY, NOT including the 8-byte
+        'ptch' + length header.
+
+    So for the factory Generator template:
+      file size = 3185 bytes
+      ampf chunk: 8 header + 4 payload ('nagg')           = 12 bytes
+      meta chunk: 8 header + 4 payload ('\\0\\0\\0\\0')    = 12 bytes
+      ptch chunk: 8 header + 3153 payload (JSON)          = 3161 bytes
+      Total: 12 + 12 + 3161 = 3185 ✓
+
+    Writing ptch_len as BE makes Max read it as a little-endian number
+    (e.g. BE 9550 = bytes 0x00002554 → LE 0x54250000 ≈ 1.4GB), triggering
+    Max's "The device file exceeds the maximum size of one gigabyte" error.
+
+    Returns (file_bytes, ptch_idx, ptch_len_payload_size, parsed_patcher_json).
+    """
     data = open(path, "rb").read()
     ptch_idx = data.find(b"ptch")
     if ptch_idx < 0:
         raise ValueError("no ptch chunk in " + path)
-    ptch_len = struct.unpack(">I", data[ptch_idx + 4:ptch_idx + 8])[0]  # BE
-    chunk = data[ptch_idx + 8:ptch_idx + 8 + ptch_len]
-    json_start = chunk.find(b"{")
-    s = chunk[json_start:].decode("utf-8", errors="replace").rstrip("\x00\ufffd")
+    ptch_len = struct.unpack("<I", data[ptch_idx + 4:ptch_idx + 8])[0]  # LE, payload-only
+    chunk_payload = data[ptch_idx + 8:ptch_idx + 8 + ptch_len]
+    json_start = chunk_payload.find(b"{")
+    s = chunk_payload[json_start:].decode("utf-8", errors="replace").rstrip("\x00\ufffd")
     parsed = json.loads(s)
     return data, ptch_idx, ptch_len, parsed
 
 
 def write_amxd(path: str, original_data: bytes, ptch_idx: int, old_ptch_len: int, new_parsed: dict):
-    """Write .amxd with a new patcher JSON. Preserves ampf header, trailing chunks."""
+    """Write .amxd with a new patcher JSON. Preserves ampf header + trailing chunks.
+
+    Critical: ptch_len field is little-endian and counts PAYLOAD BYTES ONLY
+    (not the 8-byte 'ptch' + length header). Otherwise Max computes a huge
+    size and rejects the file with 'exceeds maximum size of one gigabyte'.
+    """
     new_json = json.dumps(new_parsed, indent="\t", separators=(",", " : "), ensure_ascii=False)
     new_json_bytes = new_json.encode("utf-8")
 
-    # Payload = JSON bytes only (factory template has no padding after JSON in ptch chunk)
     new_payload = new_json_bytes
-    new_ptch_len = 8 + len(new_payload)
+    new_ptch_len = len(new_payload)  # payload-only (no +8 for header)
 
-    # Pack with BIG-endian length
-    new_chunk = b"ptch" + struct.pack(">I", new_ptch_len) + new_payload
+    # Pack with LITTLE-endian length
+    new_chunk = b"ptch" + struct.pack("<I", new_ptch_len) + new_payload
 
-    # Everything before ptch chunk
     prefix = original_data[:ptch_idx]
-    # Everything after old ptch chunk (trailing mx@c chunk + anything else)
+    # Old ptch chunk span: 8-byte header + old_ptch_len bytes of payload
     suffix = original_data[ptch_idx + 8 + old_ptch_len:]
 
     new_data = prefix + new_chunk + suffix
