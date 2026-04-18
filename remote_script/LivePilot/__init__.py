@@ -23,6 +23,7 @@ from . import browser      # noqa: F401  — registers browser handlers
 from . import arrangement  # noqa: F401  — registers arrangement handlers
 from . import diagnostics       # noqa: F401  — registers diagnostics handler
 from . import follow_actions    # noqa: F401  — registers follow action handlers (12.0+, 12.2+)
+from . import grooves           # noqa: F401  — registers groove pool handlers (11+)
 from . import clip_automation   # noqa: F401  — registers clip automation handlers
 from . import version_detect    # noqa: F401  — version detection
 
@@ -51,7 +52,7 @@ _HANDLER_MODULES = (
     utils,
     transport, tracks, clips, notes, devices, scenes, scales,
     mixing, browser, arrangement, diagnostics, follow_actions,
-    clip_automation, version_detect,
+    grooves, clip_automation, version_detect,
 )
 
 

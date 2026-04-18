@@ -259,6 +259,7 @@ from .tools import devices      # noqa: F401, E402
 from .tools import scenes       # noqa: F401, E402
 from .tools import scales       # noqa: F401, E402
 from .tools import follow_actions  # noqa: F401, E402
+from .tools import grooves      # noqa: F401, E402
 from .tools import mixing       # noqa: F401, E402
 from .tools import browser      # noqa: F401, E402
 from .tools import arrangement  # noqa: F401, E402

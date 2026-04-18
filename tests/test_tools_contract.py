@@ -534,10 +534,25 @@ def test_follow_actions_tools_registered():
     assert not missing, f"Missing follow action tools: {missing}"
 
 
+def test_grooves_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "list_grooves",
+        "get_groove_info",
+        "set_groove_params",
+        "assign_clip_groove",
+        "get_clip_groove",
+        "get_song_groove_amount",
+        "set_song_groove_amount",
+    }
+    missing = expected - names
+    assert not missing, f"Missing groove tools: {missing}"
+
+
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 344, f"Expected 344 tools, got {len(tools)}"
+    assert len(tools) == 351, f"Expected 351 tools, got {len(tools)}"
 
 
 def test_every_tool_has_description_and_schema():

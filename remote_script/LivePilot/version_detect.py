@@ -24,6 +24,7 @@ FEATURES = {
     "drum_chain_in_note": (12, 3, 0),
     "stem_separation": (12, 3, 0),
     "replace_sample_native": (12, 4, 0),
+    "groove_pool_api": (11, 0, 0),
 }
 
 
