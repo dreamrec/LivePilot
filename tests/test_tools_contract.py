@@ -486,7 +486,32 @@ def test_safety_tools_registered():
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 323, f"Expected 323 tools, got {len(tools)}"
+    assert len(tools) == 324, f"Expected 324 tools, got {len(tools)}"
+
+
+def test_every_tool_has_description_and_schema():
+    """Every registered tool must have a non-empty description and a schema.
+
+    Previously the contract test only counted tool names. A tool with an
+    empty docstring or null parameters schema would pass — but the FastMCP
+    tool description is what the LLM reads to decide when to call the tool,
+    so empty/duplicate descriptions quietly degrade every agent session.
+    """
+    from mcp_server.server import mcp
+    tools = asyncio.run(mcp.list_tools())
+    offenders = []
+    for t in tools:
+        desc = (t.description or "").strip()
+        if len(desc) < 20:
+            offenders.append(f"{t.name}: description too short ({len(desc)} chars)")
+        if t.parameters is None:
+            offenders.append(f"{t.name}: no parameters schema")
+    # Keep the count so this test is easy to read when it fails.
+    assert not offenders, (
+        f"{len(offenders)} tool(s) fail minimum contract:\n  "
+        + "\n  ".join(offenders[:25])
+        + (f"\n  ...+{len(offenders)-25} more" if len(offenders) > 25 else "")
+    )
 
 
 def test_sample_engine_tools_registered():

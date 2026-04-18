@@ -55,23 +55,26 @@ def test_every_python_bridge_command_has_js_dispatch_case():
 
 
 def test_no_stray_js_cases_outside_whitelist():
-    """Flag JS cases that are not in Python BRIDGE_COMMANDS (informational).
+    """Fail if the JS bridge has command cases not declared in BRIDGE_COMMANDS.
 
-    Does not fail the suite — some JS cases (like `ping`) are internal health
-    checks. Prints any stray cases so the maintainer notices new JS commands
-    that forgot their Python registration.
+    Previously this test printed a warning and passed, which meant a new JS
+    dispatch case added to livepilot_bridge.js without a matching Python
+    registration would slip through CI. That's the exact shape of BUG-A3
+    (the bridge/Python drift class). Now a hard failure — any JS-only case
+    that isn't in ``internal_only`` must be registered in Python or
+    whitelisted here with a justification.
     """
     js_cases = _js_dispatch_cases()
-    internal_only = {"ping"}  # JS-internal, never called from Python plans
+    # JS-internal commands that are never invoked through Python plans. Keep
+    # this list tight — every addition here needs a code review.
+    internal_only = {"ping"}
     stray = sorted(
         c for c in js_cases
         if c not in BRIDGE_COMMANDS and c not in internal_only
     )
-    if stray:
-        # Informational, not a failure — keep the suite green but surface drift.
-        print(
-            f"\nINFO: JS dispatch has commands not in Python BRIDGE_COMMANDS: "
-            f"{stray}. If these are real bridge commands, add them to "
-            f"mcp_server/runtime/remote_commands.py:BRIDGE_COMMANDS so plans "
-            f"can reference them."
-        )
+    assert not stray, (
+        f"JS dispatch has commands not in Python BRIDGE_COMMANDS: {stray}. "
+        f"Add them to mcp_server/runtime/remote_commands.py:BRIDGE_COMMANDS "
+        f"so plans can reference them, OR explicitly add to the "
+        f"internal_only set in this test with a comment explaining why."
+    )

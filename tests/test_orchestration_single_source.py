@@ -134,3 +134,47 @@ def test_wonder_variant_uncompilable_move_is_analytical():
 
     assert variant["compiled_plan"] is None
     assert variant["analytical_only"] is True
+
+
+# ── Orphan-move regression guard ─────────────────────────────────────────────
+
+
+def test_every_registered_move_is_compilable_or_analytical_only():
+    """Every move in the registry must EITHER have a compiler OR be explicitly
+    declared analytical_only=True. A move registered without either is an
+    orphan: it surfaces in discovery as executable but returns a zero-step
+    plan at runtime, which is the exact "silently non-executable plan" bug
+    we had with make_kick_bass_lock / create_buildup_tension / smooth_scene_handoff.
+    """
+    # Ensure all compiler modules import (which populates _COMPILERS).
+    from mcp_server.semantic_moves import (  # noqa: F401
+        mix_compilers,
+        sound_design_compilers,
+        transition_compilers,
+        performance_compilers,
+        sample_compilers,
+        device_creation_compilers,
+    )
+    from mcp_server.semantic_moves.compiler import _COMPILERS
+    from mcp_server.semantic_moves import registry
+
+    orphans = []
+    for move in registry.list_moves():
+        move_id = move.get("move_id") if isinstance(move, dict) else getattr(move, "move_id", None)
+        family = move.get("family") if isinstance(move, dict) else getattr(move, "family", None)
+        analytical = move.get("analytical_only", False) if isinstance(move, dict) else getattr(move, "analytical_only", False)
+        if not move_id:
+            continue
+        has_compiler = (
+            move_id in _COMPILERS
+            or (family and f"__family__{family}" in _COMPILERS)
+        )
+        if not has_compiler and not analytical:
+            orphans.append((move_id, family))
+
+    assert not orphans, (
+        "Orphan moves registered without a compiler and not flagged "
+        f"analytical_only=True: {orphans}. Either add a compiler in "
+        f"mcp_server/semantic_moves/<family>_compilers.py, or set "
+        f"analytical_only=True on the move definition."
+    )

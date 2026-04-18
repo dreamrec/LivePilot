@@ -1,9 +1,34 @@
 """Test the corpus intelligence layer — parsing and querying."""
 
 import os
+import pathlib
+
 import pytest
 
 from mcp_server.corpus import load_corpus, get_corpus, Corpus
+
+# ── Canary: corpus files MUST exist in this checkout ──────────────────
+# Several tests below skip gracefully if the corpus is empty. That is a
+# legitimate escape hatch for deploys that trim the markdown, but it also
+# hides "we broke the corpus path" bugs. This canary runs FIRST and fails
+# hard if no corpus source files are found in the repo.
+
+_CORPUS_SRC = (pathlib.Path(__file__).resolve().parent.parent
+               / "livepilot" / "skills" / "livepilot-core"
+               / "references" / "device-knowledge")
+
+
+def test_corpus_source_files_exist():
+    """Corpus markdown must be present in the checkout."""
+    assert _CORPUS_SRC.is_dir(), (
+        f"Corpus source directory missing: {_CORPUS_SRC}. "
+        f"Downstream skip-on-empty tests would all silently pass."
+    )
+    md_files = list(_CORPUS_SRC.rglob("*.md"))
+    assert md_files, (
+        f"No .md files found under {_CORPUS_SRC}. Did the device-knowledge "
+        f"directory get accidentally emptied?"
+    )
 
 
 @pytest.fixture

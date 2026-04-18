@@ -25,15 +25,43 @@ def test_all_verification_steps_have_backend():
 
 
 def test_backend_annotations_match_classifier():
-    """Declared backend should agree with the automatic classifier."""
+    """Declared backend must agree with the automatic classifier.
+
+    Previously this test silently skipped when classify_step returned
+    'unknown'. That meant a move step declaring backend='remote_command'
+    for a tool the classifier has never heard of (typo, rename, missing
+    set entry) would pass this test and then fail at dispatch time with
+    'Unknown command type'. The fix treats 'unknown' as a hard failure:
+    if the backend is declared, the tool MUST resolve in one of
+    REMOTE_COMMANDS / BRIDGE_COMMANDS / MCP_TOOLS.
+    """
     mismatches = []
-    for move_id, move in registry._REGISTRY.items():
-        for i, step in enumerate(move.plan_template):
-            declared = step.get("backend", "")
-            tool = step.get("tool", "")
-            classified = classify_step(tool)
-            if declared and classified != "unknown" and declared != classified:
-                mismatches.append(
-                    f"{move_id} step {i}: tool={tool} declared={declared} classified={classified}"
-                )
-    assert not mismatches, f"Backend mismatches:\n" + "\n".join(mismatches)
+    unknowns = []
+
+    def _check(plans: list, kind: str) -> None:
+        for move_id, move in registry._REGISTRY.items():
+            plan = getattr(move, plans, [])
+            for i, step in enumerate(plan):
+                declared = step.get("backend", "")
+                if not declared:
+                    continue  # un-annotated steps are allowed — router classifies at runtime
+                tool = step.get("tool", "")
+                classified = classify_step(tool)
+                if classified == "unknown":
+                    unknowns.append(
+                        f"{move_id} {kind} step {i}: tool={tool!r} "
+                        f"declared={declared} but classifier returns 'unknown'. "
+                        f"Add the tool to the appropriate set in "
+                        f"mcp_server/runtime/execution_router.py or rename it."
+                    )
+                elif declared != classified:
+                    mismatches.append(
+                        f"{move_id} {kind} step {i}: tool={tool!r} "
+                        f"declared={declared} but classifier returns {classified}."
+                    )
+
+    _check("plan_template", "plan")
+    _check("verification_plan", "verify")
+
+    assert not unknowns, "Unknown classifications (silent-escape bug):\n" + "\n".join(unknowns)
+    assert not mismatches, "Backend mismatches:\n" + "\n".join(mismatches)

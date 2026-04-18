@@ -25,6 +25,43 @@ jobs:
           pip install -r requirements.txt pytest pytest-asyncio
       - run: pytest tests/ -v
 
+  metadata-drift:
+    # Enforces that every file listed in CLAUDE.md as version/count-bearing is
+    # actually in sync. Prior releases (1.10.2, 1.10.4, 1.10.6) each shipped
+    # with some form of metadata drift because this check was manual only.
+    # No untrusted inputs: sync_metadata.py is a repo-local script.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: sync_metadata --check
+        run: python scripts/sync_metadata.py --check
+
+  amxd-freeze-drift:
+    # Guard against the repeating "bridge ping reports old version" bug: if
+    # the frozen .amxd embeds an older version string than the repo, refuse
+    # to merge. Two prior releases were lost to this class of drift.
+    # No untrusted inputs: VERSION is derived from the repo's own code.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: .amxd ping version matches repo version
+        run: |
+          VERSION=$(python -c "import sys; sys.path.insert(0,'.'); from mcp_server import __version__; print(__version__)")
+          echo "Repo version: $VERSION"
+          if ! strings m4l_device/LivePilot_Analyzer.amxd | grep -q "\"version\": \"$VERSION\""; then
+            echo "::error::LivePilot_Analyzer.amxd does NOT contain the current version ($VERSION)."
+            echo "::error::This means the frozen .amxd is out of sync with the JS source."
+            echo "::error::Open m4l_device/LivePilot_Analyzer.maxpat in Max, File -> Freeze, save."
+            exit 1
+          fi
+          echo ".amxd embeds version $VERSION"
+
   js-entrypoint:
     runs-on: ubuntu-latest
     steps:
@@ -41,3 +78,13 @@ jobs:
           npm pack --dry-run 2>&1 | tee /dev/stderr | grep -q "livepilot_bridge.js"
           npm pack --dry-run 2>&1 | grep -q "LivePilot_Analyzer.amxd"
           npm pack --dry-run 2>&1 | grep -q "remote_script/LivePilot/__init__.py"
+      - name: Verify npm pack excludes dirty/local files
+        # Prevents shipping local-only artifacts like .mcp.json.disabled (with
+        # absolute workstation paths), pre-freeze backups, swap files, or
+        # .DS_Store. No untrusted inputs — static grep against pack output.
+        run: |
+          npm pack --dry-run 2>&1 | tee pack.log
+          if grep -E '\.(disabled|backup|bak|swp|orig)$|\.pre-|\.DS_Store' pack.log; then
+            echo "::error::npm pack contains dirty/local artifacts. Exclude them via the \"files\" allowlist in package.json or .npmignore."
+            exit 1
+          fi

@@ -75,7 +75,14 @@ VERSION_FILES = [
     "remote_script/LivePilot/__init__.py",
     "CLAUDE.md",
     "AGENTS.md",
+    # CHANGELOG: must reference the current version in its most-recent entry.
+    # The check_version() regex matches any 1.X.Y — so a CHANGELOG that still
+    # says "## 1.10.6" at the top while the repo is 1.10.7 will now fail.
+    "CHANGELOG.md",
     "livepilot/skills/livepilot-core/references/overview.md",
+    # capability-modes.md ships example JSON with a version string that must
+    # match the frozen bridge — caught during v1.10.7 audit.
+    "livepilot/skills/livepilot-evaluation/references/capability-modes.md",
     "docs/M4L_BRIDGE.md",
 ]
 
