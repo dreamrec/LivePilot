@@ -1,6 +1,6 @@
 """Transport MCP tools — playback, tempo, metronome, loop, undo/redo, action log, diagnostics.
 
-12 tools matching the Remote Script transport domain.
+21 tools matching the Remote Script transport domain.
 """
 
 from __future__ import annotations
@@ -188,3 +188,64 @@ async def get_session_diagnostics(ctx: Context, check_clip_keys: bool = False) -
         result["clip_key_mismatch_count"] = len(audio_mismatches)
 
     return result
+
+
+# ── Song / Transport long-tail primitives ─────────────────────────────
+
+
+@mcp.tool()
+def tap_tempo(ctx: Context) -> dict:
+    """Tap the tempo (one tap). Live averages consecutive taps to set BPM."""
+    return _get_ableton(ctx).send_command("tap_tempo", {})
+
+
+@mcp.tool()
+def nudge_tempo(ctx: Context, direction: str) -> dict:
+    """Nudge tempo up or down by Live's internal nudge delta. direction: 'up' or 'down'."""
+    if direction not in ("up", "down"):
+        raise ValueError("direction must be 'up' or 'down'")
+    return _get_ableton(ctx).send_command("nudge_tempo", {"direction": direction})
+
+
+@mcp.tool()
+def set_exclusive_arm(ctx: Context, enabled: bool) -> dict:
+    """Enable/disable exclusive arm mode (only one track armed at a time)."""
+    return _get_ableton(ctx).send_command("set_exclusive_arm", {"enabled": enabled})
+
+
+@mcp.tool()
+def set_exclusive_solo(ctx: Context, enabled: bool) -> dict:
+    """Enable/disable exclusive solo mode (only one track soloed at a time)."""
+    return _get_ableton(ctx).send_command("set_exclusive_solo", {"enabled": enabled})
+
+
+@mcp.tool()
+def capture_and_insert_scene(ctx: Context) -> dict:
+    """Capture currently-playing clips and insert them as a new scene. Distinct from capture_midi."""
+    return _get_ableton(ctx).send_command("capture_and_insert_scene", {})
+
+
+@mcp.tool()
+def set_count_in_duration(ctx: Context, bars: int) -> dict:
+    """Set pre-record count-in duration (0-4 bars)."""
+    if not 0 <= bars <= 4:
+        raise ValueError("bars must be 0-4")
+    return _get_ableton(ctx).send_command("set_count_in_duration", {"bars": bars})
+
+
+@mcp.tool()
+def get_link_state(ctx: Context) -> dict:
+    """Read Ableton Link + count-in state (enabled, start/stop sync, tempo follower, is_counting_in)."""
+    return _get_ableton(ctx).send_command("get_link_state", {})
+
+
+@mcp.tool()
+def set_link_enabled(ctx: Context, enabled: bool) -> dict:
+    """Enable or disable Ableton Link (network tempo synchronization)."""
+    return _get_ableton(ctx).send_command("set_link_enabled", {"enabled": enabled})
+
+
+@mcp.tool()
+def force_link_beat_time(ctx: Context, beat_time: float) -> dict:
+    """Force Ableton Link to a specific beat time (if supported by this Live version)."""
+    return _get_ableton(ctx).send_command("force_link_beat_time", {"beat_time": beat_time})

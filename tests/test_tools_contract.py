@@ -1,4 +1,4 @@
-"""Verify all 323 MCP tools are registered across 45 domains."""
+"""Verify all 388 MCP tools are registered across 45 domains."""
 
 import asyncio
 import sys
@@ -609,7 +609,29 @@ def test_wavetable_mod_tools_registered():
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 376, f"Expected 376 tools, got {len(tools)}"
+    assert len(tools) == 388, f"Expected 388 tools, got {len(tools)}"
+
+
+def test_song_track_primitives_registered():
+    names = _get_tool_names()
+    expected = {
+        # Song / Transport primitives (9)
+        "tap_tempo",
+        "nudge_tempo",
+        "set_exclusive_arm",
+        "set_exclusive_solo",
+        "capture_and_insert_scene",
+        "set_count_in_duration",
+        "get_link_state",
+        "set_link_enabled",
+        "force_link_beat_time",
+        # Track primitives (3)
+        "jump_in_session_clip",
+        "get_track_performance_impact",
+        "get_appointed_device",
+    }
+    missing = expected - names
+    assert not missing, f"Missing Song/Track primitives tools: {missing}"
 
 
 def test_every_tool_has_description_and_schema():

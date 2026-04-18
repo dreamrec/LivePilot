@@ -101,6 +101,14 @@ REMOTE_COMMANDS: frozenset[str] = frozenset({
     "get_take_lane_clips",
     # diagnostics (1)
     "get_session_diagnostics",
+    # song primitives — transport/link
+    "tap_tempo", "nudge_tempo",
+    "set_exclusive_arm", "set_exclusive_solo",
+    "capture_and_insert_scene", "set_count_in_duration",
+    "get_link_state", "set_link_enabled", "force_link_beat_time",
+    # track primitives
+    "jump_in_session_clip", "get_track_performance_impact",
+    "get_appointed_device",
     # ping (built-in)
     "ping",
 })
