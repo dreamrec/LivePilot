@@ -303,6 +303,7 @@ from .device_forge import tools as device_forge_tools          # noqa: F401, E40
 from .sample_engine import tools as sample_engine_tools        # noqa: F401, E402
 from .atlas import tools as atlas_tools                        # noqa: F401, E402
 from .composer import tools as composer_tools                  # noqa: F401, E402
+from .tools import diagnostics   # noqa: F401, E402
 
 # ---------------------------------------------------------------------------
 # Schema coercion patch — accept strings for numeric parameters

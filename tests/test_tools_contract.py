@@ -1,4 +1,4 @@
-"""Verify all 391 MCP tools are registered across 45 domains."""
+"""Verify all 393 MCP tools are registered across 45 domains."""
 
 import asyncio
 import sys
@@ -617,10 +617,20 @@ def test_device_ab_tools_registered():
     assert not missing, f"Missing device A/B compare tools: {missing}"
 
 
+def test_control_surfaces_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "list_control_surfaces",
+        "get_control_surface_info",
+    }
+    missing = expected - names
+    assert not missing, f"Missing ControlSurface diagnostic tools: {missing}"
+
+
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 391, f"Expected 391 tools, got {len(tools)}"
+    assert len(tools) == 393, f"Expected 393 tools, got {len(tools)}"
 
 
 def test_song_track_primitives_registered():
