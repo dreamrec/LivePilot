@@ -51,45 +51,20 @@ def get_tools() -> list[dict]:
 
 
 def infer_domain(module: str) -> str:
-    """Infer domain from module path."""
-    if "semantic_moves" in module:
-        return "Semantic Moves"
-    if "experiment" in module:
-        return "Experiments"
-    if "musical_intelligence" in module:
-        return "Musical Intelligence"
-    if "memory.tools" in module:
-        return "Memory Fabric"
-    if "mix_engine" in module:
-        return "Mix Engine"
-    if "sound_design" in module:
-        return "Sound Design"
-    if "transition_engine" in module:
-        return "Transition Engine"
-    if "reference_engine" in module:
-        return "Reference Engine"
-    if "translation_engine" in module:
-        return "Translation Engine"
-    if "performance_engine" in module:
-        return "Performance Engine"
-    if "project_brain" in module:
-        return "Project Brain"
-    if "evaluation" in module:
-        return "Evaluation"
-    if "runtime" in module:
-        return "Runtime"
-
-    # Core tools — extract from module name
+    """Infer domain from module path using the same module-layout rule as
+    ``scripts/sync_metadata.py``:
+      - ``mcp_server.<X>.<...>``              → ``<X>``
+      - ``mcp_server.tools.<Y>``              → ``<Y>``
+    The display name is Title-Cased; underscores become spaces.
+    """
     parts = module.split(".")
-    for p in reversed(parts):
-        if p in ("transport", "tracks", "clips", "notes", "devices", "scenes",
-                  "mixing", "browser", "arrangement", "memory", "analyzer",
-                  "automation", "theory", "generative", "harmony", "midi_io",
-                  "perception", "agent_os", "composition", "motif", "research",
-                  "planner"):
-            return p.replace("_", " ").title()
-
-    return "Other"
+    if len(parts) < 2 or parts[0] != "mcp_server":
+        return "Other"
+    if parts[1] == "tools":
+        domain_key = parts[2] if len(parts) > 2 else "other"
+    else:
+        domain_key = parts[1]
+    return domain_key.replace("_", " ").title()
 
 
 def main():
