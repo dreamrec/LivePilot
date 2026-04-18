@@ -506,10 +506,22 @@ def test_clip_scales_tools_registered():
     assert not missing, f"Missing clip scale tools: {missing}"
 
 
+def test_tuning_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "get_tuning_system",
+        "set_tuning_reference_pitch",
+        "set_tuning_note",
+        "reset_tuning_system",
+    }
+    missing = expected - names
+    assert not missing, f"Missing tuning tools: {missing}"
+
+
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 332, f"Expected 332 tools, got {len(tools)}"
+    assert len(tools) == 336, f"Expected 336 tools, got {len(tools)}"
 
 
 def test_every_tool_has_description_and_schema():
