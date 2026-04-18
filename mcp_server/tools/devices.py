@@ -867,3 +867,147 @@ def set_rack_visible_macros(
         "device_index": device_index,
         "count": count,
     })
+
+
+# ── Simpler Slice CRUD (Live 11+) ───────────────────────────────────────
+
+
+@mcp.tool()
+def insert_simpler_slice(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+    time_samples: int,
+) -> dict:
+    """Insert a slice at a sample-frame position on a Simpler (Live 11+).
+
+    time_samples is in raw sample frames (NOT beats, NOT seconds). Call
+    get_simpler_slices first to see existing slice positions. The Simpler
+    must be in Slice playback mode for slices to matter musically, but this
+    tool does not force that — errors only if the device is not a Simpler
+    or has no sample loaded.
+
+    Returns {slice_count} after insertion.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    if time_samples < 0:
+        raise ValueError("time_samples must be >= 0")
+    return _get_ableton(ctx).send_command("insert_simpler_slice", {
+        "track_index": track_index,
+        "device_index": device_index,
+        "time_samples": time_samples,
+    })
+
+
+@mcp.tool()
+def move_simpler_slice(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+    old_time_samples: int,
+    new_time_samples: int,
+) -> dict:
+    """Move an existing slice from one sample-frame position to another (Live 11+).
+
+    Both values are in raw sample frames. old_time_samples must match an
+    existing slice exactly — use get_simpler_slices to read current
+    positions. Returns {ok, old_time_samples, new_time_samples}.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    if old_time_samples < 0 or new_time_samples < 0:
+        raise ValueError("time values must be >= 0")
+    return _get_ableton(ctx).send_command("move_simpler_slice", {
+        "track_index": track_index,
+        "device_index": device_index,
+        "old_time_samples": old_time_samples,
+        "new_time_samples": new_time_samples,
+    })
+
+
+@mcp.tool()
+def remove_simpler_slice(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+    time_samples: int,
+) -> dict:
+    """Remove a slice at an exact sample-frame position (Live 11+).
+
+    time_samples must EXACTLY match an existing slice position. Read current
+    positions with get_simpler_slices first. Returns {slice_count} after
+    removal.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    if time_samples < 0:
+        raise ValueError("time_samples must be >= 0")
+    return _get_ableton(ctx).send_command("remove_simpler_slice", {
+        "track_index": track_index,
+        "device_index": device_index,
+        "time_samples": time_samples,
+    })
+
+
+@mcp.tool()
+def clear_simpler_slices(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+) -> dict:
+    """Remove all manual slices from the Simpler (Live 11+).
+
+    Clears the slice list outright. Combine with reset_simpler_slices or
+    import_slices_from_onsets to regenerate. Returns {slice_count: 0}.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    return _get_ableton(ctx).send_command("clear_simpler_slices", {
+        "track_index": track_index,
+        "device_index": device_index,
+    })
+
+
+@mcp.tool()
+def reset_simpler_slices(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+) -> dict:
+    """Reset the Simpler's slices to Live's default detection (Live 11+).
+
+    Re-runs detection under the CURRENT slicing_style and sensitivity. Use
+    import_slices_from_onsets instead if you want to force Transient mode
+    AND set sensitivity in one call. Returns the resulting {slice_count}.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    return _get_ableton(ctx).send_command("reset_simpler_slices", {
+        "track_index": track_index,
+        "device_index": device_index,
+    })
+
+
+@mcp.tool()
+def import_slices_from_onsets(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+    sensitivity: float = 0.5,
+) -> dict:
+    """Force Transient slicing mode, set sensitivity, and re-detect (Live 11+).
+
+    Writes slicing_style=Transient and slicing_sensitivity, then calls
+    reset_slices(). sensitivity must be 0.0-1.0; 0.5 is moderate, higher
+    produces more slices. Returns {slice_count, sensitivity}.
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    if not 0.0 <= sensitivity <= 1.0:
+        raise ValueError("sensitivity must be 0.0-1.0")
+    return _get_ableton(ctx).send_command("import_slices_from_onsets", {
+        "track_index": track_index,
+        "device_index": device_index,
+        "sensitivity": sensitivity,
+    })

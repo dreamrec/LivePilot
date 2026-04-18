@@ -1012,3 +1012,119 @@ def set_rack_visible_macros(song, params):
         raise ValueError("count must be 1-16")
     rack.visible_macro_count = count
     return {"visible_macro_count": int(rack.visible_macro_count)}
+
+
+# ── Simpler Slice CRUD (Live 11+) ───────────────────────────────────────
+
+
+def _get_simpler(song, params):
+    """Resolve (track, device, sample) for a Simpler and validate.
+
+    Simpler's class_name is "OriginalSimpler". We match on "Simpler" so
+    third-party simpler-like devices (if any ever surface) aren't silently
+    accepted — but the common Original Simpler path is covered.
+    """
+    track = get_track(song, int(params["track_index"]))
+    device = get_device(track, int(params["device_index"]))
+    if "Simpler" not in str(getattr(device, "class_name", "")):
+        raise ValueError(
+            "Device at %d is not a Simpler (class_name=%s)"
+            % (int(params["device_index"]),
+               getattr(device, "class_name", "?"))
+        )
+    sample = getattr(device, "sample", None)
+    if sample is None:
+        raise RuntimeError("Simpler has no sample loaded")
+    return device, sample
+
+
+@register("insert_simpler_slice")
+def insert_simpler_slice(song, params):
+    """Insert a slice at the given sample-frame position."""
+    from .version_detect import has_feature
+    if not has_feature("simpler_slice_crud"):
+        raise RuntimeError("Simpler slice CRUD requires Live 11+.")
+    device, sample = _get_simpler(song, params)
+    t = int(params["time_samples"])
+    if t < 0:
+        raise ValueError("time_samples must be >= 0")
+    sample.insert_slice(t)
+    slices = list(getattr(sample, "slices", []))
+    return {"slice_count": len(slices)}
+
+
+@register("move_simpler_slice")
+def move_simpler_slice(song, params):
+    """Move a slice from old_time_samples to new_time_samples (both sample frames)."""
+    from .version_detect import has_feature
+    if not has_feature("simpler_slice_crud"):
+        raise RuntimeError("Simpler slice CRUD requires Live 11+.")
+    device, sample = _get_simpler(song, params)
+    old_t = int(params["old_time_samples"])
+    new_t = int(params["new_time_samples"])
+    if old_t < 0 or new_t < 0:
+        raise ValueError("time values must be >= 0")
+    sample.move_slice(old_t, new_t)
+    return {"ok": True, "old_time_samples": old_t, "new_time_samples": new_t}
+
+
+@register("remove_simpler_slice")
+def remove_simpler_slice(song, params):
+    """Remove the slice at the exact sample-frame position."""
+    from .version_detect import has_feature
+    if not has_feature("simpler_slice_crud"):
+        raise RuntimeError("Simpler slice CRUD requires Live 11+.")
+    device, sample = _get_simpler(song, params)
+    t = int(params["time_samples"])
+    sample.remove_slice(t)
+    slices = list(getattr(sample, "slices", []))
+    return {"slice_count": len(slices)}
+
+
+@register("clear_simpler_slices")
+def clear_simpler_slices(song, params):
+    """Remove all manual slices from the Simpler."""
+    from .version_detect import has_feature
+    if not has_feature("simpler_slice_crud"):
+        raise RuntimeError("Simpler slice CRUD requires Live 11+.")
+    device, sample = _get_simpler(song, params)
+    sample.clear_slices()
+    return {"slice_count": 0}
+
+
+@register("reset_simpler_slices")
+def reset_simpler_slices(song, params):
+    """Reset slices to Live's default detection for the current slicing_style."""
+    from .version_detect import has_feature
+    if not has_feature("simpler_slice_crud"):
+        raise RuntimeError("Simpler slice CRUD requires Live 11+.")
+    device, sample = _get_simpler(song, params)
+    sample.reset_slices()
+    slices = list(getattr(sample, "slices", []))
+    return {"slice_count": len(slices)}
+
+
+@register("import_slices_from_onsets")
+def import_slices_from_onsets(song, params):
+    """Set Transient-mode slicing and trigger re-detection.
+
+    Writes slicing_style=0 (Transient) and slicing_sensitivity, then calls
+    reset_slices() so Live re-scans the sample with the new settings.
+    Returns the resulting slice_count and the sensitivity that was applied.
+    """
+    from .version_detect import has_feature
+    if not has_feature("simpler_slice_crud"):
+        raise RuntimeError("Simpler slice CRUD requires Live 11+.")
+    device, sample = _get_simpler(song, params)
+    sensitivity = float(params.get("sensitivity", 0.5))
+    if not 0.0 <= sensitivity <= 1.0:
+        raise ValueError("sensitivity must be 0.0-1.0")
+    # slicing_style: 0=Transient, 1=Beats, 2=Region, 3=Manual
+    if hasattr(sample, "slicing_style"):
+        sample.slicing_style = 0
+    if hasattr(sample, "slicing_sensitivity"):
+        sample.slicing_sensitivity = sensitivity
+    if hasattr(sample, "reset_slices"):
+        sample.reset_slices()
+    slices = list(getattr(sample, "slices", []))
+    return {"slice_count": len(slices), "sensitivity": sensitivity}

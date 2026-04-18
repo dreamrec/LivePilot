@@ -53,6 +53,10 @@ REMOTE_COMMANDS: frozenset[str] = frozenset({
     "recall_rack_variation", "delete_rack_variation",
     "randomize_rack_macros", "add_rack_macro",
     "remove_rack_macro", "set_rack_visible_macros",
+    # simpler slice CRUD (Live 11+)
+    "insert_simpler_slice", "move_simpler_slice",
+    "remove_simpler_slice", "clear_simpler_slices",
+    "reset_simpler_slices", "import_slices_from_onsets",
     # clip_automation (3)
     "get_clip_automation", "set_clip_automation", "clear_clip_automation",
     # browser (6)

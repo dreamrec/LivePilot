@@ -579,10 +579,24 @@ def test_rack_variations_tools_registered():
     assert not missing, f"Missing rack variation tools: {missing}"
 
 
+def test_simpler_slice_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "insert_simpler_slice",
+        "move_simpler_slice",
+        "remove_simpler_slice",
+        "clear_simpler_slices",
+        "reset_simpler_slices",
+        "import_slices_from_onsets",
+    }
+    missing = expected - names
+    assert not missing, f"Missing simpler slice tools: {missing}"
+
+
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 365, f"Expected 365 tools, got {len(tools)}"
+    assert len(tools) == 371, f"Expected 371 tools, got {len(tools)}"
 
 
 def test_every_tool_has_description_and_schema():
