@@ -289,6 +289,44 @@ def set_device_parameter(
     return _get_ableton(ctx).send_command("set_device_parameter", params)
 
 
+def _normalize_batch_entry(entry: dict) -> dict:
+    """Accept either the legacy 'name_or_index' shape or the aligned
+    'parameter_index' / 'parameter_name' shape used by set_device_parameter.
+
+    BUG-F4: the sibling tools had inconsistent schemas. Callers writing
+    code against set_device_parameter hit validation errors switching
+    to batch_set_parameters. Now both shapes are accepted and
+    normalized to the Remote Script's expected {name_or_index, value}.
+    """
+    if "value" not in entry:
+        raise ValueError("Each parameter entry must include 'value'")
+
+    has_legacy = "name_or_index" in entry
+    has_index = "parameter_index" in entry
+    has_name = "parameter_name" in entry
+
+    specified = sum([has_legacy, has_index, has_name])
+    if specified == 0:
+        raise ValueError(
+            "Each parameter entry must include exactly one of: "
+            "parameter_name, parameter_index, or name_or_index (legacy)"
+        )
+    if specified > 1:
+        raise ValueError(
+            "Each parameter entry must include exactly one of "
+            "parameter_name, parameter_index, or name_or_index — not multiple"
+        )
+
+    if has_legacy:
+        key = entry["name_or_index"]
+    elif has_index:
+        key = entry["parameter_index"]
+    else:
+        key = entry["parameter_name"]
+
+    return {"name_or_index": key, "value": entry["value"]}
+
+
 @mcp.tool()
 def batch_set_parameters(
     ctx: Context,
@@ -296,20 +334,24 @@ def batch_set_parameters(
     device_index: int,
     parameters: Any,
 ) -> dict:
-    """Set multiple device parameters in one call. parameters is a JSON array of objects: [{"name_or_index": "Dry/Wet", "value": 0.5}, ...].
+    """Set multiple device parameters in one call.
+
+    parameters: JSON array of objects. Each entry uses exactly one of:
+      - {"parameter_index": N, "value": V}        (preferred, aligned with set_device_parameter)
+      - {"parameter_name": "Dry/Wet", "value": V} (preferred)
+      - {"name_or_index": X, "value": V}          (legacy, still accepted)
+
     track_index: 0+ for regular tracks, -1/-2/... for return tracks (A/B/...), -1000 for master."""
     _validate_track_index(track_index)
     _validate_device_index(device_index)
     parameters = _ensure_list(parameters)
     if not parameters:
         raise ValueError("parameters list cannot be empty")
-    for entry in parameters:
-        if "name_or_index" not in entry or "value" not in entry:
-            raise ValueError("Each parameter must have 'name_or_index' and 'value'")
+    normalized = [_normalize_batch_entry(e) for e in parameters]
     return _get_ableton(ctx).send_command("batch_set_parameters", {
         "track_index": track_index,
         "device_index": device_index,
-        "parameters": parameters,
+        "parameters": normalized,
     })
 
 

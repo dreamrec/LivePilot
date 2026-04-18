@@ -92,9 +92,24 @@ def create_return_track(ctx: Context) -> dict:
 
 @mcp.tool()
 def delete_track(ctx: Context, track_index: int) -> dict:
-    """Delete a track by index. Use undo to revert if needed."""
+    """Delete a track by index. Use undo to revert if needed.
+
+    Ableton requires at least one track in the session. Attempting to
+    delete the last remaining track raises ValueError with actionable
+    guidance rather than surfacing Ableton's misleading default
+    STATE_ERROR text (BUG-F3).
+    """
     _validate_track_index(track_index)
-    return _get_ableton(ctx).send_command("delete_track", {"track_index": track_index})
+    ableton = _get_ableton(ctx)
+    session_info = ableton.send_command("get_session_info")
+    track_count = session_info.get("track_count") if session_info else None
+    if track_count is not None and track_count <= 1:
+        raise ValueError(
+            "Cannot delete track: Ableton requires at least one track "
+            "in the session. Add another track first, or rename the "
+            "current track if you want a clean slate."
+        )
+    return ableton.send_command("delete_track", {"track_index": track_index})
 
 
 @mcp.tool()

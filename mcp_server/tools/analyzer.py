@@ -34,6 +34,34 @@ logger = logging.getLogger(__name__)
 CAPTURE_DIR = os.path.expanduser("~/Documents/LivePilot/captures")
 
 
+# Live 12 Simpler Slice mode maps slice N to MIDI pitch 36+N (C1 base).
+# This is NOT exposed by the Remote Script API and is a common source of
+# silent audio bugs (BUG-F2). See feedback_analyze_slices_before_programming
+# memory for context.
+SIMPLER_SLICE_BASE_PITCH = 36
+
+
+def _enrich_slice_response(response: Optional[dict]) -> Optional[dict]:
+    """Add base_midi_pitch field + per-slice midi_pitch to bridge response (BUG-F2).
+
+    The Remote Script returns slice indices only. Users then have to know
+    that slice N plays at MIDI pitch 36+N — a fact that's undocumented in
+    both Ableton's and LivePilot's public API. This enrichment makes the
+    mapping explicit so MIDI pattern generation doesn't silently produce
+    out-of-range notes.
+    """
+    if response is None:
+        return None
+    enriched = dict(response)
+    enriched["base_midi_pitch"] = SIMPLER_SLICE_BASE_PITCH
+    slices = enriched.get("slices") or []
+    enriched["slices"] = [
+        {**s, "midi_pitch": SIMPLER_SLICE_BASE_PITCH + s["index"]}
+        for s in slices
+    ]
+    return enriched
+
+
 @mcp.tool()
 async def reconnect_bridge(ctx: Context) -> dict:
     """Attempt to reconnect the M4L UDP bridge (port 9880).
@@ -97,11 +125,36 @@ def get_master_spectrum(ctx: Context) -> dict:
     return result
 
 
+def _sanitize_pitch(pitch: Optional[dict]) -> Optional[dict]:
+    """Validate a pitch reading from the M4L analyzer (BUG-F1).
+
+    The polyphonic pitch detector can emit out-of-range MIDI notes
+    (e.g., 319, -50, 128+) when it can't latch onto a single
+    fundamental — typical for dense mixes. The amplitude field is the
+    reliable confidence signal: if the detector was sure of its
+    reading, amplitude is non-zero.
+
+    Returns the original dict if the reading is usable, None otherwise.
+    """
+    if not pitch:
+        return None
+    amplitude = pitch.get("amplitude")
+    midi_note = pitch.get("midi_note")
+    if amplitude is None or amplitude <= 0:
+        return None
+    if midi_note is None or midi_note < 0 or midi_note > 127:
+        return None
+    return pitch
+
+
 @mcp.tool()
 def get_master_rms(ctx: Context) -> dict:
     """Get real-time RMS and peak levels from the master bus.
 
     More accurate than LOM meters — includes true RMS (not just peak hold).
+    Pitch readings are validated: the field is only present when the
+    polyphonic pitch detector produced a reading with non-zero
+    amplitude and a MIDI note in [0, 127] (BUG-F1).
     Requires LivePilot Analyzer on master track.
     """
     cache = _get_spectral(ctx)
@@ -117,9 +170,11 @@ def get_master_rms(ctx: Context) -> dict:
     if peak:
         result["peak"] = peak["value"]
 
-    pitch = cache.get("pitch")
-    if pitch:
-        result["pitch"] = pitch["value"]
+    pitch_entry = cache.get("pitch")
+    if pitch_entry:
+        clean = _sanitize_pitch(pitch_entry.get("value"))
+        if clean is not None:
+            result["pitch"] = clean
 
     return result
 
@@ -414,15 +469,129 @@ async def get_simpler_slices(
 ) -> dict:
     """Get slice point positions from a Simpler device.
 
-    Returns each slice's position in frames and seconds, plus sample metadata
-    (sample rate, length, playback mode). Use this to understand the rhythmic
-    structure of a sliced sample and program MIDI patterns targeting slices.
-    Requires LivePilot Analyzer on master track.
+    Returns each slice's position in frames and seconds, the MIDI pitch
+    that triggers it (slice 0 = C1 / MIDI 36, slice 1 = C#1 / MIDI 37, etc.
+    per BUG-F2), plus sample metadata (sample rate, length, playback mode).
+
+    **Always use the returned `midi_pitch` when programming MIDI notes to
+    trigger slices.** The Live 12 Simpler Slice-mode base note is C1,
+    NOT C3 — writing notes at pitch 60+ on a sample with <24 slices
+    triggers nothing and produces silent output.
+
+    Use this to understand the rhythmic structure of a sliced sample
+    and program MIDI patterns targeting slices. Requires LivePilot
+    Analyzer on master track.
     """
     cache = _get_spectral(ctx)
     _require_analyzer(cache)
     bridge = _get_m4l(ctx)
-    return await bridge.send_command("get_simpler_slices", track_index, device_index)
+    raw = await bridge.send_command("get_simpler_slices", track_index, device_index)
+    return _enrich_slice_response(raw)
+
+
+@mcp.tool()
+async def classify_simpler_slices(
+    ctx: Context,
+    track_index: int,
+    device_index: int = 0,
+    file_path: Optional[str] = None,
+) -> dict:
+    """Classify each Simpler slice as KICK / SNARE / HAT / ghost via FFT analysis.
+
+    Reads slice positions via ``get_simpler_slices``, loads the backing
+    WAV file, and runs 4-band spectral classification on each segment.
+    Returns the enriched slice list with a ``label`` field per entry
+    plus feature breakdown (peak, rms, sub_pct, low_pct, mid_pct,
+    high_pct).
+
+    **Always run this before programming drum patterns on a sliced
+    break.** Slice content depends on transient detection order in the
+    source audio — slice 0 is NOT guaranteed to be a kick. Assuming
+    drum-rack convention produces wrong grooves that take iterations to
+    diagnose (see 2026-04-18 creative session for the canonical case).
+
+    Classification rules (validated on "Break Ghosts 90 bpm"):
+      - KICK: sub+low >= 45%, high < 40%
+      - HAT: high >= 70% AND mid < 25% (thin metal disc = no drum body)
+      - SNARE: mid >= 25% AND high >= 40% AND peak >= 0.6 (broadband loud)
+      - ghost: peak < 0.35
+
+    Parameters:
+      track_index, device_index: the Simpler to analyze
+      file_path: (optional) explicit WAV path. If omitted, attempts
+        lookup via the bridge. Bridge-native resolution is limited in
+        v1.11 — when the sample lives in the Core Library, pass the
+        absolute path explicitly.
+
+    Returns: dict with ``slices`` list. Each slice entry has:
+      index, frame, seconds, midi_pitch (36+index), label, peak, rms,
+      sub_pct, low_pct, mid_pct, high_pct.
+
+    Requires LivePilot Analyzer on master track.
+    """
+    import soundfile as sf
+
+    from ..sample_engine.slice_classifier import classify_slices
+
+    cache = _get_spectral(ctx)
+    _require_analyzer(cache)
+    bridge = _get_m4l(ctx)
+
+    # 1. Get slice positions
+    raw_slices = await bridge.send_command(
+        "get_simpler_slices", track_index, device_index
+    )
+    enriched = _enrich_slice_response(raw_slices)
+    if enriched is None:
+        return {"error": "Bridge returned no slice data"}
+
+    # 2. Resolve file path
+    wav_path = file_path
+    if not wav_path:
+        try:
+            file_info = await bridge.send_command(
+                "get_simpler_file_path", track_index, device_index
+            )
+            if isinstance(file_info, dict):
+                wav_path = file_info.get("file_path")
+        except Exception:  # noqa: BLE001 — bridge command may not exist yet
+            wav_path = None
+
+    if not wav_path:
+        return {
+            **enriched,
+            "error": (
+                "No file_path available — pass file_path= explicitly. "
+                "Bridge-based lookup for Simpler sample paths is a v1.12 "
+                "follow-up."
+            ),
+        }
+
+    # 3. Load WAV and build frame boundaries
+    audio, sr = sf.read(wav_path)
+    slices = enriched["slices"]
+    frame_boundaries = [s["frame"] for s in slices] + [len(audio)]
+
+    # 4. Classify
+    classifications = classify_slices(audio, sr, frame_boundaries)
+
+    # 5. Merge classification into each slice entry
+    merged_slices = []
+    for slice_entry, features in zip(slices, classifications):
+        merged_slices.append({
+            **slice_entry,
+            "label": features["label"],
+            "peak": features["peak"],
+            "rms": features["rms"],
+            "sub_pct": features["sub_pct"],
+            "low_pct": features["low_pct"],
+            "mid_pct": features["mid_pct"],
+            "high_pct": features["high_pct"],
+        })
+
+    enriched["slices"] = merged_slices
+    enriched["classifier_version"] = "v1.0"
+    return enriched
 
 
 @mcp.tool()
