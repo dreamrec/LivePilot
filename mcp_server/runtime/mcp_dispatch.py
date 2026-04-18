@@ -95,6 +95,33 @@ async def _list_genexpr_templates(params: dict, ctx: Any = None) -> dict:
     return await _call(list_genexpr_templates, ctx, params)
 
 
+# ── MIDI Tool bridge (v1.12.0+) ───────────────────────────────────────────
+#
+# These four run entirely in-process: install_miditool_device copies .amxd
+# files, set_miditool_target writes to MidiToolCache + OSC-sends config,
+# get_miditool_context reads the cache, list_miditool_generators reads the
+# GENERATOR_METADATA dict. None of them need TCP or bridge round-trips.
+
+async def _install_miditool_device(params: dict, ctx: Any = None) -> dict:
+    from ..tools.miditool import install_miditool_device
+    return await _call(install_miditool_device, ctx, params)
+
+
+async def _set_miditool_target(params: dict, ctx: Any = None) -> dict:
+    from ..tools.miditool import set_miditool_target
+    return await _call(set_miditool_target, ctx, params)
+
+
+async def _get_miditool_context(params: dict, ctx: Any = None) -> dict:
+    from ..tools.miditool import get_miditool_context
+    return await _call(get_miditool_context, ctx, params)
+
+
+async def _list_miditool_generators(params: dict, ctx: Any = None) -> dict:
+    from ..tools.miditool import list_miditool_generators
+    return await _call(list_miditool_generators, ctx, params)
+
+
 def build_mcp_dispatch_registry() -> dict[str, Callable]:
     """Return the canonical registry of MCP-only tools for plan execution.
 
@@ -115,4 +142,9 @@ def build_mcp_dispatch_registry() -> dict[str, Callable]:
         "generate_m4l_effect": _generate_m4l_effect,
         "install_m4l_device": _install_m4l_device,
         "list_genexpr_templates": _list_genexpr_templates,
+        # v1.12.0 MIDI Tool bridge
+        "install_miditool_device": _install_miditool_device,
+        "set_miditool_target": _set_miditool_target,
+        "get_miditool_context": _get_miditool_context,
+        "list_miditool_generators": _list_miditool_generators,
     }

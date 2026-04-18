@@ -47,6 +47,13 @@ MCP_TOOLS: frozenset[str] = frozenset({
     "generate_m4l_effect",
     "install_m4l_device",
     "list_genexpr_templates",
+    # MIDI Tool bridge (v1.12.0+) — these run entirely in the MCP server:
+    # config dispatch via OSC to m4l_bridge, cache state reads, filesystem
+    # copy. No TCP remote command, no bridge TCP round-trip.
+    "install_miditool_device",
+    "set_miditool_target",
+    "get_miditool_context",
+    "list_miditool_generators",
 })
 
 

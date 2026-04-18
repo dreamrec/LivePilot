@@ -79,7 +79,7 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 │         └─────────────────┼──────────────────┘                       │
 │                           ▼                                          │
 │                  ┌─────────────────┐                                  │
-│                  │   325 MCP Tools  │                                  │
+│                  │   397 MCP Tools  │                                  │
 │                  │   51 domains     │                                  │
 │                  └────────┬────────┘                                  │
 │                           │                                          │

@@ -1,12 +1,12 @@
 # Changelog
 
-## 1.11.0 — Live 12 LOM completeness (April 18 2026)
+## 1.12.0 — Live 12 LOM completeness (April 18 2026)
 
-Twelve of fourteen planned chunks closing the gap between LivePilot and Ableton
-Live 12.3.6's Live Object Model. 325 → 393 tools (+68). 45 → 50 domains (+5).
-Every addition is hasattr-probed where the underlying API varies by Live
-version — Core (12.0+), Enhanced (12.1.10+), and Full Intelligence (12.3+)
-tiers keep their graceful degradation contract.
+Thirteen chunks closing the gap between LivePilot and Ableton Live 12.3.6's
+Live Object Model. **325 → 397 tools (+72). 45 → 51 domains (+6).**  Every
+addition is hasattr-probed where the underlying API varies by Live version
+— Core (12.0+), Enhanced (12.1.10+), and Full Intelligence (12.3+) tiers
+keep their graceful degradation contract.
 
 ### New tools by chunk
 
@@ -52,10 +52,22 @@ tiers keep their graceful degradation contract.
 - **Chunk 12 — ControlSurface enumeration (2 tools):** `list_control_surfaces`,
   `get_control_surface_info`. Always-available diagnostic for multi-surface
   setups.
+- **Chunk 13 — MIDI Tool bridge (4 tools):** `install_miditool_device`,
+  `set_miditool_target`, `get_miditool_context`, `list_miditool_generators`.
+  Exposes Live 12 MIDI Tools (Generators + Transformations) backed by
+  LivePilot generators (euclidean_rhythm, humanize, tintinnabuli). Ships
+  with both `.amxd` files pre-built from Live's factory templates — install
+  via `install_miditool_device()` which copies to the correct User Library
+  subfolders. **Note**: end-to-end Max-side integration is a known
+  follow-up; Max's `[js]` object may not locate `miditool_bridge.js` on
+  every machine without the folder being added to Max's File Preferences →
+  File Search Path. Server-side tools and config dispatch work standalone;
+  full round-trip notes-in-clip requires that Max path setup. Hence:
+  server shipped, Max-side user-setup step documented.
 
-### New domains (45 → 50)
+### New domains (45 → 51)
 
-Source of truth is module layout — five new files registered @mcp.tool()
+Source of truth is module layout — six new files registered @mcp.tool()
 decorators:
 
 - `mcp_server/tools/scales.py` — serves both scales (Chunks 1–2) AND tuning
@@ -64,16 +76,21 @@ decorators:
 - `mcp_server/tools/grooves.py` — Chunk 5.
 - `mcp_server/tools/take_lanes.py` — Chunk 6.
 - `mcp_server/tools/diagnostics.py` — Chunk 12.
+- `mcp_server/tools/miditool.py` — Chunk 13.
 
 Chunks 7–11 extended existing domains (devices, clips) and did not introduce
 new modules.
 
-### Deferred
+### Known limitations
 
-- **Chunk 13 — MIDI Tools via M4L bridge** is intentionally deferred. It
-  requires authoring a Max 9 .amxd patcher, which can only be produced in a
-  live Max session; it's tracked as a follow-up for when the user is at the
-  Max workstation.
+- **MIDI Tool bridge (Chunk 13) — Max-side file search**: the `.amxd` files
+  reference `js miditool_bridge.js` relatively. Max normally searches the
+  .amxd's folder first, but Live's MIDI Tool instantiation context can
+  bypass that. If `Max → Window → Max Console` shows "can't find file
+  miditool_bridge.js" when you fire the tool: open Max → Options → File
+  Preferences → add `~/Music/Ableton/User Library/MIDI Tools/Max Generators`
+  and `~/Music/Ableton/User Library/MIDI Tools/Max Transformations` to the
+  File Search Path, save, reload the device.
 - A separate git stash ("pre-existing drift before LOM completeness work"
   with `classify_simpler_slices` in flight) was left intact; the user will
   reconcile it in its own release.

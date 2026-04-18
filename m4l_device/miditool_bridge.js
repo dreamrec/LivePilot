@@ -64,7 +64,7 @@ function bang() {
     if (!initialized) {
         initialized = true;
         // Announce ourselves so the server's MidiToolCache flips to connected.
-        outlet(0, "/miditool/ready", "1.11.0");
+        outlet(0, "/miditool/ready", "1.12.0");
         post("LivePilot MIDI Tool Bridge: initialized\n");
     }
 }
@@ -169,7 +169,7 @@ function _handle_server_message(cmd, args) {
 
     switch (cmd) {
         case "ping":
-            outlet(0, "/miditool/pong", "1.11.0");
+            outlet(0, "/miditool/pong", "1.12.0");
             break;
         case "miditool/config":
             _handle_config(args);

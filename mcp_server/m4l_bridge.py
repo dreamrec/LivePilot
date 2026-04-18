@@ -445,8 +445,8 @@ GENERATOR_METADATA: dict[str, dict] = {
     },
     "tintinnabuli": {
         "description": "Pärt-style voice with tintinnabuli companion",
-        "required_params": ["t_voice_triad"],
-        "optional_params": ["direction"],
+        "required_params": [],
+        "optional_params": ["t_voice_triad", "direction"],
     },
     "humanize": {
         "description": "Humanize timing + velocity of existing notes",
