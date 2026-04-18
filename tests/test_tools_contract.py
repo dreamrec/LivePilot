@@ -549,10 +549,24 @@ def test_grooves_tools_registered():
     assert not missing, f"Missing groove tools: {missing}"
 
 
+def test_take_lanes_tools_registered():
+    names = _get_tool_names()
+    expected = {
+        "get_take_lanes",
+        "create_take_lane",
+        "set_take_lane_name",
+        "create_audio_clip_on_take_lane",
+        "create_midi_clip_on_take_lane",
+        "get_take_lane_clips",
+    }
+    missing = expected - names
+    assert not missing, f"Missing take lane tools: {missing}"
+
+
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 351, f"Expected 351 tools, got {len(tools)}"
+    assert len(tools) == 357, f"Expected 357 tools, got {len(tools)}"
 
 
 def test_every_tool_has_description_and_schema():
