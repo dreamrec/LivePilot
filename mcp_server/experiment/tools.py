@@ -16,6 +16,7 @@ from typing import Optional
 from fastmcp import Context
 
 from ..server import mcp
+from ..branches import BranchSeed
 from . import engine
 from .models import BranchSnapshot
 import logging
@@ -63,18 +64,71 @@ def create_experiment(
     request_text: str,
     move_ids: Optional[list] = None,
     limit: int = 3,
+    seeds: Optional[list] = None,
+    compiled_plans: Optional[list] = None,
 ) -> dict:
     """Create an experiment set to compare multiple approaches.
 
-    If move_ids is provided, creates one branch per move.
-    Otherwise, uses propose_next_best_move to find candidates.
+    Three input modes (in priority order):
 
-    request_text: what the user wants (e.g., "make this punchier")
-    move_ids: specific moves to try (e.g., ["make_punchier", "tighten_low_end"])
-    limit: max branches when auto-proposing (default 3)
+    1. seeds (PR3+): a list of BranchSeed dicts. Each seed becomes one branch.
+       compiled_plans (optional parallel list) attaches pre-compiled plans
+       for freeform / synthesis / composer producers. Seed dict shape:
+         {seed_id, source, move_id, hypothesis, protected_qualities,
+          affected_scope, distinctness_reason, risk_label, novelty_label,
+          analytical_only}
+       Missing fields default per BranchSeed. This is the canonical path
+       for producers that have already done their own selection work.
+
+    2. move_ids: legacy path — one semantic_move seed per move_id.
+       Unchanged behavior; internally delegates to the seeds path.
+
+    3. Auto-proposal: neither seeds nor move_ids provided. Scans the semantic
+       move registry by keyword overlap with request_text and takes the top
+       ``limit`` moves (default 3).
 
     Returns: experiment set with branch IDs ready for run_experiment.
     """
+    # ── Mode 1: seeds provided ──────────────────────────────────────────
+    if seeds:
+        rehydrated: list[BranchSeed] = []
+        for i, s in enumerate(seeds):
+            if isinstance(s, BranchSeed):
+                rehydrated.append(s)
+            elif isinstance(s, dict):
+                try:
+                    rehydrated.append(BranchSeed(**s))
+                except TypeError as exc:
+                    return {"error": f"seeds[{i}] invalid: {exc}"}
+            else:
+                return {
+                    "error": (
+                        f"seeds[{i}] must be dict or BranchSeed, "
+                        f"got {type(s).__name__}"
+                    )
+                }
+
+        if compiled_plans is not None and len(compiled_plans) != len(rehydrated):
+            return {
+                "error": (
+                    f"compiled_plans length ({len(compiled_plans)}) must match "
+                    f"seeds length ({len(rehydrated)})"
+                )
+            }
+
+        ableton = _get_ableton(ctx)
+        ableton.send_command("get_session_info")
+        kernel_id = f"kern_{int(time.time())}"
+
+        experiment = engine.create_experiment_from_seeds(
+            request_text=request_text,
+            seeds=rehydrated,
+            kernel_id=kernel_id,
+            compiled_plans=compiled_plans,
+        )
+        return experiment.to_dict()
+
+    # ── Mode 2/3: legacy move_ids path ──────────────────────────────────
     if not move_ids:
         # Auto-propose moves from the registry
         from ..semantic_moves import registry
@@ -149,19 +203,50 @@ async def run_experiment(
         if branch.status != "pending":
             continue
 
-        # Compile the move
-        move = registry.get_move(branch.move_id)
-        if not move:
-            branch.status = "failed"
-            branch.score = 0.0
-            branch.evaluation = {"error": f"Move {branch.move_id} not found"}
-            results.append(branch.to_dict())
-            continue
+        # PR3: respect a pre-existing compiled_plan on the branch (freeform /
+        # synthesis / composer producers bring their own). Only compile from
+        # move_id when the branch arrived without a plan — which requires a
+        # semantic_move seed (or a legacy move-only branch).
+        compiled_dict = branch.compiled_plan
 
-        session_info = ableton.send_command("get_session_info")
-        kernel = {"session_info": session_info, "mode": "explore"}
-        plan = compiler.compile(move, kernel)
-        compiled_dict = plan.to_dict()
+        if compiled_dict is None:
+            # Analytical-only branches short-circuit — no plan to run.
+            if branch.seed is not None and branch.seed.analytical_only:
+                branch.status = "evaluated"
+                branch.score = 0.0
+                branch.evaluation = {
+                    "score": 0.0,
+                    "keep_change": False,
+                    "note": "analytical_only branch — no execution",
+                }
+                results.append(branch.to_dict())
+                continue
+
+            if not branch.move_id:
+                branch.status = "failed"
+                branch.score = 0.0
+                branch.evaluation = {
+                    "error": (
+                        "Branch has no compiled_plan and no move_id — "
+                        "freeform producers must pre-populate compiled_plan"
+                    )
+                }
+                results.append(branch.to_dict())
+                continue
+
+            # Compile from semantic move
+            move = registry.get_move(branch.move_id)
+            if not move:
+                branch.status = "failed"
+                branch.score = 0.0
+                branch.evaluation = {"error": f"Move {branch.move_id} not found"}
+                results.append(branch.to_dict())
+                continue
+
+            session_info = ableton.send_command("get_session_info")
+            kernel = {"session_info": session_info, "mode": "explore"}
+            plan = compiler.compile(move, kernel)
+            compiled_dict = plan.to_dict()
 
         # Run the branch through the async router
         await engine.run_branch_async(

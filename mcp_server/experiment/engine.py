@@ -22,6 +22,7 @@ import time
 from typing import Optional
 
 from .models import ExperimentSet, ExperimentBranch, BranchSnapshot
+from ..branches import BranchSeed, seed_from_move_id
 import logging
 
 logger = logging.getLogger(__name__)
@@ -39,27 +40,43 @@ def _gen_id(prefix: str, seed: str) -> str:
 # ── Create experiments ───────────────────────────────────────────────────────
 
 
-def create_experiment(
+def create_experiment_from_seeds(
     request_text: str,
-    move_ids: list[str],
+    seeds: list[BranchSeed],
     kernel_id: str = "",
+    compiled_plans: Optional[list] = None,
 ) -> ExperimentSet:
-    """Create an experiment set with branches for each semantic move.
+    """Create an experiment set from BranchSeeds (PR3 canonical path).
 
-    Does NOT execute anything — just creates the branch structures.
-    Call run_experiment() to actually trial each branch.
+    seeds: one BranchSeed per desired branch. Can be any source — semantic_move,
+      freeform, synthesis, composer, technique.
+    compiled_plans: optional parallel list; when entry ``i`` is a dict, that
+      plan is attached to branch ``i`` (used by freeform / synthesis / composer
+      producers that do their own compilation). When None or entry is None,
+      run_experiment compiles from the seed at run time — which only succeeds
+      for source="semantic_move" seeds.
+
+    Does NOT execute anything — call run_experiment() to trial each branch.
     """
+    if compiled_plans is not None and len(compiled_plans) != len(seeds):
+        raise ValueError(
+            f"compiled_plans length ({len(compiled_plans)}) must match "
+            f"seeds length ({len(seeds)})"
+        )
+
     exp_id = _gen_id("exp", request_text)
     now = int(time.time() * 1000)
 
     branches = []
-    for i, move_id in enumerate(move_ids):
-        branch = ExperimentBranch(
-            branch_id=_gen_id("br", f"{move_id}_{i}"),
-            name=f"Branch {i+1}: {move_id}",
-            move_id=move_id,
+    for i, seed in enumerate(seeds):
+        plan = compiled_plans[i] if compiled_plans else None
+        display = seed.move_id or (seed.hypothesis[:32] if seed.hypothesis else seed.seed_id)
+        branch = ExperimentBranch.from_seed(
+            seed=seed,
+            branch_id=_gen_id("br", f"{seed.seed_id}_{i}"),
+            name=f"Branch {i+1}: {display}",
             source_kernel_id=kernel_id,
-            status="pending",
+            compiled_plan=plan,
             created_at_ms=now,
         )
         branches.append(branch)
@@ -74,6 +91,25 @@ def create_experiment(
 
     _EXPERIMENTS[exp_id] = experiment
     return experiment
+
+
+def create_experiment(
+    request_text: str,
+    move_ids: list[str],
+    kernel_id: str = "",
+) -> ExperimentSet:
+    """Create an experiment set with one semantic_move branch per move_id.
+
+    Legacy API — kept for back-compat. Internally builds one BranchSeed per
+    move_id via seed_from_move_id and delegates to create_experiment_from_seeds.
+    Branch naming, ids, and lifecycle are unchanged for existing callers.
+    """
+    seeds = [seed_from_move_id(mid) for mid in move_ids]
+    return create_experiment_from_seeds(
+        request_text=request_text,
+        seeds=seeds,
+        kernel_id=kernel_id,
+    )
 
 
 def get_experiment(experiment_id: str) -> Optional[ExperimentSet]:

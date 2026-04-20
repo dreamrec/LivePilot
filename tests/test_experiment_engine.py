@@ -2,11 +2,15 @@
 
 import pytest
 
+from mcp_server.branches import (
+    BranchSeed, seed_from_move_id, freeform_seed, analytical_seed,
+)
 from mcp_server.experiment.models import (
     ExperimentSet, ExperimentBranch, BranchSnapshot,
 )
 from mcp_server.experiment.engine import (
-    create_experiment, get_experiment, list_experiments,
+    create_experiment, create_experiment_from_seeds,
+    get_experiment, list_experiments,
     run_branch, evaluate_branch, commit_branch, discard_experiment,
 )
 
@@ -193,3 +197,158 @@ def test_discard_experiment():
     result = discard_experiment(exp.experiment_id)
     assert result["discarded"] is True
     assert exp.status == "discarded"
+
+
+# ── PR3 — branch-native (seed-based) experiment creation ────────────────
+
+class TestExperimentBranchFromSeed:
+
+    def test_from_semantic_move_seed(self):
+        seed = seed_from_move_id("make_punchier")
+        branch = ExperimentBranch.from_seed(
+            seed=seed,
+            branch_id="br_1",
+        )
+        assert branch.move_id == "make_punchier"  # mirrored from seed
+        assert branch.seed is seed
+        assert branch.status == "pending"
+        assert branch.compiled_plan is None
+        assert branch.name.startswith("Branch (semantic_move:")
+
+    def test_from_freeform_seed_has_empty_move_id(self):
+        seed = freeform_seed(
+            seed_id="f_1",
+            hypothesis="Audio-rate LFO into filter",
+            source="synthesis",
+        )
+        branch = ExperimentBranch.from_seed(seed=seed, branch_id="br_2")
+        assert branch.seed is seed
+        assert branch.move_id == ""
+        assert branch.name.startswith("Branch (synthesis:")
+
+    def test_from_seed_accepts_precompiled_plan(self):
+        seed = freeform_seed(seed_id="f_1", hypothesis="h")
+        plan = {"steps": [{"tool": "set_track_volume"}], "step_count": 1, "summary": "q"}
+        branch = ExperimentBranch.from_seed(
+            seed=seed,
+            branch_id="br_3",
+            compiled_plan=plan,
+        )
+        assert branch.compiled_plan is plan
+
+    def test_from_seed_custom_name(self):
+        seed = seed_from_move_id("widen_pad")
+        branch = ExperimentBranch.from_seed(
+            seed=seed,
+            branch_id="br_4",
+            name="Custom Label",
+        )
+        assert branch.name == "Custom Label"
+
+    def test_to_dict_surfaces_seed_and_source(self):
+        seed = freeform_seed(
+            seed_id="f_1",
+            hypothesis="Modulate cutoff",
+            source="synthesis",
+        )
+        branch = ExperimentBranch.from_seed(seed=seed, branch_id="br_5")
+        d = branch.to_dict()
+        assert d["branch_source"] == "synthesis"
+        assert d["seed"]["hypothesis"] == "Modulate cutoff"
+        assert d["analytical_only"] is True  # no plan ⇒ analytical
+
+    def test_analytical_only_reflected_in_to_dict(self):
+        seed = analytical_seed(seed_id="a_1", hypothesis="consider X")
+        # Even with a plan, analytical_only seed flag wins.
+        branch = ExperimentBranch.from_seed(
+            seed=seed,
+            branch_id="br_6",
+            compiled_plan={"steps": [], "step_count": 0},
+        )
+        assert branch.to_dict()["analytical_only"] is True
+
+
+class TestCreateExperimentFromSeeds:
+
+    def test_basic_semantic_move_seeds(self):
+        seeds = [
+            seed_from_move_id("make_punchier"),
+            seed_from_move_id("widen_stereo"),
+        ]
+        exp = create_experiment_from_seeds(
+            request_text="creative_search",
+            seeds=seeds,
+        )
+        assert exp.branch_count == 2
+        assert exp.branches[0].move_id == "make_punchier"
+        assert exp.branches[1].move_id == "widen_stereo"
+        assert all(b.seed is not None for b in exp.branches)
+
+    def test_freeform_seeds_without_plans(self):
+        seeds = [
+            freeform_seed(seed_id="a", hypothesis="Boost mids"),
+            freeform_seed(seed_id="b", hypothesis="Widen top end"),
+        ]
+        exp = create_experiment_from_seeds(
+            request_text="freeform test",
+            seeds=seeds,
+        )
+        assert exp.branch_count == 2
+        assert all(b.move_id == "" for b in exp.branches)
+        assert all(b.compiled_plan is None for b in exp.branches)
+
+    def test_compiled_plans_attach_by_position(self):
+        seeds = [
+            freeform_seed(seed_id="a", hypothesis="h1"),
+            freeform_seed(seed_id="b", hypothesis="h2"),
+        ]
+        plans = [
+            {"steps": [{"tool": "set_track_volume"}], "step_count": 1},
+            None,  # second seed uses no plan
+        ]
+        exp = create_experiment_from_seeds(
+            request_text="mixed compile",
+            seeds=seeds,
+            compiled_plans=plans,
+        )
+        assert exp.branches[0].compiled_plan == plans[0]
+        assert exp.branches[1].compiled_plan is None
+
+    def test_compiled_plans_length_mismatch_raises(self):
+        seeds = [freeform_seed(seed_id="a", hypothesis="h")]
+        with pytest.raises(ValueError, match="compiled_plans length"):
+            create_experiment_from_seeds(
+                request_text="bad",
+                seeds=seeds,
+                compiled_plans=[{}, {}],
+            )
+
+
+class TestLegacyCreateExperimentStillWorks:
+    """PR3 keeps the legacy create_experiment(move_ids=...) path identical."""
+
+    def test_branches_carry_seed_after_delegation(self):
+        """Legacy path now internally builds seeds; branches carry them for
+        downstream branch-native consumers."""
+        exp = create_experiment(
+            request_text="legacy",
+            move_ids=["make_punchier"],
+        )
+        b = exp.branches[0]
+        assert b.move_id == "make_punchier"  # legacy callers keep reading this
+        assert b.seed is not None
+        assert b.seed.source == "semantic_move"
+        assert b.seed.move_id == "make_punchier"
+
+    def test_existing_test_pattern_still_works(self):
+        # Constructor without move_id — used to be a TypeError; now defaults "".
+        # This lets producers build branches without mirroring move_id by hand.
+        branch = ExperimentBranch(branch_id="b", name="n")
+        assert branch.move_id == ""
+        assert branch.seed is None
+
+    def test_positional_move_id_still_accepted(self):
+        # Pre-PR3 test pattern used move_id positionally — verify it still
+        # works so we don't break anything outside the test suite.
+        branch = ExperimentBranch("b", "n", "make_punchier")
+        assert branch.move_id == "make_punchier"
