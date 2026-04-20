@@ -41,4 +41,7 @@ Help the user mix their session using the V2 orchestration pipeline.
 17. **Taste update** — successful moves update the TasteGraph automatically
 
 For deeper critic-driven iterative improvement, use the livepilot-mix-engine skill.
-For exploratory mode (try multiple ideas), use `create_experiment` + `run_experiment` + `compare_experiments`.
+
+## Branch-Native Exploratory Mode
+
+When the user asks for multiple options or is vague about direction ("try a few things", "I don't know what's wrong — just make it better", "what would you do?"), use Flow B from livepilot-core SKILL.md. Build 2-3 `create_experiment` seeds with different angles — for example one `semantic_move` seed for a conventional fix, one `freeform` seed for an unconventional approach (sidechain from an unexpected source, mid/side EQ instead of stereo EQ, etc.), one `synthesis` seed if the root cause is instrument-level (PR9+). Set `get_session_kernel(freshness=0.7)` to nudge branches away from the safest option.

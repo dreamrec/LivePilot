@@ -75,3 +75,7 @@ If not connected, use `capture_audio` + `analyze_loudness` + `analyze_spectrum_o
 Fire to listen, iterate based on feedback.
 
 Use the livepilot-core skill for all tool calls. Verify after each step. Keep the user informed of what you're doing and why.
+
+## Branch-Native Variations
+
+When the user wants options instead of a single committed beat ("try a few variants", "surprise me with the drum feel", "what else could this be?"), use the exploratory flow from livepilot-core SKILL.md (Flow B). Emit 2-3 seeds that differ in *how* they interpret the vibe — for example one `semantic_move` seed with `make_punchier`, one `freeform` seed describing a swung / pushed-beat variation with a pre-compiled plan, one `synthesis` seed that changes the kick's synthesis rather than its pattern. Set `get_session_kernel(freshness=0.6-0.8)` and `creativity_profile="alchemist"` when the user hasn't given concrete parameters.

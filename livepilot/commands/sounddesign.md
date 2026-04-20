@@ -41,3 +41,18 @@ Guide the user through designing a sound using the V2 orchestration pipeline.
 17. **Memory** — if score > 0.7, suggest `memory_learn` to save the technique
 
 For critic-driven iterative refinement, use the livepilot-sound-design-engine skill.
+
+## Branch-Native Exploratory Mode
+
+For open-ended sound design ("design me something that feels like X", "make this more interesting", "surprise me"), use Flow B from livepilot-core SKILL.md. Prefer `source="synthesis"` seeds for any request that calls for genuinely different timbres — PR9+ introduces native-synth adapters (Wavetable, Operator, Analog, Drift, Meld) that can propose per-device parameter branches. Pass `synth_hints` on `get_session_kernel` when you know which tracks or devices to focus on:
+
+```
+get_session_kernel(
+    request_text="make the pad more alive",
+    freshness=0.75,
+    creativity_profile="sculptor",
+    synth_hints={"track_indices": [pad_track_idx], "preferred_devices": ["Wavetable", "Operator"]},
+)
+```
+
+Seeds with `source="synthesis"` that arrive without a compiled plan will (post-PR9) be compiled by the synthesis_brain; pre-PR9 they must ship with a freeform plan attached via `compiled_plans`.
