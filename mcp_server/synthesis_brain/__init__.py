@@ -34,6 +34,7 @@ from .engine import (
     propose_synth_branches,
     supported_devices,
 )
+from .timbre import extract_timbre_fingerprint, diff_fingerprint
 
 __all__ = [
     "SynthProfile",
@@ -47,4 +48,6 @@ __all__ = [
     "analyze_synth_patch",
     "propose_synth_branches",
     "supported_devices",
+    "extract_timbre_fingerprint",
+    "diff_fingerprint",
 ]

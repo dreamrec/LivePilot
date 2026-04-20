@@ -11,6 +11,9 @@ from __future__ import annotations
 from .base import SynthAdapter, _REGISTRY, register_adapter
 from . import wavetable as _wavetable  # noqa: F401 — import for registration
 from . import operator as _operator  # noqa: F401
+from . import analog as _analog  # noqa: F401
+from . import drift as _drift  # noqa: F401
+from . import meld as _meld  # noqa: F401
 
 
 def get_adapter(device_name: str) -> SynthAdapter | None:
