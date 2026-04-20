@@ -4,7 +4,13 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from mcp_server.tools._conductor import classify_request, ConductorPlan, EngineRoute
+from mcp_server.tools._conductor import (
+    classify_request,
+    classify_request_creative,
+    ConductorPlan,
+    CreativeSearchPlan,
+    EngineRoute,
+)
 
 
 class TestClassifyRequest:
@@ -107,6 +113,136 @@ class TestConductorPlan:
         plan = classify_request("add more punch")
         d = plan.to_dict()
         assert d["primary_engine"] is not None
+
+
+# ── PR4 — creative_search routing fork ──────────────────────────────────
+
+
+class TestClassifyRequestCreative:
+    """The creative_search path is additive — classify_request() must be
+    unchanged. These tests verify the new function's producer-selection
+    behavior without touching the base classifier."""
+
+    def test_returns_creative_search_plan(self):
+        plan = classify_request_creative("explore some options for the drop")
+        assert isinstance(plan, CreativeSearchPlan)
+        assert isinstance(plan.base_plan, ConductorPlan)
+
+    def test_base_plan_matches_classify_request(self):
+        request = "make this wider"
+        creative = classify_request_creative(request)
+        base = classify_request(request)
+        # Base routing is delegated exactly — engines match identically.
+        assert [r.engine for r in creative.base_plan.routes] == [r.engine for r in base.routes]
+
+    def test_semantic_move_always_first_source(self):
+        plan = classify_request_creative("do something")
+        assert plan.branch_sources[0] == "semantic_move"
+
+    def test_freeform_always_last_source(self):
+        plan = classify_request_creative("do something")
+        assert plan.branch_sources[-1] == "freeform"
+
+    def test_synthesis_producer_added_by_request_keyword(self):
+        plan = classify_request_creative("redesign this wavetable patch")
+        assert "synthesis" in plan.branch_sources
+        assert plan.seed_hints.get("synthesis", {}).get("inferred_from_request") is True
+
+    def test_synthesis_producer_added_by_kernel_hints(self):
+        kernel = {"synth_hints": {"track_indices": [2], "preferred_devices": ["Wavetable"]}}
+        # Request mentions nothing about synths — kernel alone adds the producer.
+        plan = classify_request_creative("surprise me", kernel=kernel)
+        assert "synthesis" in plan.branch_sources
+        hint = plan.seed_hints["synthesis"]
+        assert hint["track_indices"] == [2]
+        assert "inferred_from_request" not in hint  # came from kernel, not text
+
+    def test_composer_added_for_composition_primary_route(self):
+        plan = classify_request_creative("turn this loop into a full arrangement")
+        assert "composer" in plan.branch_sources
+        assert plan.seed_hints["composer"]["request"].startswith("turn this loop")
+
+    def test_composer_not_added_for_non_composition_request(self):
+        plan = classify_request_creative("clean up the low end")
+        assert "composer" not in plan.branch_sources
+
+    def test_technique_added_when_kernel_has_taste_evidence(self):
+        kernel = {
+            "taste_graph": {
+                "evidence_count": 5,
+                "move_family_scores": {
+                    "mix": {"score": 0.4, "kept_count": 3, "undone_count": 1},
+                    "arrangement": {"score": -0.1, "kept_count": 1, "undone_count": 2},
+                },
+            }
+        }
+        plan = classify_request_creative("surprise me", kernel=kernel)
+        assert "technique" in plan.branch_sources
+        # Only families with score > 0.2 are preferred
+        assert plan.seed_hints["technique"]["preferred_families"] == ["mix"]
+
+    def test_technique_added_when_request_hints_prior_work(self):
+        plan = classify_request_creative("do it like last time")
+        assert "technique" in plan.branch_sources
+        assert plan.seed_hints["technique"]["hinted_by_request"] is True
+
+    def test_technique_not_added_without_evidence_or_hint(self):
+        kernel = {"taste_graph": {"evidence_count": 1, "move_family_scores": {}}}
+        plan = classify_request_creative("do something new", kernel=kernel)
+        assert "technique" not in plan.branch_sources
+
+    def test_freshness_and_creativity_profile_threaded_from_kernel(self):
+        kernel = {"freshness": 0.9, "creativity_profile": "alchemist"}
+        plan = classify_request_creative("surprise me", kernel=kernel)
+        assert plan.freshness == 0.9
+        assert plan.creativity_profile == "alchemist"
+
+    def test_defaults_without_kernel(self):
+        plan = classify_request_creative("make something")
+        assert plan.freshness == 0.5
+        assert plan.creativity_profile == ""
+
+    def test_target_branch_count_default_three(self):
+        plan = classify_request_creative("make something")
+        assert plan.target_branch_count == 3
+
+
+class TestCreativeSearchPlanSerialization:
+
+    def test_to_dict_wraps_base_plan(self):
+        plan = classify_request_creative("widen this")
+        d = plan.to_dict()
+        # Base fields from ConductorPlan are all present
+        assert "request" in d
+        assert "routes" in d
+        assert "engine_count" in d
+        # Creative fields live under a dedicated key
+        assert "creative_search" in d
+        cs = d["creative_search"]
+        assert "branch_sources" in cs
+        assert "seed_hints" in cs
+        assert "target_branch_count" in cs
+        assert "freshness" in cs
+
+    def test_to_dict_always_recommends_experiment(self):
+        # A creative_search plan implies experiment_recommended=True regardless
+        # of what the base plan thought.
+        plan = classify_request_creative("clean this up")  # non-exploratory language
+        d = plan.to_dict()
+        assert d["experiment_recommended"] is True
+
+
+class TestClassifyRequestUnchanged:
+    """Regression guard — PR4 adds no behavior to the base classifier."""
+
+    def test_request_type_stable(self):
+        # Exact-match test that the base classifier wasn't perturbed.
+        plan = classify_request("make the transition feel earned and smooth the handoff")
+        assert plan.request_type == "transition"
+
+    def test_workflow_mode_still_inferred(self):
+        plan = classify_request("explore some variants")
+        assert plan.workflow_mode == "creative_search"
 
 
 class TestEngineRoute:
