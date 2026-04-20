@@ -1,5 +1,142 @@
 # Changelog
 
+## 1.14.0 — Branch-native v2: producer context, synth intelligence, render verify (April 20 2026)
+
+Five-PR follow-up to v1.13.0 that closes the loops the first pass left
+open. Producer context flows through the branch lifecycle via a versioned
+`producer_payload`; synthesis adapters decode algorithm topology instead
+of always targeting the same operator; composer winners commit the full
+resolved plan instead of the audition scaffold; render-verify captures
+audio before/after each branch and feeds spectral movement into the
+hard-rule classifier; and four dedicated MCP tools expose the new
+producers to the LLM.
+
+**Tool count**: 398 → **402** (added `analyze_synth_patch`,
+`propose_synth_branches`, `extract_timbre_fingerprint`,
+`propose_composer_branches`). **Domain count**: unchanged at 52.
+**Tests**: 2409 → **2467 passing** (+58 new), 0 regressions.
+
+### New substrate
+
+- **`producer_payload: dict` on `BranchSeed`** (PR1) — versioned
+  opaque dict producers populate with regeneration / provenance /
+  winner-escalation context. Always carries `schema_version` (default 1)
+  so older payloads don't break newer readers. Lives on the seed, not
+  `compiled_plan`, so analytical-only branches can carry context too.
+  Canonical shapes documented per producer (synthesis / composer /
+  semantic_move / freeform / technique).
+
+- **`BranchSnapshot` gains render-based fields** (PR4) —
+  `capture_path`, `loudness`, `spectral_shape`, `fingerprint`. Populated
+  only when `run_experiment(render_verify=True)` opts in. Pre-v2
+  consumers see no shape change when render-verify is off.
+
+### Synthesis adapters get topology awareness (PR2)
+
+- **Wavetable**: position→region classification (sub / mid / bright /
+  complex) drives shift direction. Target brightness biases the chosen
+  target region — not just freshness scaling.
+
+- **Operator**: static `_ALGO_TOPOLOGY` table maps all 11 algorithms
+  to their carrier/modulator roles. Targeting picks the modulator with
+  the highest Level for the ratio shift; additive algorithms (5, 9)
+  fall back to the dominant carrier. No more "always Osc B".
+
+- **Analog / Drift / Meld**: single fixed proposers become strategy
+  registries. Gates honor `role_hint` ("bass" skips `detune_warmth`,
+  "pad" skips `filter_pluck`, silent engines skip `engine_mix_shift`)
+  and target fingerprint dimensions (`target.brightness` picks
+  `filter_sweep_open` vs `filter_sweep_close`).
+
+### Composer winner escalation (PR3)
+
+- Composer seeds now carry their `CompositionIntent` in
+  `producer_payload` at emit time. On `commit_experiment`,
+  `escalate_composer_branch` rehydrates the intent and runs the full
+  `ComposerEngine.compose()` pipeline — Splice / filesystem / browser
+  sample resolution — then swaps the scaffold plan for the resolved one
+  BEFORE `commit_branch_async` runs it through the async router. The
+  scaffold is preserved on `branch.evaluation` for audit.
+
+- Graceful fallback when compose yields zero executable layers:
+  commit runs the scaffold instead of erroring. User gets tracks +
+  scenes they can populate manually, with `composer_escalation.error`
+  explaining why escalation couldn't complete.
+
+- **Latency note**: composer winner commit now takes 10-30s (Splice +
+  filesystem resolution) vs ~0.5s pre-v2. Documented; a progress
+  callback version is future work.
+
+### Render-verify + classifier wiring (PR4)
+
+- `run_experiment(render_verify=False, render_duration_seconds=2.0)` —
+  opt-in per-branch audio capture → offline loudness + spectrum
+  analysis → `TimbralFingerprint` extraction. ~2 * duration seconds +
+  ~1-2s analysis overhead per branch; default off preserves speed.
+
+- New `derive_goal_progress_from_fingerprint(diff, target?)` turns
+  TimbralFingerprint diffs into `(goal_progress, measurable_count)`.
+  Dimensions below 0.02 epsilon are dropped as noise. With a target:
+  sign(target) * diff gives signed progress. Without: magnitude-only
+  contribution (branch moved = measurable).
+
+- `classify_branch_outcome` accepts `fingerprint_diff` + `timbral_target`
+  kwargs. When set and caller didn't supply their own measurable inputs,
+  the classifier derives them from the diff. Caller-supplied values
+  still take precedence (back-compat). Protection violations still
+  trump fingerprint evidence — safety invariant preserved.
+
+- `compare_experiments` automatically surfaces `fingerprint_diff` +
+  `fingerprint_before` + `fingerprint_after` on each branch's
+  `evaluation` dict via the existing pass-through.
+
+### Four new MCP tools (PR5, 398 → 402)
+
+- **`analyze_synth_patch(track_index, device_index, role_hint="")`** —
+  SynthProfile for any supported native synth. Fetches parameter state
+  + display values, hands to the adapter. Opaque fallback for
+  non-supported devices.
+
+- **`propose_synth_branches(track_index, device_index, target?,
+  freshness?, role_hint?)`** — algorithm/topology-aware branch seeds
+  with pre-compiled plans. Feeds directly to
+  `create_experiment(seeds=..., compiled_plans=...)`.
+
+- **`extract_timbre_fingerprint(spectrum?, loudness?, spectral_shape?)`**
+  — pure transform from analysis dicts to 9-dimensional
+  `TimbralFingerprint`. For callers that already have analysis data.
+
+- **`propose_composer_branches(request_text, count=2, freshness=0.65)`**
+  — N compositional hypotheses (canonical / energy_shift /
+  layer_contrast) with producer_payload-captured intents for
+  winner-commit escalation.
+
+### Migration notes for callers
+
+- All additions are optional-param / new-function shaped. Pre-v2
+  callers see no behavior change unless they opt in.
+- Pre-v2 serialized branches deserialize fine: `producer_payload`
+  defaults to `{"schema_version": 1}` when absent.
+- `create_experiment(move_ids=...)` identical behavior.
+- `enter_wonder_mode` response shape stable; `branch_seeds` /
+  `compiled_plans_by_seed_id` still additive.
+- `run_experiment(render_verify=False)` default matches v1.13.0
+  behavior exactly.
+
+### Known limitations
+
+See [`docs/manual/branch-native-migration.md`](docs/manual/branch-native-migration.md#known-limitations)
+for the full list. Headlines:
+
+- Wavetable region classification is a coarse heuristic on raw
+  `Osc 1 Pos`. Future work: render-based per-wavetable mapping.
+- Composer commit latency (10-30s) with no progress callback yet.
+- Render-verify requires the M4L analyzer bridge + LivePilot_Analyzer
+  on master; silently degrades to fast-path when either is missing.
+- End-to-end render-verify path (capture_audio + bridge) is hardware-
+  dependent and not unit-tested; wiring is covered via classifier +
+  fingerprint derivation tests.
+
 ## 1.13.0 — Branch-native architecture (April 20 2026)
 
 Twelve-PR migration from "match request → pick move → compile move" to
