@@ -75,12 +75,36 @@ class TasteGraph:
     # Device preferences
     device_affinities: dict[str, DeviceAffinity] = field(default_factory=dict)
 
-    # Novelty tolerance: 0 = very conservative, 1 = very experimental
-    novelty_band: float = 0.5
+    # PR8 — per-goal-mode novelty bands. Canonical source of truth.
+    # Keys are goal modes ("improve", "explore", or any string a caller
+    # supplies). novelty_band (below, as a property) reads/writes
+    # novelty_bands["improve"] — one storage, two access paths.
+    novelty_bands: dict = field(
+        default_factory=lambda: {"improve": 0.5, "explore": 0.5}
+    )
+
+    # PR8 — when True, rank_moves returns uniform taste scores (0.5) to
+    # bypass taste filtering during branch generation. Callers flip this
+    # for fresh / surprise-me mode so novelty survives to post-hoc ranking.
+    bypass_taste_in_generation: bool = False
 
     # Total evidence count (how many decisions informed this graph)
     evidence_count: int = 0
     last_updated_ms: int = 0
+
+    @property
+    def novelty_band(self) -> float:
+        """Legacy flat novelty band — mirrors novelty_bands["improve"].
+
+        Kept for back-compat with callers that set/read novelty_band
+        directly. Setting this property writes through to the bands dict
+        so there's no dual source of truth.
+        """
+        return self.novelty_bands.get("improve", 0.5)
+
+    @novelty_band.setter
+    def novelty_band(self, value: float) -> None:
+        self.novelty_bands["improve"] = float(value)
 
     def to_dict(self) -> dict:
         return {
@@ -96,7 +120,11 @@ class TasteGraph:
                     key=lambda x: -x[1].affinity,
                 )[:10]  # Top 10 only
             },
+            # novelty_band kept for legacy consumers that read it directly;
+            # novelty_bands is the canonical per-goal-mode shape going forward.
             "novelty_band": round(self.novelty_band, 3),
+            "novelty_bands": {k: round(v, 3) for k, v in self.novelty_bands.items()},
+            "bypass_taste_in_generation": self.bypass_taste_in_generation,
             "evidence_count": self.evidence_count,
         }
 
@@ -154,21 +182,53 @@ class TasteGraph:
         self.evidence_count += 1
         self.last_updated_ms = now
 
-    def update_novelty_from_experiment(self, chose_bold: bool) -> None:
-        """Shift novelty band based on experiment choices."""
+    def update_novelty_from_experiment(
+        self, chose_bold: bool, goal_mode: str = "improve",
+    ) -> None:
+        """Shift novelty band for a given goal mode based on experiment choices.
+
+        PR8: goal_mode defaults to "improve" so legacy callers land on the
+        same band they updated before. Pass "explore" to shift the
+        exploration-mode band without touching improve-mode preference.
+        (novelty_band is a property view over novelty_bands["improve"], so
+        improve-mode updates automatically surface there too.)
+        """
+        current = self.novelty_bands.get(goal_mode, 0.5)
         if chose_bold:
-            self.novelty_band = min(1.0, self.novelty_band + 0.05)
+            new_val = min(1.0, current + 0.05)
         else:
-            self.novelty_band = max(0.0, self.novelty_band - 0.05)
+            new_val = max(0.0, current - 0.05)
+        self.novelty_bands[goal_mode] = new_val
 
     # ── Ranking ──────────────────────────────────────────────────────
 
-    def rank_moves(self, move_specs: list[dict]) -> list[dict]:
+    def rank_moves(
+        self,
+        move_specs: list[dict],
+        goal_mode: str = "improve",
+    ) -> list[dict]:
         """Rank a list of semantic move dicts by taste fit.
 
         Each move dict should have: move_id, family, targets, risk_level.
         Returns the same dicts with added 'taste_score' field, sorted desc.
+
+        PR8 additions:
+          goal_mode (str, default "improve"): which novelty band to use for
+            risk alignment. "improve" respects the user's conservative history;
+            "explore" uses the explore-mode band so past timid choices don't
+            punish surprise-me branch generation.
+          bypass_taste_in_generation (instance flag): when True, every move
+            scores a uniform 0.5. Used during branch generation so taste
+            doesn't prune novelty before the user has a chance to audition.
+            Ranking order is preserved from input when this flag is on.
         """
+        if self.bypass_taste_in_generation:
+            return [dict(move, taste_score=0.5) for move in move_specs]
+
+        # Read the band for the requested mode. Falls back to the improve
+        # band (via self.novelty_band property) when the mode is unknown.
+        novelty_band = self.novelty_bands.get(goal_mode, self.novelty_band)
+
         ranked = []
         for move in move_specs:
             taste_score = 0.5  # Neutral baseline
@@ -190,10 +250,10 @@ class TasteGraph:
                 if dim in self.dimension_avoidances:
                     taste_score -= 0.3
 
-            # Novelty/risk alignment
+            # Novelty/risk alignment (PR8: per-mode band)
             risk = move.get("risk_level", "low")
             risk_val = {"low": 0.2, "medium": 0.5, "high": 0.8}.get(risk, 0.5)
-            novelty_match = 1.0 - abs(risk_val - self.novelty_band)
+            novelty_match = 1.0 - abs(risk_val - novelty_band)
             taste_score += novelty_match * 0.1
 
             # Clamp
@@ -297,8 +357,21 @@ def build_taste_graph(
                 if total > 0:
                     fam.score = round((fam.kept_count - fam.undone_count) / total, 3)
 
-        # Novelty band
-        graph.novelty_band = persisted.get("novelty_band", 0.5)
+        # Novelty band — migrate from flat float if present, OR read
+        # per-mode dict if newer persistence format has it (PR8).
+        persisted_band = persisted.get("novelty_band", 0.5)
+        persisted_bands = persisted.get("novelty_bands")
+        if isinstance(persisted_bands, dict) and persisted_bands:
+            graph.novelty_bands = {
+                k: float(v) for k, v in persisted_bands.items() if isinstance(v, (int, float))
+            }
+            # Ensure both canonical keys are present with sensible defaults.
+            graph.novelty_bands.setdefault("improve", persisted_band)
+            graph.novelty_bands.setdefault("explore", persisted_band)
+            graph.novelty_band = graph.novelty_bands["improve"]
+        else:
+            graph.novelty_band = persisted_band
+            graph.novelty_bands = {"improve": persisted_band, "explore": persisted_band}
 
         # Device affinities
         for dev_name, dev_data in persisted.get("device_affinities", {}).items():
