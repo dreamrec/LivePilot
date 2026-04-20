@@ -30,11 +30,17 @@ def apply_hard_rules(
     measurable_count: int,
     score: float,
     target_count: int,
+    defer_on_unmeasurable: bool = True,
 ) -> tuple[bool, list[str]]:
     """Enforce hard rules and return (keep_change, failure_reasons).
 
     Rules (evaluated in order):
-    1. All targets unmeasurable + no protection violation -> defer to agent
+    1. (optional) All targets unmeasurable + no protection violation
+       -> defer to agent. Fires only when defer_on_unmeasurable=True
+       (the default). The evaluation fabric relies on this to mark
+       decision_mode="deferred". Score-producing evaluators (branch
+       lifecycle, PR7) pass defer_on_unmeasurable=False because the
+       score IS the judgment — no deferral needed.
     2. Protection violated -> force undo
     3. Measurable delta <= 0 when measurable targets exist -> force undo
     4. Score < 0.40 -> force undo
@@ -46,6 +52,10 @@ def apply_hard_rules(
         measurable_count: how many target dimensions were measurable
         score: composite quality score (0-1)
         target_count: total number of target dimensions
+        defer_on_unmeasurable: when True (default), rule 1 returns
+            (True, [defer message]) as soon as no measurable targets
+            exist. When False, rule 1 is skipped and rules 2-4 run
+            unconditionally.
 
     Returns:
         (keep_change, list_of_rule_failure_reasons)
@@ -53,7 +63,11 @@ def apply_hard_rules(
     failures: list[str] = []
 
     # Rule 1: all unmeasurable + no protection violation -> defer
-    if measurable_count == 0 and not protection_violated:
+    if (
+        defer_on_unmeasurable
+        and measurable_count == 0
+        and not protection_violated
+    ):
         return True, [
             "No measurable target dimensions — deferring keep/undo "
             "to agent musical judgment"
@@ -117,43 +131,32 @@ def classify_branch_outcome(
 ) -> BranchOutcome:
     """Classify a branch's terminal status from a score + optional hard-rule inputs.
 
-    Applies each rule independently — apply_hard_rules' rule 1 ("defer to
-    agent judgment when measurable_count=0") is intentionally bypassed here
-    because a score-producing evaluator DID make a judgment. The classifier
-    trusts the score.
+    Delegates to apply_hard_rules with ``defer_on_unmeasurable=False`` — a
+    score-producing evaluator DID make a judgment, so rule 1's deferral
+    path is not appropriate here. The score alone is enough to push a
+    branch toward undo / interesting_but_failed.
 
-    Rule order:
-      1. protection_violated → always undo (safety invariant, ignores exploration_rules)
-      2. score < 0.40 → undo (technical) or interesting_but_failed (exploration)
-      3. measurable_count > 0 with goal_progress <= 0 → same as rule 2
-      4. otherwise keep
+    Post-processing:
+      - ``exploration_rules=False`` (technical safety, default):
+        any hard-rule failure ⇒ status="undo".
+      - ``exploration_rules=True`` (creative exploration):
+        protection violations still force undo (safety invariant);
+        all other failures downgrade to "interesting_but_failed".
 
-    Returns a BranchOutcome that callers can plug into branch.score / .status
-    / .evaluation without further interpretation.
+    Returns a BranchOutcome that callers can plug into branch.score /
+    .status / .evaluation without further interpretation.
     """
-    failures: list[str] = []
-    protection_failure = False
+    keep_change, failures = apply_hard_rules(
+        goal_progress=goal_progress,
+        collateral_damage=0.0,  # not threaded here — branch lifecycle doesn't compute it yet
+        protection_violated=protection_violated,
+        measurable_count=measurable_count,
+        score=score,
+        target_count=target_count,
+        defer_on_unmeasurable=False,
+    )
 
-    # Rule 1 — protection violation (safety invariant)
-    if protection_violated:
-        failures.append("HARD RULE: protected dimension violated")
-        protection_failure = True
-
-    # Rule 2 — score threshold
-    if score < 0.40:
-        failures.append(
-            f"HARD RULE: total score {score:.3f} < 0.40 threshold"
-        )
-
-    # Rule 3 — measurable delta
-    if measurable_count > 0:
-        measurable_delta = goal_progress / max(measurable_count, 1)
-        if measurable_delta <= 0:
-            failures.append(
-                "HARD RULE: measurable delta <= 0 — no measurable improvement"
-            )
-
-    if not failures:
+    if keep_change:
         return BranchOutcome(
             status="keep",
             keep_change=True,
@@ -163,6 +166,8 @@ def classify_branch_outcome(
         )
 
     # Failed — decide between undo and interesting_but_failed.
+    protection_failure = any("protected dimension" in f for f in failures)
+
     if exploration_rules and not protection_failure:
         return BranchOutcome(
             status="interesting_but_failed",
