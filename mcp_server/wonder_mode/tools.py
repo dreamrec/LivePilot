@@ -164,7 +164,7 @@ def enter_wonder_mode(
     except Exception as exc:
         logger.warning("session_info fetch for kernel failed: %s", exc)
 
-    # 2. Generate variants
+    # 2. Generate variants (legacy path)
     result = engine.generate_wonder_variants(
         request_text=request_text,
         diagnosis=diag_dict,
@@ -175,6 +175,37 @@ def enter_wonder_mode(
         session_info=session_info,
         sample_context=sample_context,
     )
+
+    # 2b. PR6 — also emit BranchSeeds for the branch-native experiment flow.
+    # Pull session_memory from the conversation lifespan when available so
+    # technique seeds can be sourced. Kernel state here is a lightweight
+    # dict — enter_wonder_mode doesn't always have a full SessionKernel.
+    branch_kernel: dict = {}
+    try:
+        from ..memory.session_memory import SessionMemoryStore
+        mem_store = ctx.lifespan_context.setdefault("session_memory", SessionMemoryStore())
+        branch_kernel["session_memory"] = [
+            entry.to_dict() for entry in mem_store.get_recent(limit=10)
+        ]
+    except Exception as exc:
+        logger.debug("session_memory fetch for seeds failed: %s", exc)
+    # Freshness defaults to 0.5 — enter_wonder_mode is inherently exploratory,
+    # so lean slightly toward surprise.
+    branch_kernel["freshness"] = 0.65
+
+    try:
+        branch_seeds = engine.generate_branch_seeds(
+            request_text=request_text,
+            kernel=branch_kernel,
+            song_brain=song_brain,
+            active_constraints=active_constraints,
+            taste_graph=taste_graph,
+        )
+        branch_seeds_dicts = [s.to_dict() for s in branch_seeds]
+    except Exception as exc:
+        # Seed assembly is additive — never let it break wonder mode.
+        logger.warning("generate_branch_seeds failed: %s", exc)
+        branch_seeds_dicts = []
 
     # 3. Create WonderSession (unique per invocation, not deterministic)
     import hashlib, time
@@ -217,6 +248,9 @@ def enter_wonder_mode(
         "recommended": result.get("recommended", ""),
         "variant_count_actual": result.get("variant_count_actual", 0),
         "degraded_reason": ws.degraded_reason,
+        # PR6 — branch-native seeds from four producers. Feed directly to
+        # create_experiment(seeds=...) or create_experiment_from_seeds().
+        "branch_seeds": branch_seeds_dicts,
         "mode": "wonder",
     }
 
