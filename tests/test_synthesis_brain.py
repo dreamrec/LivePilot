@@ -195,11 +195,20 @@ class TestOperatorAdapter:
         assert any(r["source"] == "Oscillator B" for r in p.modulation.routes)
 
     def test_propose_shifts_modulator_ratio(self):
+        # PR2/v2: targeting is algorithm + Level aware. Give Osc B a
+        # concrete Level so it becomes the picked modulator under
+        # algorithm 0 (where A/B/C are all modulators).
         profile = analyze_synth_patch(
             device_name="Operator",
             track_index=1,
             device_index=0,
-            parameter_state={"Oscillator B Coarse": 2},
+            parameter_state={
+                "Algorithm": 0,
+                "Oscillator A Level": 0.1,
+                "Oscillator B Coarse": 2,
+                "Oscillator B Level": 0.9,  # highest — B is picked
+                "Oscillator C Level": 0.2,
+            },
         )
         pairs = propose_synth_branches(profile)
         assert len(pairs) >= 1

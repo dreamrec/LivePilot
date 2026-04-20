@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog
 
-398 tools across 52 domains.
+402 tools across 52 domains.
 
 ---
 
@@ -597,13 +597,24 @@
 
 ---
 
-## Composer (3)
+## Composer (4)
 
 | Tool | Description |
 |------|-------------|
 | `compose` | Create a full multi-layer composition from a text prompt — searches samples, loads devices, arranges sections |
 | `augment_with_samples` | Add sample-based layers to the existing session with Splice-aware credit safety |
 | `get_composition_plan` | Dry-run preview of what compose would do — no execution, no credits spent |
+| `propose_composer_branches` | Emit N distinct compositional hypotheses (canonical / energy_shift / layer_contrast) for exploratory workflows — feeds create_experiment(seeds=...); winner commit rehydrates intent and runs full compose() |
+
+---
+
+## Synthesis Brain (3)
+
+| Tool | Description |
+|------|-------------|
+| `analyze_synth_patch` | Extract a SynthProfile from a native synth (Wavetable / Operator / Analog / Drift / Meld) — parameter state, display values, modulation graph, articulation, role hint |
+| `propose_synth_branches` | Emit algorithm/topology-aware branch seeds + pre-compiled plans for a native synth; strategy selection responds to profile + role_hint + target TimbralFingerprint |
+| `extract_timbre_fingerprint` | Build a 9-dimension TimbralFingerprint (brightness, warmth, bite, softness, instability, width, texture_density, movement, polish) from spectrum / loudness / spectral_shape dicts — pure transform |
 
 ---
 

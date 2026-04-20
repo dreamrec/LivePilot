@@ -105,60 +105,165 @@ class DriftAdapter:
         kernel: Optional[dict] = None,
     ) -> list[tuple[BranchSeed, dict]]:
         kernel = kernel or {}
-        freshness = float(kernel.get("freshness", 0.5) or 0.5)
-        track = profile.track_index
-        device = profile.device_index
+        results: list[tuple[BranchSeed, dict]] = []
+        for strategy_fn in (_strategy_character_blend, _strategy_filter_sweep):
+            try:
+                maybe = strategy_fn(profile, target, kernel, adapter=self)
+            except Exception:
+                continue
+            if maybe is not None:
+                results.append(maybe)
+        return results
 
-        current_char = float(profile.parameter_state.get("Character", 0.0) or 0.0)
-        current_sub = float(profile.parameter_state.get("Sub Level", 0.0) or 0.0)
 
-        # Toggle character in the opposite direction to create contrast.
-        new_char = min(1.0, max(current_char + 0.3, 0.3)) if current_char <= 0.5 else max(0.0, current_char - 0.3)
-        # Move sub slightly toward 0.3 if we're starting outside 0.2-0.4
-        target_sub = 0.3
-        new_sub = current_sub + (target_sub - current_sub) * (0.5 if freshness < 0.5 else 0.8)
-        new_sub = round(max(0.0, min(1.0, new_sub)), 3)
+# ── Strategy registry ────────────────────────────────────────────────
 
-        seed = freeform_seed(
-            seed_id=_short_id("dr_chr", f"{track}:{device}:{new_char:.2f}:{new_sub:.2f}"),
-            hypothesis=(
-                f"Drift character blend: Character → {new_char:.2f}, "
-                f"Sub Level → {new_sub:.2f} for a different core tone"
-            ),
-            source="synthesis",
-            novelty_label="strong",
-            risk_label="low",
-            affected_scope={
-                "track_indices": [track],
-                "device_paths": [f"track/{track}/device/{device}"],
+
+def _strategy_character_blend(
+    profile: SynthProfile,
+    target: TimbralFingerprint,
+    kernel: dict,
+    adapter,
+) -> Optional[tuple[BranchSeed, dict]]:
+    """Shift Character + Sub balance. Always applicable."""
+    freshness = float(kernel.get("freshness", 0.5) or 0.5)
+    track = profile.track_index
+    device = profile.device_index
+    current_char = float(profile.parameter_state.get("Character", 0.0) or 0.0)
+    current_sub = float(profile.parameter_state.get("Sub Level", 0.0) or 0.0)
+
+    new_char = (
+        min(1.0, max(current_char + 0.3, 0.3))
+        if current_char <= 0.5
+        else max(0.0, current_char - 0.3)
+    )
+    target_sub = 0.3
+    new_sub = current_sub + (target_sub - current_sub) * (
+        0.5 if freshness < 0.5 else 0.8
+    )
+    new_sub = round(max(0.0, min(1.0, new_sub)), 3)
+
+    seed = freeform_seed(
+        seed_id=_short_id("dr_chr", f"{track}:{device}:{new_char:.2f}:{new_sub:.2f}"),
+        hypothesis=(
+            f"Drift character blend: Character → {new_char:.2f}, "
+            f"Sub Level → {new_sub:.2f} for a different core tone"
+        ),
+        source="synthesis",
+        novelty_label="strong",
+        risk_label="low",
+        affected_scope={
+            "track_indices": [track],
+            "device_paths": [f"track/{track}/device/{device}"],
+        },
+        distinctness_reason="shifts Character + Sub balance",
+        producer_payload={
+            "device_name": adapter.device_name,
+            "track_index": track,
+            "device_index": device,
+            "strategy": "character_blend",
+            "topology_hint": {
+                "role_hint": profile.role_hint,
+                "current_char": current_char,
+                "new_char": round(new_char, 3),
+                "current_sub": current_sub,
+                "new_sub": new_sub,
             },
-            distinctness_reason="only Drift seed that shifts Character + Sub balance",
-        )
-        plan = {
-            "steps": [
-                {
-                    "tool": "set_device_parameter",
-                    "params": {
-                        "track_index": track,
-                        "device_index": device,
+        },
+    )
+    plan = {
+        "steps": [
+            {"tool": "set_device_parameter",
+             "params": {"track_index": track, "device_index": device,
                         "parameter_name": "Character",
-                        "value": round(new_char, 3),
-                    },
-                },
-                {
-                    "tool": "set_device_parameter",
-                    "params": {
-                        "track_index": track,
-                        "device_index": device,
+                        "value": round(new_char, 3)}},
+            {"tool": "set_device_parameter",
+             "params": {"track_index": track, "device_index": device,
                         "parameter_name": "Sub Level",
-                        "value": new_sub,
-                    },
-                },
-            ],
-            "step_count": 2,
-            "summary": f"Character → {new_char:.2f}, Sub Level → {new_sub:.2f}",
-        }
-        return [(seed, plan)]
+                        "value": new_sub}},
+        ],
+        "step_count": 2,
+        "summary": f"Character → {new_char:.2f}, Sub Level → {new_sub:.2f}",
+    }
+    return (seed, plan)
+
+
+def _strategy_filter_sweep(
+    profile: SynthProfile,
+    target: TimbralFingerprint,
+    kernel: dict,
+    adapter,
+) -> Optional[tuple[BranchSeed, dict]]:
+    """Sweep Filter Freq toward target brightness.
+
+    Gates: applicable when target.brightness != 0 OR role_hint suggests
+    motion ("lead", "pad", "drone"). Skip when role is "bass" (sub roles
+    want a stable low-pass, not a sweep).
+    """
+    role = (profile.role_hint or "").lower()
+    if role in {"bass", "sub", "kick"}:
+        return None
+    want_motion = abs(target.brightness) > 0.1 or role in {"lead", "pad", "drone"}
+    if not want_motion:
+        return None
+
+    freshness = float(kernel.get("freshness", 0.5) or 0.5)
+    track = profile.track_index
+    device = profile.device_index
+    # Drift's filter freq is normalized 0-1 in the API; display is Hz.
+    current_freq = float(profile.parameter_state.get("Filter Freq", 0.5) or 0.5)
+    if target.brightness > 0:
+        # Open filter toward bright.
+        new_freq = min(1.0, current_freq + (0.15 if freshness < 0.5 else 0.3))
+        direction = "open"
+    else:
+        # Close toward warm.
+        new_freq = max(0.0, current_freq - (0.12 if freshness < 0.5 else 0.25))
+        direction = "close"
+
+    if abs(new_freq - current_freq) < 0.03:
+        return None  # barely any change — skip
+
+    seed = freeform_seed(
+        seed_id=_short_id(
+            "dr_flt", f"{track}:{device}:{direction}:{new_freq:.2f}"
+        ),
+        hypothesis=(
+            f"Drift filter sweep: Filter Freq {current_freq:.2f} → "
+            f"{new_freq:.2f} ({direction}) for a {direction}d voice"
+        ),
+        source="synthesis",
+        novelty_label="strong" if freshness < 0.7 else "unexpected",
+        risk_label="low",
+        affected_scope={
+            "track_indices": [track],
+            "device_paths": [f"track/{track}/device/{device}"],
+        },
+        distinctness_reason=f"filter {direction} without touching core oscillator",
+        producer_payload={
+            "device_name": adapter.device_name,
+            "track_index": track,
+            "device_index": device,
+            "strategy": f"filter_sweep_{direction}",
+            "topology_hint": {
+                "role_hint": profile.role_hint,
+                "target_brightness": target.brightness,
+                "current_freq": current_freq,
+                "new_freq": round(new_freq, 3),
+            },
+        },
+    )
+    plan = {
+        "steps": [
+            {"tool": "set_device_parameter",
+             "params": {"track_index": track, "device_index": device,
+                        "parameter_name": "Filter Freq",
+                        "value": round(new_freq, 3)}},
+        ],
+        "step_count": 1,
+        "summary": f"Filter Freq {current_freq:.2f} → {new_freq:.2f}",
+    }
+    return (seed, plan)
 
 
 def _short_id(prefix: str, key: str) -> str:

@@ -23,12 +23,37 @@ from ..branches import BranchSeed
 
 @dataclass
 class BranchSnapshot:
-    """Captured state before or after a branch experiment."""
+    """Captured state before or after a branch experiment.
+
+    Pre-PR4 fields (spectrum / rms / peak / track_meters) stay the same —
+    they remain the fast-path evidence when render-verify isn't available
+    or wasn't opted in.
+
+    PR4 adds render-based fields that are populated only when the
+    experiment runs with render_verify=True:
+
+      capture_path: path to the captured audio file (useful for re-analysis
+                    or user audition of the branch output).
+      loudness: {lufs, lra, rms, peak, crest} from analyze_loudness.
+      spectral_shape: {centroid, flatness, rolloff, crest} from FluCoMa or
+                      the offline analyzer.
+      fingerprint: TimbralFingerprint.to_dict() extracted from the
+                   captured audio.
+
+    The fingerprint is what classify_branch_outcome reads to derive a
+    real goal_progress + measurable_count instead of relying on the
+    inline meter-based heuristic alone.
+    """
     spectrum: Optional[dict] = None
     rms: Optional[float] = None
     peak: Optional[float] = None
     track_meters: Optional[list] = None
     timestamp_ms: int = 0
+    # PR4 — render-based evidence (opt-in via render_verify flag)
+    capture_path: Optional[str] = None
+    loudness: Optional[dict] = None
+    spectral_shape: Optional[dict] = None
+    fingerprint: Optional[dict] = None  # TimbralFingerprint.to_dict()
 
     def to_dict(self) -> dict:
         d = {}
@@ -40,6 +65,14 @@ class BranchSnapshot:
             d["peak"] = self.peak
         if self.track_meters is not None:
             d["track_meters"] = self.track_meters
+        if self.capture_path is not None:
+            d["capture_path"] = self.capture_path
+        if self.loudness is not None:
+            d["loudness"] = self.loudness
+        if self.spectral_shape is not None:
+            d["spectral_shape"] = self.spectral_shape
+        if self.fingerprint is not None:
+            d["fingerprint"] = self.fingerprint
         d["timestamp_ms"] = self.timestamp_ms
         return d
 
@@ -152,6 +185,12 @@ class ExperimentBranch:
             d["analytical_only"] = (
                 self.seed.analytical_only or self.compiled_plan is None
             )
+            # Shortcut to the seed's producer_payload so downstream callers
+            # (composer winner-commit, synthesis re-target, provenance logs)
+            # don't have to reach into d["seed"]["producer_payload"] every
+            # time. The full seed dict is still available for producers
+            # that need other fields.
+            d["producer_payload"] = dict(self.seed.producer_payload or {})
         return d
 
 

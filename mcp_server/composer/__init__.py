@@ -5,6 +5,6 @@ multiple section-hypothesis BranchSeeds alongside the existing
 single-plan compose() entry point.
 """
 
-from .branch_producer import propose_composer_branches
+from .branch_producer import propose_composer_branches, escalate_composer_branch
 
-__all__ = ["propose_composer_branches"]
+__all__ = ["propose_composer_branches", "escalate_composer_branch"]

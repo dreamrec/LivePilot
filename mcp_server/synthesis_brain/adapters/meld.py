@@ -102,48 +102,158 @@ class MeldAdapter:
         kernel: Optional[dict] = None,
     ) -> list[tuple[BranchSeed, dict]]:
         kernel = kernel or {}
-        freshness = float(kernel.get("freshness", 0.5) or 0.5)
-        track = profile.track_index
-        device = profile.device_index
+        results: list[tuple[BranchSeed, dict]] = []
+        for strategy_fn in (_strategy_engine_algo_swap, _strategy_engine_mix_shift):
+            try:
+                maybe = strategy_fn(profile, target, kernel, adapter=self)
+            except Exception:
+                continue
+            if maybe is not None:
+                results.append(maybe)
+        return results
 
-        # Algorithm indices are device-internal; we propose a relative shift
-        # by +1 (modulo a safe ceiling of 10 — Meld has 12 algos but we're
-        # conservative). Freshness amplifies the shift to +3.
-        current_algo = int(profile.parameter_state.get("Engine 1 Algorithm", 0) or 0)
-        shift = 1 if freshness < 0.5 else 3
-        new_algo = (current_algo + shift) % 10
 
-        seed = freeform_seed(
-            seed_id=_short_id("ml_algo", f"{track}:{device}:{new_algo}"),
-            hypothesis=(
-                f"Meld Engine 1 algorithm swap: {current_algo} → {new_algo} "
-                f"for a materially different core timbre"
-            ),
-            source="synthesis",
-            novelty_label="unexpected" if shift == 3 else "strong",
-            risk_label="medium",
-            affected_scope={
-                "track_indices": [track],
-                "device_paths": [f"track/{track}/device/{device}"],
+# ── Strategy registry ────────────────────────────────────────────────
+
+
+def _strategy_engine_algo_swap(
+    profile: SynthProfile,
+    target: TimbralFingerprint,
+    kernel: dict,
+    adapter,
+) -> Optional[tuple[BranchSeed, dict]]:
+    """Shift Engine 1 Algorithm by +1 (low freshness) or +3 (high).
+
+    Always applicable — algorithm swaps are guaranteed to change tone
+    regardless of current state.
+    """
+    freshness = float(kernel.get("freshness", 0.5) or 0.5)
+    track = profile.track_index
+    device = profile.device_index
+    current_algo = int(profile.parameter_state.get("Engine 1 Algorithm", 0) or 0)
+    shift = 1 if freshness < 0.5 else 3
+    new_algo = (current_algo + shift) % 10
+
+    seed = freeform_seed(
+        seed_id=_short_id("ml_algo", f"{track}:{device}:{new_algo}"),
+        hypothesis=(
+            f"Meld Engine 1 algorithm swap: {current_algo} → {new_algo} "
+            f"for a materially different core timbre"
+        ),
+        source="synthesis",
+        novelty_label="unexpected" if shift == 3 else "strong",
+        risk_label="medium",
+        affected_scope={
+            "track_indices": [track],
+            "device_paths": [f"track/{track}/device/{device}"],
+        },
+        distinctness_reason="changes Engine 1 algorithm",
+        producer_payload={
+            "device_name": adapter.device_name,
+            "track_index": track,
+            "device_index": device,
+            "strategy": "engine_algo_swap",
+            "topology_hint": {
+                "role_hint": profile.role_hint,
+                "current_algo": current_algo,
+                "new_algo": new_algo,
             },
-            distinctness_reason="only Meld seed that changes Engine 1 algorithm",
-        )
-        plan = {
-            "steps": [
-                {
-                    "tool": "set_device_parameter",
-                    "params": {
-                        "track_index": track,
-                        "device_index": device,
+        },
+    )
+    plan = {
+        "steps": [
+            {"tool": "set_device_parameter",
+             "params": {"track_index": track, "device_index": device,
                         "parameter_name": "Engine 1 Algorithm",
-                        "value": new_algo,
-                    },
-                },
-            ],
-            "step_count": 1,
-            "summary": f"Engine 1 Algorithm {current_algo} → {new_algo}",
-        }
-        return [(seed, plan)]
+                        "value": new_algo}},
+        ],
+        "step_count": 1,
+        "summary": f"Engine 1 Algorithm {current_algo} → {new_algo}",
+    }
+    return (seed, plan)
+
+
+def _strategy_engine_mix_shift(
+    profile: SynthProfile,
+    target: TimbralFingerprint,
+    kernel: dict,
+    adapter,
+) -> Optional[tuple[BranchSeed, dict]]:
+    """Rebalance Engine 1 / Engine 2 Level for layered character.
+
+    Gates: applicable when BOTH engines have non-zero Level (mix makes
+    no sense if one engine is silent). Shifts the balance by 0.15-0.3
+    depending on freshness.
+    """
+    e1 = float(profile.parameter_state.get("Engine 1 Level", 0.0) or 0.0)
+    e2 = float(profile.parameter_state.get("Engine 2 Level", 0.0) or 0.0)
+    if e1 < 0.05 or e2 < 0.05:
+        return None  # one engine silent — mix shift is meaningless
+
+    freshness = float(kernel.get("freshness", 0.5) or 0.5)
+    track = profile.track_index
+    device = profile.device_index
+
+    # Push toward the engine with LESS level currently — highlights the
+    # underused engine's character. When roughly equal, pick Engine 2.
+    if e1 < e2:
+        direction = "to_e1"
+        delta = 0.15 if freshness < 0.5 else 0.3
+        new_e1 = min(1.0, e1 + delta)
+        new_e2 = max(0.0, e2 - delta / 2)
+    else:
+        direction = "to_e2"
+        delta = 0.15 if freshness < 0.5 else 0.3
+        new_e2 = min(1.0, e2 + delta)
+        new_e1 = max(0.0, e1 - delta / 2)
+
+    seed = freeform_seed(
+        seed_id=_short_id(
+            "ml_mix", f"{track}:{device}:{direction}:{new_e1:.2f}:{new_e2:.2f}"
+        ),
+        hypothesis=(
+            f"Meld engine mix shift {direction}: E1 {e1:.2f} → {new_e1:.2f}, "
+            f"E2 {e2:.2f} → {new_e2:.2f}"
+        ),
+        source="synthesis",
+        novelty_label="strong",
+        risk_label="low",
+        affected_scope={
+            "track_indices": [track],
+            "device_paths": [f"track/{track}/device/{device}"],
+        },
+        distinctness_reason=(
+            f"Meld mix rebalance {direction}; algorithm unchanged"
+        ),
+        producer_payload={
+            "device_name": adapter.device_name,
+            "track_index": track,
+            "device_index": device,
+            "strategy": f"engine_mix_shift_{direction}",
+            "topology_hint": {
+                "role_hint": profile.role_hint,
+                "current_e1": e1,
+                "current_e2": e2,
+                "new_e1": round(new_e1, 3),
+                "new_e2": round(new_e2, 3),
+            },
+        },
+    )
+    plan = {
+        "steps": [
+            {"tool": "set_device_parameter",
+             "params": {"track_index": track, "device_index": device,
+                        "parameter_name": "Engine 1 Level",
+                        "value": round(new_e1, 3)}},
+            {"tool": "set_device_parameter",
+             "params": {"track_index": track, "device_index": device,
+                        "parameter_name": "Engine 2 Level",
+                        "value": round(new_e2, 3)}},
+        ],
+        "step_count": 2,
+        "summary": f"E1 {e1:.2f}→{new_e1:.2f}, E2 {e2:.2f}→{new_e2:.2f}",
+    }
+    return (seed, plan)
 
 
 def _short_id(prefix: str, key: str) -> str:

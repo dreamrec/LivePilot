@@ -1,4 +1,4 @@
-"""Verify all 397 MCP tools are registered across 52 domains."""
+"""Verify all 402 MCP tools are registered across 52 domains."""
 
 import asyncio
 import sys
@@ -630,7 +630,25 @@ def test_control_surfaces_tools_registered():
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 398, f"Expected 398 tools, got {len(tools)}"
+    assert len(tools) == 402, f"Expected 402 tools, got {len(tools)}"
+
+
+def test_synthesis_brain_tools_registered():
+    """PR5/v2 adds 3 dedicated MCP wrappers on the synthesis_brain subsystem."""
+    names = _get_tool_names()
+    expected = {
+        "analyze_synth_patch",
+        "propose_synth_branches",
+        "extract_timbre_fingerprint",
+    }
+    missing = expected - names
+    assert not missing, f"Missing synthesis_brain tools: {missing}"
+
+
+def test_composer_branch_tool_registered():
+    """PR5/v2 adds propose_composer_branches alongside the existing 3 composer tools."""
+    names = _get_tool_names()
+    assert "propose_composer_branches" in names
 
 
 def test_miditool_tools_registered():
