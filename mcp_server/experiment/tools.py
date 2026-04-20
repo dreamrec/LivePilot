@@ -458,7 +458,84 @@ async def commit_experiment(
     bridge = ctx.lifespan_context.get("m4l")
     mcp_registry = ctx.lifespan_context.get("mcp_dispatch", {})
 
-    return await engine.commit_branch_async(
+    # PR3 — composer winner escalation. When the winning branch came from
+    # the composer producer, the plan we auditioned was a lightweight
+    # scaffold (set_tempo + create_midi_track + create_scene/set_scene_name).
+    # Commit should deliver a populated session, not an empty skeleton.
+    # Re-run ComposerEngine.compose() on the intent captured in the seed's
+    # producer_payload, replace the branch's compiled_plan with the full
+    # resolved plan, then commit through the normal async router.
+    #
+    # When escalation fails (missing intent, zero resolved layers, etc.),
+    # fall back to committing the scaffold. Users get tracks + scenes
+    # they can populate manually, which is better than an error.
+    escalation_info = None
+    if (
+        target.seed is not None
+        and target.seed.source == "composer"
+        and target.seed.producer_payload
+    ):
+        try:
+            from ..composer import escalate_composer_branch
+            splice_client = ctx.lifespan_context.get("splice_client")
+            # browser_client only present on servers with live browser wiring;
+            # pass None defensively.
+            browser_client = ctx.lifespan_context.get("browser_client")
+            search_roots = ctx.lifespan_context.get("sample_search_roots") or []
+
+            escalation_info = await escalate_composer_branch(
+                producer_payload=target.seed.producer_payload,
+                search_roots=search_roots,
+                splice_client=splice_client,
+                browser_client=browser_client,
+            )
+
+            if escalation_info.get("ok"):
+                # Swap the compiled_plan for the fully resolved one before
+                # commit_branch_async runs it. Keep the old scaffold on the
+                # evaluation dict for audit.
+                old_plan = target.compiled_plan or {}
+                new_plan = {
+                    "steps": escalation_info["plan"],
+                    "step_count": escalation_info["step_count"],
+                    "summary": (
+                        f"Composer escalated: {escalation_info['layer_count']} "
+                        f"layers, {escalation_info['step_count']} steps "
+                        f"({len(escalation_info['resolved_samples'])} samples resolved)"
+                    ),
+                }
+                target.compiled_plan = new_plan
+                if target.evaluation is None:
+                    target.evaluation = {}
+                target.evaluation["composer_escalation"] = {
+                    "escalated": True,
+                    "scaffold_step_count": old_plan.get("step_count", 0),
+                    "resolved_step_count": escalation_info["step_count"],
+                    "layer_count": escalation_info["layer_count"],
+                    "resolved_samples": escalation_info["resolved_samples"],
+                    "warnings": escalation_info.get("warnings", []),
+                }
+            else:
+                # Record the fallback reason on evaluation so compare /
+                # commit responses carry explicit provenance.
+                if target.evaluation is None:
+                    target.evaluation = {}
+                target.evaluation["composer_escalation"] = {
+                    "escalated": False,
+                    "error": escalation_info.get("error", "unknown"),
+                    "warnings": escalation_info.get("warnings", []),
+                    "fallback": "scaffold_plan",
+                }
+        except Exception as exc:
+            if target.evaluation is None:
+                target.evaluation = {}
+            target.evaluation["composer_escalation"] = {
+                "escalated": False,
+                "error": f"escalation raised: {exc}",
+                "fallback": "scaffold_plan",
+            }
+
+    commit_result = await engine.commit_branch_async(
         experiment,
         branch_id,
         ableton,
@@ -466,6 +543,19 @@ async def commit_experiment(
         mcp_registry=mcp_registry,
         ctx=ctx,
     )
+
+    # Surface escalation details on the commit response so the caller
+    # sees whether a scaffold or resolved plan was applied.
+    if escalation_info is not None and isinstance(commit_result, dict):
+        commit_result["composer_escalation"] = {
+            "escalated": bool(escalation_info.get("ok")),
+            "step_count": escalation_info.get("step_count"),
+            "layer_count": escalation_info.get("layer_count"),
+            "error": escalation_info.get("error"),
+            "warnings": escalation_info.get("warnings", []),
+        }
+
+    return commit_result
 
 
 @mcp.tool()

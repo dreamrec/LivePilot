@@ -29,6 +29,7 @@ from typing import Optional
 from ..branches import BranchSeed, freeform_seed
 from .prompt_parser import parse_prompt, CompositionIntent
 from .layer_planner import plan_layers, plan_sections
+from .engine import ComposerEngine, CompositionResult
 
 
 # Strategy registry — each function takes an intent and returns (modified
@@ -146,6 +147,15 @@ def propose_composer_branches(
                 novelty_label=novelty,
                 risk_label=risk,
                 distinctness_reason=reason,
+                # PR3 — carry the variant intent + strategy so commit_experiment
+                # can rehydrate and run the full ComposerEngine.compose()
+                # pipeline on the winner instead of committing the scaffold.
+                producer_payload={
+                    "strategy": name,
+                    "intent": variant_intent.to_dict(),
+                    "request_text": request_text,
+                    "reason": reason,
+                },
             )
             results.append((seed, plan))
         except Exception as exc:
@@ -157,6 +167,116 @@ def propose_composer_branches(
             continue
 
     return results
+
+
+async def escalate_composer_branch(
+    producer_payload: dict,
+    search_roots: Optional[list] = None,
+    splice_client: object = None,
+    browser_client: object = None,
+    max_credits: int = 10,
+) -> dict:
+    """Run the full ComposerEngine.compose() pipeline on a committed
+    composer branch, using the CompositionIntent captured in the seed's
+    producer_payload at emit time.
+
+    Returns a dict with:
+      ok: bool
+      plan: list of executable steps (the full resolved plan, not the
+            scaffolding the branch was auditioned with)
+      step_count: int
+      layer_count: int
+      resolved_samples: dict (role → local_path)
+      warnings: list (unresolved layers, missing samples, etc.)
+      error: str (when ok=False)
+
+    When ok=False, callers should fall back to committing the scaffold
+    plan instead of dropping the branch — the scaffolding is still
+    useful as a track/scene skeleton the user can populate manually.
+
+    This function is async because ComposerEngine.compose() is async
+    (it awaits Splice / filesystem sample resolution).
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+
+    schema_version = producer_payload.get("schema_version") if producer_payload else None
+    intent_dict = (producer_payload or {}).get("intent")
+
+    if not intent_dict:
+        return {
+            "ok": False,
+            "error": (
+                "Composer branch producer_payload missing 'intent'. "
+                "This branch was likely emitted before PR3/v2 and cannot "
+                "be escalated — commit the scaffold plan instead."
+            ),
+        }
+
+    # Rehydrate CompositionIntent from the payload dict. Tolerate unknown
+    # keys by only pulling the fields CompositionIntent understands — older
+    # schemas may have fewer fields, newer may have more.
+    try:
+        intent_fields = {
+            k: v for k, v in intent_dict.items()
+            if k in (
+                "genre", "sub_genre", "mood", "tempo", "key",
+                "descriptors", "explicit_elements", "energy",
+                "layer_count", "duration_bars",
+            )
+        }
+        intent = CompositionIntent(**intent_fields)
+    except Exception as exc:
+        return {
+            "ok": False,
+            "error": (
+                f"Failed to rehydrate CompositionIntent from producer_payload "
+                f"(schema_version={schema_version}): {exc}"
+            ),
+        }
+
+    engine = ComposerEngine()
+    try:
+        result: CompositionResult = await engine.compose(
+            intent=intent,
+            dry_run=False,
+            max_credits=max_credits,
+            search_roots=search_roots or [],
+            splice_client=splice_client,
+            browser_client=browser_client,
+        )
+    except Exception as exc:
+        return {
+            "ok": False,
+            "error": f"ComposerEngine.compose() raised: {exc}",
+        }
+
+    # Fallback when no layers resolved — explicit signal so callers can
+    # fall back to the scaffold instead of silently shipping an empty
+    # plan.
+    if not result.plan or len(result.layers) == 0:
+        return {
+            "ok": False,
+            "error": (
+                "ComposerEngine.compose() produced zero executable layers. "
+                "Sample resolution likely failed — check Splice credits, "
+                "filesystem roots, or browser connectivity. Falling back "
+                "to scaffold commit is the correct action."
+            ),
+            "warnings": list(result.warnings),
+            "resolved_samples": dict(result.resolved_samples),
+        }
+
+    return {
+        "ok": True,
+        "plan": list(result.plan),
+        "step_count": len(result.plan),
+        "layer_count": len(result.layers),
+        "resolved_samples": dict(result.resolved_samples),
+        "credits_estimated": result.credits_estimated,
+        "warnings": list(result.warnings),
+        "intent_used": intent.to_dict(),
+    }
 
 
 def _build_section_hypothesis_plan(intent: CompositionIntent, strategy_name: str) -> dict:
