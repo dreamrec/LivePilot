@@ -176,11 +176,12 @@ def _build_section_hypothesis_plan(intent: CompositionIntent, strategy_name: str
 
     steps: list[dict] = []
 
-    # Step 1: tempo — only when intent.tempo is set.
+    # Step 1: tempo — only when intent.tempo is set. Remote transport
+    # handler takes "tempo" (not "bpm") — see transport.py:set_tempo.
     if intent.tempo and intent.tempo > 0:
         steps.append({
             "tool": "set_tempo",
-            "params": {"bpm": intent.tempo},
+            "params": {"tempo": float(intent.tempo)},
         })
 
     # Step 2: one create_midi_track per layer role — the skeleton every
@@ -192,15 +193,28 @@ def _build_section_hypothesis_plan(intent: CompositionIntent, strategy_name: str
             "params": {"name": str(name)},
         })
 
-    # Step 3: create one scene per section (arrangement scaffolding).
+    # Step 3: one create_scene + set_scene_name per section. Remote
+    # create_scene handler only accepts "index" — see scenes.py:create_scene.
+    # Section labels land via set_scene_name after creation. step_id +
+    # $from_step binding resolves the new scene index so parallel branches
+    # with different section counts don't step on each other.
     for s_idx, section in enumerate(sections):
         if isinstance(section, dict):
             sec_name = section.get("name", f"Section {s_idx + 1}")
         else:
             sec_name = f"Section {s_idx + 1}"
+        create_step_id = f"create_scene_{s_idx}"
         steps.append({
             "tool": "create_scene",
-            "params": {"name": str(sec_name)},
+            "step_id": create_step_id,
+            "params": {"index": -1},  # -1 ⇒ append at end
+        })
+        steps.append({
+            "tool": "set_scene_name",
+            "params": {
+                "scene_index": {"$from_step": create_step_id, "path": "index"},
+                "name": str(sec_name),
+            },
         })
 
     summary = (

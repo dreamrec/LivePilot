@@ -222,13 +222,17 @@ async def run_experiment(
 
         if compiled_dict is None:
             # Analytical-only branches short-circuit — no plan to run.
+            # Marked with status="analytical" so ranked_branches()
+            # (which only surfaces "evaluated") excludes them, and
+            # commit_experiment refuses to re-apply them.
             if branch.seed is not None and branch.seed.analytical_only:
-                branch.status = "evaluated"
+                branch.status = "analytical"
                 branch.score = 0.0
                 branch.evaluation = {
                     "score": 0.0,
                     "keep_change": False,
-                    "note": "analytical_only branch — no execution",
+                    "status": "analytical",
+                    "note": "analytical_only branch — no execution path",
                 }
                 results.append(branch.to_dict())
                 continue
@@ -322,9 +326,12 @@ async def run_experiment(
 
         engine.evaluate_branch(branch, eval_fn)
 
-        # Promote the classified status onto the branch (PR7). This lets
-        # ranked_branches() exclude interesting_but_failed branches from
-        # the winner set while keeping them in experiment.branches for audit.
+        # Promote the classified status onto the branch. ranked_branches()
+        # only surfaces status="evaluated", so branches the classifier
+        # rejected ("undo") or retained for audit ("interesting_but_failed")
+        # are both correctly excluded from winner recommendations.
+        # Without this mapping, a branch the hard-rule classifier explicitly
+        # rejected could still win a ranking and be re-applied by commit.
         if branch.evaluation and branch.evaluation.get("status"):
             status = branch.evaluation["status"]
             if status == "keep":
@@ -332,10 +339,12 @@ async def run_experiment(
             elif status == "interesting_but_failed":
                 branch.status = "interesting_but_failed"
             elif status == "undo":
-                # Legacy behavior — still "evaluated" so the rank path sees
-                # it (undo is applied by the engine's rollback pass, the
-                # branch itself stays in the ranking but with a low score).
-                branch.status = "evaluated"
+                # Undo-classified branches had their steps rolled back by
+                # run_branch_async's undo pass; they must NOT be eligible
+                # winners. "rejected" is a terminal branch status distinct
+                # from "failed" (execution failed) and distinct from
+                # "interesting_but_failed" (exploration-mode retention).
+                branch.status = "rejected"
 
         results.append(branch.to_dict())
 
@@ -365,11 +374,28 @@ def compare_experiments(
 
     ranked = experiment.ranked_branches()
 
-    # PR7: surface interesting_but_failed branches separately. They're not
-    # candidates for winning but the user may want to see what was tried.
+    # Surface non-winning branch categories separately. None of these are
+    # candidates for commit — ranked_branches() filters them out — but the
+    # user sees what was tried.
     interesting_failed = [
         b for b in experiment.branches if b.status == "interesting_but_failed"
     ]
+    rejected = [
+        b for b in experiment.branches if b.status == "rejected"
+    ]
+    analytical = [
+        b for b in experiment.branches if b.status == "analytical"
+    ]
+
+    def _audit_row(b):
+        return {
+            "branch_id": b.branch_id,
+            "name": b.name,
+            "move_id": b.move_id,
+            "score": b.score,
+            "summary": b.compiled_plan.get("summary", "") if b.compiled_plan else "",
+            "evaluation": b.evaluation,
+        }
 
     return {
         "experiment_id": experiment_id,
@@ -378,27 +404,14 @@ def compare_experiments(
         "ranking": [
             {
                 "rank": i + 1,
-                "branch_id": b.branch_id,
-                "name": b.name,
-                "move_id": b.move_id,
-                "score": b.score,
-                "summary": b.compiled_plan.get("summary", "") if b.compiled_plan else "",
-                "evaluation": b.evaluation,
+                **_audit_row(b),
             }
             for i, b in enumerate(ranked)
         ],
         "winner": ranked[0].to_dict() if ranked else None,
-        "interesting_but_failed": [
-            {
-                "branch_id": b.branch_id,
-                "name": b.name,
-                "move_id": b.move_id,
-                "score": b.score,
-                "summary": b.compiled_plan.get("summary", "") if b.compiled_plan else "",
-                "evaluation": b.evaluation,
-            }
-            for b in interesting_failed
-        ],
+        "interesting_but_failed": [_audit_row(b) for b in interesting_failed],
+        "rejected": [_audit_row(b) for b in rejected],
+        "analytical": [_audit_row(b) for b in analytical],
     }
 
 
@@ -418,6 +431,28 @@ async def commit_experiment(
     experiment = engine.get_experiment(experiment_id)
     if not experiment:
         return {"error": f"Experiment {experiment_id} not found"}
+
+    # Refuse to commit branches the classifier rejected or that were
+    # analytical-only. Those statuses exist specifically so callers
+    # can't route them into re-application, and ranked_branches()
+    # already excludes them — so reaching commit with such a branch
+    # means the caller is bypassing the ranking layer.
+    target = experiment.get_branch(branch_id)
+    if target is None:
+        return {"error": f"Branch {branch_id} not found"}
+    if target.status in ("rejected", "analytical", "failed"):
+        return {
+            "error": (
+                f"Cannot commit branch with status '{target.status}'. "
+                f"'rejected' = hard-rule classifier rolled back; "
+                f"'analytical' = no executable plan; "
+                f"'failed' = zero steps applied successfully. "
+                f"Use compare_experiments to see eligible winners "
+                f"(only status='evaluated' branches are ranking candidates)."
+            ),
+            "branch_id": branch_id,
+            "branch_status": target.status,
+        }
 
     ableton = _get_ableton(ctx)
     bridge = ctx.lifespan_context.get("m4l")

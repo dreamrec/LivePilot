@@ -691,6 +691,11 @@ def generate_branch_seeds(
 
     When kernel is None, the function still works — it just skips the
     kernel-driven sources (technique memory, freshness-gated inversion).
+
+    Does NOT include synthesis or composer seeds — those emit
+    (seed, compiled_plan) pairs and must be handled by callers that
+    can thread plans through. Use generate_branch_seeds_and_plans() for
+    the full multi-producer assembly.
     """
     kernel = kernel or {}
     song_brain = song_brain or {}
@@ -820,3 +825,128 @@ def generate_branch_seeds(
             used_hypotheses.add(hyp.lower())
 
     return seeds
+
+
+def generate_branch_seeds_and_plans(
+    request_text: str,
+    kernel: Optional[dict] = None,
+    song_brain: Optional[dict] = None,
+    active_constraints: object = None,
+    taste_graph: object = None,
+    max_seeds: int = 3,
+    synth_profiles: Optional[list] = None,
+    composer_request: Optional[str] = None,
+    composer_count: int = 2,
+) -> tuple[list[BranchSeed], dict[str, dict]]:
+    """Full multi-producer branch assembly with pre-compiled plans.
+
+    Extends ``generate_branch_seeds`` to reach the synthesis and composer
+    producers — both of which emit ``(seed, compiled_plan)`` pairs that
+    cannot be expressed through the seed-only return type of the base
+    function. Returns a tuple:
+
+      (seeds, compiled_plans_by_seed_id)
+
+    where ``compiled_plans_by_seed_id`` maps seed_id → plan dict. Seeds
+    from producers that don't compile ship with their seed_id absent
+    from the dict (e.g. analytical seeds, corpus hints).
+
+    Additional inputs beyond the base function:
+
+      synth_profiles: list of :class:`SynthProfile` objects (from
+        ``synthesis_brain.analyze_synth_patch``). When non-empty, each
+        profile is passed to ``propose_synth_branches`` and the returned
+        pairs are merged into the output. Typically the caller fetches
+        device parameters via ``ableton.send_command('get_device_parameters')``
+        and builds a profile per device before calling this function.
+
+      composer_request: natural-language composition prompt. When set,
+        ``propose_composer_branches`` is invoked with it and the emitted
+        pairs are merged. For composition-shaped requests, pass
+        ``request_text`` here.
+
+      composer_count: max composer branches to emit (default 2).
+
+    Ordering matches generate_branch_seeds where sources overlap:
+    semantic_move → technique → synthesis → sacred-inversion → composer
+    → corpus hints. max_seeds still caps total output.
+    """
+    # Base seeds (semantic_move, technique, sacred-inversion, corpus)
+    base_seeds = generate_branch_seeds(
+        request_text=request_text,
+        kernel=kernel,
+        song_brain=song_brain,
+        active_constraints=active_constraints,
+        taste_graph=taste_graph,
+        max_seeds=max_seeds,
+    )
+
+    # Copy the base seeds so we can interleave producer seeds without
+    # mutating the cached list (if the caller happens to share it).
+    seeds: list[BranchSeed] = list(base_seeds)
+    plans_by_seed: dict[str, dict] = {}
+    used_hypotheses = {s.hypothesis.lower() for s in seeds}
+    budget_remaining = max(0, max_seeds - len(seeds))
+
+    # ── synthesis producer ────────────────────────────────────────────
+    if budget_remaining > 0 and synth_profiles:
+        try:
+            from ..synthesis_brain import propose_synth_branches
+        except ImportError as exc:
+            logger.warning("synthesis_brain unavailable: %s", exc)
+            propose_synth_branches = None
+
+        if propose_synth_branches is not None:
+            for profile in synth_profiles:
+                if budget_remaining <= 0:
+                    break
+                try:
+                    pairs = propose_synth_branches(profile, kernel=kernel)
+                except Exception as exc:
+                    logger.warning(
+                        "propose_synth_branches failed for %s: %s",
+                        getattr(profile, "device_name", "?"),
+                        exc,
+                    )
+                    continue
+                for seed, plan in pairs:
+                    if budget_remaining <= 0:
+                        break
+                    if seed.hypothesis.lower() in used_hypotheses:
+                        continue
+                    seeds.append(seed)
+                    plans_by_seed[seed.seed_id] = plan
+                    used_hypotheses.add(seed.hypothesis.lower())
+                    budget_remaining -= 1
+
+    # ── composer producer ────────────────────────────────────────────
+    if budget_remaining > 0 and composer_request:
+        try:
+            from ..composer import propose_composer_branches
+        except ImportError as exc:
+            logger.warning("composer branch producer unavailable: %s", exc)
+            propose_composer_branches = None
+
+        if propose_composer_branches is not None:
+            try:
+                comp_pairs = propose_composer_branches(
+                    request_text=composer_request,
+                    kernel=kernel,
+                    count=min(composer_count, budget_remaining),
+                )
+            except Exception as exc:
+                logger.warning("propose_composer_branches failed: %s", exc)
+                comp_pairs = []
+
+            for seed, plan in comp_pairs:
+                if budget_remaining <= 0:
+                    break
+                if seed.hypothesis.lower() in used_hypotheses:
+                    continue
+                seeds.append(seed)
+                if plan:  # composer may return {} for analytical-only branches
+                    plans_by_seed[seed.seed_id] = plan
+                used_hypotheses.add(seed.hypothesis.lower())
+                budget_remaining -= 1
+
+    return seeds, plans_by_seed

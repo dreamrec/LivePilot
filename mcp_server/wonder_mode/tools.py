@@ -17,6 +17,96 @@ from . import engine
 logger = logging.getLogger(__name__)
 
 
+def _build_synth_profiles_for_wonder(ctx, request_text: str, diagnosis: dict) -> list:
+    """Build SynthProfile objects for every track holding a native synth.
+
+    Wires the synthesis_brain producer into enter_wonder_mode's runtime
+    flow — without this helper, ``propose_synth_branches`` is registered
+    but unreachable from the MCP surface.
+
+    Returns a list of SynthProfile objects (possibly empty). All errors
+    are swallowed and logged — missing devices, disconnected Ableton,
+    unsupported devices all land as "no synth branches" rather than
+    failing the whole wonder session.
+    """
+    try:
+        from ..synthesis_brain import analyze_synth_patch, supported_devices
+    except ImportError as exc:
+        logger.debug("synthesis_brain not importable: %s", exc)
+        return []
+
+    ableton = ctx.lifespan_context.get("ableton")
+    if ableton is None:
+        return []
+
+    try:
+        session = ableton.send_command("get_session_info", {})
+    except Exception as exc:
+        logger.debug("session fetch for synth profiles failed: %s", exc)
+        return []
+    if not isinstance(session, dict) or "error" in session:
+        return []
+
+    native_names = set(supported_devices())
+    profiles: list = []
+
+    tracks = session.get("tracks") or []
+    for track in tracks:
+        track_index = track.get("index")
+        devices = track.get("devices") or []
+        if track_index is None or not devices:
+            continue
+        for dev in devices:
+            dev_name = dev.get("name") or dev.get("class_name") or ""
+            if dev_name not in native_names:
+                continue
+            dev_index = dev.get("index")
+            if dev_index is None:
+                continue
+            try:
+                params_result = ableton.send_command(
+                    "get_device_parameters",
+                    {"track_index": track_index, "device_index": dev_index},
+                )
+            except Exception as exc:
+                logger.debug(
+                    "get_device_parameters failed for track=%s device=%s: %s",
+                    track_index, dev_index, exc,
+                )
+                continue
+            if not isinstance(params_result, dict) or "error" in params_result:
+                continue
+
+            parameter_state = {}
+            display_values = {}
+            for p in params_result.get("parameters", []) or []:
+                name = p.get("name")
+                if name is None:
+                    continue
+                parameter_state[name] = p.get("value")
+                if "value_string" in p:
+                    display_values[name] = p["value_string"]
+
+            try:
+                profile = analyze_synth_patch(
+                    device_name=dev_name,
+                    track_index=track_index,
+                    device_index=dev_index,
+                    parameter_state=parameter_state,
+                    display_values=display_values,
+                    role_hint=track.get("name", ""),
+                )
+                profiles.append(profile)
+            except Exception as exc:
+                logger.warning(
+                    "analyze_synth_patch failed for %s on track %s: %s",
+                    dev_name, track_index, exc,
+                )
+                continue
+
+    return profiles
+
+
 def _get_song_brain_dict() -> dict:
     try:
         from ..song_brain.tools import _current_brain
@@ -193,19 +283,40 @@ def enter_wonder_mode(
     # so lean slightly toward surprise.
     branch_kernel["freshness"] = 0.65
 
+    # Build SynthProfiles for tracks mentioned in the request or for every
+    # track that holds a native synth. Lets propose_synth_branches reach
+    # the runtime — without this the producer is dark despite being
+    # registered in the conductor.
+    synth_profiles = _build_synth_profiles_for_wonder(ctx, request_text, diag_dict)
+
+    # Composer branches fire when the base conductor routes to
+    # composition — otherwise we'd be emitting composition scaffolding
+    # for every mix/transition request, which is noise.
+    composer_request: str = ""
     try:
-        branch_seeds = engine.generate_branch_seeds(
+        from ..tools._conductor import classify_request
+        base_plan = classify_request(request_text)
+        if base_plan.routes and base_plan.routes[0].engine == "composition":
+            composer_request = request_text
+    except Exception as exc:
+        logger.debug("composer routing check failed: %s", exc)
+
+    try:
+        branch_seeds, compiled_plans_by_seed = engine.generate_branch_seeds_and_plans(
             request_text=request_text,
             kernel=branch_kernel,
             song_brain=song_brain,
             active_constraints=active_constraints,
             taste_graph=taste_graph,
+            synth_profiles=synth_profiles,
+            composer_request=composer_request or None,
         )
         branch_seeds_dicts = [s.to_dict() for s in branch_seeds]
     except Exception as exc:
         # Seed assembly is additive — never let it break wonder mode.
-        logger.warning("generate_branch_seeds failed: %s", exc)
+        logger.warning("generate_branch_seeds_and_plans failed: %s", exc)
         branch_seeds_dicts = []
+        compiled_plans_by_seed = {}
 
     # 3. Create WonderSession (unique per invocation, not deterministic)
     import hashlib, time
@@ -248,9 +359,16 @@ def enter_wonder_mode(
         "recommended": result.get("recommended", ""),
         "variant_count_actual": result.get("variant_count_actual", 0),
         "degraded_reason": ws.degraded_reason,
-        # PR6 — branch-native seeds from four producers. Feed directly to
-        # create_experiment(seeds=...) or create_experiment_from_seeds().
+        # Branch-native seeds from six producers (semantic_move, technique,
+        # synthesis, sacred-inversion, composer, corpus). Feed directly to
+        # create_experiment(seeds=[...], compiled_plans=[...]) — align the
+        # compiled_plans list with branch_seeds by matching seed_ids.
         "branch_seeds": branch_seeds_dicts,
+        # seed_id → pre-compiled plan dict. Only synthesis and composer
+        # seeds currently populate this — other sources either defer
+        # compilation to run_experiment (semantic_move) or stay analytical
+        # (technique reuse, sacred-inversion, corpus hints).
+        "compiled_plans_by_seed_id": compiled_plans_by_seed,
         "mode": "wonder",
     }
 
