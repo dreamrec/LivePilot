@@ -3,6 +3,13 @@
 Generates contextually different creative variants ranked by
 taste, identity, and coherence. Each variant is built from a
 real semantic move matched to the request.
+
+PR6 adds a branch-native assembly path (generate_branch_seeds) that emits
+BranchSeed objects from multiple producers — semantic_move, technique
+memory, sacred-element inversion, and corpus-hint freeform seeds. The
+existing generate_wonder_variants path is untouched; callers that speak
+BranchSeed can consume the new function, callers that speak "variants"
+keep the old one.
 """
 
 from __future__ import annotations
@@ -12,6 +19,8 @@ import json
 import logging
 import math
 from typing import Optional
+
+from ..branches import BranchSeed, seed_from_move_id, freeform_seed
 
 logger = logging.getLogger(__name__)
 
@@ -626,3 +635,318 @@ def _wonder_id(request_text: str, kernel_id: str) -> str:
     """Deterministic variant ID prefix — no timestamp."""
     seed = json.dumps({"r": request_text, "k": kernel_id}, sort_keys=True)
     return "wm_" + hashlib.sha256(seed.encode()).hexdigest()[:10]
+
+
+# ── PR6 — branch-native seed assembly ────────────────────────────────────
+
+
+def _stable_seed_short_id(prefix: str, key: str) -> str:
+    """Deterministic short id for a seed, no timestamp."""
+    h = hashlib.sha256(f"{prefix}:{key}".encode()).hexdigest()[:10]
+    return f"{prefix}_{h}"
+
+
+_MOVE_NOVELTY_BY_INDEX = ("safe", "strong", "unexpected")
+
+
+def generate_branch_seeds(
+    request_text: str,
+    kernel: Optional[dict] = None,
+    song_brain: Optional[dict] = None,
+    active_constraints: object = None,
+    taste_graph: object = None,
+    max_seeds: int = 3,
+) -> list[BranchSeed]:
+    """Assemble BranchSeeds from multiple creative sources.
+
+    Branch-native companion to ``generate_wonder_variants``. Instead of
+    returning pre-built variant dicts tied to moves, emits BranchSeed
+    objects that can be fed to ``create_experiment_from_seeds`` or
+    ``create_experiment(seeds=[...])`` directly.
+
+    Sources (assembled in this order until max_seeds is reached):
+
+      1. ``semantic_move`` — one seed per distinct move discovered by
+         ``discover_moves`` + ``select_distinct_variants``. Novelty tier
+         is assigned positionally: first move = safe, second = strong,
+         third = unexpected.
+
+      2. ``technique`` — freeform seeds built from kernel.session_memory
+         entries whose category is "technique" or "success". Low-novelty
+         by design (known-good).
+
+      3. sacred-element inversion — freeform seeds that deliberately
+         contrast a sacred element from ``song_brain.sacred_elements``.
+         Only emitted when kernel.freshness >= 0.5. High-novelty,
+         high-risk. These seeds are typically analytical until a
+         producer (Wonder itself or synthesis_brain) compiles them.
+
+      4. corpus hints — freeform seeds built from ``_get_corpus_hints``.
+         Medium novelty, grounded in the corpus knowledge base.
+
+    Distinctness rules:
+      - At most one seed with each exact hypothesis (case-insensitive)
+      - semantic_move seeds already pass through select_distinct_variants
+        so their (family, plan_shape) distinctness is preserved
+
+    When kernel is None, the function still works — it just skips the
+    kernel-driven sources (technique memory, freshness-gated inversion).
+
+    Does NOT include synthesis or composer seeds — those emit
+    (seed, compiled_plan) pairs and must be handled by callers that
+    can thread plans through. Use generate_branch_seeds_and_plans() for
+    the full multi-producer assembly.
+    """
+    kernel = kernel or {}
+    song_brain = song_brain or {}
+    seeds: list[BranchSeed] = []
+    used_hypotheses: set[str] = set()
+    freshness = float(kernel.get("freshness", 0.5) or 0.5)
+
+    # ── 1. semantic_move seeds ────────────────────────────────────────
+    moves = discover_moves(
+        request_text,
+        taste_graph=taste_graph,
+        active_constraints=active_constraints,
+    )
+    distinct_moves = select_distinct_variants(moves)
+
+    for i, move in enumerate(distinct_moves):
+        if len(seeds) >= max_seeds:
+            return seeds
+        label = _MOVE_NOVELTY_BY_INDEX[i] if i < len(_MOVE_NOVELTY_BY_INDEX) else "strong"
+        hypothesis = move.get("intent") or f"Apply {move.get('move_id', '')}"
+        seed = seed_from_move_id(
+            move_id=move.get("move_id", ""),
+            hypothesis=hypothesis,
+            novelty_label=label,
+            risk_label=move.get("risk_level", "low"),
+            distinctness_reason=_explain_distinctness(move, distinct_moves, i),
+        )
+        seeds.append(seed)
+        used_hypotheses.add(hypothesis.lower())
+
+    # ── 2. technique seeds from session memory ────────────────────────
+    session_mem = kernel.get("session_memory") or []
+    for mem in session_mem:
+        if len(seeds) >= max_seeds:
+            return seeds
+        if mem.get("category") not in ("technique", "success"):
+            continue
+        content = (mem.get("content") or "").strip()
+        if not content:
+            continue
+        hyp = f"Replay: {content[:100]}"
+        if hyp.lower() in used_hypotheses:
+            continue
+        seed = freeform_seed(
+            seed_id=_stable_seed_short_id("tech", content),
+            hypothesis=hyp,
+            source="technique",
+            novelty_label="safe",
+            risk_label="low",
+            distinctness_reason="recalled from session memory — known to work",
+        )
+        seeds.append(seed)
+        used_hypotheses.add(hyp.lower())
+
+    # ── 3. sacred-element inversion (freshness-gated) ────────────────
+    if freshness >= 0.5:
+        sacred = song_brain.get("sacred_elements") or []
+        for s in sacred[:2]:
+            if len(seeds) >= max_seeds:
+                return seeds
+            elem_type = s.get("element_type", "element")
+            desc = s.get("description") or elem_type
+            hyp = f"What if we invert {desc}?"
+            if hyp.lower() in used_hypotheses:
+                continue
+            # Protect every OTHER sacred element — the point is to contrast
+            # one of them deliberately.
+            other_protected = [
+                other.get("element_type", "")
+                for other in sacred
+                if other.get("element_type") != elem_type
+            ]
+            seed = freeform_seed(
+                seed_id=_stable_seed_short_id("invert", elem_type),
+                hypothesis=hyp,
+                source="freeform",
+                novelty_label="unexpected",
+                risk_label="high",
+                protected_qualities=[p for p in other_protected if p],
+                distinctness_reason=(
+                    f"deliberately contrasts the '{desc}' that baseline "
+                    f"branches preserve"
+                ),
+            )
+            seeds.append(seed)
+            used_hypotheses.add(hyp.lower())
+
+    # ── 4. corpus-hint seeds ──────────────────────────────────────────
+    corpus_hints = _get_corpus_hints(request_text, song_brain.get("diagnosis"))
+    if corpus_hints:
+        for kind, hint in corpus_hints.items():
+            if len(seeds) >= max_seeds:
+                return seeds
+            if not isinstance(hint, dict):
+                continue
+            if kind == "emotional_recipe":
+                hyp = (
+                    f"Apply {hint.get('emotion', 'emotional')} recipe "
+                    f"({hint.get('technique_count', 0)} techniques)"
+                )
+            elif kind == "genre_chain":
+                devices = hint.get("devices", []) or []
+                hyp = (
+                    f"Build {hint.get('genre', 'genre')} chain: "
+                    f"{', '.join(devices[:3])}"
+                )
+            elif kind == "physical_model":
+                devices = hint.get("devices", []) or []
+                hyp = (
+                    f"Model {hint.get('material', 'material')} via "
+                    f"{', '.join(devices[:3])}"
+                )
+            else:
+                continue
+
+            if hyp.lower() in used_hypotheses:
+                continue
+            seed = freeform_seed(
+                seed_id=_stable_seed_short_id("corpus", f"{kind}:{hyp}"),
+                hypothesis=hyp,
+                source="freeform",
+                novelty_label="strong",
+                risk_label="medium",
+                distinctness_reason=f"corpus-grounded {kind.replace('_', ' ')}",
+            )
+            seeds.append(seed)
+            used_hypotheses.add(hyp.lower())
+
+    return seeds
+
+
+def generate_branch_seeds_and_plans(
+    request_text: str,
+    kernel: Optional[dict] = None,
+    song_brain: Optional[dict] = None,
+    active_constraints: object = None,
+    taste_graph: object = None,
+    max_seeds: int = 3,
+    synth_profiles: Optional[list] = None,
+    composer_request: Optional[str] = None,
+    composer_count: int = 2,
+) -> tuple[list[BranchSeed], dict[str, dict]]:
+    """Full multi-producer branch assembly with pre-compiled plans.
+
+    Extends ``generate_branch_seeds`` to reach the synthesis and composer
+    producers — both of which emit ``(seed, compiled_plan)`` pairs that
+    cannot be expressed through the seed-only return type of the base
+    function. Returns a tuple:
+
+      (seeds, compiled_plans_by_seed_id)
+
+    where ``compiled_plans_by_seed_id`` maps seed_id → plan dict. Seeds
+    from producers that don't compile ship with their seed_id absent
+    from the dict (e.g. analytical seeds, corpus hints).
+
+    Additional inputs beyond the base function:
+
+      synth_profiles: list of :class:`SynthProfile` objects (from
+        ``synthesis_brain.analyze_synth_patch``). When non-empty, each
+        profile is passed to ``propose_synth_branches`` and the returned
+        pairs are merged into the output. Typically the caller fetches
+        device parameters via ``ableton.send_command('get_device_parameters')``
+        and builds a profile per device before calling this function.
+
+      composer_request: natural-language composition prompt. When set,
+        ``propose_composer_branches`` is invoked with it and the emitted
+        pairs are merged. For composition-shaped requests, pass
+        ``request_text`` here.
+
+      composer_count: max composer branches to emit (default 2).
+
+    Ordering matches generate_branch_seeds where sources overlap:
+    semantic_move → technique → synthesis → sacred-inversion → composer
+    → corpus hints. max_seeds still caps total output.
+    """
+    # Base seeds (semantic_move, technique, sacred-inversion, corpus)
+    base_seeds = generate_branch_seeds(
+        request_text=request_text,
+        kernel=kernel,
+        song_brain=song_brain,
+        active_constraints=active_constraints,
+        taste_graph=taste_graph,
+        max_seeds=max_seeds,
+    )
+
+    # Copy the base seeds so we can interleave producer seeds without
+    # mutating the cached list (if the caller happens to share it).
+    seeds: list[BranchSeed] = list(base_seeds)
+    plans_by_seed: dict[str, dict] = {}
+    used_hypotheses = {s.hypothesis.lower() for s in seeds}
+    budget_remaining = max(0, max_seeds - len(seeds))
+
+    # ── synthesis producer ────────────────────────────────────────────
+    if budget_remaining > 0 and synth_profiles:
+        try:
+            from ..synthesis_brain import propose_synth_branches
+        except ImportError as exc:
+            logger.warning("synthesis_brain unavailable: %s", exc)
+            propose_synth_branches = None
+
+        if propose_synth_branches is not None:
+            for profile in synth_profiles:
+                if budget_remaining <= 0:
+                    break
+                try:
+                    pairs = propose_synth_branches(profile, kernel=kernel)
+                except Exception as exc:
+                    logger.warning(
+                        "propose_synth_branches failed for %s: %s",
+                        getattr(profile, "device_name", "?"),
+                        exc,
+                    )
+                    continue
+                for seed, plan in pairs:
+                    if budget_remaining <= 0:
+                        break
+                    if seed.hypothesis.lower() in used_hypotheses:
+                        continue
+                    seeds.append(seed)
+                    plans_by_seed[seed.seed_id] = plan
+                    used_hypotheses.add(seed.hypothesis.lower())
+                    budget_remaining -= 1
+
+    # ── composer producer ────────────────────────────────────────────
+    if budget_remaining > 0 and composer_request:
+        try:
+            from ..composer import propose_composer_branches
+        except ImportError as exc:
+            logger.warning("composer branch producer unavailable: %s", exc)
+            propose_composer_branches = None
+
+        if propose_composer_branches is not None:
+            try:
+                comp_pairs = propose_composer_branches(
+                    request_text=composer_request,
+                    kernel=kernel,
+                    count=min(composer_count, budget_remaining),
+                )
+            except Exception as exc:
+                logger.warning("propose_composer_branches failed: %s", exc)
+                comp_pairs = []
+
+            for seed, plan in comp_pairs:
+                if budget_remaining <= 0:
+                    break
+                if seed.hypothesis.lower() in used_hypotheses:
+                    continue
+                seeds.append(seed)
+                if plan:  # composer may return {} for analytical-only branches
+                    plans_by_seed[seed.seed_id] = plan
+                used_hypotheses.add(seed.hypothesis.lower())
+                budget_remaining -= 1
+
+    return seeds, plans_by_seed

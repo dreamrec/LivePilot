@@ -17,7 +17,7 @@
 
 <p align="center">
   An agentic production system for Ableton Live 12.<br>
-  398 tools. 51 domains. Device atlas. Splice integration. Auto-composition. Spectral perception. Technique memory.
+  398 tools. 52 domains. Device atlas. Splice integration. Auto-composition. Spectral perception. Technique memory.
 </p>
 
 <br>
@@ -80,7 +80,7 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 │                           ▼                                          │
 │                  ┌─────────────────┐                                  │
 │                  │   398 MCP Tools  │                                  │
-│                  │   51 domains     │                                  │
+│                  │   52 domains     │                                  │
 │                  └────────┬────────┘                                  │
 │                           │                                          │
 │           Remote Script ──┤── TCP 9878                                │
@@ -172,7 +172,7 @@ Every engine follows: **measure before → act → measure after → compare**. 
 
 ## Tools
 
-398 tools across 51 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
+398 tools across 52 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
 
 <br>
 

@@ -1,11 +1,11 @@
 ---
 name: livepilot-core
-description: Core discipline for LivePilot — agentic production system for Ableton Live 12. 398 tools across 51 domains. This skill should be used whenever working with Ableton Live through MCP tools. Provides golden rules, tool speed tiers, error handling protocol, and pointers to domain and engine skills.
+description: Core discipline for LivePilot — agentic production system for Ableton Live 12. 398 tools across 52 domains. This skill should be used whenever working with Ableton Live through MCP tools. Provides golden rules, tool speed tiers, error handling protocol, and pointers to domain and engine skills.
 ---
 
 # LivePilot Core — Ableton Live 12
 
-Agentic production system for Ableton Live 12. 398 tools across 51 domains, three layers:
+Agentic production system for Ableton Live 12. 398 tools across 52 domains, three layers:
 
 - **Device Atlas** — 1305 devices indexed (81 enriched with sonic intelligence, 683 drum kits). Consult `atlas_search` or `atlas_suggest` before loading any device. Never guess a device name.
 - **M4L Analyzer** — Real-time audio analysis on the master bus (8-band spectrum, RMS/peak, key detection). Optional — all core tools work without it.
@@ -140,15 +140,35 @@ Deep production knowledge in `references/`:
 
 ## V2 Orchestration Layer
 
-For complex requests, use the V2 orchestration flow instead of ad-hoc tool calls:
+For complex requests, use the V2 orchestration flow instead of ad-hoc tool calls. There are **two peer flows** — choose based on intent:
 
-### Standard V2 Flow
+### Flow A — Targeted (recipe-first, for specific fixes)
+Use when the user has a concrete, specific request ("tighten the low end", "make the drums punchier", "fix the masking").
+
 1. **`route_request`** — classify the request, get recommended engines and workflow mode
-2. **`get_session_kernel`** — build the unified turn snapshot (session, capabilities, taste, memory)
+2. **`get_session_kernel`** — build the unified turn snapshot
 3. **`propose_next_best_move`** — get ranked semantic move suggestions (taste-aware)
 4. **`preview_semantic_move`** — see what a move will do before committing
-5. **`apply_semantic_move`** — compile and execute the move (mode-dependent)
+5. **`apply_semantic_move`** — compile and execute the move
 6. **Evaluate** — use the appropriate evaluator to check the result
+
+### Flow B — Exploratory (branch-native, for creative search)
+Use when the user wants options, variants, or is stuck ("surprise me", "try some things", "I don't know what I want", "make it more like X"). **Flow B is also correct when `route_request` returns `workflow_mode="creative_search"`.**
+
+1. **`get_session_kernel`** — include creative controls when relevant:
+   - `freshness=0.8` to bias toward surprise (default 0.5)
+   - `creativity_profile="alchemist"` / `"surgeon"` / `"sculptor"` to set producer philosophy
+   - `sacred_elements=[...]` if the user named protected parts
+   - `synth_hints={"track_indices": [...], "preferred_devices": [...]}` for synth work
+2. **`create_experiment`** with *seeds*, not just move_ids:
+   - Each seed is a `BranchSeed` dict (or let Wonder emit them for you)
+   - Seeds with source `"semantic_move"` compile via the registry at run time
+   - Seeds with source `"freeform" / "synthesis" / "composer" / "technique"` must arrive with a pre-compiled plan attached via the parallel `compiled_plans=[...]` list
+3. **`run_experiment`** — trials each branch; respects pre-compiled plans
+4. **`compare_experiments`** — rank by score
+5. **`commit_experiment`** — apply winner; or `discard_experiment` to throw everything away
+
+**Rule of thumb**: if the user asked for a specific fix, Flow A. If they asked "what would you do?" or mentioned feel/vibe without parameters, Flow B.
 
 ### Semantic Moves
 High-level musical intents that compile to deterministic tool sequences. 5 families:
@@ -160,12 +180,40 @@ High-level musical intents that compile to deterministic tool sequences. 5 famil
 
 Use `list_semantic_moves(domain="mix")` to discover available moves.
 
-### Experiment Branching
-For creative exploration, use experiment branching to compare multiple approaches:
-1. `create_experiment(request_text="make it punchier")` — auto-proposes branches
-2. `run_experiment(experiment_id)` — trials each branch (apply → capture → undo)
-3. `compare_experiments(experiment_id)` — rank branches by score
-4. `commit_experiment(experiment_id, branch_id)` — apply winner permanently
+### Experiment Branching — Seed-Based (canonical, PR3+)
+
+Experiments support both the legacy `move_ids` path and the new `seeds` path. Prefer `seeds` for anything exploratory:
+
+```
+# Legacy / targeted — one semantic_move per branch:
+create_experiment(request_text="make it punchier", move_ids=["make_punchier", "widen_stereo"])
+
+# Branch-native / exploratory — mixed sources, pre-compiled plans allowed:
+create_experiment(
+    request_text="surprise me",
+    seeds=[
+        {"seed_id": "a", "source": "semantic_move", "move_id": "make_punchier",
+         "novelty_label": "safe", "risk_label": "low"},
+        {"seed_id": "b", "source": "freeform", "hypothesis": "Audio-rate LFO into filter cutoff",
+         "novelty_label": "unexpected", "risk_label": "medium"},
+        {"seed_id": "c", "source": "synthesis", "hypothesis": "Wavetable morph across positions",
+         "novelty_label": "strong"},
+    ],
+    compiled_plans=[None, {"steps": [...], "step_count": N}, {"steps": [...], "step_count": M}],
+)
+```
+
+**Never claim a branch is previewable unless it has a valid `compiled_plan`.** Analytical-only branches (no plan, or seed marked `analytical_only=true`) short-circuit to a neutral evaluation — they're directional suggestions, not executable paths.
+
+### Branch Status Vocabulary
+Branches carry a status string that governs lifecycle:
+- `pending` — created, not yet run
+- `running` — apply pass in progress
+- `evaluated` — ran and was scored; may be kept or discarded
+- `committed` / `committed_with_errors` — winner was applied permanently
+- `discarded` — rolled back or abandoned
+- `interesting_but_failed` — (PR7+) failed hard technical gates but surfaced novel ideas; kept for audit, not re-applied
+- `failed` — couldn't apply any steps; do not claim success
 
 ### Taste-Aware Ranking
 The system learns user preferences from kept/undone moves:

@@ -205,3 +205,120 @@ def test_get_session_kernel_marks_analyzer_available_when_fresh():
     assert analyzer["available"] is True
     assert analyzer["mode"] == "measured"
     assert analyzer["reasons"] == []
+
+
+# ── PR2 — creative controls on SessionKernel ────────────────────────────
+
+
+def test_kernel_creative_controls_default_empty():
+    """Back-compat: legacy callers leave creative controls untouched and
+    see empty defaults — matches the pre-PR2 surface exactly."""
+    kernel = build_session_kernel(
+        session_info={"tempo": 120, "track_count": 4, "tracks": []},
+        capability_state={"overall_mode": "normal"},
+    )
+    assert kernel.freshness == 0.5
+    assert kernel.creativity_profile == ""
+    assert kernel.sacred_elements == []
+    assert kernel.synth_hints == {}
+
+
+def test_kernel_accepts_freshness_and_creativity_profile():
+    kernel = build_session_kernel(
+        session_info={"tempo": 120, "track_count": 4, "tracks": []},
+        capability_state={"overall_mode": "normal"},
+        freshness=0.9,
+        creativity_profile="alchemist",
+    )
+    assert kernel.freshness == 0.9
+    assert kernel.creativity_profile == "alchemist"
+
+
+def test_kernel_accepts_sacred_elements_and_synth_hints():
+    sacred = [{"element_type": "hook", "description": "the filtered stab", "salience": 0.9}]
+    synth = {
+        "track_indices": [3],
+        "target_timbre": {"brightness": 0.3, "width": 0.2},
+        "preferred_devices": ["Wavetable"],
+    }
+    kernel = build_session_kernel(
+        session_info={"tempo": 120, "track_count": 4, "tracks": []},
+        capability_state={"overall_mode": "normal"},
+        sacred_elements=sacred,
+        synth_hints=synth,
+    )
+    assert kernel.sacred_elements == sacred
+    assert kernel.synth_hints == synth
+
+
+def test_kernel_id_unaffected_by_creative_fields():
+    """Regression guard: kernel_id hash is intentionally frozen in PR2 so
+    existing consumers see the same id for the same (tempo, track_count,
+    request_text, mode) — even if freshness/creativity_profile differ."""
+    base = dict(
+        session_info={"tempo": 120, "track_count": 2, "tracks": []},
+        capability_state={"overall_mode": "normal"},
+        request_text="test",
+        mode="improve",
+    )
+    k_low = build_session_kernel(**base, freshness=0.1, creativity_profile="surgeon")
+    k_high = build_session_kernel(**base, freshness=0.9, creativity_profile="alchemist")
+    assert k_low.kernel_id == k_high.kernel_id
+
+
+def test_kernel_to_dict_roundtrip_includes_creative_fields():
+    kernel = build_session_kernel(
+        session_info={"tempo": 120, "track_count": 2, "tracks": []},
+        capability_state={"overall_mode": "normal"},
+        freshness=0.7,
+        creativity_profile="sculptor",
+        sacred_elements=[{"element_type": "pad", "description": "the chord bed"}],
+        synth_hints={"track_indices": [2]},
+    )
+    d = kernel.to_dict()
+    assert d["freshness"] == 0.7
+    assert d["creativity_profile"] == "sculptor"
+    assert d["sacred_elements"][0]["description"] == "the chord bed"
+    assert d["synth_hints"]["track_indices"] == [2]
+
+
+def test_get_session_kernel_mcp_tool_accepts_creative_params():
+    """The public MCP tool must accept the new optional kwargs and thread
+    them into the returned kernel dict."""
+    from mcp_server.runtime.tools import get_session_kernel
+
+    class _Ableton:
+        def send_command(self, cmd, params=None):
+            return {"tempo": 120, "track_count": 2, "tracks": []}
+
+    ctx = SimpleNamespace(lifespan_context={"ableton": _Ableton(), "action_ledger": SessionLedger()})
+
+    result = get_session_kernel(
+        ctx,
+        request_text="surprise me",
+        freshness=0.85,
+        creativity_profile="alchemist",
+        sacred_elements=[{"element_type": "hook", "description": "stab", "salience": 0.9}],
+        synth_hints={"track_indices": [3]},
+    )
+    assert result["freshness"] == 0.85
+    assert result["creativity_profile"] == "alchemist"
+    assert result["sacred_elements"][0]["element_type"] == "hook"
+    assert result["synth_hints"]["track_indices"] == [3]
+
+
+def test_get_session_kernel_legacy_callers_unaffected():
+    """Pre-PR2 call pattern still works and leaves creative fields at defaults."""
+    from mcp_server.runtime.tools import get_session_kernel
+
+    class _Ableton:
+        def send_command(self, cmd, params=None):
+            return {"tempo": 120, "track_count": 2, "tracks": []}
+
+    ctx = SimpleNamespace(lifespan_context={"ableton": _Ableton(), "action_ledger": SessionLedger()})
+    # Exact same call shape as the pre-PR2 tests above.
+    result = get_session_kernel(ctx, request_text="make it tighter")
+    assert result["freshness"] == 0.5
+    assert result["creativity_profile"] == ""
+    assert result["sacred_elements"] == []
+    assert result["synth_hints"] == {}

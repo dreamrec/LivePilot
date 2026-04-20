@@ -48,15 +48,29 @@ class PersistentTasteStore:
             return data
         self._store.update(_update)
 
-    def update_novelty(self, chose_bold: bool) -> None:
-        """Update novelty band from experiment choice."""
+    def update_novelty(self, chose_bold: bool, goal_mode: str = "improve") -> None:
+        """Update novelty band from experiment choice for a given goal mode.
+
+        PR8: goal_mode defaults to "improve" so legacy callers land on the
+        same band they updated before. The per-mode dict ``novelty_bands``
+        is maintained alongside the flat ``novelty_band`` field; the flat
+        field mirrors the "improve" band.
+        """
         def _update(data: dict) -> dict:
             data = data if data.get("version") == 1 else self._default()
-            band = data.get("novelty_band", 0.5)
+            # Ensure the per-mode dict exists (migrating from legacy shape).
+            bands = data.get("novelty_bands")
+            if not isinstance(bands, dict) or not bands:
+                flat = data.get("novelty_band", 0.5)
+                bands = {"improve": flat, "explore": flat}
+            current = bands.get(goal_mode, 0.5)
             if chose_bold:
-                data["novelty_band"] = min(1.0, band + 0.05)
+                bands[goal_mode] = min(1.0, current + 0.05)
             else:
-                data["novelty_band"] = max(0.0, band - 0.05)
+                bands[goal_mode] = max(0.0, current - 0.05)
+            data["novelty_bands"] = bands
+            # Mirror the improve band onto the flat field for back-compat.
+            data["novelty_band"] = bands.get("improve", 0.5)
             data["evidence_count"] = data.get("evidence_count", 0) + 1
             return data
         self._store.update(_update)
@@ -114,6 +128,8 @@ class PersistentTasteStore:
             "version": 1,
             "move_outcomes": {},
             "novelty_band": 0.5,
+            # PR8 — per-goal-mode novelty bands; novelty_band mirrors "improve"
+            "novelty_bands": {"improve": 0.5, "explore": 0.5},
             "device_affinities": {},
             "anti_preferences": [],
             "dimension_weights": {},

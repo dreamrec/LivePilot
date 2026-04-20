@@ -7,6 +7,8 @@ Tools:
 
 from __future__ import annotations
 
+from typing import Optional
+
 from fastmcp import Context
 
 from ..server import mcp
@@ -79,6 +81,10 @@ def get_session_kernel(
     request_text: str = "",
     mode: str = "improve",
     aggression: float = 0.5,
+    freshness: float = 0.5,
+    creativity_profile: str = "",
+    sacred_elements: Optional[list] = None,
+    synth_hints: Optional[dict] = None,
 ) -> dict:
     """Build the unified turn snapshot for V2 orchestration.
 
@@ -86,11 +92,27 @@ def get_session_kernel(
     Assembles: session info, capability state, action ledger, taste profile,
     anti-preferences, and session memory into one canonical snapshot.
 
-    mode: observe | improve | explore | finish | diagnose
-    aggression: 0.0 (subtle) to 1.0 (bold)
+    Core params:
+      mode: observe | improve | explore | finish | diagnose
+      aggression: 0.0 (subtle) to 1.0 (bold) — execution boldness.
+
+    Creative controls (PR2 — branch-native migration, optional):
+      freshness: 0.0 (don't surprise me) to 1.0 (surprise me). Read by
+        producers (Wonder, synthesis_brain, composer) to bias branch
+        generation. Distinct from aggression, which is about applying
+        a single move boldly; freshness is about how far to roam.
+      creativity_profile: shorthand producer philosophy tag. Known values
+        include "surgeon" (targeted), "alchemist" (transformative),
+        "sculptor" (synthesis-focused). Empty ⇒ producer picks a default.
+      sacred_elements: caller-asserted list of sacred elements that
+        override or augment what song_brain infers. Shape matches
+        song_brain entries: {element_type, description, salience}.
+      synth_hints: focus hints for synthesis_brain; shape is open in PR2
+        and firms up in PR9. Typical keys: track_indices, device_paths,
+        target_timbre, preferred_devices.
 
     Returns: SessionKernel dict with kernel_id, session topology, capabilities,
-    memory context, and routing hints.
+    memory context, routing hints, and (if provided) creative controls.
     """
     from .session_kernel import build_session_kernel
 
@@ -179,6 +201,10 @@ def get_session_kernel(
         session_memory=session_mem,
         taste_graph=taste_graph,
         anti_preferences=anti_prefs,
+        freshness=freshness,
+        creativity_profile=creativity_profile,
+        sacred_elements=sacred_elements,
+        synth_hints=synth_hints,
     )
 
     # Populate routing hints from conductor when request context is available

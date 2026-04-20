@@ -1,5 +1,87 @@
 # Changelog
 
+## 1.13.0 — Branch-native architecture (April 20 2026)
+
+Twelve-PR migration from "match request → pick move → compile move" to
+"understand intent → generate branches → compile branches → compare".
+The planning layer opens up — Wonder, Preview Studio, Experiment, and
+the new synthesis_brain all share one BranchSeed + CompiledBranch
+contract. Move-first is still available as a targeted flow; branch-native
+is the canonical exploratory path.
+
+**No tool count change** (still 398). **Domain count 51 → 52**
+(added `synthesis_brain`). **+175 new tests** across 9 new files
+(2206 → 2387 passing, 1 skipped, 0 failures).
+
+### New substrate (additive, non-breaking)
+
+- **`mcp_server/branches/`** (PR1) — shared `BranchSeed` and
+  `CompiledBranch` types with `seed_from_move_id` / `freeform_seed` /
+  `analytical_seed` factories. `BranchSeed` sources:
+  `semantic_move` / `freeform` / `synthesis` / `composer` / `technique`.
+- **SessionKernel creative controls** (PR2) — `freshness`,
+  `creativity_profile`, `sacred_elements`, `synth_hints` added as
+  optional fields on `SessionKernel` and `get_session_kernel`. Legacy
+  callers see zero behavior change.
+- **ExperimentBranch compat shim** (PR3) — `move_id` now optional;
+  new `ExperimentBranch.from_seed()` classmethod and
+  `create_experiment_from_seeds(seeds=[...], compiled_plans=[...])`
+  entry point. Legacy `create_experiment(move_ids=...)` keeps working
+  and internally delegates via `seed_from_move_id`.
+- **Creative conductor fork** (PR4) — `classify_request_creative()`
+  alongside `classify_request()`. Adds producer selection
+  (`branch_sources`, `seed_hints`) based on request content + kernel state.
+- **`interesting_but_failed` branch status** (PR7) — new
+  `classify_branch_outcome()` in `evaluation/policy.py`. Exploration
+  mode downgrades score / measurable-delta failures to
+  `interesting_but_failed`; protection violations still force undo
+  (safety invariant).
+- **Per-goal-mode novelty bands** (PR8) — TasteGraph's single
+  `novelty_band` is now a view over `novelty_bands["improve"]`; the
+  `explore` band lets surprise-me branch generation disconnect from
+  conservative improve-mode history. `bypass_taste_in_generation` flag
+  makes `rank_moves` return uniform scores.
+
+### Branch-native producers
+
+- **Wonder branch assembler** (PR6) — `generate_branch_seeds()` emits
+  seeds from four sources: semantic_move, technique (session memory),
+  sacred-element inversion (freshness-gated), and corpus hints.
+  `enter_wonder_mode` now surfaces `branch_seeds` alongside variants.
+- **`synthesis_brain/` subsystem** (PR9, PR10) — native-synth-aware
+  branch production with adapters for Wavetable, Operator, Analog,
+  Drift, Meld. `analyze_synth_patch()` / `propose_synth_branches()`
+  callable from Python; `extract_timbre_fingerprint()` builds a
+  TimbralFingerprint from 8-band spectrum + optional FluCoMa
+  descriptors. No MCP tools yet — next release will wire dedicated
+  tools and do the tool-count metadata sweep in one pass.
+- **Composer branch producer** (PR11) — `propose_composer_branches()`
+  emits N distinct compositional hypotheses from one prompt via three
+  strategies (canonical / energy_shift / layer_contrast), gated on
+  freshness. Each branch ships a pre-compiled scaffolding plan.
+
+### Docs refactor
+
+- **Skills + command guides thinned** (PR5) — `livepilot-core/SKILL.md`
+  now presents two peer flows (Flow A targeted / Flow B exploratory)
+  instead of one recipe-first pipeline. `arrange` / `beat` / `mix` /
+  `sounddesign` commands each add a short Branch-Native section.
+- **Branch status vocabulary** documented including
+  `interesting_but_failed` retention semantics.
+
+### Migration notes for callers
+
+- All additions are optional-param / new-function shaped. Any code
+  reading `branch.move_id` keeps working because `ExperimentBranch`
+  mirrors `seed.move_id` there. Any code calling
+  `create_experiment(move_ids=...)` keeps its exact behavior.
+- If you have persistent state on disk (`~/.livepilot/taste.json`):
+  v1.13 migrates `novelty_band` (flat float) to `novelty_bands` (dict)
+  on first read. Old clients reading the file still see the flat field.
+- Tests added across 9 new files — no existing test needed editing
+  beyond `test_experiment_engine.py` (which gains PR3 coverage but
+  keeps every pre-PR3 test passing).
+
 ## 1.12.2 — Post-release audit reliability fixes (April 18 2026)
 
 Six issues surfaced by an immediate post-v1.12.0 deep audit (parallel

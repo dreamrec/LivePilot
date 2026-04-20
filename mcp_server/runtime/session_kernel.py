@@ -45,6 +45,37 @@ class SessionKernel:
     recommended_engines: list = field(default_factory=list)
     recommended_workflow: str = ""
 
+    # ── Creative controls (PR2 — branch-native migration) ──────────────
+    # All optional. Producers (Wonder, synthesis_brain, composer) read these
+    # to bias branch generation. Pre-PR2 callers leave them at defaults and
+    # nothing changes. PR6 (Wonder refactor) and PR9 (synthesis_brain) start
+    # reading them in earnest.
+
+    # 0.0 = conservative / don't surprise me; 1.0 = surprise me.
+    # Distinct from aggression (which is about execution boldness).
+    freshness: float = 0.5
+
+    # Shorthand producer philosophy tag. The sample_engine already uses
+    # "surgeon" / "alchemist" (see livepilot-sample-engine); synth work
+    # may add "sculptor". Empty string = producer picks a default.
+    creativity_profile: str = ""
+
+    # Caller-asserted sacred elements. Normally sacred elements come from
+    # song_brain; this lets the user or a skill override. Shape matches
+    # song_brain.sacred_elements entries: {element_type, description, salience}.
+    sacred_elements: list = field(default_factory=list)
+
+    # Hints for synthesis_brain: which tracks/devices to focus on and what
+    # target timbre to aim for. Shape is open in PR2 and will be firmed up
+    # when PR9 adds the first adapters.
+    #   {
+    #     "track_indices": [int, ...],
+    #     "device_paths":  ["track/Wavetable", ...],
+    #     "target_timbre": {"brightness": +0.3, "width": +0.2, ...},
+    #     "preferred_devices": ["Wavetable", "Operator", ...],
+    #   }
+    synth_hints: dict = field(default_factory=dict)
+
     def to_dict(self) -> dict:
         return asdict(self)
 
@@ -60,12 +91,23 @@ def build_session_kernel(
     taste_graph: Optional[dict] = None,
     anti_preferences: Optional[list] = None,
     protected_dimensions: Optional[dict] = None,
+    # PR2 — creative controls. All optional; legacy callers unaffected.
+    freshness: float = 0.5,
+    creativity_profile: str = "",
+    sacred_elements: Optional[list] = None,
+    synth_hints: Optional[dict] = None,
 ) -> SessionKernel:
     """Build a SessionKernel from raw data.
 
     All optional fields degrade gracefully to empty defaults.
     The kernel_id is deterministic from the core inputs so it's stable
     within the same turn context.
+
+    The PR2 creative-control fields (freshness, creativity_profile,
+    sacred_elements, synth_hints) are intentionally excluded from the
+    kernel_id hash so existing callers see no identity changes. Producers
+    that need these fields to influence identity can compose their own
+    derived id downstream.
     """
     # Deterministic kernel_id from inputs
     id_seed = json.dumps(
@@ -93,4 +135,8 @@ def build_session_kernel(
         taste_graph=taste_graph or {},
         anti_preferences=anti_preferences or [],
         protected_dimensions=protected_dimensions or {},
+        freshness=freshness,
+        creativity_profile=creativity_profile,
+        sacred_elements=sacred_elements or [],
+        synth_hints=synth_hints or {},
     )

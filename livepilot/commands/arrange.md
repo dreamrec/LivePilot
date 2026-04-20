@@ -44,4 +44,4 @@ Guide the user through arranging their session using the V2 orchestration pipeli
 18. **Report** — "What I did / what improved / what I protected / what remains"
 19. **Session memory** — `add_session_memory` for arrangement decisions
 
-For exploratory arrangement, use `create_experiment` to try multiple section orderings.
+For exploratory arrangement, use the branch-native experiment path (see livepilot-core SKILL.md, Flow B). Each section-ordering variant becomes one `composer`-source seed; attach pre-compiled plans via `compiled_plans`. When the user's request is vague or exploratory ("what would you do?", "surprise me with a structure"), bias `get_session_kernel(freshness=0.7-0.9)` to surface less-conservative branches.

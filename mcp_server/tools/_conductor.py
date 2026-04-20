@@ -311,3 +311,147 @@ def create_conductor_plan(
     budget = budgets.create_budget(mode=mode, aggression=aggression)
     plan.budget = budget.to_dict()
     return plan
+
+
+# ── PR4 — creative_search routing fork ──────────────────────────────────
+#
+# Runs only when the user intent is exploratory (workflow_mode =
+# "creative_search"). Adds producer selection on top of the base
+# engine routing so Wonder / synthesis_brain / composer / technique memory
+# can all be consulted for branch seeds. The base classify_request is
+# untouched so every existing caller and test continues to see identical
+# behavior — this path is a parallel, additive classifier.
+
+
+@dataclass
+class CreativeSearchPlan:
+    """Extended routing plan used for creative_search mode.
+
+    Wraps a ConductorPlan with producer-selection metadata that branch
+    assemblers (Wonder / synthesis_brain / composer) act on to generate
+    diverse branch seeds.
+
+    Fields:
+      base_plan: the engine routing from classify_request().
+      branch_sources: ordered list of producers to consult. Always contains
+        "semantic_move" and "freeform"; adds "synthesis", "composer", and
+        "technique" based on request content and kernel state.
+      seed_hints: per-source hints passed to the producer. Shape:
+        {"synthesis": {...kernel.synth_hints...}, "composer": {...}, ...}
+      target_branch_count: how many branches to aim for (3 by default;
+        matches the safe / strong / unexpected triptych in Preview Studio).
+      freshness: 0.0-1.0, threaded from kernel.freshness.
+      creativity_profile: from kernel.creativity_profile ("" when absent).
+    """
+
+    base_plan: ConductorPlan
+    branch_sources: list[str] = field(default_factory=list)
+    seed_hints: dict = field(default_factory=dict)
+    target_branch_count: int = 3
+    freshness: float = 0.5
+    creativity_profile: str = ""
+
+    def to_dict(self) -> dict:
+        d = self.base_plan.to_dict()
+        d["creative_search"] = {
+            "branch_sources": list(self.branch_sources),
+            "seed_hints": dict(self.seed_hints),
+            "target_branch_count": self.target_branch_count,
+            "freshness": self.freshness,
+            "creativity_profile": self.creativity_profile,
+        }
+        # Creative-search plans always recommend experiments
+        d["experiment_recommended"] = True
+        return d
+
+
+# Keyword families that imply a particular producer is worth consulting
+# even when the kernel carries no explicit hint for it.
+_SYNTH_REQUEST = re.compile(
+    r"synth|patch|timbre|timbral|oscillat|wavetable|operator|filter|"
+    r"modulation|lfo|envelope|drift|meld|analog|detune|spread|"
+    r"haunted|lush|aggressive|warm.?pad|fat.?bass|bright.?lead",
+    re.IGNORECASE,
+)
+_TECHNIQUE_HINT = re.compile(
+    r"like.?last.?time|same.?as|recall|remember|how.?i.?did",
+    re.IGNORECASE,
+)
+
+
+def classify_request_creative(
+    request: str,
+    kernel: Optional[dict] = None,
+) -> CreativeSearchPlan:
+    """Classify a request for creative_search mode.
+
+    Builds on classify_request() for engine routing and adds producer
+    selection so downstream branch assemblers know which sources to
+    consult. This is intentionally additive — callers that don't know
+    about creative_search mode can keep using classify_request() and see
+    no difference.
+
+    Producer selection:
+      - "semantic_move" is always included (baseline).
+      - "synthesis" added when kernel.synth_hints is non-empty OR the
+        request mentions synth / patch / timbre / oscillator / filter /
+        modulation / etc.
+      - "composer" added when base_plan primary engine is "composition".
+      - "technique" added when the kernel has enough taste evidence
+        (>= 3 recorded move outcomes) OR the request suggests recalling
+        a prior technique.
+      - "freeform" is always the last option — a catch-all for producers
+        that want to emit a seed without matching any structured category.
+
+    When kernel is None, the function still works — it just skips the
+    kernel-driven producer additions (synthesis / technique) unless the
+    request text triggers them directly.
+    """
+    base = classify_request(request)
+    kernel = kernel or {}
+    request_lower = request.lower()
+
+    sources: list[str] = ["semantic_move"]
+    hints: dict = {}
+
+    # ── Synthesis producer ──────────────────────────────────────────────
+    synth_hints = kernel.get("synth_hints") or {}
+    synth_matched_by_request = bool(_SYNTH_REQUEST.search(request_lower))
+    if synth_hints or synth_matched_by_request:
+        sources.append("synthesis")
+        hints["synthesis"] = dict(synth_hints) if synth_hints else {}
+        if synth_matched_by_request and not synth_hints:
+            hints["synthesis"]["inferred_from_request"] = True
+
+    # ── Composer producer (only for composition-primary routes) ────────
+    if base.routes and base.routes[0].engine == "composition":
+        sources.append("composer")
+        hints["composer"] = {"request": request}
+
+    # ── Technique memory producer ──────────────────────────────────────
+    taste = kernel.get("taste_graph") or {}
+    move_fam = taste.get("move_family_scores") or {}
+    evidence = int(taste.get("evidence_count", 0) or 0)
+    technique_hinted = bool(_TECHNIQUE_HINT.search(request_lower))
+    if technique_hinted or (move_fam and evidence >= 3):
+        sources.append("technique")
+        preferred = []
+        for fam, s in move_fam.items():
+            if isinstance(s, dict) and s.get("score", 0) > 0.2:
+                preferred.append(fam)
+        hints["technique"] = {
+            "preferred_families": preferred[:3],
+            "hinted_by_request": technique_hinted,
+        }
+
+    # ── Freeform always available ──────────────────────────────────────
+    sources.append("freeform")
+
+    return CreativeSearchPlan(
+        base_plan=base,
+        branch_sources=sources,
+        seed_hints=hints,
+        target_branch_count=3,
+        freshness=float(kernel.get("freshness", 0.5) or 0.5),
+        creativity_profile=kernel.get("creativity_profile", "") or "",
+    )
