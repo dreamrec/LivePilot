@@ -173,19 +173,30 @@ def create_experiment(
 async def run_experiment(
     ctx: Context,
     experiment_id: str,
+    exploration_rules: bool = False,
 ) -> dict:
     """Run all pending branches in an experiment.
 
     For each branch:
     1. Compile the semantic move against current session
+       (skipped when branch.compiled_plan is already set — PR3+)
     2. Capture before state
-    3. Execute the compiled plan (through the async router — v1.10.3 truth)
+    3. Execute the compiled plan (through the async router)
     4. Capture after state
     5. Undo all successful steps (revert to checkpoint)
-    6. Evaluate the branch
+    6. Evaluate the branch and classify its outcome via evaluation.policy
     7. Record per-step results on branch.execution_log
 
     Branches run sequentially (Ableton has linear undo).
+
+    exploration_rules (PR7): when True, branches that fail technical gates
+    (score < 0.40, non-positive measurable delta) are classified as
+    "interesting_but_failed" instead of "failed" — they stay in the
+    experiment for audit but don't appear in the ranking. Protection
+    violations STILL force undo regardless of this flag — that's a safety
+    invariant, not a taste judgment.
+
+    Default False preserves pre-PR7 behavior exactly.
     """
     experiment = engine.get_experiment(experiment_id)
     if not experiment:
@@ -259,26 +270,73 @@ async def run_experiment(
             ctx=ctx,
         )
 
-        # Evaluate
+        # Evaluate — score via the inline heuristic, then classify via
+        # evaluation.policy for a unified keep/undo/interesting_but_failed
+        # decision (PR7).
+        from ..evaluation.policy import classify_branch_outcome
+
         def eval_fn(before, after):
-            # Simple heuristic evaluation when spectral data isn't available
+            # Simple heuristic evaluation when spectral data isn't available.
+            # protection_violated is rough — derived from whether any track
+            # went silent (signal lost on a track = protection violation).
             score = 0.5  # Neutral
+            protection_violated = False
+            lost_tracks = 0
+
             if before.get("track_meters") and after.get("track_meters"):
-                # Check all tracks still alive
                 before_alive = sum(1 for t in before["track_meters"] if t.get("level", 0) > 0)
                 after_alive = sum(1 for t in after["track_meters"] if t.get("level", 0) > 0)
-                if after_alive >= before_alive:
+                lost_tracks = max(0, before_alive - after_alive)
+                if lost_tracks == 0:
                     score += 0.1
                 else:
-                    score -= 0.2  # Lost a track
+                    score -= 0.2
+                    # A track going silent is a protection violation — always
+                    # undo regardless of exploration mode.
+                    protection_violated = True
 
             if before.get("spectrum") and after.get("spectrum"):
-                # Spectral balance improvement heuristic
-                score += 0.1  # Bonus for having spectral data
+                score += 0.1  # presence-of-data bonus
 
-            return {"score": round(score, 3), "keep_change": score > 0.45}
+            score = round(score, 3)
+            outcome = classify_branch_outcome(
+                score=score,
+                protection_violated=protection_violated,
+                # Minimal hard-rule inputs — the heuristic doesn't compute
+                # measurable_count / goal_progress deltas. target_count=0 and
+                # measurable_count=0 lets rule 1 defer to score-only judgment.
+                measurable_count=0,
+                target_count=0,
+                goal_progress=0.0,
+                exploration_rules=exploration_rules,
+            )
+
+            return {
+                "score": outcome.score,
+                "keep_change": outcome.keep_change,
+                "status": outcome.status,
+                "failure_reasons": outcome.failure_reasons,
+                "note": outcome.note,
+                "lost_tracks": lost_tracks,
+            }
 
         engine.evaluate_branch(branch, eval_fn)
+
+        # Promote the classified status onto the branch (PR7). This lets
+        # ranked_branches() exclude interesting_but_failed branches from
+        # the winner set while keeping them in experiment.branches for audit.
+        if branch.evaluation and branch.evaluation.get("status"):
+            status = branch.evaluation["status"]
+            if status == "keep":
+                branch.status = "evaluated"
+            elif status == "interesting_but_failed":
+                branch.status = "interesting_but_failed"
+            elif status == "undo":
+                # Legacy behavior — still "evaluated" so the rank path sees
+                # it (undo is applied by the engine's rollback pass, the
+                # branch itself stays in the ranking but with a low score).
+                branch.status = "evaluated"
+
         results.append(branch.to_dict())
 
     return {
@@ -306,6 +364,13 @@ def compare_experiments(
         return {"error": f"Experiment {experiment_id} not found"}
 
     ranked = experiment.ranked_branches()
+
+    # PR7: surface interesting_but_failed branches separately. They're not
+    # candidates for winning but the user may want to see what was tried.
+    interesting_failed = [
+        b for b in experiment.branches if b.status == "interesting_but_failed"
+    ]
+
     return {
         "experiment_id": experiment_id,
         "request": experiment.request_text,
@@ -323,6 +388,17 @@ def compare_experiments(
             for i, b in enumerate(ranked)
         ],
         "winner": ranked[0].to_dict() if ranked else None,
+        "interesting_but_failed": [
+            {
+                "branch_id": b.branch_id,
+                "name": b.name,
+                "move_id": b.move_id,
+                "score": b.score,
+                "summary": b.compiled_plan.get("summary", "") if b.compiled_plan else "",
+                "evaluation": b.evaluation,
+            }
+            for b in interesting_failed
+        ],
     }
 
 
