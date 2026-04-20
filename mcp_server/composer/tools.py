@@ -1,8 +1,10 @@
-"""Composer Engine MCP tools — 3 tools for auto-composition.
+"""Composer Engine MCP tools — 4 tools for auto-composition.
 
 compose: full multi-layer composition from text prompt
 augment_with_samples: add layers to existing session
 get_composition_plan: dry run preview
+propose_composer_branches (PR5/v2): multi-strategy branch hypotheses for
+    exploratory workflows (feeds create_experiment(seeds=...))
 """
 
 from __future__ import annotations
@@ -213,3 +215,58 @@ async def get_composition_plan(
         "then step through each tool call in sequence."
     )
     return plan
+
+
+@mcp.tool()
+def propose_composer_branches(
+    ctx: Context,
+    request_text: str,
+    count: int = 2,
+    freshness: float = 0.65,
+) -> dict:
+    """Emit N distinct compositional hypotheses for a single prompt (PR5/v2).
+
+    Branch-native companion to compose(): instead of one deterministic
+    layer plan, produces up to ``count`` BranchSeeds with different
+    strategic angles the user can audition via create_experiment +
+    run_experiment. Each seed carries a pre-compiled scaffolding plan
+    (set_tempo + create_midi_track per layer + create_scene per section)
+    that gets escalated to a fully resolved plan by commit_experiment
+    when the winning branch is chosen.
+
+    Strategies (gated on freshness):
+      canonical      — intent unchanged, genre defaults
+                       (shipped at every freshness level)
+      energy_shift   — intent.energy inverted around 0.5
+                       (freshness >= 0.4)
+      layer_contrast — one role swapped (pad-anchor instead of bass)
+                       (freshness >= 0.7)
+
+    Returns:
+      {
+        "request_text": str,
+        "branch_count": int,
+        "seeds": [BranchSeed.to_dict(), ...],
+        "compiled_plans": [plan_dict, ...]   (parallel to seeds; scaffold),
+      }
+
+    Each seed's producer_payload carries {strategy, intent,
+    request_text, reason} so commit_experiment can rehydrate the
+    CompositionIntent and run the full ComposerEngine.compose() for
+    the winner.
+    """
+    from .branch_producer import propose_composer_branches as _propose
+
+    pairs = _propose(
+        request_text=request_text,
+        kernel={"freshness": float(freshness)},
+        count=int(count),
+    )
+    seeds = [s.to_dict() for s, _ in pairs]
+    plans = [p for _, p in pairs]
+    return {
+        "request_text": request_text,
+        "branch_count": len(seeds),
+        "seeds": seeds,
+        "compiled_plans": plans,
+    }
