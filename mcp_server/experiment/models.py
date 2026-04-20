@@ -152,6 +152,12 @@ class ExperimentBranch:
             d["analytical_only"] = (
                 self.seed.analytical_only or self.compiled_plan is None
             )
+            # Shortcut to the seed's producer_payload so downstream callers
+            # (composer winner-commit, synthesis re-target, provenance logs)
+            # don't have to reach into d["seed"]["producer_payload"] every
+            # time. The full seed dict is still available for producers
+            # that need other fields.
+            d["producer_payload"] = dict(self.seed.producer_payload or {})
         return d
 
 

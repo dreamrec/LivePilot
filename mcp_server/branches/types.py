@@ -38,6 +38,9 @@ RiskLabel = Literal["low", "medium", "high"]
 NoveltyLabel = Literal["safe", "strong", "unexpected"]
 
 
+PRODUCER_PAYLOAD_SCHEMA_VERSION = 1
+
+
 @dataclass
 class BranchSeed:
     """Pre-compilation creative intent.
@@ -52,10 +55,32 @@ class BranchSeed:
       hypothesis: one-line human-readable prediction of what the branch does.
       protected_qualities: dimension names the producer promises not to regress.
       affected_scope: {track_indices, device_paths, section_ids, clip_slots}.
+        Session-scope information: which tracks/devices/sections the branch
+        affects. Distinct from ``producer_payload`` which carries regeneration
+        context.
       distinctness_reason: why this seed is different from siblings in a set.
       risk_label: execution safety tier.
       novelty_label: creative novelty tier — maps to the safe/strong/unexpected UX triptych.
       analytical_only: true ⇒ no plan will be compiled; branch is directional only.
+      producer_payload: free-form dict the emitting producer populates with
+        whatever it needs for regeneration / provenance / winner escalation.
+        Consumers must check ``schema_version`` (defaults to 1) before reading
+        specific keys so older serialized branches don't break newer readers.
+
+        Canonical shapes per producer:
+          semantic_move: {schema_version: 1}  (empty — move_id is the key)
+          freeform / technique: {schema_version: 1}  (optional)
+          synthesis:
+            {schema_version: 1,
+             device_name: "Wavetable",
+             track_index: int, device_index: int,
+             strategy: "osc_position_shift" | "voice_width_variant" | ...,
+             topology_hint: {...}}  (used by PR4 render-verify to re-target)
+          composer:
+            {schema_version: 1,
+             strategy: "canonical" | "energy_shift" | "layer_contrast",
+             intent: {<CompositionIntent.to_dict()>}}  (used by PR3 to
+             rehydrate for winner-commit escalation)
     """
 
     seed_id: str
@@ -68,9 +93,20 @@ class BranchSeed:
     risk_label: RiskLabel = "low"
     novelty_label: NoveltyLabel = "strong"
     analytical_only: bool = False
+    producer_payload: dict = field(
+        default_factory=lambda: {"schema_version": PRODUCER_PAYLOAD_SCHEMA_VERSION}
+    )
 
     def to_dict(self) -> dict:
-        return asdict(self)
+        d = asdict(self)
+        # Guarantee schema_version in the payload even if the dict was
+        # mutated to empty by a caller.
+        payload = d.get("producer_payload") or {}
+        if "schema_version" not in payload:
+            payload = dict(payload)
+            payload["schema_version"] = PRODUCER_PAYLOAD_SCHEMA_VERSION
+            d["producer_payload"] = payload
+        return d
 
 
 @dataclass
@@ -158,6 +194,7 @@ def seed_from_move_id(
     risk_label: RiskLabel = "low",
     protected_qualities: Optional[list[str]] = None,
     distinctness_reason: str = "",
+    producer_payload: Optional[dict] = None,
 ) -> BranchSeed:
     """Build a semantic_move seed — the baseline producer path.
 
@@ -176,6 +213,7 @@ def seed_from_move_id(
         risk_label=risk_label,
         protected_qualities=protected_qualities or [],
         distinctness_reason=distinctness_reason,
+        producer_payload=_normalize_payload(producer_payload),
     )
 
 
@@ -188,6 +226,7 @@ def freeform_seed(
     novelty_label: NoveltyLabel = "strong",
     risk_label: RiskLabel = "medium",
     source: BranchSource = "freeform",
+    producer_payload: Optional[dict] = None,
 ) -> BranchSeed:
     """Build a freeform seed — producer has a concrete hypothesis without a move.
 
@@ -204,6 +243,7 @@ def freeform_seed(
         distinctness_reason=distinctness_reason,
         novelty_label=novelty_label,
         risk_label=risk_label,
+        producer_payload=_normalize_payload(producer_payload),
     )
 
 
@@ -212,6 +252,7 @@ def analytical_seed(
     hypothesis: str,
     source: BranchSource = "freeform",
     protected_qualities: Optional[list[str]] = None,
+    producer_payload: Optional[dict] = None,
 ) -> BranchSeed:
     """Build an analytical-only seed — no plan will be compiled.
 
@@ -227,4 +268,19 @@ def analytical_seed(
         hypothesis=hypothesis,
         protected_qualities=protected_qualities or [],
         analytical_only=True,
+        producer_payload=_normalize_payload(producer_payload),
     )
+
+
+def _normalize_payload(payload: Optional[dict]) -> dict:
+    """Ensure a producer_payload always has schema_version set.
+
+    Producers that don't care about versioning pass None / empty dict and
+    get the default schema_version=PRODUCER_PAYLOAD_SCHEMA_VERSION back.
+    Producers that carry their own version number have it preserved.
+    """
+    if not payload:
+        return {"schema_version": PRODUCER_PAYLOAD_SCHEMA_VERSION}
+    out = dict(payload)
+    out.setdefault("schema_version", PRODUCER_PAYLOAD_SCHEMA_VERSION)
+    return out
