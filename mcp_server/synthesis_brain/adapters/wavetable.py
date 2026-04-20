@@ -1,12 +1,31 @@
 """Wavetable adapter — native-synth-aware branch production for Ableton's Wavetable.
 
-Knows the relevant parameter names and proposes two canned variant
-branches per call:
-  - osc_position_shift: moves Osc 1 position to create a timbral contrast
-  - voice_width_variant: increases unison voices and detune for width
+Knows the relevant parameter names. PR9 shipped two canned proposers;
+PR2/v2 adds position-region classification so the shift direction and
+magnitude depend on *where* in the wavetable the patch currently sits,
+not just freshness.
 
-Later PRs add: modulation-matrix inversion, filter-envelope reshaping,
-tuning-table variants, sub/body-layer variants.
+Strategies (selected based on profile + region):
+  - osc_position_to_bright: shift toward the bright/complex end when
+    the current position is sub_region or mid_region and the target
+    timbre asks for brightness.
+  - osc_position_to_dark: shift toward sub/mid when starting bright and
+    the profile or target prefers warmth.
+  - voice_width_variant: increase unison voices + detune for width,
+    unless the patch is already over-thickened.
+
+Each seed's producer_payload captures:
+  {schema_version, device_name, track_index, device_index,
+   strategy, topology_hint: {current_region, target_region,
+   current_pos, new_pos}}
+so PR4 render-verification and future position-to-spectrum mappings can
+refine the heuristic without losing provenance.
+
+Known limitation: region classification is a coarse heuristic on the
+raw Osc 1 Pos float. Specific factory wavetables don't always follow
+the "low value = simple, high value = complex" rule. PR4's render-based
+mapping will refine per-wavetable — producer_payload's topology_hint
+is the contract for that upgrade.
 """
 
 from __future__ import annotations
@@ -43,6 +62,76 @@ _KNOWN_PARAMS = {
     "LFO 1 Rate",
     "LFO 1 Amount",
 }
+
+
+# Coarse position → region mapping. Most Ableton factory wavetables fade
+# from low-harmonic (position 0) toward high-harmonic (position 1), but
+# this is approximate. PR4 will refine with render-based spectral mapping.
+_WAVETABLE_REGIONS: list[tuple[float, float, str]] = [
+    (0.0, 0.25, "sub_region"),
+    (0.25, 0.5, "mid_region"),
+    (0.5, 0.75, "bright_region"),
+    (0.75, 1.01, "complex_region"),
+]
+
+
+def _classify_position(pos: float) -> str:
+    """Map an Osc 1 Pos float to a coarse spectral region name."""
+    for lo, hi, region in _WAVETABLE_REGIONS:
+        if lo <= pos < hi:
+            return region
+    return "complex_region"
+
+
+def _choose_target_region(
+    current_region: str,
+    target: "TimbralFingerprint",
+) -> str:
+    """Pick a contrasting region based on the target fingerprint.
+
+    When the target asks for more brightness, move toward
+    bright_region/complex_region. When it asks for more warmth or less
+    brightness (negative target.brightness), move toward
+    sub_region/mid_region. When the target is neutral, shift one region
+    away from current for contrast.
+    """
+    want_bright = target.brightness
+    if abs(want_bright) < 0.1:
+        # Neutral target — shift one region away for variety.
+        fallback_map = {
+            "sub_region": "mid_region",
+            "mid_region": "bright_region",
+            "bright_region": "mid_region",
+            "complex_region": "bright_region",
+        }
+        return fallback_map.get(current_region, "mid_region")
+
+    if want_bright > 0:
+        # Bias brighter.
+        upshift = {
+            "sub_region": "mid_region",
+            "mid_region": "bright_region",
+            "bright_region": "complex_region",
+            "complex_region": "complex_region",
+        }
+        return upshift.get(current_region, "bright_region")
+
+    # want_bright < 0 — bias darker.
+    downshift = {
+        "complex_region": "bright_region",
+        "bright_region": "mid_region",
+        "mid_region": "sub_region",
+        "sub_region": "sub_region",
+    }
+    return downshift.get(current_region, "sub_region")
+
+
+def _region_center(region: str) -> float:
+    """Middle of the region's position range — the target for a shift."""
+    for lo, hi, name in _WAVETABLE_REGIONS:
+        if name == region:
+            return round((lo + min(hi, 1.0)) / 2.0, 3)
+    return 0.5
 
 
 @register_adapter
@@ -125,21 +214,47 @@ class WavetableAdapter:
 
         results: list[tuple[BranchSeed, dict]] = []
 
-        # ── Branch A: osc_position_shift ──────────────────────────────
-        # Moves Osc 1 position to a contrasting point. Safe / incremental
-        # when freshness < 0.5; more aggressive shift when higher.
+        # ── Branch A: region-aware Osc 1 Position shift ──────────────
+        # Classify current position into a spectral region, pick a
+        # contrasting target region based on the timbral target, then
+        # shift to that region's center. The actual shift magnitude
+        # (how close to the center) scales with freshness — low
+        # freshness stops partway, high freshness commits fully.
         current_pos = float(profile.parameter_state.get("Osc 1 Position", 0.0) or 0.0)
-        shift = 0.2 if freshness < 0.5 else 0.45
-        # Wrap within [0, 1]; if the current position is high, shift down.
-        if current_pos + shift > 1.0:
-            new_pos = max(0.0, current_pos - shift)
+        current_region = _classify_position(current_pos)
+        target_region = _choose_target_region(current_region, target)
+        region_target_pos = _region_center(target_region)
+
+        # Blend: low freshness only moves partway toward the target region,
+        # high freshness commits fully.
+        blend = 0.4 if freshness < 0.5 else 1.0
+        new_pos = round(
+            current_pos + (region_target_pos - current_pos) * blend, 3
+        )
+        new_pos = max(0.0, min(1.0, new_pos))
+
+        # Strategy name reflects direction (pick name from target region).
+        if target_region in ("bright_region", "complex_region"):
+            strategy = "osc_position_to_bright"
+        elif target_region in ("sub_region", "mid_region"):
+            strategy = "osc_position_to_dark"
         else:
-            new_pos = min(1.0, current_pos + shift)
+            strategy = "osc_position_shift"
+
+        topology_hint = {
+            "current_region": current_region,
+            "target_region": target_region,
+            "current_pos": current_pos,
+            "new_pos": new_pos,
+        }
+
         seed_a = freeform_seed(
-            seed_id=_short_id("wt_pos", f"{track}:{device}:{new_pos:.2f}"),
+            seed_id=_short_id(
+                "wt_pos", f"{track}:{device}:{current_region}:{target_region}:{new_pos:.2f}"
+            ),
             hypothesis=(
-                f"Shift Wavetable Osc 1 Position from {current_pos:.2f} to {new_pos:.2f} "
-                f"for a contrasting harmonic spectrum"
+                f"Shift Wavetable Osc 1 Position {current_pos:.2f} ({current_region}) → "
+                f"{new_pos:.2f} ({target_region}) for a {strategy.split('_to_')[-1]} spectrum"
             ),
             source="synthesis",
             novelty_label="strong" if freshness < 0.7 else "unexpected",
@@ -148,7 +263,16 @@ class WavetableAdapter:
                 "track_indices": [track],
                 "device_paths": [f"track/{track}/device/{device}"],
             },
-            distinctness_reason="only seed that changes Osc 1 Position",
+            distinctness_reason=(
+                f"moves Osc 1 Position from {current_region} to {target_region}"
+            ),
+            producer_payload={
+                "device_name": self.device_name,
+                "track_index": track,
+                "device_index": device,
+                "strategy": strategy,
+                "topology_hint": topology_hint,
+            },
         )
         plan_a = {
             "steps": [
@@ -158,12 +282,12 @@ class WavetableAdapter:
                         "track_index": track,
                         "device_index": device,
                         "parameter_name": "Osc 1 Position",
-                        "value": round(new_pos, 3),
+                        "value": new_pos,
                     },
                 },
             ],
             "step_count": 1,
-            "summary": f"Osc 1 Position {current_pos:.2f} → {new_pos:.2f}",
+            "summary": f"Osc 1 Position {current_pos:.2f} ({current_region}) → {new_pos:.2f} ({target_region})",
         }
         results.append((seed_a, plan_a))
 
@@ -193,6 +317,18 @@ class WavetableAdapter:
                     "only seed that changes voice count + detune; focuses on "
                     "width rather than spectrum"
                 ),
+                producer_payload={
+                    "device_name": self.device_name,
+                    "track_index": track,
+                    "device_index": device,
+                    "strategy": "voice_width_variant",
+                    "topology_hint": {
+                        "current_voices": int(current_voices),
+                        "current_detune": current_detune,
+                        "new_voices": int(new_voices),
+                        "new_detune": new_detune,
+                    },
+                },
             )
             plan_b = {
                 "steps": [
