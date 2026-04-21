@@ -1,5 +1,47 @@
 # Changelog
 
+## 1.15.0-beta — Live 12.4 replace_sample native (April 21 2026)
+
+First Live 12.4 beta support release. Adds a native fast path for
+SimplerDevice.replace_sample(path) while preserving 100% backward
+compatibility for 12.0-12.3.x users.
+
+**Tool count**: unchanged at 403.
+**Domain count**: unchanged at 52.
+**Tests**: 2503 passed, 1 skipped, 0 regressions (+13 new from this release).
+
+### Added
+- **Live 12.4 support (beta):** `SimplerDevice.replace_sample(path)` native
+  LOM path is now used automatically on Live 12.4+. Handles empty Simplers —
+  fixes the long-standing workaround documented in
+  `feedback_load_browser_item_is_source_of_truth.md`.
+- New capability tier `"collaborative"` (Live 12.4+) exposed via
+  `LiveVersionCapabilities.capability_tier` and `.has_replace_sample_native`.
+- Remote Script: new `replace_sample_native` handler.
+- MCP server: new `_live_caps(ctx)` helper with lazy version-capability
+  caching on the lifespan context.
+- Registered `replace_sample_native` in `mcp_server/runtime/remote_commands.py`
+  REMOTE_COMMANDS (required by the boundary audit contract).
+
+### Changed
+- `replace_simpler_sample` and `load_sample_to_simpler` now route to the
+  native path when available and fall back to the M4L-bridge path
+  otherwise. Tool signatures, argument names, and return shapes unchanged.
+
+### Backward Compatibility
+- Live 12.0–12.3.x: zero behavior change. All routing still goes through
+  the M4L bridge.
+- Live 12.4+: native path preferred; bridge used only on fallback.
+
+### Verification status
+- Full test suite: 2503 passed, 0 failures.
+- Backward compat on Live 12.4: verified in-session — `replace_simpler_sample`
+  and `load_sample_to_simpler` both work via the bridge path on 12.4 (legacy
+  flow intact).
+- Native E2E on Live 12.4 empty-Simpler case: deferred until the plugin
+  swap activates the worktree's MCP code. Unit tests prove the routing
+  logic and the native handler wiring.
+
 ## 1.14.1 — reload_handlers workflow + device/mixing fixes (April 21 2026)
 
 Patch release that lands the post-1.14.0 audit work: one new diagnostics

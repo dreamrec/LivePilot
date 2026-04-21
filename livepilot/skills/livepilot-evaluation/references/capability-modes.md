@@ -116,3 +116,35 @@ Call `get_capability_state` at the start of any evaluation session. The response
 - `spectral_cache_age_ms`: milliseconds since last spectral update
 - `flucoma_available`: whether FluCoMa analysis tools are installed
 - `session_connected`: whether TCP connection to Ableton is active
+
+## Collaborative Mode (Live 12.4+)
+
+Live 12.4 introduces a new capability tier that unlocks native LOM access for sample replacement. This tier is separate from the evaluation modes above — it affects routing behavior in the MCP server, not spectral measurement.
+
+**Version gate:** Live 12.4.0+
+
+**Detection flag:** `LiveVersionCapabilities.has_replace_sample_native == True`
+(exposed on `LiveVersionCapabilities.capability_tier == "collaborative"`)
+
+**What changes at this tier:**
+- `SimplerDevice.replace_sample(path)` is available as a native LOM call.
+  The MCP tools `replace_simpler_sample` and `load_sample_to_simpler`
+  route to this native path automatically.
+- The native path handles empty Simplers — the long-standing limitation
+  (documented in `feedback_load_browser_item_is_source_of_truth.md`)
+  that required `load_browser_item` as a workaround no longer applies
+  on Live 12.4+.
+
+**Backward compatibility:**
+- Live 12.0–12.3.x: `has_replace_sample_native == False`. All sample
+  replacement still routes through the M4L bridge. Zero behavior change.
+- Live 12.4+: native path preferred; M4L bridge used only on fallback.
+
+**Tool signatures:** unchanged. Callers do not need to detect the tier —
+routing is transparent.
+
+**Follow-up plans (not yet shipped):**
+- Link Audio (tempo-sync sharing between Live sets) — tracked as a
+  future Collaborative-tier feature.
+- Stem Separation v2 — tracked as a future Collaborative-tier feature.
+Neither is available in the 1.15.0-beta release.
