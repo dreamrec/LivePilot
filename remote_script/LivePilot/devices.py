@@ -633,16 +633,74 @@ def set_drum_chain_note(song, params):
     }
 
 
+def _normalize_device_name(name):
+    """Case/space/underscore/dash-insensitive normalization for device names.
+
+    Matches the convention used by _require_analyzer in the MCP layer —
+    the frozen .amxd ships different names across versions
+    ('LivePilot_Analyzer' vs 'LivePilot Analyzer'), and user devices are
+    freely renamed with mixed casing. Collapsing to a canonical form lets
+    the duplicate check survive those variants.
+    """
+    return " ".join(str(name).replace("_", " ").replace("-", " ").lower().split())
+
+
+def _find_existing_on_track(track, target_name):
+    """Return (index, device) of the first existing device on `track`
+    whose normalized name matches `target_name`, or None.
+
+    Caller passes `target_name` already lowercased (the handler does
+    .lower() on params['device_name']). We normalize again on both sides
+    because the existing device name may have extra whitespace or the
+    user may have typed with different separators.
+    """
+    try:
+        devices = list(track.devices)
+    except AttributeError:
+        return None
+    target = _normalize_device_name(target_name)
+    for i, dev in enumerate(devices):
+        try:
+            name = dev.name
+        except AttributeError:
+            continue
+        if _normalize_device_name(name) == target:
+            return (i, dev)
+    return None
+
+
 @register("find_and_load_device")
 def find_and_load_device(song, params):
     """Find a device by name in the browser and load it onto a track.
 
     Searches all browser categories including user_library for M4L devices.
     Supports partial matching: 'Kickster' matches 'trnr.Kickster'.
+
+    If a device with the same (normalized) name already exists on the
+    target track's chain, returns the existing device's location without
+    loading a second copy. Set `allow_duplicate=True` to force-load a
+    second instance (e.g. parallel processing chains).
     """
     track_index = int(params["track_index"])
     device_name = str(params["device_name"]).lower()
+    allow_duplicate = bool(params.get("allow_duplicate", False))
     track = get_track(song, track_index)
+
+    # Duplicate check — runs BEFORE any load path (12.3 native fast path
+    # AND browser search) so both are protected. Previously the analyzer
+    # auto-load at session start produced two analyzers on the master if
+    # one was already present from a prior session, doubling CPU cost.
+    if not allow_duplicate:
+        existing = _find_existing_on_track(track, device_name)
+        if existing is not None:
+            idx, dev = existing
+            return {
+                "loaded": dev.name,
+                "track_index": track_index,
+                "device_index": idx,
+                "already_present": True,
+            }
+
     browser = _get_browser()
 
     # 12.3+ fast path: try insert_device for native devices
