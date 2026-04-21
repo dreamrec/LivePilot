@@ -295,16 +295,122 @@ def set_track_routing(song, params):
     return result
 
 
+def _find_sidechain_surface(device):
+    """Probe a Compressor device for its sidechain-routing LOM surface.
+
+    Legacy Compressor (I) exposes flat properties directly on the device:
+        available_sidechain_input_routing_types / _channels
+        sidechain_input_routing_type / _channel
+    Live 12.3.6's Compressor2 may not have those flat attrs (confirmed
+    via Batch 18's Max JS probe and Batch 19's Python fallback both
+    hitting the same gap in the flat surface). This probe tries a few
+    known shapes in order and returns the first that matches.
+
+    Returns a dict:
+        desc:      string describing which shape matched
+        types:     list of RoutingType candidates for input source
+        channels:  list of RoutingChannel candidates, or None if the
+                   shape doesn't expose a channel list
+        set_type:  callable(RoutingType) — assigns the input type
+        set_chan:  callable(RoutingChannel) — assigns the channel
+        read_type: callable() -> RoutingType or None
+        read_chan: callable() -> RoutingChannel or None
+    Or None if no known shape matches — caller should emit a diagnostic.
+    """
+    def _shape(obj, types_attr, chans_attr, type_prop, chan_prop, desc):
+        # Channels MUST be read lazily — on Compressor2's input_routing_*
+        # shape, available_input_routing_channels depends on the currently
+        # selected input_routing_type. Snapshotting at probe time made
+        # combined (type + channel) calls fail because the snapshot was
+        # taken BEFORE the new type was written. A fresh read per query
+        # also keeps us honest against UI-side changes mid-call.
+        def _get_channels():
+            if not hasattr(obj, chans_attr):
+                return None
+            return list(getattr(obj, chans_attr))
+
+        return {
+            "desc": desc,
+            "types": list(getattr(obj, types_attr)),
+            "get_channels": _get_channels,
+            "set_type": lambda rt: setattr(obj, type_prop, rt),
+            "set_chan": lambda rc: setattr(obj, chan_prop, rc),
+            "read_type": lambda: getattr(obj, type_prop, None),
+            "read_chan": lambda: getattr(obj, chan_prop, None),
+        }
+
+    if hasattr(device, "available_sidechain_input_routing_types"):
+        return _shape(
+            device,
+            "available_sidechain_input_routing_types",
+            "available_sidechain_input_routing_channels",
+            "sidechain_input_routing_type",
+            "sidechain_input_routing_channel",
+            "flat device.sidechain_input_routing_*",
+        )
+    sc_input = getattr(device, "sidechain_input", None)
+    if sc_input is not None and hasattr(sc_input, "available_routing_types"):
+        return _shape(
+            sc_input,
+            "available_routing_types",
+            "available_routing_channels",
+            "routing_type",
+            "routing_channel",
+            "nested device.sidechain_input.routing_*",
+        )
+    if hasattr(device, "available_input_routing_types"):
+        return _shape(
+            device,
+            "available_input_routing_types",
+            "available_input_routing_channels",
+            "input_routing_type",
+            "input_routing_channel",
+            "flat device.input_routing_* (no sidechain_ prefix)",
+        )
+    return None
+
+
+def _collect_routing_diagnostic(device):
+    """Return a CSV of routing/sidechain attrs on device + likely children.
+
+    Used as a breadcrumb in the error message when _find_sidechain_surface
+    returns None, so the first failing call tells us what the current Live
+    build actually exposes without a separate probe session.
+    """
+    def _attrs(obj, prefix):
+        try:
+            names = sorted(
+                a for a in dir(obj)
+                if ("routing" in a.lower() or "sidechain" in a.lower())
+                and not a.startswith("_")
+            )
+        except Exception:
+            return []
+        return [prefix + n for n in names]
+
+    found = list(_attrs(device, "device."))
+    for child_name in ("sidechain_input", "input", "sidechain", "routing"):
+        try:
+            child = getattr(device, child_name, None)
+        except Exception:
+            child = None
+        if child is None:
+            continue
+        found.extend(_attrs(child, "device.%s." % child_name))
+    return ", ".join(found) if found else "<none>"
+
+
 @register("set_compressor_sidechain")
 def set_compressor_sidechain(song, params):
     """Configure a Compressor's sidechain input routing (BUG-A3).
 
-    Same LOM pattern as set_track_routing — the sidechain properties
-    (available_sidechain_input_routing_types / _channels) are on the
-    device object and Python's Remote Script accesses them cleanly.
-    This used to be routed through the M4L bridge (v1.10.6) but Max JS
-    LiveAPI couldn't read the available_* lists in Live 12.3.6, so it's
-    back on the Python side where it belongs.
+    Probes the LOM sidechain-routing surface — legacy Compressor (I)
+    exposes `available_sidechain_input_routing_types` directly, but
+    Live 12.3.6's Compressor2 doesn't, so we fall back to a small set of
+    known shapes via _find_sidechain_surface. On no match the error
+    message embeds a dir() audit of routing/sidechain attrs on the
+    device and its likely children so future Live builds reveal
+    themselves without a separate probe.
 
     Params:
         track_index: 0+ regular, -1/-2 returns, -1000 master
@@ -338,12 +444,9 @@ def set_compressor_sidechain(song, params):
 
     # Older Compressor builds may not expose `sidechain_enabled` as a
     # property; the automatable "S/C On" parameter is the fallback.
-    # Try both paths so the sidechain gets enabled whichever surface is
-    # available on this Live version.
     try:
         device.sidechain_enabled = True
     except AttributeError:
-        # Fallback: find the "S/C On" parameter and toggle it
         for param in device.parameters:
             if param.name == "S/C On":
                 param.value = 1
@@ -355,13 +458,19 @@ def set_compressor_sidechain(song, params):
         "device_index": device_index,
     }
 
-    if source_type is not None and source_type != "":
-        if not hasattr(device, "available_sidechain_input_routing_types"):
-            raise ValueError(
-                "This Live build doesn't expose "
-                "device.available_sidechain_input_routing_types"
-            )
-        available = list(device.available_sidechain_input_routing_types)
+    want_type = source_type is not None and source_type != ""
+    want_channel = source_channel is not None and source_channel != ""
+    surface = _find_sidechain_surface(device)
+
+    if (want_type or want_channel) and surface is None:
+        raise ValueError(
+            "This Live build doesn't expose a sidechain routing surface "
+            "on %s. Inspected attrs: %s"
+            % (class_name, _collect_routing_diagnostic(device))
+        )
+
+    if want_type:
+        available = surface["types"]
         matched = None
         for rt in available:
             if rt.display_name == source_type:
@@ -370,40 +479,51 @@ def set_compressor_sidechain(song, params):
         if matched is None:
             options = [rt.display_name for rt in available]
             raise ValueError(
-                "Sidechain input type '%s' not found. Available: %s"
-                % (source_type, ", ".join(options))
+                "Sidechain input type '%s' not found (surface=%s). "
+                "Available: %s"
+                % (source_type, surface["desc"], ", ".join(options))
             )
-        device.sidechain_input_routing_type = matched
+        surface["set_type"](matched)
 
-    if source_channel is not None and source_channel != "":
-        if not hasattr(device, "available_sidechain_input_routing_channels"):
+    if want_channel:
+        # Lazy fetch — on Compressor2 the channel list depends on the
+        # currently-set input_routing_type, so combined calls need the
+        # post-type-write state, not the probe-time snapshot.
+        channels = surface["get_channels"]()
+        if channels is None:
             raise ValueError(
-                "This Live build doesn't expose "
-                "device.available_sidechain_input_routing_channels"
+                "Sidechain surface on %s (%s) exposes input types but no "
+                "channel list. Inspected attrs: %s"
+                % (class_name, surface["desc"],
+                   _collect_routing_diagnostic(device))
             )
-        available = list(device.available_sidechain_input_routing_channels)
         matched = None
-        for ch in available:
+        for ch in channels:
             if ch.display_name == source_channel:
                 matched = ch
                 break
         if matched is None:
-            options = [ch.display_name for ch in available]
+            options = [ch.display_name for ch in channels]
             raise ValueError(
-                "Sidechain input channel '%s' not found. Available: %s"
-                % (source_channel, ", ".join(options))
+                "Sidechain input channel '%s' not found (surface=%s). "
+                "Available: %s"
+                % (source_channel, surface["desc"], ", ".join(options))
             )
-        device.sidechain_input_routing_channel = matched
+        surface["set_chan"](matched)
 
-    # Read back canonical display names
+    # Read back via the same surface used to write. Fall back to the
+    # input params if the surface isn't exposed or raises on read.
     try:
+        if surface is None:
+            raise AttributeError("no sidechain surface for readback")
+        type_obj = surface["read_type"]()
+        chan_obj = surface["read_chan"]()
         result["sidechain"] = {
-            "type": device.sidechain_input_routing_type.display_name,
-            "channel": device.sidechain_input_routing_channel.display_name,
+            "type": type_obj.display_name if type_obj is not None else "",
+            "channel": chan_obj.display_name if chan_obj is not None else "",
             "enabled": bool(getattr(device, "sidechain_enabled", True)),
         }
     except AttributeError:
-        # Very old Compressor — fall back to whatever we set above
         result["sidechain"] = {
             "type": source_type or "",
             "channel": source_channel or "",

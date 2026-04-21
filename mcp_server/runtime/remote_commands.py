@@ -105,6 +105,8 @@ REMOTE_COMMANDS: frozenset[str] = frozenset({
     "get_session_diagnostics",
     # control surfaces (diagnostic)
     "list_control_surfaces", "get_control_surface_info",
+    # dev-loop helper — reloads handler submodules without a UI toggle
+    "reload_handlers",
     # song primitives — transport/link
     "tap_tempo", "nudge_tempo",
     "set_exclusive_arm", "set_exclusive_solo",
