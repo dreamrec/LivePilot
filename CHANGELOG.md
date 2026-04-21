@@ -1,5 +1,63 @@
 # Changelog
 
+## 1.14.1 — reload_handlers workflow + device/mixing fixes (April 21 2026)
+
+Patch release that lands the post-1.14.0 audit work: one new diagnostics
+tool, three bug fixes, and a new plugin-sync verification script.
+
+**Tool count**: 402 → **403** (added `reload_handlers`).
+**Domain count**: unchanged at 52.
+**Tests**: 2467 → **2485 passing** (+18 new), 0 regressions.
+
+### New tool: `reload_handlers`
+
+- Replaces the manual "toggle Control Surface in Live → Preferences →
+  Link/MIDI" step that every Remote Script edit required. New workflow:
+  after `node installer/install.js`, call `reload_handlers` via the MCP
+  tool. The Remote Script side uses `pkgutil` + `importlib.reload()` to
+  re-fire all `@register` decorators in place in <1s, without dropping
+  the MCP TCP connection on port 9878.
+- Ships with a pkgutil-based module-discovery helper in
+  `remote_script/LivePilot/__init__.py`, so new handler modules added to
+  `remote_script/LivePilot/` are picked up automatically on reload.
+- Exception: the very first bootstrap (no prior `LivePilot.*` in
+  `sys.modules`) still needs one full Ableton restart. After that,
+  `reload_handlers` works forever.
+- Domain: `diagnostics`. Added to `docs/manual/tool-catalog.md` to keep
+  the CI skill-contract test green.
+
+### Bug fixes
+
+- **`find_and_load_device` duplicate loads** — the tool was no-oping
+  only on exact name match; changed to also treat cases where the
+  target device is already the tail of the chain as a no-op. Prevents
+  the "load Simpler, load Simpler, load Simpler" cascade when the MCP
+  server retries a loader.
+- **`get_device_parameters` "Invalid display value"** — certain Live
+  parameters (especially plugin wrappers on AU/VST) raise
+  `RuntimeError("Invalid display value")` when their
+  `str_for_value()` is queried before the parameter has settled. The
+  handler now swallows that specific error and returns the raw float
+  instead of 500-ing the whole request.
+- **Sidechain LOM reopen (BUG-A3 redux)** — Compressor2 moved its
+  sidechain block into a nested property in a recent Live update, so
+  `compressor_set_sidechain` lost the ability to toggle. The handler
+  now probes the LOM surface at tool-call time and falls back to the
+  flat path when the nested one isn't exposed.
+- **Mixing `channel` lazy-get** — channel objects were resolved eagerly
+  at import time, breaking in edge cases where the Song came up before
+  the mixer. Now resolved on first use.
+
+### New: plugin-sync verification
+
+- `scripts/verify_plugin_sync.py` — catches the v1.14.0 regression
+  class where `.mcp.json` went missing from
+  `~/.claude/plugins/cache/dreamrec-LivePilot/livepilot/$VERSION/`. All
+  four sync targets (active plugin dir, cache version dir, marketplace
+  snapshot, `installed_plugins.json`) are now verified by one command.
+
+---
+
 ## 1.14.0 — Branch-native v2: producer context, synth intelligence, render verify (April 20 2026)
 
 Five-PR follow-up to v1.13.0 that closes the loops the first pass left
