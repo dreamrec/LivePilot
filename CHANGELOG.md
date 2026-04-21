@@ -13,7 +13,7 @@ tool, three bug fixes, and a new plugin-sync verification script.
 
 - Replaces the manual "toggle Control Surface in Live → Preferences →
   Link/MIDI" step that every Remote Script edit required. New workflow:
-  after `node installer/install.js`, call `reload_handlers` via the MCP
+  after `npx livepilot --install`, call `reload_handlers` via the MCP
   tool. The Remote Script side uses `pkgutil` + `importlib.reload()` to
   re-fire all `@register` decorators in place in <1s, without dropping
   the MCP TCP connection on port 9878.
