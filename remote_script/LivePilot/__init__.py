@@ -26,6 +26,7 @@ from . import follow_actions    # noqa: F401  — registers follow action handle
 from . import grooves           # noqa: F401  — registers groove pool handlers (11+)
 from . import take_lanes        # noqa: F401  — registers take lane handlers (12.0+ read, 12.2+ write)
 from . import clip_automation   # noqa: F401  — registers clip automation handlers
+from . import simpler_sample    # noqa: F401  — registers replace_sample_native (12.4+)
 from . import version_detect    # noqa: F401  — version detection
 
 
