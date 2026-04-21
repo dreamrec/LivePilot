@@ -32,46 +32,63 @@ from . import version_detect    # noqa: F401  — version detection
 # ── Reload plumbing (BUG-B-reload, Batch 20) ──────────────────────────────
 # Ableton keeps `sys.modules["LivePilot.*"]` cached across Control Surface
 # toggles. Without intervention, edits to handler files don't take effect
-# until a full Ableton restart — the toggle just re-instantiates the
-# ControlSurface class without re-importing submodules.
+# until a full Ableton restart.
 #
-# Fix: track whether this is the first create_instance call per
-# interpreter lifetime. On subsequent calls, force-reload the router
-# (which clears _handlers) and every handler module (which re-fires
-# @register decorators with the updated code). Result: a Control Surface
-# toggle now behaves like a fresh module reload, so live-editing mixing.py
-# / devices.py / etc. and re-toggling is enough — no Ableton restart.
+# Fix: on every create_instance() except the first, re-discover every
+# handler module on disk via pkgutil.iter_modules() and reload it. This
+# side-steps two separate issues: (1) the old hardcoded _HANDLER_MODULES
+# tuple that had to be manually updated for every new handler file, and
+# (2) Ableton's embedded Python silently no-op'ing importlib.reload() on
+# the package itself — a behavior confirmed empirically by observing
+# that a module-level file write in __init__.py never fires across
+# toggles, only at initial Live boot. pkgutil.iter_modules reads the
+# filesystem directly and relies only on reloading leaf submodules
+# (which Ableton handles correctly), so NEW handler files are picked up
+# on the next toggle / TCP reload_handlers call.
 #
-# Order matters: utils comes first because every handler imports
-# ``from .utils import get_track, get_device``. If utils isn't reloaded
-# first, those re-imports during ``importlib.reload(devices)`` still
-# resolve to the stale ``utils`` module object in ``sys.modules``.
+# In addition, a `reload_handlers` TCP command is exposed so the dev
+# loop becomes: edit source → sync → TCP reload_handlers → done. No
+# more UI toggles required during iteration.
+#
+# Order matters:
+#   1. Reload router first — clears _handlers so re-register is clean.
+#   2. Reload utils next — every handler imports get_track/get_device
+#      from it; must be fresh before handlers that depend on it reload.
+#   3. Discover + reload everything else via pkgutil.
 
 _FIRST_CREATE_INSTANCE = True
 
-_HANDLER_MODULES = (
-    utils,
-    transport, tracks, clips, notes, devices, scenes, scales,
-    mixing, browser, arrangement, diagnostics, follow_actions,
-    grooves, take_lanes, clip_automation, version_detect,
-)
+# Modules excluded from auto-reload. router is reloaded first (separately)
+# because clearing its _handlers must precede re-register. server owns the
+# TCP listener — reloading it mid-run would drop the socket.
+_RELOAD_EXCLUDE = {"router", "server"}
 
 
 def _force_reload_handlers(cs=None):
-    """Force Python to re-read the handler modules from disk.
+    """Re-discover and reload every handler submodule on disk.
 
-    Called on every create_instance() except the first, so edits to
-    handler files take effect via Control Surface toggle without
-    restarting Ableton. Order matters: router first (clears _handlers),
-    then each handler module (re-registers its @register decorators).
+    Uses pkgutil.iter_modules so NEW handler files added after Live boot
+    are picked up on the next call without any hand-maintained tuple.
+    Only touches leaf submodules — the one reload operation Ableton's
+    embedded Python handles correctly. Reloading the package itself was
+    tried and empirically no-ops in Ableton's Python.
 
-    When ``cs`` is provided, reload exceptions are logged through the
-    ControlSurface so a SyntaxError / NameError in an edited handler is
-    surfaced in Live's status log instead of silently swallowed. The
-    previous ``except Exception: pass`` turned any bad handler into a
-    silent NOT_FOUND at dispatch time with no hint that reload had failed.
+    Order:
+      1. Reload router → clears _handlers.
+      2. Reload utils → every handler imports get_track/get_device from it.
+      3. Discover + import/reload every other submodule. First-time imports
+         fire @register once; reloads re-fire it after the router reset.
+      4. Re-register reload_handlers_cmd (defined in __init__.py, not a
+         handler module, so not covered by step 3).
+
+    When ``cs`` is provided, reload exceptions log to the ControlSurface so
+    a SyntaxError / NameError in an edited handler is surfaced in Live's
+    status log instead of silently swallowed.
     """
     import importlib
+    import pkgutil
+    import sys as _sys
+
     def _log(msg):
         if cs is None:
             return
@@ -83,20 +100,60 @@ def _force_reload_handlers(cs=None):
     try:
         importlib.reload(router)
     except Exception as exc:
-        _log("reload(router) FAILED — %s: %s. Handlers will be "
-             "stale until Ableton restart." % (type(exc).__name__, exc))
-    for mod in _HANDLER_MODULES:
+        _log("reload(router) FAILED — %s: %s" % (type(exc).__name__, exc))
+
+    try:
+        importlib.reload(utils)
+    except Exception as exc:
+        _log("reload(utils) FAILED — %s: %s" % (type(exc).__name__, exc))
+
+    # Invalidate caches so iter_modules sees newly-added files even if
+    # an importer cached the previous directory listing.
+    importlib.invalidate_caches()
+    pkg = _sys.modules.get("LivePilot")
+    if pkg is None or getattr(pkg, "__path__", None) is None:
+        return
+
+    discovered = reloaded = first_imported = 0
+    for _finder, modname, _is_pkg in pkgutil.iter_modules(pkg.__path__):
+        if modname in _RELOAD_EXCLUDE or modname == "utils":
+            continue
+        discovered += 1
+        full_name = "LivePilot." + modname
         try:
-            importlib.reload(mod)
+            cached = _sys.modules.get(full_name)
+            if cached is not None:
+                importlib.reload(cached)
+                reloaded += 1
+            else:
+                importlib.import_module(full_name)
+                first_imported += 1
         except Exception as exc:
-            # Don't block Ableton startup on a single bad reload, but do
-            # tell the user what happened — the stale handler will keep
-            # serving the OLD code until a full restart.
-            _log("reload(%s) FAILED — %s: %s. Handler is stale." % (
-                getattr(mod, "__name__", "?"),
-                type(exc).__name__,
-                exc,
-            ))
+            _log("reload(%s) FAILED — %s: %s" % (
+                full_name, type(exc).__name__, exc))
+
+    # reload_handlers_cmd lives in __init__.py (not a handler module),
+    # so the step-3 loop does not cover it. Re-register manually.
+    router._handlers["reload_handlers"] = reload_handlers_cmd
+
+    _log("reload complete — %d discovered (%d reloaded, %d first-imported)" % (
+        discovered, reloaded, first_imported))
+
+
+def reload_handlers_cmd(song, params):
+    """TCP-accessible reload trigger. Lets automation refresh handlers
+    without a UI Control Surface toggle — the core dev-loop improvement.
+    Returns the handler count so the caller can assert before/after."""
+    _force_reload_handlers(cs=None)
+    return {
+        "reloaded": True,
+        "handler_count": len(router._handlers),
+    }
+
+
+# Register the TCP-triggered reload command for initial boot.
+# _force_reload_handlers re-registers it after each reload cycle.
+router._handlers["reload_handlers"] = reload_handlers_cmd
 
 
 def create_instance(c_instance):
