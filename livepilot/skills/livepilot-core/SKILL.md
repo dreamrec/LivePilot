@@ -35,7 +35,7 @@ Agentic production system for Ableton Live 12. 403 tools across 52 domains, thre
     - **Parameter ranges are NOT always 0-1.** Auto Filter Frequency is 20-135. Bit Depth is 1-16. Always read `value_string` to see actual units.
 16. **NEVER apply automation recipes without understanding the target parameter's range** — recipes generate 0-1 curves that get auto-scaled for device parameters, but always verify the result
 17. **LivePilot_Analyzer must be LAST on master chain** — always place after ALL effects (EQ, Compressor, Utility, etc.) so it measures the final post-processing output, not the raw signal. When loading effects on master, either load them before the analyzer or move the analyzer to end afterward
-18. **Remote Script reload workflow** — after any edit to `remote_script/LivePilot/*.py`: run `node installer/install.js` then call `reload_handlers` (MCP tool, domain: diagnostics). NEVER instruct the user to toggle the Control Surface in Live Preferences. The tool uses pkgutil + importlib to re-fire `@register` decorators in-place in <1s while the TCP connection stays open. Standard procedure for every handler change — not just releases
+18. **Remote Script reload workflow** — after any edit to `remote_script/LivePilot/*.py`: run `npx livepilot --install` (NOT `node installer/install.js` — the raw file only exports `install()` and silently no-ops as a script), then call `reload_handlers` (MCP tool, domain: diagnostics). NEVER instruct the user to toggle the Control Surface in Live Preferences. The tool uses pkgutil + importlib to re-fire `@register` decorators in-place in <1s while the TCP connection stays open. Standard procedure for every handler change — not just releases
 
 ## Tool Speed Tiers
 

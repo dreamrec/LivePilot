@@ -33,7 +33,7 @@
 - Structured errors with codes: INDEX_ERROR, NOT_FOUND, INVALID_PARAM, STATE_ERROR, TIMEOUT, INTERNAL
 - **LivePilot_Analyzer must be LAST on master** — always after ALL effects (EQ, Compressor, Utility) so it reads the final output, not pre-effect signal
 - **Single TCP client** — Remote Script accepts one connection at a time on port 9878. The MCP server holds a persistent connection. Direct TCP calls will fail with "Another client is already connected" if the MCP server is active. Always use MCP tools, not raw TCP
-- **Remote Script reload workflow** — after ANY edit to `remote_script/LivePilot/*.py`: run `node installer/install.js` then call the `reload_handlers` MCP tool. NEVER manually toggle the Control Surface in Live → Preferences → Link/MIDI. The `reload_handlers` tool uses pkgutil + importlib to re-fire `@register` decorators in-place while the MCP TCP connection stays open. Apply this standard procedure every time handlers change — bug fix, new tool, or release
+- **Remote Script reload workflow** — after ANY edit to `remote_script/LivePilot/*.py`: run `npx livepilot --install` (NOT `node installer/install.js` — that file only exports the function and is a no-op as a script), then call the `reload_handlers` MCP tool. NEVER manually toggle the Control Surface in Live → Preferences → Link/MIDI. The `reload_handlers` tool uses pkgutil + importlib to re-fire `@register` decorators in-place while the MCP TCP connection stays open. Apply this standard procedure every time handlers change — bug fix, new tool, or release
 
 ## M4L Bridge Notes
 - OSC addresses must be sent WITHOUT leading `/` — Max `udpreceive` passes `/` as part of messagename
