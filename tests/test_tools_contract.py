@@ -1,4 +1,4 @@
-"""Verify all 402 MCP tools are registered across 52 domains."""
+"""Verify all 403 MCP tools are registered across 52 domains."""
 
 import asyncio
 import sys
@@ -622,6 +622,7 @@ def test_control_surfaces_tools_registered():
     expected = {
         "list_control_surfaces",
         "get_control_surface_info",
+        "reload_handlers",
     }
     missing = expected - names
     assert not missing, f"Missing ControlSurface diagnostic tools: {missing}"
@@ -630,7 +631,7 @@ def test_control_surfaces_tools_registered():
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 402, f"Expected 402 tools, got {len(tools)}"
+    assert len(tools) == 403, f"Expected 403 tools, got {len(tools)}"
 
 
 def test_synthesis_brain_tools_registered():

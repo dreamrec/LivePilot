@@ -318,14 +318,21 @@ def _find_sidechain_surface(device):
     Or None if no known shape matches — caller should emit a diagnostic.
     """
     def _shape(obj, types_attr, chans_attr, type_prop, chan_prop, desc):
-        channels = (
-            list(getattr(obj, chans_attr))
-            if hasattr(obj, chans_attr) else None
-        )
+        # Channels MUST be read lazily — on Compressor2's input_routing_*
+        # shape, available_input_routing_channels depends on the currently
+        # selected input_routing_type. Snapshotting at probe time made
+        # combined (type + channel) calls fail because the snapshot was
+        # taken BEFORE the new type was written. A fresh read per query
+        # also keeps us honest against UI-side changes mid-call.
+        def _get_channels():
+            if not hasattr(obj, chans_attr):
+                return None
+            return list(getattr(obj, chans_attr))
+
         return {
             "desc": desc,
             "types": list(getattr(obj, types_attr)),
-            "channels": channels,
+            "get_channels": _get_channels,
             "set_type": lambda rt: setattr(obj, type_prop, rt),
             "set_chan": lambda rc: setattr(obj, chan_prop, rc),
             "read_type": lambda: getattr(obj, type_prop, None),
@@ -479,7 +486,10 @@ def set_compressor_sidechain(song, params):
         surface["set_type"](matched)
 
     if want_channel:
-        channels = surface["channels"]
+        # Lazy fetch — on Compressor2 the channel list depends on the
+        # currently-set input_routing_type, so combined calls need the
+        # post-type-write state, not the probe-time snapshot.
+        channels = surface["get_channels"]()
         if channels is None:
             raise ValueError(
                 "Sidechain surface on %s (%s) exposes input types but no "

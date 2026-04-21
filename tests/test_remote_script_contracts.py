@@ -585,6 +585,83 @@ def test_bug_a3_reopen_compressor2_nested_sidechain_input_surface():
     assert result["sidechain"]["channel"] == "Post FX"
 
 
+def test_bug_a3_reopen_compressor2_context_dependent_channels():
+    """Compressor2's `available_input_routing_channels` is context-dependent
+    — the list reflects channels for the currently-selected
+    `input_routing_type`. On a fresh Compressor with "No Input" selected,
+    the channel list is EMPTY; after setting type to "3-Audio", it becomes
+    ["Pre FX", "Post FX"]. Live-verified on Ableton Live 12.4.0.
+
+    The handler MUST re-read channels after writing type, not use a stale
+    probe-time snapshot. Regression guard for the 2026-04-21 combined-call
+    failure where source_type landed but source_channel matching got an
+    empty list because the probe had snapshotted channels pre-write.
+    """
+    mixing = _load_remote_mixing()
+
+    class _RT:
+        def __init__(self, name):
+            self.display_name = name
+
+    class _RC:
+        def __init__(self, name):
+            self.display_name = name
+
+    rt_no, rt_kick = _RT("No Input"), _RT("1-KICK")
+    rc_pre, rc_post = _RC("Pre FX"), _RC("Post FX")
+
+    class _Compressor2:
+        class_name = "Compressor2"
+        name = "Compressor"
+        parameters = []
+
+        def __init__(self):
+            self.sidechain_enabled = False
+            self._current_type = rt_no
+            self._current_chan = rc_post
+
+        @property
+        def available_input_routing_types(self):
+            return [rt_no, rt_kick]
+
+        @property
+        def available_input_routing_channels(self):
+            # Empty until a real input is selected — mirrors LOM behavior.
+            if self._current_type is rt_no:
+                return []
+            return [rc_pre, rc_post]
+
+        @property
+        def input_routing_type(self):
+            return self._current_type
+
+        @input_routing_type.setter
+        def input_routing_type(self, v):
+            self._current_type = v
+
+        @property
+        def input_routing_channel(self):
+            return self._current_chan
+
+        @input_routing_channel.setter
+        def input_routing_channel(self, v):
+            self._current_chan = v
+
+    comp = _Compressor2()
+    result = mixing.set_compressor_sidechain(
+        _compressor_routing_song(comp),
+        {
+            "track_index": 0, "device_index": 0,
+            "source_type": "1-KICK", "source_channel": "Pre FX",
+        },
+    )
+    assert result["ok"] is True
+    assert comp._current_type is rt_kick
+    assert comp._current_chan is rc_pre
+    assert result["sidechain"]["type"] == "1-KICK"
+    assert result["sidechain"]["channel"] == "Pre FX"
+
+
 def test_bug_a3_reopen_mismatched_source_type_lists_available():
     """When source_type doesn't match, the error must list the options
     from the discovered surface (not a hardcoded assumption)."""
