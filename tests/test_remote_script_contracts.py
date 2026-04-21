@@ -447,6 +447,179 @@ def test_bug_a5_set_clip_pitch_rejects_out_of_range_coarse():
         })
 
 
+def _compressor_routing_song(compressor):
+    class _Track:
+        def __init__(self, devices):
+            self.devices = devices
+
+    class _Song:
+        tracks = [_Track([compressor])]
+        return_tracks = []
+        master_track = None
+
+    return _Song()
+
+
+def test_bug_a3_reopen_legacy_compressor_uses_flat_surface():
+    """Legacy Compressor (I) exposes the flat available_sidechain_input_*
+    attrs and the handler should keep matching by display_name — this is
+    the original Batch 19 behavior that must not regress."""
+    mixing = _load_remote_mixing()
+
+    class _RT:
+        def __init__(self, name):
+            self.display_name = name
+
+    class _RC:
+        def __init__(self, name):
+            self.display_name = name
+
+    rt_kick, rt_ext = _RT("1-KICK"), _RT("Ext. In")
+    rc_pre, rc_post = _RC("Pre FX"), _RC("Post FX")
+
+    class _Compressor:
+        class_name = "Compressor"
+        name = "Compressor"
+        parameters = []
+
+        def __init__(self):
+            self.sidechain_enabled = False
+            self.available_sidechain_input_routing_types = [rt_kick, rt_ext]
+            self.available_sidechain_input_routing_channels = [rc_pre, rc_post]
+            self.sidechain_input_routing_type = rt_ext
+            self.sidechain_input_routing_channel = rc_post
+
+    comp = _Compressor()
+    result = mixing.set_compressor_sidechain(
+        _compressor_routing_song(comp),
+        {
+            "track_index": 0, "device_index": 0,
+            "source_type": "1-KICK", "source_channel": "Pre FX",
+        },
+    )
+    assert result["ok"] is True
+    assert comp.sidechain_enabled is True
+    assert comp.sidechain_input_routing_type is rt_kick
+    assert comp.sidechain_input_routing_channel is rc_pre
+    assert result["sidechain"]["type"] == "1-KICK"
+    assert result["sidechain"]["channel"] == "Pre FX"
+
+
+def test_bug_a3_reopen_compressor2_missing_surface_raises_with_diagnostic():
+    """Compressor2 without any known LOM sidechain surface — the error
+    must embed a dir() audit so the next run reveals what IS exposed.
+    Regression guard for the 2026-04-21 Live 12.3.6 regression where
+    available_sidechain_input_routing_types disappeared on Compressor2."""
+    import pytest
+
+    mixing = _load_remote_mixing()
+
+    class _Compressor2:
+        class_name = "Compressor2"
+        name = "Compressor"
+        parameters = []
+
+        def __init__(self):
+            self.sidechain_enabled = False
+            # Carry a distinct routing-related attr so we can confirm
+            # the diagnostic actually walks dir() and surfaces it.
+            self.some_routing_marker = "probe-breadcrumb"
+
+    comp = _Compressor2()
+    with pytest.raises(ValueError) as exc:
+        mixing.set_compressor_sidechain(
+            _compressor_routing_song(comp),
+            {"track_index": 0, "device_index": 0, "source_type": "1-KICK"},
+        )
+    msg = str(exc.value)
+    assert "doesn't expose a sidechain routing surface" in msg
+    assert "Compressor2" in msg
+    assert "Inspected attrs:" in msg
+    assert "some_routing_marker" in msg  # diagnostic walked dir()
+
+
+def test_bug_a3_reopen_compressor2_nested_sidechain_input_surface():
+    """Compressor2 hypothesis: routing moved to a nested sidechain_input
+    DeviceIO child. The probe should find it and route writes through."""
+    mixing = _load_remote_mixing()
+
+    class _RT:
+        def __init__(self, name):
+            self.display_name = name
+
+    class _RC:
+        def __init__(self, name):
+            self.display_name = name
+
+    rt_drums = _RT("1-DRUMS")
+    rc_post = _RC("Post FX")
+
+    class _DeviceIO:
+        def __init__(self):
+            self.available_routing_types = [rt_drums]
+            self.available_routing_channels = [rc_post]
+            self.routing_type = rt_drums
+            self.routing_channel = rc_post
+
+    class _Compressor2:
+        class_name = "Compressor2"
+        name = "Compressor"
+        parameters = []
+
+        def __init__(self):
+            self.sidechain_enabled = False
+            self.sidechain_input = _DeviceIO()
+
+    comp = _Compressor2()
+    result = mixing.set_compressor_sidechain(
+        _compressor_routing_song(comp),
+        {
+            "track_index": 0, "device_index": 0,
+            "source_type": "1-DRUMS", "source_channel": "Post FX",
+        },
+    )
+    assert result["ok"] is True
+    assert comp.sidechain_input.routing_type is rt_drums
+    assert comp.sidechain_input.routing_channel is rc_post
+    assert result["sidechain"]["type"] == "1-DRUMS"
+    assert result["sidechain"]["channel"] == "Post FX"
+
+
+def test_bug_a3_reopen_mismatched_source_type_lists_available():
+    """When source_type doesn't match, the error must list the options
+    from the discovered surface (not a hardcoded assumption)."""
+    import pytest
+
+    mixing = _load_remote_mixing()
+
+    class _RT:
+        def __init__(self, name):
+            self.display_name = name
+
+    class _Compressor:
+        class_name = "Compressor"
+        name = "Compressor"
+        parameters = []
+
+        def __init__(self):
+            self.sidechain_enabled = False
+            self.available_sidechain_input_routing_types = [_RT("Ext. In")]
+            self.available_sidechain_input_routing_channels = []
+            self.sidechain_input_routing_type = None
+            self.sidechain_input_routing_channel = None
+
+    with pytest.raises(ValueError) as exc:
+        mixing.set_compressor_sidechain(
+            _compressor_routing_song(_Compressor()),
+            {"track_index": 0, "device_index": 0, "source_type": "1-KICK"},
+        )
+    msg = str(exc.value)
+    assert "Sidechain input type '1-KICK' not found" in msg
+    assert "Ext. In" in msg
+    # surface tag helps future debugging tell us which shape matched
+    assert "flat device.sidechain_input_routing_*" in msg
+
+
 def test_bug_a1_ping_embeds_remote_script_version_and_commands():
     """BUG-A1: ping response must include remote_script_version and the
     handler set so the MCP server can detect stale installs."""
