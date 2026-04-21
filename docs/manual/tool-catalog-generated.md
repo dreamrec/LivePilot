@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog (Generated)
 
-393 tools across 52 domains.
+403 tools across 52 domains.
 
 > Auto-generated from `mcp.list_tools()`. Do not hand-edit.
 > Regenerate: `python3 scripts/generate_tool_catalog.py`
@@ -20,7 +20,7 @@
 | `get_turn_budget` | Get a resource budget for the current agent turn. |
 | `route_request` | Route a production request to the right engine(s). |
 
-## Analyzer (32)
+## Analyzer (33)
 
 | Tool | Description |
 |------|-------------|
@@ -28,6 +28,7 @@
 | `capture_audio` | Capture audio from Ableton Live to a WAV file on disk. |
 | `capture_stop` | Stop an in-progress audio capture early. |
 | `check_flucoma` | Check if FluCoMa is installed and sending data. |
+| `classify_simpler_slices` | Classify each Simpler slice as KICK / SNARE / HAT / ghost via FFT analysis. |
 | `compressor_set_sidechain` | Configure a Compressor's sidechain INPUT ROUTING (BUG-A3). |
 | `crop_simpler` | Crop a Simpler's sample to the currently active region. |
 | `get_automation_state` | Get automation state for all parameters on a device. |
@@ -138,13 +139,14 @@
 | `set_clip_warp_mode` | Set warp mode for an audio clip (0=Beats, 1=Tones, 2=Texture, 3=Re-Pitch, 4=Complex, 6=Complex Pro). |
 | `stop_clip` | Stop a playing clip. |
 
-## Composer (3)
+## Composer (4)
 
 | Tool | Description |
 |------|-------------|
 | `augment_with_samples` | Plan sample-based layers to add to the existing session. |
 | `compose` | Plan a full multi-layer composition from a text prompt. |
 | `get_composition_plan` | Preview what compose would do without executing or spending credits. |
+| `propose_composer_branches` | Emit N distinct compositional hypotheses for a single prompt (PR5/v2). |
 
 ## Composition (9)
 
@@ -184,7 +186,7 @@
 |------|-------------|
 | `add_rack_macro` | Add one macro to a Rack, raising visible_macro_count by 1 (Live 11+). |
 | `add_wavetable_mod_route` | Create a modulation routing on a Wavetable device (Live 11+). |
-| `batch_set_parameters` | Set multiple device parameters in one call. parameters is a JSON array of objects: [{"name_or_index": "Dry/Wet", "value" |
+| `batch_set_parameters` | Set multiple device parameters in one call. |
 | `clear_simpler_slices` | Remove all manual slices from the Simpler (Live 11+). |
 | `copy_device_state` | Copy one A/B state to the other (Live 12.3+). |
 | `delete_device` | Delete a device from a track. Use undo to revert if needed. |
@@ -224,12 +226,13 @@
 | `toggle_device` | Enable or disable a device. |
 | `toggle_device_ab` | Swap a device's A/B state (Live 12.3+). |
 
-## Diagnostics (2)
+## Diagnostics (3)
 
 | Tool | Description |
 |------|-------------|
 | `get_control_surface_info` | Read detailed info about a single control surface. |
 | `list_control_surfaces` | List all active ControlSurface instances (Push, APC, Launchkey, etc.). |
+| `reload_handlers` | Reload every Remote Script handler module in Ableton — dev-loop helper. |
 
 ## Evaluation (1)
 
@@ -336,6 +339,15 @@
 | `export_clip_midi` | Export a session clip's notes to a .mid file. |
 | `extract_piano_roll` | Extract a 2D piano roll matrix from a .mid file. Offline-capable. |
 | `import_midi_to_clip` | Load a .mid file into a session clip. |
+
+## Miditool (4)
+
+| Tool | Description |
+|------|-------------|
+| `get_miditool_context` | Return the most recent MIDI Tool context received from the bridge. |
+| `install_miditool_device` | Install LivePilot MIDI Tool .amxd files into Ableton's User Library. |
+| `list_miditool_generators` | Enumerate the generators available for MIDI Tool targets. |
+| `set_miditool_target` | Configure which LivePilot generator handles MIDI Tool requests. |
 
 ## Mix Engine (6)
 
@@ -553,6 +565,14 @@
 | `start_rescue_workflow` | Start a structured rescue workflow for a specific stuckness type. |
 | `suggest_momentum_rescue` | Suggest strategic moves to restore session momentum. |
 
+## Synthesis Brain (3)
+
+| Tool | Description |
+|------|-------------|
+| `analyze_synth_patch` | Extract a SynthProfile for a native synth on the given track+device. |
+| `extract_timbre_fingerprint` | Build a TimbralFingerprint from analysis dicts. |
+| `propose_synth_branches` | Propose branch seeds + pre-compiled plans for a native synth. |
+
 ## Take Lanes (6)
 
 | Tool | Description |
@@ -651,4 +671,4 @@
 | `rank_wonder_variants` | Rank wonder-mode variants by taste + identity + novelty + coherence. |
 
 ---
-*Generated from 393 registered tools.*
+*Generated from 403 registered tools.*

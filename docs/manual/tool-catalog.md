@@ -761,12 +761,13 @@
 
 ---
 
-## Diagnostics (2) — ControlSurface enumeration
+## Diagnostics (3) — ControlSurface enumeration + dev-loop reload
 
 | Tool | Description |
 |------|-------------|
 | `list_control_surfaces` | List all active ControlSurface instances (Push, APC, Launchkey, etc.) |
 | `get_control_surface_info` | Read detailed info about a single control surface |
+| `reload_handlers` | Reload every Remote Script handler module — dev-loop helper to skip Control Surface toggles after editing handler code |
 
 ---
 
