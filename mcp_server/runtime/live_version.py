@@ -79,8 +79,10 @@ class LiveVersionCapabilities:
 
     @property
     def capability_tier(self) -> str:
-        """Human-readable tier: core | enhanced_arrangement | full_intelligence."""
-        if self._version_tuple >= (12, 3, 0):
+        """Human-readable tier: core | enhanced_arrangement | full_intelligence | collaborative."""
+        if self._version_tuple >= (12, 4, 0):
+            return "collaborative"
+        elif self._version_tuple >= (12, 3, 0):
             return "full_intelligence"
         elif self._version_tuple >= (12, 1, 10):
             return "enhanced_arrangement"

@@ -70,3 +70,38 @@ def test_capability_tier_12_1_10():
 def test_capability_tier_12_3():
     caps = LiveVersionCapabilities(12, 3, 0)
     assert caps.capability_tier == "full_intelligence"
+
+
+# ── Live 12.4+ (Collaborative tier) ──────────────────────────────────
+
+def test_capability_tier_12_4_0():
+    caps = LiveVersionCapabilities(12, 4, 0)
+    assert caps.capability_tier == "collaborative"
+
+
+def test_capability_tier_12_4_11():
+    caps = LiveVersionCapabilities(12, 4, 11)
+    assert caps.capability_tier == "collaborative"
+
+
+def test_capability_tier_12_5_forward_compat():
+    """Future versions stay in Collaborative until a new tier is defined."""
+    caps = LiveVersionCapabilities(12, 5, 0)
+    assert caps.capability_tier == "collaborative"
+
+
+def test_has_replace_sample_native_12_4_0():
+    caps = LiveVersionCapabilities(12, 4, 0)
+    assert caps.has_replace_sample_native is True
+
+
+def test_has_replace_sample_native_12_3_6():
+    caps = LiveVersionCapabilities(12, 3, 6)
+    assert caps.has_replace_sample_native is False
+
+
+def test_to_dict_12_4_includes_collaborative_and_native():
+    caps = LiveVersionCapabilities(12, 4, 0)
+    d = caps.to_dict()
+    assert d["capability_tier"] == "collaborative"
+    assert d["replace_sample_native"] is True
