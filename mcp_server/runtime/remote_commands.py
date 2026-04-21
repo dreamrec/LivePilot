@@ -117,6 +117,8 @@ REMOTE_COMMANDS: frozenset[str] = frozenset({
     "get_appointed_device",
     # ping (built-in)
     "ping",
+    # Live 12.4+ native Simpler sample replacement (Collaborative tier)
+    "replace_sample_native",
 })
 
 # M4L bridge commands — routed through TCP but handled by livepilot_bridge.js

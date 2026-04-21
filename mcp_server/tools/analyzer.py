@@ -64,6 +64,71 @@ def _enrich_slice_response(response: Optional[dict]) -> Optional[dict]:
     return enriched
 
 
+def _live_caps(ctx):
+    """Read (or lazily compute + cache) LiveVersionCapabilities on the context.
+
+    On first call, queries Ableton via get_session_info and caches the
+    result in ``ctx.lifespan_context["_live_caps"]``. Subsequent calls
+    short-circuit to the cache. If Ableton is unreachable, falls back to
+    12.0.0 (conservative — all new-version gates return False).
+
+    This mirrors the on-demand pattern in
+    mcp_server/runtime/capability_probe.py and avoids adding a startup
+    round-trip to the lifespan.
+    """
+    from mcp_server.runtime.live_version import LiveVersionCapabilities
+
+    lsc = ctx.lifespan_context
+    cached = lsc.get("_live_caps")
+    if cached is not None:
+        return cached
+
+    version_str = "12.0.0"
+    ableton = lsc.get("ableton")
+    if ableton is not None:
+        try:
+            info = ableton.send_command("get_session_info") or {}
+            version_str = info.get("live_version", "12.0.0")
+        except Exception:
+            pass
+
+    caps = LiveVersionCapabilities.from_version_string(version_str)
+    lsc["_live_caps"] = caps
+    return caps
+
+
+async def _try_native_replace_sample(ctx, track_index: int, device_index: int,
+                                      file_path: str):
+    """Attempt the Live 12.4+ native SimplerDevice.replace_sample path.
+
+    Returns the remote-script response dict on success, or None if the
+    native path is unavailable (pre-12.4) or failed (caller should fall
+    back to the M4L-bridge path).
+
+    A native "failure" is any of: gate closed, dispatch exception, non-dict
+    response, error field present, or missing sample_loaded flag.
+    """
+    caps = _live_caps(ctx)
+    if not caps.has_replace_sample_native:
+        return None
+    ableton = ctx.lifespan_context["ableton"]
+    try:
+        resp = ableton.send_command("replace_sample_native", {
+            "track_index": track_index,
+            "device_index": device_index,
+            "file_path": file_path,
+        })
+    except Exception:
+        return None
+    if not isinstance(resp, dict):
+        return None
+    if "error" in resp:
+        return None
+    if not resp.get("sample_loaded"):
+        return None
+    return resp
+
+
 @mcp.tool()
 async def reconnect_bridge(ctx: Context) -> dict:
     """Attempt to reconnect the M4L UDP bridge (port 9880).
@@ -350,12 +415,27 @@ async def replace_simpler_sample(
     _require_analyzer(cache)
     bridge = _get_m4l(ctx)
     ableton = ctx.lifespan_context["ableton"]
+
+    # Live 12.4+: prefer the native SimplerDevice.replace_sample path.
+    native = await _try_native_replace_sample(
+        ctx, track_index, device_index, file_path
+    )
+    if native is not None:
+        hygiene = await _simpler_post_load_hygiene(
+            bridge, ableton, track_index, device_index, file_path
+        )
+        if not hygiene.get("verified"):
+            return hygiene
+        result = dict(native)
+        result.update(hygiene)
+        result["method"] = "native_12_4"  # preserved in case hygiene ever adds its own key
+        return result
+
+    # Pre-12.4 fallback: M4L bridge path (unchanged behavior).
     result = await bridge.send_command(
         "replace_simpler_sample", track_index, device_index, file_path
     )
 
-    # Validate the response — the bridge may report success even when the
-    # sample silently failed to load (e.g., empty Simpler, bad path)
     if "error" in result:
         return result
     if not result.get("sample_loaded"):
@@ -364,8 +444,6 @@ async def replace_simpler_sample(
             "has a sample loaded — replace_sample silently fails on empty Simplers."
         }
 
-    # Verify by reading back the device name — guards against the silent
-    # failure mode where the bridge reports success but keeps the placeholder.
     hygiene = await _simpler_post_load_hygiene(
         bridge, ableton, track_index, device_index, file_path
     )
@@ -405,9 +483,39 @@ async def load_sample_to_simpler(
     cache = _get_spectral(ctx)
     _require_analyzer(cache)
     bridge = _get_m4l(ctx)
+    ableton = ctx.lifespan_context["ableton"]
+
+    # Live 12.4+: create an empty Simpler via insert_device, then use the
+    # native replace_sample path. Skips the dummy-sample bootstrap entirely.
+    caps = _live_caps(ctx)
+    if caps.has_replace_sample_native:
+        try:
+            ins = ableton.send_command("insert_device", {
+                "track_index": track_index,
+                "device_name": "Simpler",
+            })
+        except Exception:
+            ins = None
+        if isinstance(ins, dict) and "error" not in ins:
+            actual_device_index = ins.get("device_index", device_index)
+            native = await _try_native_replace_sample(
+                ctx, track_index, actual_device_index, file_path
+            )
+            if native is not None:
+                hygiene = await _simpler_post_load_hygiene(
+                    bridge, ableton, track_index, actual_device_index, file_path
+                )
+                if not hygiene.get("verified"):
+                    return hygiene
+                result = dict(native)
+                result.update(hygiene)
+                result["method"] = "native_12_4"
+                result["device_index"] = actual_device_index
+                result["track_index"] = track_index
+                return result
+        # Fall through to the legacy bootstrap path below on any failure.
 
     # Step 1: Load a sample from the browser to create Simpler with content
-    ableton = ctx.lifespan_context["ableton"]
     try:
         search = ableton.send_command("search_browser", {
             "path": "samples",
