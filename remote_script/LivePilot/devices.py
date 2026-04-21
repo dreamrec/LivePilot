@@ -46,21 +46,29 @@ def get_device_parameters(song, params):
 
     parameters = []
     for i, param in enumerate(device.parameters):
-        info = {
+        # Live raises RuntimeError("Invalid display value") from
+        # str_for_value / display_value when a parameter's internal
+        # display string is unset or NaN — seen on Operator,
+        # Compressor2, AutoFilter2. Serialize best-effort so one bad
+        # parameter does not abort the whole device read.
+        try:
+            value_string = param.str_for_value(param.value)
+        except Exception:
+            value_string = None
+        try:
+            display_value = param.display_value
+        except Exception:
+            display_value = None
+        parameters.append({
             "index": i,
             "name": param.name,
             "value": param.value,
             "min": param.min,
             "max": param.max,
             "is_quantized": param.is_quantized,
-            "value_string": param.str_for_value(param.value),
-        }
-        # 12.2+ feature: native display_value
-        try:
-            info["display_value"] = param.display_value
-        except AttributeError:
-            pass
-        parameters.append(info)
+            "value_string": value_string,
+            "display_value": display_value,
+        })
     return {"parameters": parameters}
 
 

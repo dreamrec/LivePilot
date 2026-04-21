@@ -464,3 +464,111 @@ def test_bug_a1_ping_embeds_remote_script_version_and_commands():
     # commands list should include the newly-added set_clip_pitch handler
     assert "set_clip_pitch" in result["commands"]
     assert "get_clip_info" in result["commands"]
+
+
+def _load_remote_devices():
+    """Load remote_script.LivePilot.devices with Live stubbed.
+
+    devices.py does `import Live` at module top (for the browser helper),
+    so we inject a bare ModuleType before loading. version_detect is
+    imported lazily inside handlers — get_device_parameters never touches
+    it, so we don't need to stub that path.
+    """
+    for name in [
+        "remote_script.LivePilot.devices",
+        "remote_script.LivePilot.router",
+        "remote_script.LivePilot.utils",
+        "remote_script.LivePilot",
+        "remote_script",
+    ]:
+        sys.modules.pop(name, None)
+
+    sys.modules.setdefault("Live", types.ModuleType("Live"))
+
+    remote_pkg = types.ModuleType("remote_script")
+    remote_pkg.__path__ = [str(ROOT / "remote_script")]
+    sys.modules["remote_script"] = remote_pkg
+
+    live_pkg = types.ModuleType("remote_script.LivePilot")
+    live_pkg.__path__ = [str(REMOTE_ROOT)]
+    sys.modules["remote_script.LivePilot"] = live_pkg
+
+    def _load(name: str, path: Path):
+        spec = importlib.util.spec_from_file_location(name, path)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[name] = module
+        assert spec.loader is not None
+        spec.loader.exec_module(module)
+        return module
+
+    _load("remote_script.LivePilot.utils", REMOTE_ROOT / "utils.py")
+    router = _load("remote_script.LivePilot.router", REMOTE_ROOT / "router.py")
+    devices = _load("remote_script.LivePilot.devices", REMOTE_ROOT / "devices.py")
+    return router, devices
+
+
+def test_get_device_parameters_tolerates_broken_display_value():
+    """A parameter whose str_for_value or display_value raises RuntimeError
+    (Live reports 'Invalid display value' on Operator, Compressor2,
+    AutoFilter2 when a value is NaN/unset) must not abort the whole
+    serialization. The broken parameter serializes with None strings;
+    siblings are returned intact.
+    """
+    router, _devices = _load_remote_devices()
+
+    class _GoodParam:
+        name = "Threshold"
+        value = 0.5
+        min = 0.0
+        max = 1.0
+        is_quantized = False
+        display_value = "-6.0 dB"
+
+        def str_for_value(self, v):
+            return "-6.0 dB"
+
+    class _BadParam:
+        name = "Ratio"
+        value = float("nan")
+        min = 0.0
+        max = 1.0
+        is_quantized = False
+
+        def str_for_value(self, v):
+            raise RuntimeError("Invalid display value")
+
+        @property
+        def display_value(self):
+            raise RuntimeError("Invalid display value")
+
+    class _Device:
+        parameters = [_GoodParam(), _BadParam()]
+
+    class _Track:
+        devices = [_Device()]
+
+    class _Song:
+        tracks = [_Track()]
+        return_tracks = []
+
+    response = router.dispatch(
+        _Song(),
+        {
+            "id": "t1",
+            "type": "get_device_parameters",
+            "params": {"track_index": 0, "device_index": 0},
+        },
+    )
+
+    assert response["ok"] is True, f"Expected success, got: {response}"
+    params = response["result"]["parameters"]
+    assert len(params) == 2
+
+    good, bad = params
+    assert good["name"] == "Threshold"
+    assert good["value_string"] == "-6.0 dB"
+    assert good["display_value"] == "-6.0 dB"
+
+    assert bad["name"] == "Ratio"
+    assert bad["value_string"] is None
+    assert bad["display_value"] is None
