@@ -426,9 +426,20 @@ def move_device(
 
 
 @mcp.tool()
-def find_and_load_device(ctx: Context, track_index: int, device_name: str) -> dict:
+def find_and_load_device(
+    ctx: Context,
+    track_index: int,
+    device_name: str,
+    allow_duplicate: bool = False,
+) -> dict:
     """Search the browser for a device by name and load it onto a track.
-    track_index: 0+ for regular tracks, -1/-2/... for return tracks (A/B/...), -1000 for master."""
+    track_index: 0+ for regular tracks, -1/-2/... for return tracks (A/B/...), -1000 for master.
+
+    allow_duplicate (default False): if a device with the same name is
+    already on the track's chain, the default behavior is to NO-OP and
+    return the existing device's location with `already_present: True`.
+    Pass allow_duplicate=True to force a second instance (e.g., parallel
+    processing chains where you genuinely want two of the same device)."""
     _validate_track_index(track_index)
     if not device_name.strip():
         raise ValueError("device_name cannot be empty")
@@ -447,6 +458,7 @@ def find_and_load_device(ctx: Context, track_index: int, device_name: str) -> di
     result = _get_ableton(ctx).send_command("find_and_load_device", {
         "track_index": track_index,
         "device_name": device_name,
+        "allow_duplicate": allow_duplicate,
     })
     return _postflight_loaded_device(ctx, result)
 
