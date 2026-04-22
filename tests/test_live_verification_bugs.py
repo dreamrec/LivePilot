@@ -128,29 +128,36 @@ def test_bug_pack_info_returns_tuple_shape():
     )
 
 
-def test_bug_pack_info_normalizes_trailing_suffix():
-    """Some Splice pack_uuids have decoration bytes past the 36-char UUID.
+def test_bug_pack_info_handles_extended_uuid_variants():
+    """Splice uses both UUID formats — canonical 36-char and extended
+    43-char with a longer last group.
 
-    Example observed 2026-04-22 live:
-      "2fc8c6b5-0d7a-8780-0396-8ea1824e9d94937b309"  (45 chars)
-      — valid UUID is the first 36 chars:
-      "2fc8c6b5-0d7a-8780-0396-8ea1824e9d94"
+    Examples observed 2026-04-22 live:
+      "030748a0-c2e8-44d6-bfb7-bb8a1fa4170c"  (36 chars, canonical)
+      "1170db75-0ce1-5280-bb61-887a0dd7f26bf5a3951" (43 chars, extended)
+      "2fc8c6b5-0d7a-8780-0396-8ea1824e9d94937b309" (43 chars, extended)
 
-    The MCP wrapper truncates to canonical form before the RPC so
-    existing catalog search results can be fed straight into
-    splice_pack_info.
+    An earlier revision truncated to `[:36]` which incorrectly discarded
+    part of the legitimate extended form. The correct behavior: the
+    client matches on BOTH the submitted UUID AND the canonical
+    truncation so either server-returned format pairs with a submitted
+    UUID in either format.
     """
     import inspect
-    from mcp_server.sample_engine import tools
-    source = inspect.getsource(tools.splice_pack_info)
-    # Must contain canonical-form truncation logic
-    assert (
-        'canonical[:36]' in source
-        or 'canonical = pack_uuid' in source
-    ), (
-        "splice_pack_info must normalize pack_uuid to canonical 36-char "
-        "UUID form before calling the gRPC. Long forms like "
-        "'<uuid>937b309' otherwise fail server-side."
+    from mcp_server.splice_client.client import SpliceGRPCClient
+    source = inspect.getsource(SpliceGRPCClient.get_pack_info)
+    # The two-form matching strategy is the guard.
+    assert "targets" in source, (
+        "get_pack_info must build a set of UUID targets (submitted + "
+        "canonical truncation) so extended-UUID Splice packs can still "
+        "be resolved when the submitted form is extended but the server "
+        "returns the canonical form (or vice versa)."
+    )
+    # The old lossy truncation-before-matching must NOT reappear
+    # as the sole comparison — we need both forms tried.
+    assert "p.UUID == target" not in source, (
+        "Single-string equality match is insufficient. Use set membership "
+        "or dual-form comparison to handle both Splice UUID variants."
     )
 
 
@@ -166,6 +173,41 @@ def test_bug_pack_info_surfaces_real_error():
     assert 'err_msg' in source, (
         "splice_pack_info must forward err_msg from client.get_pack_info "
         "so callers can diagnose the real failure cause."
+    )
+
+
+def test_bug_pack_info_matches_extended_uuid_form():
+    """Splice uses both canonical 36-char AND extended 43+-char UUIDs.
+
+    Example extended form observed 2026-04-22:
+      "1170db75-0ce1-5280-bb61-887a0dd7f26bf5a3951" (43 chars — last
+      group extended to 19 chars instead of standard 12).
+
+    An earlier rev aggressively truncated to `[:36]` which discarded
+    part of this legitimate UUID. The correct behavior: try both the
+    submitted form AND the canonical truncation so either one matches.
+    """
+    import inspect
+    from mcp_server.splice_client.client import SpliceGRPCClient
+    source = inspect.getsource(SpliceGRPCClient.get_pack_info)
+    # Must build a set of both forms
+    assert "targets = {" in source or "canonical" in source, (
+        "get_pack_info must match on both submitted and canonical UUID "
+        "forms — Splice's ListSamplePacks returns UUIDs in either form."
+    )
+
+
+def test_bug_pack_info_mcp_wrapper_passes_uuid_unchanged():
+    """The MCP wrapper must NOT pre-truncate pack_uuid — let the client
+    handle both-form matching."""
+    import inspect
+    from mcp_server.sample_engine import tools
+    source = inspect.getsource(tools.splice_pack_info)
+    # The old eager truncation must be gone
+    assert "canonical[:36]" not in source, (
+        "MCP wrapper pre-truncated UUIDs to 36 chars, breaking lookups "
+        "for legitimately-extended 43-char Splice UUIDs. Remove the "
+        "truncation — the client handles both forms now."
     )
 
 

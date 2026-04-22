@@ -709,6 +709,14 @@ class SpliceGRPCClient:
             return None, "Splice gRPC not connected"
         pb2 = self._pb2
         target = pack_uuid.strip()
+        # Splice uses two UUID formats: canonical 36-char and an "extended"
+        # form with a longer last group (observed 43 chars, e.g.
+        # "1170db75-0ce1-5280-bb61-887a0dd7f26bf5a3951"). Both variants
+        # appear in sounds.db and search results. We match BOTH when the
+        # caller submits one form — the other form might be the one the
+        # server returns for the same pack. Observed 2026-04-22.
+        canonical = target[:36] if len(target) > 36 else target
+        targets = {target, canonical}
         next_token = 0
         try:
             for _page in range(max(1, int(max_pages))):
@@ -717,9 +725,11 @@ class SpliceGRPCClient:
                     timeout=INFO_TIMEOUT,
                 )
                 for p in response.SamplePacks:
-                    if p.UUID == target:
+                    p_uuid = p.UUID
+                    p_canonical = p_uuid[:36] if len(p_uuid) > 36 else p_uuid
+                    if p_uuid in targets or p_canonical in targets:
                         return SplicePack(
-                            uuid=p.UUID,
+                            uuid=p_uuid,
                             name=p.Name,
                             cover_url=p.CoverURL,
                             genre=p.Genre,

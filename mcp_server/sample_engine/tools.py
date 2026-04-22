@@ -1442,20 +1442,21 @@ async def splice_pack_info(ctx: Context, pack_uuid: str) -> dict:
         return err
     if not pack_uuid:
         return {"ok": False, "error": "pack_uuid is required"}
-    # Normalize: search-returned pack_uuid values sometimes have trailing
-    # provider suffix bytes appended (observed live 2026-04-22 — UUIDs
-    # like "2fc8c6b5-0d7a-8780-0396-8ea1824e9d94937b309" where the first
-    # 36 chars are the standard UUID and the rest are decoration).
-    # Truncate to the canonical 36-char UUID form before the RPC.
-    canonical = pack_uuid.strip()
-    if len(canonical) > 36 and canonical[8] == "-" and canonical[13] == "-":
-        canonical = canonical[:36]
-    pack, err_msg = await client.get_pack_info(canonical)
+    # Pass the UUID through unchanged — Splice uses two valid UUID formats
+    # (canonical 36-char and extended 43-char with longer last group). The
+    # client tries BOTH forms during ListSamplePacks matching. An earlier
+    # revision pre-truncated to 36 chars here, which incorrectly discarded
+    # part of a legitimate extended UUID (observed 2026-04-22 live: pack
+    # "1170db75-0ce1-5280-bb61-887a0dd7f26bf5a3951" is an owned pack but
+    # pre-truncation made the client look for a UUID that didn't exist in
+    # ListSamplePacks' response).
+    submitted = pack_uuid.strip()
+    pack, err_msg = await client.get_pack_info(submitted)
     if pack is None:
         return {
             "ok": False,
             "error": err_msg or "Pack not found",
-            "pack_uuid_submitted": canonical,
+            "pack_uuid_submitted": submitted,
             "pack_uuid_original": pack_uuid,
         }
     return {"ok": True, "pack": pack.to_dict()}
