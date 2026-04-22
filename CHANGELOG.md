@@ -1,5 +1,75 @@
 # Changelog
 
+## 1.16.1 — Post-publish live-verification bug sweep (April 22 2026)
+
+Three rounds of live verification after 1.16.0 shipped caught five
+runtime bugs that unit tests missed. All unit-test-clean paths that
+failed on first live invocation against a running Splice desktop +
+Ableton 12.4 are now both fixed and guarded by source-grep regression
+tests. Plus one new tool and two observations addressed.
+
+**Tool count**: 421 → 422 (+1: `verify_all_devices_health` —
+session-wide silent-track detector).
+**Domain count**: unchanged at 52.
+**Tests**: 2627 → 2644 (+17 new regression guards). No regressions.
+
+### Live-verified bugs fixed
+
+- `add_drum_rack_pad` crashed with `ImportError` on first invocation
+  — inline `from .._analyzer_engine.sample import ...` resolved to
+  `mcp_server._analyzer_engine` (nonexistent; the real package is
+  `mcp_server.tools._analyzer_engine`). The helper is already imported
+  at module scope on line 29; inline form removed.
+- `splice_preview_sample` returned "No preview URL available" for
+  un-downloaded catalog samples. `SampleInfo` RPC only carries
+  `PreviewURL` for downloaded/purchased items. Now falls back to
+  `SearchSamples(FileHash=...)` which always has catalog metadata.
+- `splice_pack_info` crashed with
+  `AttributeError: 'AppStub' object has no attribute 'SamplePackInfo'`.
+  The `SamplePackInfoRequest/Response` messages exist in the proto
+  descriptor but no RPC on the `App` service binds them. Rewrote to
+  paginate `ListSamplePacks` + client-side UUID match. Limitation
+  documented: only finds packs the user has engaged with.
+- `splice_pack_info` on an OWNED pack with an extended-format UUID
+  (43 chars, e.g. `...887a0dd7f26bf5a3951`) failed because the first
+  fix aggressively truncated to `[:36]`, discarding legitimate bytes.
+  Correct behavior: Splice uses both UUID formats; build a `targets`
+  set of the submitted form AND its canonical truncation, match each
+  server-returned UUID in both forms.
+- Startup warning `STARTUP SELF-TEST WARNING — returned 385 tools,
+  expects 422`. `_get_all_tools()` took the first non-empty probe,
+  which could be a stale `_tool_manager._tools` view lagging behind
+  the authoritative `_local_provider._components`. Now takes the
+  largest view across all probes.
+- Startup `RuntimeWarning: coroutine 'FastMCP.list_tools' was never
+  awaited` on every server import. The `list_tools` probe wrapped an
+  async coroutine in `list()` without awaiting. Removed with an
+  explanatory comment.
+
+### Added
+
+- `verify_all_devices_health(test_midi_note=60, skip_audio_tracks=True,
+  skip_empty_tracks=True, threshold=0.005)` — session-wide silent-
+  track detector. Fires a test note on every eligible track and reports
+  alive / dead / skipped with per-track peak-level evidence.
+- `~/.livepilot/splice.json` config key `plan_kind_override` — pin
+  the Splice plan_kind when the gRPC classifier lands on a safe
+  default (e.g. `sounds_plan_id=6` with empty `features` map is
+  classified as SOUNDS_PLUS but may actually be any of several tiers).
+  Values: `ableton_live`, `sounds_plus`, `creator`, `creator_plus`,
+  `free`. `get_splice_credits` response now includes
+  `plan_kind_override: <value|null>`.
+
+### Internal
+
+- M4L bridge source (`livepilot_bridge.js`) ping version drift
+  `1.14.1 → 1.16.1` (source had been stale; binary had already been
+  patched in a prior release).
+- `SpliceGRPCClient.get_pack_info` return signature changed from
+  `Optional[SplicePack]` to `tuple[Optional[SplicePack], Optional[str]]`.
+  Callers now receive a structured error message when the lookup
+  fails, instead of `None` swallowing the cause.
+
 ## 1.16.0 — Minimal-techno session bug batch + Splice plan model (April 22 2026)
 
 Hardens the 1.15.0 beta into a full release. Resolves 18 of the 19 bugs
