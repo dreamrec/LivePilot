@@ -27,6 +27,44 @@ logger = logging.getLogger(__name__)
 _BPM_IN_FILENAME_RE = re.compile(r"(\d{2,3})\s*bpm", re.IGNORECASE)
 
 
+# Drum material keywords → MIDI root pitch (Live Drum Rack convention).
+# BUG-2026-04-22#18: loading a kick and triggering at note 36 previously
+# played 24 semitones down because the Simpler root defaulted to C3 (60).
+# Auto-detecting the intended trigger note from the filename fixes that
+# without forcing the caller to know the magic number.
+_DRUM_ROOT_MAP = {
+    # Order matters — most specific first so "hi_hat" beats "hat".
+    "kick": 36,        # C1
+    "bd": 36,
+    "808": 36,
+    "snare": 38,       # D1
+    "sd": 38,
+    "clap": 39,        # D#1
+    "rim": 37,         # C#1
+    "tom_low": 41,     # F1
+    "tom": 45,         # A1
+    "closed_hat": 42,  # F#1
+    "closed_hh": 42,
+    "hihat_closed": 42,
+    "hh_closed": 42,
+    "hi_hat": 42,
+    "hihat": 42,
+    "hat_closed": 42,
+    "open_hat": 46,    # A#1
+    "open_hh": 46,
+    "hh_open": 46,
+    "hat": 42,         # default closed
+    "hh": 42,
+    "ride": 51,        # D#2
+    "crash": 49,       # C#2
+    "cymbal": 49,
+    "perc": 60,        # C3 — neutral for generic percussion
+    "shaker": 70,
+    "tamb": 54,
+    "cowbell": 56,
+}
+
+
 def _is_warped_loop(file_path: str) -> bool:
     """Return True if the filename contains a BPM marker (likely a tempo-locked loop)."""
     stem = os.path.splitext(os.path.basename(file_path))[0]
@@ -35,6 +73,28 @@ def _is_warped_loop(file_path: str) -> bool:
 
 def _filename_stem(file_path: str) -> str:
     return os.path.splitext(os.path.basename(file_path))[0]
+
+
+def _detect_drum_root_note(file_path: str) -> int | None:
+    """Guess the intended MIDI trigger pitch for a sample by filename.
+
+    Returns a MIDI note (0-127) when the filename contains a drum-material
+    hint (kick, snare, hat, ride, etc.), else None.
+
+    Why: Live's default Simpler root is C3 (60). A kick triggered from a
+    Drum Rack pad at C1 (36) plays 24 semitones down — 4× slower, sounds
+    like a broken airhorn. Setting the sample's root note to match the
+    trigger pad (36 for a kick) fixes playback without any pitch-matching
+    math. BUG-2026-04-22#18.
+    """
+    stem = _filename_stem(file_path).lower()
+    # Normalize common separators so "Kick-Hard" and "kick_hard" both match.
+    normalized = stem.replace("-", "_").replace(" ", "_")
+    # Sort keys by length so "closed_hat" matches before "hat".
+    for key in sorted(_DRUM_ROOT_MAP.keys(), key=len, reverse=True):
+        if key in normalized:
+            return _DRUM_ROOT_MAP[key]
+    return None
 
 
 async def _simpler_post_load_hygiene(
@@ -102,6 +162,17 @@ async def _simpler_post_load_hygiene(
             {"name_or_index": "S Loop On", "value": 1},
         ])
 
+    # Step 4: auto-detect drum root note from filename (BUG-2026-04-22#18).
+    # Only applied for one-shots — warped loops keep Live's default root
+    # because their root note is irrelevant at loop playback speeds.
+    drum_root = None
+    if not _is_warped_loop(file_path):
+        drum_root = _detect_drum_root_note(file_path)
+        if drum_root is not None:
+            hygiene_params.append(
+                {"name_or_index": "Sample Pitch Coarse", "value": drum_root}
+            )
+
     try:
         ableton.send_command("batch_set_parameters", {
             "track_index": track_index,
@@ -119,4 +190,5 @@ async def _simpler_post_load_hygiene(
         "track_index": track_index,
         "device_index": device_index,
         "warped_loop_defaults_applied": _is_warped_loop(file_path),
+        "auto_root_note": drum_root,
     }

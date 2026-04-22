@@ -20,6 +20,8 @@ continue to resolve via the thin analyzer module.
 from .context import _get_spectral, _get_m4l, _require_analyzer
 from .sample import (
     _BPM_IN_FILENAME_RE,
+    _DRUM_ROOT_MAP,
+    _detect_drum_root_note,
     _filename_stem,
     _is_warped_loop,
     _simpler_post_load_hygiene,
@@ -31,6 +33,8 @@ __all__ = [
     "_get_m4l",
     "_require_analyzer",
     "_BPM_IN_FILENAME_RE",
+    "_DRUM_ROOT_MAP",
+    "_detect_drum_root_note",
     "_filename_stem",
     "_is_warped_loop",
     "_simpler_post_load_hygiene",

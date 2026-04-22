@@ -558,6 +558,37 @@ def insert_rack_chain(
 
 
 @mcp.tool()
+def rename_chain(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+    chain_index: int,
+    name: str,
+) -> dict:
+    """Rename a chain inside any Rack device — Instrument, Audio Effect, or Drum (Live 12.3+).
+
+    Works with Drum Racks (the primary use case — naming pads "Kick", "Snare",
+    "Clap", etc.) as well as Instrument/Audio Effect Racks.
+
+    track_index:  track containing the rack
+    device_index: rack device index on the track
+    chain_index:  0-based chain to rename
+    name:         new chain name (non-empty; Live may truncate)
+    """
+    _validate_track_index(track_index)
+    _validate_device_index(device_index)
+    _validate_chain_index(chain_index)
+    if not name or not name.strip():
+        raise ValueError("name cannot be empty")
+    return _get_ableton(ctx).send_command("set_chain_name", {
+        "track_index": track_index,
+        "device_index": device_index,
+        "chain_index": chain_index,
+        "name": name.strip(),
+    })
+
+
+@mcp.tool()
 def set_drum_chain_note(
     ctx: Context,
     track_index: int,

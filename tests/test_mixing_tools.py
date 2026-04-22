@@ -7,6 +7,7 @@ tool-wrapper-level behavior like BUG-B3's playback-aware stereo suppression.
 
 from __future__ import annotations
 
+import asyncio
 from types import SimpleNamespace
 
 
@@ -41,7 +42,7 @@ class TestBugB3StereoSuppression:
             tracks_response=[{"level": 0.5, "left": 0.5, "right": 0.5}],
             is_playing=True,
         )
-        result = get_track_meters(ctx, include_stereo=True)
+        result = asyncio.run(get_track_meters(ctx, include_stereo=True))
         assert result["is_playing"] is True
 
     def test_left_right_nulled_when_stopped(self):
@@ -52,7 +53,7 @@ class TestBugB3StereoSuppression:
             tracks_response=[{"level": 0.81, "left": 0, "right": 0}],
             is_playing=False,
         )
-        result = get_track_meters(ctx, include_stereo=True)
+        result = asyncio.run(get_track_meters(ctx, include_stereo=True))
         track = result["tracks"][0]
         assert track["left"] is None
         assert track["right"] is None
@@ -69,7 +70,7 @@ class TestBugB3StereoSuppression:
             tracks_response=[{"level": 0.5, "left": 0.5, "right": 0.5}],
             is_playing=True,
         )
-        result = get_track_meters(ctx, include_stereo=True)
+        result = asyncio.run(get_track_meters(ctx, include_stereo=True))
         track = result["tracks"][0]
         assert track["left"] == 0.5
         assert track["right"] == 0.5
@@ -81,7 +82,7 @@ class TestBugB3StereoSuppression:
             tracks_response=[{"level": 0.81}],
             is_playing=False,
         )
-        result = get_track_meters(ctx, include_stereo=False)
+        result = asyncio.run(get_track_meters(ctx, include_stereo=False))
         track = result["tracks"][0]
         assert track["level"] == 0.81
         # Still exposes is_playing for consistency

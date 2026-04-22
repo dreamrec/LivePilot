@@ -1,9 +1,174 @@
 """
-LivePilot - Clip domain handlers (11 commands).
+LivePilot - Clip domain handlers (12 commands).
 """
 
 from .router import register
 from .utils import get_clip, get_clip_slot
+
+
+# Scratch clip slot used by fire_test_note (BUG-2026-04-22#19). We pick a
+# slot far above the user's usual scene count; a helper reuses/cleans up
+# the slot between calls so no clutter accumulates.
+_TEST_NOTE_SLOT_INDEX = 127  # max scene count is 1024; 127 is safe
+
+
+@register("fire_test_note")
+def fire_test_note(song, params):
+    """Fire a single MIDI note at a track's instrument to verify output.
+
+    Creates a one-note MIDI clip in a scratch slot, fires it, waits for
+    the note duration, then stops + deletes it. No session clutter.
+
+    Required: track_index, midi_note, velocity, duration_ms
+    Returns: {fired: bool, track_index, note, velocity, duration_ms}
+
+    Refuses on audio tracks (no MIDI input) — returns error instead of
+    crashing. Works on any MIDI track with an instrument loaded, including
+    Drum Racks and Instrument Racks.
+    """
+    track_index = int(params["track_index"])
+    midi_note = int(params["midi_note"])
+    velocity = int(params["velocity"])
+    duration_ms = int(params["duration_ms"])
+
+    if not 0 <= midi_note <= 127:
+        raise ValueError("midi_note must be 0-127")
+    if not 1 <= velocity <= 127:
+        raise ValueError("velocity must be 1-127")
+    if duration_ms < 50 or duration_ms > 5000:
+        raise ValueError("duration_ms must be 50-5000")
+
+    tracks = list(song.tracks)
+    if not 0 <= track_index < len(tracks):
+        return {"error": "track_index out of range", "code": "INDEX_ERROR"}
+    track = tracks[track_index]
+
+    if not getattr(track, "has_midi_input", True):
+        return {
+            "error": "Track has no MIDI input — fire_test_note only works "
+                     "on MIDI tracks with an instrument loaded",
+            "code": "INVALID_PARAM",
+        }
+
+    # Use a scratch slot far above the user's usual scene count.
+    clip_slots = list(track.clip_slots)
+    scene_count = len(clip_slots)
+    slot_idx = min(_TEST_NOTE_SLOT_INDEX, scene_count - 1)
+    if slot_idx < 0:
+        return {"error": "No clip slots available", "code": "STATE_ERROR"}
+
+    slot = clip_slots[slot_idx]
+
+    # If the slot already has a clip (unlikely at index 127), delete it
+    # first to avoid stomping on user content.
+    if slot.has_clip:
+        try:
+            slot.delete_clip()
+        except Exception:
+            pass
+
+    # Create a short MIDI clip. Length is in beats — 0.25 beat at any
+    # reasonable tempo is <500ms; we don't rely on clip length for the
+    # note duration, the MCP tool measures real time.
+    song.begin_undo_step()
+    try:
+        slot.create_clip(0.5)
+        clip = slot.clip
+        if clip is None:
+            return {"error": "Failed to create scratch clip", "code": "INTERNAL"}
+
+        # Add the test note. Live 12 modern API: add_new_notes with a
+        # notes_specification struct. Fall back to legacy set_notes.
+        note_length = min(duration_ms / 1000.0, 0.45)  # stay inside the clip
+        if hasattr(clip, "add_new_notes"):
+            spec = _build_notes_spec(midi_note, velocity, note_length)
+            if spec is not None:
+                try:
+                    clip.add_new_notes(spec)
+                except Exception:
+                    _legacy_set_notes(clip, midi_note, velocity, note_length)
+            else:
+                _legacy_set_notes(clip, midi_note, velocity, note_length)
+        else:
+            _legacy_set_notes(clip, midi_note, velocity, note_length)
+
+        # Fire the clip. The MCP caller samples the meter over duration_ms.
+        slot.fire()
+    finally:
+        song.end_undo_step()
+
+    return {
+        "fired": True,
+        "track_index": track_index,
+        "slot_index": slot_idx,
+        "midi_note": midi_note,
+        "velocity": velocity,
+        "duration_ms": duration_ms,
+        "note": "clip created + fired; caller is responsible for post-sample cleanup via cleanup_test_note",
+    }
+
+
+@register("cleanup_test_note")
+def cleanup_test_note(song, params):
+    """Stop + delete the scratch clip created by fire_test_note.
+
+    Idempotent — does nothing if no scratch clip exists.
+    Required: track_index
+    """
+    track_index = int(params["track_index"])
+    tracks = list(song.tracks)
+    if not 0 <= track_index < len(tracks):
+        return {"cleaned": False}
+    track = tracks[track_index]
+    clip_slots = list(track.clip_slots)
+    slot_idx = min(_TEST_NOTE_SLOT_INDEX, len(clip_slots) - 1)
+    if slot_idx < 0:
+        return {"cleaned": False}
+    slot = clip_slots[slot_idx]
+    try:
+        if slot.has_clip:
+            if slot.is_playing:
+                slot.stop()
+            slot.delete_clip()
+        return {"cleaned": True}
+    except Exception:
+        return {"cleaned": False}
+
+
+def _build_notes_spec(midi_note, velocity, duration_beats):
+    """Build the Live 12 add_new_notes argument — a list of NoteSpecification.
+
+    Returns None when the Live build doesn't expose the modern API (caller
+    falls back to legacy set_notes).
+    """
+    try:
+        from Live.Clip import MidiNoteSpecification
+    except ImportError:
+        return None
+    try:
+        return [MidiNoteSpecification(
+            pitch=midi_note,
+            start_time=0.0,
+            duration=duration_beats,
+            velocity=velocity,
+            mute=False,
+        )]
+    except Exception:
+        return None
+
+
+def _legacy_set_notes(clip, midi_note, velocity, duration_beats):
+    """Fallback for pre-12 Live builds — uses set_notes tuple API."""
+    try:
+        clip.select_all_notes()
+        clip.replace_selected_notes((
+            (midi_note, 0.0, duration_beats, velocity, False),
+        ))
+    except Exception:
+        # Last-resort: ignore silently. Caller will see no meter bump
+        # and report the device as dead — which is less informative
+        # than "handler couldn't fire" but still fails-safe.
+        pass
 
 
 @register("get_clip_info")

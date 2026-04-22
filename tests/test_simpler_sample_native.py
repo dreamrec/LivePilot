@@ -44,7 +44,7 @@ def _reset_version_detect_cache():
 # ── Fake Song / Track / Device objects ──────────────────────────────────
 
 def _fake_song_with_simpler_at(track_index: int, device_index: int,
-                                class_name: str = "SimplerDevice"):
+                                class_name: str = "OriginalSimpler"):
     simpler = MagicMock()
     simpler.class_name = class_name
     simpler.name = "Simpler"

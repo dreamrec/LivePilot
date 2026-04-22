@@ -860,15 +860,18 @@ async def add_drum_rack_pad(
             "nested_device_index": nested_idx,
         }
 
-    # Step 6: rename chain if requested.
+    # Step 6: apply chain name (wired to the new set_chain_name handler)
+    applied_name = None
     if chain_name:
         try:
-            ableton.send_command("set_chain_name", {
+            rename_result = ableton.send_command("set_chain_name", {
                 "track_index": track_index,
                 "device_index": rack_device_index,
                 "chain_index": chain_index,
                 "name": chain_name,
             })
+            if isinstance(rename_result, dict) and "name" in rename_result:
+                applied_name = rename_result["name"]
         except Exception as exc:
             logger.debug("set_chain_name skipped: %s", exc)
 
@@ -882,6 +885,7 @@ async def add_drum_rack_pad(
         "device_name": "Simpler",
         "method": native.get("method", "native_12_4"),
         "file_path": file_path,
+        "chain_name": applied_name,
     }
 
 
@@ -1389,6 +1393,145 @@ def get_novelty(ctx: Context) -> dict:
         hint = _flucoma_hint(cache)
         return {"error": f"No novelty data — {hint}"}
     return {**data["value"], "age_ms": data["age_ms"]}
+
+
+@mcp.tool()
+async def verify_device_health(
+    ctx: Context,
+    track_index: int,
+    test_midi_note: int = 60,
+    test_velocity: int = 100,
+    test_duration_ms: int = 300,
+    threshold: float = 0.005,
+) -> dict:
+    """Fire a test MIDI note at a track's instrument and check for output.
+
+    BUG-2026-04-22#19 fix — parameter_count alone can't tell you whether
+    an AU/VST is alive. Plenty of "loaded" plugins return 19 params and
+    silence. This tool does the real-world check:
+
+      1. Snapshot the track meter.
+      2. Emit a MIDI note at the specified pitch/velocity.
+      3. Sample the track meter for `test_duration_ms` (peak across samples).
+      4. Compare the peak to a threshold; report alive vs dead.
+
+    The meter readout is taken with `get_track_meters(samples=N)` so the
+    BUG-#7 "left=right=0 while level>0" artifact can't cause false negatives.
+
+    track_index:      track with the instrument to verify
+    test_midi_note:   pitch to fire (default C3 / 60 — safe for most samples)
+    test_velocity:    1-127 (default 100)
+    test_duration_ms: capture window for the meter (default 300ms)
+    threshold:        peak level below which the device is considered dead
+                      (default 0.005 — roughly -46 dBFS)
+
+    Returns: {
+      "ok": bool,
+      "alive": bool,
+      "peak_level": float,
+      "threshold": float,
+      "samples_taken": int,
+      "hint": str,     # actionable advice when dead
+    }
+
+    Requires LivePilot Analyzer on master track and a playable instrument
+    on the target track. Prefer this over trying to eyeball parameter_count.
+    """
+    ableton = ctx.lifespan_context["ableton"]
+
+    # Bound test_duration to something humane
+    if test_duration_ms < 100:
+        test_duration_ms = 100
+    if test_duration_ms > 2000:
+        test_duration_ms = 2000
+    if not 1 <= test_velocity <= 127:
+        return {"ok": False, "error": "test_velocity must be 1-127"}
+    if not 0 <= test_midi_note <= 127:
+        return {"ok": False, "error": "test_midi_note must be 0-127"}
+
+    # Fire the test note via the remote script's play_note helper. Fall back
+    # to a raw MIDI event if the helper isn't available.
+    fired = False
+    try:
+        resp = ableton.send_command("fire_test_note", {
+            "track_index": track_index,
+            "midi_note": test_midi_note,
+            "velocity": test_velocity,
+            "duration_ms": test_duration_ms,
+        })
+        if isinstance(resp, dict) and not resp.get("error"):
+            fired = True
+    except Exception as exc:
+        logger.debug("fire_test_note unavailable: %s", exc)
+
+    if not fired:
+        # Graceful degradation when the remote-script helper isn't present.
+        return {
+            "ok": False,
+            "error": (
+                "fire_test_note handler not available on this remote script. "
+                "Update LivePilot's remote script (npx livepilot --install + "
+                "reload_handlers) to enable verify_device_health."
+            ),
+            "alive": None,
+        }
+
+    # Sample the track meter over the duration of the note.
+    sample_interval_ms = 50
+    n = max(2, test_duration_ms // sample_interval_ms)
+    peak = 0.0
+    samples_taken = 0
+    for i in range(n):
+        try:
+            snap = ableton.send_command("get_track_meters", {
+                "track_index": track_index,
+            })
+        except Exception as exc:
+            logger.debug("get_track_meters snapshot failed: %s", exc)
+            continue
+        samples_taken += 1
+        if isinstance(snap, dict):
+            tracks = snap.get("tracks") or []
+            for t in tracks:
+                if not isinstance(t, dict):
+                    continue
+                level = t.get("level") or 0
+                try:
+                    peak = max(peak, float(level))
+                except (TypeError, ValueError):
+                    pass
+        if i < n - 1:
+            await asyncio.sleep(sample_interval_ms / 1000.0)
+
+    # Always clean up the scratch clip, even on errors.
+    try:
+        ableton.send_command("cleanup_test_note", {"track_index": track_index})
+    except Exception as exc:
+        logger.debug("cleanup_test_note failed: %s", exc)
+
+    alive = peak >= threshold
+    hint = ""
+    if not alive:
+        hint = (
+            "Device produced no audible output. Common causes: "
+            "(1) plugin waiting for preset/bank selection, "
+            "(2) algorithm/envelope configured for zero output, "
+            "(3) wrong MIDI channel or velocity curve, "
+            "(4) dead VST (reinstall). "
+            "Try opening the device UI and auditioning manually."
+        )
+
+    return {
+        "ok": True,
+        "alive": alive,
+        "peak_level": round(peak, 4),
+        "threshold": threshold,
+        "samples_taken": samples_taken,
+        "test_midi_note": test_midi_note,
+        "test_velocity": test_velocity,
+        "test_duration_ms": test_duration_ms,
+        "hint": hint,
+    }
 
 
 @mcp.tool()

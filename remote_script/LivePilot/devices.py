@@ -629,6 +629,55 @@ def insert_rack_chain(song, params):
     return result
 
 
+@register("set_chain_name")
+def set_chain_name(song, params):
+    """Rename a chain inside any Rack device (Instrument / Audio Effect / Drum).
+
+    Required: track_index, device_index, chain_index, name
+    Returns the applied name (which Live may truncate) + chain path.
+
+    Completes the Drum-Rack construction UX opened by BUG-2026-04-22#1:
+    add_drum_rack_pad now rides this handler to actually apply the
+    user-supplied chain_name server-side instead of leaving it as a hint.
+    """
+    track_index = int(params["track_index"])
+    device_index = int(params["device_index"])
+    chain_index = int(params["chain_index"])
+    name = str(params.get("name", "")).strip()
+    if not name:
+        raise ValueError("name cannot be empty")
+
+    track = get_track(song, track_index)
+    device = get_device(track, device_index)
+
+    if not getattr(device, "can_have_chains", False):
+        raise ValueError(
+            "Device '%s' is not a rack — cannot rename chains" % device.name
+        )
+
+    chains = list(device.chains)
+    if chain_index < 0 or chain_index >= len(chains):
+        raise IndexError(
+            "Chain index %d out of range (0..%d)"
+            % (chain_index, len(chains) - 1)
+        )
+
+    chain = chains[chain_index]
+    try:
+        chain.name = name
+    except AttributeError:
+        raise RuntimeError(
+            "Chain object does not expose a writable `name` property"
+        )
+
+    return {
+        "track_index": track_index,
+        "device_index": device_index,
+        "chain_index": chain_index,
+        "name": getattr(chain, "name", name),
+    }
+
+
 @register("set_drum_chain_note")
 def set_drum_chain_note(song, params):
     """Set which MIDI note triggers a drum chain (12.3+).
