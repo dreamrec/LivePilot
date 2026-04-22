@@ -102,6 +102,17 @@ key_parameters:
     range: ["Matrix routing"]
     type: enum
 
+signature_techniques:
+  - name: "Supersaw trance lead"
+    description: "Saw wavetable, voices=7, spread=0.35, subosc square octave up, LPF fully open, chorus via unison detune not effect. Aim for glued breadth not comb-filter thinness."
+    aesthetic: ['trance', 'edm', 'progressive']
+  - name: "Morphing ambient pad"
+    description: "Two wavetables (e.g. Formant + Noise), wavetable-position modulated by slow LFO (0.05 Hz), filter envelope negative so tone opens during decay. No notes change — the TIMBRE is the music."
+    aesthetic: ['ambient', 'experimental', 'idm']
+  - name: "Wobble bass"
+    description: "Square-ish wavetable, LFO to filter cutoff synced at 1/8 or 1/16, depth near max. Classic dubstep bass — position automation over 4 bars moves texture under the wobble."
+    aesthetic: ['dubstep', 'bass_music', 'trap']
+
 pairs_well_with:
   - device: "Reverb"
     reason: "Pads and textures come alive with long reverb tails and high diffusion"

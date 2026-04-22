@@ -2,6 +2,8 @@
 
 LivePilot searches three sample sources simultaneously, scores every result with 6 fitness critics, and offers 29 processing techniques. This chapter covers the full sample workflow — from finding a sound to slicing it into a playable instrument.
 
+**New in v1.17:** Splice's "Describe a Sound" (natural-language semantic search) and "Variations" (similar-sample lookup) are both LIVE via captured GraphQL endpoints. See `splice_describe_sound` and `splice_generate_variation` in the [Tool Reference](tool-reference.md#sample-engine--splice).
+
 ---
 
 ## Three Sample Sources

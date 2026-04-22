@@ -97,6 +97,17 @@ key_parameters:
       subtle: 0.1
       expressive: 0.3
 
+signature_techniques:
+  - name: "Plucked gut string"
+    description: "Plectrum exciter, string damping high, body=acoustic guitar, noise low. Useful as a percussion-melody hybrid when acoustic guitar sampling feels sterile."
+    aesthetic: ['ambient', 'folk_electronic', 'cinematic']
+  - name: "Bowed cello low register"
+    description: "Bow exciter, slow speed, pressure medium, body=cello, full sustain. Pair with Convolution Reverb hall IR for Jóhann Jóhannsson / Max Richter territory."
+    aesthetic: ['cinematic', 'ambient', 'modern_classical']
+  - name: "Metal-string drone"
+    description: "Bow on a high-tension thin string, no damping, infinite sustain — the sound is pure harmonic series. Useful under sustained pads as hidden-voice color."
+    aesthetic: ['ambient', 'drone', 'experimental']
+
 pairs_well_with:
   - device: "Reverb"
     reason: "Bowed strings and plucks sound natural in reverberant spaces — essential for realism"

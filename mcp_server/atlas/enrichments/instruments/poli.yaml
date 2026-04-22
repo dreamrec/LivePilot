@@ -128,6 +128,17 @@ key_parameters:
       standard: 6
       full: 12
 
+signature_techniques:
+  - name: "Juno-style detuned chord"
+    description: "2 saws detuned 7 cents, sub-osc octave down, low-pass with slight resonance, chorus send heavy. 80s Juno territory without the preset."
+    aesthetic: ['synthwave', '80s', 'italo']
+  - name: "Retro stab"
+    description: "Single saw, fast filter envelope, high resonance, short decay. Classic 1987 house stab — works on top of any groove."
+    aesthetic: ['house', 'acid_house', 'electro']
+  - name: "Warm pad"
+    description: "Saw+square, slow attack, chorus, subtle LFO on cutoff. Where Poli shines vs Analog: less clinical, more 'plastic-fantastic' 80s charm."
+    aesthetic: ['synthwave', 'vaporwave', 'synth_pop']
+
 pairs_well_with:
   - device: "Reverb"
     reason: "Lush pads benefit from plate or hall reverb for depth"

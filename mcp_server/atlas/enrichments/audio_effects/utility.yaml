@@ -1,0 +1,118 @@
+id: utility
+name: Utility
+sonic_description: >
+  The universal gain / pan / width / DC-offset / mid-side / phase-invert /
+  mute-left-right toolbox. Lives everywhere in a serious mix — gain-stage
+  before a compressor, narrow stereo into mono on a sub, flip the phase on
+  a snare bottom mic, extract the sides of a stereo source for parallel
+  processing. Not an "effect" so much as surgical infrastructure.
+effect_type: utility
+character_tags: [transparent, surgical, infrastructure, mix_bus, gain_staging]
+use_cases:
+  - gain_staging_before_compression
+  - stereo_width_control
+  - mono_compatibility_check
+  - phase_inversion_on_drum_bottom_mic
+  - mid_side_separation
+  - dc_offset_removal
+  - silencing_one_channel_of_a_stereo_source
+genre_affinity:
+  primary: [all]
+  secondary: []
+complexity: beginner
+self_contained: true
+introduced_in: "1.0"
+pack: Core Library
+
+key_parameters:
+  - name: "Gain"
+    description: "Precise level adjustment — essential for gain staging"
+    range: [-35.0, 35.0]
+    unit: "dB"
+    type: float
+    sweet_spots:
+      trim: -3.0
+      boost: 3.0
+      match_source: 0.0
+
+  - name: "Width"
+    description: "Stereo field width — 0% is mono, 100% original, >100% phase-exaggerated"
+    range: [0.0, 400.0]
+    unit: "%"
+    type: float
+    sweet_spots:
+      mono: 0.0
+      narrow_bass: 30.0
+      natural: 100.0
+      wide: 140.0
+
+  - name: "Left/Right Balance"
+    description: "Pan the stereo field"
+    range: [-1.0, 1.0]
+    type: float
+
+  - name: "Phase L"
+    description: "Invert left channel phase"
+    range: [0, 1]
+    type: int
+
+  - name: "Phase R"
+    description: "Invert right channel phase"
+    range: [0, 1]
+    type: int
+
+  - name: "Mute L"
+    description: "Silence left channel only — useful for checking mono"
+    range: [0, 1]
+    type: int
+
+  - name: "Mute R"
+    description: "Silence right channel only"
+    range: [0, 1]
+    type: int
+
+  - name: "Mid/Side"
+    description: "Enable mid-side mode — Width now controls mid-vs-side balance"
+    range: [0, 1]
+    type: int
+
+  - name: "DC"
+    description: "Remove DC offset from the signal"
+    range: [0, 1]
+    type: int
+
+pairs_well_with:
+  - device: "Compressor"
+    reason: "Put a Utility before a compressor to hit the exact level the compressor expects"
+  - device: "EQ Eight"
+    reason: "Utility first for gain staging, EQ Eight for tonal shaping — the order matters"
+  - device: "Saturator"
+    reason: "Utility to trim level before saturation so you can predict the harmonic generation"
+
+starter_recipes:
+  - name: "Mono Sub Bass"
+    description: "Collapse low-end stereo for phase-coherent sub"
+    genre: techno
+    params:
+      "Width": 0.0
+
+  - name: "Phase-Invert Snare Bottom"
+    description: "Flip phase of bottom-mic'd snare against top for fatter snare"
+    genre: all
+    params:
+      "Phase L": 1
+      "Phase R": 1
+
+  - name: "Mid/Side Extract Sides"
+    description: "Get only the stereo difference for parallel processing"
+    genre: all
+    params:
+      "Mid/Side": 1
+      "Width": 100.0
+
+gotchas:
+  - "Width at 0% collapses the signal to mono — the standard move for sub-bass and kick where stereo phase issues matter"
+  - "Mid/Side mode changes what Width controls — read carefully before adjusting"
+  - "Phase invert is per-channel — inverting both L and R re-inverts to original"
+  - "Gain is post-pan — if you're trying to compensate a pan with gain, check the order"
+  - "Utility is ALWAYS at the bottom of the master chain in LivePilot setups — AFTER LivePilot_Analyzer would break analyzer readings"

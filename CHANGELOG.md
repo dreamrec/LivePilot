@@ -1,5 +1,274 @@
 # Changelog
 
+## 1.17.0 — 2026-04-22 handoff close-out (April 22 2026, late)
+
+Closes every item in the 2026-04-22 handoff document: Splice's
+Describe-a-Sound + Variations go LIVE via captured GraphQL
+endpoints, the M4L Analyzer gains a 9th spectrum band (sub_low
+20-60 Hz), track-level arrangement automation lands via a
+two-phase session-record workaround, the atlas gains a
+by_pack index + `atlas_pack_info` MCP tool, the device atlas
+adds 13 enrichments including a Drum Rack container entry, and
+Tier C of the pack-knowledge reference expands from 7 clusters
+to 14 individually-documented packs.
+
+**Tool count**: 422 → 426 (+5 new, −1 retired):
+- `+` `atlas_pack_info` — inspect a pack's device list + enrichment coverage
+- `+` `atlas_describe_chain` — free-text describe-a-chain, mirror of
+  `splice_describe_sound` for the device library. "A granular pad like
+  Tim Hecker" → device chain proposal via artist + genre vocabulary
+  matching
+- `+` `atlas_techniques_for_device` — reverse-lookup: what techniques
+  reference this device? Reads an auto-generated index of 146 technique
+  cross-references across 58 devices
+- `+` `set_arrangement_automation_via_session_record` — T5 workaround,
+  two-phase protocol with tempo-scaled sleep
+- `+` `splice_http_diagnose` — per-endpoint verified-status reporter
+- `−` `splice_search_with_sound` — retired (user handles
+  audio-reference search directly in Splice's UI; capture recipe
+  preserved at `docs/2026-04-22-splice-https-capture-recipe.md`)
+
+**Domain count**: unchanged at 52.
+**Enrichment YAMLs**: 107 → 120 (+13).
+**Atlas pack coverage**: 0 → 641 devices indexed (614 Core Library
+via auto-heuristic + 27 explicit-pack YAML declarations).
+**Signature-technique coverage**: 32 → 47 enrichment files have the
+`signature_techniques` field (+15 files × 3 techniques each = +45
+technique entries from native-synth backfill). Coverage rose from
+27% → 39% of enrichments.
+**Tests**: 2644 → 2696+ (+52 new regression guards).
+
+### Live-verified end-to-end
+
+Against a running Ableton 12.4 + Splice desktop 5.4.9 session on
+2026-04-22:
+
+- `get_master_spectrum()` → 9 keys with `sub_low` first, real-audio
+  energy distribution (`sub_low=0.0003 sub=0.0008 low=0.0064 …`)
+- `atlas_pack_info("Drone Lab")` → Harmonic Drone Generator in
+  both Sounds and M4L variants with URIs
+- `splice_describe_sound("warm dub techno chord stab", limit=5)` →
+  5 real samples out of 4100 total hits (Dub Techno 2 pluck, NEONIC
+  atmos, Visions chord, Organic Elements 2, Underground Techno),
+  with Splice's ML rephrasing `rephrased_query_string: "dub techno,
+  chords, stabs, warm"`
+
+### Splice HTTPS bridge — endpoint capture
+
+Captured via mitmproxy against Splice desktop v5.4.9 (unpinned TLS,
+intercepts cleanly once CA is trusted). Two GraphQL operations
+wired:
+
+- **`SamplesSearch`** at `surfaces-graphql.splice.com/graphql` —
+  describe + keyword search in one operation, flagged via
+  `semantic=1` + `rephrase=true`. 5938-char query embedded as
+  `mcp_server/splice_client/graphql_queries/samples_search.graphql`
+- **`AssetSimilarSoundsQuery`** at the same endpoint — Splice's
+  "Variations" / "Similar Sounds" feature. Input is a sample
+  `uuid` + `isLegacy` bool; returns up to 10 recommendations.
+  886-char query embedded as
+  `mcp_server/splice_client/graphql_queries/asset_similar_sounds.graphql`
+- Auth: `Authorization: Bearer <JWT>` via local gRPC `GetSession`
+  RPC — no stored credentials, token rotates with the running
+  Splice desktop app
+- User-Agent: LivePilot default (override via env var if
+  Cloudflare blocks — mimic pattern: `Splice Baelish/darwin/
+  arm64/arm64 5.4.9/<hash>/stable`)
+- Response normalizer `_flatten_sample_item()` is shared between
+  both operations so samples from describe + variations flatten
+  to identical dicts — 14 new unit tests lock this invariant
+- Per-endpoint `describe_verified` / `variation_verified` flags
+  replace the coarse `is_user_configured` gate
+
+### Changed
+
+- `splice_generate_variation` signature changed: `(file_hash,
+  target_key, target_bpm, count)` → `(uuid, is_legacy)`. The
+  operation is a recommender lookup, not AI audio synthesis, so
+  target-key / target-bpm / count aren't API-supported. The
+  underlying GraphQL returns up to 10 similar samples with the
+  same flat shape as `splice_describe_sound` results.
+- `splice_describe_sound` — status flipped from "scaffolded" to
+  "LIVE". Adds new `rephrase: bool = True` parameter surfacing
+  Splice's `rephrased_query_string` in the response.
+
+### Added
+
+**Sub_low spectrum band** (T3 from handoff):
+- M4L Analyzer `fffb~` filter bank: 8 bands → 9 bands. New band
+  center frequencies: `35 85 175 350 700 1400 2800 5600 12000`
+  (Hz), with `sub_low` (20-60 Hz) prepended to separate kick
+  fundamental from DC rumble
+- `mcp_server/m4l_bridge.py`: `BAND_NAMES_8` + `BAND_NAMES_9`
+  auto-selected based on payload length — older frozen .amxd
+  builds (pre-v1.17) still work without re-freeze
+- `LivePilot_Analyzer.amxd` re-frozen from modified
+  `LivePilot_Analyzer.maxpat` source, 6751650 bytes, synced to
+  repo / Max 9 Library cache / Ableton User Library
+- `docs/2026-04-22-sub-low-band-max-workflow.md` — runbook for
+  future band-count changes (Max editor walkthrough)
+
+**Track-level arrangement automation workaround** (T5 from handoff):
+- New MCP tool `set_arrangement_automation_via_session_record` —
+  async two-phase protocol that creates a session clip with the
+  automation, arms the track, records into arrangement at a
+  target beat, cleans up
+- Two new remote-script handlers:
+  `arrangement_automation_via_session_record_start` returns the
+  live `song.tempo` so the MCP layer can compute the sleep
+  duration, `_complete` stops record + locates the new
+  arrangement clip
+- MCP layer sleeps `duration_beats × 60/tempo + 0.5s` with a
+  600s ceiling and graceful exception handling — incomplete
+  sleep still tries to complete so tracks don't stay armed
+- 17 new contract tests (two-phase ordering, tempo scaling,
+  ceiling, default-tempo fallback, start-failure short-circuit)
+
+**Atlas `by_pack` index + `atlas_pack_info` tool** (T4):
+- New `_by_pack` index on `AtlasManager`, populated from
+  enrichment YAML `pack:` fields plus a Core Library
+  auto-heuristic for native instruments/effects without an
+  explicit pack declaration
+- New `pack_info(name)` and `list_packs()` methods
+- New MCP tool `atlas_pack_info(pack_name)` — `""` returns the
+  full pack list with device counts, otherwise returns
+  `{pack, device_count, enriched_count, devices[...]}` for one
+  pack. Case-insensitive name lookup
+- `genre_affinity` (enriched field) now feeds the `_by_genre`
+  index alongside the raw `genres` field, so
+  `microhouse`/`deep_minimal`/`dub_techno` tags added to YAMLs
+  post-v1.11 finally surface in genre lookups
+
+**Drum Rack atlas enrichment + 12 audio-effects YAMLs** (T1/T2):
+- New `instruments/drum_rack.yaml` — treats Drum Rack as a
+  meta-type container with per-pad key_parameters, 3 starter
+  recipes, 8 gotchas (including MIDI pitch conventions, chain
+  volume vs pad volume)
+- 12 new audio-effects enrichments: `utility`, `corpus`,
+  `vocoder`, `tuner`, `spectrum`, `amp`, `cabinet`, `resonators`,
+  `looper`, `envelope_follower`, `audio_effect_rack`,
+  `external_audio_effect`. Takes `audio_effects/` count from 40
+  → 52
+- Simpler + Sampler enrichments gain 3 new gotchas (Snap=OFF
+  silence bug, -12 dB default, slice base pitch = 36+N)
+- `pack` field added to `_ENRICHMENT_FIELDS` allowlist — was
+  silently dropped from atlas JSON before; now drives the
+  `by_pack` index
+
+**Pack-knowledge reference** (T7):
+- `livepilot/skills/livepilot-core/references/pack-knowledge.md`
+  Tier C expanded from 7 merged clusters (~62 lines) to 14
+  individually-documented packs (Build and Drop, Drive and Glow,
+  Punch and Tilt, Skitter and Step, Trap Drums, Beat Tools, Drum
+  Essentials, SONiVOX Orchestral Brass/Strings/Woodwinds, Grand
+  Piano, Synth Essentials, Session Drums Club + Studio, Core
+  Library) with consistent Essence/Scores/Top/Use/Avoid structure
+
+**Deepened shallow enrichments** (T8):
+- Added `pairs_well_with` + expanded `gotchas` +
+  `signature_techniques` for: `snipper`, `bell_tower`,
+  `performer`, `vector_map`, `filler`
+
+### Concept surface — knowledge the LLM can reason over
+
+Late-v1.17 audit found LivePilot's concept-vs-recipe ratio was already
+healthy (sample-philosophy.md, sound-design-deep.md, per-device
+`signature_techniques`, aesthetic-tagged `character_tags`), but two gaps
+were worth closing before the release: native-synth enrichments heavy
+on `starter_recipes` but thin on `signature_techniques`, and no
+structured artist/genre → device-vocabulary bridge.
+
+Added:
+
+- **`livepilot/skills/livepilot-core/references/artist-vocabularies.md`** —
+  ~25 producers (Villalobos, Hawtin/Plastikman, Basic Channel, Gas,
+  Basinski, Stars of the Lid, Hecker, Aphex, Autechre, OPN, Arca,
+  Dilla, Premier, Madlib, Burial, Mala, Jeff Mills, Moodymann, Daft
+  Punk, Rashad, Photek, Com Truise, Boards of Canada, etc.) with
+  four-field structured entries (sonic fingerprint / reach for /
+  avoid / key techniques). Each entry cross-references
+  `signature_techniques` in per-device YAML or technique names in
+  `sample-techniques.md` / `sound-design-deep.md` — no duplication,
+  just a translation layer from producer names to LivePilot devices
+- **`livepilot/skills/livepilot-core/references/genre-vocabularies.md`** —
+  15 genres (microhouse, dub_techno, deep_minimal, minimal_techno,
+  ambient, idm, modern_classical, hip_hop, trap, dubstep, house,
+  dnb, garage, experimental, synthwave) with tempo / kick / bass /
+  percussion / harmonic / texture / reach-for / avoid structure.
+  Read-before-tool-selection reference for genre-driven workflows
+- **Native-synth `signature_techniques` backfill** — 15 YAMLs that
+  had starter_recipes but no aesthetic-level guidance now have 3
+  techniques each, tagged to known producers (Hawtin subtractive pad,
+  303 acid bass, Reese bass for DnB, J Dilla micro-timed kit, Villalobos
+  sub-bass layer, Basinski tape degradation, Tim Hecker grain cloud,
+  etc.). Files updated: analog, operator, wavetable, drift, collision,
+  tension, electric, simpler, sampler, bass, poli, emit, meld,
+  vector_fm, vector_grain
+- **`mcp_server/atlas/device_techniques_index.json`** — auto-generated
+  reverse-index of 146 device→technique cross-references across 58
+  devices, mined from per-device `signature_techniques` +
+  `sample-techniques.md` + `sound-design-deep.md`
+
+### Docs
+
+- `docs/2026-04-22-release-verification.md` — end-to-end
+  verification report with live-verified evidence per task
+- `docs/2026-04-22-splice-https-capture-recipe.md` — mitmproxy
+  runbook for capturing additional Splice GraphQL operations
+- `docs/2026-04-22-live-api-probe-arrangement-automation.md` —
+  design rationale for the T5 two-phase split
+- `docs/2026-04-22-sub-low-band-max-workflow.md` — Max
+  editor runbook for future filter-bank edits
+- `docs/manual/index.md` — rewrote domain map from source-of-truth
+  per-domain counts (was drifting 30+ entries). Added 7 missing
+  domains (scales, grooves, take_lanes, follow_actions, miditool,
+  diagnostics, synthesis_brain)
+- `docs/manual/tool-reference.md` — new sections for Device Atlas,
+  Sample Engine & Splice, Diagnostics; added v1.17 tools
+  (`atlas_pack_info`, `set_arrangement_automation_via_session_record`,
+  `splice_http_diagnose`, `splice_describe_sound` LIVE,
+  `splice_generate_variation` LIVE); added `add_drum_rack_pad` +
+  `verify_device_alive` + `verify_all_devices_health` that were
+  missing since v1.16
+- `docs/manual/tool-catalog.md` — replaced hand-curated drifting
+  version with single auto-generated file (run
+  `python3 scripts/generate_tool_catalog.py > docs/manual/tool-catalog.md`).
+  Retired `docs/manual/tool-catalog-generated.md` (duplicate
+  with -generated suffix)
+- **Deleted**: `docs/TOOL_REFERENCE.md` (v1.7-era, 317 tools /
+  43 domains — misleadingly stale)
+- **Archived**: `docs/manual/release-smoke-board.md` → `docs/archive/release-smoke-board-v1.10-era.md`
+
+### Internal
+
+- `mcp_server/splice_client/graphql_queries/` — new directory,
+  holds captured `.graphql` query strings, loaded lazily via
+  `_load_graphql_query()` with caching
+- `docs/research/splice-api-capture/` — gitignored local archive
+  of 4 operation captures (request + response pairs):
+  `SamplesSearch`, `SoundsSearchAutocomplete`,
+  `RefreshSamplePreview`, `AssetSimilarSoundsQuery`
+- 5 additional GraphQL operations captured but not wired —
+  candidates for future tools: `DesktopPackSearch`,
+  `SampleAssetSidebarQuery`, `BrowseCarousels`,
+  `CreditsStoreQuery`, `UserService`
+
+### Known non-blockers
+
+- Splice Search-with-Sound (audio-file reference search) is
+  retired — feature not exposed in Splice desktop v5.4.9's UI,
+  user handles it manually. Recipe preserved if a future Splice
+  build re-exposes it.
+- T5 live end-to-end verification in a real Ableton session
+  deferred — contract tests (17) lock the protocol; first real
+  invocation will confirm Live LOM assumptions (classic
+  v1.16.0 → v1.16.1 pattern — any surprises fix in one edit).
+- `splice_http_diagnose` token-availability probe reported a
+  false negative pre-1.17 (walked the wrong context path); fixed
+  to use `ctx.lifespan_context["splice_client"]` + actually call
+  `fetch_session_token`.
+
+
 ## 1.16.1 — Post-publish live-verification bug sweep (April 22 2026)
 
 Three rounds of live verification after 1.16.0 shipped caught five

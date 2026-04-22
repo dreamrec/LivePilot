@@ -103,6 +103,17 @@ key_parameters:
       natural: 300.0
       ambient: 2000.0
 
+signature_techniques:
+  - name: "Modulated bell cluster"
+    description: "Carrier at C4, modulator at inharmonic ratio, Vector X controlling modulator depth, Vector Y controlling feedback. Particle motion makes the bell evolve physically."
+    aesthetic: ['ambient', 'experimental', 'deep_minimal']
+  - name: "Metallic drone"
+    description: "Low carrier (C1), high modulator, Vector coupled to both. Sounds like a large resonant object being struck and allowed to decay over 30 seconds."
+    aesthetic: ['drone', 'ambient', 'experimental']
+  - name: "Pulsing FM bass"
+    description: "Carrier at fundamental, modulator LFO'd by Vector X, amp LFO'd by Vector Y. FM bass with physical 'breathing' rather than square-wave LFO control."
+    aesthetic: ['deep_minimal', 'idm', 'experimental']
+
 pairs_well_with:
   - device: "Reverb"
     reason: "FM timbres gain depth and space in reverb — morphing vector creates shifting reflections"

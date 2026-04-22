@@ -31,6 +31,21 @@ signature_techniques:
   - name: "Crossfader-style A/B"
     description: "Build a crossfader that switches between two device states via inverse macro curves."
     aesthetic: [performance]
+  - name: "Single pedal = intro-to-drop"
+    description: "Map a footpedal input via MIDI → Performer fader → filter open, send boost, reverb decay extend, LFO depth rise. One pedal drives an arrangement energy shift."
+    aesthetic: [live_performance]
+
+pairs_well_with:
+  - device: "Variations"
+    reason: "Performer controls continuous, Variations controls discrete — combine for coarse (Variations) + fine (Performer) morphing"
+  - device: "Any M4L or plugin"
+    reason: "Performer is the glue — any parameter becomes performable via curve-shaped Macro"
+
+gotchas:
+  - "Performer is a macro CONTROLLER, not a generator. Without mappings, it does nothing"
+  - "Curve editor is not exposed via MCP — set shapes in the Max UI"
+  - "Crossfader controls are two faders with inverse curves, not a single crossfader — design for that mental model"
+  - "Saving a Performer preset captures mappings BY PATH (e.g. track 3 device 2 param X). Duplicating the track breaks the mapping — remap after track restructure"
 
 learn_more:
   official: "https://www.ableton.com/en/packs/performance-pack/"

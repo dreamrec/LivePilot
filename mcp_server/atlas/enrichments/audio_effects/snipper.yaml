@@ -31,6 +31,23 @@ signature_techniques:
   - name: "Vocal micro-chop"
     description: "Route vocal → Snipper → short snippet, fast replay, pitch mod → instant Akufen-adjacent micro-vocal pattern."
     aesthetic: [microhouse]
+  - name: "Hat replay pitch drift"
+    description: "Closed hat → Snipper with tiny snippet length, pitch mod ±3 semitones, randomize on → every hat is pitched differently. Microhouse signature."
+    aesthetic: [microhouse, deep_minimal]
+
+pairs_well_with:
+  - device: "Convolution Reverb"
+    reason: "Short reverb IR tail on the snipper output blurs the micro-chop into a texture instead of pointillistic hits"
+  - device: "PitchLoop89"
+    reason: "Stack Snipper into PitchLoop89 for dual-pitch staggered micro-chops — the Henke-style signature"
+  - device: "Gate"
+    reason: "Gate after Snipper to carve silence between snippets for rhythmic precision"
+
+gotchas:
+  - "Snipper's snippet window can end up shorter than audible grain — at very short lengths it becomes comb-filter territory, not chopping"
+  - "Randomize at max with long snippets sounds chaotic rather than musical — pair random intensity with snippet length"
+  - "It's an M4L device — first-hit audio buffers aren't pre-filled. Expect silence for the first bar on a fresh load"
+  - "Not automatable from MCP beyond the top-level parameters — internal state is private to the Max patcher"
 
 learn_more:
   pack: "Building Max Devices"

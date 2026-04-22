@@ -1,13 +1,13 @@
 # LivePilot Manual
 
 An agentic production system for Ableton Live 12.
-422 tools. 52 domains. Device atlas. Sample intelligence. Auto-composition. Spectral perception. Technique memory. Creative intelligence.
+426 tools. 52 domains. Device atlas. Sample intelligence. Auto-composition. Spectral perception. Technique memory. Creative intelligence.
 
 ---
 
 ## What LivePilot Is
 
-LivePilot is not a tool collection with an AI wrapper. It is a **production system** — three perception layers feed into 422 tools, which are orchestrated by 12 creative engines that understand song identity, learn your taste, diagnose session problems, and generate real musical options.
+LivePilot is not a tool collection with an AI wrapper. It is a **production system** — three perception layers feed into 426 tools, which are orchestrated by a dozen creative engines that understand song identity, learn your taste, diagnose session problems, and generate real musical options.
 
 The difference: a tool collection executes "set volume to -6dB." LivePilot understands that turning down the drums might kill the groove that defines the track, suggests three genuinely different ways to create space instead, lets you preview each one, and remembers which approach you preferred.
 
@@ -19,35 +19,36 @@ The difference: a tool collection executes "set volume to -6dB." LivePilot under
 AI Client  ──MCP──►  FastMCP Server  ──TCP/9878──►  Remote Script (inside Ableton)
                         (validates)                    (executes on main thread)
                             │
-                            ├── Device Atlas (1305 devices, 81 enriched with sonic intelligence)
+                            ├── Device Atlas (1305 devices, 135 enriched with sonic intelligence)
                             ├── M4L Analyzer ──UDP/OSC──► LivePilot_Analyzer.amxd
                             └── Technique Memory (~/.livepilot/memory/)
 ```
 
-The **atlas** resolves device names and browser URIs — the AI never hallucinates a preset.
-The **analyzer** feeds back spectral data from the master bus so the AI hears its own changes.
+The **atlas** resolves device names and browser URIs — the AI never hallucinates a preset. 641 devices are indexed by pack (Core Library + explicit-pack assignments) so "what's in Drone Lab?" is an instant lookup.
+The **analyzer** feeds back spectral data from the master bus so the AI hears its own changes. As of v1.17 the analyzer reports **9 frequency bands** (sub_low / sub / low / low_mid / mid / high_mid / high / presence / air) — the new sub_low band (20-60 Hz) separates kick fundamental from DC rumble.
 The **memory** persists production decisions across sessions as searchable, replayable data structures.
-All three feed into 320 deterministic LOM calls on Ableton's main thread. Everything is reversible with undo.
+
+All 426 tools execute as deterministic LOM calls on Ableton's main thread. Everything is reversible with undo.
 
 ---
 
 ## The Three Layers
 
-### Layer 1: Deterministic Tools (210 tools)
+### Layer 1: Deterministic Tools
 
-The foundation. Direct control over every aspect of Ableton Live through the Live Object Model: transport, tracks, clips, notes, devices, scenes, mixing, arrangement, browser, automation. Also includes music theory (Krumhansl-Schmuckler key detection, neo-Riemannian harmony, species counterpoint), generative algorithms (Euclidean rhythm, tintinnabuli, phase shift), and MIDI I/O.
+The foundation. Direct control over every aspect of Ableton Live through the Live Object Model: transport, tracks, clips, notes, devices, scenes, mixing, arrangement, browser, automation, scales, grooves, take-lanes, follow actions, MIDI tool generators. Also includes music theory (Krumhansl-Schmuckler key detection, neo-Riemannian harmony, species counterpoint), generative algorithms (Euclidean rhythm, tintinnabuli, phase shift, additive process), and MIDI I/O.
 
 These tools do exactly what you ask. No interpretation, no judgment. They are the building blocks.
 
-### Layer 2: Perception (30 tools)
+### Layer 2: Perception
 
-The M4L Analyzer on the master track gives LivePilot ears: 8-band FFT spectrum, true RMS/peak metering, Krumhansl-Schmuckler key detection, pitch tracking. Plus deep LOM access for hidden parameters, automation state, Simpler internals, and warp markers. Offline perception adds loudness analysis (integrated LUFS, LRA), spectral analysis, and reference comparison.
+The M4L Analyzer on the master track gives LivePilot ears: 9-band FFT spectrum (v1.17+), true RMS/peak metering, Krumhansl-Schmuckler key detection, pitch tracking, FluCoMa mel-spectrum + chroma + onset detection + spectral shape. Plus deep LOM access for hidden parameters, automation state, Simpler internals, and warp markers. Offline perception adds loudness analysis (integrated LUFS, LRA), spectral analysis, and reference comparison.
 
 Perception closes the feedback loop. Without it, the AI is blind to the result of its own changes. With it, the AI can verify that a mix move actually reduced masking, that a filter sweep landed at the right frequency, that the overall loudness is broadcast-ready.
 
-### Layer 3: Creative Intelligence (83 tools, 12 engines)
+### Layer 3: Creative Intelligence
 
-This is what makes LivePilot agentic. The intelligence layer sits on top of the tools and perception, adding musical judgment:
+Sits on top of the tools and perception, adding musical judgment. This is what makes LivePilot agentic:
 
 **Understanding the song:**
 - **SongBrain** builds a real-time model of identity, sacred elements, section purposes, and energy arc
@@ -55,7 +56,7 @@ This is what makes LivePilot agentic. The intelligence layer sits on top of the 
 - **Hook Hunter** finds the most salient musical idea and tracks whether it's being developed or neglected
 
 **Understanding the producer:**
-- **Taste Graph** learns move family preferences, device affinities, novelty tolerance, and dimension avoidances across sessions
+- **Taste Graph / Agent OS** learns move family preferences, device affinities, novelty tolerance, and dimension avoidances across sessions
 - **Session Continuity** tracks creative threads, turn resolutions, and the session story
 - **Technique Memory** stores and recalls production decisions by mood, genre, and texture
 
@@ -63,65 +64,87 @@ This is what makes LivePilot agentic. The intelligence layer sits on top of the 
 - **Semantic Moves** express high-level intent ("add contrast," "tighten the low end") as executable tool sequences with risk levels and protection thresholds
 - **Wonder Mode** diagnoses stuck sessions, generates genuinely distinct rescue options, and lets you preview before committing
 - **Preview Studio** renders variants using Ableton's undo system — hear each option, compare, then choose
+- **Creative Constraints** activate style gates and render reference-inspired variants
 
 **Evaluating results:**
 - **Mix Engine** runs critic-driven analysis — masking, headroom, stereo, dynamics — and plans corrective moves
 - **Sound Design Engine** analyzes patches for static timbre, missing modulation, and weak transients
-- **Transition Engine** scores transitions and plans improvements using archetype patterns
-- **Reference Engine** distills principles from reference tracks and maps them to your session
+- **Synthesis Brain** extracts timbre fingerprints + proposes synth branches
+- **Transition / Reference / Translation Engines** score transitions, distill principles from reference tracks, translate across domains
 - **Evaluation Loop** enforces measure-before, act, measure-after discipline on every creative move
 
 ---
 
 ## Domain Map
 
+All 426 tools across 52 domains, in source-truth per-domain counts:
+
+### Core Ableton Control (Layer 1 — 218 tools)
+
 | Domain | # | Scope |
 |--------|:-:|-------|
-| Transport | 12 | Playback, tempo, time sig, loop, metronome, undo/redo, diagnostics |
-| Tracks | 17 | Create MIDI/audio/return, delete, duplicate, arm, mute, solo, routing |
-| Clips | 11 | Create, delete, duplicate, fire, stop, loop, launch mode, warp mode |
-| Notes | 8 | Add/get/remove/modify MIDI, transpose, duplicate, per-note probability |
-| Devices | 19 | Load by name/URI, insert native (12.3+), params, racks, chains, drum pads, plugins, presets |
-| Scenes | 12 | Create, delete, duplicate, fire, name, color, per-scene tempo |
-| Browser | 4 | Search library, browse tree, load items |
+| Devices | 42 | Load by name/URI, insert native (12.3+), params, racks, chains, drum pads, plugins, presets, wavetable mod matrix, replace_sample (12.4+), `add_drum_rack_pad`, `verify_device_alive` (v1.16+) |
+| Arrangement | 21 | Timeline editing, arrangement notes, native clips (12.1.10+), cue points, recording, capture, `set_arrangement_automation_via_session_record` (v1.17+) |
+| Transport | 21 | Playback, tempo, time sig, loop, metronome, undo/redo, diagnostics, capture MIDI |
+| Tracks | 21 | Create MIDI/audio/return, delete, duplicate, arm, mute, solo, routing, sends, monitoring |
+| Memory | 18 | Save, recall, replay, session memory, list/favorite/delete, update |
+| Clips | 16 | Create, delete, duplicate, fire, stop, loop, launch mode, warp mode, pitch, color |
+| Scenes | 12 | Create, delete, duplicate, fire, name, color, per-scene tempo, follow actions |
 | Mixing | 11 | Volume, pan, sends, routing, meters, return tracks, mix snapshot |
-| Arrangement | 21 | Timeline editing, arrangement notes, native clips (12.1.10+), cue points, recording, capture |
-| Automation | 8 | Clip envelopes, 16 curve types, 15 recipes, spectral suggestions |
-| Memory | 8 | Save, recall, replay, manage production techniques |
-| Analyzer | 30 | Spectrum, RMS, key detection, Simpler ops, warp markers, capture `[M4L]` |
+| Automation | 9 | Clip envelopes, 16 curve types, 15 recipes, spectral suggestions |
+| Composition | 9 | Section analysis, motif detection, emotional arc, form planning |
+| Notes | 8 | Add/get/remove/modify MIDI, transpose, duplicate, per-note probability |
+| Scales | 8 | Clip scales, song scales, scale modes, list available scales |
+| Follow Actions | 8 | Clip + scene follow actions, presets, type listing |
 | Theory | 7 | Harmony analysis, Roman numerals, scales, countermelody, transposition |
+| Grooves | 7 | Groove templates, per-clip groove, groove amount, groove params |
+| Take Lanes | 6 | Create, name, list, per-lane clips |
 | Generative | 5 | Euclidean rhythm, tintinnabuli, phase shift, additive process |
+| Browser | 4 | Search library, browse tree, load items |
 | Harmony | 4 | Tonnetz navigation, voice leading, neo-Riemannian classification |
 | MIDI I/O | 4 | Export/import .mid, offline analysis, piano roll extraction |
+| MidiTool | 4 | Device install, generator registration, per-clip target mapping |
+
+### Perception (Layer 2 — 45 tools)
+
+| Domain | # | Scope |
+|--------|:-:|-------|
+| Analyzer | 37 | 9-band spectrum (v1.17+), RMS, key detection, Simpler ops, warp markers, capture, FluCoMa mel/chroma/onset `[M4L]` |
 | Perception | 4 | Offline loudness, spectral analysis, reference comparison, metadata |
-| Agent OS | 8 | Session kernel, action ledger, capability state, routing |
-| Composition | 9 | Section analysis, motif detection, emotional arc, form planning |
+| Diagnostics | 3 | Device/session health verification, test-note fire-and-forget |
 | Evaluation | 1 | Before/after evaluation with structured scoring |
+
+### Creative Intelligence (Layer 3 — 161 tools, ~20 engines)
+
+| Domain | # | Scope |
+|--------|:-:|-------|
+| Sample Engine | 23 | Multi-source search (Splice gRPC + browser + filesystem), Splice catalog hunt, downloads, previews, pack info, collections, presets, describe-a-sound (LIVE), variations (LIVE), http-diagnose (v1.17+) |
+| Hook Hunter | 9 | Hook detection, salience scoring, neglect detection, phrase impact |
+| Atlas | 10 | Search 1305 devices, suggest by intent, chain building, comparison, library scan, `atlas_pack_info`, `atlas_describe_chain` (free-text), `atlas_techniques_for_device` (reverse-lookup) — all v1.17+ |
+| Agent OS | 8 | Session kernel, action ledger, capability state, routing, goal vectors, taste |
+| Session Continuity | 7 | Creative threads, turn resolution, session story, anti-preferences |
+| Musical Intelligence | 6 | Phrase arc, impact scoring, comparison, rendering, grid analysis, snapshot |
 | Mix Engine | 6 | Critic-driven mix analysis, issue detection, move planning |
+| Preview Studio | 5 | Variant creation, preview rendering, comparison, commit, discard |
+| Runtime | 5 | Session kernel building, world model, capability, safety, resume intent |
+| Experiment | 5 | Create, run, compare, commit, discard A/B experiment branches |
+| Creative Constraints | 5 | Constraint activation, reference-inspired variants |
 | Sound Design | 4 | Patch analysis, modulation planning, timbre scoring |
-| Transition Engine | 5 | Transition classification, scoring, archetype planning |
-| Reference Engine | 5 | Reference profiling, principle distillation, gap analysis |
-| Translation Engine | 3 | Cross-domain translation, issue detection |
+| Composer | 4 | Prompt → multi-layer composition plan, sample augmentation, plan preview, branches |
+| Semantic Moves | 4 | Move listing, preview, application, next-best-move proposal |
+| Transition Engine | 3 | Transition classification, scoring, archetype planning |
+| Reference Engine | 3 | Reference profiling, principle distillation, gap analysis |
 | Performance Engine | 3 | Safety-constrained suggestions, safe moves, scene handoff |
 | Song Brain | 3 | Identity inference, sacred elements, drift monitoring |
-| Hook Hunter | 9 | Hook detection, salience scoring, neglect detection, phrase impact |
 | Stuckness Detector | 3 | Momentum analysis, rescue classification, rescue workflows |
 | Wonder Mode | 3 | Diagnosis-driven variants, taste-aware ranking, session discard |
-| Session Continuity | 7 | Creative threads, turn resolution, session story |
-| Creative Constraints | 5 | Constraint activation, reference-inspired variants |
-| Preview Studio | 5 | Variant creation, preview rendering, comparison, commit |
-| Semantic Moves | 4 | Move listing, preview, application, next-best-move proposal |
-| Project Brain | 2 | Project-level analysis, section purpose inference |
-| Runtime | 2 | Session kernel building, world model construction |
-| Motif | 2 | Motif graph, motif transformation |
-| Research | 4 | Technique research, style tactics |
-| Planner | 3 | Gesture planning, arrangement planning, mix move planning |
-| Device Atlas | 6 | Search 1305 devices, suggest by intent, chain building, comparison, library scan |
-| Sample Engine | 6 | Multi-source sample search (Splice/browser/filesystem), fitness critics, technique library |
+| Research | 3 | Technique research, style tactics |
+| Synthesis Brain | 3 | Synth patch analysis, branch proposals, timbre fingerprint extraction |
 | Device Forge | 3 | Generate M4L devices from gen~ templates, install to browser |
-| Composer | 3 | Prompt → multi-layer composition plan, sample augmentation, plan preview |
-| Experiment | 5 | Create, run, compare, commit, discard A/B experiment branches |
-| Musical Intelligence | 6 | Phrase arc, impact scoring, comparison, rendering, grid analysis, snapshot |
+| Motif | 2 | Motif graph, motif transformation |
+| Project Brain | 2 | Project-level analysis, section purpose inference |
+| Planner | 2 | Gesture planning, arrangement planning |
+| Translation Engine | 2 | Cross-domain translation, issue detection |
 
 ---
 
@@ -131,10 +154,10 @@ This is what makes LivePilot agentic. The intelligence layer sits on top of the 
 
 | Chapter | What's inside |
 |---------|---------------|
-| [The Intelligence Layer](intelligence.md) | How the 12 engines connect — conductor, kernel, moves, preview, evaluation |
-| [Device Atlas](device-atlas.md) | 1305 devices indexed — search, suggest, chain building, comparison |
-| [Samples & Slicing](samples.md) | 3-source search, fitness critics, 29 techniques, slice workflows |
-| [Automation](automation.md) | 16 curve types, 15 recipes, spectral suggestions |
+| [The Intelligence Layer](intelligence.md) | How the engines connect — conductor, kernel, moves, preview, evaluation |
+| [Device Atlas](device-atlas.md) | 1305 devices indexed — search, suggest, chain building, comparison, pack browsing |
+| [Samples & Slicing](samples.md) | 3-source search, Splice describe-a-sound, variations, fitness critics |
+| [Automation](automation.md) | 16 curve types, 15 recipes, spectral suggestions, two-phase arrangement-record workaround |
 | [Composition & Arrangement](composition.md) | Composer, section analysis, arrangement planning with sample roles |
 
 ### Production Guides
@@ -150,9 +173,10 @@ This is what makes LivePilot agentic. The intelligence layer sits on top of the 
 
 | Chapter | What's inside |
 |---------|---------------|
-| [Tool Catalog](tool-catalog.md) | Every tool organized by domain |
-| [Tool Reference](tool-reference.md) | Every tool with parameters, ranges, and usage notes |
+| [Tool Catalog](tool-catalog.md) | Every tool organized by domain (auto-generated from source) |
+| [Tool Reference](tool-reference.md) | In-depth parameter docs, ranges, and usage notes for the most-used tools |
 | [Troubleshooting](troubleshooting.md) | Connection issues, common errors, diagnostics |
+| [Splice Endpoint Capture](splice-endpoint-capture.md) | mitmproxy runbook for capturing additional Splice GraphQL operations |
 
 ---
 

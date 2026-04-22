@@ -104,6 +104,17 @@ key_parameters:
       natural: 250.0
       ambient: 1500.0
 
+signature_techniques:
+  - name: "Neo-soul Rhodes-adjacent keys"
+    description: "Sine+triangle mix, short-attack amp, dark filter, gentle chorus send. Not trying to emulate Rhodes — trying to SIT where Rhodes sits in the mix."
+    aesthetic: ['neo_soul', 'r_and_b', 'lo_fi']
+  - name: "Minimal-techno bass anchor"
+    description: "Sine sub at C1, triangle octave up blended -6 dB, LP filter fixed open, no modulation. The bass doesn't move — the filter on the REVERB send does."
+    aesthetic: ['minimal_techno', 'deep_minimal', 'dub_techno']
+  - name: "Warm synthwave pad"
+    description: "Saw+triangle, detune 0.1, slow filter envelope, long amp release, subtle vibrato at 5 Hz. 80s pad territory without the period-drama cliché."
+    aesthetic: ['synthwave', '80s', 'vaporwave']
+
 pairs_well_with:
   - device: "Reverb"
     reason: "The organic drift character blooms beautifully in reverb space"

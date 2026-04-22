@@ -32,6 +32,44 @@ signature_techniques:
   - name: "Arpiar bell through Convolution Reverb"
     description: "Short decay, subtle modulator depth, single hit per bar, through a long cathedral IR → the thin bell stab that recurs in Arpiar tracks."
     aesthetic: [arpiar, deep_minimal]
+  - name: "Inharmonic bell struck through PitchLoop89"
+    description: "Modulator ratio around 1.41 (irrational), short decay, through dual-detune PitchLoop89 (+5 / -7 cents) → phased bell cluster."
+    aesthetic: [arpiar, ambient]
+
+pairs_well_with:
+  - device: "Convolution Reverb"
+    reason: "Essential — Bell Tower raw is too dry. Long cathedral or hall IR transforms it into the signature bell-stab"
+  - device: "PitchLoop89"
+    reason: "Dual-detune smears the bell transient into a phased cluster — Henke bell territory"
+  - device: "Utility"
+    reason: "Width control essential — Bell Tower is mono, Utility width at 140% gives headphone-scale spatialization"
+  - device: "Auto Filter"
+    reason: "Modulate cutoff slowly for evolving bell texture — 30-second LFO period"
+
+starter_recipes:
+  - name: "Arpiar Bell Stab"
+    description: "Single bell hit per bar, thin, through cathedral reverb"
+    genre: deep_minimal
+    params:
+      "Carrier Freq": 660.0
+      "Modulator Ratio": 1.41
+      "Modulator Depth": 0.35
+      "Decay": 0.3
+
+  - name: "Ambient Bell Cloud"
+    description: "Sustained bells through reverb — pad-adjacent atmosphere"
+    genre: ambient
+    params:
+      "Carrier Freq": 440.0
+      "Modulator Ratio": 3.0
+      "Modulator Depth": 0.2
+      "Decay": 1.0
+
+gotchas:
+  - "Modulator Ratio at integer values (2, 3, 4) gives pluck-like tones; irrational values (1.41, 2.71) give metallic bells. Small distinctions, big character shifts"
+  - "Modulator Depth at max is harsh — the FM index becomes over-rich. Stay under 0.7 unless you want noise-bell"
+  - "Bell Tower is monophonic by default — for chords, use multiple instances or layer with another FM instrument"
+  - "It's an M4L tutorial device — not as CPU-optimized as Operator in FM mode. Consider Operator for production final bounces"
 
 learn_more:
   pack: "Building Max Devices"

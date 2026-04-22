@@ -1,0 +1,142 @@
+id: drum_rack
+name: Drum Rack
+sonic_description: >
+  A container instrument that maps up to 128 drum pads — each pad hosts its own
+  Simpler (or Sampler, Operator, or any other instrument plus effect chain) and
+  responds to one MIDI note. Drum Rack is not a synth: its sonic character comes
+  entirely from the samples and devices loaded into its pads. Think of it as
+  infrastructure — the spine that turns a folder of one-shots into a playable
+  kit with per-pad routing, choke groups, and macro control.
+synthesis_type: sample_container
+character_tags: [container, infrastructure, kit_builder, per_pad_chain, macro_addressable]
+use_cases:
+  - build_drum_kit_from_loose_samples
+  - per_pad_effects_processing
+  - choke_groups_for_hat_pairs
+  - macro_controlled_drum_performance
+  - parallel_sample_layering_on_a_single_pad
+  - host_for_sliced_break_recomposition
+genre_affinity:
+  primary: [hip_hop, electronic, techno, house, trap]
+  secondary: [dnb, footwork, ambient, experimental, all]
+complexity: beginner
+self_contained: false
+introduced_in: "6.0"
+pack: Core Library
+is_container: true
+chain_model: per_pad_instrument_and_effects
+
+key_parameters:
+  - name: "Pad Note Assignment"
+    description: >
+      Each pad is assigned a MIDI note (C1=36 by convention for the kick).
+      Programmatic: use `set_drum_chain_note(track, chain_index, note)` rather
+      than GUI drag. The Live 12.4+ drum-map uses note 36 for the bottom-left
+      pad by default.
+    range: [0, 127]
+    type: int
+    sweet_spots:
+      kick: 36
+      snare: 38
+      closed_hat: 42
+      open_hat: 46
+      clap: 39
+      ride: 51
+
+  - name: "Pad Volume (per chain)"
+    description: "Each pad has its own volume fader on the chain"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      anchor_kick: 0.85
+      accent_snare: 0.75
+      ghost_hat: 0.35
+
+  - name: "Pad Pan (per chain)"
+    description: "Stereo placement per pad — crucial for width on hats/percs"
+    range: [-1.0, 1.0]
+    type: float
+    sweet_spots:
+      center: 0.0
+      hat_right: 0.25
+      perc_wide: 0.6
+
+  - name: "Choke Group"
+    description: >
+      Pads in the same choke group cut each other off (pair hats so closed
+      cuts open, or group percussion so overlapping hits don't stack).
+    range: [0, 16]
+    type: int
+    sweet_spots:
+      hat_pair: 1
+      percussion_cluster: 2
+
+  - name: "Macro 1-8"
+    description: >
+      Drum Rack macros address any parameter across any pad chain. Use for
+      performance gestures (global dust filter, global saturation, pad volumes
+      collected onto one knob).
+    range: [0.0, 127.0]
+    type: float
+
+pairs_well_with:
+  - device: "Drum Buss"
+    reason: "The native glue — shape/boom/transients for the whole kit post-rack. Often the entire mix tool a drum rack needs"
+  - device: "Compressor"
+    reason: "Glue the kit into one punch — 2-4 dB gain reduction with a medium attack"
+  - device: "EQ Eight"
+    reason: "High-pass below 30 Hz, notch masking from kick/snare"
+  - device: "Saturator"
+    reason: "Add harmonic weight without gain staging pain. Especially on sampled kits that sound sterile"
+  - device: "Reverb"
+    reason: "Per-pad sends (build a reverb return) rather than stacking on the master"
+  - device: "Gate"
+    reason: "Tighten room-mic'd one-shots or trim bleed from multi-sampled kits"
+
+starter_recipes:
+  - name: "Empty Kit for Sample Programming"
+    description: "Build from scratch — use add_drum_rack_pad for each slot"
+    genre: electronic
+    steps:
+      - "Create empty Drum Rack on a MIDI track"
+      - "For each sample: add_drum_rack_pad(track, note=36+i, sample_path=...)"
+      - "Verify each pad landed: get_track_info, check chain count"
+      - "Set pad volumes by role: kick 0.85, snare 0.75, hats 0.4"
+
+  - name: "Sliced-Break Reprogram"
+    description: "Take a break loop, slice it, reroute to a Drum Rack for MIDI programming"
+    genre: dnb
+    steps:
+      - "Load break to Simpler in Slicing mode"
+      - "classify_simpler_slices to identify kick/snare/hat roles"
+      - "Recreate as Drum Rack with each slice as its own pad"
+      - "Program new pattern — you now have MIDI control of the break"
+
+  - name: "Layered Kick (sub + click + body)"
+    description: "Single kick pad with three parallel instruments for fullness"
+    genre: techno
+    steps:
+      - "Drum Rack → pad 36 (kick) → add 3 chains within that pad"
+      - "Chain 1: sub sine (Operator sine wave)"
+      - "Chain 2: transient click (short sample)"
+      - "Chain 3: body (sampled kick tail)"
+      - "Balance chain volumes — sub first, body second, click last"
+
+gotchas:
+  - "A Drum Rack with no pads produces nothing — loading the container alone is not enough. Always verify at least one chain exists via get_track_info before firing notes"
+  - "Pad 36 (C1) is the bottom-left in the default view and the conventional kick slot. Live 12's auto-mapping assumes this"
+  - "add_drum_rack_pad is the ONE reliable tool for adding pads. Using load_browser_item repeatedly to 'add' pads creates nested racks, not siblings"
+  - "Each pad is itself a chain with its own Volume/Pan/Solo/Mute — per-pad mute is different from muting the pad's chain. Use set_chain_volume for the pad-level fader"
+  - "Macros must be explicitly mapped — they don't auto-address pad volumes. Use add_rack_macro + map_plugin_parameter on the underlying instrument"
+  - "Choke groups 0 and 'None' are the same (no choke). Use 1-16 for actual mutual-exclusion grouping"
+  - "A sliced Simpler inside a Drum Rack pad responds to slice-base pitch (36+N), NOT the pad's own MIDI note. Mis-configured slicing→pad routing is a common silence cause"
+  - "Per-pad sends can be shown/hidden by the rack's S (Send) button on the chain list. Hidden sends still work, but you can't see them — makes debugging missing reverb very hard"
+
+learn_more:
+  official: "https://www.ableton.com/en/live-manual/12/drum-racks/"
+  livepilot_related_tools:
+    - add_drum_rack_pad
+    - set_drum_chain_note
+    - get_rack_chains
+    - set_chain_volume
+    - rename_chain

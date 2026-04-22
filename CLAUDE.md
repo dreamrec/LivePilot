@@ -1,4 +1,4 @@
-# LivePilot v1.16.1 — Ableton Live 12
+# LivePilot v1.17.0 — Ableton Live 12
 
 ## Project
 - **Repo:** This directory (LivePilot)
@@ -16,7 +16,8 @@
   - `livepilot_bridge.js`: 30 bridge commands for LiveAPI access
   - `SpectralCache`: thread-safe, time-expiring data cache (5s max age)
   - Bridge is optional — all core tools work without it
-- **Device Atlas** (`mcp_server/atlas/`): In-memory indexed JSON database — 1305 devices with URIs, 107 enriched with sonic intelligence (YAML). 6 indexes: by_id, by_name, by_uri, by_category, by_tag, by_genre
+- **Device Atlas** (`mcp_server/atlas/`): In-memory indexed JSON database — 1305 devices with URIs, 120 enriched with sonic intelligence (YAML), 47 with aesthetic-tagged `signature_techniques`. **7 indexes**: by_id, by_name, by_uri, by_category, by_tag, by_genre, by_pack (641 devices indexed by pack). Reverse-index `device_techniques_index.json` (146 cross-references across 58 devices) powers `atlas_techniques_for_device`. Tools: `atlas_search`, `atlas_suggest`, `atlas_chain_suggest`, `atlas_compare`, `atlas_device_info`, `atlas_pack_info` (v1.17), `atlas_describe_chain` (v1.17 — free-text, mirror of `splice_describe_sound`), `atlas_techniques_for_device` (v1.17 — reverse-lookup), `scan_full_library`, `reload_atlas`
+- **Concept surface** (`livepilot/skills/livepilot-core/references/`): **v1.17+** translation layer between LLM training and LivePilot tools. `artist-vocabularies.md` maps ~25 producers (Villalobos, Hawtin, Basic Channel, Gas, Basinski, Hecker, Aphex, Autechre, OPN, Arca, Dilla, Premier, Madlib, Burial, Henke, Daft Punk, Photek, Com Truise, Boards of Canada) to `sonic_fingerprint` / `reach_for` / `avoid` / `key_techniques`. `genre-vocabularies.md` maps 15 genres (microhouse, dub_techno, deep_minimal, minimal_techno, ambient, idm, modern_classical, hip_hop, trap, dubstep, house, dnb, garage, experimental, synthwave) to tempo / kick / bass / percussion / harmonic / texture / reach-for / avoid. Read these BEFORE device selection when the user says "sound like X" or "make me a <genre> track"
 - **Sample Engine** (`mcp_server/sample_engine/`): Three-source sample intelligence — BrowserSource (Ableton browser), SpliceSource (local sounds.db SQLite), FilesystemSource (user dirs). 6-critic fitness battery, 29-technique library, Surgeon/Alchemist dual philosophy
 - **Splice Client** (`mcp_server/splice_client/`): gRPC client for Splice desktop API. Port auto-detected from port.conf, TLS with self-signed certs. Credit safety floor of 5
 - **Composer** (`mcp_server/composer/`): Prompt → plan pipeline. Parses NL into CompositionIntent (genre/mood/tempo/key), plans layers with role templates, compiles to executable tool sequences. 4 genre defaults
@@ -28,7 +29,7 @@
 ## Key Rules
 - ALL Live Object Model (LOM) calls must execute on Ableton's main thread via schedule_message queue
 - Live 12 minimum — use modern note API (add_new_notes, get_notes_extended, apply_note_modifications)
-- 422 tools across 52 domains: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, analyzer, automation, theory, generative, harmony, midi_io, perception, agent_os, composition, motif, research, planner, project_brain, runtime, evaluation, mix_engine, sound_design, transition_engine, reference_engine, translation_engine, performance_engine, song_brain, preview_studio, hook_hunter, stuckness_detector, wonder_mode, session_continuity, creative_constraints, device_forge, sample_engine, atlas, composer, experiment, musical_intelligence, semantic_moves, diagnostics, follow_actions, grooves, scales, take_lanes, miditool, synthesis_brain
+- 426 tools across 52 domains: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, analyzer, automation, theory, generative, harmony, midi_io, perception, agent_os, composition, motif, research, planner, project_brain, runtime, evaluation, mix_engine, sound_design, transition_engine, reference_engine, translation_engine, performance_engine, song_brain, preview_studio, hook_hunter, stuckness_detector, wonder_mode, session_continuity, creative_constraints, device_forge, sample_engine, atlas, composer, experiment, musical_intelligence, semantic_moves, diagnostics, follow_actions, grooves, scales, take_lanes, miditool, synthesis_brain
 - JSON over TCP, newline-delimited, port 9878
 - Structured errors with codes: INDEX_ERROR, NOT_FOUND, INVALID_PARAM, STATE_ERROR, TIMEOUT, INTERNAL
 - **LivePilot_Analyzer must be LAST on master** — always after ALL effects (EQ, Compressor, Utility) so it reads the final output, not pre-effect signal
@@ -55,7 +56,7 @@ When modifying .amxd attributes that Max editor won't persist (e.g., `openinpres
 If bumping the version, update ALL of these: package.json, server.json (Marketplace reads this), livepilot/.Codex-plugin/plugin.json, livepilot/.claude-plugin/plugin.json, .claude-plugin/marketplace.json, mcp_server/__init__.py, remote_script/LivePilot/__init__.py, CLAUDE.md, AGENTS.md, CHANGELOG.md, livepilot/skills/livepilot-core/references/overview.md, docs/M4L_BRIDGE.md (ping version string)
 
 ## Tool Count
-Currently 422 tools (up from 403 in v1.15.0-beta — added 12: 10 Splice tools + add_drum_rack_pad + analyze_loudness_live + fire_test_note + cleanup_test_note + verify_device_alive). If adding/removing tools, update: README.md, package.json description, livepilot/.Codex-plugin/plugin.json, livepilot/.claude-plugin/plugin.json, server.json, livepilot/skills/livepilot-core/SKILL.md, livepilot/skills/livepilot-core/references/overview.md, CLAUDE.md, CHANGELOG.md, tests/test_tools_contract.py, docs/manual/index.md, docs/manual/tool-reference.md
+Currently 426 tools (up from 403 in v1.15.0-beta — added 12: 10 Splice tools + add_drum_rack_pad + analyze_loudness_live + fire_test_note + cleanup_test_note + verify_device_alive). If adding/removing tools, update: README.md, package.json description, livepilot/.Codex-plugin/plugin.json, livepilot/.claude-plugin/plugin.json, server.json, livepilot/skills/livepilot-core/SKILL.md, livepilot/skills/livepilot-core/references/overview.md, CLAUDE.md, CHANGELOG.md, tests/test_tools_contract.py, docs/manual/index.md, docs/manual/tool-reference.md
 
 ## Splice plan-aware model (v1.15.0-beta)
 Sample downloads now use plan-aware gating (`mcp_server/splice_client/client.py::decide_download`):

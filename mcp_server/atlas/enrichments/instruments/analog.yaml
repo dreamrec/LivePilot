@@ -154,6 +154,17 @@ key_parameters:
       moderate: 0.35
       extreme: 0.8
 
+signature_techniques:
+  - name: "Reese bass (drum & bass)"
+    description: "Two detuned saws at different octaves, LP24 filter with slight resonance, no LFO — let the beat frequency between the oscillators do the modulation."
+    aesthetic: ['dnb', 'neurofunk', 'jungle']
+  - name: "Hawtin subtractive pad"
+    description: "Single saw, slow filter sweep from dark to bright across 32 bars, filter env amount slight negative so attack is dark — the pad evolves by unfolding, not by adding."
+    aesthetic: ['minimal_techno', 'deep_minimal']
+  - name: "303 acid bass"
+    description: "Osc1 saw, octave down, LP24 with high resonance (0.8+), env amount 0.9, amp decay short. Use Filter1 Freq + Res as performance controls — the acid line IS the filter gesture."
+    aesthetic: ['acid_house', 'acid_techno']
+
 pairs_well_with:
   - device: "Auto Filter"
     reason: "Adds rhythmic filter movement and envelope-following beyond the built-in filters"

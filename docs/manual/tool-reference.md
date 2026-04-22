@@ -1,6 +1,6 @@
 # Tool Reference
 
-LivePilot gives you 422 tools that control every part of Ableton Live 12. You don't call these tools directly -- you describe what you want in plain language, and the AI picks the right tools behind the scenes. But knowing what's available helps you ask better questions and understand what's happening when the AI works on your session.
+LivePilot gives you 426 tools that control every part of Ableton Live 12. You don't call these tools directly -- you describe what you want in plain language, and the AI picks the right tools behind the scenes. But knowing what's available helps you ask better questions and understand what's happening when the AI works on your session.
 
 This chapter covers every tool, grouped by what it does. Each entry tells you the tool name, what it does in practice, what parameters it accepts, and when you'd want it.
 
@@ -943,6 +943,23 @@ List a VST/AU plugin's internal presets and banks.
 
 ---
 
+### add_drum_rack_pad
+
+**[v1.16+]** Atomic per-pad drum-rack construction. Does the full `insert_rack_chain` → `set_drum_chain_note` → insert Simpler → `replace_sample` sequence in one call, with auto-increment of `in_note` so drum racks don't pile up on note 36 (Multi). Requires Live 12.4+.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | *(required)* | Track holding the Drum Rack |
+| `pad_note` | int | *(required)* | MIDI pitch for the pad (36 = kick, 38 = snare, 42 = hat by convention) |
+| `file_path` | string | *(required)* | Absolute path to the sample .wav/.mp3/.aif |
+| `drum_rack_index` | int | 0 | Which Drum Rack on the track (multi-rack setups) |
+
+Returns `{ok, chain_index, pad_note, nested_device_index}`. Use the chain_index for subsequent `replace_simpler_sample` or per-pad volume tweaks.
+
+**When to use:** "Build me a kick/snare/hat/clap drum rack from these samples" — the AI loops through this one tool per pad instead of fighting `load_browser_item`.
+
+---
+
 ## Scenes
 
 Tools for managing scenes -- the horizontal rows of clip slots in Session View.
@@ -1693,6 +1710,29 @@ Reads the track's spectrum and device chain, then suggests automation targets wi
 Returns: track name, device count, current level, spectrum data, and a list of suggestions with device index, reason, and recommended recipe.
 
 **When to use:** "What should I automate on this track?" or when you want data-driven automation decisions.
+
+---
+
+### set_arrangement_automation_via_session_record
+
+**[v1.17+]** Writes track-level arrangement automation at a specific beat using the session-clip + arrangement-record workaround. The Live LOM forbids direct track-level arrangement automation writes outside of clips, so this tool uses a two-phase protocol: creates a session clip with the automation, arms the track, records it into arrangement at `target_beat`, then cleans up.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | *(required)* | Regular track (not return) |
+| `parameter_type` | string | *(required)* | `volume`, `panning`, `send`, or `device` |
+| `points` | list | *(required)* | `[{time, value, duration?}]` relative to session-clip start |
+| `target_beat` | float | *(required)* | Arrangement beat where recording starts |
+| `duration_beats` | float | *(required)* | How long to record (usually matches clip length) |
+| `session_clip_slot` | int | 0 | Which session slot to use (must be empty or will be overwritten) |
+| `device_index` | int | — | Required for `parameter_type="device"` |
+| `parameter_index` | int | — | Required for `parameter_type="device"` |
+| `send_index` | int | — | Required for `parameter_type="send"` (0=A, 1=B) |
+| `cleanup_session_clip` | bool | `true` | Delete the temp session clip after recording |
+
+Wall time ≈ `duration_beats × 60/tempo + 0.5s` handler overhead. Returns `{ok, tempo, slept_sec, start, complete}` with the new arrangement-clip's index on success.
+
+**When to use:** "Automate the filter cutoff on track 2 between bar 17 and bar 25" — use when `set_arrangement_automation` (clip-scoped) isn't flexible enough because the automation needs to span dead space between clips.
 
 ---
 
@@ -3028,6 +3068,339 @@ Plans a safe transition between two scenes with timing and crossfade suggestions
 | `to_scene` | int | *(required)* | Target scene index |
 
 **When to use:** "Plan a transition from scene 2 to scene 5."
+
+---
+
+## Device Atlas
+
+The atlas is LivePilot's indexed, enriched knowledge of every loadable device in your Live install — 1305 devices total, 135 enriched with sonic intelligence (character tags, sweet-spot parameters, starter recipes, pairings, gotchas). It's what stops the AI from hallucinating a preset that doesn't exist: every load goes through a URI the atlas verified.
+
+### atlas_search
+
+Multi-signal search across device names, tags, use-cases, genres, and descriptions. Scoring includes exact-name match (+45), tag match (+35), use-case match (+25), genre match (+20).
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `query` | string | *(required)* | Natural-language: "warm analog bass", "reverb", "808 kit", "granular" |
+| `category` | string | `all` | Filter by category: `all`, `instruments`, `audio_effects`, `midi_effects`, `max_for_live`, `drum_kits`, `plugins` |
+| `limit` | int | 10 | Max results |
+
+**When to use:** "Find me a warm analog bass" or "what granular synths do I have?"
+
+---
+
+### atlas_device_info
+
+Full atlas knowledge for one device: parameters, recipes, pairings, gotchas.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `device_id` | string | *(required)* | Atlas ID or name (`drift`, `Compressor`, `808_core_kit`) |
+
+**When to use:** "How do I set up Drift for a warm pad?" or any time the AI needs parameter recipes before loading.
+
+---
+
+### atlas_suggest
+
+Recommends devices for a production intent with rationale + starter recipes.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `intent` | string | *(required)* | What you're trying to achieve — "warm bass", "crispy hi-hats", "evolving texture" |
+| `genre` | string | `""` | Target genre for style-appropriate choices |
+| `energy` | string | `medium` | `low` / `medium` / `high` — affects character suggestions |
+| `key` | string | `""` | Musical key (for tuned percussion) |
+
+**When to use:** "I need an evolving texture for a dub-techno track" — returns 5 ranked options with recipes.
+
+---
+
+### atlas_chain_suggest
+
+Suggests a full device chain for a track role (bass / lead / pad / drums / etc.) with genre-specific choices.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `role` | string | *(required)* | `bass`, `lead`, `pad`, `drums`, `percussion`, `texture`, `vocal`, `keys` |
+| `genre` | string | `""` | Target genre |
+
+**When to use:** "Build me a bass chain for microhouse."
+
+---
+
+### atlas_compare
+
+Side-by-side comparison of two devices with a role-specific recommendation.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `device_a` | string | *(required)* | First device name or ID |
+| `device_b` | string | *(required)* | Second device name or ID |
+| `role` | string | `""` | Optional role context for the recommendation |
+
+**When to use:** "Compare Operator and Wavetable for pads."
+
+---
+
+### atlas_pack_info
+
+**[v1.17+]** Inspects a single Ableton pack — device list + enrichment coverage. Auto-indexes all Core Library devices (614 total) plus 27 explicit-pack devices (Drone Lab, Creative Extensions, Inspired by Nature, CV Tools, etc.).
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `pack_name` | string | `""` | Pack name (case-insensitive): `Drone Lab`, `Core Library`, `Creative Extensions`, `Inspired by Nature`. Empty string returns the full pack list with device counts. |
+
+**When to use:** "What's in Drone Lab?" or "How much of Creative Extensions do we have knowledge about?"
+
+---
+
+### atlas_describe_chain
+
+**[v1.17+]** Free-text describe-a-chain — the mirror of `splice_describe_sound` but for the Ableton library. Takes a free-form sentence and proposes a device chain by parsing role hints, artist hints (cross-referenced to `artist-vocabularies.md`), genre keywords (cross-referenced to `genre-vocabularies.md`), and character words. Returns a ranked proposal — does NOT autoload anything.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `description` | string | *(required)* | Free text. Examples: `"a granular pad that sounds like Tim Hecker"`, `"warm analog bass for minimal techno"`, `"chopped vocal melody, Akufen-style microhouse"` |
+| `genre` | string | `""` | Optional genre bias if the description is genre-agnostic |
+| `limit_per_role` | int | 3 | Max devices to suggest per detected role |
+
+Returns `{description, detected_roles, detected_aesthetic, per_role_suggestions, chain_proposal, next_steps}`. `chain_proposal` is the top-ranked device per detected role, ready to feed into `load_browser_item` + FX chain.
+
+**When to use:** When you want the LLM to turn an aesthetic description into a concrete device chain without having to manually orchestrate `atlas_search` + `atlas_chain_suggest` + `atlas_suggest` calls. The closest atlas analog to how people actually talk about music.
+
+**How it pairs with:**
+- `splice_describe_sound` does the same for *samples*; this does it for *devices*
+- Output `chain_proposal[].device_id` can feed directly into `atlas_techniques_for_device` for "what else can I do with this?"
+
+---
+
+### atlas_techniques_for_device
+
+**[v1.17+]** Reverse-lookup: which techniques / production principles reference this device? Complements `atlas_device_info` (which returns the device's OWN fields) by showing how it appears in techniques written from other angles — sample-manipulation principles, `sound-design-deep.md` references, other devices' `signature_techniques` cross-mentions.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `device_id` | string | `""` | Atlas ID (e.g. `"granulator_iii"`, `"simpler"`, `"analog"`). Empty string returns the index summary: `{indexed_device_count, total_cross_references, devices}`. |
+
+Returns `{device_id, technique_count, techniques: [{technique, description, aesthetic, source, kind}]}`. `kind` is one of `signature_technique` (device's own) / `sample_technique` (from `sample-techniques.md`) / `sound_design_principle` (from `sound-design-deep.md`).
+
+The underlying index is auto-generated from 3 sources — 146 cross-references across 58 devices total as of v1.17.
+
+**When to use:** "What can I do with Granulator III?" → returns its own `signature_techniques` PLUS every technique elsewhere that reaches for it. "Show me every technique that uses the Analog synth" — answered by this.
+
+**How it pairs with:**
+- `atlas_device_info` for the device's inward-looking profile
+- `atlas_describe_chain` output can be fed into this per device_id to expand "one device → many techniques"
+
+---
+
+### scan_full_library
+
+Rescans the Ableton browser and rebuilds the device atlas. Usually only needed after installing/removing packs.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `force` | bool | `false` | Rescan even if a recent atlas exists |
+| `max_per_category` | int | 5000 | Per-category ceiling (guard against pathological library sizes) |
+
+**When to use:** After installing a new pack, or if you suspect devices are missing from search results.
+
+---
+
+### reload_atlas
+
+Force the atlas to re-read `device_atlas.json` from disk. Useful after an out-of-band edit.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | | | |
+
+**When to use:** Rarely — scan_full_library handles reload internally. Manual use: after editing the JSON directly.
+
+---
+
+## Sample Engine & Splice
+
+LivePilot's sample system is a 3-source intelligence layer — Splice catalog (via local gRPC to the desktop app, plus HTTPS to `surfaces-graphql.splice.com` for describe + variations), Ableton browser, and filesystem. The describe-a-sound + variations tools were captured + wired 2026-04-22 via mitmproxy against Splice desktop v5.4.9.
+
+### search_samples
+
+Multi-source sample search — finds samples in your Ableton library, Splice catalog, and local filesystem in one call.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `query` | string | *(required)* | Keyword or phrase |
+| `sources` | list | all | Subset of `["splice", "browser", "filesystem"]` |
+| `limit` | int | 20 | Max results |
+| `bpm` | int | — | Optional BPM filter |
+| `key` | string | — | Optional musical key |
+
+**When to use:** "Find me a kick at 128 BPM" or "any dub techno loops in A minor?"
+
+---
+
+### splice_describe_sound
+
+**[v1.17+ LIVE]** Natural-language sample search — Splice's "Describe a Sound". Free-form prompts like "dark ambient pad with shimmer" or "tight 90s house hi-hat" are matched against the Splice catalog via the `SamplesSearch` GraphQL operation with `semantic=1` + `rephrase=true`.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `description` | string | *(required)* | Free-text prompt |
+| `bpm` | int | — | Optional BPM filter |
+| `key` | string | — | Optional musical key |
+| `limit` | int | 20 | Max results |
+| `rephrase` | bool | `true` | Let Splice's ML rephrase the query — returned as `rephrased_query_string` |
+
+Returns `{samples[], total_hits, rephrased_query_string, tag_summary[]}`. Each sample has uuid/name/bpm/key/duration/tags/pack_name/files. Pair with `splice_download_sample(uuid)` to pull the audio.
+
+**When to use:** "Get me a warm dub techno chord stab" — the AI can discover samples by vibe, not just keywords.
+
+---
+
+### splice_generate_variation
+
+**[v1.17+ LIVE]** Find catalog samples similar to a given sample — Splice's "Variations" feature. Signature changed in v1.17: now takes a sample `uuid` instead of the prior `(file_hash, target_key, target_bpm, count)` speculation. Semantically this is a recommender lookup, not AI audio synthesis; up to 10 similar catalog samples are returned.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `uuid` | string | *(required)* | Source sample's catalog uuid (from describe_sound / search results) |
+| `is_legacy` | bool | `true` | Match Splice client's default — leave as-is for mainstream catalog |
+
+Returns `{similar_samples[], count}` — each entry has the same flat shape as a describe_sound result.
+
+**When to use:** After finding one good sample, "find me more like this."
+
+---
+
+### splice_preview_sample
+
+Audition a Splice sample without spending a credit — fetches the preview MP3 URL.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `uuid` or `file_hash` | string | *(required)* | Sample identifier |
+
+**When to use:** Before committing a credit on `splice_download_sample`.
+
+---
+
+### splice_download_sample
+
+Downloads a Splice sample to local disk. Credit/quota aware: on Ableton Live plans uses daily quota (100/day); on other plans uses monthly credits with a `CREDIT_HARD_FLOOR=5` safety.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `uuid` or `file_hash` | string | *(required)* | Sample identifier |
+| `target_path` | string | — | Optional destination |
+
+**When to use:** After `splice_preview_sample` confirms the sample is the right fit.
+
+---
+
+### splice_pack_info
+
+Returns pack metadata by UUID. Works for owned packs (user has engaged with them) — discoverable via `splice_list_collections` + `ListSamplePacks` pagination.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `uuid` | string | *(required)* | Pack uuid (canonical 36 or extended 43 format) |
+
+**When to use:** "Tell me about the pack this sample came from."
+
+---
+
+### splice_http_diagnose
+
+**[v1.17+]** Diagnose the Splice HTTPS bridge: reports per-endpoint verified status, session-token availability, and actionable next-steps for any unverified endpoints.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| *(none)* | | | |
+
+Returns `{verified: {describe, variation}, session_token_available, next_steps[]}`.
+
+**When to use:** When `splice_describe_sound` or `splice_generate_variation` returns an error — diagnose first.
+
+---
+
+### get_splice_credits
+
+Reports user's current Splice plan + credit/quota balance.
+
+**When to use:** "How many credits do I have?" or before bulk-downloading.
+
+---
+
+### splice_list_collections / splice_search_in_collection / splice_create_collection / splice_add_to_collection / splice_remove_from_collection
+
+Collections API — manages your Splice saved-sample folders (Likes, bass, keys, etc.).
+
+---
+
+### splice_list_presets / splice_preset_info / splice_download_preset
+
+Purchased instrument preset workflows.
+
+---
+
+### splice_catalog_hunt
+
+Rapid catalog exploration — batched sample search with fitness-critic ranking.
+
+---
+
+## Diagnostics
+
+Session-wide health verification added late 2026-04 to catch silent-device failures (the "Simpler Snap bug" class: track meter reads normal, master reads silence).
+
+### verify_device_alive
+
+**[v1.16+]** Fires a test MIDI note at a specific device and measures whether it produces audible output via meter sampling. Proves the device is actually playing, not silently stuck.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | *(required)* | Track holding the device |
+| `device_index` | int | *(required)* | Device position in chain |
+| `fire_test_note` | bool | `true` | Actually play a note (vs just checking parameter_count) |
+| `test_note` | int | 60 | MIDI note to fire |
+| `threshold` | float | 0.005 | Minimum peak level to consider "alive" |
+
+**When to use:** After loading any instrument, especially Simplers — catches the Snap-ON silent-load and other stuck states.
+
+---
+
+### verify_all_devices_health
+
+**[v1.16+]** Session-wide version of verify_device_alive. Fires test notes on every eligible track and reports alive / dead / skipped.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `test_midi_note` | int | 60 | MIDI note to use |
+| `skip_audio_tracks` | bool | `true` | Audio tracks can't be MIDI-tested |
+| `skip_empty_tracks` | bool | `true` | Skip tracks with no devices |
+| `threshold` | float | 0.005 | Minimum peak level |
+
+**When to use:** Before committing a mix, or when "something's silent and I don't know what."
+
+---
+
+### verify_device_health
+
+Lightweight health check — parameter_count sanity (≤1 parameter = probably dead plugin).
+
+**When to use:** After `load_browser_item` — cheap sanity check before spending tools on a broken plugin.
+
+---
+
+## More tools
+
+This chapter covers the most-used tools. The complete list of all 426 tools across 52 domains — including all intelligence-engine tools, creative-constraints, preview-studio, wonder-mode, memory, song-brain, transition/reference/translation engines — is auto-generated at **[Tool Catalog](tool-catalog.md)** from the running MCP server.
+
+See also:
+- **[The Intelligence Layer](intelligence.md)** — how the engines connect
+- **[Samples & Slicing](samples.md)** — 3-source search, Splice integration, fitness critics
+- **[Device Atlas](device-atlas.md)** — 1305 devices, pack browsing, enrichment coverage
 
 ---
 

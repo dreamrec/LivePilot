@@ -14,6 +14,7 @@ genre_affinity:
 complexity: beginner
 self_contained: false
 introduced_in: "1.0"
+pack: Core Library
 
 key_parameters:
   - name: "Mode"
@@ -159,6 +160,17 @@ key_parameters:
       subtle: 0.3
       wide: 0.7
 
+signature_techniques:
+  - name: "Vocal micro-chop (Akufen)"
+    description: "Load vocal, slicing mode, slice per transient, assign pads to short syllable fragments. Program MIDI pattern on the slices — the rhythmic chopping IS the vocal line."
+    aesthetic: ['microhouse', 'deep_minimal']
+  - name: "Villalobos sub-bass layer"
+    description: "One-shot mode, pitched sub sample in C1, warp off, amp envelope short. Layer this UNDER your kick — the sub_low (20-60 Hz) band carries the weight."
+    aesthetic: ['minimal_techno', 'dub_techno']
+  - name: "J Dilla micro-timed kit"
+    description: "Slicing mode on a classic break (e.g. Amen, Funky Drummer), slice per transient, then program MIDI with slight timing offsets (+/-10 ticks) — Dilla's micro-drunk feel comes from MIDI, not groove templates."
+    aesthetic: ['hip_hop', 'lo_fi', 'soul']
+
 pairs_well_with:
   - device: "Auto Filter"
     reason: "Adds rhythmic filter movement and envelope following to sampled material"
@@ -215,3 +227,6 @@ gotchas:
   - "Transpose shifts pitch in semitones, not time — use Warp for time-stretching without pitch change"
   - "crop_simpler and reverse_simpler are available as LivePilot tools for destructive sample editing"
   - "replace_simpler_sample only works if a sample is already loaded — cannot replace an empty Simpler"
+  - "Snap must be OFF after load_sample_to_simpler, or the sample plays silently (known Live bug). LivePilot auto-clears Snap in the role-aware load path"
+  - "load_browser_item Simplers come up at Volume=-12 dB and Ve Mode=None; track meter reads normal but master reads silence. Set Volume=0 dB on sustained tracks"
+  - "Slice mode maps slice N to MIDI pitch 36+N (base C1), NOT 60+C3 — notes at pitch 60+ produce silence. See `get_simpler_slices` doesn't disclose the base pitch"

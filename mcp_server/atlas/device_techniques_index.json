@@ -1,0 +1,1510 @@
+{
+  "version": 1,
+  "generated": "sync_metadata-adjacent helper",
+  "device_count": 58,
+  "entry_count": 146,
+  "devices": {
+    "spectral_blur": [
+      {
+        "technique": "Ghost atmosphere under the kick",
+        "description": "Very short source (click), narrow mid band, Halo 3000ms, Residual 0 \u2192 continuous ghost bed at -30dB.",
+        "aesthetic": [
+          "deep_minimal",
+          "ambient"
+        ],
+        "source": "atlas/spectral_blur",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Freeze-and-move",
+        "description": "Play a chord \u2192 hit Freeze \u2192 automate frequency-range low/high up the spectrum \u2192 harmonic cloud morphs in pitch-space.",
+        "aesthetic": [
+          "experimental",
+          "drone"
+        ],
+        "source": "atlas/spectral_blur",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Reverse reverb alternative",
+        "description": "Apply to a short stab with long Halo \u2192 get reverse-reverb-like build-in without needing to flip the audio.",
+        "aesthetic": [
+          "cinematic",
+          "deep_minimal"
+        ],
+        "source": "atlas/spectral_blur",
+        "kind": "signature_technique"
+      }
+    ],
+    "pitch_hack": [
+      {
+        "technique": "Akufen micro-stutter on hats",
+        "description": "Short delay (~50ms), Feedback 0.4, Randomize 0.6 \u2192 every hi-hat hit gets 2-3 unpredictable pitched ghost echoes.",
+        "aesthetic": [
+          "microhouse"
+        ],
+        "source": "atlas/pitch_hack",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Ghost chord tails",
+        "description": "Chord stab \u2192 Reverse on, Transpose +3st, Feedback 0.5 \u2192 pitched reverse ghost trails fade out after each stab.",
+        "aesthetic": [
+          "deep_minimal"
+        ],
+        "source": "atlas/pitch_hack",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Random pitched percussion",
+        "description": "Put on a clave or click \u2192 Randomize full \u2192 each hit decays into a different pitched echo pattern.",
+        "aesthetic": [
+          "microhouse",
+          "idm"
+        ],
+        "source": "atlas/pitch_hack",
+        "kind": "signature_technique"
+      }
+    ],
+    "pitchloop89": [
+      {
+        "technique": "Shimmer on any stab",
+        "description": "Put on a chord stab \u2192 Pitch A=0, Fine A=+5, Pitch B=0, Fine B=-7, Feedback both at 0.4 \u2192 instant detuned shimmer cloud that hangs after the stab.",
+        "aesthetic": [
+          "arpiar",
+          "microhouse",
+          "dub_techno"
+        ],
+        "source": "atlas/pitchloop89",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Reverse-in on chords",
+        "description": "Enable Reverse on both voices, short delay time \u2192 chord swells backwards in before the downbeat. Haunting Monolake effect.",
+        "aesthetic": [
+          "dub_techno",
+          "cinematic"
+        ],
+        "source": "atlas/pitchloop89",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Infinite Shepard on clicks",
+        "description": "Feed a single click \u2192 Feedback ~0.92, Pitch A=+12, Pitch B=0 \u2192 infinite ascending cascade. Classic Henke.",
+        "aesthetic": [
+          "experimental",
+          "idm"
+        ],
+        "source": "atlas/pitchloop89",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Pitched ghost delay",
+        "description": "Slow Position LFO with random waveform \u2192 delay buffer warps around, producing organic pitched ghosts that never repeat.",
+        "aesthetic": [
+          "deep_minimal",
+          "experimental"
+        ],
+        "source": "atlas/pitchloop89",
+        "kind": "signature_technique"
+      }
+    ],
+    "snipper": [
+      {
+        "technique": "Vocal micro-chop",
+        "description": "Route vocal \u2192 Snipper \u2192 short snippet, fast replay, pitch mod \u2192 instant Akufen-adjacent micro-vocal pattern.",
+        "aesthetic": [
+          "microhouse"
+        ],
+        "source": "atlas/snipper",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Hat replay pitch drift",
+        "description": "Closed hat \u2192 Snipper with tiny snippet length, pitch mod \u00b13 semitones, randomize on \u2192 every hat is pitched differently. Microhouse signature.",
+        "aesthetic": [
+          "microhouse",
+          "deep_minimal"
+        ],
+        "source": "atlas/snipper",
+        "kind": "signature_technique"
+      }
+    ],
+    "re_enveloper": [
+      {
+        "technique": "Turn sustained chord into stab",
+        "description": "Low + mid bands at -3.0 C/E (expansion toward short decay), short release \u2192 4-bar pad becomes punchy 1/4-note stab.",
+        "aesthetic": [
+          "deep_minimal"
+        ],
+        "source": "atlas/re_enveloper",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Expand only the snare transient",
+        "description": "High band 2.5 expansion, slow release \u2192 snare crack pops out without affecting kick or toms.",
+        "aesthetic": [
+          "all"
+        ],
+        "source": "atlas/re_enveloper",
+        "kind": "signature_technique"
+      }
+    ],
+    "expressive_chords": [
+      {
+        "technique": "Sparse post-rock for minimal house",
+        "description": "Pick post-rock set \u2192 let only top 2-3 voices through (gate the others) \u2192 sparse open voicings that work as minimal chord stabs.",
+        "aesthetic": [
+          "deep_minimal",
+          "post_rock"
+        ],
+        "source": "atlas/expressive_chords",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "MPE micro-tuning drift on held chord",
+        "description": "Hold a chord \u2192 MPE pitch-bend each voice independently \u2192 organic detuning drift.",
+        "aesthetic": [
+          "jazz",
+          "experimental"
+        ],
+        "source": "atlas/expressive_chords",
+        "kind": "signature_technique"
+      }
+    ],
+    "retrigger": [
+      {
+        "technique": "Accelerating hi-hat buildup",
+        "description": "Select 4 hi-hat notes at end of section \u2192 Retrigger count 16, exponential curve \u2192 accelerating roll into the downbeat.",
+        "aesthetic": [
+          "dance",
+          "breakbeat"
+        ],
+        "source": "atlas/retrigger",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Decelerating snare fill",
+        "description": "Single snare hit \u2192 Retrigger 8 times with linear-to-long decay \u2192 natural-feeling fill.",
+        "aesthetic": [
+          "all"
+        ],
+        "source": "atlas/retrigger",
+        "kind": "signature_technique"
+      }
+    ],
+    "filler": [
+      {
+        "technique": "Quick drum sketch",
+        "description": "Dial density, click generate, commit the pattern you like. Move on \u2014 don't spend time.",
+        "aesthetic": [
+          "all"
+        ],
+        "source": "atlas/filler",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Sparse minimal starter",
+        "description": "Density at 20-30%, kick-snare-hat only, randomize \u2192 random sparse pattern \u2192 pick one as the minimal starting point for further human editing.",
+        "aesthetic": [
+          "deep_minimal",
+          "microhouse"
+        ],
+        "source": "atlas/filler",
+        "kind": "signature_technique"
+      }
+    ],
+    "patterns_iftah": [
+      {
+        "technique": "Sparse microhouse pattern",
+        "description": "Disable snare + open hat \u2192 Generate until pattern feels right \u2192 all voices at low density \u2192 immediate Villalobos-adjacent groove.",
+        "aesthetic": [
+          "microhouse",
+          "deep_minimal"
+        ],
+        "source": "atlas/patterns_iftah",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Genre-spanning drum ideation",
+        "description": "Use for fast first-draft drums across any genre \u2014 commit the one that fits, adjust by hand.",
+        "aesthetic": [
+          "all_electronic"
+        ],
+        "source": "atlas/patterns_iftah",
+        "kind": "signature_technique"
+      }
+    ],
+    "phase_pattern": [
+      {
+        "technique": "Micro-swing for rigid drum patterns",
+        "description": "Low Timing Offset (0.15), Quantize off \u2192 every hit drifts slightly from grid in a coherent, groove-affirming way (no random chaos).",
+        "aesthetic": [
+          "microhouse",
+          "deep_minimal"
+        ],
+        "source": "atlas/phase_pattern",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Organic vocal stutter",
+        "description": "Apply to a vocal chop clip \u2192 phase-coherent timing/pitch shifts \u2192 chops feel recorded not programmed.",
+        "aesthetic": [
+          "microhouse",
+          "idm"
+        ],
+        "source": "atlas/phase_pattern",
+        "kind": "signature_technique"
+      }
+    ],
+    "stages": [
+      {
+        "technique": "Bassline from root note",
+        "description": "Single C1 note \u2192 Stages with 8-stage pattern, varied repeat counts, modest pitch offsets \u2192 coherent 16-bar bassline with motion.",
+        "aesthetic": [
+          "techno",
+          "deep_minimal"
+        ],
+        "source": "atlas/stages",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Melodic fill from a single hook note",
+        "description": "Apply to melodic element at section-end \u2192 Stages generates a 2-bar fill with repeats + rests that feels composed.",
+        "aesthetic": [
+          "idm",
+          "electronica"
+        ],
+        "source": "atlas/stages",
+        "kind": "signature_technique"
+      }
+    ],
+    "microtuner": [
+      {
+        "technique": "Villalobos-style microtonal melody",
+        "description": "Load a 19-tone equal-temperament (19-TET) Scala file \u2192 play a simple motif \u2192 immediately off-grid harmonic character without sounding random.",
+        "aesthetic": [
+          "deep_minimal",
+          "microhouse"
+        ],
+        "source": "atlas/microtuner",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Partch 43-tone drone",
+        "description": "Load Harry Partch's 43-tone just-intonation scale \u2192 apply to Drone Lab's Harmonic Drone Generator \u2192 ancient-sounding sustained bed.",
+        "aesthetic": [
+          "drone",
+          "ambient"
+        ],
+        "source": "atlas/microtuner",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Two-scale automated morph",
+        "description": "Deck A = major scale, Deck B = 19-TET. Automate Blend from 0 to 1 over 16 bars \u2192 harmony literally reshapes in time.",
+        "aesthetic": [
+          "experimental",
+          "deep_minimal"
+        ],
+        "source": "atlas/microtuner",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Quarter-tone lead for expressive MPE",
+        "description": "Load a 24-TET scale + ROLI-style MPE controller \u2192 slides and bends fall onto microtonal grid for non-Western expressivity.",
+        "aesthetic": [
+          "jazz_fusion",
+          "world",
+          "experimental"
+        ],
+        "source": "atlas/microtuner",
+        "kind": "signature_technique"
+      }
+    ],
+    "slice_shuffler": [
+      {
+        "technique": "Ghost-note variations",
+        "description": "Clean 8-bar kick pattern \u2192 Slice Shuffler with 8 slices \u2192 randomize slice 4 and slice 7 only \u2192 ghost-note drift every ~1 minute of playback.",
+        "aesthetic": [
+          "deep_minimal",
+          "microhouse"
+        ],
+        "source": "atlas/slice_shuffler",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "One-bar reverse glitch",
+        "description": "16-bar loop \u2192 4 slices \u2192 reverse slice 3 only \u2192 single bar of reverse drums as a momentary disruption.",
+        "aesthetic": [
+          "idm",
+          "glitch"
+        ],
+        "source": "atlas/slice_shuffler",
+        "kind": "signature_technique"
+      }
+    ],
+    "sq_sequencer": [
+      {
+        "technique": "Villalobos polymeter lock",
+        "description": "Melody lane 16 steps, rhythm lane 15 steps, bass lane 11 steps \u2192 sequences drift in and out of phase over hundreds of bars, never repeating exactly.",
+        "aesthetic": [
+          "deep_minimal",
+          "microhouse"
+        ],
+        "source": "atlas/sq_sequencer",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Condition-based ghost snare",
+        "description": "Snare lane with condition 'every 3rd pass' \u2192 snare appears only once per ~16 bars \u2192 organic ghost pattern.",
+        "aesthetic": [
+          "deep_minimal",
+          "techno"
+        ],
+        "source": "atlas/sq_sequencer",
+        "kind": "signature_technique"
+      }
+    ],
+    "polyrhythm": [
+      {
+        "technique": "Asymmetric techno groove",
+        "description": "Voice 1 = 16 steps / 4 pulses (kick), Voice 2 = 11 steps / 3 pulses (ghost snare), Voice 3 = 13 steps / 7 pulses (hat). Generates pattern that never repeats exactly for hundreds of bars.",
+        "aesthetic": [
+          "techno",
+          "deep_minimal"
+        ],
+        "source": "atlas/polyrhythm",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Hypnotic micropattern",
+        "description": "All 6 voices at sparse density (1-3 pulses each) with asymmetric lengths \u2192 organic feel that evolves over minutes.",
+        "aesthetic": [
+          "deep_minimal",
+          "idm"
+        ],
+        "source": "atlas/polyrhythm",
+        "kind": "signature_technique"
+      }
+    ],
+    "bell_tower": [
+      {
+        "technique": "Arpiar bell through Convolution Reverb",
+        "description": "Short decay, subtle modulator depth, single hit per bar, through a long cathedral IR \u2192 the thin bell stab that recurs in Arpiar tracks.",
+        "aesthetic": [
+          "arpiar",
+          "deep_minimal"
+        ],
+        "source": "atlas/bell_tower",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Inharmonic bell struck through PitchLoop89",
+        "description": "Modulator ratio around 1.41 (irrational), short decay, through dual-detune PitchLoop89 (+5 / -7 cents) \u2192 phased bell cluster.",
+        "aesthetic": [
+          "arpiar",
+          "ambient"
+        ],
+        "source": "atlas/bell_tower",
+        "kind": "signature_technique"
+      }
+    ],
+    "bass": [
+      {
+        "technique": "808 sub replacement",
+        "description": "Sine+triangle, fundamental C1, amp envelope long decay, subtle pitch envelope down 1 semitone over 100ms. Cleaner than sampled 808s, and tunable in-key.",
+        "aesthetic": [
+          "trap",
+          "hip_hop",
+          "dubstep"
+        ],
+        "source": "atlas/bass",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Reese-style bass",
+        "description": "Two detuned oscillators octave apart, LP filter resonant, saturation on output. The sum-of-beats IS the movement \u2014 no LFO needed.",
+        "aesthetic": [
+          "dnb",
+          "jungle",
+          "bass_music"
+        ],
+        "source": "atlas/bass",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Dub sub-bass",
+        "description": "Pure sine at fundamental, very long release, no transient. The bass is felt not heard \u2014 pair with a short percussive layer (click at 2-5kHz) for attack.",
+        "aesthetic": [
+          "dub",
+          "dub_techno",
+          "deep_minimal"
+        ],
+        "source": "atlas/bass",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Creative Sidechain (Beyond Pump)",
+        "description": "Sidechain compression is not just for the kick-bass pump. It's a modulation source.",
+        "aesthetic": [],
+        "source": "sound-design-deep.md",
+        "kind": "sound_design_principle"
+      },
+      {
+        "technique": "Frequency Domain Thinking",
+        "description": "Don't think about tracks \u2014 think about frequency bands. Each band is a voice in the mix.",
+        "aesthetic": [],
+        "source": "sound-design-deep.md",
+        "kind": "sound_design_principle"
+      }
+    ],
+    "wavetable": [
+      {
+        "technique": "Supersaw trance lead",
+        "description": "Saw wavetable, voices=7, spread=0.35, subosc square octave up, LPF fully open, chorus via unison detune not effect. Aim for glued breadth not comb-filter thinness.",
+        "aesthetic": [
+          "trance",
+          "edm",
+          "progressive"
+        ],
+        "source": "atlas/wavetable",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Morphing ambient pad",
+        "description": "Two wavetables (e.g. Formant + Noise), wavetable-position modulated by slow LFO (0.05 Hz), filter envelope negative so tone opens during decay. No notes change \u2014 the TIMBRE is the music.",
+        "aesthetic": [
+          "ambient",
+          "experimental",
+          "idm"
+        ],
+        "source": "atlas/wavetable",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Wobble bass",
+        "description": "Square-ish wavetable, LFO to filter cutoff synced at 1/8 or 1/16, depth near max. Classic dubstep bass \u2014 position automation over 4 bars moves texture under the wobble.",
+        "aesthetic": [
+          "dubstep",
+          "bass_music",
+          "trap"
+        ],
+        "source": "atlas/wavetable",
+        "kind": "signature_technique"
+      }
+    ],
+    "analog": [
+      {
+        "technique": "Reese bass (drum & bass)",
+        "description": "Two detuned saws at different octaves, LP24 filter with slight resonance, no LFO \u2014 let the beat frequency between the oscillators do the modulation.",
+        "aesthetic": [
+          "dnb",
+          "neurofunk",
+          "jungle"
+        ],
+        "source": "atlas/analog",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Hawtin subtractive pad",
+        "description": "Single saw, slow filter sweep from dark to bright across 32 bars, filter env amount slight negative so attack is dark \u2014 the pad evolves by unfolding, not by adding.",
+        "aesthetic": [
+          "minimal_techno",
+          "deep_minimal"
+        ],
+        "source": "atlas/analog",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "303 acid bass",
+        "description": "Osc1 saw, octave down, LP24 with high resonance (0.8+), env amount 0.9, amp decay short. Use Filter1 Freq + Res as performance controls \u2014 the acid line IS the filter gesture.",
+        "aesthetic": [
+          "acid_house",
+          "acid_techno"
+        ],
+        "source": "atlas/analog",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Micro-Modulation (Making Things Breathe)",
+        "description": "The difference between \"sounds like a computer\" and \"sounds alive\" is modulation that operates below conscious perception.",
+        "aesthetic": [],
+        "source": "sound-design-deep.md",
+        "kind": "sound_design_principle"
+      }
+    ],
+    "meld": [
+      {
+        "technique": "Layered evolving pad",
+        "description": "Two Drift engines with different characters (one dark, one bright), crossfade-modulated by slow LFO. The pad morphs between timbres without notes changing.",
+        "aesthetic": [
+          "ambient",
+          "deep_minimal",
+          "cinematic"
+        ],
+        "source": "atlas/meld",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Bass + sub stack",
+        "description": "Engine A: mid bass with character. Engine B: pure sine sub. Balanced -3 dB apart. Two engines = precise crossover without needing a split.",
+        "aesthetic": [
+          "dub_techno",
+          "trap",
+          "dnb"
+        ],
+        "source": "atlas/meld",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Dual-voice chord",
+        "description": "Engine A: plucked pluck at root. Engine B: sustained pad at 3rd/5th. Stacked voicing without needing two tracks.",
+        "aesthetic": [
+          "house",
+          "deep_house",
+          "melodic_techno"
+        ],
+        "source": "atlas/meld",
+        "kind": "signature_technique"
+      }
+    ],
+    "sting_iftah": [
+      {
+        "technique": "Mutating minimal sub-bass",
+        "description": "Detune heavily, drop pitch low, Density ~15%, low-pass filter \u2192 'acid line' becomes a warm mutating sub-bass that's never the same two bars in a row.",
+        "aesthetic": [
+          "deep_minimal",
+          "microhouse"
+        ],
+        "source": "atlas/sting_iftah",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Classic acid 303 performance",
+        "description": "Default patch, full Type Morph to acid, mid density \u2192 classic acid line; use 3D morph mapped to a performance controller.",
+        "aesthetic": [
+          "acid_house",
+          "psytrance"
+        ],
+        "source": "atlas/sting_iftah",
+        "kind": "signature_technique"
+      }
+    ],
+    "collision": [
+      {
+        "technique": "Mallet percussion",
+        "description": "Struck resonator, material=wood, partials=5-8, decay short. Marimba/vibraphone without sampling \u2014 the physical model responds to velocity like the real instrument.",
+        "aesthetic": [
+          "ambient",
+          "cinematic",
+          "experimental"
+        ],
+        "source": "atlas/collision",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Inharmonic bell drone",
+        "description": "Struck bar, inharmonicity high, decay long, LFO modulating partial levels. The bell never settles \u2014 each strike reveals a different harmonic slice.",
+        "aesthetic": [
+          "experimental",
+          "ambient",
+          "microhouse"
+        ],
+        "source": "atlas/collision",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Struck prepared string",
+        "description": "Bowed string exciter with mute on, low tension, short decay \u2014 prepared-piano territory. Pair with Convolution Reverb for Cage/Feldman atmosphere.",
+        "aesthetic": [
+          "experimental",
+          "classical",
+          "cinematic"
+        ],
+        "source": "atlas/collision",
+        "kind": "signature_technique"
+      }
+    ],
+    "drift": [
+      {
+        "technique": "Neo-soul Rhodes-adjacent keys",
+        "description": "Sine+triangle mix, short-attack amp, dark filter, gentle chorus send. Not trying to emulate Rhodes \u2014 trying to SIT where Rhodes sits in the mix.",
+        "aesthetic": [
+          "neo_soul",
+          "r_and_b",
+          "lo_fi"
+        ],
+        "source": "atlas/drift",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Minimal-techno bass anchor",
+        "description": "Sine sub at C1, triangle octave up blended -6 dB, LP filter fixed open, no modulation. The bass doesn't move \u2014 the filter on the REVERB send does.",
+        "aesthetic": [
+          "minimal_techno",
+          "deep_minimal",
+          "dub_techno"
+        ],
+        "source": "atlas/drift",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Warm synthwave pad",
+        "description": "Saw+triangle, detune 0.1, slow filter envelope, long amp release, subtle vibrato at 5 Hz. 80s pad territory without the period-drama clich\u00e9.",
+        "aesthetic": [
+          "synthwave",
+          "80s",
+          "vaporwave"
+        ],
+        "source": "atlas/drift",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Micro-Modulation (Making Things Breathe)",
+        "description": "The difference between \"sounds like a computer\" and \"sounds alive\" is modulation that operates below conscious perception.",
+        "aesthetic": [],
+        "source": "sound-design-deep.md",
+        "kind": "sound_design_principle"
+      },
+      {
+        "technique": "Organic Automation Shapes",
+        "description": "Real producers don't draw straight lines or perfect curves. Their automation reflects human movement.",
+        "aesthetic": [],
+        "source": "sound-design-deep.md",
+        "kind": "sound_design_principle"
+      }
+    ],
+    "sampler": [
+      {
+        "technique": "Orchestral multi-velocity",
+        "description": "4 velocity layers per note (pp/mp/mf/ff), velocity->filter positive so harder hits open brighter. Essential for sampled orchestral realism \u2014 anything else sounds like a toy keyboard.",
+        "aesthetic": [
+          "cinematic",
+          "orchestral"
+        ],
+        "source": "atlas/sampler",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Layered ensemble pad",
+        "description": "2-3 sample layers per key, detune each slightly, filter each differently. One sample = thin; three samples stacked = lush ensemble without needing a real choir.",
+        "aesthetic": [
+          "ambient",
+          "cinematic",
+          "pop"
+        ],
+        "source": "atlas/sampler",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Round-robin drum kit",
+        "description": "Multi-sample kick/snare/hat with 3-4 round-robin variations per note. Humanizes programmed drums \u2014 no two hits sound identical without needing micro-timing.",
+        "aesthetic": [
+          "all"
+        ],
+        "source": "atlas/sampler",
+        "kind": "signature_technique"
+      }
+    ],
+    "poli": [
+      {
+        "technique": "Juno-style detuned chord",
+        "description": "2 saws detuned 7 cents, sub-osc octave down, low-pass with slight resonance, chorus send heavy. 80s Juno territory without the preset.",
+        "aesthetic": [
+          "synthwave",
+          "80s",
+          "italo"
+        ],
+        "source": "atlas/poli",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Retro stab",
+        "description": "Single saw, fast filter envelope, high resonance, short decay. Classic 1987 house stab \u2014 works on top of any groove.",
+        "aesthetic": [
+          "house",
+          "acid_house",
+          "electro"
+        ],
+        "source": "atlas/poli",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Warm pad",
+        "description": "Saw+square, slow attack, chorus, subtle LFO on cutoff. Where Poli shines vs Analog: less clinical, more 'plastic-fantastic' 80s charm.",
+        "aesthetic": [
+          "synthwave",
+          "vaporwave",
+          "synth_pop"
+        ],
+        "source": "atlas/poli",
+        "kind": "signature_technique"
+      }
+    ],
+    "vector_fm": [
+      {
+        "technique": "Modulated bell cluster",
+        "description": "Carrier at C4, modulator at inharmonic ratio, Vector X controlling modulator depth, Vector Y controlling feedback. Particle motion makes the bell evolve physically.",
+        "aesthetic": [
+          "ambient",
+          "experimental",
+          "deep_minimal"
+        ],
+        "source": "atlas/vector_fm",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Metallic drone",
+        "description": "Low carrier (C1), high modulator, Vector coupled to both. Sounds like a large resonant object being struck and allowed to decay over 30 seconds.",
+        "aesthetic": [
+          "drone",
+          "ambient",
+          "experimental"
+        ],
+        "source": "atlas/vector_fm",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Pulsing FM bass",
+        "description": "Carrier at fundamental, modulator LFO'd by Vector X, amp LFO'd by Vector Y. FM bass with physical 'breathing' rather than square-wave LFO control.",
+        "aesthetic": [
+          "deep_minimal",
+          "idm",
+          "experimental"
+        ],
+        "source": "atlas/vector_fm",
+        "kind": "signature_technique"
+      }
+    ],
+    "impulse": [
+      {
+        "technique": "Quick-and-dirty drum kit",
+        "description": "Drag 8 samples onto the pads \u2192 play. No chain complexity. Great for sketching before moving to Drum Rack.",
+        "aesthetic": [
+          "all"
+        ],
+        "source": "atlas/impulse",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Hi-hat choke pattern",
+        "description": "Put closed and open hats in the same mute group \u2192 playing the open hat kills the closed hat tail. Natural choke behavior.",
+        "aesthetic": [
+          "house",
+          "techno"
+        ],
+        "source": "atlas/impulse",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Effects as Instruments",
+        "description": "In experimental electronic music, effects chains ARE instruments.",
+        "aesthetic": [],
+        "source": "sound-design-deep.md",
+        "kind": "sound_design_principle"
+      }
+    ],
+    "operator": [
+      {
+        "technique": "DX7 bell cluster",
+        "description": "Algorithm 5 (two parallel 2-op stacks), operator ratios 1:3.51 and 1:14, envelope decay long. The inharmonic ratio 3.51 is the classic bell metallic quality.",
+        "aesthetic": [
+          "synthwave",
+          "80s",
+          "ambient"
+        ],
+        "source": "atlas/operator",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Haas deep bass",
+        "description": "Single sine carrier, modulator at ratio 1:1 low feedback, fundamental at C1. The sine fundamental is what reproduces on laptop speakers via harmonics \u2014 FM adds body without touching fundamental.",
+        "aesthetic": [
+          "dub_techno",
+          "deep_house"
+        ],
+        "source": "atlas/operator",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Aphex ambient FM pad",
+        "description": "Algorithm with 3 serial carriers, slow LFO modulating operator levels, long release. Shifts timbre over 16+ bars without notes changing. The 'breathing' is the composition.",
+        "aesthetic": [
+          "idm",
+          "ambient",
+          "experimental"
+        ],
+        "source": "atlas/operator",
+        "kind": "signature_technique"
+      }
+    ],
+    "simpler": [
+      {
+        "technique": "Vocal micro-chop (Akufen)",
+        "description": "Load vocal, slicing mode, slice per transient, assign pads to short syllable fragments. Program MIDI pattern on the slices \u2014 the rhythmic chopping IS the vocal line.",
+        "aesthetic": [
+          "microhouse",
+          "deep_minimal"
+        ],
+        "source": "atlas/simpler",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Villalobos sub-bass layer",
+        "description": "One-shot mode, pitched sub sample in C1, warp off, amp envelope short. Layer this UNDER your kick \u2014 the sub_low (20-60 Hz) band carries the weight.",
+        "aesthetic": [
+          "minimal_techno",
+          "dub_techno"
+        ],
+        "source": "atlas/simpler",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "J Dilla micro-timed kit",
+        "description": "Slicing mode on a classic break (e.g. Amen, Funky Drummer), slice per transient, then program MIDI with slight timing offsets (+/-10 ticks) \u2014 Dilla's micro-drunk feel comes from MIDI, not groove templates.",
+        "aesthetic": [
+          "hip_hop",
+          "lo_fi",
+          "soul"
+        ],
+        "source": "atlas/simpler",
+        "kind": "signature_technique"
+      }
+    ],
+    "electric": [
+      {
+        "technique": "Classic Rhodes",
+        "description": "Suitcase preset, tremolo at 5 Hz, chorus modest. The tine-bar mechanism is already in the model \u2014 no outboard reverb needed for the classic sound.",
+        "aesthetic": [
+          "jazz",
+          "neo_soul",
+          "r_and_b"
+        ],
+        "source": "atlas/electric",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Gritty Wurlitzer",
+        "description": "Wurly preset, short attack, amp drive in the 20-30% range, high-pass at 100 Hz. The reed-bar grit IS the character \u2014 don't EQ it out.",
+        "aesthetic": [
+          "soul",
+          "funk",
+          "lo_fi"
+        ],
+        "source": "atlas/electric",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Tape-warped EP",
+        "description": "Rhodes through Grain Delay + Auto Filter LFO, slight pitch detune. Boards of Canada / lo-fi hip-hop territory \u2014 the imperfection is the sound.",
+        "aesthetic": [
+          "lo_fi",
+          "downtempo",
+          "hip_hop"
+        ],
+        "source": "atlas/electric",
+        "kind": "signature_technique"
+      }
+    ],
+    "granulator_iii": [
+      {
+        "technique": "Instant deep-minimal texture",
+        "description": "Load any vocal snippet or field recording \u2192 Cloud mode, Grain Size 200-500ms, Position Random 0.3, Pitch Random 0.1 \u2192 immediate organic evolving bed.\n",
+        "aesthetic": [
+          "microhouse",
+          "deep_minimal",
+          "ambient"
+        ],
+        "source": "atlas/granulator_iii",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Rhythmic break re-chop",
+        "description": "Load a drum break \u2192 Loop mode, sync to clip tempo \u2192 automate Position in short jumps \u2192 Akufen-style micro-edit patterns without manual slicing.\n",
+        "aesthetic": [
+          "microhouse",
+          "idm"
+        ],
+        "source": "atlas/granulator_iii",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Vocal-to-chord-cloud",
+        "description": "Sustained vowel sample \u2192 Cloud mode, Pitch Random 7st, Grain Size 400ms \u2192 vocal becomes harmonic cloud without recognizable words.\n",
+        "aesthetic": [
+          "ambient",
+          "deep_minimal"
+        ],
+        "source": "atlas/granulator_iii",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Real-time capture and grain",
+        "description": "Set up Granulator on a return track, route any source to it, hit Capture, then grain the just-captured audio. Zero commitment to the source \u2014 if you don't like the grain, record a new slice.\n",
+        "aesthetic": [
+          "experimental",
+          "ambient"
+        ],
+        "source": "atlas/granulator_iii",
+        "kind": "signature_technique"
+      }
+    ],
+    "emit": [
+      {
+        "technique": "Grain cloud (Tim Hecker)",
+        "description": "Load a sustained pad source, grain density high, pitch randomization slight, reverb send heavy. The grains blur the source into an undifferentiated textural bed.",
+        "aesthetic": [
+          "ambient",
+          "drone",
+          "experimental"
+        ],
+        "source": "atlas/emit",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Generative evolving bass",
+        "description": "Source = a droning note, grain density medium, randomize position slightly. The bass evolves organically without automation.",
+        "aesthetic": [
+          "ambient",
+          "deep_minimal",
+          "generative"
+        ],
+        "source": "atlas/emit",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Fluid texture",
+        "description": "Short vocal sample as source, grain density sparse, position LFO slow, pitch spread wide. Not a chord, not a noise \u2014 a liminal texture that sits between.",
+        "aesthetic": [
+          "experimental",
+          "ambient",
+          "idm"
+        ],
+        "source": "atlas/emit",
+        "kind": "signature_technique"
+      }
+    ],
+    "harmonic_drone_generator": [
+      {
+        "technique": "Minimal-techno underlay",
+        "description": "Just intonation tuning, all 8 voices active but voiced as a sparse cluster (root + 5 + minor 3 + octave), level at -30 dB \u2192 sits under the whole track as a harmonic shadow.",
+        "aesthetic": [
+          "deep_minimal",
+          "dub_techno"
+        ],
+        "source": "atlas/harmonic_drone_generator",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Pelog mystery bed",
+        "description": "Indonesian Pelog scale, 5 voices, long reverb send \u2192 off-grid harmonic character that sounds ancient without sounding 'wrong'.",
+        "aesthetic": [
+          "ambient",
+          "deep_minimal"
+        ],
+        "source": "atlas/harmonic_drone_generator",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Evolving drone with automation",
+        "description": "Automate Detune over 32 bars from 5 to 40 cents \u2192 drone starts as a tight pad and slowly blossoms into a chord cloud.",
+        "aesthetic": [
+          "drone",
+          "cinematic"
+        ],
+        "source": "atlas/harmonic_drone_generator",
+        "kind": "signature_technique"
+      }
+    ],
+    "vector_grain": [
+      {
+        "technique": "Basinski tape degradation",
+        "description": "Load a vocal or orchestral source, grain size medium, grain position drifting slowly (via Vector), feedback high. Each playback degrades slightly \u2014 the source DECAYS as the piece plays.",
+        "aesthetic": [
+          "ambient",
+          "experimental",
+          "modern_classical"
+        ],
+        "source": "atlas/vector_grain",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Dense grain cloud",
+        "description": "Grain density maximum, pitch spread wide, position random. The source is obliterated into texture \u2014 useful when the sample is too recognizable.",
+        "aesthetic": [
+          "idm",
+          "ambient",
+          "drone"
+        ],
+        "source": "atlas/vector_grain",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Slow-motion sustain",
+        "description": "Grain size long (500-1000ms), density low (1-2 grains), pitch ratio 0.5 or 0.25. Effectively time-stretches the source with lo-fi grain character. Stars of the Lid territory.",
+        "aesthetic": [
+          "ambient",
+          "drone",
+          "modern_classical"
+        ],
+        "source": "atlas/vector_grain",
+        "kind": "signature_technique"
+      }
+    ],
+    "tension": [
+      {
+        "technique": "Plucked gut string",
+        "description": "Plectrum exciter, string damping high, body=acoustic guitar, noise low. Useful as a percussion-melody hybrid when acoustic guitar sampling feels sterile.",
+        "aesthetic": [
+          "ambient",
+          "folk_electronic",
+          "cinematic"
+        ],
+        "source": "atlas/tension",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Bowed cello low register",
+        "description": "Bow exciter, slow speed, pressure medium, body=cello, full sustain. Pair with Convolution Reverb hall IR for J\u00f3hann J\u00f3hannsson / Max Richter territory.",
+        "aesthetic": [
+          "cinematic",
+          "ambient",
+          "modern_classical"
+        ],
+        "source": "atlas/tension",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Metal-string drone",
+        "description": "Bow on a high-tension thin string, no damping, infinite sustain \u2014 the sound is pure harmonic series. Useful under sustained pads as hidden-voice color.",
+        "aesthetic": [
+          "ambient",
+          "drone",
+          "experimental"
+        ],
+        "source": "atlas/tension",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Organic Automation Shapes",
+        "description": "Real producers don't draw straight lines or perfect curves. Their automation reflects human movement.",
+        "aesthetic": [],
+        "source": "sound-design-deep.md",
+        "kind": "sound_design_principle"
+      },
+      {
+        "technique": "The WTF Moment",
+        "description": "Every great minimal track has 2-3 moments where something unexpected happens \u2014 a sound that doesn't belong, a brief disruption that breaks the hypnosis just enough to deepen it.",
+        "aesthetic": [],
+        "source": "sound-design-deep.md",
+        "kind": "sound_design_principle"
+      }
+    ],
+    "arrangement_looper": [
+      {
+        "technique": "DJ-style extended breakdown",
+        "description": "Playback approaches breakdown \u2192 toggle 1-bar loop \u2192 hold for as long as needed \u2192 release \u2192 continue playback.",
+        "aesthetic": [
+          "dj_sets",
+          "live_techno"
+        ],
+        "source": "atlas/arrangement_looper",
+        "kind": "signature_technique"
+      }
+    ],
+    "rotating_rhythm_generator": [
+      {
+        "technique": "Multi-lane rotated Euclidean drums",
+        "description": "Kick: ring 16 / pulses 4 / rotation 0. Snare: ring 16 / pulses 2 / rotation 8. Hat: ring 13 / pulses 7 / rotation 3. Asymmetric groove that sits together but never locks.",
+        "aesthetic": [
+          "techno",
+          "deep_minimal",
+          "idm"
+        ],
+        "source": "atlas/rotating_rhythm_generator",
+        "kind": "signature_technique"
+      }
+    ],
+    "prearranger": [
+      {
+        "technique": "Hypnotic 60-minute structure sketch",
+        "description": "Place empty slots every 16 bars across a 60-minute arrangement \u2192 press record \u2192 improvise \u2192 each section lands in its slot.",
+        "aesthetic": [
+          "deep_minimal",
+          "ambient"
+        ],
+        "source": "atlas/prearranger",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Set recording with predetermined structure",
+        "description": "Build the arrangement scaffold based on your setlist \u2192 perform \u2192 recording is auto-organized.",
+        "aesthetic": [
+          "live_sets"
+        ],
+        "source": "atlas/prearranger",
+        "kind": "signature_technique"
+      }
+    ],
+    "performer": [
+      {
+        "technique": "One-knob chord-chain morph",
+        "description": "Map one fader to filter cutoff, send level, reverb decay, sat drive simultaneously \u2192 turn = whole chord chain morphs.",
+        "aesthetic": [
+          "live_performance",
+          "studio_sketching"
+        ],
+        "source": "atlas/performer",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Crossfader-style A/B",
+        "description": "Build a crossfader that switches between two device states via inverse macro curves.",
+        "aesthetic": [
+          "performance"
+        ],
+        "source": "atlas/performer",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Single pedal = intro-to-drop",
+        "description": "Map a footpedal input via MIDI \u2192 Performer fader \u2192 filter open, send boost, reverb decay extend, LFO depth rise. One pedal drives an arrangement energy shift.",
+        "aesthetic": [
+          "live_performance"
+        ],
+        "source": "atlas/performer",
+        "kind": "signature_technique"
+      }
+    ],
+    "cv_envelope_follower": [
+      {
+        "technique": "Kick-driven pad-filter opening",
+        "description": "Route kick drum to CV Envelope Follower \u2192 CV output to pad's filter cutoff \u2192 pad brightens with every kick, darkens between.",
+        "aesthetic": [
+          "deep_minimal",
+          "dub_techno"
+        ],
+        "source": "atlas/cv_envelope_follower",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Vocal-driven reverb duck",
+        "description": "Route vocal to CV Envelope Follower \u2192 invert output \u2192 modulate reverb wet \u2192 reverb ducks when vocal is present, blooms in silences.",
+        "aesthetic": [
+          "ambient",
+          "cinematic"
+        ],
+        "source": "atlas/cv_envelope_follower",
+        "kind": "signature_technique"
+      }
+    ],
+    "variations": [
+      {
+        "technique": "Chord stab evolution",
+        "description": "Save 5 effect-chain states on a chord stab (different reverbs, pitches, filters). Clip-trigger morph between them every 2 bars. Result: chord stab is subtly different every time it plays.",
+        "aesthetic": [
+          "deep_minimal",
+          "microhouse"
+        ],
+        "source": "atlas/variations",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Live scene state recall",
+        "description": "Bind scenes to Variation snapshots \u2014 firing a scene also morphs the whole device chain.",
+        "aesthetic": [
+          "electronic_live"
+        ],
+        "source": "atlas/variations",
+        "kind": "signature_technique"
+      }
+    ],
+    "cv_shaper": [
+      {
+        "technique": "Bespoke ADSR for any parameter",
+        "description": "Need a parameter envelope shape that's not on the device? Draw it in CV Shaper, route to the parameter. Unlimited curve flexibility.",
+        "aesthetic": [
+          "all"
+        ],
+        "source": "atlas/cv_shaper",
+        "kind": "signature_technique"
+      }
+    ],
+    "cv_instrument": [
+      {
+        "technique": "Modular voice in a DAW session",
+        "description": "Assign MIDI track \u2192 CV Instrument \u2192 modular oscillator \u2192 modular filter \u2192 return audio back to Live track. Modular voice on the timeline.",
+        "aesthetic": [
+          "experimental",
+          "modular"
+        ],
+        "source": "atlas/cv_instrument",
+        "kind": "signature_technique"
+      }
+    ],
+    "cv_lfo": [
+      {
+        "technique": "Multi-LFO stack on a patch",
+        "description": "Drop 3x CV LFO on a return track, each at different rates (0.07Hz, 0.23Hz, 1.11Hz), route outputs to filter/amp/pitch \u2192 organic drift that doesn't repeat.",
+        "aesthetic": [
+          "ambient",
+          "deep_minimal"
+        ],
+        "source": "atlas/cv_lfo",
+        "kind": "signature_technique"
+      }
+    ],
+    "cv_utility": [
+      {
+        "technique": "Soften aggressive modulation",
+        "description": "Put CV Utility between an LFO and a filter \u2192 scale down to 0.3 \u2192 same LFO, subtler effect.",
+        "aesthetic": [
+          "all"
+        ],
+        "source": "atlas/cv_utility",
+        "kind": "signature_technique"
+      }
+    ],
+    "surround_panner": [
+      {
+        "technique": "Quad-club rotating hi-hat",
+        "description": "Hi-hat bus \u2192 Surround Panner in quad \u2192 auto-Rotate at slow rate \u2192 hats circle the dance floor.",
+        "aesthetic": [
+          "live_techno"
+        ],
+        "source": "atlas/surround_panner",
+        "kind": "signature_technique"
+      }
+    ],
+    "vector_map": [
+      {
+        "technique": "Coupled filter + reverb motion",
+        "description": "Particle X \u2192 filter cutoff, particle Y \u2192 reverb wet, particle velocity \u2192 dry/wet balance. Single physical motion drives a 3-parameter sonic change.",
+        "aesthetic": [
+          "ambient",
+          "experimental"
+        ],
+        "source": "atlas/vector_map",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Gravity-well attractor",
+        "description": "Set strong gravity toward center + low friction \u2192 particle orbits return to origin with decay. Map to pad tone controls \u2192 pad breathes in-and-out toward a rest state.",
+        "aesthetic": [
+          "ambient",
+          "generative"
+        ],
+        "source": "atlas/vector_map",
+        "kind": "signature_technique"
+      },
+      {
+        "technique": "Chaotic lock-in",
+        "description": "High initial velocity + medium friction \u2192 particle wanders, eventually settles. Map to filter + detune \u2192 synth starts mobile, finds a rest-state timbre over 16 bars.",
+        "aesthetic": [
+          "deep_minimal",
+          "experimental"
+        ],
+        "source": "atlas/vector_map",
+        "kind": "signature_technique"
+      }
+    ],
+    "pitch": [
+      {
+        "technique": "Micro-Modulation (Making Things Breathe)",
+        "description": "The difference between \"sounds like a computer\" and \"sounds alive\" is modulation that operates below conscious perception.",
+        "aesthetic": [],
+        "source": "sound-design-deep.md",
+        "kind": "sound_design_principle"
+      },
+      {
+        "technique": "Space as Composition (Dub Techniques)",
+        "description": "In dub techno, reverb and delay are not decorations \u2014 they generate the harmonic and melodic content.",
+        "aesthetic": [],
+        "source": "sound-design-deep.md",
+        "kind": "sound_design_principle"
+      },
+      {
+        "technique": "Textural Layering (Micro-Fragment Method)",
+        "description": "Minimal-techno producers build textures by layering tiny, filtered, processed fragments \u2014 each one barely audible alone, together they create a living fabric.",
+        "aesthetic": [],
+        "source": "sound-design-deep.md",
+        "kind": "sound_design_principle"
+      },
+      {
+        "technique": "The WTF Moment",
+        "description": "Every great minimal track has 2-3 moments where something unexpected happens \u2014 a sound that doesn't belong, a brief disruption that breaks the hypnosis just enough to deepen it.",
+        "aesthetic": [],
+        "source": "sound-design-deep.md",
+        "kind": "sound_design_principle"
+      },
+      {
+        "technique": "Effects as Instruments",
+        "description": "In experimental electronic music, effects chains ARE instruments.",
+        "aesthetic": [],
+        "source": "sound-design-deep.md",
+        "kind": "sound_design_principle"
+      }
+    ],
+    "echo": [
+      {
+        "technique": "Space as Composition (Dub Techniques)",
+        "description": "In dub techno, reverb and delay are not decorations \u2014 they generate the harmonic and melodic content.",
+        "aesthetic": [],
+        "source": "sound-design-deep.md",
+        "kind": "sound_design_principle"
+      }
+    ],
+    "reverb": [
+      {
+        "technique": "Space as Composition (Dub Techniques)",
+        "description": "In dub techno, reverb and delay are not decorations \u2014 they generate the harmonic and melodic content.",
+        "aesthetic": [],
+        "source": "sound-design-deep.md",
+        "kind": "sound_design_principle"
+      },
+      {
+        "technique": "Creative Sidechain (Beyond Pump)",
+        "description": "Sidechain compression is not just for the kick-bass pump. It's a modulation source.",
+        "aesthetic": [],
+        "source": "sound-design-deep.md",
+        "kind": "sound_design_principle"
+      },
+      {
+        "technique": "Textural Layering (Micro-Fragment Method)",
+        "description": "Minimal-techno producers build textures by layering tiny, filtered, processed fragments \u2014 each one barely audible alone, together they create a living fabric.",
+        "aesthetic": [],
+        "source": "sound-design-deep.md",
+        "kind": "sound_design_principle"
+      },
+      {
+        "technique": "Frequency Domain Thinking",
+        "description": "Don't think about tracks \u2014 think about frequency bands. Each band is a voice in the mix.",
+        "aesthetic": [],
+        "source": "sound-design-deep.md",
+        "kind": "sound_design_principle"
+      },
+      {
+        "technique": "Organic Automation Shapes",
+        "description": "Real producers don't draw straight lines or perfect curves. Their automation reflects human movement.",
+        "aesthetic": [],
+        "source": "sound-design-deep.md",
+        "kind": "sound_design_principle"
+      },
+      {
+        "technique": "The WTF Moment",
+        "description": "Every great minimal track has 2-3 moments where something unexpected happens \u2014 a sound that doesn't belong, a brief disruption that breaks the hypnosis just enough to deepen it.",
+        "aesthetic": [],
+        "source": "sound-design-deep.md",
+        "kind": "sound_design_principle"
+      },
+      {
+        "technique": "Effects as Instruments",
+        "description": "In experimental electronic music, effects chains ARE instruments.",
+        "aesthetic": [],
+        "source": "sound-design-deep.md",
+        "kind": "sound_design_principle"
+      }
+    ],
+    "delay": [
+      {
+        "technique": "Space as Composition (Dub Techniques)",
+        "description": "In dub techno, reverb and delay are not decorations \u2014 they generate the harmonic and melodic content.",
+        "aesthetic": [],
+        "source": "sound-design-deep.md",
+        "kind": "sound_design_principle"
+      },
+      {
+        "technique": "The WTF Moment",
+        "description": "Every great minimal track has 2-3 moments where something unexpected happens \u2014 a sound that doesn't belong, a brief disruption that breaks the hypnosis just enough to deepen it.",
+        "aesthetic": [],
+        "source": "sound-design-deep.md",
+        "kind": "sound_design_principle"
+      },
+      {
+        "technique": "Effects as Instruments",
+        "description": "In experimental electronic music, effects chains ARE instruments.",
+        "aesthetic": [],
+        "source": "sound-design-deep.md",
+        "kind": "sound_design_principle"
+      }
+    ],
+    "chord": [
+      {
+        "technique": "Space as Composition (Dub Techniques)",
+        "description": "In dub techno, reverb and delay are not decorations \u2014 they generate the harmonic and melodic content.",
+        "aesthetic": [],
+        "source": "sound-design-deep.md",
+        "kind": "sound_design_principle"
+      },
+      {
+        "technique": "Frequency Domain Thinking",
+        "description": "Don't think about tracks \u2014 think about frequency bands. Each band is a voice in the mix.",
+        "aesthetic": [],
+        "source": "sound-design-deep.md",
+        "kind": "sound_design_principle"
+      }
+    ],
+    "multiband_dynamics": [
+      {
+        "technique": "Creative Sidechain (Beyond Pump)",
+        "description": "Sidechain compression is not just for the kick-bass pump. It's a modulation source.",
+        "aesthetic": [],
+        "source": "sound-design-deep.md",
+        "kind": "sound_design_principle"
+      }
+    ],
+    "envelope_follower": [
+      {
+        "technique": "Creative Sidechain (Beyond Pump)",
+        "description": "Sidechain compression is not just for the kick-bass pump. It's a modulation source.",
+        "aesthetic": [],
+        "source": "sound-design-deep.md",
+        "kind": "sound_design_principle"
+      }
+    ],
+    "compressor": [
+      {
+        "technique": "Creative Sidechain (Beyond Pump)",
+        "description": "Sidechain compression is not just for the kick-bass pump. It's a modulation source.",
+        "aesthetic": [],
+        "source": "sound-design-deep.md",
+        "kind": "sound_design_principle"
+      },
+      {
+        "technique": "Effects as Instruments",
+        "description": "In experimental electronic music, effects chains ARE instruments.",
+        "aesthetic": [],
+        "source": "sound-design-deep.md",
+        "kind": "sound_design_principle"
+      }
+    ],
+    "random": [
+      {
+        "technique": "Organic Automation Shapes",
+        "description": "Real producers don't draw straight lines or perfect curves. Their automation reflects human movement.",
+        "aesthetic": [],
+        "source": "sound-design-deep.md",
+        "kind": "sound_design_principle"
+      }
+    ],
+    "convolution_reverb": [
+      {
+        "technique": "Effects as Instruments",
+        "description": "In experimental electronic music, effects chains ARE instruments.",
+        "aesthetic": [],
+        "source": "sound-design-deep.md",
+        "kind": "sound_design_principle"
+      }
+    ],
+    "gate": [
+      {
+        "technique": "Effects as Instruments",
+        "description": "In experimental electronic music, effects chains ARE instruments.",
+        "aesthetic": [],
+        "source": "sound-design-deep.md",
+        "kind": "sound_design_principle"
+      }
+    ]
+  }
+}

@@ -14,6 +14,7 @@ genre_affinity:
 complexity: advanced
 self_contained: false
 introduced_in: "1.0"
+pack: Core Library
 
 key_parameters:
   - name: "Filter Type"
@@ -158,6 +159,17 @@ key_parameters:
       fixed: 0.0
       natural: 0.5
       full_range: 1.0
+
+signature_techniques:
+  - name: "Orchestral multi-velocity"
+    description: "4 velocity layers per note (pp/mp/mf/ff), velocity->filter positive so harder hits open brighter. Essential for sampled orchestral realism — anything else sounds like a toy keyboard."
+    aesthetic: ['cinematic', 'orchestral']
+  - name: "Layered ensemble pad"
+    description: "2-3 sample layers per key, detune each slightly, filter each differently. One sample = thin; three samples stacked = lush ensemble without needing a real choir."
+    aesthetic: ['ambient', 'cinematic', 'pop']
+  - name: "Round-robin drum kit"
+    description: "Multi-sample kick/snare/hat with 3-4 round-robin variations per note. Humanizes programmed drums — no two hits sound identical without needing micro-timing."
+    aesthetic: ['all']
 
 pairs_well_with:
   - device: "EQ Eight"

@@ -1,0 +1,77 @@
+id: audio_effect_rack
+name: Audio Effect Rack
+sonic_description: >
+  Container for audio effects with up to 8 macro knobs mapped to any
+  parameters across any chain. Parallel chains, chain selector, A/B
+  morphing via Rack Variations. Not an effect itself — the infrastructure
+  that makes complex effect sculpting macro-addressable. Essential for
+  building "signature chains" you can reuse, and for Akufen-style
+  parallel-chain routing.
+effect_type: container
+character_tags: [container, macro, chain, parallel, infrastructure]
+use_cases:
+  - parallel_effect_processing
+  - macro_controlled_effect_chain
+  - signature_reusable_chain_presets
+  - chain_selector_a_b_swap
+  - preset_friendly_complex_effect_setup
+genre_affinity:
+  primary: [all]
+  secondary: []
+complexity: intermediate
+self_contained: false
+introduced_in: "4.0"
+pack: Core Library
+is_container: true
+chain_model: parallel_and_serial
+
+key_parameters:
+  - name: "Macro 1-8"
+    description: "Rack macros — map each to parameter(s) in any chain. Most-mapped rack knob is a performance gesture"
+    range: [0.0, 127.0]
+    type: float
+
+  - name: "Chain Volume (per chain)"
+    description: "Per-chain output level for parallel blending"
+    range: [-70.0, 6.0]
+    unit: "dB"
+    type: float
+
+  - name: "Chain Solo/Mute"
+    description: "Isolate one chain or disable it"
+    range: [0, 1]
+    type: int
+
+  - name: "Chain Selector"
+    description: "Gate chains based on a zone — useful for 'only chain A plays in zone 0-63, only chain B plays in 64-127'"
+    range: [0, 127]
+    type: int
+
+pairs_well_with:
+  - device: "Any audio effect"
+    reason: "Drop any effect into a chain — Rack is just the scaffolding"
+
+starter_recipes:
+  - name: "Signature Vocal Chain"
+    description: "EQ → De-esser → Compressor → Reverb send, with Macro 1 = reverb amount"
+    genre: all
+    steps:
+      - "Create Audio Effect Rack on vocal track"
+      - "Chain 1: EQ Eight → Multiband Dynamics (de-esser) → Compressor → Reverb"
+      - "Map Macro 1 to Reverb Dry/Wet"
+      - "Map Macro 2 to Compressor Threshold"
+
+  - name: "Parallel Saturation"
+    description: "Two chains — clean and heavily saturated — blended via macro"
+    genre: rock
+    steps:
+      - "Chain 1: clean pass-through"
+      - "Chain 2: Saturator (warm) + Limiter"
+      - "Map Macro 1 to Chain 2 Volume — sweep from clean to dirty"
+
+gotchas:
+  - "Chains are PARALLEL by default — all chains receive the input and sum to the output. Don't confuse with serial"
+  - "Chain output level is post-chain-effects — you can saturate heavily and then pull Chain Volume down to keep master level sane"
+  - "Rack Variations (store_rack_variation / recall_rack_variation) capture the full state for A/B swap — essential for workflow"
+  - "Macros don't auto-map — use add_rack_macro + map_plugin_parameter explicitly. Naming macros after mapping is also worth the extra call"
+  - "For MIDI-effect containers use Instrument Rack or MIDI Effect Rack — this rack is audio-only"

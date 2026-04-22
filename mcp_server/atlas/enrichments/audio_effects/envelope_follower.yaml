@@ -1,0 +1,99 @@
+id: envelope_follower
+name: Envelope Follower
+sonic_description: >
+  M4L modulator — extracts the amplitude envelope of an incoming audio
+  signal and maps it to ANY parameter anywhere in the live set via
+  Map mode. The key device for audio-rate modulation: use a kick drum
+  to open a filter on a pad, use a snare to close a reverb send on
+  the vocal, use a sidechain key to drive automation depth on macros.
+  Critical infrastructure for minimal/dub ducking not done via
+  Compressor sidechain.
+effect_type: modulator
+character_tags: [modulation, sidechain, follower, routing, audio_reactive]
+use_cases:
+  - audio_reactive_filter_opening
+  - alternative_to_compressor_sidechain_ducking
+  - amplitude_to_any_parameter_mapping
+  - kick_drives_pad_filter_cutoff
+  - dynamic_send_modulation_per_hit
+genre_affinity:
+  primary: [techno, minimal, dub, electronic]
+  secondary: [ambient, experimental, house]
+complexity: intermediate
+self_contained: false
+introduced_in: "10.0"
+pack: Core Library
+
+key_parameters:
+  - name: "Gain"
+    description: "Input level — scales the detected amplitude before envelope follows"
+    range: [-35.0, 35.0]
+    unit: "dB"
+    type: float
+
+  - name: "Attack"
+    description: "Envelope rise time"
+    range: [0.1, 1000.0]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      instant: 0.1
+      smooth: 30.0
+      slow: 200.0
+
+  - name: "Release"
+    description: "Envelope fall time"
+    range: [0.1, 10000.0]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      tight: 50.0
+      musical: 200.0
+      long_tail: 800.0
+
+  - name: "Min"
+    description: "Minimum output value (modulation offset)"
+    range: [0.0, 1.0]
+    type: float
+
+  - name: "Max"
+    description: "Maximum output value (modulation ceiling)"
+    range: [0.0, 1.0]
+    type: float
+
+  - name: "Rise/Fall Shape"
+    description: "Curvature of attack/release — linear vs exponential"
+    range: ["Linear", "Exponential"]
+    type: enum
+
+pairs_well_with:
+  - device: "Auto Filter"
+    reason: "Envelope Follower mapped to Auto Filter cutoff on the same track — audio-reactive filter without sidechaining"
+  - device: "Compressor"
+    reason: "Alternative or complement to sidechain compression — follower gives more control over the curve shape"
+
+starter_recipes:
+  - name: "Kick-Ducked Pad Filter"
+    description: "Send kick as audio-from, follow its envelope, map to pad's filter cutoff"
+    genre: techno
+    params:
+      "Attack": 1.0
+      "Release": 300.0
+      "Min": 0.3
+      "Max": 1.0
+
+  - name: "Snare-Triggered Reverb Swell"
+    description: "Snare hits open the reverb send momentarily — rhythmic ambient texture"
+    genre: experimental
+    params:
+      "Attack": 5.0
+      "Release": 500.0
+      "Min": 0.0
+      "Max": 0.8
+
+gotchas:
+  - "Envelope Follower does NOT process audio — it outputs a CV-like value that must be Map-assigned to another parameter. Without a mapping, it does nothing audible"
+  - "Requires audio-from routing from a different track OR placement on the track whose envelope you want to follow — easy to mis-route"
+  - "Attack of 0.1ms tracks transients exactly; >10ms smooths and loses transient precision. Pick based on what you're mapping to"
+  - "Min/Max define the output range — if you want full modulation, Min=0 Max=1. For subtle modulation, narrow the range (Min=0.4 Max=0.6)"
+  - "For programmatic automation-like behavior without audio input, use LFO instead"

@@ -1,0 +1,227 @@
+query SamplesSearch($asset_status_slug: AssetStatusSlug, $page: Int, $order: SortOrder = DESC, $limit: Int = 50, $sort: AssetSortType = relevance, $parent_asset_uuid: GUID, $parent_asset_type: AssetTypeSlug, $query: String, $tags: [ID!], $tags_exclude: [ID!], $attributes: [AssetAttributeSlug!], $bundled_content_daws: [AssetBundledContentDawSlug!], $key: String, $chord_type: String, $min_bpm: Int, $max_bpm: Int, $bpm: String, $liked: Boolean, $licensed: Boolean, $drums_only: Boolean, $filepath: String, $semantic: Float = 0, $rephrase: Boolean = true, $rephrased_query: String, $extract_filters: Boolean = false, $asset_category_slug: AssetCategorySlug, $random_seed: String, $coso_seed: CosoSeedInput, $ac_uuid: String, $legacy: Boolean, $includeSubscriberOnlyResults: Boolean = false) {
+  assetsSearch(
+    filter: {legacy: $legacy, published: true, asset_type_slug: sample, asset_status_slug: $asset_status_slug, asset_category_slug: $asset_category_slug, query: $query, tag_ids: $tags, tag_ids_exclude: $tags_exclude, attributes: $attributes, bundled_content_daws: $bundled_content_daws, key: $key, chord_type: $chord_type, min_bpm: $min_bpm, max_bpm: $max_bpm, bpm: $bpm, liked: $liked, licensed: $licensed, drums_only: $drums_only, filepath: $filepath, semantic: $semantic, rephrase: $rephrase, rephrased_query: $rephrased_query, extract_filters: $extract_filters, ac_uuid: $ac_uuid, coso_seed: $coso_seed}
+    children: {parent_asset_uuid: $parent_asset_uuid}
+    pagination: {page: $page, limit: $limit}
+    sort: {sort: $sort, order: $order, random_seed: $random_seed}
+    legacy: {parent_asset_type: $parent_asset_type, use: $legacy}
+  ) {
+    ...assetDetails
+    extracted_filter_by {
+      asset_category
+      __typename
+    }
+    __typename
+  }
+  subscriberOnlyResults: assetsSearch(
+    filter: {legacy: $legacy, published: true, asset_type_slug: sample, asset_status_slug: $asset_status_slug, asset_category_slug: $asset_category_slug, bundled_content_daws_exclude: $bundled_content_daws, query: $query, tag_ids: $tags, tag_ids_exclude: $tags_exclude, key: $key, chord_type: $chord_type, min_bpm: $min_bpm, max_bpm: $max_bpm, bpm: $bpm, liked: $liked, licensed: $licensed, drums_only: $drums_only, filepath: $filepath, semantic: $semantic, ac_uuid: $ac_uuid, coso_seed: $coso_seed}
+    children: {parent_asset_uuid: $parent_asset_uuid}
+    pagination: {page: $page, limit: 15}
+    sort: {sort: $sort, order: $order, random_seed: $random_seed}
+    legacy: {parent_asset_type: $parent_asset_type, use: $legacy}
+  ) @include(if: $includeSubscriberOnlyResults) {
+    ...assetDetails
+    __typename
+  }
+}
+
+fragment assetDetails on AssetPage {
+  ...assetPageItems
+  ...assetTagSummaries
+  ...assetDeviceSummaries
+  pagination_metadata {
+    currentPage
+    totalPages
+    __typename
+  }
+  response_metadata {
+    next
+    previous
+    records
+    __typename
+  }
+  rephrased_query_string
+  __typename
+}
+
+fragment assetPageItems on AssetPage {
+  items {
+    ... on IAsset {
+      asset_prices {
+        amount
+        currency
+        __typename
+      }
+      uuid
+      name
+      liked
+      licensed
+      asset_type {
+        label
+        __typename
+      }
+      asset_type_slug
+      bundled_content_daws
+      tags {
+        uuid
+        label
+        taxonomy {
+          uuid
+          name
+          __typename
+        }
+        __typename
+      }
+      files {
+        name
+        hash
+        path
+        asset_file_type_slug
+        url
+        uuid
+        __typename
+      }
+      __typename
+    }
+    ... on IAssetChild {
+      parents(filter: {asset_type_slug: pack}) {
+        items {
+          __typename
+          ... on IAsset {
+            uuid
+            __typename
+          }
+          ... on PackAsset {
+            name
+            permalink_base_url
+            asset_type_slug
+            files {
+              path
+              asset_file_type_slug
+              url
+              uuid
+              __typename
+            }
+            provider {
+              uuid
+              name
+              image_path
+              __typename
+            }
+            permalink_slug
+            child_asset_counts {
+              type
+              count
+              __typename
+            }
+            main_genre
+            __typename
+          }
+        }
+        __typename
+      }
+      __typename
+    }
+    ... on SampleAsset {
+      uuid
+      name
+      bpm
+      chord_type
+      duration
+      instrument
+      key
+      asset_category_slug
+      has_similar_sounds
+      has_coso
+      attributes
+      coso_playback_metadata {
+        psOffset
+        numBars
+        playbackBpm
+        __typename
+      }
+      __typename
+    }
+    ... on PresetAsset {
+      uuid
+      name
+      attributes
+      device {
+        name
+        uuid
+        plugin_type
+        minimum_device_version
+        __typename
+      }
+      asset_devices {
+        device {
+          name
+          uuid
+          device_type_slug
+          minimum_device_version
+          __typename
+          ... on PluginDevice {
+            plugin_type
+            __typename
+          }
+        }
+        __typename
+      }
+      __typename
+    }
+    ... on PackAsset {
+      uuid
+      name
+      provider {
+        uuid
+        name
+        created_at
+        description
+        __typename
+      }
+      provider_uuid
+      uuid
+      permalink_slug
+      permalink_base_url
+      main_genre
+      __typename
+    }
+    ... on ILegacyAsset {
+      catalog_uuid
+      __typename
+    }
+    __typename
+  }
+  __typename
+}
+
+fragment assetTagSummaries on AssetPage {
+  tag_summary {
+    tag {
+      uuid
+      label
+      taxonomy {
+        uuid
+        name
+        __typename
+      }
+      __typename
+    }
+    count
+    __typename
+  }
+  __typename
+}
+
+fragment assetDeviceSummaries on AssetPage {
+  device_summary {
+    device {
+      uuid
+      name
+      __typename
+    }
+    count
+    __typename
+  }
+  __typename
+}

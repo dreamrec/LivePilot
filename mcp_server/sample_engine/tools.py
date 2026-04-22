@@ -1496,23 +1496,29 @@ async def splice_describe_sound(
     bpm: Optional[int] = None,
     key: Optional[str] = None,
     limit: int = 20,
+    rephrase: bool = True,
 ) -> dict:
     """Natural-language sample search — the Sounds Plugin's "Describe a Sound".
 
     Splice's AI matches free-form descriptions like "dark ambient pad with
-    shimmer" or "tight 90s house hi-hat" to catalog samples. This is NOT
-    on the local gRPC — the bridge proxies to api.splice.com using your
-    session token.
+    shimmer" or "tight 90s house hi-hat" to catalog samples. Hits the
+    GraphQL `SamplesSearch` operation on `surfaces-graphql.splice.com`
+    with `semantic=1` + `rephrase=true` enabled.
 
-    **Status: scaffolding complete, endpoint pending real-traffic capture.**
-    Until `SPLICE_DESCRIBE_ENDPOINT` env var is set (or
-    `SPLICE_ALLOW_UNVERIFIED_ENDPOINTS=1`), this tool returns a structured
-    ENDPOINT_NOT_CONFIGURED error with actionable setup steps.
+    **Status: LIVE** as of 2026-04-22. Endpoint captured via mitmproxy
+    against Splice desktop 5.4.9 + Sounds Plugin.
 
     description: free-text prompt ("warm analog bass under 80bpm")
     bpm:         optional BPM filter
     key:         optional musical key ("Dm", "F#")
     limit:       max results (default 20)
+    rephrase:    let Splice's ML rephrase the query for better matches
+                 (default True). Returned as `rephrased_query_string`.
+
+    Returns `{ok, query, samples[], total_hits, rephrased_query_string,
+    tag_summary[], ...}`. Each sample has uuid/name/bpm/key/duration/
+    instrument/tags/pack_name/files. Use the uuid with
+    `splice_download_sample(uuid)` to pull the audio file.
     """
     bridge, err = _build_http_bridge(ctx)
     if err:
@@ -1524,95 +1530,161 @@ async def splice_describe_sound(
         result = await bridge.describe_sound(
             description=description.strip(),
             bpm=bpm, key=key, limit=int(limit),
+            rephrase=bool(rephrase),
         )
     except SpliceHTTPError as exc:
         return exc.to_dict()
     except Exception as exc:
         return {"ok": False, "error": f"describe_sound failed: {exc}"}
-    return {"ok": True, "query": description, **(result if isinstance(result, dict) else {"raw": result})}
+    # Don't expose the full GraphQL `raw` dict in the user-facing response
+    # unless they asked — it adds ~270KB noise per call. Keep it for
+    # power users via an explicit future flag.
+    out = dict(result) if isinstance(result, dict) else {"raw": result}
+    out.pop("raw", None)
+    return {"ok": True, "query": description, **out}
 
 
 @mcp.tool()
 async def splice_generate_variation(
     ctx: Context,
-    file_hash: str,
-    target_key: Optional[str] = None,
-    target_bpm: Optional[int] = None,
-    count: int = 1,
+    uuid: str,
+    is_legacy: bool = True,
 ) -> dict:
-    """Generate AI variations of a Splice sample — the Sounds Plugin's "Variations".
+    """Find catalog samples similar to a given Splice sample — the "Variations" feature.
 
-    Splice's AI produces unique re-keyed / re-tempo'd versions of any
-    sample. Costs additional credits per variation (on top of the base
-    license). NOT on the local gRPC — bridged via api.splice.com.
+    Splice's right-click "Variations" menu item surfaces other catalog
+    samples with similar sonic character. The GraphQL operation name
+    is `AssetSimilarSoundsQuery`. Up to 10 results per call. No credit
+    cost (this is a recommender lookup, not AI audio synthesis — the
+    original naming in the handoff was aspirational).
 
-    **Status: scaffolding complete, endpoint pending real-traffic capture.**
-    Until `SPLICE_VARIATION_ENDPOINT` env var is set (or
-    `SPLICE_ALLOW_UNVERIFIED_ENDPOINTS=1`), this tool returns a structured
-    ENDPOINT_NOT_CONFIGURED error with actionable setup steps.
+    **Status: LIVE** as of 2026-04-22. Endpoint captured via mitmproxy
+    against Splice desktop v5.4.9.
 
-    file_hash:  sample identifier (from search results)
-    target_key: desired key (e.g. "Am")
-    target_bpm: desired tempo
-    count:      number of variations to generate (1-5)
+    uuid:       source sample's catalog uuid (from `splice_describe_sound`
+                results or any other Splice metadata call)
+    is_legacy:  match how Splice's own client sets it — default True is
+                correct for all mainstream catalog samples; set False only
+                if working with post-catalog-v2 assets
 
-    WARNING: this WILL spend credits when the endpoint is live.
-    Consider previewing the source sample with splice_preview_sample first.
+    Returns `{ok, uuid, similar_samples[], count}`. Each entry has the
+    same flat shape as a describe_sound sample (uuid/name/bpm/key/
+    duration/tags/pack_name/files). Use the uuid of any result with
+    `splice_download_sample()` to pull the audio.
     """
     bridge, err = _build_http_bridge(ctx)
     if err:
         return err
     from ..splice_client.http_bridge import SpliceHTTPError
-    if not file_hash or not file_hash.strip():
-        return {"ok": False, "error": "file_hash is required"}
-    if count < 1 or count > 5:
-        return {"ok": False, "error": "count must be 1-5"}
+    if not uuid or not uuid.strip():
+        return {"ok": False, "error": "uuid is required"}
     try:
         result = await bridge.generate_variation(
-            file_hash=file_hash.strip(),
-            target_key=target_key,
-            target_bpm=target_bpm,
-            count=int(count),
+            uuid=uuid.strip(),
+            is_legacy=bool(is_legacy),
         )
     except SpliceHTTPError as exc:
         return exc.to_dict()
     except Exception as exc:
         return {"ok": False, "error": f"generate_variation failed: {exc}"}
-    return {"ok": True, "file_hash": file_hash, **(result if isinstance(result, dict) else {"raw": result})}
+    out = dict(result) if isinstance(result, dict) else {"raw": result}
+    out.pop("raw", None)  # drop verbose debug payload
+    return {"ok": True, "uuid": uuid, **out}
+
+
+# NOTE: splice_search_with_sound was removed 2026-04-22 — user does this
+# in-Splice manually. If someone wants to resurrect it, the capture recipe
+# is still at docs/2026-04-22-splice-https-capture-recipe.md.
 
 
 @mcp.tool()
-async def splice_search_with_sound(
-    ctx: Context,
-    audio_path: str,
-    limit: int = 20,
-) -> dict:
-    """Reference-audio search — the Sounds Plugin's "Search with Sound".
+async def splice_http_diagnose(ctx: Context) -> dict:
+    """Diagnose the Splice HTTPS bridge configuration and readiness.
 
-    Uploads a local audio file to Splice's AI and returns catalog samples
-    with similar character. Complements `splice_describe_sound` (text)
-    and `search_samples` (keyword).
+    Reports which endpoints are configured, whether a session token is
+    reachable from the gRPC client, and what the next step is to unblock
+    `splice_describe_sound` and `splice_generate_variation`.
 
-    **Status: scaffolding complete, wiring pending real-traffic capture
-    (multipart upload shape is the most uncertain part of the bridge).**
-    Until `SPLICE_SEARCH_WITH_SOUND_ENDPOINT` is set, returns a structured
-    NOT_YET_IMPLEMENTED error.
-
-    audio_path: absolute path to a local audio file (.wav, .mp3, .flac)
-    limit:      max results (default 20)
+    Use this BEFORE calling either tool if you want a clear readout of
+    "what's missing, and how do I fix it" instead of per-tool
+    ENDPOINT_NOT_CONFIGURED errors.
     """
-    bridge, err = _build_http_bridge(ctx)
-    if err:
-        return err
-    from ..splice_client.http_bridge import SpliceHTTPError
-    if not audio_path or not os.path.isfile(audio_path):
-        return {"ok": False, "error": f"audio_path not found: {audio_path}"}
+    from ..splice_client.http_bridge import SpliceHTTPConfig
+
+    cfg = SpliceHTTPConfig.from_env()
+    endpoints = {
+        "describe": cfg.describe_endpoint,
+        "variation": cfg.variation_endpoint,
+    }
+    verified = {
+        "describe": cfg.describe_verified,
+        "variation": cfg.variation_verified,
+    }
+    unverified = [name for name, ok in verified.items() if not ok]
+    configured_count = sum(1 for v in endpoints.values() if v not in (None, ""))
+
+    # Try to read the session token via the gRPC client the SAME way
+    # the real tools do — reach into ctx.lifespan_context["splice_client"]
+    # and actually attempt a GetSession fetch. Walking a different
+    # engine-nested path (earlier mistake) reported "token unavailable"
+    # while the bridge's real request path succeeded — a misleading
+    # diagnostic is worse than no diagnostic.
+    session_token_available = False
+    session_token_error = None
+    grpc_client = None
     try:
-        result = await bridge.search_with_sound(
-            audio_path=audio_path, limit=int(limit),
+        grpc_client = ctx.lifespan_context.get("splice_client")
+    except AttributeError:
+        pass
+    if grpc_client is None or not getattr(grpc_client, "connected", False):
+        session_token_error = "Splice gRPC not connected"
+    else:
+        # Connection is up; confirm a token actually comes back.
+        from ..splice_client.http_bridge import fetch_session_token
+        try:
+            token = await fetch_session_token(grpc_client)
+            if token:
+                session_token_available = True
+            else:
+                session_token_error = (
+                    "GetSession RPC returned no token — user may be "
+                    "logged out or gRPC schema drifted"
+                )
+        except Exception as exc:
+            session_token_error = f"GetSession call failed: {exc}"
+
+    next_steps: list = []
+    if "describe" in unverified:
+        next_steps.append(
+            "Describe endpoint unverified — reset config to defaults "
+            "(delete ~/.livepilot/splice.json or unset env vars) so the "
+            "captured surfaces-graphql.splice.com/graphql endpoint is used."
         )
-    except SpliceHTTPError as exc:
-        return exc.to_dict()
-    except Exception as exc:
-        return {"ok": False, "error": f"search_with_sound failed: {exc}"}
-    return {"ok": True, "audio_path": audio_path, **(result if isinstance(result, dict) else {"raw": result})}
+    if "variation" in unverified:
+        next_steps.append(
+            "Variation GraphQL operation not yet captured. Right-click "
+            "a Splice sample and click Variations with mitmproxy running. "
+            "See docs/2026-04-22-splice-https-capture-recipe.md."
+        )
+    if not session_token_available:
+        next_steps.append(
+            "Splice desktop app is not reachable — the bridge reads the "
+            "session token via gRPC GetSession RPC. Ensure the app is "
+            "running and logged in."
+        )
+    if not next_steps:
+        next_steps.append("Bridge fully ready — test with splice_describe_sound.")
+
+    return {
+        "ok": True,
+        "base_url": cfg.base_url,
+        "endpoints": endpoints,
+        "verified": verified,
+        "configured_count": configured_count,
+        "unverified_endpoints": unverified,
+        "is_user_configured": cfg.is_user_configured,
+        "session_token_available": session_token_available,
+        "session_token_error": session_token_error,
+        "next_steps": next_steps,
+        "docs": "docs/2026-04-22-splice-https-capture-recipe.md",
+    }

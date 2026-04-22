@@ -17,7 +17,7 @@
 
 <p align="center">
   An agentic production system for Ableton Live 12.<br>
-  422 tools. 52 domains. Device atlas. Plan-aware Splice integration. Auto-composition. Spectral perception. Technique memory. Drum-rack pad builder. Live dead-device detection.
+  426 tools. 52 domains. Device atlas. Plan-aware Splice integration. Auto-composition. Spectral perception. Technique memory. Drum-rack pad builder. Live dead-device detection.
 </p>
 
 <br>
@@ -33,16 +33,17 @@
 
 ## What LivePilot Does
 
-Most MCP servers are tool collections — they execute commands. LivePilot is an **agentic production system**. It has six layers that work together:
+Most MCP servers are tool collections — they execute commands. LivePilot is an **agentic production system**. It has seven layers that work together:
 
 | Layer | What it provides |
 |-------|-----------------|
 | **Deterministic Tools** | Direct control: transport, tracks, clips, notes, devices, scenes, mixing, arrangement, browser, automation |
-| **Device Atlas** | Knowledge of every device in Ableton's library — 1305 devices indexed by name, URI, category, tag, and genre. 107 enriched with sonic intelligence. 683 drum kits mapped |
-| **Sample Engine** | Three-source sample intelligence — Ableton's browser, your filesystem, and Splice's catalog (plan-aware: Ableton Live plan uses daily quota, Sounds+/Creator uses credits, free samples bypass both). 6 fitness critics. 29 processing techniques. Collections, presets, preview-URL audition, HTTPS bridge scaffolding for Describe-a-Sound + Variations |
-| **Spectral Perception** | Real-time ears via M4L — 8-band FFT, RMS/peak metering, Krumhansl-Schmuckler key detection, pitch tracking. Closes the feedback loop so the AI hears its own changes |
+| **Device Atlas** | Knowledge of every device in Ableton's library — 1305 devices indexed by name, URI, category, tag, genre, and pack (641 pack-indexed). 120 enriched with sonic intelligence (47 with aesthetic-tagged `signature_techniques`). 683 drum kits mapped. **Free-text `atlas_describe_chain`** ("a granular pad like Tim Hecker") and **reverse-lookup `atlas_techniques_for_device`** (what techniques reference this device?) added in v1.17 |
+| **Concept Surface** | **New in v1.17.** Two reference files let the LLM's training translate into LivePilot: `artist-vocabularies.md` maps ~25 producers (Villalobos, Hawtin, Basic Channel, Gas, Basinski, Hecker, Aphex, Autechre, Dilla, Burial, Henke, Daft Punk, …) to `reach_for` / `avoid` / `key_techniques`; `genre-vocabularies.md` maps 15 genres to tempo / kick / bass / percussion / harmonic / texture / devices. 146 cross-references between devices and techniques. The LLM reads "sound like Gas" and gets a concrete device chain, not guesswork |
+| **Sample Engine** | Three-source sample intelligence — Ableton's browser, your filesystem, and Splice's catalog (plan-aware: Ableton Live plan uses daily quota, Sounds+/Creator uses credits, free samples bypass both). 6 fitness critics. 29 processing techniques. Collections, presets, preview-URL audition, **LIVE Describe-a-Sound + Variations via Splice GraphQL (v1.17)** |
+| **Spectral Perception** | Real-time ears via M4L — **9-band FFT (v1.17+, sub_low split at 20-60 Hz)**, RMS/peak metering, Krumhansl-Schmuckler key detection, pitch tracking, FluCoMa mel/chroma/onset. Closes the feedback loop so the AI hears its own changes |
 | **Technique Memory** | Persistent library of production decisions. Save a beat pattern, device chain, or mix template. Recall by mood, genre, or texture across sessions |
-| **Creative Intelligence** | 12 engines that understand song identity, learn your taste, diagnose stuck sessions, generate creative options, and evaluate results before claiming success |
+| **Creative Intelligence** | A dozen engines that understand song identity, learn your taste, diagnose stuck sessions, generate creative options, and evaluate results before claiming success |
 
 <br>
 
@@ -56,9 +57,9 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 │  KNOWLEDGE               PERCEPTION              MEMORY              │
 │  ──────────────          ──────────────          ──────────────       │
 │                                                                      │
-│  Device Atlas            8-band FFT              recall by mood,     │
+│  Device Atlas            9-band FFT              recall by mood,     │
 │  1305 devices            RMS / peak              genre, texture      │
-│  107 enriched             pitch tracking          29 techniques       │
+│  120 enriched             pitch tracking          29 techniques       │
 │  683 drum kits           key detection           replay into session │
 │                                                                      │
 │  Sample Engine           Corpus Intelligence     Taste Graph          │
@@ -79,7 +80,7 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 │         └─────────────────┼──────────────────┘                       │
 │                           ▼                                          │
 │                  ┌─────────────────┐                                  │
-│                  │   422 MCP Tools  │                                  │
+│                  │   426 MCP Tools  │                                  │
 │                  │   52 domains     │                                  │
 │                  └────────┬────────┘                                  │
 │                           │                                          │
@@ -102,7 +103,7 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 
 **M4L Bridge** (`m4l_device/`) — Optional Max for Live Audio Effect on the master track. Provides deep LOM access through Max's LiveAPI that the ControlSurface API can't reach. UDP 9880 (M4L to server) carries spectral data and LiveAPI responses. OSC 9881 (server to M4L) sends commands. The 32 spectral/analyzer tools strictly require the bridge; device and sample tools that call the bridge also have graceful fallbacks, so core functionality works without it. Backed by 30 bridge commands for hidden parameters, Simpler internals, warp markers, display values, and Simpler warp / Compressor sidechain writes that live on child objects Python can't reach.
 
-**Device Atlas** (`mcp_server/atlas/`) — In-memory indexed JSON database. 1305 devices with browser URIs, 107 enriched with YAML sonic intelligence profiles (mood, genre, texture, recommended chains). 6 indexes: by_id, by_name, by_uri, by_category, by_tag, by_genre. The AI never hallucinates a device name or preset — it always resolves against the atlas first.
+**Device Atlas** (`mcp_server/atlas/`) — In-memory indexed JSON database. 1305 devices with browser URIs, 120 enriched with YAML sonic intelligence profiles (mood, genre, texture, recommended chains). 6 indexes: by_id, by_name, by_uri, by_category, by_tag, by_genre. The AI never hallucinates a device name or preset — it always resolves against the atlas first.
 
 **Sample Engine** (`mcp_server/sample_engine/`) — Searches three sources simultaneously: BrowserSource (Ableton's library), SpliceSource (local Splice catalog via SQLite), FilesystemSource (user directories). Every result passes through a 6-critic fitness battery (key, tempo, spectral, genre, mood, technical). 29 processing techniques (Surgeon precision vs. Alchemist experimentation). Builds complete sample processing plans with warp, slice, and effect recommendations.
 
@@ -120,7 +121,7 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 
 ## The Intelligence Layer
 
-12 engines sit on top of the 422 tools. They give the AI musical judgment, not just musical execution.
+12 engines sit on top of the 426 tools. They give the AI musical judgment, not just musical execution.
 
 ### SongBrain — What the Song Is
 
@@ -172,7 +173,7 @@ Every engine follows: **measure before → act → measure after → compare**. 
 
 ## Tools
 
-422 tools across 52 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
+426 tools across 52 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
 
 <br>
 
@@ -232,7 +233,7 @@ The atlas is an in-memory indexed database of Ableton's entire device library.
 
 ```
 1305 devices total
-  107 enriched with sonic intelligence (mood, genre, texture, chains)
+  120 enriched with sonic intelligence (mood, genre, texture, chains)
  683 drum kits mapped with note assignments
    6 indexes: by_id, by_name, by_uri, by_category, by_tag, by_genre
 ```
@@ -360,7 +361,7 @@ The V2 intelligence layer. These tools analyze, diagnose, plan, evaluate, and le
 | Creative Constraints | 5 | constraint activation, reference-inspired variants |
 | Preview Studio | 5 | variant creation, preview rendering, comparison, commit |
 
-> **[View all 422 tools →](docs/manual/tool-catalog.md)**
+> **[View all 426 tools →](docs/manual/tool-catalog.md)**
 
 <br>
 
@@ -587,7 +588,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for architecture details, code guidelines
 
 | Document | What's inside |
 |----------|---------------|
-| [Manual](docs/manual/index.md) | Complete reference: architecture, all 422 tools, workflows |
+| [Manual](docs/manual/index.md) | Complete reference: architecture, all 426 tools, workflows |
 | [Intelligence Layer](docs/manual/intelligence.md) | How the 12 engines connect — conductor, moves, preview, evaluation |
 | [Device Atlas](docs/manual/device-atlas.md) | 1305 devices indexed — search, suggest, chain building |
 | [Samples & Slicing](docs/manual/samples.md) | 3-source search, fitness critics, slice workflows |

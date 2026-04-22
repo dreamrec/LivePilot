@@ -1,0 +1,52 @@
+query AssetSimilarSoundsQuery($uuid: GUID!, $isLegacy: Boolean) {
+  similarSounds(uuid: $uuid, isLegacy: $isLegacy) {
+    __typename
+    files {
+      uuid
+      name
+      path
+      url
+      asset_file_type_slug
+      __typename
+    }
+    name
+    uuid
+    catalog_uuid
+    bpm
+    key
+    liked
+    licensed
+    asset_category_slug
+    asset_type_slug
+    asset_prices {
+      amount
+      currency
+      __typename
+    }
+    tags {
+      uuid
+      label
+      __typename
+    }
+    parents(filter: {asset_type_slug: pack}) {
+      items {
+        __typename
+        ... on PackAsset {
+          uuid
+          name
+          permalink_base_url
+          asset_type_slug
+          files {
+            path
+            asset_file_type_slug
+            url
+            __typename
+          }
+          permalink_slug
+          __typename
+        }
+      }
+      __typename
+    }
+  }
+}

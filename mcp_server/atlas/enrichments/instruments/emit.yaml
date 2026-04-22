@@ -102,6 +102,17 @@ key_parameters:
       natural: 500.0
       ambient: 3000.0
 
+signature_techniques:
+  - name: "Grain cloud (Tim Hecker)"
+    description: "Load a sustained pad source, grain density high, pitch randomization slight, reverb send heavy. The grains blur the source into an undifferentiated textural bed."
+    aesthetic: ['ambient', 'drone', 'experimental']
+  - name: "Generative evolving bass"
+    description: "Source = a droning note, grain density medium, randomize position slightly. The bass evolves organically without automation."
+    aesthetic: ['ambient', 'deep_minimal', 'generative']
+  - name: "Fluid texture"
+    description: "Short vocal sample as source, grain density sparse, position LFO slow, pitch spread wide. Not a chord, not a noise — a liminal texture that sits between."
+    aesthetic: ['experimental', 'ambient', 'idm']
+
 pairs_well_with:
   - device: "Reverb"
     reason: "Spectral sounds merge beautifully with long reverb — creates immersive washes"

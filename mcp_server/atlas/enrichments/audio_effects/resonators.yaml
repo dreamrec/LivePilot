@@ -1,0 +1,121 @@
+id: resonators
+name: Resonators
+sonic_description: >
+  Five parallel tuned comb-filter resonators. Imposes a chord onto any
+  signal — drums become pitched, noise becomes a tone, speech becomes a
+  harmonized choir. Each of 5 resonators has its own note, gain, decay,
+  and width. Signature of Radiohead-style glitch, minimal sound design,
+  and tonal-from-atonal transformations.
+effect_type: resonator
+character_tags: [pitched, tonal, harmonizing, comb_filter, experimental]
+use_cases:
+  - pitch_atonal_percussion
+  - harmonize_noise_or_speech
+  - tonal_drone_from_any_source
+  - chord_imprint_on_drums
+  - dub_style_pitched_echo_alternative
+genre_affinity:
+  primary: [experimental, ambient, idm, dub]
+  secondary: [minimal, techno, sound_design]
+complexity: advanced
+self_contained: true
+introduced_in: "8.0"
+pack: Core Library
+
+key_parameters:
+  - name: "Mode"
+    description: "Shape of the resonator (different comb topologies for different characters)"
+    range: ["Mode I", "Mode II", "Mode III", "Mode IV", "Mode V"]
+    type: enum
+    sweet_spots:
+      standard: "Mode I"
+      metallic: "Mode III"
+      smooth: "Mode V"
+
+  - name: "Root"
+    description: "Base note for the 5 resonators"
+    range: [0, 127]
+    type: int
+    sweet_spots:
+      low_hum: 36
+      standard_bass: 48
+      mid_tone: 60
+
+  - name: "Note 1-5"
+    description: "Semitone offset from Root for each of the 5 resonators"
+    range: [-24, 24]
+    unit: "st"
+    type: int
+    sweet_spots:
+      major_chord: "[0, 4, 7, 12, 19]"
+      minor_chord: "[0, 3, 7, 12, 15]"
+      detune_unison: "[0, 0.1, -0.1, 0.2, -0.2]"
+
+  - name: "Decay 1-5"
+    description: "Per-resonator sustain time"
+    range: [0.0, 1.0]
+    type: float
+
+  - name: "Gain 1-5"
+    description: "Per-resonator level"
+    range: [-24.0, 24.0]
+    unit: "dB"
+    type: float
+
+  - name: "Input"
+    description: "Input filter — shapes what hits the resonators"
+    range: ["LP", "BP", "HP"]
+    type: enum
+
+  - name: "Width"
+    description: "Stereo spread of the 5 resonators"
+    range: [0.0, 1.0]
+    type: float
+
+  - name: "Dry/Wet"
+    description: "Mix of original vs resonated"
+    range: [0.0, 1.0]
+    type: float
+
+pairs_well_with:
+  - device: "Reverb"
+    reason: "Resonators + long reverb = infinite tonal drone from any excitation"
+  - device: "Gate"
+    reason: "Gate before Resonators controls when the chord imprint triggers"
+  - device: "Compressor"
+    reason: "After Resonators to balance the varying-level tonal output"
+  - device: "Auto Filter"
+    reason: "Filter the resonated output for evolving timbre on a static chord"
+
+starter_recipes:
+  - name: "Noise Minor Chord"
+    description: "White noise imprinted with a low minor chord — ambient drone"
+    genre: ambient
+    params:
+      "Root": 36
+      "Note 1": 0
+      "Note 2": 3
+      "Note 3": 7
+      "Note 4": 12
+      "Note 5": 15
+      "Decay 1": 0.9
+      "Dry/Wet": 1.0
+
+  - name: "Pitched Drums"
+    description: "Drums forced to a root note, chord imprint from kit"
+    genre: experimental
+    params:
+      "Root": 48
+      "Note 1": 0
+      "Note 2": 7
+      "Note 3": 12
+      "Note 4": 16
+      "Decay 1": 0.4
+      "Dry/Wet": 0.5
+
+gotchas:
+  - "Resonators forces a pitch — make sure Root matches the track's key or the chord will clash"
+  - "All 5 resonators at max Decay self-feedback — combined output can clip. Watch peak level"
+  - "Input filter affects which frequencies resonate — low-pass input preserves only low-mid resonance, HP emphasizes brightness"
+  - "Very short Decay values (<0.2) produce comb-filtered ghost tones rather than sustained pitched output"
+  - "For stringed-instrument-style resonance, try Corpus instead — Resonators is about chord imprinting"

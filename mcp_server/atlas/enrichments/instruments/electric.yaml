@@ -78,6 +78,17 @@ key_parameters:
       clean: 0.5
       asymmetric_bark: 0.3
 
+signature_techniques:
+  - name: "Classic Rhodes"
+    description: "Suitcase preset, tremolo at 5 Hz, chorus modest. The tine-bar mechanism is already in the model — no outboard reverb needed for the classic sound."
+    aesthetic: ['jazz', 'neo_soul', 'r_and_b']
+  - name: "Gritty Wurlitzer"
+    description: "Wurly preset, short attack, amp drive in the 20-30% range, high-pass at 100 Hz. The reed-bar grit IS the character — don't EQ it out."
+    aesthetic: ['soul', 'funk', 'lo_fi']
+  - name: "Tape-warped EP"
+    description: "Rhodes through Grain Delay + Auto Filter LFO, slight pitch detune. Boards of Canada / lo-fi hip-hop territory — the imperfection is the sound."
+    aesthetic: ['lo_fi', 'downtempo', 'hip_hop']
+
 pairs_well_with:
   - device: "Chorus-Ensemble"
     reason: "Classic electric piano chorus — essential for the Juno-Rhodes sound"

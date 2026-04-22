@@ -1,0 +1,43 @@
+id: tuner
+name: Tuner
+sonic_description: >
+  Reference chromatic tuner — shows pitch / note / cent deviation from
+  equal temperament. Sits on a guitar/bass/vocal track as a tuning aid.
+  Passes signal through unchanged. Not an effect; a diagnostic tool.
+effect_type: analyzer
+character_tags: [diagnostic, transparent, pitch_reference, measurement]
+use_cases:
+  - tuning_a_guitar_or_bass
+  - checking_pitch_of_a_vocal
+  - reference_pitch_for_microtuning_experiments
+genre_affinity:
+  primary: [all]
+  secondary: []
+complexity: beginner
+self_contained: true
+introduced_in: "11.0"
+pack: Core Library
+
+key_parameters:
+  - name: "Reference (A)"
+    description: "Tuning reference — A440 standard, or shift for non-standard tuning"
+    range: [410.0, 480.0]
+    unit: "Hz"
+    type: float
+    sweet_spots:
+      standard: 440.0
+      baroque: 415.0
+      modern_orchestra: 442.0
+
+  - name: "Transpose"
+    description: "Shift the displayed pitch — useful for transposing instruments"
+    range: [-24, 24]
+    unit: "st"
+    type: int
+
+pairs_well_with: []
+
+gotchas:
+  - "Tuner is DIAGNOSTIC — the audio passes through unchanged. Don't use as an effect"
+  - "Requires a monophonic input for accurate reading — chords can't be tuned this way"
+  - "Low notes below E1 may display unreliably — fundamental frequency detection fails on very low fundamentals"

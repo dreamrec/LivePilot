@@ -198,24 +198,27 @@ def test_http_config_is_user_configured_flag():
                 os.environ[k] = v
 
 
-def test_describe_sound_refuses_when_unconfigured():
-    """Unconfigured endpoints MUST refuse with a structured error."""
+def test_describe_sound_refuses_without_auth():
+    """With no gRPC client attached the bridge MUST raise NO_AUTH.
+
+    2026-04-22 endpoint is captured → describe_verified is True by
+    default. The remaining gate is the session token; without gRPC
+    connectivity `fetch_session_token` returns None and the bridge
+    raises NO_AUTH before any HTTP call.
+    """
     from mcp_server.splice_client.http_bridge import (
         SpliceHTTPBridge, SpliceHTTPError,
     )
-    # Ensure no envvar override is active for this test.
     original = {
         k: os.environ.pop(k, None) for k in (
             "SPLICE_API_BASE_URL",
             "SPLICE_DESCRIBE_ENDPOINT",
             "SPLICE_VARIATION_ENDPOINT",
-            "SPLICE_SEARCH_WITH_SOUND_ENDPOINT",
             "SPLICE_ALLOW_UNVERIFIED_ENDPOINTS",
         )
     }
     try:
         bridge = SpliceHTTPBridge(grpc_client=None)
-        # No grpc_client → NO_AUTH is the immediate blocker
         with pytest.raises(SpliceHTTPError) as exc_info:
             asyncio.run(bridge.describe_sound("dark pad"))
         assert exc_info.value.code in ("ENDPOINT_NOT_CONFIGURED", "NO_AUTH")
@@ -225,7 +228,7 @@ def test_describe_sound_refuses_when_unconfigured():
                 os.environ[k] = v
 
 
-def test_variation_refuses_when_unconfigured():
+def test_variation_refuses_without_auth():
     from mcp_server.splice_client.http_bridge import (
         SpliceHTTPBridge, SpliceHTTPError,
     )
@@ -234,14 +237,13 @@ def test_variation_refuses_when_unconfigured():
             "SPLICE_API_BASE_URL",
             "SPLICE_DESCRIBE_ENDPOINT",
             "SPLICE_VARIATION_ENDPOINT",
-            "SPLICE_SEARCH_WITH_SOUND_ENDPOINT",
             "SPLICE_ALLOW_UNVERIFIED_ENDPOINTS",
         )
     }
     try:
         bridge = SpliceHTTPBridge(grpc_client=None)
         with pytest.raises(SpliceHTTPError) as exc_info:
-            asyncio.run(bridge.generate_variation("abc-hash"))
+            asyncio.run(bridge.generate_variation(uuid="abc-uuid"))
         assert exc_info.value.code in ("ENDPOINT_NOT_CONFIGURED", "NO_AUTH")
     finally:
         for k, v in original.items():
@@ -259,16 +261,30 @@ def test_http_error_to_dict_shape():
     }
 
 
-def test_mcp_describe_sound_tool_registered():
-    """The MCP layer exposes the three bridge tools."""
+def test_mcp_splice_bridge_tools_registered():
+    """The MCP layer exposes the two shipped bridge tools.
+
+    `splice_search_with_sound` was retired 2026-04-22 — user handles
+    audio-reference search in Splice's UI manually.
+    """
     from mcp_server.sample_engine.tools import (
         splice_describe_sound,
         splice_generate_variation,
-        splice_search_with_sound,
     )
     import inspect
-    for fn in (splice_describe_sound, splice_generate_variation, splice_search_with_sound):
+    for fn in (splice_describe_sound, splice_generate_variation):
         assert inspect.iscoroutinefunction(fn), fn.__name__
+
+
+def test_search_with_sound_is_gone():
+    """Regression guard: the retired tool must not reappear in imports.
+
+    If something re-exports `splice_search_with_sound`, this test fails
+    loudly so the author can decide whether resurrection is intentional.
+    """
+    from mcp_server.sample_engine import tools as sample_engine_tools
+    assert not hasattr(sample_engine_tools, "splice_search_with_sound"), \
+        "splice_search_with_sound was retired 2026-04-22 — see docs"
 
 
 # ── Remote script set_chain_name handler ───────────────────────────────

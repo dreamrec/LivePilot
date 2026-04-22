@@ -4,7 +4,12 @@
 Produces a markdown tool catalog validated against mcp.list_tools().
 This is the single source of truth — hand-edited catalogs are replaced.
 
-Usage: python3 scripts/generate_tool_catalog.py > docs/manual/tool-catalog-generated.md
+Usage: python3 scripts/generate_tool_catalog.py > docs/manual/tool-catalog.md
+
+Note (v1.17+): the canonical path is `tool-catalog.md` (used to be split
+across `tool-catalog.md` hand-edited vs `tool-catalog-generated.md` auto.
+The hand-edited copy drifted constantly, so we consolidated on a single
+auto-generated file at the familiar filename).
 """
 
 import asyncio

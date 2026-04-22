@@ -1,0 +1,128 @@
+id: corpus
+name: Corpus
+sonic_description: >
+  Physical modeling resonator — takes an incoming audio signal and runs it
+  through a simulated resonant body (string, beam, membrane, plate, tube,
+  pipe). Transforms drums into mallets, white noise into bowed textures,
+  speech into sung tones. Signature of experimental/minimal/dub aesthetics
+  when used sparingly as a send on a return track.
+effect_type: resonator
+character_tags: [physical, resonant, tonal, pitched, experimental]
+use_cases:
+  - drum_to_pitched_percussion
+  - noise_to_bowed_texture
+  - excite_tuned_resonance_from_any_source
+  - speech_to_sung_formant
+  - atonal_to_harmonic_transformation
+genre_affinity:
+  primary: [experimental, ambient, minimal, idm, sound_design]
+  secondary: [techno, dub, cinematic]
+complexity: advanced
+self_contained: true
+introduced_in: "8.0"
+pack: Core Library
+
+key_parameters:
+  - name: "Resonance Type"
+    description: "Physical model — different bodies have different harmonic signatures"
+    range: ["Beam", "Marimba", "String", "Membrane", "Plate", "Pipe", "Tube"]
+    type: enum
+    sweet_spots:
+      mallet_excitation: "Marimba"
+      bowed_texture: "String"
+      thin_resonance: "Beam"
+      metallic_plate: "Plate"
+      organ_pipe: "Pipe"
+
+  - name: "Decay"
+    description: "How long the resonance sustains after excitation"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      short_pluck: 0.2
+      natural: 0.5
+      infinite_drone: 0.95
+
+  - name: "Tune"
+    description: "Fundamental pitch of the resonator"
+    range: [20.0, 12543.0]
+    unit: "Hz"
+    type: float
+
+  - name: "MIDI Note Tracking"
+    description: "Follow incoming MIDI (via a dummy track) to set tune"
+    range: [0, 1]
+    type: int
+
+  - name: "Brightness"
+    description: "High-frequency content of the resonance"
+    range: [0.0, 1.0]
+    type: float
+
+  - name: "Inharmonics"
+    description: "Detune of higher modes — 0 is perfect harmonic, positive is stretched (like piano)"
+    range: [-1.0, 1.0]
+    type: float
+    sweet_spots:
+      pure_tone: 0.0
+      piano_stretch: 0.2
+      metallic_bell: 0.5
+
+  - name: "Pos"
+    description: "Excitation position on the resonator — 0 is edge, 0.5 is middle. Changes which modes are excited"
+    range: [0.0, 0.5]
+    type: float
+
+  - name: "Dry/Wet"
+    description: "Mix of original vs resonated signal"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      subtle_ring: 0.25
+      balanced: 0.5
+      full_resonator: 1.0
+
+pairs_well_with:
+  - device: "Reverb"
+    reason: "Corpus followed by long reverb = infinite tonal drone from any excitation"
+  - device: "Gate"
+    reason: "Gate in front of Corpus to control exactly when it excites"
+  - device: "Compressor"
+    reason: "After Corpus to even out the ringing resonances"
+  - device: "Auto Filter"
+    reason: "Modulate the resonance brightness for evolving tonal texture"
+
+starter_recipes:
+  - name: "Drum to Mallet"
+    description: "Convert a kick or snare hit into a tuned mallet note"
+    genre: minimal
+    params:
+      "Resonance Type": "Marimba"
+      "Decay": 0.7
+      "Brightness": 0.5
+      "Dry/Wet": 0.9
+
+  - name: "Noise Bow"
+    description: "Excite String resonator with white noise for bowed texture"
+    genre: experimental
+    params:
+      "Resonance Type": "String"
+      "Decay": 0.9
+      "Inharmonics": 0.0
+      "Dry/Wet": 1.0
+
+  - name: "Speech Formant"
+    description: "Route voice through Pipe for sung-tone character"
+    genre: ambient
+    params:
+      "Resonance Type": "Pipe"
+      "Decay": 0.4
+      "Tune": 220.0
+      "Dry/Wet": 0.6
+
+gotchas:
+  - "Corpus is pitched — an atonal source through Corpus becomes a pitched drone on the fundamental. Tune carefully or the track will sit in the wrong key"
+  - "High Decay values can self-resonate and build up infinite feedback — always monitor peak level"
+  - "Pos at 0 excites all modes equally, 0.5 excites only odd harmonics — big tonal difference"
+  - "String and Beam types are very sensitive to input level — quiet signals barely resonate, loud ones clip"
+  - "MIDI Note Tracking requires routing MIDI to the track hosting Corpus (audio-from routing) — not obvious from the UI"

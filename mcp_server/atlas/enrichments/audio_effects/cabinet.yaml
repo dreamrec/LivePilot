@@ -1,0 +1,81 @@
+id: cabinet
+name: Cabinet
+sonic_description: >
+  Speaker cabinet emulation — 5 cabinet types (1x12", 2x12", 4x12" Open,
+  4x12" Closed, 4x10" Bass) with selectable mic type (Dynamic / Condenser
+  / Off-axis) and position. Creates the "speaker in a room" response that
+  makes amp simulations sound like real amps, or runs standalone on any
+  signal for a subtle coloration.
+effect_type: cabinet_simulation
+character_tags: [speaker_response, coloration, space, guitar, bass]
+use_cases:
+  - post_amp_speaker_response
+  - standalone_synth_coloration
+  - drums_through_guitar_cab_for_character
+  - bass_DI_to_cabinet_sound
+genre_affinity:
+  primary: [rock, blues, metal, indie]
+  secondary: [experimental, synthwave, hip_hop]
+complexity: intermediate
+self_contained: true
+introduced_in: "9.0"
+pack: Core Library
+
+key_parameters:
+  - name: "Cabinet Type"
+    description: "Speaker configuration — changes size, mid character, low-end extension"
+    range: ["1x12", "2x12", "4x12 Open", "4x12 Closed", "4x10 Bass"]
+    type: enum
+    sweet_spots:
+      small_warm: "1x12"
+      medium_balanced: "2x12"
+      open_airy: "4x12 Open"
+      tight_punchy: "4x12 Closed"
+      bass_body: "4x10 Bass"
+
+  - name: "Microphone Type"
+    description: "Mic character — Dynamic is midrange-forward, Condenser is airy, Off-axis softens highs"
+    range: ["Dynamic", "Condenser", "Off-axis"]
+    type: enum
+
+  - name: "Microphone Position"
+    description: "On-axis vs edge-of-speaker position"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      on_axis_bright: 0.0
+      edge_mellow: 1.0
+
+  - name: "Dry/Wet"
+    description: "Blend with dry (bypassed) signal"
+    range: [0.0, 1.0]
+    type: float
+
+pairs_well_with:
+  - device: "Amp"
+    reason: "The canonical pair — Amp + Cabinet = full guitar rig emulation"
+  - device: "EQ Eight"
+    reason: "Post-cabinet EQ fixes honkiness or dullness from the specific cabinet type"
+
+starter_recipes:
+  - name: "Classic Rock Rig"
+    description: "4x12 Closed with dynamic mic on-axis"
+    genre: rock
+    params:
+      "Cabinet Type": "4x12 Closed"
+      "Microphone Type": "Dynamic"
+      "Microphone Position": 0.2
+
+  - name: "Airy Indie Guitar"
+    description: "1x12 Open with condenser off-axis for softer highs"
+    genre: indie
+    params:
+      "Cabinet Type": "1x12"
+      "Microphone Type": "Condenser"
+      "Microphone Position": 0.6
+
+gotchas:
+  - "Cabinet without Amp sounds thin — not standalone-useful for guitar. For synths it adds subtle character on its own"
+  - "4x12 Closed has the deepest low end; 4x12 Open sounds more 'air around' and is less mixable"
+  - "Off-axis mic position was used historically to tame bright speakers — don't default to on-axis, listen first"
+  - "For IR-based cabinet simulation with more precision, use Convolution Reverb with cabinet IRs — Cabinet is the fast path, not the ultimate one"

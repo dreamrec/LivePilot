@@ -1,6 +1,6 @@
 # Automation
 
-LivePilot has 8 automation tools covering clip envelopes, arrangement automation, 16 curve types, and 15 named recipes. This chapter covers all of it.
+LivePilot has 9 automation tools covering clip envelopes, arrangement automation (including a v1.17 two-phase session-record workaround for track-level automation outside clips), 16 curve types, and 15 named recipes. This chapter covers all of it.
 
 ---
 

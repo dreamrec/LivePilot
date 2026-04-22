@@ -1,0 +1,94 @@
+id: vocoder
+name: Vocoder
+sonic_description: >
+  Classic channel-vocoder — carrier signal (synth/noise) modulated by a
+  modulator signal's spectral envelope (voice/drums). Converts your voice
+  into a robot singing the synth's notes. Up to 40 bands, adjustable formant
+  shift, noise/pitch tracking modes. Essentiel for Imogen Heap / Daft Punk
+  vocal, robotic speech, and pitched noise/drum transformations.
+effect_type: vocoder
+character_tags: [vocal, robotic, synthesized, formant, classic]
+use_cases:
+  - robot_voice
+  - synth_speaks_words
+  - pitched_drum_transformation
+  - noise_to_harmonic_texture
+  - talk_box_emulation
+genre_affinity:
+  primary: [electronic, hip_hop, pop, synthwave]
+  secondary: [experimental, ambient, dub]
+complexity: intermediate
+self_contained: false
+introduced_in: "8.0"
+pack: Core Library
+
+key_parameters:
+  - name: "Bands"
+    description: "Number of analysis/synthesis bands — more bands = more speech-intelligible"
+    range: [4, 40]
+    type: int
+    sweet_spots:
+      abstract: 8
+      classic_robot: 16
+      speech_clarity: 32
+
+  - name: "Carrier Source"
+    description: "Where the synthesizing signal comes from"
+    range: ["Noise", "External", "Modulator"]
+    type: enum
+
+  - name: "Formant"
+    description: "Shift the formant frequencies up or down"
+    range: [-24, 24]
+    unit: "st"
+    type: int
+    sweet_spots:
+      deeper: -6
+      original: 0
+      chipmunk: 8
+
+  - name: "Depth"
+    description: "Intensity of the vocoding effect"
+    range: [0.0, 1.0]
+    type: float
+
+  - name: "Gate"
+    description: "Silence vocoder output below a threshold — reduces background hiss"
+    range: [-80.0, 0.0]
+    unit: "dB"
+    type: float
+
+pairs_well_with:
+  - device: "Reverb"
+    reason: "Long reverb on vocoded voice creates ethereal robot atmospheres"
+  - device: "Chorus-Ensemble"
+    reason: "Thickens the synthetic voice"
+  - device: "EQ Eight"
+    reason: "Post-vocoder high-pass at 200 Hz cleans up the rumble"
+  - device: "Utility"
+    reason: "Width control for stereo vocoded voices"
+
+starter_recipes:
+  - name: "Classic Robot Voice"
+    description: "Voice modulator, saw-wave carrier"
+    genre: electronic
+    params:
+      "Bands": 16
+      "Carrier Source": "External"
+      "Formant": 0
+      "Depth": 1.0
+
+  - name: "Noise-Carried Drums"
+    description: "Drums as modulator, internal noise carrier — whispering pitched drums"
+    genre: experimental
+    params:
+      "Bands": 12
+      "Carrier Source": "Noise"
+      "Depth": 1.0
+
+gotchas:
+  - "The carrier signal must be harmonically rich (saw, square, noise) — a sine wave carrier produces no vocoded sound"
+  - "External carrier mode requires audio-from routing on the track — most people miss this on first try"
+  - "Very low Bands count (4-8) is abstract, not speech-intelligible — pick Bands based on whether you want words understood"
+  - "Formant shift is in semitones but changes character, not pitch — useful for gender/age effects"
+  - "Gate is essential — without it, even silence outputs noise"

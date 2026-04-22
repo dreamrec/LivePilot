@@ -28,6 +28,7 @@ class AtlasManager:
         self._by_category: Dict[str, List[Dict[str, Any]]] = {}
         self._by_tag: Dict[str, List[Dict[str, Any]]] = {}
         self._by_genre: Dict[str, List[Dict[str, Any]]] = {}
+        self._by_pack: Dict[str, List[Dict[str, Any]]] = {}
 
         for dev in self._devices:
             dev_id = dev.get("id", "")
@@ -55,6 +56,30 @@ class AtlasManager:
                 self._by_genre.setdefault(genre.lower(), []).append(dev)
             for genre in dev.get("genres", {}).get("secondary", []):
                 self._by_genre.setdefault(genre.lower(), []).append(dev)
+            # Also read the enriched genre_affinity field, which is where
+            # curated YAML entries land after merge (scanners emit `genres`,
+            # enrichments emit `genre_affinity` — both must feed the index
+            # or new minimal/microhouse/dub_techno tags would never surface).
+            aff = dev.get("genre_affinity", {}) or {}
+            for genre in aff.get("primary", []) if isinstance(aff, dict) else []:
+                self._by_genre.setdefault(str(genre).lower(), []).append(dev)
+            for genre in aff.get("secondary", []) if isinstance(aff, dict) else []:
+                self._by_genre.setdefault(str(genre).lower(), []).append(dev)
+
+            # Pack index — enriched devices declare `pack:` in YAML. Native
+            # Live devices without an explicit pack default to "Core Library"
+            # so the index covers everything shipped with the stock install.
+            pack_name = dev.get("pack")
+            if not pack_name and dev.get("source") in (None, "native", "browser"):
+                # Heuristic: if we have no explicit pack and the scan source
+                # is the built-in browser, treat as Core Library. Don't fake
+                # a pack for plugins/user samples where the source isn't the
+                # stock library.
+                if dev_category in ("instruments", "audio_effects",
+                                    "midi_effects", "max_for_live"):
+                    pack_name = "Core Library"
+            if pack_name:
+                self._by_pack.setdefault(pack_name, []).append(dev)
 
     # ── Properties ──────────────────────────────────────────────────
 
@@ -83,8 +108,68 @@ class AtlasManager:
                 "by_category": len(self._by_category),
                 "by_tag": len(self._by_tag),
                 "by_genre": len(self._by_genre),
+                "by_pack": len(self._by_pack),
             },
         }
+
+    # ── Pack lookup ────────────────────────────────────────────────
+    def pack_info(self, pack_name: str) -> Dict[str, Any]:
+        """Return summary of a pack — device list + enrichment coverage.
+
+        Matches the pack name case-insensitively; the index stores the
+        canonical casing from the YAML (e.g. "Core Library", "Drone Lab").
+        """
+        if not pack_name:
+            return {"pack": "", "device_count": 0, "enriched_count": 0,
+                    "devices": []}
+
+        target = pack_name.strip().lower()
+        # Find canonical name
+        canonical = None
+        for name in self._by_pack.keys():
+            if name.lower() == target:
+                canonical = name
+                break
+
+        if canonical is None:
+            return {
+                "pack": pack_name,
+                "device_count": 0,
+                "enriched_count": 0,
+                "devices": [],
+                "available_packs": sorted(self._by_pack.keys()),
+            }
+
+        devices = self._by_pack[canonical]
+        enriched = [d for d in devices if d.get("enriched")]
+        return {
+            "pack": canonical,
+            "device_count": len(devices),
+            "enriched_count": len(enriched),
+            "devices": [
+                {
+                    "id": d.get("id", ""),
+                    "name": d.get("name", ""),
+                    "category": d.get("category", ""),
+                    "enriched": bool(d.get("enriched")),
+                    "uri": d.get("uri", ""),
+                }
+                for d in devices
+            ],
+        }
+
+    def list_packs(self) -> List[Dict[str, Any]]:
+        """All known packs with device counts, sorted by size descending."""
+        packs = [
+            {
+                "name": name,
+                "device_count": len(devs),
+                "enriched_count": sum(1 for d in devs if d.get("enriched")),
+            }
+            for name, devs in self._by_pack.items()
+        ]
+        packs.sort(key=lambda p: -p["device_count"])
+        return packs
 
     # ── Lookup ──────────────────────────────────────────────────────
 

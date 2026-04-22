@@ -84,6 +84,7 @@ _ENRICHMENT_FIELDS = frozenset({
     "health_flags",
     "introduced_in",
     "signal_type",
+    "pack",
 })
 
 

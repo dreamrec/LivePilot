@@ -111,6 +111,17 @@ key_parameters:
       balanced: 5000.0
       open: 15000.0
 
+signature_techniques:
+  - name: "Basinski tape degradation"
+    description: "Load a vocal or orchestral source, grain size medium, grain position drifting slowly (via Vector), feedback high. Each playback degrades slightly — the source DECAYS as the piece plays."
+    aesthetic: ['ambient', 'experimental', 'modern_classical']
+  - name: "Dense grain cloud"
+    description: "Grain density maximum, pitch spread wide, position random. The source is obliterated into texture — useful when the sample is too recognizable."
+    aesthetic: ['idm', 'ambient', 'drone']
+  - name: "Slow-motion sustain"
+    description: "Grain size long (500-1000ms), density low (1-2 grains), pitch ratio 0.5 or 0.25. Effectively time-stretches the source with lo-fi grain character. Stars of the Lid territory."
+    aesthetic: ['ambient', 'drone', 'modern_classical']
+
 pairs_well_with:
   - device: "Reverb"
     reason: "Grain clouds dissolve beautifully into reverb — creates immersive washes"

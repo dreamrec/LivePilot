@@ -479,7 +479,16 @@ class SpectralReceiver(asyncio.DatagramProtocol):
         /response_chunk i i s      — chunked response (index, total, data)
     """
 
-    BAND_NAMES = ["sub", "low", "low_mid", "mid", "high_mid", "high", "presence", "air"]
+    # Band names keyed by how many bands the .amxd emits. 8 bands is the v1.x
+    # layout (sub starts at 20 Hz, ~octave per band). 9 bands is v1.16.x+
+    # with an explicit sub_low (20-60 Hz) split off so Villalobos-style kicks
+    # at 40-50 Hz are no longer hidden inside the sub band. The .amxd is the
+    # source of truth for band count — this server picks the right names
+    # based on how many floats actually arrive on /spectrum.
+    BAND_NAMES_8 = ["sub", "low", "low_mid", "mid", "high_mid", "high", "presence", "air"]
+    BAND_NAMES_9 = ["sub_low", "sub", "low", "low_mid", "mid", "high_mid", "high", "presence", "air"]
+    # Default alias kept for any external reader.
+    BAND_NAMES = BAND_NAMES_9
 
     def __init__(self, cache: SpectralCache, miditool_cache: Optional["MidiToolCache"] = None):
         self.cache = cache
@@ -571,8 +580,16 @@ class SpectralReceiver(asyncio.DatagramProtocol):
 
     def _handle_message(self, address: str, args: list) -> None:
         if address == "/spectrum" and len(args) >= 8:
+            # Pick the right name set based on how many bands the .amxd emits.
+            # 9-band payloads come from v1.16.x+ devices with the sub_low split.
+            # 8-band payloads come from older frozen .amxd builds — we keep
+            # working against them until every user has re-frozen.
+            if len(args) >= 9:
+                names = self.BAND_NAMES_9
+            else:
+                names = self.BAND_NAMES_8
             bands = {}
-            for i, name in enumerate(self.BAND_NAMES):
+            for i, name in enumerate(names):
                 if i < len(args):
                     bands[name] = round(float(args[i]), 4)
             self.cache.update("spectrum", bands)

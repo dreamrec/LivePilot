@@ -39,7 +39,7 @@
 		"enablevscroll": 1,
 		"devicewidth": 350.0,
 		"description": "LivePilot Analyzer \u2014 real-time spectral analysis for AI mixing",
-		"digest": "8-band spectrum, RMS, peak, pitch tracking, key detection, LiveAPI bridge",
+		"digest": "9-band spectrum (sub_low+sub+low+low_mid+mid+high_mid+high+presence+air), RMS, peak, pitch tracking, LiveAPI bridge",
 		"tags": "livepilot analyzer spectrum",
 		"style": "",
 		"subpatcher_template": "",
@@ -157,10 +157,11 @@
 				"box": {
 					"id": "obj-5",
 					"maxclass": "newobj",
-					"text": "fffb~ 8",
+					"text": "fffb~ 9",
 					"numinlets": 2,
-					"numoutlets": 8,
+					"numoutlets": 9,
 					"outlettype": [
+						"signal",
 						"signal",
 						"signal",
 						"signal",
@@ -173,7 +174,7 @@
 					"patching_rect": [
 						300.0,
 						180.0,
-						300.0,
+						340.0,
 						22.0
 					]
 				}
@@ -182,7 +183,7 @@
 				"box": {
 					"id": "obj-6",
 					"maxclass": "newobj",
-					"text": "loadmess 40. 130. 350. 1000. 3000. 6000. 10000. 16000.",
+					"text": "loadmess 35. 85. 175. 350. 700. 1400. 2800. 5600. 12000.",
 					"numinlets": 1,
 					"numoutlets": 1,
 					"outlettype": [
@@ -191,7 +192,7 @@
 					"patching_rect": [
 						620.0,
 						150.0,
-						320.0,
+						380.0,
 						22.0
 					]
 				}
@@ -334,6 +335,24 @@
 					],
 					"patching_rect": [
 						615.0,
+						220.0,
+						35.0,
+						22.0
+					]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-abs9",
+					"maxclass": "newobj",
+					"text": "abs~",
+					"numinlets": 1,
+					"numoutlets": 1,
+					"outlettype": [
+						"signal"
+					],
+					"patching_rect": [
+						660.0,
 						220.0,
 						35.0,
 						22.0
@@ -486,10 +505,28 @@
 			},
 			{
 				"box": {
+					"id": "obj-snap9",
+					"maxclass": "newobj",
+					"text": "snapshot~ 200",
+					"numinlets": 2,
+					"numoutlets": 1,
+					"outlettype": [
+						"float"
+					],
+					"patching_rect": [
+						660.0,
+						260.0,
+						80.0,
+						22.0
+					]
+				}
+			},
+			{
+				"box": {
 					"id": "obj-pack",
 					"maxclass": "newobj",
-					"text": "pack f f f f f f f f",
-					"numinlets": 8,
+					"text": "pack f f f f f f f f f",
+					"numinlets": 9,
 					"numoutlets": 1,
 					"outlettype": [
 						""
@@ -497,7 +534,7 @@
 					"patching_rect": [
 						300.0,
 						300.0,
-						300.0,
+						340.0,
 						22.0
 					]
 				}
@@ -832,7 +869,7 @@
 						262.0,
 						136.0
 					],
-					"size": 8,
+					"size": 9,
 					"setminmax": [
 						0.0,
 						0.3
@@ -895,7 +932,13 @@
 						0.9
 					],
 					"thickness": 4,
-					"parameter_enable": 0
+					"parameter_enable": 0,
+					"candicane9": [
+						0.15,
+						0.35,
+						0.7,
+						0.9
+					]
 				}
 			},
 			{
@@ -1698,6 +1741,18 @@
 			{
 				"patchline": {
 					"source": [
+						"obj-5",
+						8
+					],
+					"destination": [
+						"obj-abs9",
+						0
+					]
+				}
+			},
+			{
+				"patchline": {
+					"source": [
 						"obj-abs1",
 						0
 					],
@@ -1787,6 +1842,18 @@
 					],
 					"destination": [
 						"obj-snap8",
+						0
+					]
+				}
+			},
+			{
+				"patchline": {
+					"source": [
+						"obj-abs9",
+						0
+					],
+					"destination": [
+						"obj-snap9",
 						0
 					]
 				}
@@ -1884,6 +1951,18 @@
 					"destination": [
 						"obj-pack",
 						7
+					]
+				}
+			},
+			{
+				"patchline": {
+					"source": [
+						"obj-snap9",
+						0
+					],
+					"destination": [
+						"obj-pack",
+						8
 					]
 				}
 			},
@@ -2675,6 +2754,18 @@
 					],
 					"destination": [
 						"obj-snap8",
+						1
+					]
+				}
+			},
+			{
+				"patchline": {
+					"source": [
+						"obj-snap-start",
+						0
+					],
+					"destination": [
+						"obj-snap9",
 						1
 					]
 				}

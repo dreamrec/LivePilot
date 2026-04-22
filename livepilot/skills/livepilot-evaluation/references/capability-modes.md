@@ -104,7 +104,7 @@ Call `get_capability_state` at the start of any evaluation session. The response
 {
   "mode": "normal",
   "analyzer_connected": true,
-  "bridge_version": "1.16.1",
+  "bridge_version": "1.17.0",
   "spectral_cache_age_ms": 1200,
   "flucoma_available": false,
   "session_connected": true
@@ -147,4 +147,4 @@ routing is transparent.
 - Link Audio (tempo-sync sharing between Live sets) — tracked as a
   future Collaborative-tier feature.
 - Stem Separation v2 — tracked as a future Collaborative-tier feature.
-Neither is available in the 1.16.1 release.
+Neither is available in the 1.17.0 release.

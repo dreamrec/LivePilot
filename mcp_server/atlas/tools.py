@@ -150,6 +150,297 @@ def atlas_compare(ctx: Context, device_a: str, device_b: str, role: str = "") ->
 
 
 @mcp.tool()
+def atlas_describe_chain(
+    ctx: Context,
+    description: str,
+    genre: str = "",
+    limit_per_role: int = 3,
+) -> dict:
+    """Free-text describe-a-chain: "a granular pad that sounds like Tim Hecker"
+    → device chain proposal.
+
+    The mirror of `splice_describe_sound` for the device library. Where
+    `atlas_chain_suggest(role, genre)` takes structured inputs, this takes
+    a free-form sentence and proposes a chain by:
+
+      1. Parsing role hints from the description ("bass", "pad", "lead",
+         "percussion", "drum", "texture", "vocal", "keys")
+      2. Parsing aesthetic hints (artist names → `artist-vocabularies.md`,
+         genre names → `genre-vocabularies.md`, character words → atlas tags)
+      3. Searching the atlas with those terms
+      4. Proposing the top devices per role with brief rationale
+
+    This does NOT autoload anything — it returns a proposal the caller can
+    review, adjust, then execute with `load_browser_item` + a chain of FX.
+
+    description: free text. Examples:
+        "a granular pad that sounds like Tim Hecker"
+        "warm analog bass for minimal techno, deep and dubby"
+        "chopped vocal melody, Akufen-style microhouse"
+        "brittle mallet percussion with long reverb, Stars of the Lid territory"
+    genre:       optional genre bias if the description is genre-agnostic
+    limit_per_role: max devices to suggest per detected role (default 3)
+
+    Returns {description, detected_roles, detected_aesthetic,
+             per_role_suggestions: [...], chain_proposal: [...]}.
+    """
+    atlas = _get_atlas()
+    if atlas is None:
+        return {"error": "Atlas not loaded. Run scan_full_library first."}
+    if not description or not description.strip():
+        return {"error": "description is required"}
+
+    desc_lower = description.lower().strip()
+
+    # ── Detect roles ──────────────────────────────────────────────
+    ROLE_KEYWORDS = {
+        "bass":       ["bass", "sub", "808", "low end", "bottom"],
+        "lead":       ["lead", "melody", "topline", "hook"],
+        "pad":        ["pad", "texture", "atmosphere", "atmos", "drone", "ambient"],
+        "keys":       ["keys", "piano", "rhodes", "wurli", "wurly", "chord"],
+        "percussion": ["percussion", "perc", "shaker", "conga", "claves", "tambourine"],
+        "drums":      ["drums", "drum kit", "kick", "snare", "hat", "hi-hat", "hihat", "break"],
+        "vocal":      ["vocal", "vox", "voice", "chop", "chant"],
+        "fx":         ["fx", "riser", "downlifter", "sweep", "whoosh", "impact"],
+    }
+    detected_roles = []
+    for role, keywords in ROLE_KEYWORDS.items():
+        if any(k in desc_lower for k in keywords):
+            detected_roles.append(role)
+    if not detected_roles:
+        detected_roles = ["pad"]  # sensible default
+
+    # ── Detect aesthetic / artist cues ────────────────────────────
+    ARTIST_TO_TAGS = {
+        "villalobos":     ["minimal_techno", "deep_minimal"],
+        "hawtin":         ["minimal_techno", "deep_minimal"],
+        "plastikman":     ["minimal_techno"],
+        "basic channel":  ["dub_techno", "dub"],
+        "rhythm and sound": ["dub_techno", "dub"],
+        "voigt":          ["ambient", "dub_techno"],
+        "gas":            ["ambient"],
+        "basinski":       ["ambient", "drone"],
+        "stars of the lid": ["ambient", "drone", "modern_classical"],
+        "hecker":         ["ambient", "drone", "experimental"],
+        "aphex":          ["idm", "experimental"],
+        "autechre":       ["idm", "experimental"],
+        "dilla":          ["hip_hop", "lo_fi"],
+        "burial":         ["dubstep", "uk_garage", "ambient"],
+        "akufen":         ["microhouse"],
+        "isolee":         ["microhouse", "deep_house"],
+        "henke":          ["minimal_techno", "experimental"],
+        "monolake":       ["minimal_techno", "experimental"],
+        "tycho":          ["synthwave", "electronica"],
+        "boards of canada": ["downtempo", "lo_fi"],
+    }
+    CHARACTER_TAGS = [
+        "warm", "cold", "bright", "dark", "lush", "thin", "fat", "metallic",
+        "granular", "glitch", "gritty", "clean", "wet", "dry", "resonant",
+        "breathy", "analog", "digital", "vintage", "modern", "organic", "synthetic",
+    ]
+    GENRE_KEYWORDS = [
+        "microhouse", "minimal", "techno", "house", "deep house", "ambient",
+        "drone", "idm", "experimental", "dubstep", "dnb", "drum and bass",
+        "hip hop", "hip-hop", "lo-fi", "lo fi", "lofi", "trap", "garage",
+        "dub techno", "dub", "jazz", "classical", "cinematic", "synthwave",
+        "vaporwave", "ambient techno", "deep minimal",
+    ]
+    detected_aesthetic = []
+    for artist, tags in ARTIST_TO_TAGS.items():
+        if artist in desc_lower:
+            detected_aesthetic.extend(tags)
+    for tag in CHARACTER_TAGS:
+        if f" {tag}" in f" {desc_lower}":
+            detected_aesthetic.append(tag)
+    for g in GENRE_KEYWORDS:
+        if g in desc_lower:
+            detected_aesthetic.append(g.replace(" ", "_").replace("-", "_"))
+    if genre:
+        detected_aesthetic.append(genre.lower())
+    # Dedupe preserving order
+    seen = set()
+    detected_aesthetic = [
+        t for t in detected_aesthetic
+        if not (t in seen or seen.add(t))
+    ]
+
+    # ── Build per-role suggestions via atlas.suggest ─────────────
+    per_role_suggestions = []
+    for role in detected_roles:
+        # Build an intent string that combines role + aesthetic cues
+        intent_parts = [role]
+        intent_parts.extend(detected_aesthetic[:3])  # top 3 aesthetic tags
+        intent = " ".join(intent_parts)
+        results = atlas.suggest(
+            intent=intent,
+            genre=(detected_aesthetic[0] if detected_aesthetic else genre),
+            energy="medium",
+            limit=int(limit_per_role),
+        )
+        per_role_suggestions.append({
+            "role": role,
+            "intent_used": intent,
+            "suggestions": [
+                {
+                    "device_id": r["device"].get("id", ""),
+                    "device_name": r["device"].get("name", ""),
+                    "uri": r["device"].get("uri", ""),
+                    "rationale": r.get("rationale", ""),
+                    "recipe": r.get("recipe"),
+                }
+                for r in results
+            ],
+        })
+
+    # ── Propose a simple chain from the highest-ranked suggestions ─
+    chain_proposal = []
+    position = 0
+    for role_block in per_role_suggestions:
+        if not role_block["suggestions"]:
+            continue
+        top = role_block["suggestions"][0]
+        chain_proposal.append({
+            "position": position,
+            "role": role_block["role"],
+            "device_name": top["device_name"],
+            "device_id": top["device_id"],
+            "uri": top["uri"],
+            "why": top["rationale"],
+        })
+        position += 1
+
+    # ── Cross-reference aesthetic to the vocabulary files ──────────
+    next_steps = []
+    if any("villalobos" in desc_lower or a in detected_aesthetic for a in
+           ("microhouse", "deep_minimal", "minimal_techno", "dub_techno",
+            "ambient", "drone", "idm", "experimental")):
+        next_steps.append(
+            "Cross-reference "
+            "`livepilot/skills/livepilot-core/references/artist-vocabularies.md` "
+            "and `genre-vocabularies.md` for deeper aesthetic guidance."
+        )
+    if not detected_aesthetic:
+        next_steps.append(
+            "No aesthetic or genre cues detected. If the description "
+            "should have matched, add it to the ARTIST_TO_TAGS map or "
+            "provide genre= explicitly."
+        )
+    next_steps.append(
+        "Call `atlas_techniques_for_device(device_id)` on any proposal "
+        "to see what techniques reference it."
+    )
+
+    return {
+        "description": description,
+        "detected_roles": detected_roles,
+        "detected_aesthetic": detected_aesthetic,
+        "per_role_suggestions": per_role_suggestions,
+        "chain_proposal": chain_proposal,
+        "next_steps": next_steps,
+    }
+
+
+@mcp.tool()
+def atlas_techniques_for_device(ctx: Context, device_id: str) -> dict:
+    """Reverse-lookup: what techniques / principles reference this device?
+
+    Answers questions like "what can I do with Granulator III?" by returning
+    every technique across the knowledge base that mentions this device —
+    the device's own `signature_techniques`, sample-manipulation principles
+    that use it, sound-design-deep.md references. Complements
+    `atlas_device_info` (which returns the device's own curated fields) by
+    showing the device's OUTWARD connections — how it fits into techniques
+    that weren't written from the device's perspective.
+
+    device_id: atlas ID (e.g. "granulator_iii", "simpler", "analog"). Use
+               `atlas_search` or `atlas_device_info` to discover IDs.
+
+    Returns {device_id, technique_count, techniques: [...]}, where each
+    technique entry has:
+      - technique: short name (e.g. "Vocal micro-chop (Akufen)")
+      - description: one-line
+      - aesthetic: list of aesthetic/genre tags
+      - source: where this technique lives (`atlas/<id>`,
+                `sample-techniques.md`, `sound-design-deep.md`)
+      - kind: signature_technique | sample_technique | sound_design_principle
+
+    Index is auto-generated from the knowledge base; regenerate via the
+    companion script when adding new techniques (rare — most additions
+    happen through enrichment YAMLs, which the index reads directly).
+    """
+    import json, os
+    index_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "device_techniques_index.json",
+    )
+    if not os.path.isfile(index_path):
+        return {
+            "error": "device_techniques_index.json not found",
+            "hint": "regenerate via the post-v1.17 reverse-index builder script",
+        }
+    try:
+        with open(index_path, "r") as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError) as exc:
+        return {"error": f"Failed to load index: {exc}"}
+
+    if not device_id:
+        # Return a summary of indexed devices
+        devices = data.get("devices", {})
+        return {
+            "indexed_device_count": len(devices),
+            "total_cross_references": data.get("entry_count", 0),
+            "devices": sorted(devices.keys()),
+            "hint": "Pass a device_id for per-device techniques",
+        }
+
+    entries = data.get("devices", {}).get(device_id)
+    if entries is None:
+        return {
+            "device_id": device_id,
+            "technique_count": 0,
+            "techniques": [],
+            "hint": (
+                "No techniques indexed for this device. Try a different ID "
+                "or use `atlas_search` to find the correct one. Devices "
+                "with no cross-references either haven't been enriched yet "
+                "or aren't referenced in any technique doc."
+            ),
+        }
+
+    return {
+        "device_id": device_id,
+        "technique_count": len(entries),
+        "techniques": entries,
+    }
+
+
+@mcp.tool()
+def atlas_pack_info(ctx: Context, pack_name: str = "") -> dict:
+    """Inspect a single Ableton pack — device list + enrichment coverage.
+
+    pack_name: the pack name (e.g., "Drone Lab", "Core Library",
+               "Creative Extensions", "Inspired by Nature"). Case-insensitive.
+               Pass an empty string to get the full list of packs known to
+               the atlas with device counts.
+
+    Returns {pack, device_count, enriched_count, devices[...]} for a
+    specific pack, or {packs: [...]} when called with no name.
+
+    Use this to answer questions like "what's in Drone Lab?" or "how
+    much of Creative Extensions do we have aesthetic knowledge about?"
+    """
+    atlas = _get_atlas()
+    if atlas is None:
+        return {"error": "Atlas not loaded. Run scan_full_library first."}
+
+    if not pack_name:
+        return {"packs": atlas.list_packs()}
+
+    return atlas.pack_info(pack_name)
+
+
+@mcp.tool()
 def scan_full_library(
     ctx: Context,
     force: bool = False,

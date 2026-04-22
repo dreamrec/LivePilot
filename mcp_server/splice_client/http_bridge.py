@@ -1,40 +1,40 @@
 """HTTPS bridge for Splice plugin-exclusive features.
 
-The Splice Sounds Plugin (beta) ships two capabilities that are NOT on the
-local gRPC service:
-  - **Describe a Sound** — natural-language search ("dark ambient pad
-    with shimmer")
-  - **Variations** — generate unique re-keyed / re-tempo'd versions of
-    any sample
+The Splice desktop app and its plugin ship capabilities that are NOT on
+the local gRPC service. They route through a single GraphQL endpoint:
 
-Both call `api.splice.com` over HTTPS, authenticated with the session
-token we can read from the local gRPC `GetSession` RPC.
+  - **Describe a Sound / keyword search** — GraphQL operation
+    `SamplesSearch` with `semantic` + `rephrase` flags. One operation
+    serves both modes via variable toggles.
+  - **Variations** — GraphQL operation `AssetSimilarSoundsQuery`. A
+    recommender lookup ("find similar catalog samples"), not AI audio
+    synthesis.
 
-This module is *scaffolding* — it builds the auth flow, endpoint URLs,
-response parsing, and retry/timeout plumbing so that capturing the real
-endpoint shapes (via mitmproxy against the running plugin) is a matter
-of updating the URL templates rather than rebuilding infrastructure.
+Both authenticated with the bearer JWT we can read from the local gRPC
+`GetSession` RPC. Both captured 2026-04-22 via mitmproxy against
+Splice desktop v5.4.9 + Ableton 12.4 on macOS.
 
-## How to go from scaffolding to working tool
+## Endpoint config
 
-1. Run mitmproxy in transparent mode against the Splice Sounds Plugin
-   while it makes a Describe a Sound or Variations request.
-2. Capture the real endpoint URL, request body shape, and response body.
-3. Drop the values into `SpliceHTTPConfig` defaults or via env vars:
-     - `SPLICE_API_BASE_URL` (default: https://api.splice.com)
-     - `SPLICE_DESCRIBE_ENDPOINT` (default: /v1/describe)
-     - `SPLICE_VARIATION_ENDPOINT` (default: /v1/variations/{file_hash})
-4. Run `splice_describe_sound("dark pad")` — done.
+  - Base URL: `https://surfaces-graphql.splice.com`
+  - Path: `/graphql`
+  - Auth: `Authorization: Bearer <JWT>` (via gRPC GetSession)
+  - Content-type: `application/json`
+  - Body: `{operationName, variables, query}`
+  - User-Agent: LivePilot default (override via env var if Cloudflare
+    blocks — mimic `Splice Baelish/darwin/arm64/arm64 5.4.9/...`)
 
-Until step 4 is complete, the MCP tools return a clear, actionable error
-rather than pretending to work. Zero cheats.
+## GraphQL query location
 
-## Why token-based instead of embedding the plugin
+The full query strings live under `graphql_queries/*.graphql` and are
+loaded lazily at module-import. One file per operation.
 
-The plugin's authentication flow uses Splice's OAuth session tokens.
-These rotate periodically — hardcoding them wouldn't work. Reading from
-`GetSession` RPC means we always use the current session, tied to the
-user's currently-logged-in Splice desktop app.
+## Explicitly NOT wired
+
+Search-with-Sound (drag-audio reference search) was removed 2026-04-22
+— user handles this directly in Splice's UI. The capture recipe is
+preserved at `docs/2026-04-22-splice-https-capture-recipe.md` for any
+future session that wants to resurrect the tool.
 """
 
 from __future__ import annotations
@@ -70,10 +70,9 @@ class SpliceHTTPConfig:
 
     JSON config shape:
       {
-        "base_url": "https://api.splice.com",
-        "describe_endpoint": "/v1/...",
-        "variation_endpoint": "/v1/variations/{file_hash}",
-        "search_with_sound_endpoint": "/v1/...",
+        "base_url": "https://surfaces-graphql.splice.com",
+        "describe_endpoint": "/graphql",
+        "variation_endpoint": "/graphql",
         "timeout_sec": 30.0,
         "max_retries": 2,
         "allow_unverified_endpoints": false
@@ -82,10 +81,12 @@ class SpliceHTTPConfig:
     Any subset of keys is allowed; omitted keys fall through to defaults.
     """
 
-    base_url: str = "https://api.splice.com"
-    describe_endpoint: str = "/v1/describe"
-    variation_endpoint: str = "/v1/variations/{file_hash}"
-    search_with_sound_endpoint: str = "/v1/search-with-sound"
+    # Captured from Splice desktop v5.4.9 via mitmproxy on 2026-04-22.
+    base_url: str = "https://surfaces-graphql.splice.com"
+    describe_endpoint: str = "/graphql"  # GraphQL SamplesSearch operation
+    variation_endpoint: str = "/graphql"  # GraphQL AssetSimilarSoundsQuery
+    # Mimic the desktop client UA when Cloudflare complains.
+    user_agent: str = "LivePilot/1.16 (+splice-http-bridge)"
     timeout_sec: float = 30.0
     max_retries: int = 2
     # Whether any of the above values came from user config (file or env)
@@ -111,7 +112,6 @@ class SpliceHTTPConfig:
                 if isinstance(data, dict):
                     for key in (
                         "base_url", "describe_endpoint", "variation_endpoint",
-                        "search_with_sound_endpoint",
                     ):
                         if key in data and isinstance(data[key], str):
                             setattr(instance, key, data[key])
@@ -147,7 +147,6 @@ class SpliceHTTPConfig:
             ("SPLICE_API_BASE_URL", "base_url", str),
             ("SPLICE_DESCRIBE_ENDPOINT", "describe_endpoint", str),
             ("SPLICE_VARIATION_ENDPOINT", "variation_endpoint", str),
-            ("SPLICE_SEARCH_WITH_SOUND_ENDPOINT", "search_with_sound_endpoint", str),
             ("SPLICE_HTTP_TIMEOUT", "timeout_sec", float),
             ("SPLICE_HTTP_RETRIES", "max_retries", int),
         )
@@ -174,10 +173,33 @@ class SpliceHTTPConfig:
         """True when at least one endpoint URL has been overridden by the
         user (JSON config file or env var).
 
-        Defaults are unverified guesses; callers check this before making
-        requests so we don't silently hit non-existent endpoints.
+        Historically this was the gate for all describe/variation tools
+        because defaults were unverified. As of 2026-04-22 the describe
+        endpoint is verified (GraphQL `surfaces-graphql.splice.com`), so
+        `describe_sound` no longer gates on this. Variation and
+        search-with-sound still do, because their GraphQL operations
+        haven't been captured yet.
         """
         return self._user_configured
+
+    @property
+    def describe_verified(self) -> bool:
+        """True when the describe endpoint is at its known-working value
+        OR the user has explicitly overridden it."""
+        return (
+            self.base_url == "https://surfaces-graphql.splice.com"
+            and self.describe_endpoint == "/graphql"
+        ) or self._user_configured
+
+    @property
+    def variation_verified(self) -> bool:
+        """True when the variation endpoint is at its known-working
+        value (the captured AssetSimilarSoundsQuery path) OR the user
+        has explicitly overridden it. Captured 2026-04-22."""
+        return (
+            self.base_url == "https://surfaces-graphql.splice.com"
+            and self.variation_endpoint == "/graphql"
+        ) or self._user_configured
 
 
 # ── Auth token fetch ─────────────────────────────────────────────────
@@ -203,6 +225,160 @@ async def fetch_session_token(grpc_client) -> Optional[str]:
     except Exception as exc:
         logger.warning("GetSession RPC failed: %s", exc)
         return None
+
+
+# ── GraphQL query loading ────────────────────────────────────────────
+
+
+_QUERY_DIR = os.path.join(os.path.dirname(__file__), "graphql_queries")
+_QUERY_CACHE: dict[str, str] = {}
+
+
+def _load_graphql_query(name: str) -> str:
+    """Load a `.graphql` file from `graphql_queries/` lazily (cached).
+
+    Separating the 5800-char SamplesSearch query into its own file keeps
+    the Python source readable and lets GraphQL-aware tools (IDE syntax
+    highlighting, schema-based linters) treat it as a first-class query.
+
+    Raises FileNotFoundError with a clear message if the query hasn't
+    been captured yet.
+    """
+    if name in _QUERY_CACHE:
+        return _QUERY_CACHE[name]
+
+    path = os.path.join(_QUERY_DIR, f"{name}.graphql")
+    if not os.path.isfile(path):
+        raise FileNotFoundError(
+            f"GraphQL query '{name}' not found at {path}. "
+            f"Capture it via mitmproxy against the Splice desktop app "
+            f"(see docs/2026-04-22-splice-https-capture-recipe.md) and "
+            f"save the captured `query` string to the .graphql file."
+        )
+
+    with open(path, "r", encoding="utf-8") as f:
+        query = f.read()
+    _QUERY_CACHE[name] = query
+    return query
+
+
+def _flatten_sample_item(it: dict) -> dict:
+    """Turn a single Splice GraphQL SampleAsset item into the flat shape
+    LivePilot's tools surface. Shared between SamplesSearch.items[] and
+    similarSounds[] — both queries return identically-shaped items.
+    """
+    if not isinstance(it, dict):
+        return {}
+    tag_labels = [
+        t.get("label", "") for t in (it.get("tags") or [])
+        if isinstance(t, dict)
+    ]
+    # Pack info (items have optional `parents` or can be PackAsset-shaped)
+    pack_name = None
+    parents = it.get("parents") or {}
+    if isinstance(parents, dict):
+        pitems = parents.get("items") or []
+        if pitems and isinstance(pitems[0], dict):
+            pack_name = pitems[0].get("name")
+    return {
+        "uuid": it.get("uuid"),
+        "name": it.get("name"),
+        "bpm": it.get("bpm"),
+        "key": it.get("key"),
+        "duration": it.get("duration"),
+        "instrument": it.get("instrument"),
+        "asset_category": it.get("asset_category_slug"),
+        "chord_type": it.get("chord_type"),
+        "tags": tag_labels,
+        "liked": bool(it.get("liked")),
+        "licensed": bool(it.get("licensed")),
+        "pack_name": pack_name,
+        "files": it.get("files") or [],
+    }
+
+
+def _check_graphql_errors(raw) -> None:
+    """Raise SpliceHTTPError if the GraphQL response has top-level errors.
+
+    Splice returns errors as a top-level `errors: [...]` array alongside
+    or instead of `data:`. A 200 response can still carry a logical
+    error, so every parser must check.
+    """
+    if not isinstance(raw, dict):
+        return
+    if raw.get("errors"):
+        errs = raw["errors"]
+        first = errs[0] if isinstance(errs, list) and errs else errs
+        msg = (first.get("message") if isinstance(first, dict) else str(first))
+        raise SpliceHTTPError(
+            code="GRAPHQL_ERROR",
+            message=f"Splice GraphQL error: {msg}",
+            endpoint="/graphql",
+        )
+
+
+def _parse_samples_search(raw: dict) -> dict:
+    """Normalize the SamplesSearch GraphQL response into a flat shape.
+
+    GraphQL shape: { data: { assetsSearch: { items: [...],
+                    tag_summary: [...], rephrased_query_string, ... } } }
+    Flat shape:    { samples: [...], total_hits, rephrased_query_string,
+                     tag_summary, raw }
+    """
+    if not isinstance(raw, dict):
+        return {"samples": [], "total_hits": 0, "raw": raw}
+    _check_graphql_errors(raw)
+
+    data = raw.get("data") or {}
+    page = data.get("assetsSearch") or {}
+    items = page.get("items") or []
+
+    samples = [_flatten_sample_item(it) for it in items if isinstance(it, dict)]
+
+    pm = page.get("pagination_metadata") or {}
+    rm = page.get("response_metadata") or {}
+    return {
+        "samples": samples,
+        "total_hits": rm.get("records") or len(samples),
+        "total_pages": pm.get("totalPages"),
+        "current_page": pm.get("currentPage"),
+        "rephrased_query_string": page.get("rephrased_query_string"),
+        "tag_summary": [
+            {"label": (ts.get("tag") or {}).get("label"),
+             "count": ts.get("count")}
+            for ts in (page.get("tag_summary") or [])
+            if isinstance(ts, dict)
+        ],
+        "raw": page,
+    }
+
+
+def _parse_similar_sounds(raw: dict) -> dict:
+    """Normalize the AssetSimilarSoundsQuery GraphQL response.
+
+    GraphQL shape: { data: { similarSounds: [SampleAsset, ...] } }
+    Flat shape:    { similar_samples: [...], count }
+
+    Note: Splice calls this the "Variations" feature in the UI, but the
+    underlying semantics are "find catalog samples similar to this one" —
+    not "generate new audio variants". No target-key / target-BPM inputs
+    are supported; the API returns whatever the recommender picks.
+    """
+    if not isinstance(raw, dict):
+        return {"similar_samples": [], "count": 0, "raw": raw}
+    _check_graphql_errors(raw)
+
+    data = raw.get("data") or {}
+    sims = data.get("similarSounds") or []
+    if not isinstance(sims, list):
+        return {"similar_samples": [], "count": 0, "raw": sims}
+
+    samples = [_flatten_sample_item(it) for it in sims if isinstance(it, dict)]
+    return {
+        "similar_samples": samples,
+        "count": len(samples),
+        "raw": sims,
+    }
 
 
 # ── HTTP client ───────────────────────────────────────────────────────
@@ -274,7 +450,7 @@ class SpliceHTTPBridge:
         headers = {
             "Authorization": f"Bearer {token}",
             "Accept": "application/json",
-            "User-Agent": "LivePilot/1.15 (+splice-http-bridge)",
+            "User-Agent": self.config.user_agent,
         }
         if body is not None:
             data_bytes = json.dumps(body).encode("utf-8")
@@ -341,94 +517,121 @@ class SpliceHTTPBridge:
         bpm: Optional[int] = None,
         key: Optional[str] = None,
         limit: int = 20,
+        rephrase: bool = True,
     ) -> dict:
-        """Natural-language sample search.
+        """Natural-language sample search via the GraphQL SamplesSearch
+        operation (captured 2026-04-22).
 
-        Returns a dict with keys: `samples` (list of sample metadata),
-        `total_hits`, plus whatever Splice echoes back. Shape is best-effort
-        until we capture real traffic — see module docstring.
+        Splice's `SamplesSearch` operation serves both keyword AND
+        semantic/describe search from a single endpoint. We set
+        `semantic=1` + `rephrase=True` for describe-style queries.
+        The server echoes `rephrased_query_string` in the response
+        which tells us what the describe engine actually searched for.
+
+        Returns a dict with keys:
+          - `samples`: list of clean sample-metadata dicts (uuid, name,
+            bpm, key, tags, duration, …)
+          - `total_hits`: response record count (from pagination metadata)
+          - `rephrased_query_string`: what Splice rephrased the query to
+          - `tag_summary`: list of {label, count} for faceted filtering
+          - `raw`: the full GraphQL `data` block for debugging
+
+        Raises SpliceHTTPError on auth failure, network issues, or
+        GraphQL-level errors.
         """
-        if not self.config.is_user_configured:
+        if not self.config.describe_verified:
             raise SpliceHTTPError(
                 code="ENDPOINT_NOT_CONFIGURED",
                 message=(
-                    "Describe a Sound endpoint is unverified. Set "
-                    "SPLICE_DESCRIBE_ENDPOINT (or SPLICE_ALLOW_UNVERIFIED_"
-                    "ENDPOINTS=1) once you've captured the real URL via "
-                    "mitmproxy against the Sounds Plugin."
+                    "Describe endpoint points at an unverified URL. "
+                    "Reset to defaults, or set SPLICE_API_BASE_URL + "
+                    "SPLICE_DESCRIBE_ENDPOINT to match real Splice "
+                    "graphql surface (see http_bridge.py docstring)."
                 ),
-                endpoint=self.config.describe_endpoint,
+                endpoint=f"{self.config.base_url}{self.config.describe_endpoint}",
             )
-        body = {
-            "description": description,
+
+        query = _load_graphql_query("samples_search")
+        variables: dict = {
+            "query": str(description),
             "limit": int(limit),
+            "order": "DESC",
+            "sort": "relevance",
+            "semantic": 1,
+            "rephrase": bool(rephrase),
+            "extract_filters": False,
+            "includeSubscriberOnlyResults": False,
+            "tags": [],
+            "tags_exclude": [],
+            "attributes": [],
+            "bundled_content_daws": [],
+            "legacy": True,
         }
         if bpm is not None:
-            body["bpm"] = int(bpm)
+            variables["bpm"] = str(int(bpm))
         if key:
-            body["key"] = key
-        return await self._request("POST", self.config.describe_endpoint, body=body)
+            variables["key"] = str(key)
+
+        body = {
+            "operationName": "SamplesSearch",
+            "variables": variables,
+            "query": query,
+        }
+
+        raw = await self._request("POST", self.config.describe_endpoint, body=body)
+        return _parse_samples_search(raw)
 
     async def generate_variation(
         self,
-        file_hash: str,
-        target_key: Optional[str] = None,
-        target_bpm: Optional[int] = None,
-        count: int = 1,
+        uuid: str,
+        is_legacy: bool = True,
     ) -> dict:
-        """Generate AI variations of a sample.
+        """Find catalog samples similar to a given sample ("Variations").
 
-        Returns a dict with keys: `variations` (list), `credits_spent`.
-        Shape is best-effort until captured — see module docstring.
+        Captured 2026-04-22: Splice's "Variations" right-click menu item
+        fires the GraphQL `AssetSimilarSoundsQuery` with just `uuid` +
+        `isLegacy`. Returns up to 10 similar samples. The name
+        "generate_variation" is a slight misnomer — this is a
+        recommender lookup, not AI-synthesis of new audio — but it
+        matches Splice's user-facing "Variations" label.
+
+        uuid:      the source sample's catalog uuid (as returned by
+                   `splice_describe_sound` or gRPC `SearchSamples`)
+        is_legacy: match how Splice's own client sets it (true for
+                   pre-catalog-v2 samples; leave as default)
+
+        Returns `{similar_samples: [...], count}` — each sample has the
+        same flat shape as `splice_describe_sound` items.
         """
-        if not self.config.is_user_configured:
+        if not self.config.variation_verified:
             raise SpliceHTTPError(
                 code="ENDPOINT_NOT_CONFIGURED",
                 message=(
-                    "Variations endpoint is unverified. Set "
-                    "SPLICE_VARIATION_ENDPOINT (or SPLICE_ALLOW_UNVERIFIED_"
-                    "ENDPOINTS=1) once you've captured the real URL via "
-                    "mitmproxy against the Sounds Plugin."
+                    "Variation endpoint points at an unverified URL. "
+                    "Reset config to defaults so the captured "
+                    "surfaces-graphql.splice.com/graphql endpoint is used."
                 ),
+                endpoint=f"{self.config.base_url}{self.config.variation_endpoint}",
+            )
+        if not uuid or not isinstance(uuid, str):
+            raise SpliceHTTPError(
+                code="INVALID_UUID",
+                message="uuid must be a non-empty string",
                 endpoint=self.config.variation_endpoint,
             )
-        path = self.config.variation_endpoint.format(file_hash=file_hash)
-        body: dict = {"count": max(1, int(count))}
-        if target_key:
-            body["target_key"] = target_key
-        if target_bpm is not None:
-            body["target_bpm"] = int(target_bpm)
-        return await self._request("POST", path, body=body)
+        query = _load_graphql_query("asset_similar_sounds")
+        body = {
+            "operationName": "AssetSimilarSoundsQuery",
+            "variables": {
+                "uuid": uuid,
+                "isLegacy": bool(is_legacy),
+            },
+            "query": query,
+        }
+        raw = await self._request("POST", self.config.variation_endpoint, body=body)
+        return _parse_similar_sounds(raw)
 
-    async def search_with_sound(
-        self,
-        audio_path: str,
-        limit: int = 20,
-    ) -> dict:
-        """Sample-reference search — find catalog samples similar to a file.
-
-        Encodes the file as a multipart POST. Wiring waits on a real
-        endpoint capture; the upload shape is the most uncertain part
-        of the bridge.
-        """
-        if not self.config.is_user_configured:
-            raise SpliceHTTPError(
-                code="ENDPOINT_NOT_CONFIGURED",
-                message=(
-                    "Search with Sound endpoint is unverified. Set "
-                    "SPLICE_SEARCH_WITH_SOUND_ENDPOINT (or SPLICE_ALLOW_"
-                    "UNVERIFIED_ENDPOINTS=1) once you've captured the real "
-                    "URL via mitmproxy against the Sounds Plugin."
-                ),
-                endpoint=self.config.search_with_sound_endpoint,
-            )
-        # Multipart upload — reserved for the real-capture wiring.
-        raise SpliceHTTPError(
-            code="NOT_YET_IMPLEMENTED",
-            message=(
-                "search_with_sound multipart upload wiring is pending real-"
-                "endpoint capture. File a follow-up when the Describe a "
-                "Sound endpoint has been mapped — similar shape is likely."
-            ),
-            endpoint=self.config.search_with_sound_endpoint,
-        )
+    # NOTE: `search_with_sound` method removed 2026-04-22. User does
+    # audio-reference search in-Splice manually. Capture recipe is at
+    # docs/2026-04-22-splice-https-capture-recipe.md if anyone wants to
+    # resurrect it.

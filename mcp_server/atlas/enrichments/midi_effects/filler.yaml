@@ -27,6 +27,23 @@ signature_techniques:
   - name: "Quick drum sketch"
     description: "Dial density, click generate, commit the pattern you like. Move on — don't spend time."
     aesthetic: [all]
+  - name: "Sparse minimal starter"
+    description: "Density at 20-30%, kick-snare-hat only, randomize → random sparse pattern → pick one as the minimal starting point for further human editing."
+    aesthetic: [deep_minimal, microhouse]
+
+pairs_well_with:
+  - device: "Drum Rack"
+    reason: "Filler outputs MIDI — route it INTO a Drum Rack, not onto a synth"
+  - device: "Velocity"
+    reason: "Filler's velocity output is often flat — follow with Velocity MIDI effect for dynamic shaping"
+  - device: "Retrigger"
+    reason: "Filler for base pattern, Retrigger for fill density on accent beats"
+
+gotchas:
+  - "Filler OUTPUTS MIDI to subsequent devices on the track — it does not play back on its own. Place before a Drum Rack"
+  - "Patterns (Iftah, from Generators by Iftah pack) is more musical for minimal. Use Filler when you want FREE and instant"
+  - "Randomize re-generates on every click — use undo to A/B compare patterns"
+  - "Density doesn't account for genre — high density in trap context, low in minimal. Adjust per aesthetic"
 
 learn_more:
   pack: "Building Max Devices"

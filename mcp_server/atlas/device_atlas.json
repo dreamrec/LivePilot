@@ -926,19 +926,49 @@
       "category": "instruments",
       "subcategory": "other",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "cv",
+        "modular",
+        "pitch_out",
+        "gate_out"
+      ],
+      "use_cases": [
+        "modular_voice_from_live",
+        "hybrid_rig"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "modular",
+          "experimental"
+        ],
+        "secondary": [
+          "all"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Pitch Output",
+          "description": "V/oct or Hz/V tuning curve."
+        },
+        {
+          "name": "Gate Output",
+          "description": "Gate signal when note plays."
+        },
+        {
+          "name": "Modulation Outputs",
+          "description": "Velocity, aftertouch, mod wheel as CV."
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
       "gotchas": [],
-      "health_flags": []
+      "health_flags": [],
+      "pack": "CV Tools",
+      "introduced_in": "10.0",
+      "complexity": "intermediate",
+      "sonic_description": "Sends pitch + gate CV from Live to a modular synth. Cent-accurate tuning with flexible modulation routing. Turns any modular voice into a MIDI-playable instrument from Live's sequencer. Requires DC-coupled audio interface.\n"
     },
     {
       "id": "cv_triggers",
@@ -947,19 +977,42 @@
       "category": "instruments",
       "subcategory": "other",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "cv",
+        "modular",
+        "drum_trigger",
+        "gate_out"
+      ],
+      "use_cases": [
+        "modular_drums_from_live"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "modular",
+          "experimental",
+          "hybrid_techno"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Pad Count",
+          "description": "Up to 8 independent gate outputs."
+        },
+        {
+          "name": "Per-pad MIDI note assignment",
+          "description": "Which note triggers which pad."
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
       "gotchas": [],
-      "health_flags": []
+      "health_flags": [],
+      "pack": "CV Tools",
+      "introduced_in": "10.0",
+      "complexity": "intermediate",
+      "sonic_description": "Sends per-pad trigger CV to modular drum modules. Each of 8 pads outputs its own gate. Map MIDI notes to pads, sequence modular drums from Live's clip view.\n"
     },
     {
       "id": "drift",
@@ -1225,19 +1278,186 @@
       "category": "instruments",
       "subcategory": "drums",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "container",
+        "infrastructure",
+        "kit_builder",
+        "per_pad_chain",
+        "macro_addressable"
+      ],
+      "use_cases": [
+        "build_drum_kit_from_loose_samples",
+        "per_pad_effects_processing",
+        "choke_groups_for_hat_pairs",
+        "macro_controlled_drum_performance",
+        "parallel_sample_layering_on_a_single_pad",
+        "host_for_sliced_break_recomposition"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "hip_hop",
+          "electronic",
+          "techno",
+          "house",
+          "trap"
+        ],
+        "secondary": [
+          "dnb",
+          "footwork",
+          "ambient",
+          "experimental",
+          "all"
+        ]
       },
-      "self_contained": true,
-      "key_parameters": [],
-      "pairs_well_with": [],
-      "starter_recipes": [],
-      "gotchas": [],
-      "health_flags": []
+      "self_contained": false,
+      "key_parameters": [
+        {
+          "name": "Pad Note Assignment",
+          "description": "Each pad is assigned a MIDI note (C1=36 by convention for the kick). Programmatic: use `set_drum_chain_note(track, chain_index, note)` rather than GUI drag. The Live 12.4+ drum-map uses note 36 for the bottom-left pad by default.\n",
+          "range": [
+            0,
+            127
+          ],
+          "type": "int",
+          "sweet_spots": {
+            "kick": 36,
+            "snare": 38,
+            "closed_hat": 42,
+            "open_hat": 46,
+            "clap": 39,
+            "ride": 51
+          }
+        },
+        {
+          "name": "Pad Volume (per chain)",
+          "description": "Each pad has its own volume fader on the chain",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "type": "float",
+          "sweet_spots": {
+            "anchor_kick": 0.85,
+            "accent_snare": 0.75,
+            "ghost_hat": 0.35
+          }
+        },
+        {
+          "name": "Pad Pan (per chain)",
+          "description": "Stereo placement per pad \u2014 crucial for width on hats/percs",
+          "range": [
+            -1.0,
+            1.0
+          ],
+          "type": "float",
+          "sweet_spots": {
+            "center": 0.0,
+            "hat_right": 0.25,
+            "perc_wide": 0.6
+          }
+        },
+        {
+          "name": "Choke Group",
+          "description": "Pads in the same choke group cut each other off (pair hats so closed cuts open, or group percussion so overlapping hits don't stack).\n",
+          "range": [
+            0,
+            16
+          ],
+          "type": "int",
+          "sweet_spots": {
+            "hat_pair": 1,
+            "percussion_cluster": 2
+          }
+        },
+        {
+          "name": "Macro 1-8",
+          "description": "Drum Rack macros address any parameter across any pad chain. Use for performance gestures (global dust filter, global saturation, pad volumes collected onto one knob).\n",
+          "range": [
+            0.0,
+            127.0
+          ],
+          "type": "float"
+        }
+      ],
+      "pairs_well_with": [
+        {
+          "device": "Drum Buss",
+          "reason": "The native glue \u2014 shape/boom/transients for the whole kit post-rack. Often the entire mix tool a drum rack needs"
+        },
+        {
+          "device": "Compressor",
+          "reason": "Glue the kit into one punch \u2014 2-4 dB gain reduction with a medium attack"
+        },
+        {
+          "device": "EQ Eight",
+          "reason": "High-pass below 30 Hz, notch masking from kick/snare"
+        },
+        {
+          "device": "Saturator",
+          "reason": "Add harmonic weight without gain staging pain. Especially on sampled kits that sound sterile"
+        },
+        {
+          "device": "Reverb",
+          "reason": "Per-pad sends (build a reverb return) rather than stacking on the master"
+        },
+        {
+          "device": "Gate",
+          "reason": "Tighten room-mic'd one-shots or trim bleed from multi-sampled kits"
+        }
+      ],
+      "starter_recipes": [
+        {
+          "name": "Empty Kit for Sample Programming",
+          "description": "Build from scratch \u2014 use add_drum_rack_pad for each slot",
+          "genre": "electronic",
+          "steps": [
+            "Create empty Drum Rack on a MIDI track",
+            "For each sample: add_drum_rack_pad(track, note=36+i, sample_path=...)",
+            "Verify each pad landed: get_track_info, check chain count",
+            "Set pad volumes by role: kick 0.85, snare 0.75, hats 0.4"
+          ]
+        },
+        {
+          "name": "Sliced-Break Reprogram",
+          "description": "Take a break loop, slice it, reroute to a Drum Rack for MIDI programming",
+          "genre": "dnb",
+          "steps": [
+            "Load break to Simpler in Slicing mode",
+            "classify_simpler_slices to identify kick/snare/hat roles",
+            "Recreate as Drum Rack with each slice as its own pad",
+            "Program new pattern \u2014 you now have MIDI control of the break"
+          ]
+        },
+        {
+          "name": "Layered Kick (sub + click + body)",
+          "description": "Single kick pad with three parallel instruments for fullness",
+          "genre": "techno",
+          "steps": [
+            "Drum Rack \u2192 pad 36 (kick) \u2192 add 3 chains within that pad",
+            "Chain 1: sub sine (Operator sine wave)",
+            "Chain 2: transient click (short sample)",
+            "Chain 3: body (sampled kick tail)",
+            "Balance chain volumes \u2014 sub first, body second, click last"
+          ]
+        }
+      ],
+      "gotchas": [
+        "A Drum Rack with no pads produces nothing \u2014 loading the container alone is not enough. Always verify at least one chain exists via get_track_info before firing notes",
+        "Pad 36 (C1) is the bottom-left in the default view and the conventional kick slot. Live 12's auto-mapping assumes this",
+        "add_drum_rack_pad is the ONE reliable tool for adding pads. Using load_browser_item repeatedly to 'add' pads creates nested racks, not siblings",
+        "Each pad is itself a chain with its own Volume/Pan/Solo/Mute \u2014 per-pad mute is different from muting the pad's chain. Use set_chain_volume for the pad-level fader",
+        "Macros must be explicitly mapped \u2014 they don't auto-address pad volumes. Use add_rack_macro + map_plugin_parameter on the underlying instrument",
+        "Choke groups 0 and 'None' are the same (no choke). Use 1-16 for actual mutual-exclusion grouping",
+        "A sliced Simpler inside a Drum Rack pad responds to slice-base pitch (36+N), NOT the pad's own MIDI note. Mis-configured slicing\u2192pad routing is a common silence cause",
+        "Per-pad sends can be shown/hidden by the rack's S (Send) button on the chain list. Hidden sends still work, but you can't see them \u2014 makes debugging missing reverb very hard"
+      ],
+      "health_flags": [],
+      "synthesis_type": "sample_container",
+      "sonic_description": "A container instrument that maps up to 128 drum pads \u2014 each pad hosts its own Simpler (or Sampler, Operator, or any other instrument plus effect chain) and responds to one MIDI note. Drum Rack is not a synth: its sonic character comes entirely from the samples and devices loaded into its pads. Think of it as infrastructure \u2014 the spine that turns a folder of one-shots into a playable kit with per-pad routing, choke groups, and macro control.\n",
+      "pack": "Core Library",
+      "introduced_in": "6.0",
+      "complexity": "beginner"
     },
     {
       "id": "drum_sampler",
@@ -1928,19 +2148,152 @@
       "category": "instruments",
       "subcategory": "granular",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "granular",
+        "evolving",
+        "textural",
+        "atmospheric",
+        "experimental",
+        "organic",
+        "cloud"
+      ],
+      "use_cases": [
+        "texture",
+        "drone",
+        "vocal_chop",
+        "evolving_pad",
+        "cloud",
+        "re_pitched_loop",
+        "atmosphere"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "deep_minimal",
+          "microhouse",
+          "ambient",
+          "dub_techno",
+          "idm"
+        ],
+        "secondary": [
+          "experimental",
+          "drone",
+          "cinematic",
+          "electronica"
+        ]
       },
-      "self_contained": true,
-      "key_parameters": [],
+      "self_contained": false,
+      "key_parameters": [
+        {
+          "name": "Mode",
+          "description": "Playback mode. Classic = 2 overlapping grains per channel (G II engine). Loop = rhythmic crossfaded playback synced to clip tempo. Cloud = up to 20 unsynced overlapping grains for drones/textures.",
+          "range": [
+            "Classic",
+            "Loop",
+            "Cloud"
+          ],
+          "type": "enum",
+          "sweet_spots": {
+            "rhythmic_micro_loop": "Loop",
+            "drone_cloud": "Cloud",
+            "classic_texture": "Classic"
+          }
+        },
+        {
+          "name": "Grain Size",
+          "description": "Duration of each grain in ms. Shorter = more tonal; longer = more recognizable as source.",
+          "range": [
+            1,
+            1000
+          ],
+          "unit": "ms",
+          "type": "float",
+          "sweet_spots": {
+            "cloud_drone": 200,
+            "vocal_grain": 500,
+            "micro_stutter": 20
+          }
+        },
+        {
+          "name": "Position",
+          "description": "Read-head position in the source sample. Automate this for smooth source traversal.",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "type": "float"
+        },
+        {
+          "name": "Position Random",
+          "description": "Randomness added to read-head position per grain. Essential for Cloud-mode non-repeating texture.",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "type": "float",
+          "sweet_spots": {
+            "locked_loop": 0.0,
+            "organic_scatter": 0.3,
+            "full_chaos": 1.0
+          }
+        },
+        {
+          "name": "Pitch Random",
+          "description": "Per-grain pitch detune in semitones. Low values give vintage tape wobble; high values give chord-cloud effects.",
+          "range": [
+            0.0,
+            24.0
+          ],
+          "unit": "st",
+          "type": "float",
+          "sweet_spots": {
+            "tape_wobble": 0.15,
+            "chord_cloud": 7.0,
+            "octave_chaos": 12.0
+          }
+        },
+        {
+          "name": "Grain Density",
+          "description": "How many grains overlap at once. Higher = denser wall of sound.",
+          "range": [
+            1,
+            20
+          ],
+          "type": "int",
+          "sweet_spots": {
+            "classic": 2,
+            "cloud_pad": 12,
+            "wall_of_sound": 20
+          }
+        },
+        {
+          "name": "Spray",
+          "description": "Time randomization of grain onsets. Prevents periodic artifacts that make granular sound 'machine-like'.",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "type": "float",
+          "sweet_spots": {
+            "organic": 0.2,
+            "fully_asynchronous": 0.6
+          }
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
-      "gotchas": [],
-      "health_flags": []
+      "gotchas": [
+        "Cloud mode with 20 grains + 500ms size is CPU-heavy \u2014 freeze the track after print",
+        "Real-time Capture samples whatever routes to the track \u2014 put on a return to grain a single source cleanly",
+        "Position at 1.0 (end of sample) goes silent \u2014 keep Position + Grain Size below 1.0 of the sample duration",
+        "Grain Size below 20ms starts producing audible tonal artifacts \u2014 good for FM-like textures, bad for 'natural' grain"
+      ],
+      "health_flags": [],
+      "pack": "Granulator III",
+      "introduced_in": "12.0",
+      "synthesis_type": "granular",
+      "complexity": "intermediate",
+      "sonic_description": "Robert Henke's (Monolake) reimagined granular synth. Three playback modes \u2014 Classic (2 overlapping grains per stereo channel, the Granulator II engine), Loop (rhythmic crossfaded sample playback), Cloud (up to 20 unsynced overlapping grains). Full MPE for per-note control of grain size, shape, and position. Real-time audio capture samples any source in one click. The single most-used instrument for evolving texture, drone beds, and vocal-chop clouds in deep minimal / microhouse / ambient.\n"
     },
     {
       "id": "impulse",
@@ -1949,19 +2302,64 @@
       "category": "instruments",
       "subcategory": "drums",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "drum",
+        "sample_player",
+        "lightweight",
+        "8_pad"
+      ],
+      "use_cases": [
+        "quick_drums",
+        "single_kit",
+        "lightweight_programming"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "house",
+          "techno",
+          "all_electronic_drums"
+        ],
+        "secondary": [
+          "all"
+        ]
       },
-      "self_contained": true,
-      "key_parameters": [],
+      "self_contained": false,
+      "key_parameters": [
+        {
+          "name": "Per-pad sample slot (8 pads)",
+          "description": "Each pad holds one sample, mapped to a MIDI note."
+        },
+        {
+          "name": "Start / Transpose / Stretch",
+          "description": "Per-pad playback controls."
+        },
+        {
+          "name": "Saturator",
+          "description": "Per-pad one-knob saturator."
+        },
+        {
+          "name": "Filter",
+          "description": "Per-pad LP/HP filter with envelope."
+        },
+        {
+          "name": "Decay / Mute Group",
+          "description": "Decay envelope; mute group for hi-hat choke patterns."
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
-      "gotchas": [],
-      "health_flags": []
+      "gotchas": [
+        "Only 8 pads \u2014 for bigger kits, use Drum Rack",
+        "No per-pad chain = no per-pad effect insert \u2014 use return sends instead",
+        "No MPE support"
+      ],
+      "health_flags": [],
+      "pack": "Core Library",
+      "introduced_in": "7.0",
+      "synthesis_type": "drum_sampler",
+      "complexity": "beginner",
+      "sonic_description": "Ableton's original drum sampler \u2014 8-pad sample player with per-pad pitch, pan, volume, and simple filter/saturator/envelope. Older than Drum Rack but still ships with Live; lighter CPU, simpler interface. Good for quick one-shot drums when you don't need Drum Rack's full chain architecture. The understated alternative when a full Drum Rack is overkill.\n"
     },
     {
       "id": "instrument_rack",
@@ -3196,7 +3594,8 @@
       "sonic_description": "Full-featured multi-zone sampler with velocity layers, key zones, round-robin selection, and a deep modulation matrix. The most powerful sampling instrument in Live, designed for building realistic multi-sampled instruments with complex modulation routing, multiple filter types, and three LFOs.\n",
       "complexity": "advanced",
       "introduced_in": "1.0",
-      "synthesis_type": "sampling"
+      "synthesis_type": "sampling",
+      "pack": "Core Library"
     },
     {
       "id": "simpler",
@@ -3540,13 +3939,17 @@
         "Warp must be ON for the sample to follow session tempo \u2014 off by default for pitched samples",
         "Transpose shifts pitch in semitones, not time \u2014 use Warp for time-stretching without pitch change",
         "crop_simpler and reverse_simpler are available as LivePilot tools for destructive sample editing",
-        "replace_simpler_sample only works if a sample is already loaded \u2014 cannot replace an empty Simpler"
+        "replace_simpler_sample only works if a sample is already loaded \u2014 cannot replace an empty Simpler",
+        "Snap must be OFF after load_sample_to_simpler, or the sample plays silently (known Live bug). LivePilot auto-clears Snap in the role-aware load path",
+        "load_browser_item Simplers come up at Volume=-12 dB and Ve Mode=None; track meter reads normal but master reads silence. Set Volume=0 dB on sustained tracks",
+        "Slice mode maps slice N to MIDI pitch 36+N (base C1), NOT 60+C3 \u2014 notes at pitch 60+ produce silence. See `get_simpler_slices` doesn't disclose the base pitch"
       ],
       "health_flags": [],
       "sonic_description": "Streamlined sample-based instrument with three playback modes: Classic for chromatic pitched playback, One-Shot for triggered samples, and Slicing for beat chopping. The workhorse sampler for quick sample loading and manipulation with built-in filter, envelope, and LFO \u2014 faster and simpler than Sampler for most tasks.\n",
       "complexity": "beginner",
       "introduced_in": "1.0",
-      "synthesis_type": "sampling"
+      "synthesis_type": "sampling",
+      "pack": "Core Library"
     },
     {
       "id": "tension",
@@ -5104,19 +5507,45 @@
       "category": "audio_effects",
       "subcategory": "performance",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "loop",
+        "performance",
+        "arrangement"
+      ],
+      "use_cases": [
+        "extended_breakdown",
+        "live_remix",
+        "arrangement_sketch"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "live_performance",
+          "dj_sets"
+        ],
+        "secondary": [
+          "all"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Loop Lengths",
+          "description": "Up to 4 customizable lengths (1/2 bar, 1 bar, 2 bars, 4 bars typical)."
+        },
+        {
+          "name": "Toggle Buttons",
+          "description": "Enable each loop length individually."
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
       "gotchas": [],
-      "health_flags": []
+      "health_flags": [],
+      "pack": "Performance Pack",
+      "introduced_in": "11.0",
+      "complexity": "beginner",
+      "sonic_description": "Quick-toggle loop-length device for Arrangement View (Performance Pack). Four customizable loop lengths, switchable on/off mid-performance. Studio use: rapid arrangement experimentation without manual timeline manipulation. Live/DJ use: extended breakdowns and remix sections.\n"
     },
     {
       "id": "audio_effect_rack",
@@ -5125,19 +5554,109 @@
       "category": "audio_effects",
       "subcategory": "racks",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "container",
+        "macro",
+        "chain",
+        "parallel",
+        "infrastructure"
+      ],
+      "use_cases": [
+        "parallel_effect_processing",
+        "macro_controlled_effect_chain",
+        "signature_reusable_chain_presets",
+        "chain_selector_a_b_swap",
+        "preset_friendly_complex_effect_setup"
+      ],
       "genre_affinity": {
-        "primary": [],
+        "primary": [
+          "all"
+        ],
         "secondary": []
       },
-      "self_contained": true,
-      "key_parameters": [],
-      "pairs_well_with": [],
-      "starter_recipes": [],
-      "gotchas": [],
-      "health_flags": []
+      "self_contained": false,
+      "key_parameters": [
+        {
+          "name": "Macro 1-8",
+          "description": "Rack macros \u2014 map each to parameter(s) in any chain. Most-mapped rack knob is a performance gesture",
+          "range": [
+            0.0,
+            127.0
+          ],
+          "type": "float"
+        },
+        {
+          "name": "Chain Volume (per chain)",
+          "description": "Per-chain output level for parallel blending",
+          "range": [
+            -70.0,
+            6.0
+          ],
+          "unit": "dB",
+          "type": "float"
+        },
+        {
+          "name": "Chain Solo/Mute",
+          "description": "Isolate one chain or disable it",
+          "range": [
+            0,
+            1
+          ],
+          "type": "int"
+        },
+        {
+          "name": "Chain Selector",
+          "description": "Gate chains based on a zone \u2014 useful for 'only chain A plays in zone 0-63, only chain B plays in 64-127'",
+          "range": [
+            0,
+            127
+          ],
+          "type": "int"
+        }
+      ],
+      "pairs_well_with": [
+        {
+          "device": "Any audio effect",
+          "reason": "Drop any effect into a chain \u2014 Rack is just the scaffolding"
+        }
+      ],
+      "starter_recipes": [
+        {
+          "name": "Signature Vocal Chain",
+          "description": "EQ \u2192 De-esser \u2192 Compressor \u2192 Reverb send, with Macro 1 = reverb amount",
+          "genre": "all",
+          "steps": [
+            "Create Audio Effect Rack on vocal track",
+            "Chain 1: EQ Eight \u2192 Multiband Dynamics (de-esser) \u2192 Compressor \u2192 Reverb",
+            "Map Macro 1 to Reverb Dry/Wet",
+            "Map Macro 2 to Compressor Threshold"
+          ]
+        },
+        {
+          "name": "Parallel Saturation",
+          "description": "Two chains \u2014 clean and heavily saturated \u2014 blended via macro",
+          "genre": "rock",
+          "steps": [
+            "Chain 1: clean pass-through",
+            "Chain 2: Saturator (warm) + Limiter",
+            "Map Macro 1 to Chain 2 Volume \u2014 sweep from clean to dirty"
+          ]
+        }
+      ],
+      "gotchas": [
+        "Chains are PARALLEL by default \u2014 all chains receive the input and sum to the output. Don't confuse with serial",
+        "Chain output level is post-chain-effects \u2014 you can saturate heavily and then pull Chain Volume down to keep master level sane",
+        "Rack Variations (store_rack_variation / recall_rack_variation) capture the full state for A/B swap \u2014 essential for workflow",
+        "Macros don't auto-map \u2014 use add_rack_macro + map_plugin_parameter explicitly. Naming macros after mapping is also worth the extra call",
+        "For MIDI-effect containers use Instrument Rack or MIDI Effect Rack \u2014 this rack is audio-only"
+      ],
+      "health_flags": [],
+      "sonic_description": "Container for audio effects with up to 8 macro knobs mapped to any parameters across any chain. Parallel chains, chain selector, A/B morphing via Rack Variations. Not an effect itself \u2014 the infrastructure that makes complex effect sculpting macro-addressable. Essential for building \"signature chains\" you can reuse, and for Akufen-style parallel-chain routing.\n",
+      "pack": "Core Library",
+      "introduced_in": "4.0",
+      "complexity": "intermediate",
+      "effect_type": "container"
     },
     {
       "id": "auto_filter",
@@ -7506,19 +8025,41 @@
       "category": "audio_effects",
       "subcategory": "other",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "cv",
+        "sync",
+        "tempo",
+        "slave"
+      ],
+      "use_cases": [
+        "modular_master_daw_slave"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "modular",
+          "experimental"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Clock Rate",
+          "description": "PPQN \u2014 pulses per quarter note."
+        },
+        {
+          "name": "Source Channel",
+          "description": "Which audio input receives the clock."
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
       "gotchas": [],
-      "health_flags": []
+      "health_flags": [],
+      "pack": "CV Tools",
+      "introduced_in": "10.0",
+      "complexity": "intermediate",
+      "sonic_description": "Synchronizes Live's tempo from an incoming clock signal (from Eurorack). Use when the modular is the master timekeeper and Live follows.\n"
     },
     {
       "id": "cv_clock_out",
@@ -7527,19 +8068,42 @@
       "category": "audio_effects",
       "subcategory": "other",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "cv",
+        "sync",
+        "tempo",
+        "master"
+      ],
+      "use_cases": [
+        "daw_master_modular_slave"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "modular",
+          "experimental",
+          "hybrid_techno"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Clock Rate",
+          "description": "PPQN \u2014 typically 4 PPQN for Eurorack."
+        },
+        {
+          "name": "Output Channel",
+          "description": "Which audio output carries the clock."
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
       "gotchas": [],
-      "health_flags": []
+      "health_flags": [],
+      "pack": "CV Tools",
+      "introduced_in": "10.0",
+      "complexity": "beginner",
+      "sonic_description": "Sends Live's tempo as a clock signal out to modular gear. Live is the master, modular follows. The more common direction in hybrid setups.\n"
     },
     {
       "id": "cv_envelope_follower",
@@ -7548,19 +8112,50 @@
       "category": "audio_effects",
       "subcategory": "other",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "envelope_follower",
+        "dynamic_modulation",
+        "audio_to_cv"
+      ],
+      "use_cases": [
+        "dynamic_filter",
+        "audio_driven_modulation",
+        "creative_sidechain"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "deep_minimal",
+          "dub_techno",
+          "electronic"
+        ],
+        "secondary": [
+          "all"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Rise / Fall",
+          "description": "Envelope attack and release times."
+        },
+        {
+          "name": "Scale",
+          "description": "Output depth."
+        },
+        {
+          "name": "Invert",
+          "description": "Flip envelope polarity \u2014 modulation reduces instead of increases."
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
       "gotchas": [],
-      "health_flags": []
+      "health_flags": [],
+      "pack": "CV Tools",
+      "introduced_in": "10.0",
+      "complexity": "intermediate",
+      "sonic_description": "Tracks the amplitude envelope of an audio signal and emits CV. Can modulate modular gear OR, crucially, any internal Live parameter \u2014 kick drum \u2192 CV Envelope Follower \u2192 modulates pad filter cutoff \u2192 pad opens up on every kick. Creative sidechain alternative that gives CV shape, not just gain reduction.\n"
     },
     {
       "id": "cv_in",
@@ -7569,19 +8164,40 @@
       "category": "audio_effects",
       "subcategory": "other",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "cv",
+        "audio_to_control",
+        "modular"
+      ],
+      "use_cases": [
+        "modular_modulator_for_daw"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "modular",
+          "experimental"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Input Channel",
+          "description": "Audio input carrying CV."
+        },
+        {
+          "name": "Scale / Offset",
+          "description": "Normalize CV range to 0-1 for Live parameter mapping."
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
       "gotchas": [],
-      "health_flags": []
+      "health_flags": [],
+      "pack": "CV Tools",
+      "introduced_in": "10.0",
+      "complexity": "intermediate",
+      "sonic_description": "Route incoming CV from modular gear to modulate any Live parameter. Turn a modular LFO or envelope follower into a control source for internal Live plugins.\n"
     },
     {
       "id": "cv_lfo",
@@ -7590,19 +8206,55 @@
       "category": "audio_effects",
       "subcategory": "other",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "lfo",
+        "modulation",
+        "cv",
+        "internal_modulation"
+      ],
+      "use_cases": [
+        "extra_lfo",
+        "modular_cv",
+        "parameter_modulation"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "modular",
+          "experimental",
+          "deep_minimal"
+        ],
+        "secondary": [
+          "all"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Rate",
+          "description": "LFO frequency \u2014 Hz or tempo-synced."
+        },
+        {
+          "name": "Waveform",
+          "description": "Sine / Triangle / Saw / Square / Random / custom shape."
+        },
+        {
+          "name": "Depth",
+          "description": "Output amplitude \u2014 controls modulation depth at the destination."
+        },
+        {
+          "name": "Offset",
+          "description": "DC offset \u2014 pre-bias the modulation range."
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
       "gotchas": [],
-      "health_flags": []
+      "health_flags": [],
+      "pack": "CV Tools",
+      "introduced_in": "10.0",
+      "complexity": "beginner",
+      "sonic_description": "M4L LFO generator from CV Tools. Originally designed to send CV to modular systems via a DC-coupled audio interface, but equally useful as an extra LFO inside Live \u2014 route its output audio to modulate any Live parameter via a return-track sidechain or internal MIDI mapping. When you want more LFOs than a synth natively provides, CV LFO is the answer.\n"
     },
     {
       "id": "cv_shaper",
@@ -7611,19 +8263,51 @@
       "category": "audio_effects",
       "subcategory": "other",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "cv",
+        "custom_shape",
+        "envelope",
+        "lfo"
+      ],
+      "use_cases": [
+        "custom_envelope",
+        "bespoke_lfo",
+        "parameter_modulation"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "modular",
+          "experimental",
+          "deep_minimal"
+        ],
+        "secondary": [
+          "all"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Shape Canvas",
+          "description": "Draw the CV curve graphically."
+        },
+        {
+          "name": "Rate",
+          "description": "Cycle time \u2014 tempo-sync or free."
+        },
+        {
+          "name": "Scale / Offset",
+          "description": "Output amplitude and DC offset."
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
       "gotchas": [],
-      "health_flags": []
+      "health_flags": [],
+      "pack": "CV Tools",
+      "introduced_in": "10.0",
+      "complexity": "intermediate",
+      "sonic_description": "Create flexible CV shapes inside Live, then send to modular OR use internally. Draw custom envelopes/LFOs on a graphical canvas. Useful WITHOUT modular hardware as a free-form envelope/LFO source for any Live parameter.\n"
     },
     {
       "id": "cv_utility",
@@ -7632,19 +8316,55 @@
       "category": "audio_effects",
       "subcategory": "other",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "cv_processing",
+        "scale",
+        "offset",
+        "invert",
+        "quantize"
+      ],
+      "use_cases": [
+        "curve_shaping",
+        "modulation_scaling",
+        "parameter_processing"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "modular",
+          "experimental"
+        ],
+        "secondary": [
+          "all"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Scale",
+          "description": "Multiply incoming CV by a factor."
+        },
+        {
+          "name": "Offset",
+          "description": "Add a DC offset."
+        },
+        {
+          "name": "Invert",
+          "description": "Flip the signal polarity."
+        },
+        {
+          "name": "Quantize",
+          "description": "Snap CV to discrete steps \u2014 useful for pitched CV."
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
       "gotchas": [],
-      "health_flags": []
+      "health_flags": [],
+      "pack": "CV Tools",
+      "introduced_in": "10.0",
+      "complexity": "beginner",
+      "sonic_description": "Process control voltages via automation curves. Scale, offset, invert, quantize CV signals. Works standalone even without modular gear \u2014 use to shape Live's internal automation before it hits the destination parameter. Acts as a curve-shaper between a source LFO/envelope and the modulated parameter.\n"
     },
     {
       "id": "delay",
@@ -8633,19 +9353,151 @@
       "category": "audio_effects",
       "subcategory": "modulation",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "modulation",
+        "sidechain",
+        "follower",
+        "routing",
+        "audio_reactive"
+      ],
+      "use_cases": [
+        "audio_reactive_filter_opening",
+        "alternative_to_compressor_sidechain_ducking",
+        "amplitude_to_any_parameter_mapping",
+        "kick_drives_pad_filter_cutoff",
+        "dynamic_send_modulation_per_hit"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "techno",
+          "minimal",
+          "dub",
+          "electronic"
+        ],
+        "secondary": [
+          "ambient",
+          "experimental",
+          "house"
+        ]
       },
-      "self_contained": true,
-      "key_parameters": [],
-      "pairs_well_with": [],
-      "starter_recipes": [],
-      "gotchas": [],
-      "health_flags": []
+      "self_contained": false,
+      "key_parameters": [
+        {
+          "name": "Gain",
+          "description": "Input level \u2014 scales the detected amplitude before envelope follows",
+          "range": [
+            -35.0,
+            35.0
+          ],
+          "unit": "dB",
+          "type": "float"
+        },
+        {
+          "name": "Attack",
+          "description": "Envelope rise time",
+          "range": [
+            0.1,
+            1000.0
+          ],
+          "unit": "ms",
+          "type": "float",
+          "sweet_spots": {
+            "instant": 0.1,
+            "smooth": 30.0,
+            "slow": 200.0
+          }
+        },
+        {
+          "name": "Release",
+          "description": "Envelope fall time",
+          "range": [
+            0.1,
+            10000.0
+          ],
+          "unit": "ms",
+          "type": "float",
+          "sweet_spots": {
+            "tight": 50.0,
+            "musical": 200.0,
+            "long_tail": 800.0
+          }
+        },
+        {
+          "name": "Min",
+          "description": "Minimum output value (modulation offset)",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "type": "float"
+        },
+        {
+          "name": "Max",
+          "description": "Maximum output value (modulation ceiling)",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "type": "float"
+        },
+        {
+          "name": "Rise/Fall Shape",
+          "description": "Curvature of attack/release \u2014 linear vs exponential",
+          "range": [
+            "Linear",
+            "Exponential"
+          ],
+          "type": "enum"
+        }
+      ],
+      "pairs_well_with": [
+        {
+          "device": "Auto Filter",
+          "reason": "Envelope Follower mapped to Auto Filter cutoff on the same track \u2014 audio-reactive filter without sidechaining"
+        },
+        {
+          "device": "Compressor",
+          "reason": "Alternative or complement to sidechain compression \u2014 follower gives more control over the curve shape"
+        }
+      ],
+      "starter_recipes": [
+        {
+          "name": "Kick-Ducked Pad Filter",
+          "description": "Send kick as audio-from, follow its envelope, map to pad's filter cutoff",
+          "genre": "techno",
+          "params": {
+            "Attack": 1.0,
+            "Release": 300.0,
+            "Min": 0.3,
+            "Max": 1.0
+          }
+        },
+        {
+          "name": "Snare-Triggered Reverb Swell",
+          "description": "Snare hits open the reverb send momentarily \u2014 rhythmic ambient texture",
+          "genre": "experimental",
+          "params": {
+            "Attack": 5.0,
+            "Release": 500.0,
+            "Min": 0.0,
+            "Max": 0.8
+          }
+        }
+      ],
+      "gotchas": [
+        "Envelope Follower does NOT process audio \u2014 it outputs a CV-like value that must be Map-assigned to another parameter. Without a mapping, it does nothing audible",
+        "Requires audio-from routing from a different track OR placement on the track whose envelope you want to follow \u2014 easy to mis-route",
+        "Attack of 0.1ms tracks transients exactly; >10ms smooths and loses transient precision. Pick based on what you're mapping to",
+        "Min/Max define the output range \u2014 if you want full modulation, Min=0 Max=1. For subtle modulation, narrow the range (Min=0.4 Max=0.6)",
+        "For programmatic automation-like behavior without audio input, use LFO instead"
+      ],
+      "health_flags": [],
+      "sonic_description": "M4L modulator \u2014 extracts the amplitude envelope of an incoming audio signal and maps it to ANY parameter anywhere in the live set via Map mode. The key device for audio-rate modulation: use a kick drum to open a filter on a pad, use a snare to close a reverb send on the vocal, use a sidechain key to drive automation depth on macros. Critical infrastructure for minimal/dub ducking not done via Compressor sidechain.\n",
+      "pack": "Core Library",
+      "introduced_in": "10.0",
+      "complexity": "intermediate",
+      "effect_type": "modulator"
     },
     {
       "id": "eq_eight",
@@ -9265,19 +10117,102 @@
       "category": "audio_effects",
       "subcategory": "routing",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "hardware",
+        "routing",
+        "infrastructure",
+        "insert",
+        "hybrid_rig"
+      ],
+      "use_cases": [
+        "outboard_compressor_insert",
+        "hardware_pedal_through_daw",
+        "re_amping_via_hardware_amp",
+        "send_to_synth_audio_through"
+      ],
       "genre_affinity": {
-        "primary": [],
+        "primary": [
+          "all"
+        ],
         "secondary": []
       },
-      "self_contained": true,
-      "key_parameters": [],
-      "pairs_well_with": [],
+      "self_contained": false,
+      "key_parameters": [
+        {
+          "name": "Audio To",
+          "description": "Output audio port \u2014 the physical output sent to hardware",
+          "range": [
+            "Ext Out 1",
+            "Ext Out 2",
+            "..."
+          ],
+          "type": "enum"
+        },
+        {
+          "name": "Audio From",
+          "description": "Input audio port \u2014 the physical return from hardware",
+          "range": [
+            "Ext In 1",
+            "Ext In 2",
+            "..."
+          ],
+          "type": "enum"
+        },
+        {
+          "name": "Gain",
+          "description": "Make-up gain for the returning signal",
+          "range": [
+            -35.0,
+            35.0
+          ],
+          "unit": "dB",
+          "type": "float"
+        },
+        {
+          "name": "Hardware Latency",
+          "description": "Measured round-trip latency for delay compensation \u2014 auto-detected",
+          "range": [
+            0.0,
+            1000.0
+          ],
+          "unit": "ms",
+          "type": "float"
+        },
+        {
+          "name": "Dry/Wet",
+          "description": "Blend processed return with dry",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "type": "float"
+        }
+      ],
+      "pairs_well_with": [
+        {
+          "device": "Utility",
+          "reason": "Utility before External effect for gain staging into the hardware, after for final trim"
+        },
+        {
+          "device": "Compressor",
+          "reason": "Tracking compressor in DAW for safety, hardware compressor in External for character"
+        }
+      ],
       "starter_recipes": [],
-      "gotchas": [],
-      "health_flags": []
+      "gotchas": [
+        "Requires multi-channel audio interface with at least one unused input/output pair",
+        "Hardware Latency must be correct or everything downstream will be phase-wrong \u2014 use Auto-Detect and trust it unless you hear smearing",
+        "Don't bypass \u2014 the audio signal is physically leaving the DAW. Bypass stops the round-trip but doesn't mute your hardware",
+        "For pure hardware synth MIDI \u2192 audio return, External Instrument is more appropriate than External Audio Effect",
+        "Running multiple External Audio Effects on different tracks can easily saturate interface I/O \u2014 check channel availability"
+      ],
+      "health_flags": [],
+      "sonic_description": "Infrastructure device for routing audio OUT to external hardware (a guitar pedal, an outboard compressor, a hardware synth's audio-through path) and back IN. Essential for hybrid hardware/DAW setups. Handles audio delay compensation automatically via send-receive round-trip timing.\n",
+      "pack": "Core Library",
+      "introduced_in": "8.0",
+      "complexity": "intermediate",
+      "effect_type": "hardware_insert"
     },
     {
       "id": "filter_delay",
@@ -10870,19 +11805,143 @@
       "category": "audio_effects",
       "subcategory": "performance",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "performance",
+        "overdub",
+        "live",
+        "tape_loop",
+        "experimental"
+      ],
+      "use_cases": [
+        "live_performance_looping",
+        "studio_experiment_sample_yourself",
+        "dub_style_tape_loop_emulation",
+        "generative_composition_from_single_source"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "indie",
+          "folk",
+          "experimental",
+          "dub"
+        ],
+        "secondary": [
+          "ambient",
+          "live_performance",
+          "electronic"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
-      "pairs_well_with": [],
-      "starter_recipes": [],
-      "gotchas": [],
-      "health_flags": []
+      "key_parameters": [
+        {
+          "name": "State",
+          "description": "Current state \u2014 Stop / Record / Play / Overdub",
+          "range": [
+            "Stop",
+            "Record",
+            "Play",
+            "Overdub"
+          ],
+          "type": "enum"
+        },
+        {
+          "name": "Tempo Mode",
+          "description": "How Looper handles tempo \u2014 Set and Follow, None, Set Song, Follow Song",
+          "range": [
+            "None",
+            "Set Song",
+            "Follow Song"
+          ],
+          "type": "enum"
+        },
+        {
+          "name": "Quantization",
+          "description": "Quantize loop start/overdub to beat grid",
+          "range": [
+            "None",
+            "1/4",
+            "1/2",
+            "1 bar",
+            "2 bars",
+            "4 bars",
+            "8 bars"
+          ],
+          "type": "enum"
+        },
+        {
+          "name": "Feedback",
+          "description": "Overdub feedback \u2014 <100% fades old layers over time",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "type": "float",
+          "sweet_spots": {
+            "infinite_layer": 1.0,
+            "tape_style_fade": 0.85,
+            "fast_fade": 0.5
+          }
+        },
+        {
+          "name": "Record Dry/Wet",
+          "description": "Record dry input, wet loop, or blend",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "type": "float"
+        }
+      ],
+      "pairs_well_with": [
+        {
+          "device": "Reverb",
+          "reason": "Post-looper reverb creates ambient soundscapes from single notes"
+        },
+        {
+          "device": "Auto Filter",
+          "reason": "Modulate looper output with LFO for evolving loop texture"
+        },
+        {
+          "device": "Pedal",
+          "reason": "Stomp-box feedback into Looper for dubby layered grit"
+        }
+      ],
+      "starter_recipes": [
+        {
+          "name": "Live Performance Loop",
+          "description": "4-bar loop with infinite feedback for overdub layering",
+          "genre": "indie",
+          "params": {
+            "Tempo Mode": "Set Song",
+            "Quantization": "4 bars",
+            "Feedback": 1.0
+          }
+        },
+        {
+          "name": "Tape-Loop Decay",
+          "description": "Dub-style decaying loop that fades over bars",
+          "genre": "dub",
+          "params": {
+            "Tempo Mode": "Set Song",
+            "Quantization": "2 bars",
+            "Feedback": 0.8
+          }
+        }
+      ],
+      "gotchas": [
+        "Looper is performance-focused \u2014 programming it fully via MCP is awkward. Use live triggering (foot-pedal / MIDI) for real-time control",
+        "Feedback at 1.0 means infinite layering \u2014 overdubs never fade. Feedback at 0.9 or below is more musical for tape-style use",
+        "Record Dry/Wet affects what's captured, not what's heard \u2014 raise the track's return to verify what's going into the loop",
+        "Tempo Mode Set Song locks Looper to current session tempo; None lets Looper fall behind/ahead if tempo changes",
+        "Unlike Live 11 drag-to-export, audio capture from Looper for further processing requires re-recording to an audio track"
+      ],
+      "health_flags": [],
+      "sonic_description": "Real-time audio looper \u2014 captures a segment of audio and layers overdubs. Built around performance rather than mixing. Records at the current tempo, optional tempo detection from length, variable feedback on overdubs. Used live for build-a-song-on-stage sets (Ed Sheeran, KT Tunstall style), in studio as a creative \"sample yourself\" tool, or for dub-style tape-loop emulation.\n",
+      "pack": "Core Library",
+      "introduced_in": "7.0",
+      "complexity": "intermediate",
+      "effect_type": "looper"
     },
     {
       "id": "multiband_dynamics",
@@ -11578,19 +12637,46 @@
       "category": "audio_effects",
       "subcategory": "performance",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "macro",
+        "performance",
+        "curve_shaped",
+        "unifier"
+      ],
+      "use_cases": [
+        "live_control",
+        "parameter_unification",
+        "curve_automation"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "all"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Control Layout",
+          "description": "Add/remove/rename faders, buttons, crossfaders freely."
+        },
+        {
+          "name": "Macro Mappings",
+          "description": "Each control maps to any Live parameter (including M4L devices and plugin parameters)."
+        },
+        {
+          "name": "Macro Editor Curve",
+          "description": "Shape the response \u2014 exponential, S-curve, stepped \u2014 per macro."
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
       "gotchas": [],
-      "health_flags": []
+      "health_flags": [],
+      "pack": "Performance Pack",
+      "introduced_in": "11.0",
+      "complexity": "intermediate",
+      "sonic_description": "Macro-control device from Performance Pack (Iftah). Multiple faders, crossfaders, buttons, dials \u2014 fully user-configurable to mirror any hardware controller. Integrated Macro Editor for curve shaping. Studio use: unify disparate parameter automation into a single interface. Live use: build a one-controller performance surface for Live + external gear.\n"
     },
     {
       "id": "phaser_flanger",
@@ -11848,19 +12934,82 @@
       "category": "audio_effects",
       "subcategory": "pitch",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "pitched",
+        "glitchy",
+        "reversed",
+        "randomized",
+        "micro_stutter"
+      ],
+      "use_cases": [
+        "akufen_stutter",
+        "pitched_ghost",
+        "reverse_echo",
+        "textural_delay"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "microhouse",
+          "deep_minimal",
+          "idm",
+          "experimental"
+        ],
+        "secondary": [
+          "dub_techno",
+          "electronica"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Transpose",
+          "description": "Pitch shift in semitones + cents on the delayed signal.",
+          "range": [
+            -24,
+            24
+          ],
+          "unit": "st",
+          "type": "int"
+        },
+        {
+          "name": "Delay Time",
+          "description": "Delay in ms or tempo-synced subdivisions."
+        },
+        {
+          "name": "Feedback",
+          "description": "Pitched echo feedback. Cascading when transpose is non-zero.",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "type": "float"
+        },
+        {
+          "name": "Reverse",
+          "description": "Reverse-plays the delay buffer.",
+          "type": "boolean"
+        },
+        {
+          "name": "Randomize",
+          "description": "Randomizes pitch and/or reverse per repeat. The Villalobos-texture parameter.",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "type": "float"
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
-      "gotchas": [],
-      "health_flags": []
+      "gotchas": [
+        "Randomize above 0.8 can produce notes wildly out of key \u2014 gate with key-detection first if harmony matters."
+      ],
+      "health_flags": [],
+      "pack": "Creative Extensions",
+      "introduced_in": "10.0",
+      "complexity": "beginner",
+      "sonic_description": "Versatile pitch-shifting delay for Creative Extensions. Combines transposition, reverse, feedback, and randomization on a single delay line. Lighter-weight companion to PitchLoop89 \u2014 less of a spatial architect, more of a per-sound treatment for pitched echoes and random reversal textures. The go-to for Akufen-style micro-stutter on hats and the random-reverse pitched ghosts that Villalobos uses on every track.\n"
     },
     {
       "id": "pitchloop89",
@@ -11869,19 +13018,141 @@
       "category": "audio_effects",
       "subcategory": "pitch",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "detuned",
+        "shimmering",
+        "glitchy",
+        "spatial",
+        "pitched",
+        "experimental",
+        "vintage_digital"
+      ],
+      "use_cases": [
+        "stab_shimmer",
+        "detuned_echo",
+        "reverse_tail",
+        "infinite_feedback",
+        "glitched_texture"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "deep_minimal",
+          "dub_techno",
+          "ambient",
+          "experimental"
+        ],
+        "secondary": [
+          "microhouse",
+          "idm",
+          "drone",
+          "cinematic"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Pitch A / Pitch B",
+          "description": "Coarse pitch shift per voice, in semitones. Two voices mean you can split: one +0.05 cents shimmer, one -0.07 cents detune for dual-detune clouds.",
+          "range": [
+            -24,
+            24
+          ],
+          "unit": "st",
+          "type": "int",
+          "sweet_spots": {
+            "dual_detune_cloud": "+0.05 / -0.07 cents",
+            "octave_shimmer": "+12 / +0",
+            "reverse_ambience": "+0 / +0 with reverse on"
+          }
+        },
+        {
+          "name": "Fine A / Fine B",
+          "description": "Fine detune per voice in cents (\u00b1100).",
+          "range": [
+            -100,
+            100
+          ],
+          "unit": "cents",
+          "type": "int",
+          "sweet_spots": {
+            "shimmer": "+5 / -7",
+            "chorus_thick": "+15 / -15"
+          }
+        },
+        {
+          "name": "Feedback A / Feedback B",
+          "description": "Per-voice feedback. High values (80-95%) produce infinite-ascending or descending pitch spirals. Shepard-tone territory.",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "type": "float",
+          "sweet_spots": {
+            "subtle_echo": 0.35,
+            "pitched_spiral": 0.85,
+            "near_infinite": 0.97
+          }
+        },
+        {
+          "name": "Reverse",
+          "description": "Per-voice reverse playback. Reverses the delay buffer before pitch shift \u2014 creates 'reverse swell' tails from any transient.",
+          "type": "boolean",
+          "sweet_spots": {
+            "chord_swell_in": true
+          }
+        },
+        {
+          "name": "Mode",
+          "description": "Signal routing: L/R (independent), Sum (both voices sum to mono), Cross (voice A to R out, voice B to L out, stereo ping-pong at different pitches).",
+          "range": [
+            "L/R",
+            "Sum",
+            "Cross"
+          ],
+          "type": "enum",
+          "sweet_spots": {
+            "stereo_ping_pong": "Cross",
+            "mono_layer": "Sum"
+          }
+        },
+        {
+          "name": "Sample Rate",
+          "description": "Buffer sample rate reduction. Lower values add characterful lo-fi grit \u2014 emulates the original Publison's digital artifacts.",
+          "range": [
+            1,
+            44100
+          ],
+          "unit": "Hz",
+          "type": "int",
+          "sweet_spots": {
+            "vintage_89": 12000,
+            "heavy_lofi": 4000
+          }
+        },
+        {
+          "name": "Vibrato LFO",
+          "description": "Modulates pitch over time. Sine or square waveform; rate in Hz.",
+          "type": "composite"
+        },
+        {
+          "name": "Position LFO",
+          "description": "Modulates the read position in the delay buffer. Seven waveforms including random. The source of the 'shuddering glitch' and 'fractured rhythm' textures Henke uses.",
+          "type": "composite"
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
-      "gotchas": [],
-      "health_flags": []
+      "gotchas": [
+        "Feedback above 0.95 can self-oscillate into runaway loop \u2014 keep a hand on the mute",
+        "Reverse mode introduces latency equal to the buffer length \u2014 sync-critical material needs delay compensation",
+        "Sample Rate very low (<2000Hz) aliases heavily; character, not hi-fi"
+      ],
+      "health_flags": [],
+      "pack": "PitchLoop89",
+      "introduced_in": "11.0",
+      "complexity": "intermediate",
+      "sonic_description": "Robert Henke's emulation of the 1979 Publison DHM 89 B2 pitch-shifting delay. Two independent pitch-shifting delay voices per stereo channel, each with their own pitch (\u00b124 semitones), fine detune (\u00b11 semitone), feedback, pan, and reverse capability. Sample rate selection, hold function, vibrato LFO (sine/square), position modulation LFO with 7 waveforms. THE tool for Monolake-style detuned delay clouds, Basic Channel spatial signatures, and Arpiar-adjacent shimmered stabs.\n"
     },
     {
       "id": "prearranger",
@@ -11890,19 +13161,47 @@
       "category": "audio_effects",
       "subcategory": "utility",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "performance",
+        "scaffold",
+        "live_recording",
+        "structure"
+      ],
+      "use_cases": [
+        "long_form_sketch",
+        "hypnotic_structure",
+        "set_recording"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "deep_minimal",
+          "live_performance",
+          "ambient"
+        ],
+        "secondary": [
+          "electronic_all"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Slot Layout",
+          "description": "Pre-place empty arrangement clips where you want recorded content to land."
+        },
+        {
+          "name": "Auto-fill Toggle",
+          "description": "Enable Prearranger \u2014 live content records into the pre-placed slots."
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
       "gotchas": [],
-      "health_flags": []
+      "health_flags": [],
+      "pack": "Performance Pack",
+      "introduced_in": "11.0",
+      "complexity": "intermediate",
+      "sonic_description": "Structural pre-planning device from Performance Pack (Iftah). Define clip locations in Arrangement View as empty slots, then perform live and Live auto-fills them with the performance. Transforms live recording into a compositional scaffold. Ideal for sketching long hypnotic structures (deep minimal) or entire sets without mid-performance arrangement decisions.\n"
     },
     {
       "id": "re_enveloper",
@@ -11911,19 +13210,71 @@
       "category": "audio_effects",
       "subcategory": "dynamics",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "multiband",
+        "envelope_shaping",
+        "transient",
+        "sculpted"
+      ],
+      "use_cases": [
+        "transient_shape",
+        "decay_control",
+        "per_band_dynamics",
+        "micro_stab"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "minimal",
+          "dub_techno",
+          "electronica"
+        ],
+        "secondary": [
+          "all_genres"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Band Split Frequencies",
+          "description": "Low/Mid and Mid/High crossover points in Hz.",
+          "range": [
+            20,
+            20000
+          ],
+          "unit": "Hz",
+          "type": "float"
+        },
+        {
+          "name": "C/E Factor (per band)",
+          "description": "Compression (positive) or Expansion (negative) factor per band.",
+          "range": [
+            -5.0,
+            5.0
+          ],
+          "type": "float",
+          "sweet_spots": {
+            "subtle_expand": 1.5,
+            "aggressive_stab": 3.0,
+            "decay_tightening": -2.0
+          }
+        },
+        {
+          "name": "Attack / Release (per band)",
+          "description": "Envelope-shape time constants for each band independently."
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
-      "gotchas": [],
-      "health_flags": []
+      "gotchas": [
+        "Expansion factors above 4.0 can cause clipping \u2014 compensate output gain.",
+        "Crossover bands overlap by ~6dB \u2014 not a surgical splitter."
+      ],
+      "health_flags": [],
+      "pack": "Creative Extensions",
+      "introduced_in": "10.0",
+      "complexity": "intermediate",
+      "sonic_description": "Multiband envelope processor with three adjustable frequency bands. Unlike compression (which reduces amplitude when over threshold), Re-Enveloper reshapes envelope character itself \u2014 attack, sustain, decay \u2014 independently per band. The right tool for 'shorten the decay of this sustained sound so it behaves like a stab' or 'expand the transient on the highs only'.\n"
     },
     {
       "id": "redux",
@@ -13354,19 +14705,79 @@
       "category": "audio_effects",
       "subcategory": "spectral",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "spectral",
+        "halo",
+        "reverb_like",
+        "ethereal",
+        "frozen",
+        "frequency_selective"
+      ],
+      "use_cases": [
+        "halo_pad",
+        "ghost_atmosphere",
+        "frozen_texture",
+        "spectral_bed"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "ambient",
+          "deep_minimal",
+          "experimental",
+          "drone"
+        ],
+        "secondary": [
+          "dub_techno",
+          "cinematic"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Frequency Range",
+          "description": "Low and high cutoff of the blurred band. Narrow ranges produce pitched halos; wide ranges produce reverb-like wash."
+        },
+        {
+          "name": "Halo (Grain Length)",
+          "description": "How long each spectral grain lingers. Short = shimmer; long = sustained bed.",
+          "range": [
+            50,
+            5000
+          ],
+          "unit": "ms",
+          "type": "float",
+          "sweet_spots": {
+            "subtle_shimmer": 200,
+            "sustained_bed": 2000
+          }
+        },
+        {
+          "name": "Residual",
+          "description": "Amount of dry signal that passes through. 0 = fully wet halo, 1 = hear the source clearly.",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "type": "float"
+        },
+        {
+          "name": "Freeze",
+          "description": "Holds the current spectral content. Manual or MIDI-triggered.",
+          "type": "boolean"
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
-      "gotchas": [],
-      "health_flags": []
+      "gotchas": [
+        "Halo times above 3000ms accumulate CPU \u2014 freeze the track after print",
+        "Narrow frequency ranges at high levels self-oscillate \u2014 keep Residual > 0 or compress"
+      ],
+      "health_flags": [],
+      "pack": "Creative Extensions",
+      "introduced_in": "10.0",
+      "complexity": "intermediate",
+      "sonic_description": "Spectral halo/reverb hybrid. Creates reverb-like textures by blurring user-defined frequency ranges into dense clouds of delayed/smeared harmonic content. Not a real reverb \u2014 no IR \u2014 but the result behaves like one, with more control over which frequency ranges get haloed. Freeze button holds the current spectral content indefinitely. The tool for ethereal pads from sparse sources and alien textures that don't sound like rooms.\n"
     },
     {
       "id": "spectral_resonator",
@@ -13973,19 +15384,57 @@
       "category": "audio_effects",
       "subcategory": "spatial",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "multichannel",
+        "spatial",
+        "quad",
+        "surround"
+      ],
+      "use_cases": [
+        "installation",
+        "quad_club",
+        "cinema",
+        "multichannel_studio"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "ambient_installation",
+          "cinema"
+        ],
+        "secondary": [
+          "experimental"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Channel Layout",
+          "description": "4.0, 5.1, 7.1, 8.0 \u2014 select target format."
+        },
+        {
+          "name": "XY Pan",
+          "description": "2D pan position."
+        },
+        {
+          "name": "Rotate",
+          "description": "Auto-rotate the signal around the listening position."
+        },
+        {
+          "name": "Focus / Spread",
+          "description": "Width of the source in the field."
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
-      "gotchas": [],
-      "health_flags": []
+      "gotchas": [
+        "Stereo monitoring shows only a downmix \u2014 impossible to audition properly without a multichannel setup"
+      ],
+      "health_flags": [],
+      "pack": "Surround Panner",
+      "introduced_in": "11.0",
+      "complexity": "intermediate",
+      "sonic_description": "Multichannel spatial panner. 4/6/8-channel speaker setups, 8 presets. Not Ambisonic \u2014 discrete-channel panning. Only relevant for multi-channel output setups (installation, quad+ club, cinema). In stereo studio work, offers minimal benefit.\n"
     },
     {
       "id": "tuner",
@@ -14301,19 +15750,56 @@
       "category": "audio_effects",
       "subcategory": "utility",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "snapshot",
+        "morph",
+        "quantized",
+        "state_recall"
+      ],
+      "use_cases": [
+        "chain_morph",
+        "live_recall",
+        "section_transition",
+        "effect_evolution"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "deep_minimal",
+          "microhouse",
+          "electronic_live"
+        ],
+        "secondary": [
+          "all"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Snapshot Slots",
+          "description": "Store up to N states. Each slot captures every parameter's value."
+        },
+        {
+          "name": "Morph Time",
+          "description": "How long the interpolation between snapshots takes."
+        },
+        {
+          "name": "Quantization",
+          "description": "Snap morph to bar / beat / scene boundary."
+        },
+        {
+          "name": "Selective Inclusion",
+          "description": "Mark which parameters participate in each snapshot \u2014 exclude the ones you don't want to morph."
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
       "gotchas": [],
-      "health_flags": []
+      "health_flags": [],
+      "pack": "Performance Pack",
+      "introduced_in": "11.0",
+      "complexity": "intermediate",
+      "sonic_description": "Snapshot management from Performance Pack (Iftah). Captures any device chain state or clip state and morphs between snapshots, quantized to a musical boundary. The studio weapon: save 5 variations of a chord stab's effect chain, clip-trigger morphing between them = gradual evolution over 8-16 bars without 50 automation lanes. This is how you get the 'chord-is-different-every-time' Villalobos behavior programmatically.\n"
     },
     {
       "id": "vector_delay",
@@ -14548,19 +16034,52 @@
       "category": "audio_effects",
       "subcategory": "modulation",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "particle_physics",
+        "coupled_modulation",
+        "multi_destination",
+        "generative"
+      ],
+      "use_cases": [
+        "coupled_modulation",
+        "non_trivial_modulation",
+        "physical_motion"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "experimental",
+          "ambient",
+          "deep_minimal"
+        ],
+        "secondary": [
+          "idm",
+          "sound_design"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Particle Behavior",
+          "description": "Gravity, friction, forces \u2014 defines how the particle moves."
+        },
+        {
+          "name": "Destination Mappings",
+          "description": "Route the particle's X/Y/velocity to multiple Live parameters."
+        },
+        {
+          "name": "Depth per destination",
+          "description": "How much the particle influences each destination."
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
       "gotchas": [],
-      "health_flags": []
+      "health_flags": [],
+      "pack": "Inspired by Nature",
+      "introduced_in": "11.0",
+      "complexity": "advanced",
+      "sonic_description": "Particle-physics modulation router (Inspired by Nature, Dillon Bastan). One particle drives multiple parameter destinations simultaneously. Unlike an LFO (one source \u2192 one destination), Vector Map lets a single particle's position control filter cutoff AND send level AND reverb decay at once \u2014 coupled modulation that LFOs cannot produce. Essential for organic, physically-coherent sound design.\n"
     },
     {
       "id": "vinyl_distortion",
@@ -15786,19 +17305,59 @@
       "category": "midi_effects",
       "subcategory": "other",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "chord",
+        "voicing",
+        "library",
+        "mpe"
+      ],
+      "use_cases": [
+        "quick_chords",
+        "voicing_variety",
+        "harmonic_sketch"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "gospel",
+          "trap",
+          "rnb",
+          "jazz",
+          "classical",
+          "house",
+          "post_rock"
+        ],
+        "secondary": [
+          "all"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Chord Set",
+          "description": "52 sets organized by genre/feel."
+        },
+        {
+          "name": "Root Note",
+          "description": "Transpose the current voicing."
+        },
+        {
+          "name": "Voicing Variation",
+          "description": "Swap inversions and voicings within the selected set."
+        },
+        {
+          "name": "MPE Modulation",
+          "description": "Per-note pitch/velocity from an MPE controller."
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
       "gotchas": [],
-      "health_flags": []
+      "health_flags": [],
+      "pack": "Expressive Chords",
+      "introduced_in": "11.0",
+      "complexity": "beginner",
+      "sonic_description": "MIDI chord library + voicing engine. 52 chord sets across gospel, trap, R&B, jazz, classical, house, post-rock. MPE-ready \u2014 per-note pitch-bend, dynamics, articulation. Trigger a root note, get a full voicing; use MPE to bend individual voice members.\n"
     },
     {
       "id": "melodic_steps",
@@ -15979,19 +17538,97 @@
       "category": "midi_effects",
       "subcategory": "other",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "microtonal",
+        "scale",
+        "shapeshifting",
+        "polyphonic",
+        "mpe"
+      ],
+      "use_cases": [
+        "microtonal_melody",
+        "scale_morph",
+        "drone_tuning",
+        "chord_recasting"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "ambient",
+          "experimental",
+          "deep_minimal",
+          "drone"
+        ],
+        "secondary": [
+          "microhouse",
+          "jazz_fusion",
+          "cinematic"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Scale (Deck A / Deck B)",
+          "description": "Two independent scale slots. Load .scl files by drag-drop. Blend between them via the Blend slider.",
+          "type": "composite"
+        },
+        {
+          "name": "Blend",
+          "description": "Morph between Deck A and Deck B scales in real-time. Automate over 16+ bars for harmonic drift.",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "type": "float",
+          "sweet_spots": {
+            "pure_deck_a": 0.0,
+            "midpoint_morph": 0.5,
+            "automated_drift": "0.0 \u2192 1.0 over 32 bars"
+          }
+        },
+        {
+          "name": "Reference Pitch",
+          "description": "The reference MIDI note that maps to 'unity' in the scale. Usually 60 (middle C) or 69 (A4 = 440Hz).",
+          "range": [
+            0,
+            127
+          ],
+          "type": "int"
+        },
+        {
+          "name": "Base Frequency",
+          "description": "Frequency assigned to the reference pitch. 440Hz standard; try 432Hz for conspiratorial-warmth vibes.",
+          "range": [
+            200,
+            600
+          ],
+          "unit": "Hz",
+          "type": "float"
+        },
+        {
+          "name": "Lead / Follow",
+          "description": "In Lead mode, broadcasts its scale via Live's state. In Follow mode, receives from a Lead instance. Use to sync scales across instruments.",
+          "range": [
+            "Lead",
+            "Follow",
+            "None"
+          ],
+          "type": "enum"
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
-      "gotchas": [],
-      "health_flags": []
+      "gotchas": [
+        "Scale must be loaded BEFORE the downstream instrument receives notes \u2014 otherwise Live plays equal-tempered.",
+        "MPE works only when the downstream instrument is MPE-capable (Meld, Wavetable with MPE on, Granulator III, etc.).",
+        "Lead/Follow sync requires Live 12.1+.",
+        "Some instruments ignore pitch bend beyond \u00b12 semitones \u2014 check the instrument's pitch-bend range before loading exotic scales."
+      ],
+      "health_flags": [],
+      "pack": "Microtuner",
+      "introduced_in": "12.0",
+      "complexity": "intermediate",
+      "sonic_description": "MIDI device (Max for Live) that applies microtonal tunings to downstream instruments. Imports Scala (.scl) files \u2014 the standard format for microtonal tunings, freely available from the Huygens-Fokker archive. Supports pitch count up to 128, arbitrary octave ratios, Lead/Follow mode to sync scales across multiple Microtuner instances, polyphonic playback, MPE compatibility. Real-time blend-two-scales slider for shapeshifting melodies and recasted chords.\n"
     },
     {
       "id": "midi_effect_rack",
@@ -16913,19 +18550,51 @@
       "category": "midi_effects",
       "subcategory": "other",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "polyrhythmic",
+        "rotating",
+        "generative",
+        "drum_programming"
+      ],
+      "use_cases": [
+        "polymetric_drums",
+        "techno_groove",
+        "idm_pattern"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "techno",
+          "idm",
+          "deep_minimal"
+        ],
+        "secondary": [
+          "all_electronic"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Ring Size",
+          "description": "Number of steps in the ring (e.g., 16, 12, 7)."
+        },
+        {
+          "name": "Pulse Count",
+          "description": "Beats distributed around the ring. Classic Euclidean distribution."
+        },
+        {
+          "name": "Rotation",
+          "description": "Shift the starting position of the pattern on the ring."
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
       "gotchas": [],
-      "health_flags": []
+      "health_flags": [],
+      "pack": "CV Tools",
+      "introduced_in": "10.0",
+      "complexity": "intermediate",
+      "sonic_description": "M4L polyrhythmic MIDI generator from CV Tools. Originally a modular CV-triggers tool, but operates as a standalone MIDI generator inside Live. Generates rotating polyrhythmic patterns across multiple tracks or drum-rack pads. One of the most under-utilized M4L devices for complex techno / IDM groove programming.\n"
     },
     {
       "id": "scale",
@@ -17118,19 +18787,58 @@
       "category": "midi_effects",
       "subcategory": "other",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "polymetric",
+        "asymmetric",
+        "condition_based",
+        "modular_style"
+      ],
+      "use_cases": [
+        "polymetric_melody",
+        "asymmetric_bass",
+        "hypnotic_pattern",
+        "generative_loop"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "deep_minimal",
+          "microhouse",
+          "techno",
+          "idm"
+        ],
+        "secondary": [
+          "experimental",
+          "generative"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Per-Lane Step Count",
+          "description": "Each of up to ~8 lanes has its own step length (1-16). Non-coincident values = polymeter."
+        },
+        {
+          "name": "Per-Lane Direction",
+          "description": "Forward / Backward / Ping-Pong / Random per lane."
+        },
+        {
+          "name": "Condition",
+          "description": "Rule-based gating \u2014 fire on every Nth pass, after N fails, etc."
+        },
+        {
+          "name": "Output Pitch / Velocity / Gate Length (per lane)",
+          "description": "Independent control per lane."
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
       "gotchas": [],
-      "health_flags": []
+      "health_flags": [],
+      "pack": "Sequencers",
+      "introduced_in": "11.0",
+      "complexity": "intermediate",
+      "sonic_description": "16-step sequencer with per-lane independent step length and direction \u2014 the polymetric secret weapon from the Sequencers pack. Set melody lane to 16 steps, rhythm lane to 15, bass lane to 11 \u2192 each lane progresses at its own rate \u2192 infinite non-repeating patterns from simple inputs. Condition feature adds rule-based triggering (every 3rd pass, etc.).\n"
     },
     {
       "id": "step_arp",
@@ -19421,19 +21129,104 @@
       "category": "sounds",
       "subcategory": "other",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "drone",
+        "microtonal",
+        "sustained",
+        "harmonic",
+        "meditative",
+        "evolving",
+        "dark"
+      ],
+      "use_cases": [
+        "drone_bed",
+        "harmonic_atmosphere",
+        "microtonal_pad",
+        "ambient_bed",
+        "tension_bed"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "ambient",
+          "deep_minimal",
+          "dub_techno",
+          "drone",
+          "experimental"
+        ],
+        "secondary": [
+          "cinematic",
+          "dark_ambient",
+          "microhouse"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Tuning System",
+          "description": "Selects the scale used to map voices. Each tuning produces a different harmonic flavor.",
+          "range": [
+            "Equal",
+            "Just",
+            "Pythagorean",
+            "Solfeggio",
+            "Pelog",
+            "Indian"
+          ],
+          "type": "enum",
+          "sweet_spots": {
+            "deep_minimal_bed": "Just",
+            "dark_meditation": "Solfeggio",
+            "exotic_mystery": "Pelog"
+          }
+        },
+        {
+          "name": "Voice Count",
+          "description": "How many of the 8 voices are active. Fewer voices = purer drone; more voices = denser harmonic cloud.",
+          "range": [
+            1,
+            8
+          ],
+          "type": "int",
+          "sweet_spots": {
+            "sub_drone": 2,
+            "full_cloud": 8
+          }
+        },
+        {
+          "name": "Per-voice pitch",
+          "description": "Each voice has its own pitch assignment. Spread across the scale or stack on root for subtle detuned bed.",
+          "type": "composite"
+        },
+        {
+          "name": "Detune",
+          "description": "Global detune amount. Low values (5-15 cents) give tape-warble; high values break into chord clouds.",
+          "range": [
+            0.0,
+            100.0
+          ],
+          "unit": "cents",
+          "type": "float"
+        },
+        {
+          "name": "Amp Envelope",
+          "description": "Long attack (5-10s) for slow-swell pads; short attack for staccato 'one note' hits.",
+          "type": "composite"
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
-      "gotchas": [],
-      "health_flags": []
+      "gotchas": [
+        "All 8 voices at full level clip the output \u2014 use Voice Count or the internal level control",
+        "Long attack envelopes don't trigger instantly \u2014 for stabs, use short attack or pre-gate",
+        "Solfeggio frequencies are outside standard tuning \u2014 this is intentional; don't try to match to a song's key"
+      ],
+      "health_flags": [],
+      "pack": "Drone Lab",
+      "introduced_in": "12.0",
+      "synthesis_type": "additive_drone",
+      "complexity": "intermediate",
+      "sonic_description": "8-voice Max for Live drone synth by Berlin-based Expert Math (shipped inside Drone Lab). Each voice has its own tuning assignment, and the device supports multiple tuning systems \u2014 Solfeggio frequencies, Pythagorean, Indonesian Pelog, Indian temperaments, plus equal and just intonation. Produces sustained harmonic drones with microtonal beating that equal- tempered synths architecturally cannot generate. The secret weapon for a harmonic bed that sits under a whole track at -30 dB and makes it sound like nothing else.\n"
     },
     {
       "id": "harp_concert_adg",
@@ -82616,19 +84409,71 @@
       "category": "user_library",
       "subcategory": "other",
       "source": "user_library",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "multiband",
+        "envelope_shaping",
+        "transient",
+        "sculpted"
+      ],
+      "use_cases": [
+        "transient_shape",
+        "decay_control",
+        "per_band_dynamics",
+        "micro_stab"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "minimal",
+          "dub_techno",
+          "electronica"
+        ],
+        "secondary": [
+          "all_genres"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Band Split Frequencies",
+          "description": "Low/Mid and Mid/High crossover points in Hz.",
+          "range": [
+            20,
+            20000
+          ],
+          "unit": "Hz",
+          "type": "float"
+        },
+        {
+          "name": "C/E Factor (per band)",
+          "description": "Compression (positive) or Expansion (negative) factor per band.",
+          "range": [
+            -5.0,
+            5.0
+          ],
+          "type": "float",
+          "sweet_spots": {
+            "subtle_expand": 1.5,
+            "aggressive_stab": 3.0,
+            "decay_tightening": -2.0
+          }
+        },
+        {
+          "name": "Attack / Release (per band)",
+          "description": "Envelope-shape time constants for each band independently."
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
-      "gotchas": [],
-      "health_flags": []
+      "gotchas": [
+        "Expansion factors above 4.0 can cause clipping \u2014 compensate output gain.",
+        "Crossover bands overlap by ~6dB \u2014 not a surgical splitter."
+      ],
+      "health_flags": [],
+      "pack": "Creative Extensions",
+      "introduced_in": "10.0",
+      "complexity": "intermediate",
+      "sonic_description": "Multiband envelope processor with three adjustable frequency bands. Unlike compression (which reduces amplitude when over threshold), Re-Enveloper reshapes envelope character itself \u2014 attack, sustain, decay \u2014 independently per band. The right tool for 'shorten the decay of this sustained sound so it behaves like a stab' or 'expand the transient on the highs only'.\n"
     },
     {
       "id": "thomash_amplitude_receiver",
@@ -82763,19 +84608,82 @@
       "category": "user_library",
       "subcategory": "other",
       "source": "user_library",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "pitched",
+        "glitchy",
+        "reversed",
+        "randomized",
+        "micro_stutter"
+      ],
+      "use_cases": [
+        "akufen_stutter",
+        "pitched_ghost",
+        "reverse_echo",
+        "textural_delay"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "microhouse",
+          "deep_minimal",
+          "idm",
+          "experimental"
+        ],
+        "secondary": [
+          "dub_techno",
+          "electronica"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Transpose",
+          "description": "Pitch shift in semitones + cents on the delayed signal.",
+          "range": [
+            -24,
+            24
+          ],
+          "unit": "st",
+          "type": "int"
+        },
+        {
+          "name": "Delay Time",
+          "description": "Delay in ms or tempo-synced subdivisions."
+        },
+        {
+          "name": "Feedback",
+          "description": "Pitched echo feedback. Cascading when transpose is non-zero.",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "type": "float"
+        },
+        {
+          "name": "Reverse",
+          "description": "Reverse-plays the delay buffer.",
+          "type": "boolean"
+        },
+        {
+          "name": "Randomize",
+          "description": "Randomizes pitch and/or reverse per repeat. The Villalobos-texture parameter.",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "type": "float"
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
-      "gotchas": [],
-      "health_flags": []
+      "gotchas": [
+        "Randomize above 0.8 can produce notes wildly out of key \u2014 gate with key-detection first if harmony matters."
+      ],
+      "health_flags": [],
+      "pack": "Creative Extensions",
+      "introduced_in": "10.0",
+      "complexity": "beginner",
+      "sonic_description": "Versatile pitch-shifting delay for Creative Extensions. Combines transposition, reverse, feedback, and randomization on a single delay line. Lighter-weight companion to PitchLoop89 \u2014 less of a spatial architect, more of a per-sound treatment for pitched echoes and random reversal textures. The go-to for Akufen-style micro-stutter on hats and the random-reverse pitched ghosts that Villalobos uses on every track.\n"
     },
     {
       "id": "ml_distance",
@@ -83107,19 +85015,79 @@
       "category": "user_library",
       "subcategory": "other",
       "source": "user_library",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "spectral",
+        "halo",
+        "reverb_like",
+        "ethereal",
+        "frozen",
+        "frequency_selective"
+      ],
+      "use_cases": [
+        "halo_pad",
+        "ghost_atmosphere",
+        "frozen_texture",
+        "spectral_bed"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "ambient",
+          "deep_minimal",
+          "experimental",
+          "drone"
+        ],
+        "secondary": [
+          "dub_techno",
+          "cinematic"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Frequency Range",
+          "description": "Low and high cutoff of the blurred band. Narrow ranges produce pitched halos; wide ranges produce reverb-like wash."
+        },
+        {
+          "name": "Halo (Grain Length)",
+          "description": "How long each spectral grain lingers. Short = shimmer; long = sustained bed.",
+          "range": [
+            50,
+            5000
+          ],
+          "unit": "ms",
+          "type": "float",
+          "sweet_spots": {
+            "subtle_shimmer": 200,
+            "sustained_bed": 2000
+          }
+        },
+        {
+          "name": "Residual",
+          "description": "Amount of dry signal that passes through. 0 = fully wet halo, 1 = hear the source clearly.",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "type": "float"
+        },
+        {
+          "name": "Freeze",
+          "description": "Holds the current spectral content. Manual or MIDI-triggered.",
+          "type": "boolean"
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
-      "gotchas": [],
-      "health_flags": []
+      "gotchas": [
+        "Halo times above 3000ms accumulate CPU \u2014 freeze the track after print",
+        "Narrow frequency ranges at high levels self-oscillate \u2014 keep Residual > 0 or compress"
+      ],
+      "health_flags": [],
+      "pack": "Creative Extensions",
+      "introduced_in": "10.0",
+      "complexity": "intermediate",
+      "sonic_description": "Spectral halo/reverb hybrid. Creates reverb-like textures by blurring user-defined frequency ranges into dense clouds of delayed/smeared harmonic content. Not a real reverb \u2014 no IR \u2014 but the result behaves like one, with more control over which frequency ranges get haloed. Freeze button holds the current spectral content indefinitely. The tool for ethereal pads from sparse sources and alien textures that don't sound like rooms.\n"
     },
     {
       "id": "color_limiter",
@@ -83520,19 +85488,82 @@
       "category": "user_library",
       "subcategory": "other",
       "source": "user_library",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "pitched",
+        "glitchy",
+        "reversed",
+        "randomized",
+        "micro_stutter"
+      ],
+      "use_cases": [
+        "akufen_stutter",
+        "pitched_ghost",
+        "reverse_echo",
+        "textural_delay"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "microhouse",
+          "deep_minimal",
+          "idm",
+          "experimental"
+        ],
+        "secondary": [
+          "dub_techno",
+          "electronica"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Transpose",
+          "description": "Pitch shift in semitones + cents on the delayed signal.",
+          "range": [
+            -24,
+            24
+          ],
+          "unit": "st",
+          "type": "int"
+        },
+        {
+          "name": "Delay Time",
+          "description": "Delay in ms or tempo-synced subdivisions."
+        },
+        {
+          "name": "Feedback",
+          "description": "Pitched echo feedback. Cascading when transpose is non-zero.",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "type": "float"
+        },
+        {
+          "name": "Reverse",
+          "description": "Reverse-plays the delay buffer.",
+          "type": "boolean"
+        },
+        {
+          "name": "Randomize",
+          "description": "Randomizes pitch and/or reverse per repeat. The Villalobos-texture parameter.",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "type": "float"
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
-      "gotchas": [],
-      "health_flags": []
+      "gotchas": [
+        "Randomize above 0.8 can produce notes wildly out of key \u2014 gate with key-detection first if harmony matters."
+      ],
+      "health_flags": [],
+      "pack": "Creative Extensions",
+      "introduced_in": "10.0",
+      "complexity": "beginner",
+      "sonic_description": "Versatile pitch-shifting delay for Creative Extensions. Combines transposition, reverse, feedback, and randomization on a single delay line. Lighter-weight companion to PitchLoop89 \u2014 less of a spatial architect, more of a per-sound treatment for pitched echoes and random reversal textures. The go-to for Akufen-style micro-stutter on hats and the random-reverse pitched ghosts that Villalobos uses on every track.\n"
     },
     {
       "id": "re_enveloper",
@@ -83541,19 +85572,71 @@
       "category": "user_library",
       "subcategory": "other",
       "source": "user_library",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "multiband",
+        "envelope_shaping",
+        "transient",
+        "sculpted"
+      ],
+      "use_cases": [
+        "transient_shape",
+        "decay_control",
+        "per_band_dynamics",
+        "micro_stab"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "minimal",
+          "dub_techno",
+          "electronica"
+        ],
+        "secondary": [
+          "all_genres"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Band Split Frequencies",
+          "description": "Low/Mid and Mid/High crossover points in Hz.",
+          "range": [
+            20,
+            20000
+          ],
+          "unit": "Hz",
+          "type": "float"
+        },
+        {
+          "name": "C/E Factor (per band)",
+          "description": "Compression (positive) or Expansion (negative) factor per band.",
+          "range": [
+            -5.0,
+            5.0
+          ],
+          "type": "float",
+          "sweet_spots": {
+            "subtle_expand": 1.5,
+            "aggressive_stab": 3.0,
+            "decay_tightening": -2.0
+          }
+        },
+        {
+          "name": "Attack / Release (per band)",
+          "description": "Envelope-shape time constants for each band independently."
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
-      "gotchas": [],
-      "health_flags": []
+      "gotchas": [
+        "Expansion factors above 4.0 can cause clipping \u2014 compensate output gain.",
+        "Crossover bands overlap by ~6dB \u2014 not a surgical splitter."
+      ],
+      "health_flags": [],
+      "pack": "Creative Extensions",
+      "introduced_in": "10.0",
+      "complexity": "intermediate",
+      "sonic_description": "Multiband envelope processor with three adjustable frequency bands. Unlike compression (which reduces amplitude when over threshold), Re-Enveloper reshapes envelope character itself \u2014 attack, sustain, decay \u2014 independently per band. The right tool for 'shorten the decay of this sustained sound so it behaves like a stab' or 'expand the transient on the highs only'.\n"
     },
     {
       "id": "spectral_blur",
@@ -83562,19 +85645,79 @@
       "category": "user_library",
       "subcategory": "other",
       "source": "user_library",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "spectral",
+        "halo",
+        "reverb_like",
+        "ethereal",
+        "frozen",
+        "frequency_selective"
+      ],
+      "use_cases": [
+        "halo_pad",
+        "ghost_atmosphere",
+        "frozen_texture",
+        "spectral_bed"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "ambient",
+          "deep_minimal",
+          "experimental",
+          "drone"
+        ],
+        "secondary": [
+          "dub_techno",
+          "cinematic"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Frequency Range",
+          "description": "Low and high cutoff of the blurred band. Narrow ranges produce pitched halos; wide ranges produce reverb-like wash."
+        },
+        {
+          "name": "Halo (Grain Length)",
+          "description": "How long each spectral grain lingers. Short = shimmer; long = sustained bed.",
+          "range": [
+            50,
+            5000
+          ],
+          "unit": "ms",
+          "type": "float",
+          "sweet_spots": {
+            "subtle_shimmer": 200,
+            "sustained_bed": 2000
+          }
+        },
+        {
+          "name": "Residual",
+          "description": "Amount of dry signal that passes through. 0 = fully wet halo, 1 = hear the source clearly.",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "type": "float"
+        },
+        {
+          "name": "Freeze",
+          "description": "Holds the current spectral content. Manual or MIDI-triggered.",
+          "type": "boolean"
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
-      "gotchas": [],
-      "health_flags": []
+      "gotchas": [
+        "Halo times above 3000ms accumulate CPU \u2014 freeze the track after print",
+        "Narrow frequency ranges at high levels self-oscillate \u2014 keep Residual > 0 or compress"
+      ],
+      "health_flags": [],
+      "pack": "Creative Extensions",
+      "introduced_in": "10.0",
+      "complexity": "intermediate",
+      "sonic_description": "Spectral halo/reverb hybrid. Creates reverb-like textures by blurring user-defined frequency ranges into dense clouds of delayed/smeared harmonic content. Not a real reverb \u2014 no IR \u2014 but the result behaves like one, with more control over which frequency ranges get haloed. Freeze button holds the current spectral content indefinitely. The tool for ethereal pads from sparse sources and alien textures that don't sound like rooms.\n"
     },
     {
       "id": "mojo",
@@ -97440,19 +99583,143 @@
       "category": "max_for_live",
       "subcategory": "other",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "performance",
+        "overdub",
+        "live",
+        "tape_loop",
+        "experimental"
+      ],
+      "use_cases": [
+        "live_performance_looping",
+        "studio_experiment_sample_yourself",
+        "dub_style_tape_loop_emulation",
+        "generative_composition_from_single_source"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "indie",
+          "folk",
+          "experimental",
+          "dub"
+        ],
+        "secondary": [
+          "ambient",
+          "live_performance",
+          "electronic"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
-      "pairs_well_with": [],
-      "starter_recipes": [],
-      "gotchas": [],
-      "health_flags": []
+      "key_parameters": [
+        {
+          "name": "State",
+          "description": "Current state \u2014 Stop / Record / Play / Overdub",
+          "range": [
+            "Stop",
+            "Record",
+            "Play",
+            "Overdub"
+          ],
+          "type": "enum"
+        },
+        {
+          "name": "Tempo Mode",
+          "description": "How Looper handles tempo \u2014 Set and Follow, None, Set Song, Follow Song",
+          "range": [
+            "None",
+            "Set Song",
+            "Follow Song"
+          ],
+          "type": "enum"
+        },
+        {
+          "name": "Quantization",
+          "description": "Quantize loop start/overdub to beat grid",
+          "range": [
+            "None",
+            "1/4",
+            "1/2",
+            "1 bar",
+            "2 bars",
+            "4 bars",
+            "8 bars"
+          ],
+          "type": "enum"
+        },
+        {
+          "name": "Feedback",
+          "description": "Overdub feedback \u2014 <100% fades old layers over time",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "type": "float",
+          "sweet_spots": {
+            "infinite_layer": 1.0,
+            "tape_style_fade": 0.85,
+            "fast_fade": 0.5
+          }
+        },
+        {
+          "name": "Record Dry/Wet",
+          "description": "Record dry input, wet loop, or blend",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "type": "float"
+        }
+      ],
+      "pairs_well_with": [
+        {
+          "device": "Reverb",
+          "reason": "Post-looper reverb creates ambient soundscapes from single notes"
+        },
+        {
+          "device": "Auto Filter",
+          "reason": "Modulate looper output with LFO for evolving loop texture"
+        },
+        {
+          "device": "Pedal",
+          "reason": "Stomp-box feedback into Looper for dubby layered grit"
+        }
+      ],
+      "starter_recipes": [
+        {
+          "name": "Live Performance Loop",
+          "description": "4-bar loop with infinite feedback for overdub layering",
+          "genre": "indie",
+          "params": {
+            "Tempo Mode": "Set Song",
+            "Quantization": "4 bars",
+            "Feedback": 1.0
+          }
+        },
+        {
+          "name": "Tape-Loop Decay",
+          "description": "Dub-style decaying loop that fades over bars",
+          "genre": "dub",
+          "params": {
+            "Tempo Mode": "Set Song",
+            "Quantization": "2 bars",
+            "Feedback": 0.8
+          }
+        }
+      ],
+      "gotchas": [
+        "Looper is performance-focused \u2014 programming it fully via MCP is awkward. Use live triggering (foot-pedal / MIDI) for real-time control",
+        "Feedback at 1.0 means infinite layering \u2014 overdubs never fade. Feedback at 0.9 or below is more musical for tape-style use",
+        "Record Dry/Wet affects what's captured, not what's heard \u2014 raise the track's return to verify what's going into the loop",
+        "Tempo Mode Set Song locks Looper to current session tempo; None lets Looper fall behind/ahead if tempo changes",
+        "Unlike Live 11 drag-to-export, audio capture from Looper for further processing requires re-recording to an audio track"
+      ],
+      "health_flags": [],
+      "sonic_description": "Real-time audio looper \u2014 captures a segment of audio and layers overdubs. Built around performance rather than mixing. Records at the current tempo, optional tempo detection from length, variable feedback on overdubs. Used live for build-a-song-on-stage sets (Ed Sheeran, KT Tunstall style), in studio as a creative \"sample yourself\" tool, or for dub-style tape-loop emulation.\n",
+      "pack": "Core Library",
+      "introduced_in": "7.0",
+      "complexity": "intermediate",
+      "effect_type": "looper"
     },
     {
       "id": "lp_bitcrusher",
@@ -98844,19 +101111,82 @@
       "category": "max_for_live",
       "subcategory": "other",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "pitched",
+        "glitchy",
+        "reversed",
+        "randomized",
+        "micro_stutter"
+      ],
+      "use_cases": [
+        "akufen_stutter",
+        "pitched_ghost",
+        "reverse_echo",
+        "textural_delay"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "microhouse",
+          "deep_minimal",
+          "idm",
+          "experimental"
+        ],
+        "secondary": [
+          "dub_techno",
+          "electronica"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Transpose",
+          "description": "Pitch shift in semitones + cents on the delayed signal.",
+          "range": [
+            -24,
+            24
+          ],
+          "unit": "st",
+          "type": "int"
+        },
+        {
+          "name": "Delay Time",
+          "description": "Delay in ms or tempo-synced subdivisions."
+        },
+        {
+          "name": "Feedback",
+          "description": "Pitched echo feedback. Cascading when transpose is non-zero.",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "type": "float"
+        },
+        {
+          "name": "Reverse",
+          "description": "Reverse-plays the delay buffer.",
+          "type": "boolean"
+        },
+        {
+          "name": "Randomize",
+          "description": "Randomizes pitch and/or reverse per repeat. The Villalobos-texture parameter.",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "type": "float"
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
-      "gotchas": [],
-      "health_flags": []
+      "gotchas": [
+        "Randomize above 0.8 can produce notes wildly out of key \u2014 gate with key-detection first if harmony matters."
+      ],
+      "health_flags": [],
+      "pack": "Creative Extensions",
+      "introduced_in": "10.0",
+      "complexity": "beginner",
+      "sonic_description": "Versatile pitch-shifting delay for Creative Extensions. Combines transposition, reverse, feedback, and randomization on a single delay line. Lighter-weight companion to PitchLoop89 \u2014 less of a spatial architect, more of a per-sound treatment for pitched echoes and random reversal textures. The go-to for Akufen-style micro-stutter on hats and the random-reverse pitched ghosts that Villalobos uses on every track.\n"
     },
     {
       "id": "pitch_hack",
@@ -98865,19 +101195,82 @@
       "category": "max_for_live",
       "subcategory": "other",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "pitched",
+        "glitchy",
+        "reversed",
+        "randomized",
+        "micro_stutter"
+      ],
+      "use_cases": [
+        "akufen_stutter",
+        "pitched_ghost",
+        "reverse_echo",
+        "textural_delay"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "microhouse",
+          "deep_minimal",
+          "idm",
+          "experimental"
+        ],
+        "secondary": [
+          "dub_techno",
+          "electronica"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Transpose",
+          "description": "Pitch shift in semitones + cents on the delayed signal.",
+          "range": [
+            -24,
+            24
+          ],
+          "unit": "st",
+          "type": "int"
+        },
+        {
+          "name": "Delay Time",
+          "description": "Delay in ms or tempo-synced subdivisions."
+        },
+        {
+          "name": "Feedback",
+          "description": "Pitched echo feedback. Cascading when transpose is non-zero.",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "type": "float"
+        },
+        {
+          "name": "Reverse",
+          "description": "Reverse-plays the delay buffer.",
+          "type": "boolean"
+        },
+        {
+          "name": "Randomize",
+          "description": "Randomizes pitch and/or reverse per repeat. The Villalobos-texture parameter.",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "type": "float"
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
-      "gotchas": [],
-      "health_flags": []
+      "gotchas": [
+        "Randomize above 0.8 can produce notes wildly out of key \u2014 gate with key-detection first if harmony matters."
+      ],
+      "health_flags": [],
+      "pack": "Creative Extensions",
+      "introduced_in": "10.0",
+      "complexity": "beginner",
+      "sonic_description": "Versatile pitch-shifting delay for Creative Extensions. Combines transposition, reverse, feedback, and randomization on a single delay line. Lighter-weight companion to PitchLoop89 \u2014 less of a spatial architect, more of a per-sound treatment for pitched echoes and random reversal textures. The go-to for Akufen-style micro-stutter on hats and the random-reverse pitched ghosts that Villalobos uses on every track.\n"
     },
     {
       "id": "pitch_shifter",
@@ -99145,19 +101538,71 @@
       "category": "max_for_live",
       "subcategory": "other",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "multiband",
+        "envelope_shaping",
+        "transient",
+        "sculpted"
+      ],
+      "use_cases": [
+        "transient_shape",
+        "decay_control",
+        "per_band_dynamics",
+        "micro_stab"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "minimal",
+          "dub_techno",
+          "electronica"
+        ],
+        "secondary": [
+          "all_genres"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Band Split Frequencies",
+          "description": "Low/Mid and Mid/High crossover points in Hz.",
+          "range": [
+            20,
+            20000
+          ],
+          "unit": "Hz",
+          "type": "float"
+        },
+        {
+          "name": "C/E Factor (per band)",
+          "description": "Compression (positive) or Expansion (negative) factor per band.",
+          "range": [
+            -5.0,
+            5.0
+          ],
+          "type": "float",
+          "sweet_spots": {
+            "subtle_expand": 1.5,
+            "aggressive_stab": 3.0,
+            "decay_tightening": -2.0
+          }
+        },
+        {
+          "name": "Attack / Release (per band)",
+          "description": "Envelope-shape time constants for each band independently."
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
-      "gotchas": [],
-      "health_flags": []
+      "gotchas": [
+        "Expansion factors above 4.0 can cause clipping \u2014 compensate output gain.",
+        "Crossover bands overlap by ~6dB \u2014 not a surgical splitter."
+      ],
+      "health_flags": [],
+      "pack": "Creative Extensions",
+      "introduced_in": "10.0",
+      "complexity": "intermediate",
+      "sonic_description": "Multiband envelope processor with three adjustable frequency bands. Unlike compression (which reduces amplitude when over threshold), Re-Enveloper reshapes envelope character itself \u2014 attack, sustain, decay \u2014 independently per band. The right tool for 'shorten the decay of this sustained sound so it behaves like a stab' or 'expand the transient on the highs only'.\n"
     },
     {
       "id": "re_enveloper",
@@ -99166,19 +101611,71 @@
       "category": "max_for_live",
       "subcategory": "other",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "multiband",
+        "envelope_shaping",
+        "transient",
+        "sculpted"
+      ],
+      "use_cases": [
+        "transient_shape",
+        "decay_control",
+        "per_band_dynamics",
+        "micro_stab"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "minimal",
+          "dub_techno",
+          "electronica"
+        ],
+        "secondary": [
+          "all_genres"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Band Split Frequencies",
+          "description": "Low/Mid and Mid/High crossover points in Hz.",
+          "range": [
+            20,
+            20000
+          ],
+          "unit": "Hz",
+          "type": "float"
+        },
+        {
+          "name": "C/E Factor (per band)",
+          "description": "Compression (positive) or Expansion (negative) factor per band.",
+          "range": [
+            -5.0,
+            5.0
+          ],
+          "type": "float",
+          "sweet_spots": {
+            "subtle_expand": 1.5,
+            "aggressive_stab": 3.0,
+            "decay_tightening": -2.0
+          }
+        },
+        {
+          "name": "Attack / Release (per band)",
+          "description": "Envelope-shape time constants for each band independently."
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
-      "gotchas": [],
-      "health_flags": []
+      "gotchas": [
+        "Expansion factors above 4.0 can cause clipping \u2014 compensate output gain.",
+        "Crossover bands overlap by ~6dB \u2014 not a surgical splitter."
+      ],
+      "health_flags": [],
+      "pack": "Creative Extensions",
+      "introduced_in": "10.0",
+      "complexity": "intermediate",
+      "sonic_description": "Multiband envelope processor with three adjustable frequency bands. Unlike compression (which reduces amplitude when over threshold), Re-Enveloper reshapes envelope character itself \u2014 attack, sustain, decay \u2014 independently per band. The right tool for 'shorten the decay of this sustained sound so it behaves like a stab' or 'expand the transient on the highs only'.\n"
     },
     {
       "id": "renamer_l_1",
@@ -99565,19 +102062,55 @@
       "category": "max_for_live",
       "subcategory": "other",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "replay",
+        "pitched",
+        "micro_chop",
+        "glitch"
+      ],
+      "use_cases": [
+        "micro_chop",
+        "pitched_replay",
+        "vocal_stutter"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "microhouse",
+          "deep_minimal",
+          "glitch"
+        ],
+        "secondary": [
+          "idm"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Snippet Length",
+          "description": "Duration of the captured snippet."
+        },
+        {
+          "name": "Replay Rate",
+          "description": "How often the snippet re-triggers."
+        },
+        {
+          "name": "Pitch Modulation",
+          "description": "Per-replay pitch shift."
+        },
+        {
+          "name": "Randomize",
+          "description": "Random variation on pitch/replay timing."
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
       "gotchas": [],
-      "health_flags": []
+      "health_flags": [],
+      "pack": "Building Max Devices",
+      "introduced_in": "11.0",
+      "complexity": "intermediate",
+      "sonic_description": "Audio snippet replayer with pitch modulation (Building Max Devices tutorial pack). Re-plays snippets of incoming audio at modulated pitches. Small tool, surprisingly aesthetic-critical for microhouse \u2014 the 'replay this hat with a slightly different pitch each bar' pattern.\n"
     },
     {
       "id": "sources",
@@ -99607,19 +102140,79 @@
       "category": "max_for_live",
       "subcategory": "other",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "spectral",
+        "halo",
+        "reverb_like",
+        "ethereal",
+        "frozen",
+        "frequency_selective"
+      ],
+      "use_cases": [
+        "halo_pad",
+        "ghost_atmosphere",
+        "frozen_texture",
+        "spectral_bed"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "ambient",
+          "deep_minimal",
+          "experimental",
+          "drone"
+        ],
+        "secondary": [
+          "dub_techno",
+          "cinematic"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Frequency Range",
+          "description": "Low and high cutoff of the blurred band. Narrow ranges produce pitched halos; wide ranges produce reverb-like wash."
+        },
+        {
+          "name": "Halo (Grain Length)",
+          "description": "How long each spectral grain lingers. Short = shimmer; long = sustained bed.",
+          "range": [
+            50,
+            5000
+          ],
+          "unit": "ms",
+          "type": "float",
+          "sweet_spots": {
+            "subtle_shimmer": 200,
+            "sustained_bed": 2000
+          }
+        },
+        {
+          "name": "Residual",
+          "description": "Amount of dry signal that passes through. 0 = fully wet halo, 1 = hear the source clearly.",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "type": "float"
+        },
+        {
+          "name": "Freeze",
+          "description": "Holds the current spectral content. Manual or MIDI-triggered.",
+          "type": "boolean"
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
-      "gotchas": [],
-      "health_flags": []
+      "gotchas": [
+        "Halo times above 3000ms accumulate CPU \u2014 freeze the track after print",
+        "Narrow frequency ranges at high levels self-oscillate \u2014 keep Residual > 0 or compress"
+      ],
+      "health_flags": [],
+      "pack": "Creative Extensions",
+      "introduced_in": "10.0",
+      "complexity": "intermediate",
+      "sonic_description": "Spectral halo/reverb hybrid. Creates reverb-like textures by blurring user-defined frequency ranges into dense clouds of delayed/smeared harmonic content. Not a real reverb \u2014 no IR \u2014 but the result behaves like one, with more control over which frequency ranges get haloed. Freeze button holds the current spectral content indefinitely. The tool for ethereal pads from sparse sources and alien textures that don't sound like rooms.\n"
     },
     {
       "id": "spectral_blur",
@@ -99628,19 +102221,79 @@
       "category": "max_for_live",
       "subcategory": "other",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "spectral",
+        "halo",
+        "reverb_like",
+        "ethereal",
+        "frozen",
+        "frequency_selective"
+      ],
+      "use_cases": [
+        "halo_pad",
+        "ghost_atmosphere",
+        "frozen_texture",
+        "spectral_bed"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "ambient",
+          "deep_minimal",
+          "experimental",
+          "drone"
+        ],
+        "secondary": [
+          "dub_techno",
+          "cinematic"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Frequency Range",
+          "description": "Low and high cutoff of the blurred band. Narrow ranges produce pitched halos; wide ranges produce reverb-like wash."
+        },
+        {
+          "name": "Halo (Grain Length)",
+          "description": "How long each spectral grain lingers. Short = shimmer; long = sustained bed.",
+          "range": [
+            50,
+            5000
+          ],
+          "unit": "ms",
+          "type": "float",
+          "sweet_spots": {
+            "subtle_shimmer": 200,
+            "sustained_bed": 2000
+          }
+        },
+        {
+          "name": "Residual",
+          "description": "Amount of dry signal that passes through. 0 = fully wet halo, 1 = hear the source clearly.",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "type": "float"
+        },
+        {
+          "name": "Freeze",
+          "description": "Holds the current spectral content. Manual or MIDI-triggered.",
+          "type": "boolean"
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
-      "gotchas": [],
-      "health_flags": []
+      "gotchas": [
+        "Halo times above 3000ms accumulate CPU \u2014 freeze the track after print",
+        "Narrow frequency ranges at high levels self-oscillate \u2014 keep Residual > 0 or compress"
+      ],
+      "health_flags": [],
+      "pack": "Creative Extensions",
+      "introduced_in": "10.0",
+      "complexity": "intermediate",
+      "sonic_description": "Spectral halo/reverb hybrid. Creates reverb-like textures by blurring user-defined frequency ranges into dense clouds of delayed/smeared harmonic content. Not a real reverb \u2014 no IR \u2014 but the result behaves like one, with more control over which frequency ranges get haloed. Freeze button holds the current spectral content indefinitely. The tool for ethereal pads from sparse sources and alien textures that don't sound like rooms.\n"
     },
     {
       "id": "spectroglitch",
@@ -101014,19 +103667,57 @@
       "category": "max_for_live",
       "subcategory": "other",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "bell",
+        "fm",
+        "metallic",
+        "percussive"
+      ],
+      "use_cases": [
+        "bell_stab",
+        "pluck",
+        "atmospheric_bell"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "ambient",
+          "deep_minimal",
+          "arpiar"
+        ],
+        "secondary": [
+          "experimental",
+          "cinematic"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Carrier Freq",
+          "description": "Base pitch."
+        },
+        {
+          "name": "Modulator Ratio",
+          "description": "Ratio of modulator to carrier \u2014 inharmonic ratios give bells, integer ratios give pluck tones."
+        },
+        {
+          "name": "Modulator Depth",
+          "description": "FM index \u2014 brightness/metallic character."
+        },
+        {
+          "name": "Decay",
+          "description": "Bell decay time."
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
       "gotchas": [],
-      "health_flags": []
+      "health_flags": [],
+      "pack": "Building Max Devices",
+      "introduced_in": "11.0",
+      "synthesis_type": "fm_bell",
+      "complexity": "beginner",
+      "sonic_description": "FM bell synthesis M4L example device from the Building Max Devices pack. Designed as a tutorial but produces genuinely usable bell/mallet timbres via simple FM synthesis. Through Convolution Reverb = thin Arpiar bell stab territory.\n"
     },
     {
       "id": "blubb_0_0",
@@ -101434,19 +104125,104 @@
       "category": "max_for_live",
       "subcategory": "other",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "drone",
+        "microtonal",
+        "sustained",
+        "harmonic",
+        "meditative",
+        "evolving",
+        "dark"
+      ],
+      "use_cases": [
+        "drone_bed",
+        "harmonic_atmosphere",
+        "microtonal_pad",
+        "ambient_bed",
+        "tension_bed"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "ambient",
+          "deep_minimal",
+          "dub_techno",
+          "drone",
+          "experimental"
+        ],
+        "secondary": [
+          "cinematic",
+          "dark_ambient",
+          "microhouse"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Tuning System",
+          "description": "Selects the scale used to map voices. Each tuning produces a different harmonic flavor.",
+          "range": [
+            "Equal",
+            "Just",
+            "Pythagorean",
+            "Solfeggio",
+            "Pelog",
+            "Indian"
+          ],
+          "type": "enum",
+          "sweet_spots": {
+            "deep_minimal_bed": "Just",
+            "dark_meditation": "Solfeggio",
+            "exotic_mystery": "Pelog"
+          }
+        },
+        {
+          "name": "Voice Count",
+          "description": "How many of the 8 voices are active. Fewer voices = purer drone; more voices = denser harmonic cloud.",
+          "range": [
+            1,
+            8
+          ],
+          "type": "int",
+          "sweet_spots": {
+            "sub_drone": 2,
+            "full_cloud": 8
+          }
+        },
+        {
+          "name": "Per-voice pitch",
+          "description": "Each voice has its own pitch assignment. Spread across the scale or stack on root for subtle detuned bed.",
+          "type": "composite"
+        },
+        {
+          "name": "Detune",
+          "description": "Global detune amount. Low values (5-15 cents) give tape-warble; high values break into chord clouds.",
+          "range": [
+            0.0,
+            100.0
+          ],
+          "unit": "cents",
+          "type": "float"
+        },
+        {
+          "name": "Amp Envelope",
+          "description": "Long attack (5-10s) for slow-swell pads; short attack for staccato 'one note' hits.",
+          "type": "composite"
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
-      "gotchas": [],
-      "health_flags": []
+      "gotchas": [
+        "All 8 voices at full level clip the output \u2014 use Voice Count or the internal level control",
+        "Long attack envelopes don't trigger instantly \u2014 for stabs, use short attack or pre-gate",
+        "Solfeggio frequencies are outside standard tuning \u2014 this is intentional; don't try to match to a song's key"
+      ],
+      "health_flags": [],
+      "pack": "Drone Lab",
+      "introduced_in": "12.0",
+      "synthesis_type": "additive_drone",
+      "complexity": "intermediate",
+      "sonic_description": "8-voice Max for Live drone synth by Berlin-based Expert Math (shipped inside Drone Lab). Each voice has its own tuning assignment, and the device supports multiple tuning systems \u2014 Solfeggio frequencies, Pythagorean, Indonesian Pelog, Indian temperaments, plus equal and just intonation. Produces sustained harmonic drones with microtonal beating that equal- tempered synths architecturally cannot generate. The secret weapon for a harmonic bed that sits under a whole track at -30 dB and makes it sound like nothing else.\n"
     },
     {
       "id": "infinitetrain",
@@ -103935,19 +106711,44 @@
       "category": "max_for_live",
       "subcategory": "other",
       "source": "native",
-      "enriched": false,
-      "character_tags": [],
-      "use_cases": [],
+      "enriched": true,
+      "character_tags": [
+        "drum_generator",
+        "algorithmic",
+        "simple"
+      ],
+      "use_cases": [
+        "drum_programming_quickstart",
+        "fill_generation"
+      ],
       "genre_affinity": {
-        "primary": [],
-        "secondary": []
+        "primary": [
+          "all_electronic_drums"
+        ]
       },
       "self_contained": true,
-      "key_parameters": [],
+      "key_parameters": [
+        {
+          "name": "Density",
+          "description": "Pattern density \u2014 sparse to dense."
+        },
+        {
+          "name": "Drum Voices",
+          "description": "Which drum pads to fill."
+        },
+        {
+          "name": "Randomize",
+          "description": "Re-generate pattern with randomization."
+        }
+      ],
       "pairs_well_with": [],
       "starter_recipes": [],
       "gotchas": [],
-      "health_flags": []
+      "health_flags": [],
+      "pack": "Building Max Devices",
+      "introduced_in": "11.0",
+      "complexity": "beginner",
+      "sonic_description": "MIDI drum-pattern generator (Building Max Devices). A simple algorithmic drum fill generator \u2014 useful as a free alternative to Patterns (Iftah) when you just need quick drum content.\n"
     },
     {
       "id": "functions_midi",

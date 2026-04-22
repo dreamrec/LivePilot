@@ -1,0 +1,85 @@
+id: looper
+name: Looper
+sonic_description: >
+  Real-time audio looper — captures a segment of audio and layers
+  overdubs. Built around performance rather than mixing. Records at the
+  current tempo, optional tempo detection from length, variable feedback
+  on overdubs. Used live for build-a-song-on-stage sets (Ed Sheeran,
+  KT Tunstall style), in studio as a creative "sample yourself" tool,
+  or for dub-style tape-loop emulation.
+effect_type: looper
+character_tags: [performance, overdub, live, tape_loop, experimental]
+use_cases:
+  - live_performance_looping
+  - studio_experiment_sample_yourself
+  - dub_style_tape_loop_emulation
+  - generative_composition_from_single_source
+genre_affinity:
+  primary: [indie, folk, experimental, dub]
+  secondary: [ambient, live_performance, electronic]
+complexity: intermediate
+self_contained: true
+introduced_in: "7.0"
+pack: Core Library
+
+key_parameters:
+  - name: "State"
+    description: "Current state — Stop / Record / Play / Overdub"
+    range: ["Stop", "Record", "Play", "Overdub"]
+    type: enum
+
+  - name: "Tempo Mode"
+    description: "How Looper handles tempo — Set and Follow, None, Set Song, Follow Song"
+    range: ["None", "Set Song", "Follow Song"]
+    type: enum
+
+  - name: "Quantization"
+    description: "Quantize loop start/overdub to beat grid"
+    range: ["None", "1/4", "1/2", "1 bar", "2 bars", "4 bars", "8 bars"]
+    type: enum
+
+  - name: "Feedback"
+    description: "Overdub feedback — <100% fades old layers over time"
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      infinite_layer: 1.0
+      tape_style_fade: 0.85
+      fast_fade: 0.5
+
+  - name: "Record Dry/Wet"
+    description: "Record dry input, wet loop, or blend"
+    range: [0.0, 1.0]
+    type: float
+
+pairs_well_with:
+  - device: "Reverb"
+    reason: "Post-looper reverb creates ambient soundscapes from single notes"
+  - device: "Auto Filter"
+    reason: "Modulate looper output with LFO for evolving loop texture"
+  - device: "Pedal"
+    reason: "Stomp-box feedback into Looper for dubby layered grit"
+
+starter_recipes:
+  - name: "Live Performance Loop"
+    description: "4-bar loop with infinite feedback for overdub layering"
+    genre: indie
+    params:
+      "Tempo Mode": "Set Song"
+      "Quantization": "4 bars"
+      "Feedback": 1.0
+
+  - name: "Tape-Loop Decay"
+    description: "Dub-style decaying loop that fades over bars"
+    genre: dub
+    params:
+      "Tempo Mode": "Set Song"
+      "Quantization": "2 bars"
+      "Feedback": 0.8
+
+gotchas:
+  - "Looper is performance-focused — programming it fully via MCP is awkward. Use live triggering (foot-pedal / MIDI) for real-time control"
+  - "Feedback at 1.0 means infinite layering — overdubs never fade. Feedback at 0.9 or below is more musical for tape-style use"
+  - "Record Dry/Wet affects what's captured, not what's heard — raise the track's return to verify what's going into the loop"
+  - "Tempo Mode Set Song locks Looper to current session tempo; None lets Looper fall behind/ahead if tempo changes"
+  - "Unlike Live 11 drag-to-export, audio capture from Looper for further processing requires re-recording to an audio track"

@@ -1,7 +1,14 @@
 """
-LivePilot - Arrangement domain handlers (19 commands).
+LivePilot - Arrangement domain handlers (21 commands).
+
+As of 2026-04-22: adds the two-phase session-record workaround for
+track-level arrangement automation (T5 handoff). Live's LOM can't
+write track-level automation envelopes outside a clip directly —
+this handler pair writes to a session clip, records it into
+arrangement at a target beat, then cleans up.
 """
 
+from .clip_automation import set_clip_automation as _set_clip_automation_handler
 from .router import register
 from .utils import get_track
 
@@ -866,3 +873,211 @@ def force_arrangement(song, params):
         "is_playing": song.is_playing,
         "loop": song.loop,
     }
+
+
+# ── Session-record arrangement automation (T5 workaround) ────────────
+#
+# Two-phase protocol so the MCP server can sleep between the record
+# start and stop without blocking Live's main thread.
+#
+#   Phase 1: _start — write session clip, arm, seek, record, fire
+#   Phase 2: _complete — stop record, stop transport, locate new
+#                       arrangement clip, clean up session clip
+#
+# The MCP tool layer orchestrates: start → asyncio.sleep(duration * 60/tempo + 0.5) → complete.
+
+
+def _fire_slot(slot):
+    """Fire a clip slot robustly — Live's API changed between versions."""
+    # Newer Live: slot.fire() is the canonical way. `slot.clip.fire()`
+    # also works when a clip is present. Try slot-level first so empty
+    # slots (we may have just created a clip) fire the row reliably.
+    try:
+        slot.fire()
+    except AttributeError:
+        slot.clip.fire()
+
+
+def _ensure_session_clip_length(slot, points, min_length=1.0):
+    """Ensure slot has a session MIDI clip covering the points' time range.
+
+    Returns (clip, was_created). If the slot is empty we call
+    create_clip(length). If points extend past the existing clip
+    we leave it alone — the user may have intentional content before.
+    """
+    if not slot.has_clip:
+        max_t = 0.0
+        for p in points or []:
+            t = float(p.get("time", 0))
+            d = float(p.get("duration", 0.125))
+            max_t = max(max_t, t + d)
+        length = max(min_length, max_t)
+        slot.create_clip(length)
+        return slot.clip, True
+    return slot.clip, False
+
+
+@register("arrangement_automation_via_session_record_start")
+def arrangement_automation_via_session_record_start(song, params):
+    """Phase 1 of the T5 workaround.
+
+    Preps the record: ensures session clip exists with automation, arms
+    the track, seeks the arrangement to target_beat, enables record, and
+    fires the session clip. Returns tempo so the MCP layer can compute
+    the sleep duration before phase 2.
+    """
+    track_index = int(params["track_index"])
+    session_clip_slot = int(params.get("session_clip_slot", 0))
+    target_beat = float(params["target_beat"])
+    parameter_type = params["parameter_type"]
+    points = params.get("points") or []
+    if not points:
+        raise ValueError("points cannot be empty")
+
+    track = get_track(song, track_index)
+
+    # Probe 1: can we arm this track?
+    if not getattr(track, "can_be_armed", False):
+        raise ValueError(
+            "track %d cannot be armed — session-record workaround requires "
+            "an armable (MIDI or audio input) track" % track_index
+        )
+
+    slots = list(track.clip_slots)
+    if session_clip_slot < 0 or session_clip_slot >= len(slots):
+        raise IndexError(
+            "session_clip_slot %d out of range (0..%d)"
+            % (session_clip_slot, len(slots) - 1)
+        )
+    slot = slots[session_clip_slot]
+
+    # Probe 2: create a session clip if the slot is empty; otherwise reuse
+    clip, created = _ensure_session_clip_length(slot, points)
+
+    # Probe 3: write the automation envelope via the existing handler.
+    # We need to tell set_clip_automation which clip_index to target.
+    # set_clip_automation takes clip_index = the slot index. Perfect.
+    clip_auto_params = dict(params)
+    clip_auto_params["clip_index"] = session_clip_slot
+    # Drop keys that set_clip_automation doesn't expect
+    for k in ("target_beat", "duration_beats", "session_clip_slot",
+              "cleanup_session_clip"):
+        clip_auto_params.pop(k, None)
+    write_result = _set_clip_automation_handler(song, clip_auto_params)
+
+    # Probe 4: seek the arrangement to target_beat. Must be done
+    # BEFORE enabling record, or the record starts at wherever the
+    # playhead currently is.
+    song.back_to_arranger = True
+    song.current_song_time = max(0.0, target_beat)
+
+    # Probe 5: arm the track. Some tracks need `current_monitoring_state`
+    # clarification, but arming alone should route the session clip's
+    # output into arrangement record on most setups.
+    track.arm = True
+
+    # Probe 6: enable arrangement record + start transport. Live needs
+    # the transport playing for record_mode to engage.
+    if not song.is_playing:
+        song.start_playing()
+    song.record_mode = True
+
+    # Fire the session clip — its automation plays into arrangement.
+    _fire_slot(slot)
+
+    return {
+        "status": "recording",
+        "track_index": track_index,
+        "session_clip_slot": session_clip_slot,
+        "target_beat": song.current_song_time,
+        "tempo": float(song.tempo),
+        "session_clip_created": created,
+        "automation_write": write_result,
+        "record_mode": bool(song.record_mode),
+        "is_playing": bool(song.is_playing),
+    }
+
+
+@register("arrangement_automation_via_session_record_complete")
+def arrangement_automation_via_session_record_complete(song, params):
+    """Phase 2 of the T5 workaround.
+
+    Stops recording, stops transport, disarms the track, locates the
+    newly-recorded arrangement clip, and optionally cleans up the
+    temporary session clip used to source the automation.
+    """
+    track_index = int(params["track_index"])
+    session_clip_slot = int(params.get("session_clip_slot", 0))
+    cleanup = bool(params.get("cleanup_session_clip", True))
+    target_beat = float(params["target_beat"])
+    duration_beats = float(params.get("duration_beats", 0))
+
+    track = get_track(song, track_index)
+    slots = list(track.clip_slots)
+    if session_clip_slot < 0 or session_clip_slot >= len(slots):
+        raise IndexError(
+            "session_clip_slot %d out of range" % session_clip_slot
+        )
+    slot = slots[session_clip_slot]
+
+    # 1. Stop recording and transport
+    song.record_mode = False
+    was_playing = song.is_playing
+    if was_playing:
+        song.stop_playing()
+
+    # 2. Stop the session clip if still playing
+    try:
+        if slot.has_clip and getattr(slot, "is_playing", False):
+            slot.clip.stop()
+    except Exception:
+        pass
+
+    # 3. Disarm the track (leave as-was if never armed)
+    try:
+        track.arm = False
+    except Exception:
+        pass
+
+    # 4. Find the new arrangement clip at or near target_beat.
+    # Tolerance: half a beat — Live may nudge start by quantization.
+    track_clips = list(track.arrangement_clips)
+    new_clip = None
+    new_index = None
+    tolerance = 0.5
+    for i, c in enumerate(track_clips):
+        if abs(float(c.start_time) - target_beat) < tolerance:
+            new_clip = c
+            new_index = i
+            break
+
+    # 5. Cleanup the session clip if requested
+    session_clip_deleted = False
+    if cleanup and slot.has_clip:
+        try:
+            slot.delete_clip()
+            session_clip_deleted = True
+        except Exception:
+            pass
+
+    result = {
+        "status": "completed",
+        "track_index": track_index,
+        "arrangement_clip_found": new_clip is not None,
+        "arrangement_clip_index": new_index,
+        "session_clip_deleted": session_clip_deleted,
+        "record_mode": bool(song.record_mode),
+        "was_playing": was_playing,
+    }
+    if new_clip is not None:
+        result["arrangement_clip_start"] = float(new_clip.start_time)
+        result["arrangement_clip_length"] = float(new_clip.length)
+        try:
+            result["arrangement_clip_name"] = str(new_clip.name)
+        except Exception:
+            pass
+    elif duration_beats > 0:
+        # Guess based on expected range — helpful debug if the lookup missed
+        result["expected_clip_start"] = target_beat
+        result["expected_clip_end"] = target_beat + duration_beats
+    return result

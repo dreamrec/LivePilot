@@ -31,6 +31,27 @@ signature_techniques:
   - name: "Coupled filter + reverb motion"
     description: "Particle X → filter cutoff, particle Y → reverb wet, particle velocity → dry/wet balance. Single physical motion drives a 3-parameter sonic change."
     aesthetic: [ambient, experimental]
+  - name: "Gravity-well attractor"
+    description: "Set strong gravity toward center + low friction → particle orbits return to origin with decay. Map to pad tone controls → pad breathes in-and-out toward a rest state."
+    aesthetic: [ambient, generative]
+  - name: "Chaotic lock-in"
+    description: "High initial velocity + medium friction → particle wanders, eventually settles. Map to filter + detune → synth starts mobile, finds a rest-state timbre over 16 bars."
+    aesthetic: [deep_minimal, experimental]
+
+pairs_well_with:
+  - device: "Tree Tone"
+    reason: "Both from Inspired by Nature — Vector Map drives Tree Tone's structural parameters for coupled organic motion"
+  - device: "Bouncy Notes"
+    reason: "Vector Map modulates Bouncy Notes' ballistics → asymmetric, evolving note cascades"
+  - device: "Any parameter-rich synth"
+    reason: "Vector Map really shines when addressing 4+ coupled parameters on the same instrument — Wavetable, Tension, Collision"
+
+gotchas:
+  - "Vector Map is a MODULATOR. Without destination mappings, the particle motion is invisible"
+  - "Heavy-parameter mappings can create runaway feedback loops (mod destination is itself a modulator source) — sanity-check your mod routing for cycles"
+  - "The particle is a single point — NOT multi-particle. For swarm behavior, stack multiple Vector Maps"
+  - "Very low friction values make the particle orbit forever — pair with gravity to stabilize"
+  - "Freezing the session (freeze_track) captures the particle's current state, not its dynamic behavior — flatten with the particle paused at a known position"
 
 learn_more:
   pack: "Inspired by Nature"

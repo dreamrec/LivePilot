@@ -134,6 +134,17 @@ key_parameters:
       medium: 80.0
       slow_glide: 200.0
 
+signature_techniques:
+  - name: "808 sub replacement"
+    description: "Sine+triangle, fundamental C1, amp envelope long decay, subtle pitch envelope down 1 semitone over 100ms. Cleaner than sampled 808s, and tunable in-key."
+    aesthetic: ['trap', 'hip_hop', 'dubstep']
+  - name: "Reese-style bass"
+    description: "Two detuned oscillators octave apart, LP filter resonant, saturation on output. The sum-of-beats IS the movement — no LFO needed."
+    aesthetic: ['dnb', 'jungle', 'bass_music']
+  - name: "Dub sub-bass"
+    description: "Pure sine at fundamental, very long release, no transient. The bass is felt not heard — pair with a short percussive layer (click at 2-5kHz) for attack."
+    aesthetic: ['dub', 'dub_techno', 'deep_minimal']
+
 pairs_well_with:
   - device: "EQ Eight"
     reason: "Surgical low-end shaping — roll off sub-rumble and shape the bass presence"

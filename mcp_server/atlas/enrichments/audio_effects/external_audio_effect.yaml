@@ -1,0 +1,64 @@
+id: external_audio_effect
+name: External Audio Effect
+sonic_description: >
+  Infrastructure device for routing audio OUT to external hardware (a
+  guitar pedal, an outboard compressor, a hardware synth's audio-through
+  path) and back IN. Essential for hybrid hardware/DAW setups. Handles
+  audio delay compensation automatically via send-receive round-trip
+  timing.
+effect_type: hardware_insert
+character_tags: [hardware, routing, infrastructure, insert, hybrid_rig]
+use_cases:
+  - outboard_compressor_insert
+  - hardware_pedal_through_daw
+  - re_amping_via_hardware_amp
+  - send_to_synth_audio_through
+genre_affinity:
+  primary: [all]
+  secondary: []
+complexity: intermediate
+self_contained: false
+introduced_in: "8.0"
+pack: Core Library
+requires_hardware: true
+
+key_parameters:
+  - name: "Audio To"
+    description: "Output audio port — the physical output sent to hardware"
+    range: ["Ext Out 1", "Ext Out 2", "..."]
+    type: enum
+
+  - name: "Audio From"
+    description: "Input audio port — the physical return from hardware"
+    range: ["Ext In 1", "Ext In 2", "..."]
+    type: enum
+
+  - name: "Gain"
+    description: "Make-up gain for the returning signal"
+    range: [-35.0, 35.0]
+    unit: "dB"
+    type: float
+
+  - name: "Hardware Latency"
+    description: "Measured round-trip latency for delay compensation — auto-detected"
+    range: [0.0, 1000.0]
+    unit: "ms"
+    type: float
+
+  - name: "Dry/Wet"
+    description: "Blend processed return with dry"
+    range: [0.0, 1.0]
+    type: float
+
+pairs_well_with:
+  - device: "Utility"
+    reason: "Utility before External effect for gain staging into the hardware, after for final trim"
+  - device: "Compressor"
+    reason: "Tracking compressor in DAW for safety, hardware compressor in External for character"
+
+gotchas:
+  - "Requires multi-channel audio interface with at least one unused input/output pair"
+  - "Hardware Latency must be correct or everything downstream will be phase-wrong — use Auto-Detect and trust it unless you hear smearing"
+  - "Don't bypass — the audio signal is physically leaving the DAW. Bypass stops the round-trip but doesn't mute your hardware"
+  - "For pure hardware synth MIDI → audio return, External Instrument is more appropriate than External Audio Effect"
+  - "Running multiple External Audio Effects on different tracks can easily saturate interface I/O — check channel availability"

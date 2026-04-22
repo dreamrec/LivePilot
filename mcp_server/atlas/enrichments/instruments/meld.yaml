@@ -101,6 +101,17 @@ key_parameters:
       tight: 100.0
       ambient: 2000.0
 
+signature_techniques:
+  - name: "Layered evolving pad"
+    description: "Two Drift engines with different characters (one dark, one bright), crossfade-modulated by slow LFO. The pad morphs between timbres without notes changing."
+    aesthetic: ['ambient', 'deep_minimal', 'cinematic']
+  - name: "Bass + sub stack"
+    description: "Engine A: mid bass with character. Engine B: pure sine sub. Balanced -3 dB apart. Two engines = precise crossover without needing a split."
+    aesthetic: ['dub_techno', 'trap', 'dnb']
+  - name: "Dual-voice chord"
+    description: "Engine A: plucked pluck at root. Engine B: sustained pad at 3rd/5th. Stacked voicing without needing two tracks."
+    aesthetic: ['house', 'deep_house', 'melodic_techno']
+
 pairs_well_with:
   - device: "Reverb"
     reason: "MPE expression + reverb creates deeply immersive evolving soundscapes"

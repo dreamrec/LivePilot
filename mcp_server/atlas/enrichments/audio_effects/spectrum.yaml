@@ -1,0 +1,61 @@
+id: spectrum
+name: Spectrum
+sonic_description: >
+  Real-time FFT spectrum analyzer — shows frequency content vs amplitude
+  over time. Diagnostic only, no audio processing. Essential for mixing
+  decisions: frequency masking, bass extension, harmonic content, sibilance.
+  LivePilot's analyzer bridge captures a similar but more structured
+  readout via the M4L Analyzer device — use Spectrum for visual cross-check.
+effect_type: analyzer
+character_tags: [diagnostic, transparent, measurement, mix_tool]
+use_cases:
+  - identifying_frequency_masking
+  - checking_bass_extension
+  - spotting_harsh_harmonics
+  - mastering_reference_checking
+  - harmonic_analysis_of_a_synth_patch
+genre_affinity:
+  primary: [all]
+  secondary: []
+complexity: beginner
+self_contained: true
+introduced_in: "8.0"
+pack: Core Library
+
+key_parameters:
+  - name: "Block Size"
+    description: "FFT window — bigger = better frequency resolution, worse time resolution"
+    range: [64, 16384]
+    type: int
+    sweet_spots:
+      transient_focus: 512
+      balanced: 2048
+      mastering_detail: 8192
+
+  - name: "Range (Top)"
+    description: "Upper edge of displayed dB range"
+    range: [-60.0, 0.0]
+    unit: "dB"
+    type: float
+
+  - name: "Range (Bottom)"
+    description: "Lower edge of displayed dB range"
+    range: [-160.0, -60.0]
+    unit: "dB"
+    type: float
+
+  - name: "Channel"
+    description: "Display mode — L only, R only, L+R separate, or Mid/Side"
+    range: ["L", "R", "L+R", "Mid/Side"]
+    type: enum
+
+pairs_well_with:
+  - device: "EQ Eight"
+    reason: "EQ Eight has a built-in spectrum — Spectrum as a second analyzer post-EQ validates your moves"
+
+gotchas:
+  - "Spectrum is DIAGNOSTIC — no processing, audio passes through. Don't use as an effect"
+  - "Block size is a time/frequency tradeoff — mastering wants 4096+, drum-punch analysis wants 512 or less"
+  - "Very high FFT sizes can stress CPU on low-end hardware — remove when mixdown is final"
+  - "Does not measure LUFS, peak, or other broadcast meters — use dedicated metering for that"
+  - "For programmatic measurement, use LivePilot's analyze_spectrum_offline / get_master_spectrum tools — Spectrum is for visual human inspection only"

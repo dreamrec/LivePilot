@@ -75,3 +75,6 @@ docs/*.md
 .worktrees/
 docs/LivePilot-1.7-Perception/
 m4l_device/externals/
+
+# Splice API capture — reverse-engineered endpoints, local research only
+docs/research/splice-api-capture/

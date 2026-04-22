@@ -1,0 +1,112 @@
+id: amp
+name: Amp
+sonic_description: >
+  Guitar/bass amplifier emulation — 7 amp types (Clean/Boost/Blues/Rock/
+  Lead/Heavy/Bass), each with their own character of clean-to-overdriven
+  harmonic generation. Intended to be paired with Cabinet for the full
+  speaker-cabinet response, or run standalone for a direct-injection style.
+effect_type: amp_simulation
+character_tags: [guitar, distorted, saturated, warm, tube_character]
+use_cases:
+  - electric_guitar_tone_shaping
+  - bass_direct_with_amp_character
+  - synth_through_guitar_amp_for_grit
+  - drums_through_rock_amp_for_aggression
+genre_affinity:
+  primary: [rock, blues, metal, indie]
+  secondary: [experimental, synthwave, dub]
+complexity: intermediate
+self_contained: true
+introduced_in: "9.0"
+pack: Core Library
+
+key_parameters:
+  - name: "Amp Type"
+    description: "Which amplifier model — each has a distinct harmonic/compression signature"
+    range: ["Clean", "Boost", "Blues", "Rock", "Lead", "Heavy", "Bass"]
+    type: enum
+    sweet_spots:
+      clean_warmth: "Clean"
+      edge_of_break: "Blues"
+      crunch: "Rock"
+      distortion: "Lead"
+      modern_metal: "Heavy"
+      bass_body: "Bass"
+
+  - name: "Gain"
+    description: "Preamp drive — the key saturation control"
+    range: [0.0, 10.0]
+    type: float
+    sweet_spots:
+      clean: 2.0
+      edge: 4.5
+      overdriven: 7.0
+      full_crunch: 9.0
+
+  - name: "Bass"
+    description: "Low-frequency EQ"
+    range: [0.0, 10.0]
+    type: float
+
+  - name: "Mid"
+    description: "Midrange EQ"
+    range: [0.0, 10.0]
+    type: float
+
+  - name: "Treble"
+    description: "High-frequency EQ"
+    range: [0.0, 10.0]
+    type: float
+
+  - name: "Presence"
+    description: "High-end airiness (post-EQ shimmer)"
+    range: [0.0, 10.0]
+    type: float
+
+  - name: "Volume"
+    description: "Output level — compensate for gain-induced level changes"
+    range: [0.0, 10.0]
+    type: float
+
+  - name: "Dual Mono"
+    description: "Run two independent amps for L and R for stereo width"
+    range: [0, 1]
+    type: int
+
+pairs_well_with:
+  - device: "Cabinet"
+    reason: "The canonical pair — Amp is the preamp, Cabinet is the speaker. Use both unless going for a direct-injection sound"
+  - device: "Pedal"
+    reason: "Stomp-box overdrive in front of Amp for stacked saturation"
+  - device: "Compressor"
+    reason: "Compressor before Amp evens dynamics; after Amp, it glues the distorted signal"
+  - device: "EQ Eight"
+    reason: "Post-Amp, pre-Cabinet for specific harmonic shaping the amp's 3-band can't hit"
+
+starter_recipes:
+  - name: "Classic Crunch Rhythm"
+    description: "Rock amp at the edge of breakup"
+    genre: rock
+    params:
+      "Amp Type": "Rock"
+      "Gain": 5.0
+      "Bass": 5.0
+      "Mid": 6.0
+      "Treble": 6.0
+      "Presence": 4.0
+
+  - name: "Synth Grit"
+    description: "Run a clean synth pad through a lead amp for harmonic dirt"
+    genre: synthwave
+    params:
+      "Amp Type": "Lead"
+      "Gain": 6.0
+      "Bass": 3.0
+      "Mid": 5.0
+      "Treble": 4.0
+
+gotchas:
+  - "Amp alone sounds unnatural — the preamp without the speaker cabinet is harsh. Pair with Cabinet unless you specifically want that tone"
+  - "Gain and Volume are different — Gain creates saturation, Volume is makeup. Set Gain first, then compensate"
+  - "Dual Mono doubles CPU — leave off unless you need stereo independence"
+  - "Heavy and Lead amps at low Gain still sound 'amped' — the EQ character persists. For clean tone, use Clean or Blues"

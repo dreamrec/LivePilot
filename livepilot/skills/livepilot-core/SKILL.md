@@ -1,13 +1,13 @@
 ---
 name: livepilot-core
-description: Core discipline for LivePilot — agentic production system for Ableton Live 12. 422 tools across 52 domains. This skill should be used whenever working with Ableton Live through MCP tools. Provides golden rules, tool speed tiers, error handling protocol, and pointers to domain and engine skills.
+description: Core discipline for LivePilot — agentic production system for Ableton Live 12. 426 tools across 52 domains. This skill should be used whenever working with Ableton Live through MCP tools. Provides golden rules, tool speed tiers, error handling protocol, and pointers to domain and engine skills.
 ---
 
 # LivePilot Core — Ableton Live 12
 
-Agentic production system for Ableton Live 12. 422 tools across 52 domains, three layers:
+Agentic production system for Ableton Live 12. 426 tools across 52 domains, three layers:
 
-- **Device Atlas** — 1305 devices indexed (81 enriched with sonic intelligence, 683 drum kits). Consult `atlas_search` or `atlas_suggest` before loading any device. Never guess a device name.
+- **Device Atlas** — 1305 devices indexed (135 enriched with sonic intelligence, 683 drum kits). Consult `atlas_search` or `atlas_suggest` before loading any device. Never guess a device name.
 - **M4L Analyzer** — Real-time audio analysis on the master bus (8-band spectrum, RMS/peak, key detection). Optional — all core tools work without it.
 - **Technique Memory** — Persistent storage for production decisions. Consult `memory_recall` before creative tasks to understand user taste.
 
@@ -40,7 +40,7 @@ Agentic production system for Ableton Live 12. 422 tools across 52 domains, thre
 ## Tool Speed Tiers
 
 ### Instant (<1s) — Use freely
-All 422 tools plus M4L perception tools.
+All 426 tools plus M4L perception tools.
 
 ### Fast (1-5s) — Use freely
 `analyze_loudness` · `analyze_mix` · `analyze_sound_design`
@@ -129,8 +129,14 @@ Deep production knowledge in `references/`:
 
 | File | Content |
 |------|---------|
-| `references/overview.md` | All 422 tools with params and ranges |
+| `references/overview.md` | All 426 tools with params and ranges |
 | `references/device-atlas/` | 280+ device corpus with URIs and presets |
+| `references/device-knowledge/` | Per-device parameter + technique knowledge |
+| `references/pack-knowledge.md` | All 44 installed packs scored for aesthetic fit (Tier S / A / B / C), with Top / Use-when guidance |
+| `references/artist-vocabularies.md` | **v1.17+** — ~25 producers (Villalobos, Hawtin, Basic Channel, Gas, Basinski, Hecker, Aphex, Dilla, Burial, Henke, Daft Punk, …) mapped to `reach_for` LivePilot devices + `avoid` anti-patterns + `key_techniques` cross-refs. The LLM's bridge from "sound like X" to concrete tool calls. |
+| `references/genre-vocabularies.md` | **v1.17+** — 15 genres (microhouse, dub_techno, deep_minimal, minimal_techno, ambient, idm, modern_classical, hip_hop, trap, dubstep, house, dnb, garage, experimental, synthwave) with tempo / kick / bass / percussion / harmonic / texture / reach-for / avoid structure |
+| `references/sound-design-deep.md` | Masters-level sound design principles (Basic Channel space-as-composition, Hawtin subtraction-over-addition, micro-modulation, space as composition) — explicitly "not a recipe book" |
+| `references/sample-manipulation.md` | 29 sample techniques (slice_and_sequence, micro_chop, vocal_chop_rhythm, extreme_stretch, dub_throw, tail_harvest, granular_scatter, …) with producer references (Burial, Dilla, Amon Tobin, Stars of the Lid) |
 | `references/midi-recipes.md` | Drum patterns, chord voicings, humanization |
 | `references/sound-design.md` | Synth recipes, device chain patterns |
 | `references/mixing-patterns.md` | Gain staging, compression, EQ, stereo |
@@ -138,6 +144,11 @@ Deep production knowledge in `references/`:
 | `references/ableton-workflow-patterns.md` | Session/arrangement workflows |
 | `references/memory-guide.md` | Technique memory usage and quality templates |
 | `references/m4l-devices.md` | M4L bridge command reference |
+
+**For aesthetic queries ("sound like X", "make me a <genre> track"), read
+`artist-vocabularies.md` + `genre-vocabularies.md` BEFORE selecting devices.**
+They're structured translation layers between the LLM's training and
+LivePilot's atlas — not recipe scripts.
 
 ## V2 Orchestration Layer
 

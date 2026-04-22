@@ -356,3 +356,106 @@ def test_compare_role_scoring_favors_better_match(atlas):
     # Compressor has "sidechain compression" use case, Drift doesn't mention sidechain
     result = atlas.compare("Drift", "Compressor", role="sidechain")
     assert "Compressor" in result["recommendation"]
+
+
+# ── Pack index (T4 — 2026-04-22 handoff) ───────────────────────────
+
+
+PACK_ATLAS = {
+    "meta": {"version": "2.0.0"},
+    "devices": [
+        {
+            "id": "harmonic_drone_generator",
+            "name": "Harmonic Drone Generator",
+            "uri": "ableton:HDG",
+            "category": "max_for_live",
+            "source": "browser",
+            "pack": "Drone Lab",
+            "enriched": True,
+        },
+        {
+            "id": "pitch_hack",
+            "name": "Pitch Hack",
+            "uri": "ableton:PitchHack",
+            "category": "audio_effects",
+            "source": "browser",
+            "pack": "Creative Extensions",
+            "enriched": True,
+        },
+        {
+            "id": "analog",
+            "name": "Analog",
+            "uri": "ableton:Analog",
+            "category": "instruments",
+            "source": "browser",
+            "enriched": True,
+            # no pack field — should fall under Core Library via heuristic
+        },
+        {
+            "id": "random_plugin",
+            "name": "Some VST",
+            "uri": "vst:somevst",
+            "category": "plugins",
+            "source": "plugin",
+            # no pack — no fallback, stays unindexed
+        },
+    ],
+}
+
+
+@pytest.fixture
+def pack_atlas(tmp_path):
+    path = tmp_path / "pack_atlas.json"
+    path.write_text(json.dumps(PACK_ATLAS))
+    return AtlasManager(str(path))
+
+
+def test_by_pack_index_populated(pack_atlas):
+    assert "Drone Lab" in pack_atlas._by_pack
+    assert "Creative Extensions" in pack_atlas._by_pack
+    # Native device with no explicit pack falls back to Core Library
+    assert "Core Library" in pack_atlas._by_pack
+    # Plugin without pack doesn't get indexed
+    plugin_packs = [p for p, devs in pack_atlas._by_pack.items()
+                    if any(d["id"] == "random_plugin" for d in devs)]
+    assert plugin_packs == []
+
+
+def test_pack_info_case_insensitive(pack_atlas):
+    info = pack_atlas.pack_info("drone lab")
+    assert info["pack"] == "Drone Lab"
+    assert info["device_count"] == 1
+    assert info["enriched_count"] == 1
+    assert info["devices"][0]["name"] == "Harmonic Drone Generator"
+
+
+def test_pack_info_miss_surfaces_available_packs(pack_atlas):
+    info = pack_atlas.pack_info("Nonexistent Pack")
+    assert info["device_count"] == 0
+    assert "available_packs" in info
+    assert "Drone Lab" in info["available_packs"]
+
+
+def test_pack_info_core_library_includes_native(pack_atlas):
+    info = pack_atlas.pack_info("Core Library")
+    assert info["device_count"] >= 1
+    names = [d["name"] for d in info["devices"]]
+    assert "Analog" in names
+
+
+def test_list_packs_sorted_descending(pack_atlas):
+    packs = pack_atlas.list_packs()
+    counts = [p["device_count"] for p in packs]
+    assert counts == sorted(counts, reverse=True)
+
+
+def test_pack_info_empty_string_handled(pack_atlas):
+    info = pack_atlas.pack_info("")
+    assert info["device_count"] == 0
+    assert info["devices"] == []
+
+
+def test_stats_includes_by_pack(pack_atlas):
+    stats = pack_atlas.stats
+    assert "by_pack" in stats["index_sizes"]
+    assert stats["index_sizes"]["by_pack"] >= 2

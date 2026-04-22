@@ -96,6 +96,17 @@ key_parameters:
       fifth: 7.0
       octave: 12.0
 
+signature_techniques:
+  - name: "Mallet percussion"
+    description: "Struck resonator, material=wood, partials=5-8, decay short. Marimba/vibraphone without sampling — the physical model responds to velocity like the real instrument."
+    aesthetic: ['ambient', 'cinematic', 'experimental']
+  - name: "Inharmonic bell drone"
+    description: "Struck bar, inharmonicity high, decay long, LFO modulating partial levels. The bell never settles — each strike reveals a different harmonic slice."
+    aesthetic: ['experimental', 'ambient', 'microhouse']
+  - name: "Struck prepared string"
+    description: "Bowed string exciter with mute on, low tension, short decay — prepared-piano territory. Pair with Convolution Reverb for Cage/Feldman atmosphere."
+    aesthetic: ['experimental', 'classical', 'cinematic']
+
 pairs_well_with:
   - device: "Reverb"
     reason: "Physical modeling sounds bloom in reverberant spaces — adds room context"

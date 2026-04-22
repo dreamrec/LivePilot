@@ -179,35 +179,112 @@ Scores sourced from `docs/research/2026-04-22-ableton-packs-deep-analysis.md`. I
 
 ## Tier C — Wrong aesthetic but still mineable
 
-### Build and Drop, Drive and Glow, Punch and Tilt, Skitter and Step
-- **Essence:** Festival EDM, saturated indie, warehouse techno, UK bass — actively wrong aesthetic for minimal.
-- **Scores:** Minimal 0-3 / Dub 0-5 / Cinematic 0-3
-- **Use:** Mine for specific elements — noise/texture sample loops, Effect Racks for saturation chains, dark-melody patches (subtract notes to minimize). Never load presets whole.
+These packs were commissioned for genres far from minimal/microhouse/ambient, but every one contains *raw material* (one-shots, noise beds, dry multisamples) worth extracting. Never load the preset chains. Never use the genre MIDI. Strip the kits.
 
-### Trap Drums, Beat Tools, Drum Essentials
-- **Scores:** Minimal 1-2 / Dub 1-3 / Cinematic 1-2
-- **Use:** Pull raw one-shots out of the kits, ignore the preset chains. 808 tails as sub-layers; Goldbaby 606 hats as minimal tops.
+### Build and Drop (Puremagnetik)
+- **Essence:** Festival EDM construction kits — 808s, saw-leads, risers, drops.
+- **Scores:** Minimal 1 / Dub 2 / Cinematic 2
+- **Top:** Riser/downlifter **sample folders** only — strip the kick+lead presets. 808 sub-tails repitched as minimal bass layers.
+- **Use when:** need a risk-free atmospheric riser or noise sweep. Everything else is throwaway.
+- **Avoid:** All preset racks — saturation chains are over-cooked for minimal.
 
-### Orchestral Brass / Strings / Woodwinds (SONiVOX)
+### Drive and Glow (Native Instruments / Ableton)
+- **Essence:** Saturated indie/synthwave chains — soft-clipped leads, tape-emulation pads.
+- **Scores:** Minimal 2 / Dub 3 / Cinematic 3
+- **Top:** Effect Racks for the saturation chains only — copy the guts (Saturator → Shifter → tape delay) and drop into your own signal path. Tape-flutter pads at -30 dB as hidden glue.
+- **Use when:** want soft warmth without building the chain yourself.
+- **Avoid:** All synthwave lead presets — wrong decade.
+
+### Punch and Tilt (Ableton)
+- **Essence:** Warehouse techno kit generator — rave stabs, distorted kicks, tilted hats.
+- **Scores:** Minimal 3 / Dub 4 / Cinematic 1
+- **Top:** Distorted kick one-shots (Drum Rack extraction), not the preset kicks-through-Drum-Buss chains. Tilted/pitched ride-cymbal samples as alien hi-hats.
+- **Use when:** need warehouse grit without going full hardcore. Villalobos occasionally pitches these down 2 octaves.
+- **Avoid:** MIDI clips — 130 BPM warehouse patterns, wrong tempo for minimal.
+
+### Skitter and Step (Ableton)
+- **Essence:** UK garage / 2-step / UKG percussion — hats, shuffled snares, vocal chops.
+- **Scores:** Minimal 2 / Dub 2 / Cinematic 1
+- **Top:** Shuffled closed-hat samples (built for 2-step, work for microhouse). Vocal "chop-and-cut" one-shots for Akufen stutter inputs.
+- **Use when:** need shuffled hi-hat character that standard 909/606 doesn't give.
+- **Avoid:** Garage bassline presets — wrong frequency balance for minimal bass.
+
+### Trap Drums (Sound Oracle / Ableton)
+- **Essence:** Modern trap kits — sub 808s, snappy snares, tight rolls.
+- **Scores:** Minimal 1 / Dub 2 / Cinematic 1
+- **Top:** **808 sub-tails only** as sub-bass layers under a minimal kick. Snappy clap one-shots as high-velocity accents (strip from kits).
+- **Use when:** need sub-heavy low end without building an 808 from scratch.
+- **Avoid:** Entire kits, all hi-hat MIDI rolls (trap signature, wrong for minimal).
+
+### Beat Tools
+- **Essence:** Generic drum-programming toolkit — kicks, snares, hats, claps, percs.
+- **Scores:** Minimal 2 / Dub 2 / Cinematic 2
+- **Top:** Raw one-shots — cherry-pick specific samples (a particular snap, a particular hat) and ignore the preset kits. Good "neutral" source material if you don't want a pack with opinions.
+- **Use when:** building a kit from scratch, want neutral one-shots without aesthetic opinion.
+- **Avoid:** Preset Drum Racks — too generic, no character.
+
+### Drum Essentials
+- **Essence:** Live 12's baseline drum kit library — acoustic + electronic + percussion across 30+ kits.
+- **Scores:** Minimal 1 / Dub 2 / Cinematic 1
+- **Top:** Goldbaby 606 and 808 samples (hidden in the electronic kit folders). Acoustic side-stick and rim-shot one-shots.
+- **Use when:** need a specific drum-machine sample, not an entire kit.
+- **Avoid:** Default kits — too safe, no character.
+
+### SONiVOX Orchestral Brass
+- **Essence:** 11 multisampled brass instruments — trumpet, French horn, trombone, tuba, ensembles.
 - **Scores:** Minimal 3 / Dub 2 / Cinematic 5
-- **Use:** Pizzicato + soft sustains only. Ensembles too Hollywood for minimal; pizz double-bass as ghost/kick layer; solo cello sustain as bed; solo muted French horn for cinematic moments.
+- **Top:** Solo **muted French horn** pp for dusty Arpiar/Cinematic moments. Solo trumpet pp with long release as sustained pitch drone.
+- **Use when:** need a single sustained brass note as a foreground texture — NEVER as ensemble.
+- **Avoid:** All ensemble patches — too Hollywood for minimal.
+
+### SONiVOX Orchestral Strings
+- **Essence:** 12 multisampled strings — violins, violas, cellos, double basses, ensembles.
+- **Scores:** Minimal 3 / Dub 2 / Cinematic 5
+- **Top:** **Pizzicato double-bass** as ghost/kick layer in minimal — short, warm, percussive. **Solo cello sustain pp** for bass-register atmosphere bed.
+- **Use when:** need pizzicato accents or single-note sustained string pad at low dynamic.
+- **Avoid:** Ensemble sustains, legato patches — Hollywood energy.
+
+### SONiVOX Orchestral Woodwinds
+- **Essence:** 10 multisampled woodwinds — flute, oboe, clarinet, bassoon, ensembles.
+- **Scores:** Minimal 3 / Dub 2 / Cinematic 5
+- **Top:** **Solo flute pp sustained** through PitchLoop89 for drifting high register. **Solo bass clarinet pp** as low-register hidden-voice color.
+- **Use when:** need a specific single woodwind color for a single note or short phrase.
+- **Avoid:** Fast articulations, ensembles — too classical.
 
 ### Grand Piano (e-instruments)
+- **Essence:** Steinway-style multisampled concert grand.
 - **Scores:** Minimal 3 / Dub 2 / Cinematic 5
-- **Use:** Single staccato note with fast release as percussive 'tock'. Use Upright Piano (Spitfire) instead for anything sustained.
+- **Top:** **Single staccato note** with fast release at velocity 60-90 as percussive 'tock'/'thunk'. Lid-open for resonance. Use Upright Piano (Spitfire Bechstein, Tier S) for anything sustained.
+- **Use when:** need a percussive pitched hit, not a piano performance.
+- **Avoid:** Sustained chords (too bright/concert-hall), legato phrases.
 
 ### Synth Essentials
+- **Essence:** Default Live preset collection across Operator/Analog/Wavetable/Drift.
 - **Scores:** Minimal 2 / Dub 2 / Cinematic 3
-- **Use:** Most presets too finished. Tension + Collision (physical modeling) give unusual sounds worth exploring; otherwise build from scratch on Operator / Analog.
+- **Top:** **Tension + Collision physical-modeling presets** for unusual bowed/struck sounds that aren't obvious presets. Otherwise build from scratch — Operator sine + one-op FM is more useful than any preset here.
+- **Use when:** need a quick physical-modeling starter; otherwise build from scratch.
+- **Avoid:** "Lead" / "Pad" category — too finished, all the same.
 
-### Session Drums Club / Studio
+### Session Drums Club
+- **Essence:** Acoustic drum kit recorded in a live club/medium room — ambient kit with baked-in room mics.
 - **Scores:** Minimal 3 / Dub 3 / Cinematic 3
-- **Use:** Side-stick / rim-shot as main snare/accent; tambourine + delay as ghost rattles. Club has room ambience baked in; Studio is drier — pick based on whether you want to fight or use the space.
+- **Top:** **Side-stick / rim-shot** as main snare or accent in minimal. Tambourine + delay as ghost rattles. Room ambience is already baked in — don't add more reverb.
+- **Use when:** want a drum bed that fights your space (room mics add their own reverb character).
+- **Avoid:** Full kits through Drum Buss — too rock.
+
+### Session Drums Studio
+- **Essence:** Dry studio-recorded acoustic kit — clean, no room, close-mic'd.
+- **Scores:** Minimal 3 / Dub 3 / Cinematic 3
+- **Top:** **Dry rim/brush snare** as starting point for Convolution Reverb experiments (apply your own space). Brush one-shots as percussion texture.
+- **Use when:** want a drum source you can fully control spatially — apply your own reverb, don't fight theirs.
+- **Avoid:** Direct preset use — the dryness feels sterile without post-processing.
 
 ### Core Library
-- **Essence:** Everything that ships with Live 12 — all native presets across all synths.
+- **Essence:** Everything that ships with Live 12 — all native presets across Analog/Operator/Wavetable/Drift/Simpler/Sampler + all native effect presets + the bundled sample library (Ambient & Atmospheres, Noise & FX, Live Essentials samples).
 - **Scores:** Minimal 3 / Dub 3 / Cinematic 3
-- **Use:** Ambient & Atmospheres + Noise & FX sample folders are the unsung gold. Avoid "Lead" / "Pad" / genre-specific presets.
+- **Top:** **Ambient & Atmospheres + Noise & FX sample folders** — the unsung gold. "Ethereal Voice 01-04 Dmin 90bpm", "FX Vocal Chant Backwards", "Vocal Chant Aye", "Ethereal Adlib Vocal" are hidden Villalobos bait. Search `samples` path first in `search_browser` before reaching for Splice.
+- **Use when:** hunt these folders BEFORE opening any other pack. Most of Live's best texture material is hiding here.
+- **Avoid:** Named genre presets ("Lead", "Pad", "Bass" categories in each synth) — too generic. Also avoid "Drum Kit Essentials" defaults — go to dedicated drum packs instead.
 
 ---
 

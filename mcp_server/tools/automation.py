@@ -602,3 +602,171 @@ def analyze_for_automation(
         "spectrum": spectrum,
         "suggestions": suggestions,
     }
+
+
+# ── Track-level arrangement automation workaround (T5, 2026-04-22 handoff) ─
+#
+# The Live LOM has a well-known gap: you cannot directly write a
+# TRACK-level automation envelope into arrangement between clips or
+# outside any clip. You can only write CLIP-level automation (which
+# lives inside a specific clip). The workaround is the classic
+# session-clip + record-to-arrangement dance:
+#
+#   1. Build a session clip with the automation (set_clip_automation)
+#   2. Arm the track
+#   3. Jump to the target beat
+#   4. Start arrangement recording
+#   5. Fire the session clip
+#   6. Wait for the clip to play through at tempo
+#   7. Stop recording
+#   8. Stop the session clip (return control to arrangement)
+#
+# The recorded arrangement clip has the automation rendered as a native
+# arrangement envelope — which IS writable by Live even when the LOM
+# disallows direct API access.
+
+@mcp.tool()
+async def set_arrangement_automation_via_session_record(
+    ctx: Context,
+    track_index: int,
+    parameter_type: str,
+    points: list | str,
+    target_beat: float,
+    duration_beats: float,
+    session_clip_slot: int = 0,
+    device_index: Optional[int] = None,
+    parameter_index: Optional[int] = None,
+    send_index: Optional[int] = None,
+    cleanup_session_clip: bool = True,
+) -> dict:
+    """Write an arrangement automation envelope at a specific beat via session record.
+
+    Workaround for the Live LOM limitation that prevents direct writing of
+    track-level arrangement automation outside of an existing arrangement
+    clip. Creates a temporary session clip with the automation, arms the
+    track, records the clip into arrangement at target_beat, then cleans
+    up. The recorded arrangement clip has the automation baked in.
+
+    **Status: LIVE** as of 2026-04-22. Uses a two-phase protocol so Live's
+    main thread never blocks: phase 1 (start) fires the session clip into
+    arrangement record; this tool then asyncio.sleeps for the expected
+    record duration (computed from the live tempo that phase 1 returns);
+    phase 2 (complete) stops record, cleans up, and returns the new
+    arrangement clip's index + start/length. Total wall time ≈
+    duration_beats × 60/tempo + 0.5s handler overhead.
+
+    parameter_type:       "device" | "volume" | "panning" | "send"
+    points:               [{time, value, duration?}] — time relative to
+                          the session clip's start (0.0 = first beat)
+    target_beat:          where the recording should begin in the
+                          arrangement timeline (beats)
+    duration_beats:       how long to record (usually matches the session
+                          clip's natural length, but may be longer for
+                          multiple repeats)
+    session_clip_slot:    which session clip slot to use (default 0 — must
+                          be EMPTY or its current content will be overwritten)
+    device_index,
+    parameter_index:      required for parameter_type="device"
+    send_index:           required for parameter_type="send" (0=A, 1=B)
+    cleanup_session_clip: delete the temp session clip after recording
+                          completes (default True)
+
+    Returns a dict with the recorded arrangement clip index + verification
+    info, or an error if any step failed. Because this orchestrates a
+    real-time recording, any of the steps can fail at runtime (track
+    not armable, session clip already running, transport not cooperating).
+    Each failure is reported with the stage it happened at.
+    """
+    if track_index < 0:
+        raise ValueError("track_index must be >= 0 (track-level automation only supports regular tracks)")
+    if parameter_type not in ("device", "volume", "panning", "send"):
+        raise ValueError("parameter_type must be 'device', 'volume', 'panning', or 'send'")
+    if parameter_type == "device":
+        if device_index is None or parameter_index is None:
+            raise ValueError("device_index and parameter_index required for parameter_type='device'")
+    if parameter_type == "send" and send_index is None:
+        raise ValueError("send_index required for parameter_type='send'")
+    points_list = _ensure_list(points)
+    if not points_list:
+        raise ValueError("points list cannot be empty")
+    if target_beat < 0:
+        raise ValueError("target_beat must be >= 0")
+    if duration_beats <= 0:
+        raise ValueError("duration_beats must be > 0")
+
+    ableton = _get_ableton(ctx)
+
+    # Two-phase protocol — the start handler can't block Live's main thread
+    # for the full recording duration (audio dropouts, UI freezes). So:
+    #   1. start — writes session clip, arms, seeks, fires, enables record
+    #   2. MCP-side asyncio.sleep for duration + buffer
+    #   3. complete — stops record, cleans up, returns arrangement clip info
+    # The session-clip route is unchanged; the orchestration moved to us.
+    start_params: dict = {
+        "track_index": track_index,
+        "parameter_type": parameter_type,
+        "points": points_list,
+        "target_beat": target_beat,
+        "duration_beats": duration_beats,
+        "session_clip_slot": session_clip_slot,
+    }
+    if device_index is not None:
+        start_params["device_index"] = device_index
+    if parameter_index is not None:
+        start_params["parameter_index"] = parameter_index
+    if send_index is not None:
+        start_params["send_index"] = send_index
+
+    start_result = ableton.send_command(
+        "arrangement_automation_via_session_record_start",
+        start_params,
+    )
+    if not isinstance(start_result, dict) or start_result.get("status") != "recording":
+        return {
+            "ok": False,
+            "phase": "start",
+            "error": "arrangement record failed to engage",
+            "details": start_result,
+        }
+
+    # Compute sleep: duration_beats * 60/tempo seconds + 0.5s buffer for
+    # Live's record-arm latency. Tempo comes back from the start handler
+    # (fresh Song.tempo read) so we don't hardcode 120.
+    import asyncio
+    tempo = float(start_result.get("tempo") or 120.0)
+    if tempo <= 0:
+        tempo = 120.0
+    seconds_per_beat = 60.0 / tempo
+    sleep_sec = duration_beats * seconds_per_beat + 0.5
+    # Safety ceiling — if something is misconfigured we shouldn't sleep
+    # forever. 10 minutes is far beyond any realistic arrangement clip.
+    sleep_sec = min(sleep_sec, 600.0)
+    try:
+        await asyncio.sleep(sleep_sec)
+    except Exception as exc:
+        # Even if sleep fails we try to complete so we don't leave the
+        # track armed + recording.
+        logger.warning("sleep interrupted: %s", exc)
+
+    complete_params = {
+        "track_index": track_index,
+        "session_clip_slot": session_clip_slot,
+        "target_beat": target_beat,
+        "duration_beats": duration_beats,
+        "cleanup_session_clip": cleanup_session_clip,
+    }
+    complete_result = ableton.send_command(
+        "arrangement_automation_via_session_record_complete",
+        complete_params,
+    )
+    ok = (
+        isinstance(complete_result, dict)
+        and complete_result.get("status") == "completed"
+    )
+    return {
+        "ok": bool(ok),
+        "tempo": tempo,
+        "slept_sec": sleep_sec,
+        "start": start_result,
+        "complete": complete_result,
+    }
