@@ -1,6 +1,6 @@
 # LivePilot v1.16.0 — Architecture & Tool Reference
 
-Agentic production system for Ableton Live 12. 422 tools across 52 domains. Device atlas (1305 devices, 71 enriched), spectral perception (M4L analyzer), technique memory, automation intelligence (16 curve types, 15 recipes), music theory (Krumhansl-Schmuckler, species counterpoint), generative algorithms (Euclidean rhythm, tintinnabuli, phase shift, additive process), neo-Riemannian harmony (PRL transforms, Tonnetz), MIDI file I/O, plan-aware Splice integration (v1.16.0 — daily-quota vs credit gating, Collections, Presets, free preview-URL audition, HTTPS bridge scaffolding for Describe-a-Sound + Variations), drum-rack pad-by-pad construction, live dead-device detection via meter sampling, role-aware Simpler defaults.
+Agentic production system for Ableton Live 12. 422 tools across 52 domains. Device atlas (1305 devices, 107 enriched), spectral perception (M4L analyzer), technique memory, automation intelligence (16 curve types, 15 recipes), music theory (Krumhansl-Schmuckler, species counterpoint), generative algorithms (Euclidean rhythm, tintinnabuli, phase shift, additive process), neo-Riemannian harmony (PRL transforms, Tonnetz), MIDI file I/O, plan-aware Splice integration (v1.16.0 — daily-quota vs credit gating, Collections, Presets, free preview-URL audition, HTTPS bridge scaffolding for Describe-a-Sound + Variations), drum-rack pad-by-pad construction, live dead-device detection via meter sampling, role-aware Simpler defaults.
 
 ## Architecture
 
@@ -8,7 +8,7 @@ Agentic production system for Ableton Live 12. 422 tools across 52 domains. Devi
 AI Client  ──MCP──►  FastMCP Server  ──TCP/9878──►  Remote Script (inside Ableton)
                         (validates)                    (executes on main thread)
                             │
-                            ├── Device Atlas (1305 devices, 71 enriched with sonic intelligence)
+                            ├── Device Atlas (1305 devices, 107 enriched with sonic intelligence)
                             ├── M4L Analyzer ──UDP/OSC──► LivePilot_Analyzer.amxd
                             └── Technique Memory (~/.livepilot/memory/)
 ```

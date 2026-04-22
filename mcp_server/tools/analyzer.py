@@ -807,7 +807,10 @@ async def add_drum_rack_pad(
       "method": "native_12_4",
     }
     """
-    from .._analyzer_engine.sample import _simpler_post_load_hygiene  # noqa
+    # _simpler_post_load_hygiene is already imported at module scope
+    # (line 29). Do not re-import inline — the earlier inline form used
+    # the wrong relative path (..; should've been .) and crashed at
+    # runtime with "No module named 'mcp_server._analyzer_engine'".
     ableton = ctx.lifespan_context["ableton"]
     caps = _live_caps(ctx)
     if not caps.has_replace_sample_native:

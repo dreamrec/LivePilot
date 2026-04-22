@@ -1101,16 +1101,34 @@ async def splice_preview_sample(
     if client is None or not getattr(client, "connected", False):
         return {"ok": False, "error": "Splice gRPC not connected"}
 
+    # Two-stage lookup: SampleInfo is the fast path but only returns
+    # full metadata (including the signed PreviewURL) for downloaded or
+    # purchased samples. For un-downloaded catalog items, fall back to
+    # SearchSamples(FileHash=...) which hits the catalog index and always
+    # returns PreviewURL. Observed live 2026-04-22.
     sample = None
     try:
         sample = await client.get_sample_info(file_hash)
     except Exception as exc:
-        return {"ok": False, "error": f"SampleInfo failed: {exc}"}
+        logger.debug("SampleInfo lookup failed, falling back to search: %s", exc)
+
+    if sample is None or not sample.preview_url:
+        try:
+            search = await client.search_samples(file_hash=file_hash, per_page=1)
+            if search.samples:
+                sample = search.samples[0]
+        except Exception as exc:
+            return {"ok": False, "error": f"PreviewURL lookup failed: {exc}"}
 
     if sample is None or not sample.preview_url:
         return {
             "ok": False,
-            "error": "No preview URL available for this sample",
+            "error": (
+                "No preview URL available for this sample. Splice may "
+                "require the sample to be in a public catalog index. "
+                "Try splice_catalog_hunt first to obtain a fresh "
+                "preview_url from the search result directly."
+            ),
             "file_hash": file_hash,
         }
 
@@ -1420,9 +1438,22 @@ async def splice_pack_info(ctx: Context, pack_uuid: str) -> dict:
         return err
     if not pack_uuid:
         return {"ok": False, "error": "pack_uuid is required"}
-    pack = await client.get_pack_info(pack_uuid)
+    # Normalize: search-returned pack_uuid values sometimes have trailing
+    # provider suffix bytes appended (observed live 2026-04-22 — UUIDs
+    # like "2fc8c6b5-0d7a-8780-0396-8ea1824e9d94937b309" where the first
+    # 36 chars are the standard UUID and the rest are decoration).
+    # Truncate to the canonical 36-char UUID form before the RPC.
+    canonical = pack_uuid.strip()
+    if len(canonical) > 36 and canonical[8] == "-" and canonical[13] == "-":
+        canonical = canonical[:36]
+    pack, err_msg = await client.get_pack_info(canonical)
     if pack is None:
-        return {"ok": False, "error": "Pack not found or gRPC call failed"}
+        return {
+            "ok": False,
+            "error": err_msg or "Pack not found",
+            "pack_uuid_submitted": canonical,
+            "pack_uuid_original": pack_uuid,
+        }
     return {"ok": True, "pack": pack.to_dict()}
 
 

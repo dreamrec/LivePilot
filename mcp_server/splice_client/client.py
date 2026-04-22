@@ -658,10 +658,17 @@ class SpliceGRPCClient:
 
     # ── Packs ───────────────────────────────────────────────────────
 
-    async def get_pack_info(self, pack_uuid: str) -> Optional[SplicePack]:
-        """Fetch metadata for a single sample pack."""
+    async def get_pack_info(
+        self, pack_uuid: str,
+    ) -> tuple[Optional[SplicePack], Optional[str]]:
+        """Fetch metadata for a single sample pack.
+
+        Returns (pack, error) — `error` is a user-readable string when the
+        RPC failed (used to surface root causes to the MCP caller instead
+        of swallowing the exception as `None`).
+        """
         if not self.connected:
-            return None
+            return None, "Splice gRPC not connected"
         pb2 = self._pb2
         try:
             response = await self.stub.SamplePackInfo(
@@ -669,6 +676,13 @@ class SpliceGRPCClient:
                 timeout=INFO_TIMEOUT,
             )
             p = response.Pack
+            if not p.UUID:
+                return None, (
+                    f"Splice returned an empty Pack for UUID '{pack_uuid}'. "
+                    "The UUID may be invalid or not accessible to your "
+                    "account (packs from unpurchased subscriptions can "
+                    "be excluded server-side)."
+                )
             return SplicePack(
                 uuid=p.UUID,
                 name=p.Name,
@@ -676,10 +690,11 @@ class SpliceGRPCClient:
                 genre=p.Genre,
                 permalink=p.Permalink,
                 provider_name=p.ProviderName,
-            )
+            ), None
         except Exception as exc:
-            logger.warning(f"SamplePackInfo failed: {exc}")
-            return None
+            msg = f"SamplePackInfo gRPC call failed: {type(exc).__name__}: {exc}"
+            logger.warning(msg)
+            return None, msg
 
     # ── Presets ─────────────────────────────────────────────────────
 
