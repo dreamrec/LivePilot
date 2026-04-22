@@ -92,6 +92,32 @@ Pick a real kit from results: "909 Core Kit", "808 Core Kit", "Boom Bap Kit", "L
 
 After loading any Drum Rack preset, verify with `get_rack_chains` that chains exist and have named pads like "Bass Drum", "Snare", "Hi-Hat".
 
+## Custom Drum Rack Construction (build a kit from one-shots)
+
+When the user asks for a custom kit ("build me a Villalobos kit", "make a Dilla-style boom-bap kit from these samples"), use `add_drum_rack_pad` — NOT repeated `load_browser_item` calls.
+
+**Why this matters (BUG-2026-04-22 #1):** Calling `load_browser_item` repeatedly on a track that contains a Drum Rack does NOT add new pads. The first call creates a chain at note 36; every subsequent call REPLACES the existing chain instead of appending to the next pad. After 7 sequential drops you end up with exactly 1 chain — only the last sample. This is a Live API limitation, not something to work around with retry loops.
+
+**The canonical workflow:**
+
+```
+# 1. Make sure a Drum Rack exists on the track. Either:
+#    - Load a preset kit and clear it, or
+#    - insert_device(track_index=N, device_name="Drum Rack") for an empty rack
+# 2. For each sample:
+add_drum_rack_pad(
+    track_index=N,
+    pad_note=36,                  # 36=Kick, 38=Snare, 42=Closed HH, 46=Open HH
+    file_path="/abs/path/to/sample.wav",
+)
+```
+
+`add_drum_rack_pad` does the full atomic build per pad: insert_rack_chain → set_drum_chain_note → insert empty Simpler into the chain → load sample via the native Live 12.4 replace_sample API with nested addressing. Returns `{ok, chain_index, pad_note, nested_device_index}` so you can verify and chain further calls.
+
+Requires Live 12.4+ (uses native nested-sample loading). On older versions returns an error directing the caller to the legacy separate-tracks workaround.
+
+For nested-Simpler operations on existing pads (e.g., adjust loop points after the kit is built), `replace_simpler_sample` and `load_sample_to_simpler` accept `chain_index` and `nested_device_index` for explicit deep addressing.
+
 ## Sample-Dependent Devices
 
 These devices load "successfully" with many parameters but produce zero audio without source material. Since MCP tools cannot load samples into third-party plugin UIs, NEVER use these as standalone instruments:
@@ -137,6 +163,7 @@ Manual slice workflow: load sample → `set_simpler_playback_mode(playback_mode=
 - `insert_device(track_index, device_name)` — insert native device by name (10x faster than browser, 12.3+)
 - `insert_rack_chain(track_index, device_index)` — add chain to Instrument/Audio/Drum Rack
 - `set_drum_chain_note(track_index, device_index, chain_index, note)` — assign MIDI note to Drum Rack chain
+- `add_drum_rack_pad(track_index, pad_note, file_path)` — atomic single-pad build (chain + note + Simpler + sample). 12.4+. Use this for custom kit construction; see the "Custom Drum Rack Construction" section above.
 - `move_device(track_index, device_index, new_index)` — reorder devices on a track
 
 ### Plugin Deep Control
