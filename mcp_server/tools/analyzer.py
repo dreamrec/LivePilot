@@ -11,6 +11,7 @@ important for BUG-C1's refactor.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from typing import Optional
@@ -64,67 +65,108 @@ def _enrich_slice_response(response: Optional[dict]) -> Optional[dict]:
     return enriched
 
 
-def _live_caps(ctx):
+def _live_caps(ctx, *, force_refresh: bool = False):
     """Read (or lazily compute + cache) LiveVersionCapabilities on the context.
 
-    On first call, queries Ableton via get_session_info and caches the
-    result in ``ctx.lifespan_context["_live_caps"]``. Subsequent calls
-    short-circuit to the cache. If Ableton is unreachable, falls back to
-    12.0.0 (conservative — all new-version gates return False).
+    On first successful probe, caches the result in
+    ``ctx.lifespan_context["_live_caps"]``. Subsequent calls short-circuit
+    to the cache unless ``force_refresh=True``.
 
-    This mirrors the on-demand pattern in
-    mcp_server/runtime/capability_probe.py and avoids adding a startup
-    round-trip to the lifespan.
+    If Ableton is unreachable OR returns no ``live_version`` field,
+    returns a conservative (12, 0, 0) fallback BUT does NOT cache it.
+    Caching the fallback pins the whole session to the oldest capability
+    tier even after Live finishes initializing — mirrors the pattern in
+    remote_script/LivePilot/version_detect.py::get_live_version, where
+    the same bug was fixed on the Remote Script side.
     """
     from mcp_server.runtime.live_version import LiveVersionCapabilities
 
     lsc = ctx.lifespan_context
-    cached = lsc.get("_live_caps")
-    if cached is not None:
-        return cached
+    if not force_refresh:
+        cached = lsc.get("_live_caps")
+        if cached is not None:
+            return cached
 
-    version_str = "12.0.0"
     ableton = lsc.get("ableton")
-    if ableton is not None:
-        try:
-            info = ableton.send_command("get_session_info") or {}
-            version_str = info.get("live_version", "12.0.0")
-        except Exception:
-            pass
+    if ableton is None:
+        logger.debug("_live_caps: no ableton in lifespan — returning 12.0.0 fallback (uncached)")
+        return LiveVersionCapabilities.from_version_string("12.0.0")
+
+    try:
+        info = ableton.send_command("get_session_info") or {}
+    except Exception as exc:
+        logger.debug("_live_caps: get_session_info raised %s — returning 12.0.0 fallback (uncached)", exc)
+        return LiveVersionCapabilities.from_version_string("12.0.0")
+
+    version_str = info.get("live_version")
+    if not version_str:
+        logger.debug("_live_caps: get_session_info returned no live_version — returning 12.0.0 fallback (uncached)")
+        return LiveVersionCapabilities.from_version_string("12.0.0")
 
     caps = LiveVersionCapabilities.from_version_string(version_str)
     lsc["_live_caps"] = caps
+    logger.debug("_live_caps: cached %s (tier=%s)", version_str, caps.capability_tier)
     return caps
 
 
-async def _try_native_replace_sample(ctx, track_index: int, device_index: int,
-                                      file_path: str):
+async def _try_native_replace_sample(
+    ctx,
+    track_index: int,
+    device_index: int,
+    file_path: str,
+    chain_index: Optional[int] = None,
+    nested_device_index: Optional[int] = None,
+):
     """Attempt the Live 12.4+ native SimplerDevice.replace_sample path.
 
     Returns the remote-script response dict on success, or None if the
     native path is unavailable (pre-12.4) or failed (caller should fall
     back to the M4L-bridge path).
 
+    When `chain_index` is provided, the remote script walks into
+    `track.devices[device_index].chains[chain_index].devices[
+    nested_device_index or 0]` — this is how Drum Rack pad-by-pad
+    construction is unblocked (BUG-#1 in docs/2026-04-22-bugs-discovered.md).
+
     A native "failure" is any of: gate closed, dispatch exception, non-dict
-    response, error field present, or missing sample_loaded flag.
+    response, error field present, or missing sample_loaded flag. Each
+    failure path records a skip reason on ``ctx.lifespan_context[
+    "_native_replace_skip_reason"]`` so callers can surface it in the
+    bridge-path response and logs at INFO for live debugging.
     """
+    def _record_skip(reason: str) -> None:
+        ctx.lifespan_context["_native_replace_skip_reason"] = reason
+        logger.info("native replace_sample skipped — %s", reason)
+
+    ctx.lifespan_context.pop("_native_replace_skip_reason", None)
+
     caps = _live_caps(ctx)
     if not caps.has_replace_sample_native:
+        _record_skip("gate_closed: tier=%s (need collaborative/12.4+)" % caps.capability_tier)
         return None
     ableton = ctx.lifespan_context["ableton"]
+    params = {
+        "track_index": track_index,
+        "device_index": device_index,
+        "file_path": file_path,
+    }
+    if chain_index is not None:
+        params["chain_index"] = int(chain_index)
+    if nested_device_index is not None:
+        params["nested_device_index"] = int(nested_device_index)
     try:
-        resp = ableton.send_command("replace_sample_native", {
-            "track_index": track_index,
-            "device_index": device_index,
-            "file_path": file_path,
-        })
-    except Exception:
+        resp = ableton.send_command("replace_sample_native", params)
+    except Exception as exc:
+        _record_skip("dispatch_raised: %s: %s" % (type(exc).__name__, exc))
         return None
     if not isinstance(resp, dict):
+        _record_skip("non_dict_response: type=%s" % type(resp).__name__)
         return None
     if "error" in resp:
+        _record_skip("remote_error: code=%s msg=%s" % (resp.get("code"), resp.get("error")))
         return None
     if not resp.get("sample_loaded"):
+        _record_skip("missing_sample_loaded: resp=%s" % resp)
         return None
     return resp
 
@@ -166,7 +208,11 @@ async def reconnect_bridge(ctx: Context) -> dict:
 
 
 @mcp.tool()
-def get_master_spectrum(ctx: Context) -> dict:
+async def get_master_spectrum(
+    ctx: Context,
+    window_ms: int = 0,
+    samples: int = 0,
+) -> dict:
     """Get 8-band frequency analysis of the master bus.
 
     Returns band energies: sub (20-60Hz), low (60-200Hz), low_mid (200-500Hz),
@@ -175,10 +221,79 @@ def get_master_spectrum(ctx: Context) -> dict:
 
     Also returns detected key/scale if enough audio has been analyzed.
     Requires LivePilot Analyzer on master track.
+
+    BUG-2026-04-22#6 fix — windowed averaging:
+      Kick transients make single snapshots swing wildly (0.45 → 0.05 →
+      0.16 within a bar). When mixing, you want a STABLE band profile,
+      not an instantaneous frame. Pass `window_ms` to sample the cache
+      over a time window and mean-pool:
+        - window_ms=500 → sample over 500ms (common for mix reads)
+        - window_ms=2000 → sample over 2 seconds (long-tail stability)
+      When `window_ms=0` (default), returns a single instantaneous snapshot
+      — the legacy behavior. `samples` overrides the auto-computed sample
+      count (defaults to window_ms / 50, minimum 3).
+
+    The sampled bands are also returned as `bands_min`, `bands_max` and
+    `bands_std` so callers can see variance within the window — useful
+    for detecting transient-heavy content vs. sustained material.
     """
     cache = _get_spectral(ctx)
     _require_analyzer(cache)
 
+    if window_ms and window_ms > 0:
+        # Windowed sampling — mean-pool N readings across the window.
+        # Each cache read is ~free; we sleep between reads to let the
+        # analyzer update its internal buffer.
+        if window_ms > 10000:
+            return {"error": "window_ms must be <= 10000 (10 seconds)"}
+        n = samples if samples > 0 else max(3, window_ms // 50)
+        n = min(n, 100)
+        interval = (window_ms / 1000.0) / max(n - 1, 1)
+        bands_acc: list[dict] = []
+        for i in range(n):
+            snap = cache.get("spectrum")
+            if snap and snap.get("value"):
+                bands_acc.append(snap["value"])
+            if i < n - 1:
+                await asyncio.sleep(interval)
+        if not bands_acc:
+            return {
+                "error": "No spectrum data captured — analyzer may be stale",
+                "analyzer_hint": "Ensure LivePilot_Analyzer is active on master",
+            }
+        # Aggregate: mean / min / max / stddev per band.
+        keys = set()
+        for s in bands_acc:
+            keys.update(s.keys())
+        bands_mean = {}
+        bands_min = {}
+        bands_max = {}
+        bands_std = {}
+        for k in keys:
+            vals = [s.get(k, 0.0) for s in bands_acc]
+            mean = sum(vals) / len(vals)
+            bands_mean[k] = round(mean, 4)
+            bands_min[k] = round(min(vals), 4)
+            bands_max[k] = round(max(vals), 4)
+            if len(vals) > 1:
+                var = sum((v - mean) ** 2 for v in vals) / len(vals)
+                bands_std[k] = round(var ** 0.5, 4)
+            else:
+                bands_std[k] = 0.0
+        result = {
+            "bands": bands_mean,
+            "bands_min": bands_min,
+            "bands_max": bands_max,
+            "bands_std": bands_std,
+            "window_ms": window_ms,
+            "samples_collected": len(bands_acc),
+        }
+        key_data = cache.get("key")
+        if key_data:
+            result["detected_key"] = key_data["value"]
+        return result
+
+    # Legacy instantaneous path
     result = {}
     spectrum = cache.get("spectrum")
     if spectrum:
@@ -387,6 +502,8 @@ async def replace_simpler_sample(
     track_index: int,
     device_index: int,
     file_path: str,
+    chain_index: Optional[int] = None,
+    nested_device_index: Optional[int] = None,
 ) -> dict:
     """Load an audio file into a Simpler device by absolute file path.
 
@@ -401,6 +518,15 @@ async def replace_simpler_sample(
     silently keep the bootstrap placeholder in some conditions; this tool
     now verifies by reading back the device name and will return an error
     if the replace didn't actually take effect.
+
+    Nested addressing (Live 12.4+ only, BUG-#1 fix from 2026-04-22):
+      - When `chain_index` is provided, the device is resolved at
+        `track.devices[device_index].chains[chain_index]
+         .devices[nested_device_index or 0]`. This is how Drum Rack
+        pad-by-pad construction works — see `add_drum_rack_pad` for the
+        high-level workflow.
+      - chain_index is only honored by the native 12.4 path; the M4L
+        bridge fallback cannot resolve nested paths.
 
     Also auto-applies post-load hygiene:
       - Sets Simpler Snap=0 (required for playback after replace)
@@ -418,7 +544,8 @@ async def replace_simpler_sample(
 
     # Live 12.4+: prefer the native SimplerDevice.replace_sample path.
     native = await _try_native_replace_sample(
-        ctx, track_index, device_index, file_path
+        ctx, track_index, device_index, file_path,
+        chain_index=chain_index, nested_device_index=nested_device_index,
     )
     if native is not None:
         hygiene = await _simpler_post_load_hygiene(
@@ -432,6 +559,7 @@ async def replace_simpler_sample(
         return result
 
     # Pre-12.4 fallback: M4L bridge path (unchanged behavior).
+    skip_reason = ctx.lifespan_context.get("_native_replace_skip_reason")
     result = await bridge.send_command(
         "replace_simpler_sample", track_index, device_index, file_path
     )
@@ -451,6 +579,9 @@ async def replace_simpler_sample(
         return hygiene
 
     result.update(hygiene)
+    result["method"] = "bridge_m4l"
+    if skip_reason:
+        result["native_skip_reason"] = skip_reason
     return result
 
 
@@ -569,6 +700,189 @@ async def load_sample_to_simpler(
     result["device_index"] = actual_device_index  # additive — for step-result binding
     result["track_index"] = track_index
     return result
+
+
+@mcp.tool()
+async def add_drum_rack_pad(
+    ctx: Context,
+    track_index: int,
+    pad_note: int,
+    file_path: str,
+    rack_device_index: Optional[int] = None,
+    chain_name: Optional[str] = None,
+) -> dict:
+    """Add a new pad (chain) to a Drum Rack and load a sample into it.
+
+    **BUG-2026-04-22#1 FIX** — this is the tool that was missing.
+    Previously `load_browser_item` replaced the existing chain on repeat
+    calls, and `load_sample_to_simpler` couldn't address nested paths.
+    This single tool does the full drum-rack pad build atomically:
+
+      1. Locates the Drum Rack on the track (auto-finds if
+         `rack_device_index` is None — searches for class_name containing
+         "DrumGroupDevice").
+      2. Inserts a new chain on the rack (`insert_rack_chain`).
+      3. Assigns the chain's trigger note (`set_drum_chain_note`).
+      4. Inserts an empty Simpler into the chain (`insert_device` with
+         `chain_index`).
+      5. Calls the native Live 12.4 `replace_sample_native` with nested
+         addressing to load the sample.
+      6. Sets Snap=0 post-load (playback hygiene).
+
+    Requires Live 12.4+ for step 5. On earlier versions returns an error
+    directing the caller to the bridge-based workaround.
+
+    track_index:       track containing the Drum Rack
+    pad_note:          MIDI note for the pad (0..127). Standard drum map:
+                       36=Kick, 38=Snare, 42=Closed HH, 46=Open HH.
+    file_path:         absolute path to the audio file
+    rack_device_index: optional device_index of the Drum Rack on the track.
+                       If None, auto-detects the first Drum Rack.
+    chain_name:        optional display name for the new chain.
+
+    Returns: {
+      "ok": bool,
+      "track_index": int,
+      "rack_device_index": int,
+      "chain_index": int,
+      "pad_note": int,
+      "nested_device_index": int,   # where the Simpler landed
+      "device_name": str,
+      "method": "native_12_4",
+    }
+    """
+    from .._analyzer_engine.sample import _simpler_post_load_hygiene  # noqa
+    ableton = ctx.lifespan_context["ableton"]
+    caps = _live_caps(ctx)
+    if not caps.has_replace_sample_native:
+        return {
+            "ok": False,
+            "error": (
+                "add_drum_rack_pad requires Live 12.4+ for native nested "
+                "sample loading. Detected tier: " + caps.capability_tier +
+                ". Upgrade to Live 12.4 or use the legacy separate-tracks "
+                "workflow described in docs/2026-04-22-bugs-discovered.md."
+            ),
+        }
+
+    if not (0 <= pad_note <= 127):
+        return {"ok": False, "error": "pad_note must be 0..127"}
+    if not file_path or not isinstance(file_path, str):
+        return {"ok": False, "error": "file_path (absolute path) is required"}
+
+    # Step 1: locate the Drum Rack if not provided.
+    if rack_device_index is None:
+        try:
+            info = ableton.send_command(
+                "get_track_info", {"track_index": track_index},
+            )
+        except Exception as exc:
+            return {"ok": False, "error": f"get_track_info failed: {exc}"}
+        devices = info.get("devices", []) if isinstance(info, dict) else []
+        found_idx = None
+        for idx, d in enumerate(devices):
+            class_name = str(d.get("class_name") or "")
+            if "DrumGroup" in class_name or class_name == "DrumGroupDevice":
+                found_idx = idx
+                break
+        if found_idx is None:
+            return {
+                "ok": False,
+                "error": (
+                    "No Drum Rack found on track. Pass `rack_device_index` "
+                    "explicitly, or use `insert_device('Drum Rack')` first."
+                ),
+            }
+        rack_device_index = found_idx
+
+    # Step 2: insert a new chain on the rack.
+    try:
+        chain_result = ableton.send_command("insert_rack_chain", {
+            "track_index": track_index,
+            "device_index": rack_device_index,
+            "position": -1,  # append to end
+        })
+    except Exception as exc:
+        return {"ok": False, "error": f"insert_rack_chain failed: {exc}"}
+    if not isinstance(chain_result, dict) or "error" in chain_result:
+        return {
+            "ok": False,
+            "error": f"insert_rack_chain returned: {chain_result}",
+        }
+    chain_index = int(chain_result.get("chain_index", chain_result.get("index", 0)))
+
+    # Step 3: assign pad note to the new chain.
+    try:
+        note_result = ableton.send_command("set_drum_chain_note", {
+            "track_index": track_index,
+            "device_index": rack_device_index,
+            "chain_index": chain_index,
+            "note": pad_note,
+        })
+    except Exception as exc:
+        return {"ok": False, "error": f"set_drum_chain_note failed: {exc}"}
+    if isinstance(note_result, dict) and "error" in note_result:
+        return {"ok": False, "error": f"set_drum_chain_note: {note_result['error']}"}
+
+    # Step 4: insert an empty Simpler into the chain.
+    try:
+        insert_result = ableton.send_command("insert_device", {
+            "track_index": track_index,
+            "device_index": rack_device_index,
+            "chain_index": chain_index,
+            "device_name": "Simpler",
+        })
+    except Exception as exc:
+        return {"ok": False, "error": f"insert_device(Simpler, chain) failed: {exc}"}
+    if not isinstance(insert_result, dict) or "error" in insert_result:
+        return {
+            "ok": False,
+            "error": f"insert_device into chain failed: {insert_result}",
+        }
+    nested_idx = int(insert_result.get("device_index", 0))
+
+    # Step 5: replace_sample_native with nested addressing.
+    native = await _try_native_replace_sample(
+        ctx,
+        track_index=track_index,
+        device_index=rack_device_index,
+        file_path=file_path,
+        chain_index=chain_index,
+        nested_device_index=nested_idx,
+    )
+    if native is None:
+        return {
+            "ok": False,
+            "error": "Native replace_sample failed — see logs for reason",
+            "track_index": track_index,
+            "rack_device_index": rack_device_index,
+            "chain_index": chain_index,
+            "nested_device_index": nested_idx,
+        }
+
+    # Step 6: rename chain if requested.
+    if chain_name:
+        try:
+            ableton.send_command("set_chain_name", {
+                "track_index": track_index,
+                "device_index": rack_device_index,
+                "chain_index": chain_index,
+                "name": chain_name,
+            })
+        except Exception as exc:
+            logger.debug("set_chain_name skipped: %s", exc)
+
+    return {
+        "ok": True,
+        "track_index": track_index,
+        "rack_device_index": rack_device_index,
+        "chain_index": chain_index,
+        "pad_note": pad_note,
+        "nested_device_index": nested_idx,
+        "device_name": "Simpler",
+        "method": native.get("method", "native_12_4"),
+        "file_path": file_path,
+    }
 
 
 @mcp.tool()
