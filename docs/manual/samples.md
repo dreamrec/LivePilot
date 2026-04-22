@@ -14,9 +14,21 @@ LivePilot searches three sample sources simultaneously, scores every result with
 
 All three are searched in parallel. Results are merged and ranked.
 
-### Splice integration
+### Splice integration (plan-aware, v1.15.0-beta)
 
-LivePilot reads Splice's local SQLite database (`sounds.db`) directly — no API key, no network calls. Every sample you've downloaded through the Splice app is searchable with rich metadata: key, BPM, genre, tags, pack info, and popularity ranking.
+LivePilot talks to Splice through **two** paths:
+
+1. **Local SQLite** (`sounds.db`) — every sample you've downloaded, instant search, zero network.
+2. **Local gRPC** (Splice desktop app on localhost TLS) — online catalog search, downloads, previews, user collections, presets.
+
+The gRPC path detects your plan via `User.Features` / `User.SoundsPlan` / `SoundsStatus` and exposes a two-pocket model:
+
+- **Daily sample quota** — 100/day on the Splice x Ableton Live plan. Sample downloads deplete this counter, NOT credits.
+- **Splice.com credits** — reserved for presets, MIDI, and Splice Instrument content. Protected by `CREDIT_HARD_FLOOR=5`.
+
+Free samples (`Sample.IsPremium==False` or `Price==0`) bypass both gates — they cost nothing under any plan.
+
+Every sample carries a `preview_url` that streams for free. Use `splice_preview_sample` to audition before spending anything.
 
 If you don't have Splice, the Sample Engine still works — it just searches Ableton's browser and your filesystem.
 

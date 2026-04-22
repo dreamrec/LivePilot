@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog
 
-403 tools across 52 domains.
+415 tools across 52 domains.
 
 ---
 
@@ -189,7 +189,7 @@
 | `memory_favorite` | Toggle favorite |
 | `memory_replay` | Replay saved technique |
 
-## Analyzer (32) `[M4L]`
+## Analyzer (34) `[M4L]`
 
 | Tool | Description |
 |------|-------------|
@@ -202,8 +202,9 @@
 | `walk_device_tree` | Recursive device chain tree (6 levels) |
 | `get_display_values` | Human-readable param values |
 | `get_clip_file_path` | Audio file path on disk |
-| `replace_simpler_sample` | Load audio into Simpler |
+| `replace_simpler_sample` | Load audio into Simpler (supports nested Drum Rack chain addressing via `chain_index` + `nested_device_index`) |
 | `load_sample_to_simpler` | Bootstrap Simpler + load sample |
+| `add_drum_rack_pad` | Build a Drum Rack pad atomically — insert chain + set note + Simpler + load sample in one call (BUG-2026-04-22#1 fix) |
 | `get_simpler_slices` | Slice point positions (includes `base_midi_pitch` + per-slice `midi_pitch`) |
 | `classify_simpler_slices` | Classify each slice as KICK / SNARE / HAT / ghost via FFT |
 | `crop_simpler` | Crop to active region |
@@ -221,6 +222,7 @@
 | `get_onsets` | Real-time onset detection |
 | `get_novelty` | Spectral novelty for section boundaries |
 | `get_momentary_loudness` | EBU R128 momentary LUFS + peak |
+| `analyze_loudness_live` | Integrate momentary LUFS over a time window — live-session alternative to file-based `analyze_loudness` (BUG-2026-04-22#8 fix) |
 | `check_flucoma` | Verify FluCoMa installation |
 | `capture_audio` | Record master output to WAV |
 | `capture_stop` | Cancel in-progress capture |
@@ -580,20 +582,30 @@
 
 ---
 
-## Sample Engine (10)
+## Sample Engine (20)
 
 | Tool | Description |
 |------|-------------|
 | `analyze_sample` | Analyze sample characteristics — material, spectral profile, Simpler mode recommendation |
 | `evaluate_sample_fit` | 6-critic fitness battery — key, tempo, frequency, role, vibe, intent fit scores |
-| `search_samples` | Search library for samples matching criteria (prefers Splice online catalog via gRPC when connected) |
+| `search_samples` | Search library for samples matching criteria (prefers Splice online catalog via gRPC when connected; `free_only` filter + `q` alias) |
 | `suggest_sample_technique` | Suggest manipulation technique from the 29-technique library |
 | `plan_sample_workflow` | Plan multi-step sample manipulation workflow |
 | `get_sample_opportunities` | Find opportunities to add samples to the current session |
 | `plan_slice_workflow` | Plan an end-to-end slice workflow — Simpler strategy, MIDI mapping, starter pattern |
-| `get_splice_credits` | Query Splice subscription tier, credit balance, and download capability (v1.10.5) |
-| `splice_catalog_hunt` | Search Splice's ONLINE catalog via gRPC — 19,690+ hits unblocked in v1.10.5 |
-| `splice_download_sample` | Download a Splice sample by file_hash with credit-floor safety, copy into User Library (v1.10.5) |
+| `get_splice_credits` | Plan-aware Splice status — tier, credit balance, daily quota, plan kind (Ableton Live / Sounds+ / Creator / …) |
+| `splice_catalog_hunt` | Search Splice's ONLINE catalog via gRPC — supports `free_only`, `collection_uuid` scoping |
+| `splice_download_sample` | Download a Splice sample with plan-aware gating (daily quota on Ableton Live plan, credit floor on credit-metered plans, free samples bypass both) |
+| `splice_preview_sample` | Fetch a sample's preview audio URL — ZERO credits, ZERO quota cost, caches to ~/Library/Caches/LivePilot/splice_previews |
+| `splice_list_collections` | List the user's Splice Collections (Likes, custom folders, Daily Picks) — queryable taste signal |
+| `splice_search_in_collection` | List samples inside a Splice Collection by UUID — taste-scoped search |
+| `splice_add_to_collection` | Add samples to a user Collection (persists server-side) |
+| `splice_remove_from_collection` | Remove samples from a user Collection |
+| `splice_create_collection` | Create a new user Collection |
+| `splice_list_presets` | List purchased Splice Instrument / VST presets — feeds device loading |
+| `splice_preset_info` | Metadata for a single preset (uuid, file_hash, or plugin_name lookup) |
+| `splice_download_preset` | Download a purchased preset (credit-gated) |
+| `splice_pack_info` | Full metadata for a Splice sample pack by UUID |
 
 ---
 
