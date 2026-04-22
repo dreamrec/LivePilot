@@ -52,7 +52,18 @@ def get_clip_info(song, params):
 
 @register("create_clip")
 def create_clip(song, params):
-    """Create an empty MIDI clip in the given clip slot."""
+    """Create an empty MIDI clip in the given clip slot.
+
+    BUG-2026-04-22#1c FIX: Live's `clip_slot.create_clip(length)` sets
+    the clip's *length* but defaults `loop_end` to length/2 in some
+    configurations (depends on time signature). Without enforcing
+    `loop_end == length`, downstream `add_notes` calls silently drop
+    notes that fall beyond the implicit half-length loop. This handler
+    now applies the invariant via `_apply_clip_length_invariants` (a
+    pure-Python helper that's also unit-tested).
+    """
+    from ._clip_helpers import _apply_clip_length_invariants
+
     track_index = int(params["track_index"])
     clip_index = int(params["clip_index"])
     length = float(params["length"])
@@ -68,11 +79,15 @@ def create_clip(song, params):
     clip_slot.create_clip(length)
     clip = clip_slot.clip
 
+    invariants = _apply_clip_length_invariants(clip, length)
+
     return {
         "track_index": track_index,
         "clip_index": clip_index,
         "name": clip.name,
         "length": clip.length,
+        "loop_end": invariants["loop_end"],
+        "end_marker": invariants["end_marker"],
     }
 
 

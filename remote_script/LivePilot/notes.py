@@ -11,7 +11,17 @@ from .utils import get_clip, get_track
 
 @register("add_notes")
 def add_notes(song, params):
-    """Add MIDI notes to a clip using Live 12's modern API."""
+    """Add MIDI notes to a clip using Live 12's modern API.
+
+    BUG-2026-04-22#1c FIX: Auto-extends `clip.loop_end` if any incoming
+    note's `start_time + duration` exceeds it. Without this, Live
+    silently drops the out-of-range notes — the response would say
+    "notes_added: N" but get_notes would return fewer. The extension
+    is reported back in the response as `loop_end_extended_to` when it
+    fires, so callers can see what happened.
+    """
+    from ._clip_helpers import _extend_loop_end_for_notes
+
     track_index = int(params["track_index"])
     clip_index = int(params["clip_index"])
     notes = params["notes"]
@@ -19,6 +29,8 @@ def add_notes(song, params):
         raise ValueError("notes list cannot be empty")
 
     clip = get_clip(song, track_index, clip_index)
+    extended_to = _extend_loop_end_for_notes(clip, notes)
+
     import Live
     song.begin_undo_step()
     try:
@@ -43,11 +55,14 @@ def add_notes(song, params):
     finally:
         song.end_undo_step()
 
-    return {
+    result = {
         "track_index": track_index,
         "clip_index": clip_index,
         "notes_added": len(notes),
     }
+    if extended_to is not None:
+        result["loop_end_extended_to"] = extended_to
+    return result
 
 
 @register("get_notes")
