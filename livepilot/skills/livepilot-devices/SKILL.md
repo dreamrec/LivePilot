@@ -41,6 +41,8 @@ Combine path with `name_filter` to narrow results. Example: `search_browser(path
 
 NEVER invent device or preset names. A hallucinated name like "echomorph-hpf" or "Drift Pad Wonk" will crash the load. Always search first, then use the exact URI from results.
 
+For the full URI grammar reference (the three forms — FileId, bare-name, path-style — failure modes, and discovery recipe), see `references/load_browser_item-uri-grammar.md`.
+
 ## find_and_load_device — The Shortcut
 
 Use `find_and_load_device(name)` ONLY for these simple built-in effects:
@@ -171,6 +173,21 @@ Manual slice workflow: load sample → `set_simpler_playback_mode(playback_mode=
 - `get_plugin_parameters(track_index, device_index)` — all AU/VST plugin parameters
 - `map_plugin_parameter(track_index, device_index, parameter_index)` — map for automation
 - `get_plugin_presets(track_index, device_index)` — list plugin presets
+
+## Parameter Name Quirks (BUG-2026-04-22 #10)
+
+Ableton's parameter names are inconsistent across devices. When `set_device_parameter` or `batch_set_parameters` errors with "Parameter 'X' not found," the response already lists the first 20 available names — read it and pick the right one. Common surprises:
+
+| You'd expect | Actual name | Where |
+|---|---|---|
+| `Width` | `Stereo Width` | Utility |
+| `Cutoff` | `Filter Freq` / `Frequency` | Various filters — check per-device |
+| `Resonance` | `Filter Resonance` / `Q` | Same |
+| `Drive` | `Drive` (Saturator) but `Drive Amount` (some racks) | Saturator vs racks |
+| `Mix` | `Dry/Wet` | Almost every native effect |
+| `Volume` | `Volume` (mixer) but `Sample Volume` / `Out Volume` | On certain devices |
+
+When in doubt, call `get_device_parameters(track_index, device_index)` first — it returns the exact `name` of every parameter and the `name` field is what `set_device_parameter` accepts.
 
 ## Effect Chain Best Practices
 

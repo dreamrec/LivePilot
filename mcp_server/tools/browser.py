@@ -139,13 +139,106 @@ def search_browser(
     return _get_ableton(ctx).send_command("search_browser", params)
 
 
+# Role-aware Simpler defaults — BUG-2026-04-22 #17 + #18.
+# Each role maps to a list of (parameter_name, value) pairs applied after
+# load via set_device_parameter. Trigger Mode polarity per BUG #9:
+# 0 = Trigger (one-shot), 1 = Gate (held). Volume in dB. Root in MIDI pitch.
+_SIMPLER_ROLE_DEFAULTS = {
+    "drum": [
+        ("Snap", 0),
+        ("Volume", 0.0),
+        ("Trigger Mode", 0),  # Trigger / one-shot
+        ("Sample Pitch Coarse", 36),  # C1, matches drum-pad convention
+    ],
+    "melodic": [
+        ("Snap", 1),
+        ("Volume", 0.0),
+        ("Trigger Mode", 1),  # Gate / held
+        ("Sample Pitch Coarse", 60),  # C3
+    ],
+    "texture": [
+        ("Snap", 0),
+        ("Volume", -6.0),
+        ("Trigger Mode", 1),  # Gate
+        ("Sample Pitch Coarse", 60),  # C3
+    ],
+}
+
+
 @mcp.tool()
-def load_browser_item(ctx: Context, track_index: int, uri: str) -> dict:
-    """Load a browser item (instrument/effect) onto a track by URI."""
+def load_browser_item(
+    ctx: Context,
+    track_index: int,
+    uri: str,
+    role: Optional[str] = None,
+) -> dict:
+    """Load a browser item (instrument/effect/sample) onto a track by URI.
+
+    URI grammar — see livepilot/skills/livepilot-devices/references/
+    load_browser_item-uri-grammar.md for the full reference. Three
+    known forms produced by search_browser /
+    get_browser_items / get_browser_tree:
+      - query:Drums#FileId_29738       (pack content)
+      - query:Synths#Operator          (native device by name)
+      - query:UserLibrary#Samples:Splice:Filename.wav  (path-style)
+    Always pass URIs verbatim from search results. Never construct them
+    by hand — guessed names match greedily and can load the wrong item.
+
+    Context-dependent behavior (BUG-2026-04-22 #16):
+      - Empty track: creates a Simpler with the sample loaded.
+      - Track with an instrument: drops the new device after the
+        existing one.
+      - Track with a Drum Rack: the FIRST call creates a chain on
+        note 36; subsequent calls REPLACE that chain instead of
+        appending to the next pad. Use add_drum_rack_pad for
+        pad-by-pad kit construction.
+
+    role (optional, BUG-2026-04-22 #17 + #18): apply role-aware Simpler
+    defaults after load. Skips silently if no Simpler was created (e.g.,
+    when loading a native synth or effect).
+      - "drum"     : Snap=0, Vol=0dB, Trigger Mode=0 (Trigger), root=C1 (36)
+      - "melodic"  : Snap=1, Vol=0dB, Trigger Mode=1 (Gate), root=C3 (60)
+      - "texture"  : Snap=0, Vol=-6dB, Trigger Mode=1 (Gate), root=C3 (60)
+    Omit role to keep Live's raw defaults (Volume=-12dB, Snap=1).
+
+    NOTE on Trigger Mode polarity (BUG-2026-04-22 #9): the value is
+    REVERSED from intuition. Trigger Mode=0 means Trigger (one-shot,
+    drum-style), Trigger Mode=1 means Gate (held, melodic-style).
+    """
     _validate_track_index(track_index)
     if not uri.strip():
         raise ValueError("URI cannot be empty")
-    return _get_ableton(ctx).send_command("load_browser_item", {
+    if role is not None and role not in _SIMPLER_ROLE_DEFAULTS:
+        raise ValueError(
+            f"role must be one of {sorted(_SIMPLER_ROLE_DEFAULTS)}, got {role!r}"
+        )
+
+    ableton = _get_ableton(ctx)
+    result = ableton.send_command("load_browser_item", {
         "track_index": track_index,
         "uri": uri,
     })
+
+    # Post-load: apply role-aware defaults if the loaded device is a Simpler.
+    if role and isinstance(result, dict) and not result.get("error"):
+        device_index = result.get("device_index")
+        device_class = str(result.get("class_name") or result.get("device_name") or "")
+        if device_index is not None and "Simpler" in device_class:
+            applied = []
+            for name, value in _SIMPLER_ROLE_DEFAULTS[role]:
+                try:
+                    ableton.send_command("set_device_parameter", {
+                        "track_index": track_index,
+                        "device_index": int(device_index),
+                        "parameter_name": name,
+                        "value": value,
+                    })
+                    applied.append({"parameter": name, "value": value})
+                except Exception as exc:
+                    # Don't fail the whole load if one default doesn't apply
+                    # (parameter name might not exist on every Simpler variant).
+                    applied.append({"parameter": name, "skipped": str(exc)})
+            result["role"] = role
+            result["role_defaults_applied"] = applied
+
+    return result
