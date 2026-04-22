@@ -47,7 +47,15 @@ def test_install_codex_plugin_updates_temp_marketplace(tmp_path: Path):
     assert manifest["version"] == expected_manifest["version"]
 
     mcp_config = json.loads((plugin_dir / ".mcp.json").read_text(encoding="utf-8"))
-    assert mcp_config["mcpServers"]["livepilot"]["command"] == NODE
+    # `process.execPath` (used by installer/codex.js) returns the canonical
+    # node path (e.g. /opt/homebrew/Cellar/node/X.Y.Z/bin/node), while
+    # `shutil.which("node")` returns the PATH-resolved symlink
+    # (/opt/homebrew/bin/node). Compare `os.path.realpath` of both so the
+    # test passes regardless of which form the installer wrote.
+    import os
+    actual = os.path.realpath(mcp_config["mcpServers"]["livepilot"]["command"])
+    expected = os.path.realpath(NODE) if NODE else NODE
+    assert actual == expected
     assert mcp_config["mcpServers"]["livepilot"]["args"] == [
         str(_repo_root() / "bin" / "livepilot.js")
     ]
