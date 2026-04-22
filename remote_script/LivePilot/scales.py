@@ -1,15 +1,21 @@
 """
 LivePilot — Song-level scale handlers (Live 12.0+).
 
-Exposes Song.root_note / scale_mode / scale_name / scale_intervals
-and the Song.scale_names list via the LivePilot TCP protocol.
+Exposes Song.root_note / scale_mode / scale_name / scale_intervals via the
+LivePilot TCP protocol. The scale list is resolved via a tolerant helper
+that probes multiple attribute names because Live 12.4 moved/renamed
+``Song.scale_names`` (see BUG-2026-04-22#2).
 
-All four props shipped in Live 12.0 when Scale Mode was introduced.
-Gated behind the `song_scale_api` feature flag for defensive safety
-on older versions, even though we target 12.3.6.
+All props shipped in Live 12.0 when Scale Mode was introduced.
+Gated behind the `song_scale_api` feature flag for defensive safety.
 """
 
 from .router import register
+from ._scale_helpers import (
+    _BUILTIN_SCALES_FALLBACK,
+    _coerce_root_note,
+    _resolve_scale_names,
+)
 
 
 @register("get_song_scale")
@@ -23,27 +29,36 @@ def get_song_scale(song, params):
         "scale_mode": bool(song.scale_mode),
         "scale_name": str(song.scale_name),
         "scale_intervals": list(song.scale_intervals),
-        "available_scales": list(song.scale_names),
+        "available_scales": _resolve_scale_names(song),
     }
 
 
 @register("set_song_scale")
 def set_song_scale(song, params):
-    """Set both root_note (0-11) and scale_name atomically."""
+    """Set both root_note and scale_name atomically.
+
+    root_note accepts int 0-11 OR a note-name string like "C#", "F", "Bb".
+    scale_name is case-insensitive and validated against Live's scale list
+    (with a fallback to the built-in names when Live 12.4 hides scale_names).
+    """
     from .version_detect import has_feature
     if not has_feature("song_scale_api"):
         raise RuntimeError("Song scale API requires Live 12.0+.")
-    root = int(params["root_note"])
-    if not 0 <= root <= 11:
-        raise ValueError("root_note must be 0-11 (C=0, C#=1, ... B=11)")
-    name = str(params["scale_name"])
-    available = list(song.scale_names)
-    if name not in available:
+    root = _coerce_root_note(params["root_note"])
+    name = str(params["scale_name"]).strip()
+    available = _resolve_scale_names(song)
+    # Case-insensitive match against Live's list (or fallback).
+    match = None
+    for candidate in available:
+        if candidate.lower() == name.lower():
+            match = candidate
+            break
+    if match is None:
         raise ValueError(
             "Unknown scale '%s'. Available: %s" % (name, ", ".join(available))
         )
     song.root_note = root
-    song.scale_name = name
+    song.scale_name = match
     return {
         "root_note": int(song.root_note),
         "scale_name": str(song.scale_name),
@@ -63,11 +78,11 @@ def set_song_scale_mode(song, params):
 
 @register("list_available_scales")
 def list_available_scales(song, params):
-    """Return Live's built-in list of scale names."""
+    """Return Live's built-in scale names — tolerant of 12.4 API drop."""
     from .version_detect import has_feature
     if not has_feature("song_scale_api"):
         raise RuntimeError("Song scale API requires Live 12.0+.")
-    return {"scales": list(song.scale_names)}
+    return {"scales": _resolve_scale_names(song)}
 
 
 @register("get_tuning_system")

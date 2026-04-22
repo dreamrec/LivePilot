@@ -33,15 +33,27 @@ def get_song_scale(ctx: Context) -> dict:
 
 
 @mcp.tool()
-def set_song_scale(ctx: Context, root_note: int, scale_name: str) -> dict:
-    """Set the Song-level Scale Mode root + scale name (Live 12.0+).
+def set_song_scale(ctx: Context, root_note, scale_name: str) -> dict:
+    """Set the Song-level Scale Mode root + scale name (Live 12.0+, Live 12.4 compat).
 
-    root_note:   0-11 (C=0, C#=1, ... B=11)
-    scale_name:  must match one of Live's built-in scale names.
+    root_note:   int 0-11 (C=0, C#=1, ... B=11) OR note-name string like
+                 "C#", "F", "Bb". Both are accepted — BUG-2026-04-22#2 fix.
+    scale_name:  case-insensitive — matches Live's built-in scale names.
                  Call list_available_scales() first if unsure.
+
+    Live 12.4 note: Ableton dropped `Song.scale_names` from the Python LOM,
+    which made this tool and list_available_scales raise an INTERNAL error.
+    The remote script now falls back to the documented built-in scale list
+    when the attribute is missing — so both tools work on 12.4+ again.
     """
-    if not 0 <= root_note <= 11:
-        raise ValueError("root_note must be 0-11")
+    if isinstance(root_note, str):
+        if not root_note.strip():
+            raise ValueError("root_note string cannot be empty")
+    elif isinstance(root_note, int):
+        if not 0 <= root_note <= 11:
+            raise ValueError("root_note must be 0-11 (int) or a note name (str)")
+    else:
+        raise ValueError("root_note must be an int 0-11 or a note-name string")
     if not scale_name.strip():
         raise ValueError("scale_name cannot be empty")
     return _get_ableton(ctx).send_command("set_song_scale", {

@@ -290,13 +290,17 @@ def set_device_parameter(
 
 
 def _normalize_batch_entry(entry: dict) -> dict:
-    """Accept either the legacy 'name_or_index' shape or the aligned
-    'parameter_index' / 'parameter_name' shape used by set_device_parameter.
+    """Accept legacy 'name_or_index', aligned 'parameter_index'/'parameter_name',
+    or the 'index'/'name' keys that `get_device_parameters` returns natively.
 
-    BUG-F4: the sibling tools had inconsistent schemas. Callers writing
-    code against set_device_parameter hit validation errors switching
-    to batch_set_parameters. Now both shapes are accepted and
-    normalized to the Remote Script's expected {name_or_index, value}.
+    BUG-F4 + BUG-2026-04-22#3: the sibling tools had inconsistent schemas.
+    Callers writing code against set_device_parameter hit validation errors
+    switching to batch_set_parameters. The 2026-04-22 bug report flagged
+    that `get_device_parameters` returns entries with `"index": N` but
+    `batch_set_parameters` rejected that key — forcing callers to rename
+    it. We now accept every shape and normalize to the Remote Script's
+    expected `{name_or_index, value}` so `get_device_parameters`'s output
+    can be fed straight back in.
     """
     if "value" not in entry:
         raise ValueError("Each parameter entry must include 'value'")
@@ -304,25 +308,35 @@ def _normalize_batch_entry(entry: dict) -> dict:
     has_legacy = "name_or_index" in entry
     has_index = "parameter_index" in entry
     has_name = "parameter_name" in entry
+    # BUG-2026-04-22#3 aliases
+    has_short_index = "index" in entry
+    has_short_name = "name" in entry
 
-    specified = sum([has_legacy, has_index, has_name])
+    specified = sum([
+        has_legacy, has_index, has_name, has_short_index, has_short_name,
+    ])
     if specified == 0:
         raise ValueError(
             "Each parameter entry must include exactly one of: "
-            "parameter_name, parameter_index, or name_or_index (legacy)"
+            "parameter_name, parameter_index, name, index, or name_or_index"
         )
     if specified > 1:
         raise ValueError(
             "Each parameter entry must include exactly one of "
-            "parameter_name, parameter_index, or name_or_index — not multiple"
+            "parameter_name, parameter_index, name, index, or name_or_index "
+            "— not multiple"
         )
 
     if has_legacy:
         key = entry["name_or_index"]
     elif has_index:
         key = entry["parameter_index"]
-    else:
+    elif has_name:
         key = entry["parameter_name"]
+    elif has_short_index:
+        key = entry["index"]
+    else:
+        key = entry["name"]
 
     # BUG-audit-H3: match set_device_parameter's validation so negative
     # indices are rejected at the MCP layer rather than leaking through to

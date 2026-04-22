@@ -1408,6 +1408,101 @@ def get_momentary_loudness(ctx: Context) -> dict:
 
 
 @mcp.tool()
+async def analyze_loudness_live(
+    ctx: Context,
+    window_sec: float = 10.0,
+    sample_interval_ms: int = 200,
+) -> dict:
+    """Analyze the currently-playing master output's loudness over a window.
+
+    BUG-2026-04-22#8 fix — the offline `analyze_loudness` requires a
+    rendered file. This tool samples the LivePilot analyzer's realtime
+    momentary LUFS / true peak stream over `window_sec` and reports
+    integrated + max statistics. No render required.
+
+    Requires FluCoMa package in Max and playback to be running. Best
+    called while the section you want to measure is actually playing.
+
+    window_sec:         capture duration in seconds (default 10, max 120)
+    sample_interval_ms: ms between samples (default 200 ≈ 5 Hz)
+
+    Returns: {
+      "integrated_lufs": float,      # mean momentary LUFS over window
+      "max_momentary_lufs": float,   # peak momentary reading
+      "min_momentary_lufs": float,   # quietest reading
+      "range_lu": float,             # max - min (proxy for LRA)
+      "max_true_peak_dbtp": float,   # max true peak across window
+      "samples_collected": int,
+      "window_sec": float,
+      "is_playing": bool,
+    }
+    """
+    if window_sec <= 0 or window_sec > 120:
+        return {"error": "window_sec must be > 0 and <= 120"}
+    if sample_interval_ms < 50 or sample_interval_ms > 5000:
+        return {"error": "sample_interval_ms must be 50..5000"}
+
+    cache = _get_spectral(ctx)
+    _require_analyzer(cache)
+    ableton = ctx.lifespan_context["ableton"]
+
+    # Verify FluCoMa is alive — otherwise there's no stream to sample.
+    preview = cache.get("loudness")
+    if not preview:
+        hint = _flucoma_hint(cache)
+        return {"error": f"No live loudness stream — {hint}"}
+
+    try:
+        session = ableton.send_command("get_session_info", {})
+        is_playing = bool(session.get("is_playing", False))
+    except Exception:
+        is_playing = None
+
+    interval_s = sample_interval_ms / 1000.0
+    total_samples = max(1, int(window_sec / interval_s))
+    lufs_vals: list[float] = []
+    peak_vals: list[float] = []
+
+    for i in range(total_samples):
+        snap = cache.get("loudness")
+        if snap and snap.get("value"):
+            v = snap["value"]
+            if "momentary_lufs" in v:
+                lufs_vals.append(float(v["momentary_lufs"]))
+            elif "lufs" in v:
+                lufs_vals.append(float(v["lufs"]))
+            if "true_peak_dbtp" in v:
+                peak_vals.append(float(v["true_peak_dbtp"]))
+            elif "peak_dbfs" in v:
+                peak_vals.append(float(v["peak_dbfs"]))
+        if i < total_samples - 1:
+            await asyncio.sleep(interval_s)
+
+    if not lufs_vals:
+        return {"error": "No valid loudness samples captured over the window"}
+
+    integrated = sum(lufs_vals) / len(lufs_vals)
+    result = {
+        "integrated_lufs": round(integrated, 2),
+        "max_momentary_lufs": round(max(lufs_vals), 2),
+        "min_momentary_lufs": round(min(lufs_vals), 2),
+        "range_lu": round(max(lufs_vals) - min(lufs_vals), 2),
+        "samples_collected": len(lufs_vals),
+        "window_sec": window_sec,
+        "sample_interval_ms": sample_interval_ms,
+        "is_playing": is_playing,
+    }
+    if peak_vals:
+        result["max_true_peak_dbtp"] = round(max(peak_vals), 2)
+    if is_playing is False:
+        result["warning"] = (
+            "Playback was not running — readings reflect stale cache. "
+            "Start playback and call again for accurate live analysis."
+        )
+    return result
+
+
+@mcp.tool()
 def check_flucoma(ctx: Context) -> dict:
     """Check if FluCoMa is installed and sending data."""
     cache = _get_spectral(ctx)

@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Optional
 
 from fastmcp import Context
@@ -88,27 +89,31 @@ def set_master_volume(ctx: Context, volume: float) -> dict:
 
 
 @mcp.tool()
-def get_track_meters(
+async def get_track_meters(
     ctx: Context,
     track_index: Optional[int] = None,
     include_stereo: bool = False,
+    samples: int = 1,
+    sample_interval_ms: int = 50,
 ) -> dict:
     """Read real-time output meter levels for tracks.
 
     Returns peak level (0.0-1.0) for each track. Call while playing to
     check levels, detect clipping, or verify a track is producing sound.
 
-    track_index:    specific track (omit for all tracks)
-    include_stereo: include left/right channel meters (adds GUI load)
+    track_index:        specific track (omit for all tracks)
+    include_stereo:     include left/right channel meters (adds GUI load)
+    samples:            number of snapshots to take (default 1). When > 1,
+                        returns peak-over-window for `level`/`left`/`right`
+                        (BUG-2026-04-22#7 fix — single reads are unreliable
+                        because Live samples `level` and `left/right` at
+                        slightly different moments and they can disagree).
+    sample_interval_ms: ms between snapshots when samples > 1 (default 50).
 
-    BUG-B3: when playback is stopped, `level` reports peak-hold from the
-    last loud moment while `left`/`right` report instantaneous channel
-    levels (which decay to 0). The two fields then visibly disagree, and
-    callers debugging "is my filter killing the signal?" get false alarms.
-    We now tag each response with `is_playing` so callers can interpret
-    the levels correctly, and — when include_stereo=True AND playback is
-    stopped — we mark left/right as `null` instead of 0 so the semantic
-    is explicit.
+    BUG-B3 (still active): when playback is stopped, `level` reports
+    peak-hold from the last loud moment while `left`/`right` report
+    instantaneous channel levels (decay to 0). We tag responses with
+    `is_playing`; when stopped + stereo requested, left/right → null.
     """
     params: dict = {}
     if track_index is not None:
@@ -116,7 +121,53 @@ def get_track_meters(
     if include_stereo:
         params["include_stereo"] = include_stereo
     ableton = _get_ableton(ctx)
-    result = ableton.send_command("get_track_meters", params)
+
+    # Multi-sample path for BUG-2026-04-22#7 — take N snapshots and return
+    # the max per track per channel. Mathematical-impossibility cases
+    # (level>0 but left=right=0) are resolved by sampling over time.
+    if samples and samples > 1:
+        samples = min(samples, 20)  # hard cap
+        interval = max(0, sample_interval_ms) / 1000.0
+        snapshots: list[dict] = []
+        for i in range(samples):
+            snap = ableton.send_command("get_track_meters", params)
+            if isinstance(snap, dict):
+                snapshots.append(snap)
+            if i < samples - 1 and interval > 0:
+                await asyncio.sleep(interval)
+        if not snapshots:
+            return {"error": "No meter snapshots collected"}
+        # Take the first snapshot's structure and peak-combine across all.
+        result = dict(snapshots[0])
+        # Merge tracks field with peak-maxing
+        if "tracks" in result:
+            merged = {}
+            for snap in snapshots:
+                for t in snap.get("tracks", []):
+                    tid = t.get("index")
+                    if tid is None:
+                        continue
+                    if tid not in merged:
+                        merged[tid] = dict(t)
+                    else:
+                        for fld in ("level", "left", "right"):
+                            cur = merged[tid].get(fld) or 0
+                            new = t.get(fld) or 0
+                            if new > cur:
+                                merged[tid][fld] = new
+            result["tracks"] = list(merged.values())
+        elif include_stereo or track_index is not None:
+            # Single-track response shape
+            for fld in ("level", "left", "right"):
+                vals = [s.get(fld) for s in snapshots if s.get(fld) is not None]
+                if vals:
+                    result[fld] = max(vals)
+        result["samples_collected"] = len(snapshots)
+        result["sample_interval_ms"] = sample_interval_ms
+    else:
+        result = ableton.send_command("get_track_meters", params)
+        if not isinstance(result, dict):
+            return result
 
     # Probe playback state once so we can annotate the response
     try:
@@ -125,8 +176,6 @@ def get_track_meters(
     except Exception:
         is_playing = None  # unknown — leave left/right as reported
 
-    if not isinstance(result, dict):
-        return result
     result["is_playing"] = is_playing
     # When stopped AND stereo was requested, mark l/r as None so they
     # don't look like a killed signal
