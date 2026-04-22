@@ -259,14 +259,10 @@ async def search_samples(
     # Splice search — prefer gRPC online catalog when available, fall back
     # to local SQLite index. See docs/2026-04-14-bugs-discovered.md — P0-2.
     if source in (None, "splice"):
-        grpc_client = None
-        try:
-            grpc_client = ctx.lifespan_context.get("splice_client")
-        except AttributeError:
-            grpc_client = None
+        grpc_client = await _ensure_splice_client_connected(ctx)
 
         used_grpc = False
-        if grpc_client is not None and getattr(grpc_client, "connected", False):
+        if grpc_client is not None:
             try:
                 grpc_result = await grpc_client.search_samples(
                     query=query,
@@ -712,6 +708,43 @@ _SPLICE_USER_LIB_DEST = "~/Music/Ableton/User Library/Samples/Splice"
 _SPLICE_PREVIEW_CACHE = "~/Library/Caches/LivePilot/splice_previews"
 
 
+def _get_splice_client_from_context(ctx: Context):
+    """Return the shared Splice client from lifespan context when present."""
+    try:
+        return ctx.lifespan_context.get("splice_client")
+    except AttributeError:
+        return None
+
+
+async def _ensure_splice_client_connected(ctx: Context):
+    """Reconnect the shared Splice client on demand.
+
+    The MCP server creates one long-lived client during startup. If that
+    first handshake races or Splice launches later, the old behavior kept
+    every tool stuck in a disconnected state until the whole MCP server
+    restarted. Re-check here so tool results reflect current desktop state.
+    """
+    client = _get_splice_client_from_context(ctx)
+    if client is None:
+        return None
+    if getattr(client, "connected", False):
+        return client
+
+    connect = getattr(client, "connect", None)
+    if connect is None:
+        return None
+
+    try:
+        await connect()
+    except Exception as exc:
+        logger.debug("Splice reconnect failed: %s", exc)
+        return None
+
+    if getattr(client, "connected", False):
+        return client
+    return None
+
+
 @mcp.tool()
 async def get_splice_credits(ctx: Context) -> dict:
     """Get the user's current Splice plan, credits, and daily sample quota.
@@ -745,15 +778,10 @@ async def get_splice_credits(ctx: Context) -> dict:
     from ..splice_client.models import PlanKind
     from ..splice_client.quota import get_tracker
 
-    client = None
-    try:
-        client = ctx.lifespan_context.get("splice_client")
-    except AttributeError:
-        pass
-
     quota_summary = get_tracker().summary()
+    client = await _ensure_splice_client_connected(ctx)
 
-    if client is None or not getattr(client, "connected", False):
+    if client is None:
         return {
             "connected": False,
             "username": "",
@@ -857,13 +885,8 @@ async def splice_catalog_hunt(
     Each sample entry contains `file_hash` which you can pass to
     `splice_download_sample` to trigger a download.
     """
-    client = None
-    try:
-        client = ctx.lifespan_context.get("splice_client")
-    except AttributeError:
-        pass
-
-    if client is None or not getattr(client, "connected", False):
+    client = await _ensure_splice_client_connected(ctx)
+    if client is None:
         return {
             "connected": False,
             "error": "Splice gRPC not connected",
@@ -970,13 +993,8 @@ async def splice_download_sample(
     """
     import shutil
 
-    client = None
-    try:
-        client = ctx.lifespan_context.get("splice_client")
-    except AttributeError:
-        pass
-
-    if client is None or not getattr(client, "connected", False):
+    client = await _ensure_splice_client_connected(ctx)
+    if client is None:
         return {
             "ok": False,
             "error": "Splice gRPC not connected",
@@ -1096,13 +1114,8 @@ async def splice_preview_sample(
     import urllib.request
     import urllib.error
 
-    client = None
-    try:
-        client = ctx.lifespan_context.get("splice_client")
-    except AttributeError:
-        pass
-
-    if client is None or not getattr(client, "connected", False):
+    client = await _ensure_splice_client_connected(ctx)
+    if client is None:
         return {"ok": False, "error": "Splice gRPC not connected"}
 
     # Two-stage lookup: SampleInfo is the fast path but only returns
@@ -1184,14 +1197,10 @@ async def splice_preview_sample(
 # ────────────────────────────────────────────────────────────────────────
 
 
-def _require_splice_client(ctx: Context) -> tuple[object, Optional[dict]]:
+async def _require_splice_client(ctx: Context) -> tuple[object, Optional[dict]]:
     """Fetch the Splice client from context, or return an error dict."""
-    client = None
-    try:
-        client = ctx.lifespan_context.get("splice_client")
-    except AttributeError:
-        pass
-    if client is None or not getattr(client, "connected", False):
+    client = await _ensure_splice_client_connected(ctx)
+    if client is None:
         return None, {"ok": False, "error": "Splice gRPC not connected"}
     return client, None
 
@@ -1215,7 +1224,7 @@ async def splice_list_collections(
       ],
     }
     """
-    client, err = _require_splice_client(ctx)
+    client, err = await _require_splice_client(ctx)
     if err:
         return err
     total, collections = await client.list_collections(
@@ -1244,7 +1253,7 @@ async def splice_search_in_collection(
     `splice_catalog_hunt` — you can feed them straight into
     `splice_preview_sample` or `splice_download_sample`.
     """
-    client, err = _require_splice_client(ctx)
+    client, err = await _require_splice_client(ctx)
     if err:
         return err
     total, samples = await client.collection_samples(
@@ -1271,7 +1280,7 @@ async def splice_add_to_collection(
     and web UI immediately. Use this to let LivePilot "save for later"
     items it finds during composition work.
     """
-    client, err = _require_splice_client(ctx)
+    client, err = await _require_splice_client(ctx)
     if err:
         return err
     if not file_hashes:
@@ -1289,7 +1298,7 @@ async def splice_remove_from_collection(
     ctx: Context, collection_uuid: str, file_hashes: list[str],
 ) -> dict:
     """Remove one or more samples from a user Collection (server-side)."""
-    client, err = _require_splice_client(ctx)
+    client, err = await _require_splice_client(ctx)
     if err:
         return err
     if not file_hashes:
@@ -1307,7 +1316,7 @@ async def splice_remove_from_collection(
 @mcp.tool()
 async def splice_create_collection(ctx: Context, name: str) -> dict:
     """Create a new user Collection. Returns the new UUID on success."""
-    client, err = _require_splice_client(ctx)
+    client, err = await _require_splice_client(ctx)
     if err:
         return err
     name = (name or "").strip()
@@ -1347,7 +1356,7 @@ async def splice_list_presets(
       ],
     }
     """
-    client, err = _require_splice_client(ctx)
+    client, err = await _require_splice_client(ctx)
     if err:
         return err
     total, presets = await client.list_purchased_presets(
@@ -1371,7 +1380,7 @@ async def splice_preset_info(
     plugin_name: str = "",
 ) -> dict:
     """Fetch metadata for a single preset (uuid, file_hash, or plugin_name)."""
-    client, err = _require_splice_client(ctx)
+    client, err = await _require_splice_client(ctx)
     if err:
         return err
     if not (uuid or file_hash or plugin_name):
@@ -1394,7 +1403,7 @@ async def splice_download_preset(ctx: Context, uuid: str) -> dict:
     """
     from ..splice_client.client import CREDIT_HARD_FLOOR
 
-    client, err = _require_splice_client(ctx)
+    client, err = await _require_splice_client(ctx)
     if err:
         return err
     if not uuid:
@@ -1437,7 +1446,7 @@ async def splice_pack_info(ctx: Context, pack_uuid: str) -> dict:
     Useful for discovering related samples by pack, or surfacing pack-level
     genre/provider info that search results omit.
     """
-    client, err = _require_splice_client(ctx)
+    client, err = await _require_splice_client(ctx)
     if err:
         return err
     if not pack_uuid:
@@ -1469,19 +1478,15 @@ async def splice_pack_info(ctx: Context, pack_uuid: str) -> dict:
 # ────────────────────────────────────────────────────────────────────────
 
 
-def _build_http_bridge(ctx: Context):
+async def _build_http_bridge(ctx: Context):
     """Construct the HTTPS bridge with the current gRPC client attached.
 
     Returns (bridge, err_dict). On success err_dict is None.
     """
     from ..splice_client.http_bridge import SpliceHTTPBridge
 
-    client = None
-    try:
-        client = ctx.lifespan_context.get("splice_client")
-    except AttributeError:
-        pass
-    if client is None or not getattr(client, "connected", False):
+    client = await _ensure_splice_client_connected(ctx)
+    if client is None:
         return None, {
             "ok": False,
             "error": "Splice gRPC not connected — session token unreachable",
@@ -1520,7 +1525,7 @@ async def splice_describe_sound(
     instrument/tags/pack_name/files. Use the uuid with
     `splice_download_sample(uuid)` to pull the audio file.
     """
-    bridge, err = _build_http_bridge(ctx)
+    bridge, err = await _build_http_bridge(ctx)
     if err:
         return err
     from ..splice_client.http_bridge import SpliceHTTPError
@@ -1572,7 +1577,7 @@ async def splice_generate_variation(
     duration/tags/pack_name/files). Use the uuid of any result with
     `splice_download_sample()` to pull the audio.
     """
-    bridge, err = _build_http_bridge(ctx)
+    bridge, err = await _build_http_bridge(ctx)
     if err:
         return err
     from ..splice_client.http_bridge import SpliceHTTPError
@@ -1631,12 +1636,8 @@ async def splice_http_diagnose(ctx: Context) -> dict:
     # diagnostic is worse than no diagnostic.
     session_token_available = False
     session_token_error = None
-    grpc_client = None
-    try:
-        grpc_client = ctx.lifespan_context.get("splice_client")
-    except AttributeError:
-        pass
-    if grpc_client is None or not getattr(grpc_client, "connected", False):
+    grpc_client = await _ensure_splice_client_connected(ctx)
+    if grpc_client is None:
         session_token_error = "Splice gRPC not connected"
     else:
         # Connection is up; confirm a token actually comes back.

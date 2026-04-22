@@ -1,5 +1,47 @@
 # Changelog
 
+## 1.17.1 — Splice auto-reconnect + Codex installer fix (April 23 2026)
+
+Two bug fixes discovered in a parallel worktree hours after v1.17.0
+shipped. Non-breaking, test-locked, ships as a patch.
+
+### Fixed
+
+- **Splice client auto-reconnect** (`mcp_server/sample_engine/tools.py`):
+  Every Splice MCP tool now reconnects the shared gRPC client on demand
+  via a new `_ensure_splice_client_connected()` helper. Before this fix,
+  if the Splice desktop app launched AFTER the MCP server (common when
+  users start the MCP via Claude Code before booting Splice), every
+  Splice tool stayed stuck in a disconnected state until the WHOLE MCP
+  server was restarted. The fix re-checks on every tool invocation, so
+  the first successful Splice-desktop boot auto-recovers the client
+  transparently. Tools affected: `get_splice_credits`,
+  `splice_catalog_hunt`, `search_samples` (when routing through Splice),
+  plus every other Splice tool that reads from the shared context.
+  3 new regression tests in `tests/test_splice_reconnect_tools.py` lock
+  the reconnect behavior.
+- **Codex plugin installer writes `.mcp.json`** (`installer/codex.js`):
+  The installer was copying plugin files into the Codex plugins
+  directory but omitting the `.mcp.json` config that tells Codex how
+  to launch the MCP server. Codex users had to manually create the
+  file or run the command with additional flags. Now
+  `writeLocalMcpConfig(destDir)` writes the correct
+  `{mcpServers: {livepilot: {command, args}}}` shape during install.
+  1 new regression test in `tests/test_codex_plugin_installer.py`
+  asserts the file content.
+
+### Verified
+
+155/155 tests green. `sync_metadata.py --check`: all metadata in sync
+at version=1.17.1, tools=426, domains=52, bridge_cmds=30, enriched=120.
+
+### Distribution
+
+Same channels as v1.17.0 — GitHub release + npm + `.mcpb` + plugin
+cache. Tool count and domain count unchanged; this is purely a
+reliability patch.
+
+
 ## 1.17.0 — 2026-04-22 handoff close-out (April 22 2026, late)
 
 Closes every item in the 2026-04-22 handoff document: Splice's

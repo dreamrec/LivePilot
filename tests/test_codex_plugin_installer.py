@@ -46,6 +46,12 @@ def test_install_codex_plugin_updates_temp_marketplace(tmp_path: Path):
     assert manifest["name"] == expected_manifest["name"]
     assert manifest["version"] == expected_manifest["version"]
 
+    mcp_config = json.loads((plugin_dir / ".mcp.json").read_text(encoding="utf-8"))
+    assert mcp_config["mcpServers"]["livepilot"]["command"] == NODE
+    assert mcp_config["mcpServers"]["livepilot"]["args"] == [
+        str(_repo_root() / "bin" / "livepilot.js")
+    ]
+
     marketplace_data = json.loads(marketplace.read_text(encoding="utf-8"))
     entry = next(plugin for plugin in marketplace_data["plugins"] if plugin["name"] == "livepilot")
     assert entry["source"]["path"] == "./plugins/livepilot"

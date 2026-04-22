@@ -42,6 +42,19 @@ function loadManifest() {
   return JSON.parse(fs.readFileSync(SOURCE_MANIFEST, "utf-8"));
 }
 
+function writeLocalMcpConfig(destDir) {
+  const file = path.join(destDir, ".mcp.json");
+  const config = {
+    mcpServers: {
+      livepilot: {
+        command: process.execPath,
+        args: [path.join(ROOT, "bin", "livepilot.js")],
+      },
+    },
+  };
+  fs.writeFileSync(file, JSON.stringify(config, null, 2) + "\n");
+}
+
 function ensureMarketplace(pluginName) {
   const file = marketplacePath();
   let marketplace = {
@@ -115,6 +128,7 @@ function installCodexPlugin() {
   fs.mkdirSync(path.dirname(destDir), { recursive: true });
   fs.rmSync(destDir, { recursive: true, force: true });
   copyDirSync(SOURCE_DIR, destDir);
+  writeLocalMcpConfig(destDir);
 
   console.log("Done! Next steps:");
   console.log("  1. Open or refresh Codex");
