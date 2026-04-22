@@ -150,7 +150,11 @@ def atlas_compare(ctx: Context, device_a: str, device_b: str, role: str = "") ->
 
 
 @mcp.tool()
-def scan_full_library(ctx: Context, force: bool = False) -> dict:
+def scan_full_library(
+    ctx: Context,
+    force: bool = False,
+    max_per_category: int = 5000,
+) -> dict:
     """Scan the full Ableton browser and rebuild the device atlas.
 
     Walks every category (instruments, audio_effects, midi_effects, max_for_live,
@@ -158,6 +162,16 @@ def scan_full_library(ctx: Context, force: bool = False) -> dict:
     Results are merged with curated enrichments and saved to device_atlas.json.
 
     force: if True, rescan even if atlas already exists (default False)
+    max_per_category: ceiling per category (default 5000). The previous
+        hardcoded 1000 cap silently truncated large categories — for
+        example, the samples category alone has ~22,000 items per the
+        browser tree, so the reported count "1000 samples" was wrong by
+        a factor of 22 (BUG-2026-04-22 #12). Raise this if your library
+        is huge; lower it for fast smoke scans.
+
+    Returns a stats dict including `truncated_categories` listing any
+    category that hit the cap (so callers know the count is a lower
+    bound rather than the true total).
     """
     from .scanner import normalize_scan_results
     from .enrichments import load_enrichments, merge_enrichments
@@ -183,10 +197,22 @@ def scan_full_library(ctx: Context, force: bool = False) -> dict:
 
     # Scan browser
     ableton = _get_ableton(ctx)
-    raw = ableton.send_command("scan_browser_deep", {"max_per_category": 1000})
+    raw = ableton.send_command("scan_browser_deep", {"max_per_category": max_per_category})
 
     # Normalize
     devices = normalize_scan_results(raw)
+
+    # Detect truncation: per-category count == cap means we likely hit it.
+    truncated_categories = []
+    if isinstance(raw, dict):
+        per_cat = raw.get("counts") or raw.get("stats") or {}
+        if isinstance(per_cat, dict):
+            for cat, count in per_cat.items():
+                try:
+                    if int(count) >= max_per_category:
+                        truncated_categories.append(cat)
+                except (TypeError, ValueError):
+                    continue
 
     # Load and merge enrichments
     enrichments = load_enrichments(enrichments_dir)
@@ -214,6 +240,8 @@ def scan_full_library(ctx: Context, force: bool = False) -> dict:
         "live_version": live_version,
         "scanned_at": time.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "stats": stats,
+        "max_per_category": max_per_category,
+        "truncated_categories": truncated_categories,
         "devices": devices,
         "packs": [],
     }

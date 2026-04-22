@@ -17,20 +17,30 @@ def _get_ableton(ctx: Context):
     return ctx.lifespan_context["ableton"]
 
 
-def _validate_track_index(track_index: int, allow_return: bool = True):
+MASTER_TRACK_INDEX = -1000  # mirrors remote_script/LivePilot/utils.py
+
+
+def _validate_track_index(track_index: int, allow_return: bool = True, allow_master: bool = True):
     """Validate track index.
 
-    Regular tracks: >= 0. Return tracks: -1 (A), -2 (B), etc.
+    Regular tracks: >= 0. Return tracks: -1 (A), -2 (B), etc. Master: -1000.
     Set allow_return=False for operations that only work on regular tracks
     (e.g., create_scene, set_group_fold).
+    Set allow_master=False for operations that don't make sense on master
+    (e.g., delete_track, set_track_arm).
     """
+    if track_index == MASTER_TRACK_INDEX:
+        if not allow_master:
+            raise ValueError("track_index=-1000 (master) is not supported for this operation")
+        return
     if track_index < 0:
         if not allow_return:
             raise ValueError("track_index must be >= 0 (return tracks not supported for this operation)")
         if track_index < -99:
             raise ValueError(
                 "track_index must be >= 0 for regular tracks, "
-                "or -1..-99 for return tracks (-1=A, -2=B)"
+                "-1..-99 for return tracks (-1=A, -2=B), "
+                "or -1000 for master"
             )
 
 
@@ -41,9 +51,87 @@ def _validate_color_index(color_index: int):
 
 @mcp.tool()
 def get_track_info(ctx: Context, track_index: int) -> dict:
-    """Get detailed info about a track: clips, devices, mixer state."""
+    """Get detailed info about a track: clips, devices, mixer state.
+
+    BUG-2026-04-22#11 FIX: track_index=-1000 (the master-track convention
+    used by set_track_volume, find_and_load_device, etc.) now dispatches
+    to the get_master_track endpoint instead of rejecting. This makes
+    -1000 work consistently across every track-addressing tool.
+    """
     _validate_track_index(track_index)
+    if track_index == MASTER_TRACK_INDEX:
+        return _get_ableton(ctx).send_command("get_master_track")
     return _get_ableton(ctx).send_command("get_track_info", {"track_index": track_index})
+
+
+@mcp.tool()
+def verify_device_alive(
+    ctx: Context,
+    track_index: int,
+    device_index: int,
+) -> dict:
+    """Check whether a loaded device is alive (BUG-2026-04-22 #19).
+
+    Static health check based on get_device_info — no test note required.
+    A device is considered DEAD when:
+      - class_name contains "PluginDevice" (AU/VST) AND parameter_count <= 1
+        (the shell loaded but the DSP engine crashed / wasn't activated)
+      - health_flags contains "opaque_or_failed_plugin"
+
+    Returns: {alive: bool, reason: str, parameter_count: int, class_name: str,
+              health_flags: list, recommendation: str | None}
+
+    The `recommendation` is a one-liner like "delete and load native
+    alternative" when the device is dead. None when alive.
+    """
+    _validate_track_index(track_index)
+    info = _get_ableton(ctx).send_command(
+        "get_device_info", {"track_index": track_index, "device_index": device_index},
+    )
+    if not isinstance(info, dict):
+        return {"alive": False, "reason": f"get_device_info returned non-dict: {info!r}"}
+
+    class_name = str(info.get("class_name", ""))
+    parameter_count = int(info.get("parameter_count", 0))
+    health_flags = list(info.get("health_flags", []))
+
+    if "PluginDevice" in class_name and parameter_count <= 1:
+        return {
+            "alive": False,
+            "reason": (
+                f"plugin_shell_no_dsp — class_name={class_name!r}, "
+                f"parameter_count={parameter_count}. The plugin host loaded "
+                f"the shell but the DSP engine did not activate (common "
+                f"after a crash or unauthorized AU/VST)."
+            ),
+            "parameter_count": parameter_count,
+            "class_name": class_name,
+            "health_flags": health_flags,
+            "recommendation": (
+                "Delete this device and load a native Ableton alternative "
+                "(Wavetable / Operator / Drift for synth, Reverb / Delay / "
+                "Compressor for FX)."
+            ),
+        }
+
+    if "opaque_or_failed_plugin" in health_flags:
+        return {
+            "alive": False,
+            "reason": "health_flags reports opaque_or_failed_plugin",
+            "parameter_count": parameter_count,
+            "class_name": class_name,
+            "health_flags": health_flags,
+            "recommendation": "Delete and replace with a native alternative.",
+        }
+
+    return {
+        "alive": True,
+        "reason": "passes static health checks",
+        "parameter_count": parameter_count,
+        "class_name": class_name,
+        "health_flags": health_flags,
+        "recommendation": None,
+    }
 
 
 @mcp.tool()

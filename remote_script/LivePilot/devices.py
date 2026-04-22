@@ -558,9 +558,16 @@ def insert_rack_chain(song, params):
     """Insert a new chain into an Instrument Rack, Audio Effect Rack, or Drum Rack (12.3+).
 
     Required: track_index, device_index
-    Optional: position (-1 = end)
+    Optional: position (-1 = end), auto_pad_note (default True for drum racks)
+
+    BUG-2026-04-22#13 FIX: For Drum Racks, the new chain's `in_note` is
+    auto-incremented to the next free MIDI slot above any existing chain
+    (or 36 if it's the first). Without this, multiple new chains pile up
+    on note 36 ("Multi") and can't be triggered independently. Pass
+    `auto_pad_note=false` to keep Live's default behavior.
     """
     from .version_detect import has_feature
+    from ._drum_helpers import _next_drum_chain_note
 
     if not has_feature("insert_chain"):
         raise RuntimeError(
@@ -570,6 +577,7 @@ def insert_rack_chain(song, params):
     track_index = int(params["track_index"])
     device_index = int(params["device_index"])
     position = int(params.get("position", -1))
+    auto_pad_note = bool(params.get("auto_pad_note", True))
 
     track = get_track(song, track_index)
     device = get_device(track, device_index)
@@ -580,22 +588,45 @@ def insert_rack_chain(song, params):
             % device.name
         )
 
+    next_note = _next_drum_chain_note(device) if auto_pad_note else None
+
     song.begin_undo_step()
+    assigned_note = None
     try:
         if position >= 0:
             device.insert_chain(position)
         else:
             device.insert_chain()
+
+        # Apply auto pad-note if this is a drum rack.
+        if next_note is not None:
+            chains = list(device.chains)
+            if chains:
+                # The newly inserted chain is the last one (insert_chain()
+                # appends; insert_chain(N) inserts at N, so prefer the
+                # explicit position if given).
+                target_idx = position if position >= 0 else len(chains) - 1
+                if 0 <= target_idx < len(chains):
+                    new_chain = chains[target_idx]
+                    try:
+                        new_chain.in_note = next_note
+                        assigned_note = next_note
+                    except (AttributeError, TypeError):
+                        # Not a drum chain after all — silent skip.
+                        pass
     finally:
         song.end_undo_step()
 
     chain_count = len(list(device.chains))
-    return {
+    result = {
         "inserted": True,
         "track_index": track_index,
         "device_index": device_index,
         "chain_count": chain_count,
     }
+    if assigned_note is not None:
+        result["assigned_pad_note"] = assigned_note
+    return result
 
 
 @register("set_drum_chain_note")
