@@ -1,10 +1,10 @@
 {
   "manifest_version": "0.3",
   "name": "livepilot",
-  "display_name": "LivePilot — AI for Ableton Live",
+  "display_name": "LivePilot \u2014 AI for Ableton Live",
   "version": "1.17.0",
-  "description": "Agentic production system for Ableton Live 12. Make beats, mix tracks, design sounds, and arrange songs with 421 AI-powered tools.",
-  "long_description": "LivePilot is an agentic production system for Ableton Live 12. 426 tools across 52 domains — device atlas (1305 devices), sample intelligence (Splice + browser + filesystem), auto-composition, spectral perception, technique memory, and 12 creative engines.\n\n**What it does:**\n- Creates MIDI clips with notes, chords, and rhythms\n- Loads instruments and effects via Device Atlas (1305 devices indexed)\n- Searches samples across Splice, Ableton browser, and filesystem\n- Plans compositions from text prompts with genre-aware layering\n- Slices samples with intent-based MIDI generation\n- Mixes with volume, panning, sends, and automation\n- Analyzes your mix with real-time spectral data (M4L bridge)\n- Diagnoses stuck sessions and generates creative rescue variants\n- Remembers your production style across sessions\n\n**How it works:**\nLivePilot installs a Remote Script in Ableton that communicates with the AI over a local TCP connection. Everything runs on your machine — no audio leaves your computer.",
+  "description": "Agentic production system for Ableton Live 12. Make beats, mix tracks, design sounds, and arrange songs with 426 AI-powered tools.",
+  "long_description": "LivePilot is an agentic production system for Ableton Live 12. 426 tools across 52 domains \u2014 device atlas (1305 devices), sample intelligence (Splice + browser + filesystem), auto-composition, spectral perception, technique memory, and 12 creative engines.\n\n**What it does:**\n- Creates MIDI clips with notes, chords, and rhythms\n- Loads instruments and effects via Device Atlas (1305 devices indexed)\n- Searches samples across Splice, Ableton browser, and filesystem\n- Plans compositions from text prompts with genre-aware layering\n- Slices samples with intent-based MIDI generation\n- Mixes with volume, panning, sends, and automation\n- Analyzes your mix with real-time spectral data (M4L bridge)\n- Diagnoses stuck sessions and generates creative rescue variants\n- Remembers your production style across sessions\n\n**How it works:**\nLivePilot installs a Remote Script in Ableton that communicates with the AI over a local TCP connection. Everything runs on your machine \u2014 no audio leaves your computer.",
   "author": {
     "name": "Pilot Studio",
     "url": "https://github.com/dreamrec/LivePilot"
@@ -17,20 +17,20 @@
   "homepage": "https://github.com/dreamrec/LivePilot",
   "documentation": "https://github.com/dreamrec/LivePilot#readme",
   "support": "https://github.com/dreamrec/LivePilot/issues",
-
   "server": {
     "type": "node",
     "entry_point": "bin/livepilot.js",
     "mcp_config": {
       "command": "node",
-      "args": ["${__dirname}/bin/livepilot.js"],
+      "args": [
+        "${__dirname}/bin/livepilot.js"
+      ],
       "env": {
         "LIVEPILOT_AUTO_INSTALL": "${user_config.auto_install_remote_script}",
         "LIVEPILOT_TCP_PORT": "${user_config.ableton_port}"
       }
     }
   },
-
   "user_config": {
     "auto_install_remote_script": {
       "type": "boolean",
@@ -47,24 +47,57 @@
       "max": 65535
     }
   },
-
   "tools_generated": true,
-
   "tools": [
-    {"name": "get_session_info", "description": "Get comprehensive session state: tempo, tracks, scenes, transport"},
-    {"name": "set_tempo", "description": "Set the song tempo (20-999 BPM)"},
-    {"name": "create_midi_track", "description": "Create a new MIDI track with optional name and color"},
-    {"name": "add_notes", "description": "Add MIDI notes to a clip with pitch, timing, velocity, probability"},
-    {"name": "search_browser", "description": "Search Ableton's browser for instruments, effects, drums, samples"},
-    {"name": "find_and_load_device", "description": "Find a device by name and load it onto a track"},
-    {"name": "set_device_parameter", "description": "Set any device parameter by name with value verification"},
-    {"name": "fire_scene", "description": "Launch a scene, triggering all its clips"},
-    {"name": "analyze_harmony", "description": "Analyze chord progression with Roman numeral analysis"},
-    {"name": "get_master_spectrum", "description": "Real-time 8-band frequency analysis of the master bus"},
-    {"name": "memory_learn", "description": "Save a production technique for future recall"},
-    {"name": "plan_arrangement", "description": "Generate a full arrangement blueprint with sections and transitions"}
+    {
+      "name": "get_session_info",
+      "description": "Get comprehensive session state: tempo, tracks, scenes, transport"
+    },
+    {
+      "name": "set_tempo",
+      "description": "Set the song tempo (20-999 BPM)"
+    },
+    {
+      "name": "create_midi_track",
+      "description": "Create a new MIDI track with optional name and color"
+    },
+    {
+      "name": "add_notes",
+      "description": "Add MIDI notes to a clip with pitch, timing, velocity, probability"
+    },
+    {
+      "name": "search_browser",
+      "description": "Search Ableton's browser for instruments, effects, drums, samples"
+    },
+    {
+      "name": "find_and_load_device",
+      "description": "Find a device by name and load it onto a track"
+    },
+    {
+      "name": "set_device_parameter",
+      "description": "Set any device parameter by name with value verification"
+    },
+    {
+      "name": "fire_scene",
+      "description": "Launch a scene, triggering all its clips"
+    },
+    {
+      "name": "analyze_harmony",
+      "description": "Analyze chord progression with Roman numeral analysis"
+    },
+    {
+      "name": "get_master_spectrum",
+      "description": "Real-time 8-band frequency analysis of the master bus"
+    },
+    {
+      "name": "memory_learn",
+      "description": "Save a production technique for future recall"
+    },
+    {
+      "name": "plan_arrangement",
+      "description": "Generate a full arrangement blueprint with sections and transitions"
+    }
   ],
-
   "keywords": [
     "ableton",
     "ableton-live",
@@ -79,13 +112,14 @@
     "music-theory",
     "ai-music"
   ],
-
   "compatibility": {
-    "platforms": ["darwin", "win32"],
+    "platforms": [
+      "darwin",
+      "win32"
+    ],
     "runtimes": {
       "python": ">=3.9"
     }
   },
-
   "screenshots": []
 }
