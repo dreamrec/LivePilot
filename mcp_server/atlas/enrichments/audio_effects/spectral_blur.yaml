@@ -1,0 +1,64 @@
+id: spectral_blur
+name: Spectral Blur
+sonic_description: >
+  Spectral halo/reverb hybrid. Creates reverb-like textures by blurring
+  user-defined frequency ranges into dense clouds of delayed/smeared
+  harmonic content. Not a real reverb — no IR — but the result behaves
+  like one, with more control over which frequency ranges get haloed.
+  Freeze button holds the current spectral content indefinitely. The
+  tool for ethereal pads from sparse sources and alien textures that
+  don't sound like rooms.
+category: spectral_fx
+character_tags: [spectral, halo, reverb_like, ethereal, frozen, frequency_selective]
+use_cases: [halo_pad, ghost_atmosphere, frozen_texture, spectral_bed]
+genre_affinity:
+  primary: [ambient, deep_minimal, experimental, drone]
+  secondary: [dub_techno, cinematic]
+complexity: intermediate
+introduced_in: "10.0"
+pack: Creative Extensions
+creator: Ableton + Amazing Noises
+class_name: PluginDevice
+
+key_parameters:
+  - name: "Frequency Range"
+    description: "Low and high cutoff of the blurred band. Narrow ranges produce pitched halos; wide ranges produce reverb-like wash."
+  - name: "Halo (Grain Length)"
+    description: "How long each spectral grain lingers. Short = shimmer; long = sustained bed."
+    range: [50, 5000]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      subtle_shimmer: 200
+      sustained_bed: 2000
+  - name: "Residual"
+    description: "Amount of dry signal that passes through. 0 = fully wet halo, 1 = hear the source clearly."
+    range: [0.0, 1.0]
+    type: float
+  - name: "Freeze"
+    description: "Holds the current spectral content. Manual or MIDI-triggered."
+    type: boolean
+
+signature_techniques:
+  - name: "Ghost atmosphere under the kick"
+    description: "Very short source (click), narrow mid band, Halo 3000ms, Residual 0 → continuous ghost bed at -30dB."
+    aesthetic: [deep_minimal, ambient]
+  - name: "Freeze-and-move"
+    description: "Play a chord → hit Freeze → automate frequency-range low/high up the spectrum → harmonic cloud morphs in pitch-space."
+    aesthetic: [experimental, drone]
+  - name: "Reverse reverb alternative"
+    description: "Apply to a short stab with long Halo → get reverse-reverb-like build-in without needing to flip the audio."
+    aesthetic: [cinematic, deep_minimal]
+
+pairings:
+  - device: pitchloop89
+    rationale: "PitchLoop89 feeding Spectral Blur = Basic Channel / Monolake ethereal space"
+  - device: convolution_reverb
+    rationale: "Spectral Blur before Conv Rev compounds the halo with real-space acoustics"
+
+gotchas:
+  - "Halo times above 3000ms accumulate CPU — freeze the track after print"
+  - "Narrow frequency ranges at high levels self-oscillate — keep Residual > 0 or compress"
+
+learn_more:
+  official: "https://www.ableton.com/en/packs/creative-extensions/"

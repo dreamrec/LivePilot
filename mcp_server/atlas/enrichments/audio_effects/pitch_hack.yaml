@@ -1,0 +1,61 @@
+id: pitch_hack
+name: Pitch Hack
+sonic_description: >
+  Versatile pitch-shifting delay for Creative Extensions. Combines
+  transposition, reverse, feedback, and randomization on a single delay
+  line. Lighter-weight companion to PitchLoop89 — less of a spatial
+  architect, more of a per-sound treatment for pitched echoes and random
+  reversal textures. The go-to for Akufen-style micro-stutter on hats and
+  the random-reverse pitched ghosts that Villalobos uses on every track.
+category: pitch_delay
+character_tags: [pitched, glitchy, reversed, randomized, micro_stutter]
+use_cases: [akufen_stutter, pitched_ghost, reverse_echo, textural_delay]
+genre_affinity:
+  primary: [microhouse, deep_minimal, idm, experimental]
+  secondary: [dub_techno, electronica]
+complexity: beginner
+introduced_in: "10.0"
+pack: Creative Extensions
+creator: Ableton + Amazing Noises
+class_name: PluginDevice
+
+key_parameters:
+  - name: "Transpose"
+    description: "Pitch shift in semitones + cents on the delayed signal."
+    range: [-24, 24]
+    unit: "st"
+    type: int
+  - name: "Delay Time"
+    description: "Delay in ms or tempo-synced subdivisions."
+  - name: "Feedback"
+    description: "Pitched echo feedback. Cascading when transpose is non-zero."
+    range: [0.0, 1.0]
+    type: float
+  - name: "Reverse"
+    description: "Reverse-plays the delay buffer."
+    type: boolean
+  - name: "Randomize"
+    description: "Randomizes pitch and/or reverse per repeat. The Villalobos-texture parameter."
+    range: [0.0, 1.0]
+    type: float
+
+signature_techniques:
+  - name: "Akufen micro-stutter on hats"
+    description: "Short delay (~50ms), Feedback 0.4, Randomize 0.6 → every hi-hat hit gets 2-3 unpredictable pitched ghost echoes."
+    aesthetic: [microhouse]
+  - name: "Ghost chord tails"
+    description: "Chord stab → Reverse on, Transpose +3st, Feedback 0.5 → pitched reverse ghost trails fade out after each stab."
+    aesthetic: [deep_minimal]
+  - name: "Random pitched percussion"
+    description: "Put on a clave or click → Randomize full → each hit decays into a different pitched echo pattern."
+    aesthetic: [microhouse, idm]
+
+pairings:
+  - device: spectral_blur
+    rationale: "Feed Pitch Hack's random-pitched output into Spectral Blur's halo for ghost atmospheres under the kick."
+
+gotchas:
+  - "Randomize above 0.8 can produce notes wildly out of key — gate with key-detection first if harmony matters."
+
+learn_more:
+  official: "https://www.ableton.com/en/packs/creative-extensions/"

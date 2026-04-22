@@ -1,0 +1,124 @@
+id: granulator_iii
+name: Granulator III
+sonic_description: >
+  Robert Henke's (Monolake) reimagined granular synth. Three playback modes —
+  Classic (2 overlapping grains per stereo channel, the Granulator II engine),
+  Loop (rhythmic crossfaded sample playback), Cloud (up to 20 unsynced
+  overlapping grains). Full MPE for per-note control of grain size, shape,
+  and position. Real-time audio capture samples any source in one click.
+  The single most-used instrument for evolving texture, drone beds, and
+  vocal-chop clouds in deep minimal / microhouse / ambient.
+synthesis_type: granular
+character_tags: [granular, evolving, textural, atmospheric, experimental, organic, cloud]
+use_cases: [texture, drone, vocal_chop, evolving_pad, cloud, re_pitched_loop, atmosphere]
+genre_affinity:
+  primary: [deep_minimal, microhouse, ambient, dub_techno, idm]
+  secondary: [experimental, drone, cinematic, electronica]
+complexity: intermediate
+self_contained: false  # requires a source sample or real-time capture
+introduced_in: "12.0"
+pack: Granulator III
+creator: Robert Henke
+class_name: PluginDevice
+
+key_parameters:
+  - name: "Mode"
+    description: "Playback mode. Classic = 2 overlapping grains per channel (G II engine). Loop = rhythmic crossfaded playback synced to clip tempo. Cloud = up to 20 unsynced overlapping grains for drones/textures."
+    range: ["Classic", "Loop", "Cloud"]
+    type: enum
+    sweet_spots:
+      rhythmic_micro_loop: "Loop"
+      drone_cloud: "Cloud"
+      classic_texture: "Classic"
+
+  - name: "Grain Size"
+    description: "Duration of each grain in ms. Shorter = more tonal; longer = more recognizable as source."
+    range: [1, 1000]
+    unit: "ms"
+    type: float
+    sweet_spots:
+      cloud_drone: 200
+      vocal_grain: 500
+      micro_stutter: 20
+
+  - name: "Position"
+    description: "Read-head position in the source sample. Automate this for smooth source traversal."
+    range: [0.0, 1.0]
+    type: float
+
+  - name: "Position Random"
+    description: "Randomness added to read-head position per grain. Essential for Cloud-mode non-repeating texture."
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      locked_loop: 0.0
+      organic_scatter: 0.3
+      full_chaos: 1.0
+
+  - name: "Pitch Random"
+    description: "Per-grain pitch detune in semitones. Low values give vintage tape wobble; high values give chord-cloud effects."
+    range: [0.0, 24.0]
+    unit: "st"
+    type: float
+    sweet_spots:
+      tape_wobble: 0.15
+      chord_cloud: 7.0
+      octave_chaos: 12.0
+
+  - name: "Grain Density"
+    description: "How many grains overlap at once. Higher = denser wall of sound."
+    range: [1, 20]
+    type: int
+    sweet_spots:
+      classic: 2
+      cloud_pad: 12
+      wall_of_sound: 20
+
+  - name: "Spray"
+    description: "Time randomization of grain onsets. Prevents periodic artifacts that make granular sound 'machine-like'."
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      organic: 0.2
+      fully_asynchronous: 0.6
+
+signature_techniques:
+  - name: "Instant deep-minimal texture"
+    description: >
+      Load any vocal snippet or field recording → Cloud mode, Grain Size 200-500ms,
+      Position Random 0.3, Pitch Random 0.1 → immediate organic evolving bed.
+    aesthetic: [microhouse, deep_minimal, ambient]
+  - name: "Rhythmic break re-chop"
+    description: >
+      Load a drum break → Loop mode, sync to clip tempo → automate Position in
+      short jumps → Akufen-style micro-edit patterns without manual slicing.
+    aesthetic: [microhouse, idm]
+  - name: "Vocal-to-chord-cloud"
+    description: >
+      Sustained vowel sample → Cloud mode, Pitch Random 7st, Grain Size 400ms
+      → vocal becomes harmonic cloud without recognizable words.
+    aesthetic: [ambient, deep_minimal]
+  - name: "Real-time capture and grain"
+    description: >
+      Set up Granulator on a return track, route any source to it, hit Capture,
+      then grain the just-captured audio. Zero commitment to the source — if
+      you don't like the grain, record a new slice.
+    aesthetic: [experimental, ambient]
+
+pairings:
+  - device: convolution_reverb
+    rationale: "Henke-canonical combo — grain clouds through a long hall IR = Basic Channel / Monolake spatial signature"
+  - device: pitchloop89
+    rationale: "Pair on output for detuned shimmer on top of the evolving texture"
+  - device: microtuner
+    rationale: "Feed Granulator through Microtuner for microtonal grain-cloud beds"
+
+gotchas:
+  - "Cloud mode with 20 grains + 500ms size is CPU-heavy — freeze the track after print"
+  - "Real-time Capture samples whatever routes to the track — put on a return to grain a single source cleanly"
+  - "Position at 1.0 (end of sample) goes silent — keep Position + Grain Size below 1.0 of the sample duration"
+  - "Grain Size below 20ms starts producing audible tonal artifacts — good for FM-like textures, bad for 'natural' grain"
+
+learn_more:
+  official: "https://www.ableton.com/en/packs/granulator-iii/"
+  creator_site: "https://roberthenke.com/technology/granulator3.html"

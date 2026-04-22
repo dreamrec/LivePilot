@@ -1,0 +1,37 @@
+id: cv_utility
+name: CV Utility
+sonic_description: >
+  Process control voltages via automation curves. Scale, offset, invert,
+  quantize CV signals. Works standalone even without modular gear — use
+  to shape Live's internal automation before it hits the destination
+  parameter. Acts as a curve-shaper between a source LFO/envelope and
+  the modulated parameter.
+category: cv_processor
+character_tags: [cv_processing, scale, offset, invert, quantize]
+use_cases: [curve_shaping, modulation_scaling, parameter_processing]
+genre_affinity:
+  primary: [modular, experimental]
+  secondary: [all]
+complexity: beginner
+introduced_in: "10.0"
+pack: CV Tools
+creator: Ableton
+class_name: PluginDevice
+requires_modular_hardware: false
+
+key_parameters:
+  - name: "Scale"
+    description: "Multiply incoming CV by a factor."
+  - name: "Offset"
+    description: "Add a DC offset."
+  - name: "Invert"
+    description: "Flip the signal polarity."
+  - name: "Quantize"
+    description: "Snap CV to discrete steps — useful for pitched CV."
+signature_techniques:
+  - name: "Soften aggressive modulation"
+    description: "Put CV Utility between an LFO and a filter → scale down to 0.3 → same LFO, subtler effect."
+    aesthetic: [all]
+
+learn_more:
+  official: "https://www.ableton.com/en/packs/cv-tools/"

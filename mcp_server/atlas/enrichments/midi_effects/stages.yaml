@@ -1,0 +1,38 @@
+id: stages
+name: Stages
+sonic_description: >
+  Clip-based MIDI generator by Philip Meyer. Transforms basic note input
+  into elaborate patterns via slider-driven pitch, note repetitions, and
+  rests. Converts a 4-note seed into an entire bassline / motif with
+  developmental logic. Operates on clips, so every pass is editable.
+category: generator
+character_tags: [pattern_expansion, developmental, melodic, motif_builder]
+use_cases: [motif_expansion, bassline_from_seed, fill_generation]
+genre_affinity:
+  primary: [techno, idm, electronica]
+  secondary: [deep_minimal, experimental]
+complexity: intermediate
+introduced_in: "12.1"
+pack: MIDI Tools
+creator: Philip Meyer
+class_name: PluginDevice
+
+key_parameters:
+  - name: "Pitch Sliders"
+    description: "Per-stage pitch assignment. Drag to set each stage's note."
+  - name: "Repeat Sliders"
+    description: "How many times each stage's note repeats before moving on."
+  - name: "Rest Sliders"
+    description: "Silence insertion per stage."
+  - name: "Pattern Length"
+    description: "Total stage count."
+signature_techniques:
+  - name: "Bassline from root note"
+    description: "Single C1 note → Stages with 8-stage pattern, varied repeat counts, modest pitch offsets → coherent 16-bar bassline with motion."
+    aesthetic: [techno, deep_minimal]
+  - name: "Melodic fill from a single hook note"
+    description: "Apply to melodic element at section-end → Stages generates a 2-bar fill with repeats + rests that feels composed."
+    aesthetic: [idm, electronica]
+
+learn_more:
+  official: "https://www.ableton.com/en/packs/midi-tools/"

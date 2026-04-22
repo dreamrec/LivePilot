@@ -1,0 +1,36 @@
+id: performer
+name: Performer
+sonic_description: >
+  Macro-control device from Performance Pack (Iftah). Multiple faders,
+  crossfaders, buttons, dials — fully user-configurable to mirror any
+  hardware controller. Integrated Macro Editor for curve shaping. Studio
+  use: unify disparate parameter automation into a single interface. Live
+  use: build a one-controller performance surface for Live + external gear.
+category: macro_controller
+character_tags: [macro, performance, curve_shaped, unifier]
+use_cases: [live_control, parameter_unification, curve_automation]
+genre_affinity:
+  primary: [all]
+complexity: intermediate
+introduced_in: "11.0"
+pack: Performance Pack
+creator: Iftah
+class_name: PluginDevice
+
+key_parameters:
+  - name: "Control Layout"
+    description: "Add/remove/rename faders, buttons, crossfaders freely."
+  - name: "Macro Mappings"
+    description: "Each control maps to any Live parameter (including M4L devices and plugin parameters)."
+  - name: "Macro Editor Curve"
+    description: "Shape the response — exponential, S-curve, stepped — per macro."
+signature_techniques:
+  - name: "One-knob chord-chain morph"
+    description: "Map one fader to filter cutoff, send level, reverb decay, sat drive simultaneously → turn = whole chord chain morphs."
+    aesthetic: [live_performance, studio_sketching]
+  - name: "Crossfader-style A/B"
+    description: "Build a crossfader that switches between two device states via inverse macro curves."
+    aesthetic: [performance]
+
+learn_more:
+  official: "https://www.ableton.com/en/packs/performance-pack/"

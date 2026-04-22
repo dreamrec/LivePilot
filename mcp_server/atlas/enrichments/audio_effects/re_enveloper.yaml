@@ -1,0 +1,51 @@
+id: re_enveloper
+name: Re-Enveloper
+sonic_description: >
+  Multiband envelope processor with three adjustable frequency bands. Unlike
+  compression (which reduces amplitude when over threshold), Re-Enveloper
+  reshapes envelope character itself — attack, sustain, decay — independently
+  per band. The right tool for 'shorten the decay of this sustained sound so
+  it behaves like a stab' or 'expand the transient on the highs only'.
+category: dynamics
+character_tags: [multiband, envelope_shaping, transient, sculpted]
+use_cases: [transient_shape, decay_control, per_band_dynamics, micro_stab]
+genre_affinity:
+  primary: [minimal, dub_techno, electronica]
+  secondary: [all_genres]
+complexity: intermediate
+introduced_in: "10.0"
+pack: Creative Extensions
+creator: Ableton + Amazing Noises
+class_name: PluginDevice
+
+key_parameters:
+  - name: "Band Split Frequencies"
+    description: "Low/Mid and Mid/High crossover points in Hz."
+    range: [20, 20000]
+    unit: "Hz"
+    type: float
+  - name: "C/E Factor (per band)"
+    description: "Compression (positive) or Expansion (negative) factor per band."
+    range: [-5.0, 5.0]
+    type: float
+    sweet_spots:
+      subtle_expand: 1.5
+      aggressive_stab: 3.0
+      decay_tightening: -2.0
+  - name: "Attack / Release (per band)"
+    description: "Envelope-shape time constants for each band independently."
+
+signature_techniques:
+  - name: "Turn sustained chord into stab"
+    description: "Low + mid bands at -3.0 C/E (expansion toward short decay), short release → 4-bar pad becomes punchy 1/4-note stab."
+    aesthetic: [deep_minimal]
+  - name: "Expand only the snare transient"
+    description: "High band 2.5 expansion, slow release → snare crack pops out without affecting kick or toms."
+    aesthetic: [all]
+
+gotchas:
+  - "Expansion factors above 4.0 can cause clipping — compensate output gain."
+  - "Crossover bands overlap by ~6dB — not a surgical splitter."
+
+learn_more:
+  official: "https://www.ableton.com/en/packs/creative-extensions/"

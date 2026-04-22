@@ -1,0 +1,111 @@
+id: pitchloop89
+name: PitchLoop89
+sonic_description: >
+  Robert Henke's emulation of the 1979 Publison DHM 89 B2 pitch-shifting delay.
+  Two independent pitch-shifting delay voices per stereo channel, each with
+  their own pitch (±24 semitones), fine detune (±1 semitone), feedback, pan,
+  and reverse capability. Sample rate selection, hold function, vibrato LFO
+  (sine/square), position modulation LFO with 7 waveforms. THE tool for
+  Monolake-style detuned delay clouds, Basic Channel spatial signatures,
+  and Arpiar-adjacent shimmered stabs.
+category: pitch_delay
+character_tags: [detuned, shimmering, glitchy, spatial, pitched, experimental, vintage_digital]
+use_cases: [stab_shimmer, detuned_echo, reverse_tail, infinite_feedback, glitched_texture]
+genre_affinity:
+  primary: [deep_minimal, dub_techno, ambient, experimental]
+  secondary: [microhouse, idm, drone, cinematic]
+complexity: intermediate
+introduced_in: "11.0"
+pack: PitchLoop89
+creator: Robert Henke
+class_name: PluginDevice
+
+key_parameters:
+  - name: "Pitch A / Pitch B"
+    description: "Coarse pitch shift per voice, in semitones. Two voices mean you can split: one +0.05 cents shimmer, one -0.07 cents detune for dual-detune clouds."
+    range: [-24, 24]
+    unit: "st"
+    type: int
+    sweet_spots:
+      dual_detune_cloud: "+0.05 / -0.07 cents"
+      octave_shimmer: "+12 / +0"
+      reverse_ambience: "+0 / +0 with reverse on"
+
+  - name: "Fine A / Fine B"
+    description: "Fine detune per voice in cents (±100)."
+    range: [-100, 100]
+    unit: "cents"
+    type: int
+    sweet_spots:
+      shimmer: "+5 / -7"
+      chorus_thick: "+15 / -15"
+
+  - name: "Feedback A / Feedback B"
+    description: "Per-voice feedback. High values (80-95%) produce infinite-ascending or descending pitch spirals. Shepard-tone territory."
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      subtle_echo: 0.35
+      pitched_spiral: 0.85
+      near_infinite: 0.97
+
+  - name: "Reverse"
+    description: "Per-voice reverse playback. Reverses the delay buffer before pitch shift — creates 'reverse swell' tails from any transient."
+    type: boolean
+    sweet_spots:
+      chord_swell_in: true
+
+  - name: "Mode"
+    description: "Signal routing: L/R (independent), Sum (both voices sum to mono), Cross (voice A to R out, voice B to L out, stereo ping-pong at different pitches)."
+    range: ["L/R", "Sum", "Cross"]
+    type: enum
+    sweet_spots:
+      stereo_ping_pong: "Cross"
+      mono_layer: "Sum"
+
+  - name: "Sample Rate"
+    description: "Buffer sample rate reduction. Lower values add characterful lo-fi grit — emulates the original Publison's digital artifacts."
+    range: [1, 44100]
+    unit: "Hz"
+    type: int
+    sweet_spots:
+      vintage_89: 12000
+      heavy_lofi: 4000
+
+  - name: "Vibrato LFO"
+    description: "Modulates pitch over time. Sine or square waveform; rate in Hz."
+    type: composite
+
+  - name: "Position LFO"
+    description: "Modulates the read position in the delay buffer. Seven waveforms including random. The source of the 'shuddering glitch' and 'fractured rhythm' textures Henke uses."
+    type: composite
+
+signature_techniques:
+  - name: "Shimmer on any stab"
+    description: "Put on a chord stab → Pitch A=0, Fine A=+5, Pitch B=0, Fine B=-7, Feedback both at 0.4 → instant detuned shimmer cloud that hangs after the stab."
+    aesthetic: [arpiar, microhouse, dub_techno]
+  - name: "Reverse-in on chords"
+    description: "Enable Reverse on both voices, short delay time → chord swells backwards in before the downbeat. Haunting Monolake effect."
+    aesthetic: [dub_techno, cinematic]
+  - name: "Infinite Shepard on clicks"
+    description: "Feed a single click → Feedback ~0.92, Pitch A=+12, Pitch B=0 → infinite ascending cascade. Classic Henke."
+    aesthetic: [experimental, idm]
+  - name: "Pitched ghost delay"
+    description: "Slow Position LFO with random waveform → delay buffer warps around, producing organic pitched ghosts that never repeat."
+    aesthetic: [deep_minimal, experimental]
+
+pairings:
+  - device: convolution_reverb
+    rationale: "PitchLoop89 feeding Convolution Reverb's Farfisa Spring IR = the Basic Channel / Monolake spatial chain."
+  - device: granulator_iii
+    rationale: "Layer after Granulator for detuned shimmer on top of grain clouds."
+  - device: utility
+    rationale: "Send a short-decay copy of the source to PitchLoop89 via a return track — leaves the original dry while the pitched tail trails."
+
+gotchas:
+  - "Feedback above 0.95 can self-oscillate into runaway loop — keep a hand on the mute"
+  - "Reverse mode introduces latency equal to the buffer length — sync-critical material needs delay compensation"
+  - "Sample Rate very low (<2000Hz) aliases heavily; character, not hi-fi"
+
+learn_more:
+  official: "https://www.ableton.com/en/packs/pitchloop89/"

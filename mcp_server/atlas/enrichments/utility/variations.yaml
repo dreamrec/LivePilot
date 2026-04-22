@@ -1,0 +1,40 @@
+id: variations
+name: Variations
+sonic_description: >
+  Snapshot management from Performance Pack (Iftah). Captures any device
+  chain state or clip state and morphs between snapshots, quantized to a
+  musical boundary. The studio weapon: save 5 variations of a chord stab's
+  effect chain, clip-trigger morphing between them = gradual evolution over
+  8-16 bars without 50 automation lanes. This is how you get the
+  'chord-is-different-every-time' Villalobos behavior programmatically.
+category: state_management
+character_tags: [snapshot, morph, quantized, state_recall]
+use_cases: [chain_morph, live_recall, section_transition, effect_evolution]
+genre_affinity:
+  primary: [deep_minimal, microhouse, electronic_live]
+  secondary: [all]
+complexity: intermediate
+introduced_in: "11.0"
+pack: Performance Pack
+creator: Iftah
+class_name: PluginDevice
+
+key_parameters:
+  - name: "Snapshot Slots"
+    description: "Store up to N states. Each slot captures every parameter's value."
+  - name: "Morph Time"
+    description: "How long the interpolation between snapshots takes."
+  - name: "Quantization"
+    description: "Snap morph to bar / beat / scene boundary."
+  - name: "Selective Inclusion"
+    description: "Mark which parameters participate in each snapshot — exclude the ones you don't want to morph."
+signature_techniques:
+  - name: "Chord stab evolution"
+    description: "Save 5 effect-chain states on a chord stab (different reverbs, pitches, filters). Clip-trigger morph between them every 2 bars. Result: chord stab is subtly different every time it plays."
+    aesthetic: [deep_minimal, microhouse]
+  - name: "Live scene state recall"
+    description: "Bind scenes to Variation snapshots — firing a scene also morphs the whole device chain."
+    aesthetic: [electronic_live]
+
+learn_more:
+  official: "https://www.ableton.com/en/packs/performance-pack/"

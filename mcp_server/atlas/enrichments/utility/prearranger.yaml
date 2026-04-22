@@ -1,0 +1,36 @@
+id: prearranger
+name: Prearranger
+sonic_description: >
+  Structural pre-planning device from Performance Pack (Iftah). Define clip
+  locations in Arrangement View as empty slots, then perform live and Live
+  auto-fills them with the performance. Transforms live recording into a
+  compositional scaffold. Ideal for sketching long hypnotic structures
+  (deep minimal) or entire sets without mid-performance arrangement
+  decisions.
+category: recording_helper
+character_tags: [performance, scaffold, live_recording, structure]
+use_cases: [long_form_sketch, hypnotic_structure, set_recording]
+genre_affinity:
+  primary: [deep_minimal, live_performance, ambient]
+  secondary: [electronic_all]
+complexity: intermediate
+introduced_in: "11.0"
+pack: Performance Pack
+creator: Iftah
+class_name: PluginDevice
+
+key_parameters:
+  - name: "Slot Layout"
+    description: "Pre-place empty arrangement clips where you want recorded content to land."
+  - name: "Auto-fill Toggle"
+    description: "Enable Prearranger — live content records into the pre-placed slots."
+signature_techniques:
+  - name: "Hypnotic 60-minute structure sketch"
+    description: "Place empty slots every 16 bars across a 60-minute arrangement → press record → improvise → each section lands in its slot."
+    aesthetic: [deep_minimal, ambient]
+  - name: "Set recording with predetermined structure"
+    description: "Build the arrangement scaffold based on your setlist → perform → recording is auto-organized."
+    aesthetic: [live_sets]
+
+learn_more:
+  official: "https://www.ableton.com/en/packs/performance-pack/"

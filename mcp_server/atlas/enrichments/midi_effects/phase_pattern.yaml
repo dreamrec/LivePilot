@@ -1,0 +1,51 @@
+id: phase_pattern
+name: Phase Pattern
+sonic_description: >
+  Clip-based MIDI transformer by Philip Meyer. Takes an existing clip and
+  applies organic timing, pitch, and velocity phase-shifts to produce
+  human-feeling variations. Unlike random quantization, Phase Pattern uses
+  phase relationships between parameters — timing offset can drive velocity
+  swing, pitch can drive timing. The result has coherent 'musicianship'
+  rather than random noise. THE microhouse sequencer for 'make this feel
+  human without losing the groove'.
+category: transformation
+character_tags: [phase, organic, humanize, coherent_variation, clip_based]
+use_cases: [humanize, swing_drift, organic_timing, coherent_variation]
+genre_affinity:
+  primary: [microhouse, deep_minimal, idm]
+  secondary: [jazz, electronica, experimental]
+complexity: intermediate
+introduced_in: "12.1"
+pack: MIDI Tools
+creator: Philip Meyer
+class_name: PluginDevice
+
+key_parameters:
+  - name: "Timing Offset"
+    description: "How much each note's start_time can shift from grid. Phase-driven, not random."
+    range: [0.0, 1.0]
+    type: float
+  - name: "Pitch Variation"
+    description: "Semitone variation applied in phase with other parameters."
+    range: [0, 12]
+    unit: "st"
+    type: int
+  - name: "Velocity Variation"
+    description: "Velocity phase-shift depth."
+  - name: "Quantize"
+    description: "Re-quantize output (locked) or leave free (free-form phase drift)."
+    type: enum
+
+signature_techniques:
+  - name: "Micro-swing for rigid drum patterns"
+    description: "Low Timing Offset (0.15), Quantize off → every hit drifts slightly from grid in a coherent, groove-affirming way (no random chaos)."
+    aesthetic: [microhouse, deep_minimal]
+  - name: "Organic vocal stutter"
+    description: "Apply to a vocal chop clip → phase-coherent timing/pitch shifts → chops feel recorded not programmed."
+    aesthetic: [microhouse, idm]
+
+gotchas:
+  - "Results are coherent but still non-deterministic — regenerating gives different output. Commit the version you like."
+
+learn_more:
+  official: "https://www.ableton.com/en/packs/midi-tools/"

@@ -1,0 +1,39 @@
+id: sq_sequencer
+name: SQ Sequencer
+sonic_description: >
+  16-step sequencer with per-lane independent step length and direction —
+  the polymetric secret weapon from the Sequencers pack. Set melody lane
+  to 16 steps, rhythm lane to 15, bass lane to 11 → each lane progresses
+  at its own rate → infinite non-repeating patterns from simple inputs.
+  Condition feature adds rule-based triggering (every 3rd pass, etc.).
+category: sequencer
+character_tags: [polymetric, asymmetric, condition_based, modular_style]
+use_cases: [polymetric_melody, asymmetric_bass, hypnotic_pattern, generative_loop]
+genre_affinity:
+  primary: [deep_minimal, microhouse, techno, idm]
+  secondary: [experimental, generative]
+complexity: intermediate
+introduced_in: "11.0"
+pack: Sequencers
+creator: Ableton
+class_name: PluginDevice
+
+key_parameters:
+  - name: "Per-Lane Step Count"
+    description: "Each of up to ~8 lanes has its own step length (1-16). Non-coincident values = polymeter."
+  - name: "Per-Lane Direction"
+    description: "Forward / Backward / Ping-Pong / Random per lane."
+  - name: "Condition"
+    description: "Rule-based gating — fire on every Nth pass, after N fails, etc."
+  - name: "Output Pitch / Velocity / Gate Length (per lane)"
+    description: "Independent control per lane."
+signature_techniques:
+  - name: "Villalobos polymeter lock"
+    description: "Melody lane 16 steps, rhythm lane 15 steps, bass lane 11 steps → sequences drift in and out of phase over hundreds of bars, never repeating exactly."
+    aesthetic: [deep_minimal, microhouse]
+  - name: "Condition-based ghost snare"
+    description: "Snare lane with condition 'every 3rd pass' → snare appears only once per ~16 bars → organic ghost pattern."
+    aesthetic: [deep_minimal, techno]
+
+learn_more:
+  official: "https://www.ableton.com/en/packs/sequencers/"

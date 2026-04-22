@@ -1,0 +1,46 @@
+id: polyrhythm
+name: Polyrhythm
+sonic_description: >
+  Clip-based MIDI generator by Philip Meyer (MIDI Tools pack). Six
+  independent pattern generators, each with its own length and density —
+  creates polymetric and polyrhythmic patterns impossible to program by
+  hand. Includes Euclidean mode. Operates on a clip (not real-time) and
+  bakes results back as MIDI notes, so every generation is different and
+  every result is editable.
+category: generator
+character_tags: [polyrhythmic, polymeter, euclidean, generative, clip_based]
+use_cases: [asymmetric_drums, hypnotic_pattern, techno_groove, idm_programming]
+genre_affinity:
+  primary: [techno, deep_minimal, idm, experimental]
+  secondary: [microhouse, ambient, dub_techno]
+complexity: intermediate
+introduced_in: "12.1"
+pack: MIDI Tools
+creator: Philip Meyer
+class_name: PluginDevice
+
+key_parameters:
+  - name: "Voice Count"
+    description: "How many of the 6 pattern generators are active."
+    range: [1, 6]
+  - name: "Per-Voice Length"
+    description: "Step count for each lane independently. Set to non-coincident numbers (11, 13, 16) for polymeter."
+  - name: "Per-Voice Density"
+    description: "Pulses per step length. Euclidean distribution fills pulses evenly."
+  - name: "Output Pitch"
+    description: "MIDI note each voice outputs. Assign to drum-pad notes (36/38/42/46) for drum racks."
+
+signature_techniques:
+  - name: "Asymmetric techno groove"
+    description: "Voice 1 = 16 steps / 4 pulses (kick), Voice 2 = 11 steps / 3 pulses (ghost snare), Voice 3 = 13 steps / 7 pulses (hat). Generates pattern that never repeats exactly for hundreds of bars."
+    aesthetic: [techno, deep_minimal]
+  - name: "Hypnotic micropattern"
+    description: "All 6 voices at sparse density (1-3 pulses each) with asymmetric lengths → organic feel that evolves over minutes."
+    aesthetic: [deep_minimal, idm]
+
+gotchas:
+  - "Output is baked into the clip — regenerate replaces the pattern. Save favorites as separate clip."
+  - "Euclidean distribution is deterministic — same length+pulses always gives same pattern."
+
+learn_more:
+  official: "https://www.ableton.com/en/packs/midi-tools/"

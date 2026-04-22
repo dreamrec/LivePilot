@@ -1,0 +1,38 @@
+id: cv_envelope_follower
+name: CV Envelope Follower
+sonic_description: >
+  Tracks the amplitude envelope of an audio signal and emits CV. Can
+  modulate modular gear OR, crucially, any internal Live parameter —
+  kick drum → CV Envelope Follower → modulates pad filter cutoff → pad
+  opens up on every kick. Creative sidechain alternative that gives CV
+  shape, not just gain reduction.
+category: modulation_source
+character_tags: [envelope_follower, dynamic_modulation, audio_to_cv]
+use_cases: [dynamic_filter, audio_driven_modulation, creative_sidechain]
+genre_affinity:
+  primary: [deep_minimal, dub_techno, electronic]
+  secondary: [all]
+complexity: intermediate
+introduced_in: "10.0"
+pack: CV Tools
+creator: Ableton
+class_name: PluginDevice
+requires_modular_hardware: false
+
+key_parameters:
+  - name: "Rise / Fall"
+    description: "Envelope attack and release times."
+  - name: "Scale"
+    description: "Output depth."
+  - name: "Invert"
+    description: "Flip envelope polarity — modulation reduces instead of increases."
+signature_techniques:
+  - name: "Kick-driven pad-filter opening"
+    description: "Route kick drum to CV Envelope Follower → CV output to pad's filter cutoff → pad brightens with every kick, darkens between."
+    aesthetic: [deep_minimal, dub_techno]
+  - name: "Vocal-driven reverb duck"
+    description: "Route vocal to CV Envelope Follower → invert output → modulate reverb wet → reverb ducks when vocal is present, blooms in silences."
+    aesthetic: [ambient, cinematic]
+
+learn_more:
+  official: "https://www.ableton.com/en/packs/cv-tools/"

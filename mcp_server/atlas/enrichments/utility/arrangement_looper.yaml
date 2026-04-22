@@ -1,0 +1,31 @@
+id: arrangement_looper
+name: Arrangement Looper
+sonic_description: >
+  Quick-toggle loop-length device for Arrangement View (Performance Pack).
+  Four customizable loop lengths, switchable on/off mid-performance. Studio
+  use: rapid arrangement experimentation without manual timeline
+  manipulation. Live/DJ use: extended breakdowns and remix sections.
+category: transport_helper
+character_tags: [loop, performance, arrangement]
+use_cases: [extended_breakdown, live_remix, arrangement_sketch]
+genre_affinity:
+  primary: [live_performance, dj_sets]
+  secondary: [all]
+complexity: beginner
+introduced_in: "11.0"
+pack: Performance Pack
+creator: Iftah
+class_name: PluginDevice
+
+key_parameters:
+  - name: "Loop Lengths"
+    description: "Up to 4 customizable lengths (1/2 bar, 1 bar, 2 bars, 4 bars typical)."
+  - name: "Toggle Buttons"
+    description: "Enable each loop length individually."
+signature_techniques:
+  - name: "DJ-style extended breakdown"
+    description: "Playback approaches breakdown → toggle 1-bar loop → hold for as long as needed → release → continue playback."
+    aesthetic: [dj_sets, live_techno]
+
+learn_more:
+  official: "https://www.ableton.com/en/packs/performance-pack/"

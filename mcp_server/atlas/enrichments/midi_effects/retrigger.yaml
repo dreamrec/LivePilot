@@ -1,0 +1,40 @@
+id: retrigger
+name: Retrigger
+sonic_description: >
+  Clip-based MIDI transformer by Philip Meyer. Replaces selected notes
+  with rapid repeats (rolls) — velocity curve and time-shape per repeat.
+  Quick source of drum fills, hi-hat rolls, buildup stutters. Preserves
+  the underlying clip, so you can apply to just the selected region.
+category: transformation
+character_tags: [roll, stutter, fill, drum_roll, urgency]
+use_cases: [drum_fills, hi_hat_rolls, stutter_buildup, tension_increase]
+genre_affinity:
+  primary: [dance, breakbeat, techno, house]
+  secondary: [all_genres_with_drums]
+complexity: beginner
+introduced_in: "12.1"
+pack: MIDI Tools
+creator: Philip Meyer
+class_name: PluginDevice
+
+key_parameters:
+  - name: "Note Selection"
+    description: "Which notes to retrigger — individual, some, or all."
+  - name: "Repeat Count"
+    description: "Number of retriggers per note."
+    range: [2, 32]
+    type: int
+  - name: "Time Curve"
+    description: "Exponential/linear spacing of repeats — accelerating fills, decelerating decays."
+  - name: "Velocity Curve"
+    description: "Velocity envelope across the roll — crescendo, decrescendo, flat."
+signature_techniques:
+  - name: "Accelerating hi-hat buildup"
+    description: "Select 4 hi-hat notes at end of section → Retrigger count 16, exponential curve → accelerating roll into the downbeat."
+    aesthetic: [dance, breakbeat]
+  - name: "Decelerating snare fill"
+    description: "Single snare hit → Retrigger 8 times with linear-to-long decay → natural-feeling fill."
+    aesthetic: [all]
+
+learn_more:
+  official: "https://www.ableton.com/en/packs/midi-tools/"

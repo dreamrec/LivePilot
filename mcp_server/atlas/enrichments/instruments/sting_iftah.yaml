@@ -1,0 +1,44 @@
+id: sting_iftah
+name: "Sting (Iftah)"
+sonic_description: >
+  16-step acid-line performance tool by Iftah (Generators pack). Combines a
+  mono synth voice with a generative sequencer offering 3D pattern morphing
+  — up to 256 unique pattern combinations. Built for live improvisation but
+  equally useful in the studio as a 'mutating sub-bass generator' when
+  detuned and dropped low. Not just for acid tracks.
+synthesis_type: mono_synth_with_sequencer
+character_tags: [acid, mutating, generative, mono, performer_oriented]
+use_cases: [acid_bass, mutating_sub_bass, live_improvisation, generative_bassline]
+genre_affinity:
+  primary: [acid_house, psytrance, techno, trance]
+  secondary: [deep_minimal, microhouse (with tricks)]
+complexity: intermediate
+self_contained: true
+introduced_in: "11.0"
+pack: Generators by Iftah
+creator: Iftah
+class_name: PluginDevice
+
+key_parameters:
+  - name: "Note Selection"
+    description: "Which notes are available in the sequence."
+  - name: "Dynamic Expression"
+    description: "Accent / slide patterns — the acid character."
+  - name: "Type Morph"
+    description: "Slider from random to acid-type sequences."
+  - name: "Root Note"
+    description: "Transpose the whole pattern."
+  - name: "Rate / Beat Division"
+    description: "Sequence rate."
+  - name: "Density"
+    description: "How many of the 16 steps trigger. Low density = sparse bass."
+signature_techniques:
+  - name: "Mutating minimal sub-bass"
+    description: "Detune heavily, drop pitch low, Density ~15%, low-pass filter → 'acid line' becomes a warm mutating sub-bass that's never the same two bars in a row."
+    aesthetic: [deep_minimal, microhouse]
+  - name: "Classic acid 303 performance"
+    description: "Default patch, full Type Morph to acid, mid density → classic acid line; use 3D morph mapped to a performance controller."
+    aesthetic: [acid_house, psytrance]
+
+learn_more:
+  official: "https://www.ableton.com/en/packs/generators-by-iftah/"

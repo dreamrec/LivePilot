@@ -1,0 +1,38 @@
+id: cv_lfo
+name: CV LFO
+sonic_description: >
+  M4L LFO generator from CV Tools. Originally designed to send CV to
+  modular systems via a DC-coupled audio interface, but equally useful as
+  an extra LFO inside Live — route its output audio to modulate any Live
+  parameter via a return-track sidechain or internal MIDI mapping. When
+  you want more LFOs than a synth natively provides, CV LFO is the
+  answer.
+category: modulation_source
+character_tags: [lfo, modulation, cv, internal_modulation]
+use_cases: [extra_lfo, modular_cv, parameter_modulation]
+genre_affinity:
+  primary: [modular, experimental, deep_minimal]
+  secondary: [all]
+complexity: beginner
+introduced_in: "10.0"
+pack: CV Tools
+creator: Ableton
+class_name: PluginDevice
+requires_modular_hardware: false  # useful even without modular
+
+key_parameters:
+  - name: "Rate"
+    description: "LFO frequency — Hz or tempo-synced."
+  - name: "Waveform"
+    description: "Sine / Triangle / Saw / Square / Random / custom shape."
+  - name: "Depth"
+    description: "Output amplitude — controls modulation depth at the destination."
+  - name: "Offset"
+    description: "DC offset — pre-bias the modulation range."
+signature_techniques:
+  - name: "Multi-LFO stack on a patch"
+    description: "Drop 3x CV LFO on a return track, each at different rates (0.07Hz, 0.23Hz, 1.11Hz), route outputs to filter/amp/pitch → organic drift that doesn't repeat."
+    aesthetic: [ambient, deep_minimal]
+
+learn_more:
+  official: "https://www.ableton.com/en/packs/cv-tools/"

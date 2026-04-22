@@ -1,0 +1,39 @@
+id: slice_shuffler
+name: Slice Shuffler
+sonic_description: >
+  Clip-based MIDI transformer by Philip Meyer. Slices a clip into temporal
+  sections and applies transformations (reverse, randomize, shift) to each
+  slice independently. Unlike a global shuffle, each section gets its own
+  treatment. The tool for controlled chaos on drum patterns — reverse one
+  bar of a 4-bar loop for a momentary glitch, randomize the second half.
+category: transformation
+character_tags: [sectional, reverse, controlled_chaos, glitch, asymmetric]
+use_cases: [partial_reverse, sectional_variation, glitch_moment, asymmetric_groove]
+genre_affinity:
+  primary: [idm, glitch, experimental, deep_minimal]
+  secondary: [microhouse, techno]
+complexity: intermediate
+introduced_in: "12.1"
+pack: MIDI Tools
+creator: Philip Meyer
+class_name: PluginDevice
+
+key_parameters:
+  - name: "Slice Count"
+    description: "Number of sections to divide the clip into. 4 = quarters, 8 = eighths, etc."
+  - name: "Reverse (per slice)"
+    description: "Toggle reverse for each slice independently."
+  - name: "Randomness (per slice)"
+    description: "Random note reordering depth per slice."
+  - name: "Timing Offset (per slice)"
+    description: "Shift slice start time."
+signature_techniques:
+  - name: "Ghost-note variations"
+    description: "Clean 8-bar kick pattern → Slice Shuffler with 8 slices → randomize slice 4 and slice 7 only → ghost-note drift every ~1 minute of playback."
+    aesthetic: [deep_minimal, microhouse]
+  - name: "One-bar reverse glitch"
+    description: "16-bar loop → 4 slices → reverse slice 3 only → single bar of reverse drums as a momentary disruption."
+    aesthetic: [idm, glitch]
+
+learn_more:
+  official: "https://www.ableton.com/en/packs/midi-tools/"

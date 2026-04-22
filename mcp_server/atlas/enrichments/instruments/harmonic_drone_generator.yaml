@@ -1,0 +1,83 @@
+id: harmonic_drone_generator
+name: Harmonic Drone Generator
+sonic_description: >
+  8-voice Max for Live drone synth by Berlin-based Expert Math (shipped inside
+  Drone Lab). Each voice has its own tuning assignment, and the device
+  supports multiple tuning systems — Solfeggio frequencies, Pythagorean,
+  Indonesian Pelog, Indian temperaments, plus equal and just intonation.
+  Produces sustained harmonic drones with microtonal beating that equal-
+  tempered synths architecturally cannot generate. The secret weapon for
+  a harmonic bed that sits under a whole track at -30 dB and makes it
+  sound like nothing else.
+synthesis_type: additive_drone
+character_tags: [drone, microtonal, sustained, harmonic, meditative, evolving, dark]
+use_cases: [drone_bed, harmonic_atmosphere, microtonal_pad, ambient_bed, tension_bed]
+genre_affinity:
+  primary: [ambient, deep_minimal, dub_techno, drone, experimental]
+  secondary: [cinematic, dark_ambient, microhouse]
+complexity: intermediate
+self_contained: true
+introduced_in: "12.0"
+pack: Drone Lab
+creator: Expert Math (Berlin)
+class_name: PluginDevice
+
+key_parameters:
+  - name: "Tuning System"
+    description: "Selects the scale used to map voices. Each tuning produces a different harmonic flavor."
+    range: ["Equal", "Just", "Pythagorean", "Solfeggio", "Pelog", "Indian"]
+    type: enum
+    sweet_spots:
+      deep_minimal_bed: "Just"
+      dark_meditation: "Solfeggio"
+      exotic_mystery: "Pelog"
+
+  - name: "Voice Count"
+    description: "How many of the 8 voices are active. Fewer voices = purer drone; more voices = denser harmonic cloud."
+    range: [1, 8]
+    type: int
+    sweet_spots:
+      sub_drone: 2
+      full_cloud: 8
+
+  - name: "Per-voice pitch"
+    description: "Each voice has its own pitch assignment. Spread across the scale or stack on root for subtle detuned bed."
+    type: composite
+
+  - name: "Detune"
+    description: "Global detune amount. Low values (5-15 cents) give tape-warble; high values break into chord clouds."
+    range: [0.0, 100.0]
+    unit: "cents"
+    type: float
+
+  - name: "Amp Envelope"
+    description: "Long attack (5-10s) for slow-swell pads; short attack for staccato 'one note' hits."
+    type: composite
+
+signature_techniques:
+  - name: "Minimal-techno underlay"
+    description: "Just intonation tuning, all 8 voices active but voiced as a sparse cluster (root + 5 + minor 3 + octave), level at -30 dB → sits under the whole track as a harmonic shadow."
+    aesthetic: [deep_minimal, dub_techno]
+  - name: "Pelog mystery bed"
+    description: "Indonesian Pelog scale, 5 voices, long reverb send → off-grid harmonic character that sounds ancient without sounding 'wrong'."
+    aesthetic: [ambient, deep_minimal]
+  - name: "Evolving drone with automation"
+    description: "Automate Detune over 32 bars from 5 to 40 cents → drone starts as a tight pad and slowly blossoms into a chord cloud."
+    aesthetic: [drone, cinematic]
+
+pairings:
+  - device: microtuner
+    rationale: "Microtuner can replace or extend the built-in tunings with user-loaded Scala files."
+  - device: convolution_reverb
+    rationale: "Cathedral or warehouse IR on the Drone Generator's output = Basic Channel-adjacent sustained bed."
+  - device: pitchloop89
+    rationale: "Slow Position-LFO modulation on the drone through PitchLoop89 = shuddering pitched cloud."
+
+gotchas:
+  - "All 8 voices at full level clip the output — use Voice Count or the internal level control"
+  - "Long attack envelopes don't trigger instantly — for stabs, use short attack or pre-gate"
+  - "Solfeggio frequencies are outside standard tuning — this is intentional; don't try to match to a song's key"
+
+learn_more:
+  official: "https://www.ableton.com/en/packs/drone-lab/"
+  pack: "Drone Lab"

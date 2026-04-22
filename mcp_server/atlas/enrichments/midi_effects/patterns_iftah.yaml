@@ -1,0 +1,38 @@
+id: patterns_iftah
+name: "Patterns (Iftah)"
+sonic_description: >
+  Algorithmic drum generator by Iftah (Generators pack). Six drum voices,
+  each with its own generation algorithm. Click Generate → instant drum
+  pattern. Click again → different pattern. The microhouse producer's
+  one-click sparse-drum solution — dial it to taste, commit.
+category: generator
+character_tags: [algorithmic, drum, one_click, six_voice]
+use_cases: [drum_programming, sparse_beat, quick_ideation, fill_generation]
+genre_affinity:
+  primary: [microhouse, deep_minimal, techno, house]
+  secondary: [idm, acid, electronica]
+complexity: beginner
+introduced_in: "11.0"
+pack: Generators by Iftah
+creator: Iftah
+class_name: PluginDevice
+
+key_parameters:
+  - name: "Voice Toggles"
+    description: "Enable each of 6 drum voices (kick, snare, closed hat, open hat, rim, shaker) independently."
+  - name: "Per-Voice Algorithm"
+    description: "Each voice has its own generation logic — pick density/sparsity per voice."
+  - name: "Generate Button"
+    description: "One click = new pattern. Non-destructive — commit via clip copy."
+  - name: "Output MIDI Notes (per voice)"
+    description: "Assign each voice to a drum-rack pad note."
+signature_techniques:
+  - name: "Sparse microhouse pattern"
+    description: "Disable snare + open hat → Generate until pattern feels right → all voices at low density → immediate Villalobos-adjacent groove."
+    aesthetic: [microhouse, deep_minimal]
+  - name: "Genre-spanning drum ideation"
+    description: "Use for fast first-draft drums across any genre — commit the one that fits, adjust by hand."
+    aesthetic: [all_electronic]
+
+learn_more:
+  official: "https://www.ableton.com/en/packs/generators-by-iftah/"

@@ -1,0 +1,83 @@
+id: microtuner
+name: Microtuner
+sonic_description: >
+  MIDI device (Max for Live) that applies microtonal tunings to downstream
+  instruments. Imports Scala (.scl) files — the standard format for
+  microtonal tunings, freely available from the Huygens-Fokker archive.
+  Supports pitch count up to 128, arbitrary octave ratios, Lead/Follow mode
+  to sync scales across multiple Microtuner instances, polyphonic playback,
+  MPE compatibility. Real-time blend-two-scales slider for shapeshifting
+  melodies and recasted chords.
+category: tuning
+character_tags: [microtonal, scale, shapeshifting, polyphonic, mpe]
+use_cases: [microtonal_melody, scale_morph, drone_tuning, chord_recasting]
+genre_affinity:
+  primary: [ambient, experimental, deep_minimal, drone]
+  secondary: [microhouse, jazz_fusion, cinematic]
+complexity: intermediate
+introduced_in: "12.0"
+pack: Microtuner
+creator: Ableton
+class_name: PluginDevice
+
+key_parameters:
+  - name: "Scale (Deck A / Deck B)"
+    description: "Two independent scale slots. Load .scl files by drag-drop. Blend between them via the Blend slider."
+    type: composite
+
+  - name: "Blend"
+    description: "Morph between Deck A and Deck B scales in real-time. Automate over 16+ bars for harmonic drift."
+    range: [0.0, 1.0]
+    type: float
+    sweet_spots:
+      pure_deck_a: 0.0
+      midpoint_morph: 0.5
+      automated_drift: "0.0 → 1.0 over 32 bars"
+
+  - name: "Reference Pitch"
+    description: "The reference MIDI note that maps to 'unity' in the scale. Usually 60 (middle C) or 69 (A4 = 440Hz)."
+    range: [0, 127]
+    type: int
+
+  - name: "Base Frequency"
+    description: "Frequency assigned to the reference pitch. 440Hz standard; try 432Hz for conspiratorial-warmth vibes."
+    range: [200, 600]
+    unit: "Hz"
+    type: float
+
+  - name: "Lead / Follow"
+    description: "In Lead mode, broadcasts its scale via Live's state. In Follow mode, receives from a Lead instance. Use to sync scales across instruments."
+    range: ["Lead", "Follow", "None"]
+    type: enum
+
+signature_techniques:
+  - name: "Villalobos-style microtonal melody"
+    description: "Load a 19-tone equal-temperament (19-TET) Scala file → play a simple motif → immediately off-grid harmonic character without sounding random."
+    aesthetic: [deep_minimal, microhouse]
+  - name: "Partch 43-tone drone"
+    description: "Load Harry Partch's 43-tone just-intonation scale → apply to Drone Lab's Harmonic Drone Generator → ancient-sounding sustained bed."
+    aesthetic: [drone, ambient]
+  - name: "Two-scale automated morph"
+    description: "Deck A = major scale, Deck B = 19-TET. Automate Blend from 0 to 1 over 16 bars → harmony literally reshapes in time."
+    aesthetic: [experimental, deep_minimal]
+  - name: "Quarter-tone lead for expressive MPE"
+    description: "Load a 24-TET scale + ROLI-style MPE controller → slides and bends fall onto microtonal grid for non-Western expressivity."
+    aesthetic: [jazz_fusion, world, experimental]
+
+pairings:
+  - device: harmonic_drone_generator
+    rationale: "Override Drone Generator's built-in tunings with custom Scala imports for unlimited microtonal variety."
+  - device: granulator_iii
+    rationale: "Microtuner upstream of Granulator = grain-cloud beds in non-standard tunings."
+  - device: operator
+    rationale: "FM synthesis in alternative tunings produces wild inharmonic spectra — Operator responds especially well."
+
+gotchas:
+  - "Scale must be loaded BEFORE the downstream instrument receives notes — otherwise Live plays equal-tempered."
+  - "MPE works only when the downstream instrument is MPE-capable (Meld, Wavetable with MPE on, Granulator III, etc.)."
+  - "Lead/Follow sync requires Live 12.1+."
+  - "Some instruments ignore pitch bend beyond ±2 semitones — check the instrument's pitch-bend range before loading exotic scales."
+
+learn_more:
+  official: "https://www.ableton.com/en/packs/microtuner/"
+  scala_archive: "http://www.huygens-fokker.org/microtonality/scales.html"

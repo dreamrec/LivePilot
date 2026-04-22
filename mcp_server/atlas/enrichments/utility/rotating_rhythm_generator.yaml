@@ -1,0 +1,35 @@
+id: rotating_rhythm_generator
+name: Rotating Rhythm Generator
+sonic_description: >
+  M4L polyrhythmic MIDI generator from CV Tools. Originally a modular
+  CV-triggers tool, but operates as a standalone MIDI generator inside
+  Live. Generates rotating polyrhythmic patterns across multiple tracks
+  or drum-rack pads. One of the most under-utilized M4L devices for
+  complex techno / IDM groove programming.
+category: generator
+character_tags: [polyrhythmic, rotating, generative, drum_programming]
+use_cases: [polymetric_drums, techno_groove, idm_pattern]
+genre_affinity:
+  primary: [techno, idm, deep_minimal]
+  secondary: [all_electronic]
+complexity: intermediate
+introduced_in: "10.0"
+pack: CV Tools
+creator: Ableton
+class_name: PluginDevice
+requires_modular_hardware: false
+
+key_parameters:
+  - name: "Ring Size"
+    description: "Number of steps in the ring (e.g., 16, 12, 7)."
+  - name: "Pulse Count"
+    description: "Beats distributed around the ring. Classic Euclidean distribution."
+  - name: "Rotation"
+    description: "Shift the starting position of the pattern on the ring."
+signature_techniques:
+  - name: "Multi-lane rotated Euclidean drums"
+    description: "Kick: ring 16 / pulses 4 / rotation 0. Snare: ring 16 / pulses 2 / rotation 8. Hat: ring 13 / pulses 7 / rotation 3. Asymmetric groove that sits together but never locks."
+    aesthetic: [techno, deep_minimal, idm]
+
+learn_more:
+  official: "https://www.ableton.com/en/packs/cv-tools/"
