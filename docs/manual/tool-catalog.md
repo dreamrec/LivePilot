@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog
 
-421 tools across 52 domains.
+422 tools across 52 domains.
 
 ---
 
@@ -191,7 +191,7 @@
 | `memory_favorite` | Toggle favorite |
 | `memory_replay` | Replay saved technique |
 
-## Analyzer (35) `[M4L]`
+## Analyzer (36) `[M4L]`
 
 | Tool | Description |
 |------|-------------|
@@ -226,6 +226,7 @@
 | `get_momentary_loudness` | EBU R128 momentary LUFS + peak |
 | `analyze_loudness_live` | Integrate momentary LUFS over a time window — live-session alternative to file-based `analyze_loudness` (BUG-2026-04-22#8 fix) |
 | `verify_device_health` | Fire a test MIDI note + sample track meter to prove a device produces audio (BUG-2026-04-22#19 fix; complements static verify_device_alive) |
+| `verify_all_devices_health` | Run verify_device_health across every eligible track — session-wide silent-track detector |
 | `check_flucoma` | Verify FluCoMa installation |
 | `capture_audio` | Record master output to WAV |
 | `capture_stop` | Cancel in-progress capture |

@@ -205,6 +205,7 @@ async def search_samples(
     max_results: int = 10,
     free_only: bool = False,
     q: Optional[str] = None,
+    collection_uuid: str = "",
 ) -> dict:
     """Search for samples across Splice library, Ableton browser, and local filesystem.
 
@@ -224,6 +225,9 @@ async def search_samples(
     key: prefer samples in this key (e.g., "Cm", "F#")
     bpm_range: "min-max" BPM range (e.g., "120-130")
     source: "splice", "browser", "filesystem", or None for all
+    collection_uuid: scope Splice results to a user collection (Likes,
+      bass, keys, etc.). Obtain via splice_list_collections. When set,
+      browser/filesystem sources are skipped — this is taste-scoped search.
     max_results: maximum results to return (default 10)
     free_only: if True, only return samples that cost nothing to license
       (IsPremium=False or Price=0). Under the Ableton Live plan these
@@ -247,6 +251,11 @@ async def search_samples(
             except ValueError:
                 pass
 
+    # When scoped to a Splice collection, force source=splice and skip
+    # browser/filesystem since those don't carry collection metadata.
+    if collection_uuid and source is None:
+        source = "splice"
+
     # Splice search — prefer gRPC online catalog when available, fall back
     # to local SQLite index. See docs/2026-04-14-bugs-discovered.md — P0-2.
     if source in (None, "splice"):
@@ -267,6 +276,7 @@ async def search_samples(
                     per_page=max_results,
                     page=1,
                     purchased_only=False,
+                    collection_uuid=collection_uuid,
                 )
                 for s in grpc_result.samples[:max_results]:
                     if free_only and not s.is_free:

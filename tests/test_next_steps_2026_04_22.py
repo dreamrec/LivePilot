@@ -168,10 +168,11 @@ def test_http_config_defaults_are_safe_guesses():
 
 
 def test_http_config_is_user_configured_flag():
+    """As of B5, is_user_configured is snapshotted at from_env() time
+    rather than being a live env-var read. That's a deliberate semantics
+    change — a long-lived bridge instance shouldn't observe env-var
+    mutations mid-flight. Tests must call from_env() AFTER mutating env."""
     from mcp_server.splice_client.http_bridge import SpliceHTTPConfig
-    cfg = SpliceHTTPConfig()
-    # Sanity: in the default env, at least one of the envvars controls
-    # the "configured" flag. When none are set, it's False.
     original = {
         k: os.environ.get(k) for k in (
             "SPLICE_API_BASE_URL",
@@ -184,9 +185,11 @@ def test_http_config_is_user_configured_flag():
     try:
         for k in list(original):
             os.environ.pop(k, None)
+        cfg = SpliceHTTPConfig.from_env(config_path="/nonexistent.json")
         assert cfg.is_user_configured is False
         os.environ["SPLICE_ALLOW_UNVERIFIED_ENDPOINTS"] = "1"
-        assert cfg.is_user_configured is True
+        cfg2 = SpliceHTTPConfig.from_env(config_path="/nonexistent.json")
+        assert cfg2.is_user_configured is True
     finally:
         for k, v in original.items():
             if v is None:

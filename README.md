@@ -17,7 +17,7 @@
 
 <p align="center">
   An agentic production system for Ableton Live 12.<br>
-  421 tools. 52 domains. Device atlas. Splice integration. Auto-composition. Spectral perception. Technique memory.
+  422 tools. 52 domains. Device atlas. Plan-aware Splice integration. Auto-composition. Spectral perception. Technique memory. Drum-rack pad builder. Live dead-device detection.
 </p>
 
 <br>
@@ -39,7 +39,7 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 |-------|-----------------|
 | **Deterministic Tools** | Direct control: transport, tracks, clips, notes, devices, scenes, mixing, arrangement, browser, automation |
 | **Device Atlas** | Knowledge of every device in Ableton's library — 1305 devices indexed by name, URI, category, tag, and genre. 71 enriched with sonic intelligence. 683 drum kits mapped |
-| **Sample Engine** | Three-source sample intelligence — searches Ableton's browser, your filesystem, and Splice's catalog simultaneously. 6 fitness critics score every result. 29 processing techniques |
+| **Sample Engine** | Three-source sample intelligence — Ableton's browser, your filesystem, and Splice's catalog (plan-aware: Ableton Live plan uses daily quota, Sounds+/Creator uses credits, free samples bypass both). 6 fitness critics. 29 processing techniques. Collections, presets, preview-URL audition, HTTPS bridge scaffolding for Describe-a-Sound + Variations |
 | **Spectral Perception** | Real-time ears via M4L — 8-band FFT, RMS/peak metering, Krumhansl-Schmuckler key detection, pitch tracking. Closes the feedback loop so the AI hears its own changes |
 | **Technique Memory** | Persistent library of production decisions. Save a beat pattern, device chain, or mix template. Recall by mood, genre, or texture across sessions |
 | **Creative Intelligence** | 12 engines that understand song identity, learn your taste, diagnose stuck sessions, generate creative options, and evaluate results before claiming success |
@@ -79,7 +79,7 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 │         └─────────────────┼──────────────────┘                       │
 │                           ▼                                          │
 │                  ┌─────────────────┐                                  │
-│                  │   421 MCP Tools  │                                  │
+│                  │   422 MCP Tools  │                                  │
 │                  │   52 domains     │                                  │
 │                  └────────┬────────┘                                  │
 │                           │                                          │
@@ -120,7 +120,7 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 
 ## The Intelligence Layer
 
-12 engines sit on top of the 421 tools. They give the AI musical judgment, not just musical execution.
+12 engines sit on top of the 422 tools. They give the AI musical judgment, not just musical execution.
 
 ### SongBrain — What the Song Is
 
@@ -172,7 +172,7 @@ Every engine follows: **measure before → act → measure after → compare**. 
 
 ## Tools
 
-421 tools across 52 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
+422 tools across 52 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
 
 <br>
 
@@ -360,7 +360,7 @@ The V2 intelligence layer. These tools analyze, diagnose, plan, evaluate, and le
 | Creative Constraints | 5 | constraint activation, reference-inspired variants |
 | Preview Studio | 5 | variant creation, preview rendering, comparison, commit |
 
-> **[View all 421 tools →](docs/manual/tool-catalog.md)**
+> **[View all 422 tools →](docs/manual/tool-catalog.md)**
 
 <br>
 
@@ -587,7 +587,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for architecture details, code guidelines
 
 | Document | What's inside |
 |----------|---------------|
-| [Manual](docs/manual/index.md) | Complete reference: architecture, all 421 tools, workflows |
+| [Manual](docs/manual/index.md) | Complete reference: architecture, all 422 tools, workflows |
 | [Intelligence Layer](docs/manual/intelligence.md) | How the 12 engines connect — conductor, moves, preview, evaluation |
 | [Device Atlas](docs/manual/device-atlas.md) | 1305 devices indexed — search, suggest, chain building |
 | [Samples & Slicing](docs/manual/samples.md) | 3-source search, fitness critics, slice workflows |

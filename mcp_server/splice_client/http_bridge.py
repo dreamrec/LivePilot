@@ -55,14 +55,31 @@ logger = logging.getLogger(__name__)
 # ── Configuration ─────────────────────────────────────────────────────
 
 
+_DEFAULT_CONFIG_PATH = os.path.expanduser("~/.livepilot/splice.json")
+
+
 @dataclass
 class SpliceHTTPConfig:
     """Endpoint configuration for the HTTPS bridge.
 
-    All fields have env-var overrides so a dev can swap them for testing
-    without code changes. Defaults are best-guesses based on Splice's
-    public URL conventions — they WILL need updating when we capture real
-    traffic. That's expected.
+    Three sources, checked in order of precedence:
+      1. Env vars (highest — useful for one-off tests / CI)
+      2. JSON config file at `~/.livepilot/splice.json` (persistent user config)
+      3. Built-in defaults (unverified guesses — WILL need updating when
+         we capture real traffic)
+
+    JSON config shape:
+      {
+        "base_url": "https://api.splice.com",
+        "describe_endpoint": "/v1/...",
+        "variation_endpoint": "/v1/variations/{file_hash}",
+        "search_with_sound_endpoint": "/v1/...",
+        "timeout_sec": 30.0,
+        "max_retries": 2,
+        "allow_unverified_endpoints": false
+      }
+
+    Any subset of keys is allowed; omitted keys fall through to defaults.
     """
 
     base_url: str = "https://api.splice.com"
@@ -71,40 +88,96 @@ class SpliceHTTPConfig:
     search_with_sound_endpoint: str = "/v1/search-with-sound"
     timeout_sec: float = 30.0
     max_retries: int = 2
+    # Whether any of the above values came from user config (file or env)
+    # rather than the built-in defaults. Used by `is_user_configured`.
+    _user_configured: bool = False
 
     @classmethod
-    def from_env(cls) -> "SpliceHTTPConfig":
-        """Load config from env vars, falling back to defaults."""
-        return cls(
-            base_url=os.environ.get("SPLICE_API_BASE_URL", cls.base_url),
-            describe_endpoint=os.environ.get(
-                "SPLICE_DESCRIBE_ENDPOINT", cls.describe_endpoint,
-            ),
-            variation_endpoint=os.environ.get(
-                "SPLICE_VARIATION_ENDPOINT", cls.variation_endpoint,
-            ),
-            search_with_sound_endpoint=os.environ.get(
-                "SPLICE_SEARCH_WITH_SOUND_ENDPOINT",
-                cls.search_with_sound_endpoint,
-            ),
-            timeout_sec=float(os.environ.get("SPLICE_HTTP_TIMEOUT", cls.timeout_sec)),
-            max_retries=int(os.environ.get("SPLICE_HTTP_RETRIES", cls.max_retries)),
+    def from_env(cls, config_path: Optional[str] = None) -> "SpliceHTTPConfig":
+        """Load config: defaults → JSON file → env vars.
+
+        `config_path` override is test-only. Production always uses
+        ~/.livepilot/splice.json (or skips the file silently if absent).
+        """
+        instance = cls()
+        loaded_from_file = False
+
+        # Layer 1: JSON file (persistent user config)
+        path = config_path or _DEFAULT_CONFIG_PATH
+        if os.path.isfile(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, dict):
+                    for key in (
+                        "base_url", "describe_endpoint", "variation_endpoint",
+                        "search_with_sound_endpoint",
+                    ):
+                        if key in data and isinstance(data[key], str):
+                            setattr(instance, key, data[key])
+                            loaded_from_file = True
+                    for key in ("timeout_sec",):
+                        if key in data:
+                            try:
+                                setattr(instance, key, float(data[key]))
+                                loaded_from_file = True
+                            except (TypeError, ValueError):
+                                logger.warning(
+                                    "splice.json: %s must be a number", key,
+                                )
+                    for key in ("max_retries",):
+                        if key in data:
+                            try:
+                                setattr(instance, key, int(data[key]))
+                                loaded_from_file = True
+                            except (TypeError, ValueError):
+                                logger.warning(
+                                    "splice.json: %s must be an integer", key,
+                                )
+                    if data.get("allow_unverified_endpoints"):
+                        loaded_from_file = True
+            except (OSError, json.JSONDecodeError) as exc:
+                logger.warning(
+                    "Could not load %s: %s — falling back to defaults/env",
+                    path, exc,
+                )
+
+        # Layer 2: env vars (override file/defaults)
+        env_keys = (
+            ("SPLICE_API_BASE_URL", "base_url", str),
+            ("SPLICE_DESCRIBE_ENDPOINT", "describe_endpoint", str),
+            ("SPLICE_VARIATION_ENDPOINT", "variation_endpoint", str),
+            ("SPLICE_SEARCH_WITH_SOUND_ENDPOINT", "search_with_sound_endpoint", str),
+            ("SPLICE_HTTP_TIMEOUT", "timeout_sec", float),
+            ("SPLICE_HTTP_RETRIES", "max_retries", int),
         )
+        env_configured = False
+        for env_name, attr, cast in env_keys:
+            if env_name in os.environ:
+                try:
+                    setattr(instance, attr, cast(os.environ[env_name]))
+                    env_configured = True
+                except (TypeError, ValueError) as exc:
+                    logger.warning(
+                        "Env %s has invalid value: %s", env_name, exc,
+                    )
+
+        instance._user_configured = (
+            loaded_from_file
+            or env_configured
+            or os.environ.get("SPLICE_ALLOW_UNVERIFIED_ENDPOINTS") == "1"
+        )
+        return instance
 
     @property
     def is_user_configured(self) -> bool:
-        """True when at least one endpoint URL has been overridden by env var.
+        """True when at least one endpoint URL has been overridden by the
+        user (JSON config file or env var).
 
         Defaults are unverified guesses; callers check this before making
         requests so we don't silently hit non-existent endpoints.
         """
-        return (
-            "SPLICE_API_BASE_URL" in os.environ
-            or "SPLICE_DESCRIBE_ENDPOINT" in os.environ
-            or "SPLICE_VARIATION_ENDPOINT" in os.environ
-            or "SPLICE_SEARCH_WITH_SOUND_ENDPOINT" in os.environ
-            or os.environ.get("SPLICE_ALLOW_UNVERIFIED_ENDPOINTS") == "1"
-        )
+        return self._user_configured
 
 
 # ── Auth token fetch ─────────────────────────────────────────────────

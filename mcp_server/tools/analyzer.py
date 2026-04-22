@@ -212,6 +212,7 @@ async def get_master_spectrum(
     ctx: Context,
     window_ms: int = 0,
     samples: int = 0,
+    sub_detail: bool = False,
 ) -> dict:
     """Get 8-band frequency analysis of the master bus.
 
@@ -236,6 +237,14 @@ async def get_master_spectrum(
     The sampled bands are also returned as `bands_min`, `bands_max` and
     `bands_std` so callers can see variance within the window — useful
     for detecting transient-heavy content vs. sustained material.
+
+    BUG-2026-04-22#15 fix — sub-band resolution:
+      Pass `sub_detail=True` to attach a `sub_detail` dict with three
+      finer buckets: `sub_deep` (20-45 Hz), `sub_mid` (45-60 Hz),
+      `sub_high` (60-80 Hz). Derived from the FluCoMa mel spectrum
+      (40 bands) rather than the 8-band cache, so it requires FluCoMa
+      to be active. When FluCoMa is unavailable, sub_detail is omitted
+      with a `sub_detail_warning` field explaining why.
     """
     cache = _get_spectral(ctx)
     _require_analyzer(cache)
@@ -291,6 +300,8 @@ async def get_master_spectrum(
         key_data = cache.get("key")
         if key_data:
             result["detected_key"] = key_data["value"]
+        if sub_detail:
+            _attach_sub_detail(cache, result)
         return result
 
     # Legacy instantaneous path
@@ -303,8 +314,53 @@ async def get_master_spectrum(
     key_data = cache.get("key")
     if key_data:
         result["detected_key"] = key_data["value"]
+    if sub_detail:
+        _attach_sub_detail(cache, result)
 
     return result
+
+
+def _attach_sub_detail(cache, result: dict) -> None:
+    """Compute finer sub-band breakdown (20-45, 45-60, 60-80 Hz) from
+    FluCoMa's 40-band mel spectrum and attach to the result dict.
+
+    Mel band edges are perceptual, not linear Hz — we map approximately:
+    with a standard 40-band mel filterbank from 0-20kHz, the first
+    ~4 bands cover 0-80 Hz and are distributed roughly:
+      band 0: ~0-25 Hz
+      band 1: ~25-45 Hz
+      band 2: ~45-65 Hz
+      band 3: ~65-90 Hz
+    We use these mappings as approximations; exact cutoffs depend on
+    FluCoMa's filterbank config but this is tight enough for mixing
+    decisions (the question is "is energy in the 30 Hz or 60 Hz range?").
+    """
+    mel_snap = cache.get("mel_bands")
+    if not mel_snap or not mel_snap.get("value"):
+        result["sub_detail_warning"] = (
+            "FluCoMa mel spectrum not available — sub_detail requires "
+            "FluCoMa active on the M4L analyzer. Use check_flucoma to diagnose."
+        )
+        return
+    mel_bands = mel_snap["value"]
+    if not isinstance(mel_bands, list) or len(mel_bands) < 4:
+        result["sub_detail_warning"] = (
+            f"Mel spectrum has {len(mel_bands) if isinstance(mel_bands, list) else 0} "
+            "bands — need at least 4 for sub_detail decomposition."
+        )
+        return
+
+    def _mean(indices):
+        vals = [float(mel_bands[i]) for i in indices if i < len(mel_bands)]
+        return round(sum(vals) / len(vals), 4) if vals else 0.0
+
+    result["sub_detail"] = {
+        "sub_deep": _mean([0, 1]),      # ~0-45 Hz (kick fundamental)
+        "sub_mid": _mean([2]),          # ~45-60 Hz (808 body / kick upper)
+        "sub_high": _mean([3]),         # ~60-80 Hz (bass guitar low, sub-bass crossover)
+        "age_ms": mel_snap.get("age_ms"),
+        "source": "flucoma_mel_40",
+    }
 
 
 def _sanitize_pitch(pitch: Optional[dict]) -> Optional[dict]:
@@ -1531,6 +1587,96 @@ async def verify_device_health(
         "test_velocity": test_velocity,
         "test_duration_ms": test_duration_ms,
         "hint": hint,
+    }
+
+
+@mcp.tool()
+async def verify_all_devices_health(
+    ctx: Context,
+    test_midi_note: int = 60,
+    test_velocity: int = 100,
+    test_duration_ms: int = 250,
+    threshold: float = 0.005,
+    skip_audio_tracks: bool = True,
+    skip_empty_tracks: bool = True,
+) -> dict:
+    """Run verify_device_health across every eligible track in one call.
+
+    Session-wide silent-track detector. Useful right after opening a
+    project to surface dead plugins before mixing. Serial execution —
+    firing notes in parallel would make the meter readings ambiguous.
+
+    skip_audio_tracks:  audio tracks have no MIDI input, skip them (default True)
+    skip_empty_tracks:  tracks without any instrument also skip (default True)
+
+    Returns: {
+      "ok": bool,
+      "tracks_tested": int,
+      "alive": [track_index...],
+      "dead": [{track_index, track_name, peak_level}...],
+      "skipped": [{track_index, reason}...],
+    }
+    """
+    ableton = ctx.lifespan_context["ableton"]
+    try:
+        session = ableton.send_command("get_session_info", {})
+    except Exception as exc:
+        return {"ok": False, "error": f"get_session_info failed: {exc}"}
+    if not isinstance(session, dict):
+        return {"ok": False, "error": "Unexpected get_session_info response"}
+
+    tracks = session.get("tracks", []) or []
+    alive: list = []
+    dead: list = []
+    skipped: list = []
+
+    for t in tracks:
+        tid = t.get("index")
+        tname = t.get("name", f"Track {tid}")
+        if tid is None:
+            continue
+        is_audio = bool(t.get("is_audio_track") or t.get("type") == "audio")
+        if skip_audio_tracks and is_audio:
+            skipped.append({"track_index": tid, "track_name": tname,
+                            "reason": "audio_track_no_midi_input"})
+            continue
+        devices = t.get("devices") or []
+        if skip_empty_tracks and not devices:
+            skipped.append({"track_index": tid, "track_name": tname,
+                            "reason": "no_devices_on_track"})
+            continue
+
+        # Run the per-track health check.
+        result = await verify_device_health(
+            ctx, track_index=tid,
+            test_midi_note=test_midi_note,
+            test_velocity=test_velocity,
+            test_duration_ms=test_duration_ms,
+            threshold=threshold,
+        )
+        if not result.get("ok"):
+            skipped.append({"track_index": tid, "track_name": tname,
+                            "reason": result.get("error", "health_check_failed")})
+            continue
+        if result.get("alive"):
+            alive.append(tid)
+        else:
+            dead.append({
+                "track_index": tid,
+                "track_name": tname,
+                "peak_level": result.get("peak_level", 0),
+            })
+
+    return {
+        "ok": True,
+        "tracks_tested": len(alive) + len(dead),
+        "alive": alive,
+        "dead": dead,
+        "skipped": skipped,
+        "summary": (
+            f"{len(alive)} alive, {len(dead)} dead, "
+            f"{len(skipped)} skipped out of {len(tracks)} total tracks"
+        ),
     }
 
 

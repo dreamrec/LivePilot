@@ -28,20 +28,20 @@ Run this checklist EVERY time the user says "update everything", "push", "releas
 
 ## 2. Tool Count (must ALL match)
 
-Current: **421 tools across 52 domains**.
+Current: **422 tools across 52 domains**.
 Spectral/analyzer (bridge-only): **32**. All others: **292** (work without bridge, some with graceful fallbacks). Backed by 30 bridge commands.
 
 Verify: `grep -rc "@mcp.tool" mcp_server/tools/ | grep -v ":0" | awk -F: '{sum+=$2} END{print sum}'`
 
 Files that reference tool count:
-- [ ] `README.md` — header ("421 tools. 52 domains"), bridge section ("32 spectral/analyzer tools require bridge")
+- [ ] `README.md` — header ("422 tools. 52 domains"), bridge section ("32 spectral/analyzer tools require bridge")
 - [ ] `package.json` → `"description"`
 - [ ] `server.json` → `"description"`
 - [ ] `manifest.json` → `"description"`
 - [ ] `livepilot/.Codex-plugin/plugin.json` → `"description"` (primary Codex manifest)
 - [ ] `livepilot/.claude-plugin/plugin.json` → `"description"` (must match Codex plugin)
 - [ ] `.claude-plugin/marketplace.json` → `"description"`
-- [ ] `CLAUDE.md` → "421 tools across 52 domains"
+- [ ] `CLAUDE.md` → "422 tools across 52 domains"
 - [ ] `CONTRIBUTING.md` → tool count in intro
 - [ ] `livepilot/skills/livepilot-core/SKILL.md` — tool/domain count
 - [ ] `livepilot/skills/livepilot-core/references/overview.md` — tool/domain count
@@ -93,7 +93,7 @@ Current: **52 domains**: transport, tracks, clips, notes, devices, scenes, mixin
 
 - [ ] `README.md` — features match current capabilities, "Coming" section is accurate
 - [ ] `docs/manual/getting-started.md` — install instructions current
-- [ ] `docs/manual/tool-reference.md` — all 52 domains listed, all 421 tools present
+- [ ] `docs/manual/tool-reference.md` — all 52 domains listed, all 422 tools present
 - [ ] `docs/TOOL_REFERENCE.md` — all 52 domains present with correct counts
 - [ ] `docs/M4L_BRIDGE.md` — architecture accurate, core/bridge counts correct
 
