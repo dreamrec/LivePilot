@@ -203,11 +203,14 @@ async def search_samples(
     bpm_range: Optional[str] = None,
     source: Optional[str] = None,
     max_results: int = 10,
+    free_only: bool = False,
+    q: Optional[str] = None,
 ) -> dict:
     """Search for samples across Splice library, Ableton browser, and local filesystem.
 
     Searches all enabled sources in parallel and ranks results.
-    Splice results include rich metadata (key, BPM, genre, tags, pack info).
+    Splice results include rich metadata (key, BPM, genre, tags, pack info,
+    is_premium, price, is_free, preview_url).
 
     When the Splice desktop app is running AND grpcio is installed, this
     searches Splice's ONLINE catalog (19,690+ hits for a generic query)
@@ -216,12 +219,22 @@ async def search_samples(
     already-downloaded samples.
 
     query: search text like "dark vocal", "breakbeat", "foley metal"
+    q: alias for `query` (accepts either name for ergonomics)
     material_type: filter by type (vocal, drum_loop, texture, etc.)
     key: prefer samples in this key (e.g., "Cm", "F#")
     bpm_range: "min-max" BPM range (e.g., "120-130")
     source: "splice", "browser", "filesystem", or None for all
     max_results: maximum results to return (default 10)
+    free_only: if True, only return samples that cost nothing to license
+      (IsPremium=False or Price=0). Under the Ableton Live plan these
+      don't deplete the daily quota; under credit-metered plans they
+      bypass the credit floor.
     """
+    # Accept `q` as an alias for `query` — BUG-FIX #4 from 2026-04-22 bug doc.
+    if not query and q:
+        query = q
+    if not query:
+        return {"error": "query is required (or use `q` alias)"}
     results: list[dict] = []
 
     # Parse BPM range
@@ -256,6 +269,8 @@ async def search_samples(
                     purchased_only=False,
                 )
                 for s in grpc_result.samples[:max_results]:
+                    if free_only and not s.is_free:
+                        continue
                     results.append({
                         "source": "splice",
                         "name": s.filename,
@@ -267,6 +282,8 @@ async def search_samples(
                         "splice_catalog": True,
                         "downloaded": bool(s.local_path),
                         "file_hash": s.file_hash,
+                        "preview_url": s.preview_url,
+                        "is_free": s.is_free,
                         "metadata": {
                             "key": s.audio_key,
                             "bpm": s.bpm,
@@ -278,6 +295,8 @@ async def search_samples(
                             "pack_uuid": s.pack_uuid,
                             "duration": s.duration_ms / 1000.0 if s.duration_ms else 0.0,
                             "is_premium": s.is_premium,
+                            "price": s.price,
+                            "is_free": s.is_free,
                             "chord_type": s.chord_type,
                         },
                     })
@@ -658,37 +677,63 @@ def plan_slice_workflow(
 #     Support/com.splice.Splice/)
 #   - grpcio and protobuf installed (added to requirements.txt in v1.10.5)
 #
-# Credit model (as of 2026-04-14):
-#   - Even with `SoundsStatus: subscribed`, the gRPC `DownloadSample` endpoint
-#     always decrements a monthly credit counter (default 100/month on most
-#     subscription plans).
-#   - The "unlimited downloads in Ableton" the Splice marketing references
-#     only applies to the Splice Sounds.vst3 plugin, which uses a different
-#     HTTPS API that these tools cannot drive.
-#   - `CREDIT_HARD_FLOOR = 5` in client.py reserves 5 credits as a safety
-#     margin — downloads will refuse below the floor.
+# Credit model (corrected 2026-04-22 — see project_splice_subscription_model.md):
+# Splice has a TWO-POCKET model that our earlier code conflated:
+#
+#   1. Daily sample quota — 100/day unmetered on the Splice x Ableton Live plan
+#      ($12.99/mo). Sample downloads deplete this counter, NOT credits.
+#      Resets at UTC midnight. We track locally in ~/.livepilot/splice_quota.json
+#      (see splice_client/quota.py) and warn at 90/100.
+#
+#   2. Splice.com credits — used for presets, MIDI, Splice Instrument content.
+#      ALL plans have some credits (100 intro on Ableton Live, or monthly
+#      allotment on Creator/Sounds+). CREDIT_HARD_FLOOR = 5 keeps a safety
+#      reserve so agents can't drain you to zero.
+#
+# Free samples (Sample.IsPremium=False or Price=0) bypass BOTH gates — they're
+# free under any plan.
+#
+# `SpliceGRPCClient.decide_download()` runs the full gating logic and returns
+# a DownloadDecision with plan_kind and gating_mode. Use that, not the raw
+# credit check, for any new download path.
 
 
 _SPLICE_USER_LIB_DEST = "~/Music/Ableton/User Library/Samples/Splice"
+_SPLICE_PREVIEW_CACHE = "~/Library/Caches/LivePilot/splice_previews"
 
 
 @mcp.tool()
 async def get_splice_credits(ctx: Context) -> dict:
-    """Get the user's current Splice credit balance and subscription tier.
+    """Get the user's current Splice plan, credits, and daily sample quota.
 
-    Returns: {
-        "connected": bool,        # whether Splice desktop gRPC is reachable
-        "username": str,
-        "plan": str,              # e.g. "subscribed", "free"
-        "credits_remaining": int,
-        "credit_floor": int,      # safety reserve (typically 5)
-        "can_download": bool,     # credits_remaining > credit_floor
-    }
+    Returns both pockets of the Splice subscription model:
+      - `credits_remaining`: Splice.com credits for presets/MIDI/Instrument
+      - `daily_quota`: sample-download counter (Ableton Live plan only)
+
+    Example (Ableton Live plan):
+      {
+        "connected": true,
+        "username": "user-1367453956",
+        "plan_raw": "subscribed",
+        "plan_kind": "ableton_live",
+        "sounds_plan_id": 12,
+        "features": {"ableton_unmetered": true, ...},
+        "credits_remaining": 80,
+        "credit_floor": 5,
+        "daily_quota": {
+            "used_today": 3, "remaining_today": 97, "daily_limit": 100,
+            "near_limit": false, "at_limit": false,
+        },
+        "can_download_sample": true,
+        "download_gating": "daily_quota",  # or "credit_floor"
+      }
 
     Returns connected=False (with zero credits) when the Splice desktop app
     isn't running or grpcio isn't installed.
     """
     from ..splice_client.client import CREDIT_HARD_FLOOR
+    from ..splice_client.models import PlanKind
+    from ..splice_client.quota import get_tracker
 
     client = None
     try:
@@ -696,14 +741,19 @@ async def get_splice_credits(ctx: Context) -> dict:
     except AttributeError:
         pass
 
+    quota_summary = get_tracker().summary()
+
     if client is None or not getattr(client, "connected", False):
         return {
             "connected": False,
             "username": "",
-            "plan": "",
+            "plan_raw": "",
+            "plan_kind": PlanKind.UNKNOWN.value,
             "credits_remaining": 0,
             "credit_floor": CREDIT_HARD_FLOOR,
-            "can_download": False,
+            "daily_quota": quota_summary,
+            "can_download_sample": False,
+            "download_gating": "blocked",
             "hint": (
                 "Splice gRPC not connected. Ensure Splice desktop app is "
                 "running and grpcio+protobuf are installed in the LivePilot "
@@ -718,16 +768,39 @@ async def get_splice_credits(ctx: Context) -> dict:
             "connected": False,
             "error": f"get_credits failed: {exc}",
             "credit_floor": CREDIT_HARD_FLOOR,
+            "daily_quota": quota_summary,
         }
 
     remaining = int(info.credits)
+    plan = info.plan_kind
+
+    # Compute `can_download_sample` using the same logic decide_download uses.
+    if plan == PlanKind.ABLETON_LIVE:
+        gating = "daily_quota"
+        can_download = not quota_summary["at_limit"]
+    else:
+        gating = "credit_floor"
+        can_download = remaining > CREDIT_HARD_FLOOR
+
     return {
         "connected": True,
         "username": info.username,
-        "plan": info.plan,
+        "plan_raw": info.plan,
+        "plan_kind": plan.value,
+        "sounds_plan_id": info.sounds_plan_id,
+        "features": info.features,
+        "user_uuid": info.user_uuid,
         "credits_remaining": remaining,
         "credit_floor": CREDIT_HARD_FLOOR,
-        "can_download": remaining > CREDIT_HARD_FLOOR,
+        "daily_quota": quota_summary,
+        "can_download_sample": can_download,
+        "download_gating": gating,
+        "note": (
+            "This plan gets 100 samples/day unmetered via drag-drop; "
+            "the 80 credits are for presets/MIDI only."
+            if plan == PlanKind.ABLETON_LIVE
+            else None
+        ),
     }
 
 
@@ -742,6 +815,8 @@ async def splice_catalog_hunt(
     genre: str = "",
     per_page: int = 10,
     page: int = 1,
+    free_only: bool = False,
+    collection_uuid: str = "",
 ) -> dict:
     """Search Splice's ONLINE catalog via gRPC.
 
@@ -798,6 +873,7 @@ async def splice_catalog_hunt(
             per_page=max(1, min(per_page, 50)),
             page=max(1, int(page)),
             purchased_only=False,
+            collection_uuid=collection_uuid,
         )
     except Exception as exc:
         return {
@@ -808,6 +884,8 @@ async def splice_catalog_hunt(
 
     samples_out = []
     for s in result.samples:
+        if free_only and not s.is_free:
+            continue
         samples_out.append({
             "file_hash": s.file_hash,
             "filename": s.filename,
@@ -821,6 +899,8 @@ async def splice_catalog_hunt(
             "pack": s.provider_name,
             "pack_uuid": s.pack_uuid,
             "is_premium": bool(s.is_premium),
+            "price": int(s.price),
+            "is_free": s.is_free,
             "is_downloaded": bool(s.local_path),
             "local_path": s.local_path or None,
             "preview_url": s.preview_url,
@@ -841,31 +921,38 @@ async def splice_download_sample(
     ctx: Context,
     file_hash: str,
     copy_to_user_library: bool = True,
+    force: bool = False,
 ) -> dict:
-    """Download a Splice sample by file_hash (costs 1 credit).
+    """Download a Splice sample by file_hash — plan-aware gating.
 
-    Use `splice_catalog_hunt` first to find samples and get their file_hash.
-    This tool will:
-      1. Check credit balance against the safety floor (refuses if < 5)
-      2. Trigger the download via the Splice desktop gRPC
-      3. Poll until the file appears on disk (up to 30s)
-      4. Optionally copy the file into `~/Music/Ableton/User Library/Samples/
-         Splice/` so Ableton's browser indexes it — this makes the sample
-         loadable via `load_browser_item` with a `query:UserLibrary#Samples:...`
-         URI.
+    Use `splice_catalog_hunt` or `search_samples` first to find samples
+    and their `file_hash`. The gating logic runs BEFORE any network call:
+
+    - Ableton Live plan: uses your 100/day unmetered quota (not credits).
+      Tracked locally in ~/.livepilot/splice_quota.json so repeated runs
+      warn at 90/100 and refuse at 100 (resets at UTC midnight).
+    - Credit-metered plans (Sounds+/Creator): enforces CREDIT_HARD_FLOOR=5
+      so the agent can't drain your monthly allotment.
+    - Free samples (IsPremium=False or Price=0): bypass both gates.
+
+    Arguments:
+      file_hash: the sample identifier from search results
+      copy_to_user_library: if True (default), also copies to
+        ~/Music/Ableton/User Library/Samples/Splice/ so Ableton's browser
+        can reach it via `load_browser_item` with a `query:UserLibrary#...`
+        URI.
+      force: bypass local quota checks (still honors server-side limits).
+        Use for deterministic tests — NOT for production flows.
 
     Returns: {
-        "ok": bool,
-        "local_path": str,              # Splice's own download path
-        "user_library_path": str,       # if copy_to_user_library=True
-        "browser_uri": str,             # ready for load_browser_item
-        "credits_remaining": int,
+      "ok": bool,
+      "local_path": str,              # Splice's own download path
+      "user_library_path": str,       # if copy_to_user_library=True
+      "browser_uri": str,             # ready for load_browser_item
+      "decision": {...},              # plan-aware gating summary
+      "credits_remaining": int,
+      "daily_quota": {...},           # post-download quota snapshot
     }
-
-    Note: even with an "unlimited" subscription, this gRPC path always
-    decrements credits (typically 100/month allotment). The unlimited
-    downloads inside Ableton's Splice Sounds VST3 use a different API
-    that LivePilot cannot drive programmatically yet.
     """
     import shutil
 
@@ -881,24 +968,35 @@ async def splice_download_sample(
             "error": "Splice gRPC not connected",
         }
 
-    # Credit safety check
+    # Try to fetch the sample metadata so we can detect free samples and
+    # bypass gating when Price=0. This is one extra round-trip but saves
+    # credits/quota for catalog items marked free.
+    sample = None
     try:
-        can, remaining = await client.can_afford(1, budget=10)
+        sample = await client.get_sample_info(file_hash)
     except Exception as exc:
-        return {"ok": False, "error": f"Credit check failed: {exc}"}
-    if not can:
-        return {
-            "ok": False,
-            "error": (
-                f"Credit safety floor hit (remaining={remaining}, "
-                f"hard floor=5). Skipping download."
-            ),
-            "credits_remaining": remaining,
-        }
+        logger.debug("get_sample_info failed pre-gating: %s", exc)
 
-    # Trigger download
+    # Run the full gating logic before touching the network.
+    if not force:
+        try:
+            decision = await client.decide_download(file_hash, sample=sample)
+        except Exception as exc:
+            return {"ok": False, "error": f"Gating check failed: {exc}"}
+        if not decision.allowed:
+            return {
+                "ok": False,
+                "error": decision.reason,
+                "decision": decision.to_dict(),
+            }
+    else:
+        decision = None
+
+    # Trigger download (client.download_sample also re-runs the gate defensively)
     try:
-        local_path = await client.download_sample(file_hash, timeout=30.0)
+        local_path = await client.download_sample(
+            file_hash, timeout=30.0, sample=sample,
+        )
     except Exception as exc:
         return {"ok": False, "error": f"Download failed: {exc}"}
 
@@ -912,6 +1010,7 @@ async def splice_download_sample(
         "ok": True,
         "local_path": local_path,
         "filename": os.path.basename(local_path),
+        "decision": decision.to_dict() if decision else None,
     }
 
     # Copy into User Library so Ableton's browser indexes it
@@ -930,7 +1029,12 @@ async def splice_download_sample(
         except Exception as exc:
             response["copy_warning"] = f"Failed to copy to User Library: {exc}"
 
-    # Post-credit count
+    # Post-download state
+    try:
+        from ..splice_client.quota import get_tracker
+        response["daily_quota"] = get_tracker().summary()
+    except Exception as exc:
+        logger.debug("post-download quota snapshot failed: %s", exc)
     try:
         info = await client.get_credits()
         response["credits_remaining"] = int(info.credits)
@@ -938,3 +1042,375 @@ async def splice_download_sample(
         logger.warning("post-download credit check failed: %s", exc)
 
     return response
+
+
+# ────────────────────────────────────────────────────────────────────────
+# Zero-cost preview — fetches Sample.PreviewURL which is always free.
+# ────────────────────────────────────────────────────────────────────────
+
+
+@mcp.tool()
+async def splice_preview_sample(
+    ctx: Context,
+    file_hash: str,
+    cache: bool = True,
+) -> dict:
+    """Fetch a Splice sample's preview audio — ZERO credits, ZERO quota cost.
+
+    Every catalog sample has a `PreviewURL` (low-bitrate MP3) that Splice
+    streams freely. Use this to audition before calling
+    `splice_download_sample`. Perfect for:
+      - Quickly hearing 10 candidates before committing to one download
+      - Staying under the daily sample quota on the Ableton Live plan
+      - Letting agents judge fit without spending anything
+
+    Arguments:
+      file_hash: the sample identifier from search results
+      cache: if True (default), write the preview to
+        ~/Library/Caches/LivePilot/splice_previews/ for Ableton to load
+
+    Returns: {
+      "ok": bool,
+      "preview_url": str,
+      "local_preview_path": str,   # if cache=True and download succeeded
+      "filename": str,
+      "duration_sec": float,
+      "cost": "free",              # always, for every plan
+    }
+    """
+    import hashlib
+    import urllib.request
+    import urllib.error
+
+    client = None
+    try:
+        client = ctx.lifespan_context.get("splice_client")
+    except AttributeError:
+        pass
+
+    if client is None or not getattr(client, "connected", False):
+        return {"ok": False, "error": "Splice gRPC not connected"}
+
+    sample = None
+    try:
+        sample = await client.get_sample_info(file_hash)
+    except Exception as exc:
+        return {"ok": False, "error": f"SampleInfo failed: {exc}"}
+
+    if sample is None or not sample.preview_url:
+        return {
+            "ok": False,
+            "error": "No preview URL available for this sample",
+            "file_hash": file_hash,
+        }
+
+    response: dict = {
+        "ok": True,
+        "preview_url": sample.preview_url,
+        "filename": sample.filename,
+        "duration_sec": round(sample.duration_seconds, 2),
+        "cost": "free",
+        "file_hash": file_hash,
+        "is_free_sample": sample.is_free,
+        "key": sample.key_display,
+        "bpm": sample.bpm,
+        "tags": sample.tags,
+    }
+
+    if cache:
+        cache_dir = os.path.expanduser(_SPLICE_PREVIEW_CACHE)
+        try:
+            os.makedirs(cache_dir, exist_ok=True)
+            # Short deterministic filename based on file_hash
+            digest = hashlib.md5(file_hash.encode()).hexdigest()[:12]
+            ext = os.path.splitext(sample.preview_url.split("?")[0])[1] or ".mp3"
+            dest = os.path.join(cache_dir, f"preview_{digest}{ext}")
+            if not os.path.isfile(dest):
+                def _download():
+                    req = urllib.request.Request(
+                        sample.preview_url,
+                        headers={"User-Agent": "LivePilot/1.0"},
+                    )
+                    with urllib.request.urlopen(req, timeout=15) as r:
+                        data = r.read()
+                    with open(dest, "wb") as f:
+                        f.write(data)
+                    return dest
+                # Run sync urllib in a thread to avoid blocking the event loop
+                import asyncio as _aio
+                await _aio.get_running_loop().run_in_executor(None, _download)
+            response["local_preview_path"] = dest
+        except (urllib.error.URLError, OSError, ValueError) as exc:
+            response["cache_warning"] = f"Preview cache write failed: {exc}"
+
+    return response
+
+
+# ────────────────────────────────────────────────────────────────────────
+# Collections — user's personal sample organization (Likes, bass, keys, …).
+# These call the gRPC Collection* RPCs already wrapped in AppStub.
+# ────────────────────────────────────────────────────────────────────────
+
+
+def _require_splice_client(ctx: Context) -> tuple[object, Optional[dict]]:
+    """Fetch the Splice client from context, or return an error dict."""
+    client = None
+    try:
+        client = ctx.lifespan_context.get("splice_client")
+    except AttributeError:
+        pass
+    if client is None or not getattr(client, "connected", False):
+        return None, {"ok": False, "error": "Splice gRPC not connected"}
+    return client, None
+
+
+@mcp.tool()
+async def splice_list_collections(
+    ctx: Context, page: int = 1, per_page: int = 50,
+) -> dict:
+    """List the user's Splice Collections (Likes, custom folders, Daily Picks…).
+
+    Collections are user-curated sample/preset/pack bookmarks. They are
+    the strongest available taste signal: each one represents the user's
+    deliberate grouping. Use `splice_search_in_collection` to scope a
+    search to one collection's samples — better than keyword-only search.
+
+    Returns: {
+      "ok": true,
+      "total_count": int,
+      "collections": [
+        {"uuid": "...", "name": "Likes", "sample_count": 47, ...},
+      ],
+    }
+    """
+    client, err = _require_splice_client(ctx)
+    if err:
+        return err
+    total, collections = await client.list_collections(
+        page=max(1, int(page)), per_page=max(1, min(int(per_page), 100)),
+    )
+    return {
+        "ok": True,
+        "total_count": total,
+        "returned": len(collections),
+        "page": page,
+        "collections": [c.to_dict() for c in collections],
+    }
+
+
+@mcp.tool()
+async def splice_search_in_collection(
+    ctx: Context,
+    collection_uuid: str,
+    page: int = 1,
+    per_page: int = 50,
+) -> dict:
+    """List samples inside a Splice Collection by UUID.
+
+    Get the UUID from `splice_list_collections`. The returned samples
+    carry full metadata (key, BPM, is_free, preview_url) identical to
+    `splice_catalog_hunt` — you can feed them straight into
+    `splice_preview_sample` or `splice_download_sample`.
+    """
+    client, err = _require_splice_client(ctx)
+    if err:
+        return err
+    total, samples = await client.collection_samples(
+        uuid=collection_uuid,
+        page=max(1, int(page)),
+        per_page=max(1, min(int(per_page), 100)),
+    )
+    return {
+        "ok": True,
+        "collection_uuid": collection_uuid,
+        "total_hits": total,
+        "returned": len(samples),
+        "samples": [s.to_dict() for s in samples],
+    }
+
+
+@mcp.tool()
+async def splice_add_to_collection(
+    ctx: Context, collection_uuid: str, file_hashes: list[str],
+) -> dict:
+    """Add one or more samples to a user Collection.
+
+    Persists server-side — the change appears in the Splice desktop app
+    and web UI immediately. Use this to let LivePilot "save for later"
+    items it finds during composition work.
+    """
+    client, err = _require_splice_client(ctx)
+    if err:
+        return err
+    if not file_hashes:
+        return {"ok": False, "error": "file_hashes must be a non-empty list"}
+    success = await client.add_to_collection(collection_uuid, list(file_hashes))
+    return {
+        "ok": success,
+        "collection_uuid": collection_uuid,
+        "added_count": len(file_hashes) if success else 0,
+    }
+
+
+@mcp.tool()
+async def splice_remove_from_collection(
+    ctx: Context, collection_uuid: str, file_hashes: list[str],
+) -> dict:
+    """Remove one or more samples from a user Collection (server-side)."""
+    client, err = _require_splice_client(ctx)
+    if err:
+        return err
+    if not file_hashes:
+        return {"ok": False, "error": "file_hashes must be a non-empty list"}
+    success = await client.remove_from_collection(
+        collection_uuid, list(file_hashes),
+    )
+    return {
+        "ok": success,
+        "collection_uuid": collection_uuid,
+        "removed_count": len(file_hashes) if success else 0,
+    }
+
+
+@mcp.tool()
+async def splice_create_collection(ctx: Context, name: str) -> dict:
+    """Create a new user Collection. Returns the new UUID on success."""
+    client, err = _require_splice_client(ctx)
+    if err:
+        return err
+    name = (name or "").strip()
+    if not name:
+        return {"ok": False, "error": "Collection name cannot be empty"}
+    collection = await client.create_collection(name)
+    if collection is None:
+        return {"ok": False, "error": "Collection create returned no result"}
+    return {"ok": True, "collection": collection.to_dict()}
+
+
+# ────────────────────────────────────────────────────────────────────────
+# Presets — Splice Instrument / VST presets the user has purchased.
+# ────────────────────────────────────────────────────────────────────────
+
+
+@mcp.tool()
+async def splice_list_presets(
+    ctx: Context,
+    page: int = 1,
+    per_page: int = 50,
+    sort: str = "",
+    sort_order: str = "",
+) -> dict:
+    """List presets the user has purchased from Splice.
+
+    Covers Splice Instrument and Rent-to-Own plugin presets. Each entry
+    includes `plugin_name` so the agent can route loading to the right
+    plugin — e.g., a Serum preset vs. a Splice Instrument preset.
+
+    Returns: {
+      "ok": true,
+      "total_hits": int,
+      "presets": [
+        {"uuid": "...", "filename": "Deep House Pluck.fxp",
+         "plugin_name": "Serum", "local_path": "...", ...},
+      ],
+    }
+    """
+    client, err = _require_splice_client(ctx)
+    if err:
+        return err
+    total, presets = await client.list_purchased_presets(
+        page=max(1, int(page)),
+        per_page=max(1, min(int(per_page), 100)),
+        sort=sort, sort_order=sort_order,
+    )
+    return {
+        "ok": True,
+        "total_hits": total,
+        "returned": len(presets),
+        "presets": [p.to_dict() for p in presets],
+    }
+
+
+@mcp.tool()
+async def splice_preset_info(
+    ctx: Context,
+    uuid: str = "",
+    file_hash: str = "",
+    plugin_name: str = "",
+) -> dict:
+    """Fetch metadata for a single preset (uuid, file_hash, or plugin_name)."""
+    client, err = _require_splice_client(ctx)
+    if err:
+        return err
+    if not (uuid or file_hash or plugin_name):
+        return {"ok": False, "error": "Provide at least one of uuid, file_hash, plugin_name"}
+    info = await client.get_preset_info(
+        uuid=uuid, file_hash=file_hash, plugin_name=plugin_name,
+    )
+    if info is None:
+        return {"ok": False, "error": "Preset not found"}
+    return {"ok": True, **info}
+
+
+@mcp.tool()
+async def splice_download_preset(ctx: Context, uuid: str) -> dict:
+    """Trigger a preset download (uses Splice.com credits, not the sample quota).
+
+    Splice credits ARE used for presets under every plan — this is the
+    "second pocket" of the subscription model. We still honor
+    CREDIT_HARD_FLOOR=5 so the agent can't drain the monthly allotment.
+    """
+    from ..splice_client.client import CREDIT_HARD_FLOOR
+
+    client, err = _require_splice_client(ctx)
+    if err:
+        return err
+    if not uuid:
+        return {"ok": False, "error": "uuid is required"}
+
+    try:
+        can, remaining = await client.can_afford(1, budget=1)
+    except Exception as exc:
+        return {"ok": False, "error": f"Credit check failed: {exc}"}
+    if not can:
+        return {
+            "ok": False,
+            "error": (
+                f"Credit floor hit (remaining={remaining}, "
+                f"floor={CREDIT_HARD_FLOOR}). Preset download refused."
+            ),
+            "credits_remaining": remaining,
+        }
+
+    success = await client.download_preset(uuid)
+    result: dict = {"ok": success, "uuid": uuid}
+    try:
+        info = await client.get_credits()
+        result["credits_remaining"] = int(info.credits)
+    except Exception as exc:
+        logger.debug("post-preset-download credit check failed: %s", exc)
+    return result
+
+
+# ────────────────────────────────────────────────────────────────────────
+# Sample packs — pack metadata (rich descriptions, genre, cover art, etc.).
+# ────────────────────────────────────────────────────────────────────────
+
+
+@mcp.tool()
+async def splice_pack_info(ctx: Context, pack_uuid: str) -> dict:
+    """Fetch full metadata for a Splice sample pack by UUID.
+
+    Pack UUIDs come from search results (each sample carries `pack_uuid`).
+    Useful for discovering related samples by pack, or surfacing pack-level
+    genre/provider info that search results omit.
+    """
+    client, err = _require_splice_client(ctx)
+    if err:
+        return err
+    if not pack_uuid:
+        return {"ok": False, "error": "pack_uuid is required"}
+    pack = await client.get_pack_info(pack_uuid)
+    if pack is None:
+        return {"ok": False, "error": "Pack not found or gRPC call failed"}
+    return {"ok": True, "pack": pack.to_dict()}
