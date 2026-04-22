@@ -21,7 +21,7 @@ MCP Server  <=============>  Remote Script (ControlSurface)
 - **UDP 9880** — M4L device sends spectral data stream and LiveAPI responses to MCP Server
 - **OSC 9881** — MCP Server sends LiveAPI commands to M4L device
 
-The bridge is optional. Most tools work without it. The 32 spectral/analyzer tools strictly require the bridge, and device/sample tools that call the bridge have graceful fallbacks. Backed by 30 bridge commands.
+The bridge is optional. Most tools work without it. The 33 MCP tools in the analyzer domain depend on the bridge for spectral data; sample- and device-mutation tools that call the bridge have graceful fallbacks (and on Live 12.4+, several sample tools take a native LOM path that bypasses the bridge entirely). Backed by 30 bridge commands.
 
 ## Audio Signal Chain
 
@@ -79,7 +79,7 @@ Sampling rate: 5 Hz (200ms snapshots). CPU impact: ~3-4% total.
 
 Commands are sent WITHOUT a leading `/` in the OSC address. This is critical — see "OSC Address Dispatch" below.
 
-## Bridge Commands (28 total)
+## Bridge Commands (30 total)
 
 ### Phase 1: Core LOM Access
 
@@ -122,6 +122,19 @@ Commands are sent WITHOUT a leading `/` in the OSC address. This is critical —
 | `scrub_clip` | track_idx, clip_idx, beat_time | Preview audio at position |
 | `stop_scrub` | track_idx, clip_idx | Stop preview |
 | `get_display_values` | track_idx, device_idx | Human-readable parameter values ("440 Hz", "-6 dB") |
+
+### Phase 3: Capture, Plugins & Workarounds
+
+| Command | Args | Description |
+|---------|------|-------------|
+| `capture_audio` | duration_sec, sample_rate? | Record N seconds of master output to a temp WAV; emits `/capture_complete` on finish |
+| `capture_stop` | (none) | Cancel an in-progress `capture_audio` and return whatever was recorded |
+| `check_flucoma` | (none) | Probe whether the FluCoMa Max package is installed (gates advanced spectral tools) |
+| `get_plugin_params` | track_idx, device_idx | Read AU/VST plugin parameter list — works around Live's hidden plugin params |
+| `map_plugin_param` | track_idx, device_idx, name | Find the plugin parameter index that matches a semantic name |
+| `get_plugin_presets` | track_idx, device_idx | List AU/VST plugin presets exposed via the LiveAPI |
+| `simpler_set_warp` | track_idx, device_idx, on | Toggle Simpler warp on/off (workaround for the Snap silent-playback bug) |
+| `compressor_set_sidechain` | track_idx, device_idx, source_track_idx | Configure compressor sidechain routing via LiveAPI (UI-only otherwise) |
 
 ## SpectralCache
 
@@ -233,10 +246,10 @@ The replacement MUST be the exact same byte count. Changing the file size corrup
 
 ### Max JS Freeze/Cache Behavior
 
-When you freeze a .amxd device, Max caches the JS file from its search path (`~/Documents/Max 8/...`), NOT from the source file's directory. This means:
+When you freeze a .amxd device, Max caches the JS file from its search path (`~/Documents/Max 9/...`), NOT from the source file's directory. This means:
 
 1. Edit `livepilot_bridge.js` in your project directory
-2. Copy it to `~/Documents/Max 8/Library/` (or wherever Max's search path points)
+2. Copy it to `~/Documents/Max 9/Library/` (or wherever Max's search path points)
 3. Re-freeze the .amxd device
 4. The frozen device now contains the updated JS
 
@@ -275,8 +288,10 @@ function anything() {
 
 ## File Locations
 
-- `m4l_device/LivePilot_Analyzer.amxd` — compiled M4L device (binary)
-- `m4l_device/livepilot_bridge.js` — bridge JS source (22 commands)
-- `mcp_server/m4l_bridge.py` — SpectralCache, SpectralReceiver, M4LBridge
-- `mcp_server/tools/analyzer.py` — 20 MCP tools for the analyzer domain
+- `m4l_device/LivePilot_Analyzer.amxd` — compiled M4L device (binary). Ping returns `{ok: true, version: "1.15.0"}`
+- `m4l_device/livepilot_bridge.js` — bridge JS source (30 commands)
+- `m4l_device/LivePilot_MIDITool_Generate.amxd` / `LivePilot_MIDITool_Transform.amxd` — separate Live 12.0+ MIDI Tool devices for in-clip generators (euclidean_rhythm, tintinnabuli, humanize)
+- `m4l_device/miditool_bridge.js` — MIDI Tool bridge JS source
+- `mcp_server/m4l_bridge.py` — SpectralCache, SpectralReceiver, M4LBridge, MidiToolCache, generator registry
+- `mcp_server/tools/analyzer.py` — 33 MCP tools for the analyzer domain (spectrum, RMS, pitch, key, spectral shape, mel, chroma, onsets, novelty, loudness, capture, simpler/warp marker ops, plugin introspection)
 - `docs/specs/2026-03-18-m4l-bridge-spec.md` — original design spec

@@ -122,6 +122,19 @@ When adding processing blocks, prefer native Ableton devices for controllability
 
 Always `search_browser` before loading — never guess device names.
 
+## M4L Instruments in the Library — When the Standard Synths Are the Wrong Aesthetic
+
+Wavetable / Operator / Analog cover most subtractive and FM work, but several installed packs ship M4L instruments that produce sounds those three architecturally cannot. Reach for them when the standard list is the wrong starting point:
+
+- **Granulator III** (Live Suite + Max for Live) — granular synthesis as a first-class instrument. Loop / Cloud / Classic modes, MPE per-note grain control, built-in audio capture. Use when the source needs to *be* a sample but evolve as a sustained voice.
+- **Harmonic Drone Generator** (Drone Lab pack) — 8-voice M4L drone synth by Expert Math. Just intonation, Pythagorean, Pelog, equal temperament. Use when the patch is a sustained tonal bed and standard equal-tempered subtractive sounds wrong (microtonal beating is the point).
+- **Bouncy Notes** (Inspired by Nature, Dillon Bastan) — gravity-based MIDI sequencer. Drop a ball, it bounces on a piano roll producing asymmetric never-repeating note cascades. Use as a generative source instead of writing notes by hand.
+- **Tree Tone** (Inspired by Nature) — fractal-plant-growth resonator. Each branch is a tunable resonator (frequency / decay / amplitude). Use when you want resonance/body that evolves under itself, instead of static Corpus.
+- **Vector FM / Vector Grain / Vector Map** (Inspired by Nature) — particle-physics modulation systems. Vector Map can route one particle to multiple parameters at once — useful when the patch needs *coupled* modulation that LFOs cannot produce.
+- **PitchLoop89** (Live Suite) — Henke pitch-shift delay (Publison DHM 89 emulation). Use as the spatial/pitched-echo block on any sustained voice when standard delay + Auto Pan is too rigid.
+
+These do not replace the modulation_injection / filter_shaping / parameter_automation move vocabulary. They change what "the source" can be — which is upstream of the critic loop.
+
 ## Deep Sound Design Reference
 
 Consult `references/sound-design-deep.md` for advanced techniques when working on creative requests. Key principles:

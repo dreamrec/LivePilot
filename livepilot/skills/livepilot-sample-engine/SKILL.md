@@ -98,8 +98,20 @@ Each scores 0.0-1.0 on one dimension of fitness:
 5. **Vibe Fit** — Taste graph alignment (if evidence exists)
 6. **Intent Fit** — Does the material serve the stated goal?
 
+## Beyond Simpler — Sample-Adjacent Instruments in the Library
+
+Simpler is the default sample container, but the installed packs ship instruments that change the *physics* of what playback means. When the user reaches for "more texture" / "less recognizable" / "evolving" / "grain" / "drone bed", consider these before defaulting to Simpler + warp:
+
+- **Granulator III** (Live Suite, requires Live 12.0+ Max for Live) — Robert Henke's granular synth. Three modes: **Classic** (Granulator II engine), **Loop** (rhythmic playback), **Cloud** (up to 20 unsynced overlapping grains). MPE per-note control of grain size/shape/position. **Built-in real-time audio capture** — can grain whatever is currently playing in the session in one click. 59 presets. Reach for it when the user wants a sample to evolve, smear, or stop sounding like itself.
+- **PitchLoop89** (Live Suite) — Henke / Publison DHM 89 emulation. Two independent pitch-shifting delay voices, ±24 semitones, fine ±1 semitone, per-voice feedback / pan / reverse. The right tool when "shimmer", "detuned cloud", or "pitched echo" describes the goal.
+- **Drone Lab's Harmonic Drone Generator** — 8-voice M4L synth (Expert Math). Multiple tuning systems including just intonation, Pythagorean, Indonesian Pelog. The right tool when the source isn't a sample at all but a sustained tonal bed under whatever's already playing.
+- **Lost and Found multisamples** — music box, mid-century Capri fan organ, DIY plastic guitar, melodica, kazoo, metal xylophone, plus 7 Drum Racks built from everyday objects (steel water bottle, analog clock, submerged objects). When the user wants found-sound character without recording their own.
+
+These are awareness, not prescription — pick the one that fits the moment. Don't lock in a chain.
+
 ## Reference Docs
 
 - `references/sample-techniques.md` — Full 29-technique catalog
 - `references/sample-critics.md` — Critic scoring details
 - `references/sample-philosophy.md` — Surgeon vs Alchemist guide
+- `docs/research/2026-04-22-ableton-packs-deep-analysis.md` — Per-pack capabilities (44 installed packs scored against minimal/dub/cinematic aesthetic)
