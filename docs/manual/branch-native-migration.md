@@ -158,8 +158,9 @@ re-runs `compose()` on the winning intent.
 ### Timbre fingerprint is single-channel
 
 `extract_timbre_fingerprint` always returns `width=0.0` and
-`movement=0.0`. The 8-band spectrum input doesn't carry stereo
-information, and a single capture can't show temporal change. Stereo
+`movement=0.0`. The band-energy spectrum input (9-band real-time or
+legacy 8-band offline) doesn't carry stereo information, and a single
+capture can't show temporal change. Stereo
 width and movement land when the timbre extractor ingests multi-capture
 sequences and a stereo-aware spectrum source.
 

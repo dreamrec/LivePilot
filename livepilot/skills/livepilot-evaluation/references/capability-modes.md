@@ -13,7 +13,7 @@ Full measurement capabilities available.
 - SpectralCache receiving fresh data (age < 5 seconds)
 
 **Available measurements:**
-- `get_master_spectrum` — 8-band spectral analysis, real-time
+- `get_master_spectrum` — 9-band spectral analysis (sub_low → air), real-time
 - `get_master_rms` — RMS and peak levels
 - `get_detected_key` — key detection from audio
 - `get_mel_spectrum` — mel-scaled spectral representation

@@ -40,7 +40,7 @@
 | `get_display_values` | Get human-readable display values for all device parameters. |
 | `get_hidden_parameters` | Get ALL parameters for a device, including hidden ones not accessible |
 | `get_master_rms` | Get real-time RMS and peak levels from the master bus. |
-| `get_master_spectrum` | Get 8-band frequency analysis of the master bus. |
+| `get_master_spectrum` | Get 9-band frequency analysis of the master bus. |
 | `get_mel_spectrum` | Get 40-band mel spectrum from FluCoMa (5x resolution of get_master_spectrum). |
 | `get_momentary_loudness` | Get EBU R128 momentary LUFS + true peak from FluCoMa. |
 | `get_novelty` | Get real-time spectral novelty for section boundary detection from FluCoMa. |

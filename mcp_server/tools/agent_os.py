@@ -240,9 +240,9 @@ def evaluate_move(
     Takes before/after sonic snapshots and the active GoalVector.
     Returns a score and keep/undo recommendation.
 
-    Snapshots should contain: spectrum (8-band dict), rms, peak.
-    Get these from get_master_spectrum + get_master_rms before and after
-    making changes.
+    Snapshots should contain: spectrum (9-band dict sub_low → air, or
+    8-band from pre-v1.16 .amxd builds), rms, peak. Get these from
+    get_master_spectrum + get_master_rms before and after making changes.
 
     Hard rules enforce undo when:
     - No measurable improvement (delta <= 0)

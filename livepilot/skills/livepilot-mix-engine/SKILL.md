@@ -29,7 +29,7 @@ Read the `move` object: it contains `move_type`, `target_track`, `target_device`
 
 Take a measurement snapshot before executing anything:
 
-1. Call `get_master_spectrum` — save the 8-band spectral data
+1. Call `get_master_spectrum` — save the 9-band spectral data (sub_low → air)
 2. Call `get_master_rms` — save the RMS and peak values
 
 Optionally call `get_mix_snapshot` if you need per-track volume/pan/send state for the evaluation.
@@ -124,9 +124,9 @@ Call `get_capability_state` to check which mode is active before starting the lo
 
 ## Extended Perception Toolkit
 
-Beyond `get_master_spectrum` / `get_master_rms` / `get_detected_key`, the analyzer domain exposes six more measurements that give finer evidence than the 8-band spectrum alone. Use them when the standard snapshot is too coarse for the move you are evaluating:
+Beyond `get_master_spectrum` / `get_master_rms` / `get_detected_key`, the analyzer domain exposes six more measurements that give finer evidence than the 9-band spectrum alone. Use them when the standard snapshot is too coarse for the move you are evaluating:
 
-- **`get_spectral_shape`** — centroid, spread, skewness, kurtosis, rolloff, flatness, crest. Use for *tonal balance* judgments ("is this bright?", "is the energy concentrated or spread?") that 8 bands cannot describe.
+- **`get_spectral_shape`** — centroid, spread, skewness, kurtosis, rolloff, flatness, crest. Use for *tonal balance* judgments ("is this bright?", "is the energy concentrated or spread?") that 9 discrete bands cannot describe.
 - **`get_mel_spectrum`** — perceptual mel-band energies. Use when an EQ move needs to be evaluated against how the change is *heard*, not against linear-frequency bin energies.
 - **`get_chroma`** — 12-bin pitch-class energy. Use to detect harmonic clashes or to confirm a key without trusting `get_detected_key` alone.
 - **`get_onsets`** — transient detection. Use for groove / rhythm evaluations where you need to know *when* hits land, not just how loud the average is.

@@ -1858,13 +1858,15 @@ These 29 tools require the LivePilot Analyzer Max for Live device on the master 
 
 ### get_master_spectrum
 
-Returns 8-band spectral analysis of the master output (sub, low, low-mid, mid, high-mid, high, presence, air).
+Returns 9-band spectral analysis of the master output (sub_low, sub, low, low-mid, mid, high-mid, high, presence, air). The `sub_low` band (20-60 Hz) was split off in v1.16 so kick fundamentals no longer hide inside the old 20-200 Hz sub bucket — critical for Villalobos-style microhouse kicks at 40-50 Hz. Pre-v1.16 frozen .amxd builds still emit the 8-band layout; the server auto-detects band count from the OSC payload and picks the right name set.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| *(none)* | — | — | Reads from the spectral cache |
+| `window_ms` | int | 0 | Mean-pool the cache over a time window (0 = single snapshot) |
+| `samples` | int | 0 | Override auto-computed sample count for the window |
+| `sub_detail` | bool | false | Attach sub_deep/sub_mid/sub_high from FluCoMa mel (requires FluCoMa) |
 
-**When to use:** "Check the frequency balance" or "is there too much sub bass?"
+**When to use:** "Check the frequency balance" or "is there too much sub bass?" For stable mix reads, pass `window_ms=500`. For sub-kick detail, pass `sub_detail=True`.
 
 ---
 

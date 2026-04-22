@@ -208,7 +208,8 @@ The M4L Analyzer sits on the master track. UDP 9880 carries spectral data to the
 > Most tools work without the analyzer — it adds 32 spectral/analyzer tools (frequency, loudness, perception) and closes the feedback loop.
 
 ```
-SPECTRAL ─────── 8-band frequency decomposition (sub → air)
+SPECTRAL ─────── 9-band frequency decomposition (sub_low → air)
+                 sub_low (20-60 Hz) split off so kick fundamentals don't hide inside sub
                  true RMS / peak metering
                  Krumhansl-Schmuckler key detection
 

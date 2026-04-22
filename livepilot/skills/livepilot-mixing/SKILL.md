@@ -117,7 +117,7 @@ Never write automation without reading spectrum before and after.
 
 When the LivePilot Analyzer M4L device is on the master track:
 
-- `get_master_spectrum` — 8-band frequency analysis: sub (20-60 Hz), bass (60-200 Hz), low_mid (200-500 Hz), mid (500-2k Hz), high_mid (2k-4k Hz), presence (4k-6k Hz), brilliance (6k-12k Hz), air (12k-20k Hz)
+- `get_master_spectrum` — 9-band frequency analysis: sub_low (20-60 Hz), sub (60-120 Hz), low (120-250 Hz), low_mid (250-500 Hz), mid (500-1k Hz), high_mid (1-2k Hz), high (2-4k Hz), presence (4-8k Hz), air (8-20k Hz)
 - `get_master_rms` — true RMS and peak levels for loudness assessment
 - `get_detected_key` — detect musical key from audio content
 

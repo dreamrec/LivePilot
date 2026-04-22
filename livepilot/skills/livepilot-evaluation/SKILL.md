@@ -74,7 +74,7 @@ Repeat the same measurements from Step 4. Use identical tool calls to ensure com
 
 Call the appropriate evaluator:
 
-- `evaluate_move(goal_vector, before_snapshot, after_snapshot)` — universal evaluator. `goal_vector` is the dict returned by `compile_goal_vector`. Snapshots should contain `spectrum` (8-band dict), `rms`, `peak`.
+- `evaluate_move(goal_vector, before_snapshot, after_snapshot)` — universal evaluator. `goal_vector` is the dict returned by `compile_goal_vector`. Snapshots should contain `spectrum` (9-band dict sub_low → air, or 8-band from pre-v1.16 .amxd builds), `rms`, `peak`.
 - `evaluate_mix_move(before_snapshot, after_snapshot, targets, protect)` — mix-specific with protection constraints. `targets` and `protect` are dicts of dimension → weight/threshold.
 - `evaluate_composition_move(before_snapshot, after_snapshot, goal_vector)` — composition-specific
 - `evaluate_with_fabric(engine, before_snapshot, after_snapshot, targets, protect)` — routes to the appropriate engine-specific evaluator. `engine` must be one of: `"sonic"`, `"composition"`, `"mix"`, `"transition"`, `"translation"`.

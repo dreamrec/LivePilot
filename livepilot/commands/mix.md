@@ -15,10 +15,10 @@ Help the user mix their session using the V2 orchestration pipeline.
 
 4. **Quick status** — `get_mix_summary` for track count, dynamics, stereo, issues
 5. **Run critics** — `get_mix_issues` for problems. `get_masking_report` for frequency collisions.
-6. **Spectral check** — `get_master_spectrum` for 8-band balance. Genre targets:
-   - Hip-hop: sub dominant, centroid 400-800 Hz
-   - Electronic: balanced, centroid 800-1500 Hz
-   - Ambient: mid-focused, low sub, centroid 500-1000 Hz
+6. **Spectral check** — `get_master_spectrum` for 9-band balance (sub_low → air). Genre targets:
+   - Hip-hop: sub/sub_low dominant, centroid 400-800 Hz
+   - Electronic / microhouse: sub_low carries the kick (Villalobos), centroid 800-1500 Hz
+   - Ambient: mid-focused, low sub_low + sub, centroid 500-1000 Hz
 7. **Musical intelligence** — `detect_role_conflicts` to find tracks competing for the same space. `detect_repetition_fatigue` if arrangement feels stale.
 
 ## Decision Phase

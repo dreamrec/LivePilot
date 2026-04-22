@@ -214,11 +214,24 @@ async def get_master_spectrum(
     samples: int = 0,
     sub_detail: bool = False,
 ) -> dict:
-    """Get 8-band frequency analysis of the master bus.
+    """Get 9-band frequency analysis of the master bus.
 
-    Returns band energies: sub (20-60Hz), low (60-200Hz), low_mid (200-500Hz),
-    mid (500-2kHz), high_mid (2-4kHz), high (4-8kHz), presence (8-12kHz),
-    air (12-20kHz). Values 0.0-1.0.
+    Returns band energies (fffb~ center frequencies shown in parens):
+      sub_low   20-60 Hz   (~35 Hz center)  — kick fundamentals, Villalobos subs
+      sub       60-120 Hz  (~85 Hz)         — 808s, sub-bass body
+      low       120-250 Hz (~175 Hz)        — bass body, warmth
+      low_mid   250-500 Hz (~350 Hz)        — mud zone, male vocal lows
+      mid       500-1 kHz  (~700 Hz)        — vocal presence, snare body
+      high_mid  1-2 kHz    (~1.4 kHz)       — consonants, pick attack
+      high      2-4 kHz    (~2.8 kHz)       — presence, vocal intelligibility
+      presence  4-8 kHz    (~5.6 kHz)       — cymbal definition, air of breath
+      air       8-20 kHz   (~12 kHz)        — shimmer, sparkle
+    Values 0.0-1.0.
+
+    Older .amxd builds (pre-v1.16) emit the legacy 8-band layout without the
+    explicit `sub_low` split — the server auto-detects band count from the OSC
+    payload and picks the right name set. Re-freeze the Max device to get the
+    9-band resolution.
 
     Also returns detected key/scale if enough audio has been analyzed.
     Requires LivePilot Analyzer on master track.
@@ -242,7 +255,7 @@ async def get_master_spectrum(
       Pass `sub_detail=True` to attach a `sub_detail` dict with three
       finer buckets: `sub_deep` (20-45 Hz), `sub_mid` (45-60 Hz),
       `sub_high` (60-80 Hz). Derived from the FluCoMa mel spectrum
-      (40 bands) rather than the 8-band cache, so it requires FluCoMa
+      (40 bands) rather than the 9-band cache, so it requires FluCoMa
       to be active. When FluCoMa is unavailable, sub_detail is omitted
       with a `sub_detail_warning` field explaining why.
     """

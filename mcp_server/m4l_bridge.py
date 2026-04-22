@@ -471,7 +471,8 @@ class SpectralReceiver(asyncio.DatagramProtocol):
     """Receives OSC-formatted UDP packets from the M4L device.
 
     OSC messages:
-        /spectrum f f f f f f f f  — 8-band spectrum
+        /spectrum f f f f f f f f [f]  — 8 or 9 band spectrum
+                                          (9 = v1.16+ with sub_low; 8 = legacy)
         /peak f                    — peak level
         /rms f                     — RMS level
         /pitch f f                 — MIDI note, amplitude

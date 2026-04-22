@@ -18,7 +18,7 @@ AI Client  ──MCP──►  FastMCP Server  ──TCP/9878──►  Remote S
 - **MCP Server** validates inputs (ranges, types) before sending
 - **Remote Script** runs inside Ableton's Python environment, executes on the main thread via `schedule_message`
 - **Device Atlas** provides structured knowledge of Ableton's device library — real names, real URIs, sonic descriptions
-- **M4L Analyzer** reads the master bus in real-time: 8-band spectrum, RMS/peak, pitch tracking, Krumhansl-Schmuckler key detection
+- **M4L Analyzer** reads the master bus in real-time: 9-band spectrum (sub_low → air), RMS/peak, pitch tracking, Krumhansl-Schmuckler key detection
 - **Technique Memory** persists production decisions across sessions as typed, searchable, replayable data structures
 - **Protocol**: JSON over TCP, newline-delimited. Every command gets a response.
 - **Thread safety**: All Live Object Model (LOM) access happens on Ableton's main thread
@@ -212,7 +212,7 @@ This turns "set EQ band 3 to -4 dB" into "cut 400 Hz by 4 dB, then read the spec
 
 | Tool | What it does | Key params |
 |------|-------------|------------|
-| `get_master_spectrum` | 8-band spectral analysis of master output | — |
+| `get_master_spectrum` | 9-band spectral analysis (sub_low → air) of master output | `window_ms`, `sub_detail` |
 | `get_master_rms` | True RMS and peak amplitude levels | — |
 | `get_detected_key` | Detects musical key (Krumhansl-Schmuckler) | — |
 | `get_hidden_parameters` | All device parameters including hidden ones | `track_index`, `device_index` |

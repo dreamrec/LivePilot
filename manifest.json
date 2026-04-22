@@ -87,7 +87,7 @@
     },
     {
       "name": "get_master_spectrum",
-      "description": "Real-time 8-band frequency analysis of the master bus"
+      "description": "Real-time 9-band frequency analysis of the master bus"
     },
     {
       "name": "memory_learn",

@@ -19,12 +19,16 @@ from .models import TimbralFingerprint
 
 # ── Band-based brightness / warmth mapping ──────────────────────────────
 #
-# The M4L analyzer returns an 8-band spectrum by default. When a full
-# spectrum dict is passed, we look for these band keys in order. If the
-# raw {freq: magnitude} shape is passed instead, we fall back to a coarser
-# low/mid/high split.
+# Two upstream producers feed this extractor with different band schemas:
+#   1. get_master_spectrum (M4L analyzer)   — v1.16+: 9 bands (sub_low,
+#      sub, low, low_mid, mid, high_mid, high, presence, air);
+#      pre-v1.16: 8 bands (no sub_low).
+#   2. analyze_spectrum_offline             — 8 bands with legacy names
+#      (sub, low, low_mid, mid, high_mid, high, very_high, ultra).
+# We index the union of both name sets below; `_band_energy` uses dict.get
+# so missing bands simply return 0 without complaint.
 
-_BANDS = ("sub", "low", "low_mid", "mid", "high_mid", "high", "very_high", "ultra")
+_BANDS = ("sub_low", "sub", "low", "low_mid", "mid", "high_mid", "high", "presence", "air", "very_high", "ultra")
 
 
 def _band_energy(spectrum: Optional[dict], band: str) -> float:
@@ -55,9 +59,11 @@ def extract_timbre_fingerprint(
     Inputs are all optional — the function degrades gracefully when only
     some dimensions are measurable.
 
-      spectrum: either {sub, low, low_mid, mid, high_mid, high, very_high, ultra}
-        or {"bands": {...}} — the 8-band shape returned by get_master_spectrum /
-        analyze_spectrum_offline. Missing bands default to 0.
+      spectrum: either the 9-band shape from get_master_spectrum
+        ({sub_low, sub, low, low_mid, mid, high_mid, high, presence, air}),
+        the legacy 8-band shape from analyze_spectrum_offline
+        ({sub, low, low_mid, mid, high_mid, high, very_high, ultra}),
+        or {"bands": {...}} wrapping either. Missing bands default to 0.
       loudness: {"rms": float, "peak": float, "lufs": float, "lra": float} —
         output shape from analyze_loudness.
       spectral_shape: FluCoMa descriptors when available — {"centroid", "flatness",

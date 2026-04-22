@@ -32,27 +32,31 @@ We tap the audio for analysis without affecting the pass-through.
 4. Add object: `[*~ 0.5]` (scale to prevent clipping)
 5. Connect: `[+~]` outlet → `[*~ 0.5]` inlet
 
-## Step 4: 8-Band Spectrum Analysis
+## Step 4: 9-Band Spectrum Analysis
 
-1. Add object: `[fffb~ 8]` (fast 8-band filter bank)
-2. Connect: `[*~ 0.5]` outlet → `[fffb~ 8]` inlet
-3. Set `fffb~` frequencies in Inspector or via message:
-   - Band 1: 40 Hz (sub)
-   - Band 2: 130 Hz (low)
-   - Band 3: 350 Hz (low-mid)
-   - Band 4: 1000 Hz (mid)
-   - Band 5: 3000 Hz (high-mid)
-   - Band 6: 6000 Hz (high)
-   - Band 7: 10000 Hz (presence)
-   - Band 8: 16000 Hz (air)
+(v1.16+ layout. Pre-v1.16 devices used `[fffb~ 8]`; the server still accepts
+8-band payloads for backward compatibility, but new builds should use 9.)
 
-   To set: add `[loadmess 40 130 350 1000 3000 6000 10000 16000]` → `[fffb~ 8]` right inlet
+1. Add object: `[fffb~ 9]` (fast 9-band filter bank)
+2. Connect: `[*~ 0.5]` outlet → `[fffb~ 9]` inlet
+3. Set `fffb~` center frequencies in Inspector or via message:
+   - Band 1: 35 Hz   (sub_low)   — kick fundamentals, Villalobos subs
+   - Band 2: 85 Hz   (sub)       — 808s, sub-bass body
+   - Band 3: 175 Hz  (low)       — bass body, warmth
+   - Band 4: 350 Hz  (low_mid)   — mud zone
+   - Band 5: 700 Hz  (mid)       — vocal presence, snare body
+   - Band 6: 1400 Hz (high_mid)  — consonants, pick attack
+   - Band 7: 2800 Hz (high)      — presence, intelligibility
+   - Band 8: 5600 Hz (presence)  — cymbal definition
+   - Band 9: 12000 Hz (air)      — shimmer, sparkle
 
-4. For each of the 8 outlets of `[fffb~ 8]`:
+   To set: add `[loadmess 35. 85. 175. 350. 700. 1400. 2800. 5600. 12000.]` → `[fffb~ 9]` right inlet
+
+4. For each of the 9 outlets of `[fffb~ 9]`:
    - Add `[abs~]` (rectify to positive)
    - Add `[snapshot~ 200]` (sample at 5 Hz)
 
-5. Add `[pack f f f f f f f f]` and connect all 8 `[snapshot~]` outlets to it
+5. Add `[pack f f f f f f f f f]` and connect all 9 `[snapshot~]` outlets to it
 6. Add `[prepend /spectrum]` → connect from `[pack]`
 7. Add `[udpsend 127.0.0.1 9880]` → connect from `[prepend]`
 
@@ -131,7 +135,7 @@ We tap the audio for analysis without affecting the pass-through.
 
 1. Drop `LivePilot Analyzer` on the **master track**
 2. Play some audio
-3. In Claude Code, run: `get_master_spectrum` — should return 8 band values
+3. In Claude Code, run: `get_master_spectrum` — should return 9 band values (v1.16+) or 8 values (pre-v1.16 .amxd)
 4. Run: `get_master_rms` — should return RMS and peak
 5. After 8+ bars: `get_detected_key` — should return key and scale
 
@@ -143,7 +147,7 @@ We tap the audio for analysis without affecting the pass-through.
           │                                                  │
 plugin~ ──┤──L+R──► plugout~     (pass-through)             │
           │                                                  │
-          │──L+R──► +~ ──► *~ 0.5 ──┬──► fffb~ 8 ──► UDP   │
+          │──L+R──► +~ ──► *~ 0.5 ──┬──► fffb~ 9 ──► UDP   │
           │                          ├──► peakamp~ ──► UDP   │
           │                          ├──► average~ ──► UDP   │
           │                          └──► sigmund~ ──► JS    │

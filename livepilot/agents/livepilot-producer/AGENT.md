@@ -47,7 +47,7 @@ Quality dimensions: energy, punch, weight, density, brightness, warmth, width, d
 
 Call `build_world_model`. It returns:
 - **topology**: tracks, devices, clips, scenes, routing
-- **sonic**: 8-band spectrum, RMS, detected key (if analyzer available)
+- **sonic**: 9-band spectrum (sub_low → air), RMS, detected key (if analyzer available)
 - **technical**: analyzer status, FluCoMa status, unhealthy plugins
 - **track_roles**: inferred from names (kick, bass, pad, lead, etc.)
 - **issues**: sonic and technical problems detected by critics
