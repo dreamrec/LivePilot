@@ -1414,3 +1414,159 @@ async def splice_pack_info(ctx: Context, pack_uuid: str) -> dict:
     if pack is None:
         return {"ok": False, "error": "Pack not found or gRPC call failed"}
     return {"ok": True, "pack": pack.to_dict()}
+
+
+# ────────────────────────────────────────────────────────────────────────
+# HTTPS bridge — Describe a Sound / Variations (plugin-exclusive features).
+# These hit api.splice.com over HTTPS with the session token from gRPC.
+# Scaffolding ships today; real endpoints wire in once captured.
+# ────────────────────────────────────────────────────────────────────────
+
+
+def _build_http_bridge(ctx: Context):
+    """Construct the HTTPS bridge with the current gRPC client attached.
+
+    Returns (bridge, err_dict). On success err_dict is None.
+    """
+    from ..splice_client.http_bridge import SpliceHTTPBridge
+
+    client = None
+    try:
+        client = ctx.lifespan_context.get("splice_client")
+    except AttributeError:
+        pass
+    if client is None or not getattr(client, "connected", False):
+        return None, {
+            "ok": False,
+            "error": "Splice gRPC not connected — session token unreachable",
+        }
+    return SpliceHTTPBridge(grpc_client=client), None
+
+
+@mcp.tool()
+async def splice_describe_sound(
+    ctx: Context,
+    description: str,
+    bpm: Optional[int] = None,
+    key: Optional[str] = None,
+    limit: int = 20,
+) -> dict:
+    """Natural-language sample search — the Sounds Plugin's "Describe a Sound".
+
+    Splice's AI matches free-form descriptions like "dark ambient pad with
+    shimmer" or "tight 90s house hi-hat" to catalog samples. This is NOT
+    on the local gRPC — the bridge proxies to api.splice.com using your
+    session token.
+
+    **Status: scaffolding complete, endpoint pending real-traffic capture.**
+    Until `SPLICE_DESCRIBE_ENDPOINT` env var is set (or
+    `SPLICE_ALLOW_UNVERIFIED_ENDPOINTS=1`), this tool returns a structured
+    ENDPOINT_NOT_CONFIGURED error with actionable setup steps.
+
+    description: free-text prompt ("warm analog bass under 80bpm")
+    bpm:         optional BPM filter
+    key:         optional musical key ("Dm", "F#")
+    limit:       max results (default 20)
+    """
+    bridge, err = _build_http_bridge(ctx)
+    if err:
+        return err
+    from ..splice_client.http_bridge import SpliceHTTPError
+    if not description or not description.strip():
+        return {"ok": False, "error": "description is required"}
+    try:
+        result = await bridge.describe_sound(
+            description=description.strip(),
+            bpm=bpm, key=key, limit=int(limit),
+        )
+    except SpliceHTTPError as exc:
+        return exc.to_dict()
+    except Exception as exc:
+        return {"ok": False, "error": f"describe_sound failed: {exc}"}
+    return {"ok": True, "query": description, **(result if isinstance(result, dict) else {"raw": result})}
+
+
+@mcp.tool()
+async def splice_generate_variation(
+    ctx: Context,
+    file_hash: str,
+    target_key: Optional[str] = None,
+    target_bpm: Optional[int] = None,
+    count: int = 1,
+) -> dict:
+    """Generate AI variations of a Splice sample — the Sounds Plugin's "Variations".
+
+    Splice's AI produces unique re-keyed / re-tempo'd versions of any
+    sample. Costs additional credits per variation (on top of the base
+    license). NOT on the local gRPC — bridged via api.splice.com.
+
+    **Status: scaffolding complete, endpoint pending real-traffic capture.**
+    Until `SPLICE_VARIATION_ENDPOINT` env var is set (or
+    `SPLICE_ALLOW_UNVERIFIED_ENDPOINTS=1`), this tool returns a structured
+    ENDPOINT_NOT_CONFIGURED error with actionable setup steps.
+
+    file_hash:  sample identifier (from search results)
+    target_key: desired key (e.g. "Am")
+    target_bpm: desired tempo
+    count:      number of variations to generate (1-5)
+
+    WARNING: this WILL spend credits when the endpoint is live.
+    Consider previewing the source sample with splice_preview_sample first.
+    """
+    bridge, err = _build_http_bridge(ctx)
+    if err:
+        return err
+    from ..splice_client.http_bridge import SpliceHTTPError
+    if not file_hash or not file_hash.strip():
+        return {"ok": False, "error": "file_hash is required"}
+    if count < 1 or count > 5:
+        return {"ok": False, "error": "count must be 1-5"}
+    try:
+        result = await bridge.generate_variation(
+            file_hash=file_hash.strip(),
+            target_key=target_key,
+            target_bpm=target_bpm,
+            count=int(count),
+        )
+    except SpliceHTTPError as exc:
+        return exc.to_dict()
+    except Exception as exc:
+        return {"ok": False, "error": f"generate_variation failed: {exc}"}
+    return {"ok": True, "file_hash": file_hash, **(result if isinstance(result, dict) else {"raw": result})}
+
+
+@mcp.tool()
+async def splice_search_with_sound(
+    ctx: Context,
+    audio_path: str,
+    limit: int = 20,
+) -> dict:
+    """Reference-audio search — the Sounds Plugin's "Search with Sound".
+
+    Uploads a local audio file to Splice's AI and returns catalog samples
+    with similar character. Complements `splice_describe_sound` (text)
+    and `search_samples` (keyword).
+
+    **Status: scaffolding complete, wiring pending real-traffic capture
+    (multipart upload shape is the most uncertain part of the bridge).**
+    Until `SPLICE_SEARCH_WITH_SOUND_ENDPOINT` is set, returns a structured
+    NOT_YET_IMPLEMENTED error.
+
+    audio_path: absolute path to a local audio file (.wav, .mp3, .flac)
+    limit:      max results (default 20)
+    """
+    bridge, err = _build_http_bridge(ctx)
+    if err:
+        return err
+    from ..splice_client.http_bridge import SpliceHTTPError
+    if not audio_path or not os.path.isfile(audio_path):
+        return {"ok": False, "error": f"audio_path not found: {audio_path}"}
+    try:
+        result = await bridge.search_with_sound(
+            audio_path=audio_path, limit=int(limit),
+        )
+    except SpliceHTTPError as exc:
+        return exc.to_dict()
+    except Exception as exc:
+        return {"ok": False, "error": f"search_with_sound failed: {exc}"}
+    return {"ok": True, "audio_path": audio_path, **(result if isinstance(result, dict) else {"raw": result})}
