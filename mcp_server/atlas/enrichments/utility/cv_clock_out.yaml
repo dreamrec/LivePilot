@@ -1,0 +1,25 @@
+id: cv_clock_out
+name: CV Clock Out
+sonic_description: >
+  Sends Live's tempo as a clock signal out to modular gear. Live is the
+  master, modular follows. The more common direction in hybrid setups.
+category: cv_sync_out
+character_tags: [cv, sync, tempo, master]
+use_cases: [daw_master_modular_slave]
+genre_affinity:
+  primary: [modular, experimental, hybrid_techno]
+complexity: beginner
+introduced_in: "10.0"
+pack: CV Tools
+creator: Ableton
+class_name: PluginDevice
+requires_modular_hardware: true
+
+key_parameters:
+  - name: "Clock Rate"
+    description: "PPQN — typically 4 PPQN for Eurorack."
+  - name: "Output Channel"
+    description: "Which audio output carries the clock."
+
+learn_more:
+  official: "https://www.ableton.com/en/packs/cv-tools/"

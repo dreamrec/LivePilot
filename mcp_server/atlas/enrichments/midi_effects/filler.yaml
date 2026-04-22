@@ -1,0 +1,32 @@
+id: filler
+name: Filler
+sonic_description: >
+  MIDI drum-pattern generator (Building Max Devices). A simple algorithmic
+  drum fill generator — useful as a free alternative to Patterns (Iftah)
+  when you just need quick drum content.
+category: generator
+character_tags: [drum_generator, algorithmic, simple]
+use_cases: [drum_programming_quickstart, fill_generation]
+genre_affinity:
+  primary: [all_electronic_drums]
+complexity: beginner
+introduced_in: "11.0"
+pack: Building Max Devices
+creator: Ableton
+class_name: PluginDevice
+
+key_parameters:
+  - name: "Density"
+    description: "Pattern density — sparse to dense."
+  - name: "Drum Voices"
+    description: "Which drum pads to fill."
+  - name: "Randomize"
+    description: "Re-generate pattern with randomization."
+
+signature_techniques:
+  - name: "Quick drum sketch"
+    description: "Dial density, click generate, commit the pattern you like. Move on — don't spend time."
+    aesthetic: [all]
+
+learn_more:
+  pack: "Building Max Devices"

@@ -1,0 +1,47 @@
+id: impulse
+name: Impulse
+sonic_description: >
+  Ableton's original drum sampler — 8-pad sample player with per-pad
+  pitch, pan, volume, and simple filter/saturator/envelope. Older than
+  Drum Rack but still ships with Live; lighter CPU, simpler interface.
+  Good for quick one-shot drums when you don't need Drum Rack's full
+  chain architecture. The understated alternative when a full Drum Rack
+  is overkill.
+synthesis_type: drum_sampler
+character_tags: [drum, sample_player, lightweight, 8_pad]
+use_cases: [quick_drums, single_kit, lightweight_programming]
+genre_affinity:
+  primary: [house, techno, all_electronic_drums]
+  secondary: [all]
+complexity: beginner
+self_contained: false  # requires samples
+introduced_in: "7.0"
+pack: Core Library
+creator: Ableton
+class_name: OriginalDevice
+native: true
+
+key_parameters:
+  - name: "Per-pad sample slot (8 pads)"
+    description: "Each pad holds one sample, mapped to a MIDI note."
+  - name: "Start / Transpose / Stretch"
+    description: "Per-pad playback controls."
+  - name: "Saturator"
+    description: "Per-pad one-knob saturator."
+  - name: "Filter"
+    description: "Per-pad LP/HP filter with envelope."
+  - name: "Decay / Mute Group"
+    description: "Decay envelope; mute group for hi-hat choke patterns."
+
+signature_techniques:
+  - name: "Quick-and-dirty drum kit"
+    description: "Drag 8 samples onto the pads → play. No chain complexity. Great for sketching before moving to Drum Rack."
+    aesthetic: [all]
+  - name: "Hi-hat choke pattern"
+    description: "Put closed and open hats in the same mute group → playing the open hat kills the closed hat tail. Natural choke behavior."
+    aesthetic: [house, techno]
+
+gotchas:
+  - "Only 8 pads — for bigger kits, use Drum Rack"
+  - "No per-pad chain = no per-pad effect insert — use return sends instead"
+  - "No MPE support"

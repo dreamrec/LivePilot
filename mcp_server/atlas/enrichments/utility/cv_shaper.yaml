@@ -1,0 +1,35 @@
+id: cv_shaper
+name: CV Shaper
+sonic_description: >
+  Create flexible CV shapes inside Live, then send to modular OR use
+  internally. Draw custom envelopes/LFOs on a graphical canvas. Useful
+  WITHOUT modular hardware as a free-form envelope/LFO source for any
+  Live parameter.
+category: modulation_source
+character_tags: [cv, custom_shape, envelope, lfo]
+use_cases: [custom_envelope, bespoke_lfo, parameter_modulation]
+genre_affinity:
+  primary: [modular, experimental, deep_minimal]
+  secondary: [all]
+complexity: intermediate
+introduced_in: "10.0"
+pack: CV Tools
+creator: Ableton
+class_name: PluginDevice
+requires_modular_hardware: false  # useful internally too
+
+key_parameters:
+  - name: "Shape Canvas"
+    description: "Draw the CV curve graphically."
+  - name: "Rate"
+    description: "Cycle time — tempo-sync or free."
+  - name: "Scale / Offset"
+    description: "Output amplitude and DC offset."
+
+signature_techniques:
+  - name: "Bespoke ADSR for any parameter"
+    description: "Need a parameter envelope shape that's not on the device? Draw it in CV Shaper, route to the parameter. Unlimited curve flexibility."
+    aesthetic: [all]
+
+learn_more:
+  official: "https://www.ableton.com/en/packs/cv-tools/"

@@ -1,0 +1,36 @@
+id: snipper
+name: Snipper
+sonic_description: >
+  Audio snippet replayer with pitch modulation (Building Max Devices
+  tutorial pack). Re-plays snippets of incoming audio at modulated
+  pitches. Small tool, surprisingly aesthetic-critical for microhouse —
+  the 'replay this hat with a slightly different pitch each bar' pattern.
+category: audio_rearranger
+character_tags: [replay, pitched, micro_chop, glitch]
+use_cases: [micro_chop, pitched_replay, vocal_stutter]
+genre_affinity:
+  primary: [microhouse, deep_minimal, glitch]
+  secondary: [idm]
+complexity: intermediate
+introduced_in: "11.0"
+pack: Building Max Devices
+creator: Ableton
+class_name: PluginDevice
+
+key_parameters:
+  - name: "Snippet Length"
+    description: "Duration of the captured snippet."
+  - name: "Replay Rate"
+    description: "How often the snippet re-triggers."
+  - name: "Pitch Modulation"
+    description: "Per-replay pitch shift."
+  - name: "Randomize"
+    description: "Random variation on pitch/replay timing."
+
+signature_techniques:
+  - name: "Vocal micro-chop"
+    description: "Route vocal → Snipper → short snippet, fast replay, pitch mod → instant Akufen-adjacent micro-vocal pattern."
+    aesthetic: [microhouse]
+
+learn_more:
+  pack: "Building Max Devices"

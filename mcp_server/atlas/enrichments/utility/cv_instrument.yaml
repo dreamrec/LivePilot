@@ -1,0 +1,34 @@
+id: cv_instrument
+name: CV Instrument
+sonic_description: >
+  Sends pitch + gate CV from Live to a modular synth. Cent-accurate
+  tuning with flexible modulation routing. Turns any modular voice into
+  a MIDI-playable instrument from Live's sequencer. Requires DC-coupled
+  audio interface.
+category: cv_out
+character_tags: [cv, modular, pitch_out, gate_out]
+use_cases: [modular_voice_from_live, hybrid_rig]
+genre_affinity:
+  primary: [modular, experimental]
+  secondary: [all]
+complexity: intermediate
+introduced_in: "10.0"
+pack: CV Tools
+creator: Ableton
+class_name: PluginDevice
+requires_modular_hardware: true
+
+key_parameters:
+  - name: "Pitch Output"
+    description: "V/oct or Hz/V tuning curve."
+  - name: "Gate Output"
+    description: "Gate signal when note plays."
+  - name: "Modulation Outputs"
+    description: "Velocity, aftertouch, mod wheel as CV."
+signature_techniques:
+  - name: "Modular voice in a DAW session"
+    description: "Assign MIDI track → CV Instrument → modular oscillator → modular filter → return audio back to Live track. Modular voice on the timeline."
+    aesthetic: [experimental, modular]
+
+learn_more:
+  official: "https://www.ableton.com/en/packs/cv-tools/"

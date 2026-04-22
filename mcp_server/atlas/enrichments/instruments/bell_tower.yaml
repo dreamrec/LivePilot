@@ -1,0 +1,37 @@
+id: bell_tower
+name: Bell Tower
+sonic_description: >
+  FM bell synthesis M4L example device from the Building Max Devices pack.
+  Designed as a tutorial but produces genuinely usable bell/mallet timbres
+  via simple FM synthesis. Through Convolution Reverb = thin Arpiar bell
+  stab territory.
+synthesis_type: fm_bell
+character_tags: [bell, fm, metallic, percussive]
+use_cases: [bell_stab, pluck, atmospheric_bell]
+genre_affinity:
+  primary: [ambient, deep_minimal, arpiar]
+  secondary: [experimental, cinematic]
+complexity: beginner
+self_contained: true
+introduced_in: "11.0"
+pack: Building Max Devices
+creator: Ableton
+class_name: PluginDevice
+
+key_parameters:
+  - name: "Carrier Freq"
+    description: "Base pitch."
+  - name: "Modulator Ratio"
+    description: "Ratio of modulator to carrier — inharmonic ratios give bells, integer ratios give pluck tones."
+  - name: "Modulator Depth"
+    description: "FM index — brightness/metallic character."
+  - name: "Decay"
+    description: "Bell decay time."
+
+signature_techniques:
+  - name: "Arpiar bell through Convolution Reverb"
+    description: "Short decay, subtle modulator depth, single hit per bar, through a long cathedral IR → the thin bell stab that recurs in Arpiar tracks."
+    aesthetic: [arpiar, deep_minimal]
+
+learn_more:
+  pack: "Building Max Devices"

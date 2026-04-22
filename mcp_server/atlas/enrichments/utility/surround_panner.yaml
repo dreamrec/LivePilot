@@ -1,0 +1,40 @@
+id: surround_panner
+name: Surround Panner
+sonic_description: >
+  Multichannel spatial panner. 4/6/8-channel speaker setups, 8 presets.
+  Not Ambisonic — discrete-channel panning. Only relevant for multi-channel
+  output setups (installation, quad+ club, cinema). In stereo studio work,
+  offers minimal benefit.
+category: spatial_fx
+character_tags: [multichannel, spatial, quad, surround]
+use_cases: [installation, quad_club, cinema, multichannel_studio]
+genre_affinity:
+  primary: [ambient_installation, cinema]
+  secondary: [experimental]
+complexity: intermediate
+introduced_in: "11.0"
+pack: Surround Panner
+creator: Ableton
+class_name: PluginDevice
+requires_special_output: true  # multichannel interface
+
+key_parameters:
+  - name: "Channel Layout"
+    description: "4.0, 5.1, 7.1, 8.0 — select target format."
+  - name: "XY Pan"
+    description: "2D pan position."
+  - name: "Rotate"
+    description: "Auto-rotate the signal around the listening position."
+  - name: "Focus / Spread"
+    description: "Width of the source in the field."
+
+signature_techniques:
+  - name: "Quad-club rotating hi-hat"
+    description: "Hi-hat bus → Surround Panner in quad → auto-Rotate at slow rate → hats circle the dance floor."
+    aesthetic: [live_techno]
+
+gotchas:
+  - "Stereo monitoring shows only a downmix — impossible to audition properly without a multichannel setup"
+
+learn_more:
+  official: "https://www.ableton.com/en/packs/surround-panner/"

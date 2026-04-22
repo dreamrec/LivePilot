@@ -1,0 +1,38 @@
+id: expressive_chords
+name: Expressive Chords
+sonic_description: >
+  MIDI chord library + voicing engine. 52 chord sets across gospel, trap,
+  R&B, jazz, classical, house, post-rock. MPE-ready — per-note pitch-bend,
+  dynamics, articulation. Trigger a root note, get a full voicing; use
+  MPE to bend individual voice members.
+category: chord_library
+character_tags: [chord, voicing, library, mpe]
+use_cases: [quick_chords, voicing_variety, harmonic_sketch]
+genre_affinity:
+  primary: [gospel, trap, rnb, jazz, classical, house, post_rock]
+  secondary: [all]
+complexity: beginner
+introduced_in: "11.0"
+pack: Expressive Chords
+creator: Render Audio + Ableton + Andrew Bruce
+class_name: PluginDevice
+
+key_parameters:
+  - name: "Chord Set"
+    description: "52 sets organized by genre/feel."
+  - name: "Root Note"
+    description: "Transpose the current voicing."
+  - name: "Voicing Variation"
+    description: "Swap inversions and voicings within the selected set."
+  - name: "MPE Modulation"
+    description: "Per-note pitch/velocity from an MPE controller."
+signature_techniques:
+  - name: "Sparse post-rock for minimal house"
+    description: "Pick post-rock set → let only top 2-3 voices through (gate the others) → sparse open voicings that work as minimal chord stabs."
+    aesthetic: [deep_minimal, post_rock]
+  - name: "MPE micro-tuning drift on held chord"
+    description: "Hold a chord → MPE pitch-bend each voice independently → organic detuning drift."
+    aesthetic: [jazz, experimental]
+
+learn_more:
+  official: "https://www.ableton.com/en/packs/expressive-chords/"
