@@ -70,6 +70,21 @@ Build linear song structures on the timeline.
 
 - `set_arrangement_automation(track_index, parameter_name, points)` — write automation on the arrangement timeline. Points are `[{time, value}, ...]` pairs at absolute beat positions.
 
+**Live LOM limitation (BUG-2026-04-22 #1b):** `set_arrangement_automation` only succeeds on arrangement clips that *already* have an envelope for the target parameter (typically clips recorded interactively or duplicated from session). For programmatically-created arrangement clips (via `create_arrangement_clip` or `create_native_arrangement_clip`), the Python LOM does NOT expose a path to create new automation breakpoints — this is a Live API limitation, not a LivePilot bug. Live's docs explicitly state `Clip.automation_envelope` returns None for arrangement clips, and only `value_at_time` exists for reading.
+
+When the tool errors with "Direct envelope access is not supported for programmatically-created arrangement clips," reach for one of two patterns:
+
+1. **Session-clip + record path** (programmatic + manual record):
+   - Build the automation on a session clip via `set_clip_automation` (works fully — session clips support `create_automation_envelope`).
+   - Tell the user: arm the track, switch to arrangement view, start recording at the target position, fire the session clip, stop recording when it completes. Live records the parameter changes into the arrangement track lane.
+
+2. **Section-clip path** (no envelope, stepped values):
+   - Slice the arrangement into multiple clips at section boundaries.
+   - Set per-clip volume / parameter values per section using regular `set_track_volume` or `set_device_parameter` between clips.
+   - Trades smooth automation for discrete steps but works fully programmatically.
+
+For sweeps that absolutely need to be smooth and programmatic (filter cutoff arcs, send swells), use pattern 1 and accept that the agent has to hand off the record step to the user.
+
 ## Navigation
 
 ### Transport Position

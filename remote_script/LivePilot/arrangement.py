@@ -608,24 +608,53 @@ def set_arrangement_automation(song, params):
             "method": "direct",
         }
 
-    # No fallback — direct envelope creation is the only safe approach.
-    # Session-clip duplication can silently create overlapping clips.
+    # BUG-2026-04-22#1b: This is a LIVE API LIMITATION, not a LivePilot bug.
     #
-    # Known limitation: clips created via create_arrangement_clip
-    # (duplicate_clip_to_arrangement) often cannot have envelopes
-    # created programmatically. Workaround: record automation by
-    # arming the track and playing back with parameter changes,
-    # or use session-clip automation (set_clip_automation) and then
-    # record the session performance to arrangement.
+    # Per Ableton's Python LOM documentation:
+    #   "Clip.automation_envelope returns None for Arrangement clips
+    #    and parameters from a different track."
+    #
+    # The Python LOM exposes value_at_time() for READING existing
+    # arrangement automation, but does NOT expose a method to CREATE
+    # new automation breakpoints programmatically in the arrangement
+    # view. Automation in arrangement view lives on the track's
+    # automation lane, which is only writable via the GUI or by
+    # recording.
+    #
+    # The two viable workarounds:
+    #
+    # 1. session-clip path (programmatic, but requires manual record):
+    #    a. Use set_clip_automation on a session clip to write the points
+    #    b. Arm the track for recording
+    #    c. Switch to arrangement view and start recording at the target
+    #       position
+    #    d. Fire the session clip — Live records the parameter changes
+    #       into the arrangement automation lane
+    #    e. Stop recording when the session clip completes
+    #
+    # 2. manual draw path (most reliable): the user draws the envelope
+    #    in arrangement view by hand. No code can replace this for now.
+    #
+    # We surface this clearly rather than silently failing or attempting
+    # an unreliable workaround that could leave the session in a half-
+    # configured state.
     raise RuntimeError(
         "Cannot create automation envelope for parameter '%s' on this "
-        "arrangement clip. Direct envelope access is not supported for "
-        "programmatically-created arrangement clips (known Live API limitation). "
-        "Workarounds: "
-        "(1) use set_clip_automation on a session clip instead, then fire "
-        "the scene and record to arrangement; "
-        "(2) use arrangement-level volume/pan fades by creating separate "
-        "clips at different volumes for each section."
+        "arrangement clip. This is a Live LOM limitation, not a "
+        "LivePilot bug: per Ableton's Python API docs, "
+        "Clip.automation_envelope returns None for arrangement clips, "
+        "and the LOM does not expose a method to CREATE new automation "
+        "breakpoints in arrangement view (only value_at_time for "
+        "READING existing automation). "
+        "Two workarounds: "
+        "(1) Session-clip path — call set_clip_automation on a session "
+        "clip with the same points, then arm the track, switch to "
+        "arrangement view, start arrangement record, fire the session "
+        "clip, stop record when it finishes. Live records the parameter "
+        "changes into the arrangement track lane. "
+        "(2) Section-clip path — slice the arrangement into multiple "
+        "clips and set per-clip volume/parameter values per section "
+        "(no envelope, just stepped values per region)."
         % parameter.name
     )
 
