@@ -91,7 +91,7 @@ def test_b5_missing_file_silently_uses_defaults():
     restore = _isolated_env()
     try:
         cfg = SpliceHTTPConfig.from_env(config_path="/nonexistent/splice.json")
-        assert cfg.base_url == "https://api.splice.com"  # default preserved
+        assert cfg.base_url == "https://surfaces-graphql.splice.com"  # captured v1.17 default
         assert not cfg.is_user_configured
     finally:
         restore()
@@ -106,7 +106,7 @@ def test_b5_corrupt_file_falls_back_to_defaults():
             path = f.name
         try:
             cfg = SpliceHTTPConfig.from_env(config_path=path)
-            assert cfg.base_url == "https://api.splice.com"
+            assert cfg.base_url == "https://surfaces-graphql.splice.com"
             assert not cfg.is_user_configured
         finally:
             os.unlink(path)
@@ -124,7 +124,7 @@ def test_b5_non_object_json_falls_back():
             path = f.name
         try:
             cfg = SpliceHTTPConfig.from_env(config_path=path)
-            assert cfg.base_url == "https://api.splice.com"
+            assert cfg.base_url == "https://surfaces-graphql.splice.com"
             assert not cfg.is_user_configured
         finally:
             os.unlink(path)
