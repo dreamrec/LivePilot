@@ -6,7 +6,7 @@ This is a reference for creative sound design thinking, not a recipe book. These
 
 In minimal and experimental electronic music, sound design and composition are the same thing. A filter sweep IS the melody. A reverb tail IS the harmony. Modulation IS the arrangement. The producer's job is not to write notes — it's to sculpt evolving textures.
 
-**Villalobos principle:** A single sound source, properly modulated, IS a complete piece. The trick is making one thing do the work of ten.
+**Minimal-techno principle:** A single sound source, properly modulated, IS a complete piece. The trick is making one thing do the work of ten.
 
 **Basic Channel principle:** Space is an instrument. Delay and reverb are not effects — they are the composition itself.
 
@@ -52,9 +52,9 @@ Sidechain compression is not just for the kick-bass pump. It's a modulation sour
 
 **Multiband sidechain:** Only duck the low frequencies of a pad from the kick. The high frequencies stay constant — shimmer remains while the sub clears for the kick. Use Multiband Dynamics or an EQ before the compressor.
 
-### 4. Textural Layering (Villalobos Method)
+### 4. Textural Layering (Micro-Fragment Method)
 
-Villalobos builds textures by layering tiny, filtered, processed fragments — each one barely audible alone, together they create a living fabric.
+Minimal-techno producers build textures by layering tiny, filtered, processed fragments — each one barely audible alone, together they create a living fabric.
 
 **Grain technique:** Take a single percussion hit. Duplicate it 3-4 times. Process each copy differently — one through bit reduction, one through heavy reverb, one through a bandpass filter, one pitch-shifted. Pan them across the stereo field. Mix each at 15-25% of the original. The result: one "hit" that has depth, width, and organic irregularity.
 

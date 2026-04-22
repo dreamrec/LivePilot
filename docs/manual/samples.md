@@ -14,7 +14,7 @@ LivePilot searches three sample sources simultaneously, scores every result with
 
 All three are searched in parallel. Results are merged and ranked.
 
-### Splice integration (plan-aware, v1.15.0-beta)
+### Splice integration (plan-aware, v1.16.0)
 
 LivePilot talks to Splice through **two** paths:
 

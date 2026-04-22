@@ -33,7 +33,7 @@ Wavetable is Live's most versatile synth. Two oscillators scan through wavetable
 
 ### Creative Applications
 
-**Evolving dub pad (Villalobos style):**
+**Evolving dub pad (minimal-techno style):**
 - Osc 1: "Basic Shapes" wavetable, Position 25%, Effect 1 = Classic at 15%
 - Osc 2: "Vintage" wavetable, Position 60%, Effect 1 = FM at 8%
 - Filter 1: Lowpass, Freq 35-45%, Res 15-25%, Circuit = SMP

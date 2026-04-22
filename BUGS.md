@@ -1581,7 +1581,7 @@ This is what `create_preview_set` SHOULD be producing. The shared variant-builde
 
 ---
 
-## F. 2026-04-18 Villalobos-groove creative session
+## F. 2026-04-18 minimal-groove creative session
 
 Session context: deep surreal groove at 122 BPM in F# minor, 7 tracks
 (DRUMS, SUB, STAB, PERC, TEXTURE, GHOST, HOOK). User caught several

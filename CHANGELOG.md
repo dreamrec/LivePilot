@@ -1,5 +1,138 @@
 # Changelog
 
+## 1.16.0 — Minimal-techno session bug batch + Splice plan model (April 22 2026)
+
+Hardens the 1.15.0 beta into a full release. Resolves 18 of the 19 bugs
+catalogued in `docs/2026-04-22-bugs-discovered.md` during an end-to-end
+minimal-techno production session, ships a plan-aware Splice download
+model, adds drum-rack pad-by-pad construction, and lands clip-length +
+note-range invariants so programmatic workflows stop corrupting
+arrangement timing.
+
+**Tool count**: 403 → 421 (+18).
+**Domain count**: unchanged at 52.
+**Tests**: 49 new contract tests across five helper modules. No regressions.
+
+### Added
+
+**Drum Rack pad-by-pad construction (BUG #1)**
+- `add_drum_rack_pad(track_index, pad_note, file_path)` — atomic tool
+  that does the full drum-rack build per pad: insert_rack_chain →
+  set_drum_chain_note → insert empty Simpler → load sample via native
+  Live 12.4 replace_sample with nested addressing. Returns
+  `{ok, chain_index, pad_note, nested_device_index}`. Requires Live 12.4+.
+- `replace_simpler_sample` and `load_sample_to_simpler` now accept
+  `chain_index` + `nested_device_index` for deep addressing inside
+  drum-rack chains.
+- Auto-increment of `in_note` on `insert_rack_chain` for drum racks
+  (BUG #13) — no more "all new chains pile up on note 36 (Multi)".
+
+**Live-session device-alive verification (BUG #19)**
+- `verify_device_alive(track_index, device_index)` — static check
+  returning `{alive, reason, recommendation}` based on parameter_count
+  and health_flags.
+- Optional `fire_test_note=True` path for definitive answer: captures
+  pre-hit RMS, fires a scratch MIDI clip, samples the meter over the
+  duration, captures post-hit RMS. Scratch clip auto-cleaned.
+- Remote Script handlers: `fire_test_note`, `cleanup_test_note`.
+
+**Splice plan-aware download gating (2026-04-14 carry-over)**
+- `SpliceGRPCClient.decide_download` with three branches: free samples
+  bypass, Ableton Live plan uses daily quota, credit-metered plans use
+  credit floor. Fixes the bug where the Ableton Live plan (100/day
+  unmetered) was blocked by the credit-floor check.
+- `DailyQuotaTracker` persisting `~/.livepilot/splice_quota.json` keyed
+  by UTC date. 100/day default, 90 warn threshold.
+- `classify_plan` reads feature flags (ableton_unmetered,
+  ableton_live_plan, unmetered_downloads, creator_plus) with precedence
+  locked down by regression-trap tests.
+
+**Splice HTTPS bridge scaffolding**
+- `mcp_server/splice_client/http_bridge.py` — auth + endpoint +
+  retry/timeout plumbing for the plugin-exclusive Describe-a-Sound and
+  Variations features. Tools return a clear "bridge not yet wired"
+  error until the real endpoint shapes are captured via mitmproxy.
+
+**Extended analyzer perception**
+- `analyze_loudness_live` (BUG #8) — LUFS + true-peak on the live
+  master without requiring a file render.
+- `get_master_spectrum` now accepts `window_ms` (BUG #6) — stable
+  averaged reads vs the previous single-sample jitter.
+
+**Clip length + note-range invariants (BUG #1c)**
+- `create_clip(length=N)` now forces `loop_end = N` and `end_marker = N`
+  after creation. Response exposes both fields.
+- `add_notes` auto-extends `loop_end` if any incoming note's
+  `start_time + duration` exceeds it. Response reports
+  `loop_end_extended_to` when extension fired.
+
+**Smart Simpler defaults (BUG #17 + #18)**
+- `load_browser_item(role=...)` applies post-load Simpler defaults:
+  - `drum`:    Snap=0, Vol=0dB, Trigger Mode=0 (Trigger), root=C1 (36)
+  - `melodic`: Snap=1, Vol=0dB, Trigger Mode=1 (Gate), root=C3 (60)
+  - `texture`: Snap=0, Vol=-6dB, Trigger Mode=1 (Gate), root=C3 (60)
+
+**Miscellaneous**
+- `get_track_info(-1000)` returns master track info (BUG #11).
+- `scan_full_library(max_per_category=5000)` — removed the hardcoded
+  1000 cap that silently truncated large categories (BUG #12).
+- `batch_set_parameters` accepts `{index: N, value}` and `{name: "X", value}`
+  shapes — the keys `get_device_parameters` actually returns (BUG #3).
+- `search_browser` / `search_samples` accept intuitive parameter aliases
+  (BUG #4).
+- `get_browser_items` paginates when output would exceed the token cap
+  (BUG #5).
+- `get_track_meters` returns consistent peak/L/R triple on a single time
+  window (BUG #7).
+- `set_song_scale` accepts string root notes ("C", "F#", "Bb") and
+  handles Live 12.4.0's moved `scale_names` attribute via a tolerant
+  resolver with a built-in fallback scale list (BUG #2).
+
+### Documentation
+
+- `docs/load_browser_item-uri-grammar.md` (BUG #14) — the three URI
+  forms, failure modes, discovery recipe, top-level folder map. Moved
+  under `livepilot/skills/livepilot-devices/references/`.
+- `livepilot-devices` SKILL — new "Custom Drum Rack Construction" and
+  "Parameter Name Quirks" sections (BUG #10, #16).
+- `livepilot-arrangement` SKILL — documents the Live LOM limitation
+  behind BUG #1b (programmatic arrangement automation) with two
+  workaround patterns (session-clip + record, or stepped section
+  clips).
+- `docs/M4L_BRIDGE.md` — drift fixes: bridge command count 28 → 30,
+  analyzer MCP tool count 20 → 33, Max 8 → Max 9 reference, new
+  Phase 3 section documenting 8 previously undocumented bridge
+  commands.
+
+### Fixed
+
+- `_live_caps` no longer caches the 12.0.0 fallback when
+  `get_session_info` returns no live_version — previously pinned the
+  entire session to the oldest capability tier.
+
+### Changed
+
+- `insert_rack_chain` on drum racks now auto-increments `in_note`
+  (BUG #13). Pass `auto_pad_note=false` to keep Live's default
+  collide-on-36 behavior.
+
+### Deferred
+
+- **BUG #15** — adding a sub_low (30-60 Hz) spectrum band requires a
+  Max 9 re-freeze of `LivePilot_Analyzer.amxd`. Deferred to the next
+  .amxd rebuild cycle. `get_mel_spectrum` provides finer-grained
+  perceptual bands as a workaround.
+- **BUG #1b** — programmatic creation of arrangement automation
+  breakpoints. Live LOM limitation (per Ableton docs,
+  `Clip.automation_envelope` returns None for arrangement clips);
+  documented workaround patterns instead of a synthetic fix.
+
+### Platform
+
+- LivePilot_Analyzer.amxd ping version bytes patched 1.15.0 → 1.16.0
+  (in-place binary patch — source bumps don't auto-refresh the frozen
+  JS, lesson from two prior releases).
+
 ## 1.15.0-beta — Live 12.4 replace_sample native (April 21 2026)
 
 First Live 12.4 beta support release. Adds a native fast path for
@@ -392,7 +525,7 @@ every bug now has a named regression guard in the test suite.
 ## 1.12.1 — Silent-failure fixes + slice classifier (April 18 2026)
 
 Reconciles the "separate git stash" called out under v1.12.0's Known
-limitations — the 2026-04-18 Villalobos-groove session surfaced four
+limitations — the 2026-04-18 minimal-groove session surfaced four
 silent-failure bugs and the need for a drum-slice spectral classifier.
 
 **+1 tool (397 → 398): `classify_simpler_slices`.** +43 regression
@@ -428,7 +561,7 @@ guards (pure-Python, run without a live Ableton).
   FFT-based spectral analysis on a Simpler's slice boundaries, returns
   each slice labeled as KICK / SNARE / HAT / ghost plus feature
   breakdown (peak, rms, band %). Validated thresholds from the
-  2026-04-18 Villalobos-groove session on "Break Ghosts 90 bpm":
+  2026-04-18 minimal-groove session on "Break Ghosts 90 bpm":
     - KICK: sub+low ≥ 45%, high < 40%
     - HAT: high ≥ 70% AND mid < 25%
     - SNARE: mid ≥ 25% AND high ≥ 40% AND peak ≥ 0.6
@@ -445,7 +578,7 @@ guards (pure-Python, run without a live Ableton).
 
 ### Documented bug entries
 
-- `BUGS.md` gains a new **"F. 2026-04-18 Villalobos-groove creative
+- `BUGS.md` gains a new **"F. 2026-04-18 minimal-groove creative
   session"** section: F1-F4 fixed here, F5-F7 scoped to v1.13+, F8
   wontfix (workaround documented).
 

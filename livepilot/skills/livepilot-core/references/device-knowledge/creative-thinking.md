@@ -177,7 +177,7 @@ Over minutes, not milliseconds:
 - **Bar 96:** The sound reaches its peak — filter fully open, reverb reduced, presence maximized
 - **Bar 128:** The sound begins to recede — filter closing, reverb increasing, drifting away
 - **Bar 160:** The sound is a ghost — filtered, distant, barely there
-- This is one sound telling a complete emotional story over 8 minutes. Villalobos does this with EVERY element.
+- This is one sound telling a complete emotional story over 8 minutes. Deep minimal techno does this with EVERY element.
 
 ---
 
@@ -193,7 +193,7 @@ Adding more effects doesn't make a sound more interesting — it makes it more p
 Making things louder doesn't make them better. If a sound doesn't work at -12dB, it won't work at 0dB — it'll just be louder AND bad. Design the sound at low volume. If it's compelling quiet, it'll be devastating loud.
 
 ### The Complexity Trap
-The most powerful sounds are often the simplest — a sine wave with the right envelope and the right context can be more moving than a 12-layer pad. SOPHIE's most iconic sounds were built from single oscillators with extreme processing. Villalobos builds 9-minute journeys from 4-5 elements.
+The most powerful sounds are often the simplest — a sine wave with the right envelope and the right context can be more moving than a 12-layer pad. SOPHIE's most iconic sounds were built from single oscillators with extreme processing. Long-form minimal techno builds 9-minute journeys from 4-5 elements.
 
 ### The Symmetry Trap
 Perfect symmetry sounds artificial. Human music is asymmetric:

@@ -24,7 +24,7 @@
 
 ---
 
-## Minimal Techno (Villalobos, Perlon, Kompakt)
+## Minimal Techno (Perlon, Kompakt, Raum·Musik)
 
 ### Micro-Groove Percussion
 1. **Operator:** Algorithm 1, Osc A Sine 8bit, Osc B Sine Coarse 5 Fine 70

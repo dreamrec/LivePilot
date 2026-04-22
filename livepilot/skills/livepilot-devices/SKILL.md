@@ -96,7 +96,7 @@ After loading any Drum Rack preset, verify with `get_rack_chains` that chains ex
 
 ## Custom Drum Rack Construction (build a kit from one-shots)
 
-When the user asks for a custom kit ("build me a Villalobos kit", "make a Dilla-style boom-bap kit from these samples"), use `add_drum_rack_pad` — NOT repeated `load_browser_item` calls.
+When the user asks for a custom kit ("build me a minimal-techno kit", "make a Dilla-style boom-bap kit from these samples"), use `add_drum_rack_pad` — NOT repeated `load_browser_item` calls.
 
 **Why this matters (BUG-2026-04-22 #1):** Calling `load_browser_item` repeatedly on a track that contains a Drum Rack does NOT add new pads. The first call creates a chain at note 36; every subsequent call REPLACES the existing chain instead of appending to the next pad. After 7 sequential drops you end up with exactly 1 chain — only the last sample. This is a Live API limitation, not something to work around with retry loops.
 

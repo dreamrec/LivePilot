@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog
 
-415 tools across 52 domains.
+421 tools across 52 domains.
 
 ---
 
@@ -74,7 +74,7 @@
 | `transpose_notes` | Shift pitch by semitones |
 | `quantize_clip` | Quantize to grid |
 
-## Devices (15)
+## Devices (17)
 
 | Tool | Description |
 |------|-------------|
@@ -90,6 +90,8 @@
 | `insert_device` | Insert native device by name — 10x faster (12.3+), supports chain insertion |
 | `insert_rack_chain` | Add chain to Instrument/Audio Effect/Drum Rack (12.3+) |
 | `set_drum_chain_note` | Assign MIDI note to Drum Rack chain (12.3+) |
+| `rename_chain` | Rename a chain inside any Rack device (pad labels, Instrument Rack chains, Audio Effect Rack chains) |
+| `verify_device_alive` | Static device-health check (class_name + parameter_count heuristics — no audio needed) |
 | `get_rack_chains` | Get chains in a rack |
 | `set_simpler_playback_mode` | Classic/1-shot/slice |
 | `set_chain_volume` | Set chain volume in rack |
@@ -189,7 +191,7 @@
 | `memory_favorite` | Toggle favorite |
 | `memory_replay` | Replay saved technique |
 
-## Analyzer (34) `[M4L]`
+## Analyzer (35) `[M4L]`
 
 | Tool | Description |
 |------|-------------|
@@ -223,6 +225,7 @@
 | `get_novelty` | Spectral novelty for section boundaries |
 | `get_momentary_loudness` | EBU R128 momentary LUFS + peak |
 | `analyze_loudness_live` | Integrate momentary LUFS over a time window — live-session alternative to file-based `analyze_loudness` (BUG-2026-04-22#8 fix) |
+| `verify_device_health` | Fire a test MIDI note + sample track meter to prove a device produces audio (BUG-2026-04-22#19 fix; complements static verify_device_alive) |
 | `check_flucoma` | Verify FluCoMa installation |
 | `capture_audio` | Record master output to WAV |
 | `capture_stop` | Cancel in-progress capture |
@@ -582,7 +585,7 @@
 
 ---
 
-## Sample Engine (20)
+## Sample Engine (23)
 
 | Tool | Description |
 |------|-------------|
@@ -606,6 +609,9 @@
 | `splice_preset_info` | Metadata for a single preset (uuid, file_hash, or plugin_name lookup) |
 | `splice_download_preset` | Download a purchased preset (credit-gated) |
 | `splice_pack_info` | Full metadata for a Splice sample pack by UUID |
+| `splice_describe_sound` | Natural-language catalog search ("dark ambient pad with shimmer") — HTTPS bridge, endpoint pending real-traffic capture |
+| `splice_generate_variation` | AI-generate re-keyed / re-tempo'd versions of a sample — HTTPS bridge, endpoint pending capture (WILL spend credits when live) |
+| `splice_search_with_sound` | Reference-audio search — upload a file and find similar catalog samples (scaffolding; multipart upload wiring pending) |
 
 ---
 

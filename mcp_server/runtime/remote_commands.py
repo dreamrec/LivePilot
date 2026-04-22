@@ -48,6 +48,9 @@ REMOTE_COMMANDS: frozenset[str] = frozenset({
     "insert_device",           # 12.3+ native device insertion
     "insert_rack_chain",       # 12.3+ rack chain insertion
     "set_drum_chain_note",     # 12.3+ drum chain note assignment
+    "set_chain_name",          # Rack chain rename (any rack type)
+    "fire_test_note",          # Temp-clip MIDI trigger for verify_device_health
+    "cleanup_test_note",       # Scratch-clip teardown paired with fire_test_note
     # rack variations + macro CRUD (Live 11+)
     "get_rack_variations", "store_rack_variation",
     "recall_rack_variation", "delete_rack_variation",

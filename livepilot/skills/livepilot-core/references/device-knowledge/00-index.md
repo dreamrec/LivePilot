@@ -4,7 +4,7 @@ Comprehensive reference for every built-in instrument and effect in Ableton Live
 
 ## How to Use This Corpus
 
-This is not a manual. It's a **creative knowledge base**. When the user asks to "design a sound" or "make it more interesting," consult these references to find specific parameters and techniques that achieve the goal. Don't just reach for obvious parameters — think about how SOPHIE, Arca, Villalobos, Aphex Twin, or Basic Channel would approach the same problem.
+This is not a manual. It's a **creative knowledge base**. When the user asks to "design a sound" or "make it more interesting," consult these references to find specific parameters and techniques that achieve the goal. Don't just reach for obvious parameters — think about how SOPHIE, Arca, Aphex Twin, minimal-techno producers, or Basic Channel would approach the same problem.
 
 ## Files
 

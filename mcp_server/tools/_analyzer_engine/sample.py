@@ -47,12 +47,13 @@ _DRUM_ROOT_MAP = {
     "closed_hh": 42,
     "hihat_closed": 42,
     "hh_closed": 42,
+    "hihat_open": 46,  # common naming pattern: prefix-then-modifier
+    "hh_open": 46,
+    "open_hat": 46,    # A#1
+    "open_hh": 46,
     "hi_hat": 42,
     "hihat": 42,
     "hat_closed": 42,
-    "open_hat": 46,    # A#1
-    "open_hh": 46,
-    "hh_open": 46,
     "hat": 42,         # default closed
     "hh": 42,
     "ride": 51,        # D#2

@@ -26,7 +26,7 @@ Slow start, accelerating change. Mimics how tension works in music — the last 
 Slow start, fast middle, slow end. The most natural shape for transitions. Use for:
 - **Crossfades between elements** — one fades out as another fades in
 - **Filter sweeps that "settle"** — opens quickly in the middle, then gently arrives at target
-- **The Villalobos transition:** S-curve on multiple parameters simultaneously over 32 bars
+- **The long minimal-techno transition:** S-curve on multiple parameters simultaneously over 32 bars
 
 ### Perlin Noise
 Smooth, organic randomness. Each value is related to the previous one (no sudden jumps) but the path is unpredictable. Use for:
@@ -131,7 +131,7 @@ Simultaneously snap:
 ### The "Human Hand" Technique
 Record automation live (via mouse or MIDI controller) instead of drawing it. The tiny timing imperfections and non-mathematical curves create a fundamentally different feel than drawn automation. Then edit the recording — smooth the extreme mistakes but keep the organic character.
 
-This is how Villalobos works live: filter sweeps are performed, not drawn. The audience feels the human gesture even when they can't see the performer.
+This is how performer-driven techno works live: filter sweeps are performed, not drawn. The audience feels the human gesture even when they can't see the performer.
 
 ---
 
@@ -170,8 +170,8 @@ Different parts of a track need different automation density:
 
 ## Part 5: Learning from the Masters
 
-### Villalobos: Filter as Melody
-Ricardo Villalobos automates a single lowpass filter on a pad for 8+ minutes. The filter IS the melody — it opens to reveal harmonics, closes to create tension, breathes with the groove. He never draws automation — he performs it live, which gives each performance unique character. The filter rarely moves by more than 5-10% at a time, but over 8 minutes it covers the full range.
+### Long-Form Minimal Techno: Filter as Melody
+A hallmark of deep minimal techno is automating a single lowpass filter on a pad for 8+ minutes. The filter IS the melody — it opens to reveal harmonics, closes to create tension, breathes with the groove. The automation is performed live, giving each performance unique character. The filter rarely moves by more than 5-10% at a time, but over 8 minutes it covers the full range.
 
 ### Basic Channel: Space as Composition
 Mark Ernestus and Moritz von Oswald automate delay send levels, delay feedback, and reverb sends as their primary compositional tool. A chord stab enters the delay at 70% feedback — the echoes build up, creating a harmonic cloud. Then the feedback drops to 40% — the cloud thins and the next stab enters. The delay IS the arrangement.
