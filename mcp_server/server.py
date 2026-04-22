@@ -378,11 +378,21 @@ def _get_all_tools():
             "_local_provider._tools",
             lambda: list(mcp._local_provider._tools.values()),
         ),
-        # Public-API future path (what we're asking for in the upstream FR);
-        # harmless to probe now so that once it ships we can lift the ceiling
-        # without touching this function again.
-        ("list_tools", lambda: list(mcp.list_tools())),
+        # NB: mcp.list_tools() IS the public API, but it's a coroutine —
+        # can't be iterated in a sync context. We skip it here and rely on
+        # the internal probes. When FastMCP exposes a sync view we'll add
+        # it back. (Earlier form tried `list(mcp.list_tools())` which
+        # raised `RuntimeWarning: coroutine was never awaited` at every
+        # module import — removed 2026-04-22.)
     ]
+    # Observation 2026-04-22: some FastMCP 3.x builds keep BOTH the legacy
+    # `_tool_manager._tools` dict AND the newer `_local_provider._components`
+    # registry populated at the same time — but the legacy one lags the
+    # newer one (385 vs 422 during a recent startup). Returning the FIRST
+    # non-empty probe accidentally picked the stale view. Instead, collect
+    # every working probe and return the LARGEST view (the registry with
+    # the most tools is the authoritative one).
+    best: list = []
     for label, fn in probes:
         try:
             tools = fn()
@@ -390,8 +400,10 @@ def _get_all_tools():
             continue
         except Exception:  # noqa: BLE001 — any error from an internal probe means "skip"
             continue
-        if tools:
-            return tools
+        if tools and len(tools) > len(best):
+            best = tools
+    if best:
+        return best
 
     # All probes empty. Surface fastmcp version + attempted paths so the
     # breakage is diagnosable without re-reading the code.

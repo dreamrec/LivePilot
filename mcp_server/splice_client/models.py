@@ -70,10 +70,16 @@ def classify_plan(
     sounds_status: str,
     sounds_plan: int,
     features: Optional[dict[str, bool]] = None,
+    override: Optional[str] = None,
 ) -> PlanKind:
     """Classify the user's Splice plan from the ValidateLogin response.
 
     Priority order (most authoritative first):
+      0. Manual override from ~/.livepilot/splice.json → `plan_kind_override`.
+         Lets users who KNOW their plan bypass the safe-default classifier
+         when Splice's gRPC data is ambiguous (e.g. plan_id we don't
+         recognize + empty `features` + generic "subscribed" status —
+         observed 2026-04-22 with sounds_plan_id=6).
       1. Feature flags — if `ableton_unmetered` etc. is set, trust it.
       2. Non-zero numeric plan IDs we recognize.
       3. Free-form status string heuristics — catches "subscribed",
@@ -83,6 +89,12 @@ def classify_plan(
          free — it's just a plan we don't have a numeric ID for yet.)
       5. Fallback: UNKNOWN so callers keep the safe credit-floor default.
     """
+    if override:
+        override_norm = override.strip().lower()
+        for member in PlanKind:
+            if member.value == override_norm:
+                return member
+
     features = features or {}
 
     # Step 1: feature flags are authoritative

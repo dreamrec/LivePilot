@@ -167,3 +167,147 @@ def test_bug_pack_info_surfaces_real_error():
         "splice_pack_info must forward err_msg from client.get_pack_info "
         "so callers can diagnose the real failure cause."
     )
+
+
+def test_bug_pack_info_uses_listsamplepacks_rpc():
+    """SamplePackInfo RPC doesn't exist on the App service — only
+    ListSamplePacks does. The client must paginate ListSamplePacks
+    and filter client-side. (Discovered live 2026-04-22 when the
+    first pack_info rewrite tried `self.stub.SamplePackInfo(...)` and
+    got AttributeError: 'AppStub' object has no attribute 'SamplePackInfo'.)"""
+    import inspect
+    from mcp_server.splice_client.client import SpliceGRPCClient
+    source = inspect.getsource(SpliceGRPCClient.get_pack_info)
+    assert "ListSamplePacks" in source, (
+        "get_pack_info must use ListSamplePacks + client-side match — "
+        "SamplePackInfo RPC is not exposed by the Splice App service."
+    )
+    # Must not CALL SamplePackInfo (docstring may still mention it
+    # explanatorily). Check for the actual invocation pattern.
+    assert "stub.SamplePackInfo" not in source, (
+        "Do not call stub.SamplePackInfo — that RPC doesn't exist on "
+        "the Splice App service. Use ListSamplePacks instead."
+    )
+    assert "SamplePackInfoRequest(" not in source, (
+        "Do not construct SamplePackInfoRequest — no RPC binds it."
+    )
+
+
+# ── Observation 1: plan_kind_override via config ──────────────────────
+
+
+def test_plan_kind_override_bypasses_classifier():
+    """Users who know their actual Splice plan can pin plan_kind via
+    ~/.livepilot/splice.json. Override ignores the gRPC data entirely."""
+    from mcp_server.splice_client.models import PlanKind, classify_plan
+
+    # With no override, generic "subscribed" + unknown plan_id → SOUNDS_PLUS
+    without = classify_plan(sounds_status="subscribed", sounds_plan=6, features={})
+    assert without == PlanKind.SOUNDS_PLUS
+
+    # With override, the classifier returns the pinned value
+    with_override = classify_plan(
+        sounds_status="subscribed",
+        sounds_plan=6,
+        features={},
+        override="ableton_live",
+    )
+    assert with_override == PlanKind.ABLETON_LIVE
+
+
+def test_plan_kind_override_rejects_unknown_values():
+    """An override string that doesn't match any PlanKind is ignored —
+    fallthrough to normal classification."""
+    from mcp_server.splice_client.models import PlanKind, classify_plan
+    result = classify_plan(
+        sounds_status="subscribed",
+        sounds_plan=6,
+        features={},
+        override="pro_max_ultra",  # not a real PlanKind
+    )
+    # Falls through to the normal path → SOUNDS_PLUS
+    assert result == PlanKind.SOUNDS_PLUS
+
+
+def test_plan_kind_override_is_case_insensitive():
+    """Users shouldn't have to match exact case."""
+    from mcp_server.splice_client.models import PlanKind, classify_plan
+    result = classify_plan(
+        sounds_status="",
+        sounds_plan=0,
+        features={},
+        override="ABLETON_LIVE",  # uppercase
+    )
+    assert result == PlanKind.ABLETON_LIVE
+
+
+def test_read_plan_kind_override_handles_missing_file():
+    """Silent fallback to None when ~/.livepilot/splice.json is absent
+    or the key isn't in the file."""
+    from mcp_server.splice_client.client import _read_plan_kind_override
+    import os, tempfile, json
+    # Point HOME at an empty dir — no splice.json inside
+    import unittest.mock as mock
+    with tempfile.TemporaryDirectory() as tmp:
+        with mock.patch.dict(os.environ, {"HOME": tmp}):
+            assert _read_plan_kind_override() is None
+
+
+def test_read_plan_kind_override_handles_corrupt_json():
+    """Corrupt JSON → None, no crash."""
+    from mcp_server.splice_client.client import _read_plan_kind_override
+    import os, tempfile
+    import unittest.mock as mock
+    with tempfile.TemporaryDirectory() as tmp:
+        livepilot_dir = os.path.join(tmp, ".livepilot")
+        os.makedirs(livepilot_dir, exist_ok=True)
+        with open(os.path.join(livepilot_dir, "splice.json"), "w") as f:
+            f.write("{not valid json")
+        with mock.patch.dict(os.environ, {"HOME": tmp}):
+            assert _read_plan_kind_override() is None
+
+
+# ── Observation 2: startup self-test uses max view, not first ─────────
+
+
+def test_get_all_tools_returns_largest_probe_result():
+    """The self-test used to take the first non-empty probe, which could
+    pick up a stale `_tool_manager._tools` view lagging behind
+    `_local_provider._components`. Now takes the MAX across probes."""
+    import inspect
+    from mcp_server import server
+    source = inspect.getsource(server._get_all_tools)
+    assert "len(tools) > len(best)" in source, (
+        "_get_all_tools must compare probe sizes and return the largest "
+        "registry view. Taking the first non-empty probe can pick a "
+        "stale internal dict that lags the authoritative registry."
+    )
+
+
+def test_get_all_tools_no_unawaited_coroutine_probe():
+    """Removed the `list_tools` probe that raised RuntimeWarning every
+    import — it wrapped an async method in list() without awaiting.
+
+    Source check only — we can't `importlib.reload(server)` as a runtime
+    proof because that unregisters every `@mcp.tool()` decorator and
+    breaks every downstream tool-count test in the suite.
+    """
+    import inspect
+    from mcp_server import server
+    source = inspect.getsource(server._get_all_tools)
+    # The probe was registered as a tuple of (label, lambda). Check for
+    # the tuple form that represents an active probe.
+    assert '("list_tools", lambda' not in source, (
+        "The ('list_tools', lambda: list(mcp.list_tools())) probe wraps "
+        "a coroutine in list() without awaiting — raises RuntimeWarning "
+        "on every server import. Removed 2026-04-22."
+    )
+    # Belt-and-suspenders: no un-awaited coroutine call pattern in source.
+    assert "list(mcp.list_tools())" not in [
+        line.strip().lstrip("#").strip()
+        for line in source.splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    ], (
+        "Source contains `list(mcp.list_tools())` on a non-comment line — "
+        "that's the broken pattern. Should only appear inside comments."
+    )

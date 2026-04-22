@@ -792,11 +792,15 @@ async def get_splice_credits(ctx: Context) -> dict:
         gating = "credit_floor"
         can_download = remaining > CREDIT_HARD_FLOOR
 
+    from ..splice_client.client import _read_plan_kind_override
+    plan_override_active = _read_plan_kind_override()
+
     return {
         "connected": True,
         "username": info.username,
         "plan_raw": info.plan,
         "plan_kind": plan.value,
+        "plan_kind_override": plan_override_active,
         "sounds_plan_id": info.sounds_plan_id,
         "features": info.features,
         "user_uuid": info.user_uuid,

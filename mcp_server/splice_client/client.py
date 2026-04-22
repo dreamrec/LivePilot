@@ -119,6 +119,30 @@ def _try_import_protos():
         return None, None
 
 
+def _read_plan_kind_override() -> Optional[str]:
+    """Read `plan_kind_override` from ~/.livepilot/splice.json, if present.
+
+    Lets the user pin their Splice plan_kind when gRPC data is ambiguous.
+    Example config:
+        {"plan_kind_override": "ableton_live"}
+    Returns None silently on any I/O or JSON error.
+    """
+    import json
+    path = os.path.expanduser("~/.livepilot/splice.json")
+    if not os.path.isfile(path):
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if isinstance(data, dict):
+            value = data.get("plan_kind_override")
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+    except (OSError, json.JSONDecodeError):
+        pass
+    return None
+
+
 class SpliceGRPCClient:
     """Async gRPC client for Splice desktop's App service."""
 
@@ -486,10 +510,15 @@ class SpliceGRPCClient:
                 int(user.SoundsPlan) if hasattr(user, "SoundsPlan") else 0
             )
             uuid_str = str(user.UUID) if hasattr(user, "UUID") else ""
+            # Read optional plan_kind_override from ~/.livepilot/splice.json.
+            # Users who know their Splice plan can pin the classification
+            # here when the gRPC data is ambiguous. See models.classify_plan.
+            override = _read_plan_kind_override()
             plan_kind = classify_plan(
                 sounds_status=user.SoundsStatus,
                 sounds_plan=sounds_plan,
                 features=features,
+                override=override,
             )
             creds = SpliceCredits(
                 credits=user.Credits,
@@ -659,42 +688,60 @@ class SpliceGRPCClient:
     # ── Packs ───────────────────────────────────────────────────────
 
     async def get_pack_info(
-        self, pack_uuid: str,
+        self, pack_uuid: str, max_pages: int = 5,
     ) -> tuple[Optional[SplicePack], Optional[str]]:
         """Fetch metadata for a single sample pack.
 
+        Splice's gRPC `App` service does NOT expose a per-UUID
+        `SamplePackInfo` RPC (only `ListSamplePacks` is published in the
+        service definition — the `SamplePackInfoRequest` / `...Response`
+        messages exist in the descriptor but no RPC binds them). So this
+        implementation paginates `ListSamplePacks` and matches client-side.
+
+        Only finds packs the user has engaged with (owned / downloaded /
+        in their library). Catalog-only packs return None with an
+        explanatory error.
+
         Returns (pack, error) — `error` is a user-readable string when the
-        RPC failed (used to surface root causes to the MCP caller instead
-        of swallowing the exception as `None`).
+        lookup didn't find a match.
         """
         if not self.connected:
             return None, "Splice gRPC not connected"
         pb2 = self._pb2
+        target = pack_uuid.strip()
+        next_token = 0
         try:
-            response = await self.stub.SamplePackInfo(
-                pb2.SamplePackInfoRequest(UUID=pack_uuid),
-                timeout=INFO_TIMEOUT,
-            )
-            p = response.Pack
-            if not p.UUID:
-                return None, (
-                    f"Splice returned an empty Pack for UUID '{pack_uuid}'. "
-                    "The UUID may be invalid or not accessible to your "
-                    "account (packs from unpurchased subscriptions can "
-                    "be excluded server-side)."
+            for _page in range(max(1, int(max_pages))):
+                response = await self.stub.ListSamplePacks(
+                    pb2.ListSamplePacksRequest(NextToken=next_token),
+                    timeout=INFO_TIMEOUT,
                 )
-            return SplicePack(
-                uuid=p.UUID,
-                name=p.Name,
-                cover_url=p.CoverURL,
-                genre=p.Genre,
-                permalink=p.Permalink,
-                provider_name=p.ProviderName,
-            ), None
+                for p in response.SamplePacks:
+                    if p.UUID == target:
+                        return SplicePack(
+                            uuid=p.UUID,
+                            name=p.Name,
+                            cover_url=p.CoverURL,
+                            genre=p.Genre,
+                            permalink=p.Permalink,
+                            provider_name=p.ProviderName,
+                        ), None
+                # If no next-page token, we've exhausted the list.
+                new_token = int(response.NextToken)
+                if new_token == 0 or new_token == next_token:
+                    break
+                next_token = new_token
         except Exception as exc:
-            msg = f"SamplePackInfo gRPC call failed: {type(exc).__name__}: {exc}"
+            msg = f"ListSamplePacks gRPC call failed: {type(exc).__name__}: {exc}"
             logger.warning(msg)
             return None, msg
+        return None, (
+            f"Pack '{target}' not found in the user's library. "
+            "Splice's gRPC only lists packs the user has engaged with "
+            "(owned/downloaded/in library). Catalog-only packs can't be "
+            "looked up via this RPC. Use the Splice website or Desktop app "
+            "to browse un-engaged packs."
+        )
 
     # ── Presets ─────────────────────────────────────────────────────
 
