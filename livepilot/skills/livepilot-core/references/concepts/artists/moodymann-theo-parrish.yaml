@@ -1,0 +1,122 @@
+id: deep_house__moodymann_theo_parrish
+name: Moodymann / Theo Parrish
+type: artist
+aliases:
+  - "moodymann"
+  - "theo parrish"
+  - "kenny dixon jr"
+
+sonic_identity:
+  - dusty house with live soul samples
+  - lo-fi aesthetic
+  - warm bass
+  - organic feel from sample manipulation not quantization
+  - Detroit deep-house lineage
+
+reach_for:
+  instruments:
+    - Simpler  # classic soul chops
+    - Electric Keyboards  # Rhodes
+    - Bass  # Creative Extensions
+  effects:
+    - Saturator
+    - Vinyl Distortion
+  packs:
+    - Chop and Swing
+    - Electric Keyboards
+    - Core Library
+    - Live Drums
+  utilities:
+    - EQ Eight
+
+avoid:
+  - pristine digital synthesis
+  - quantized drums
+  - modern house production
+  - clean EQ
+
+rhythm_idioms:
+  - house 4/4 with soul-sample-derived swing
+  - claps/snares from live drum kits
+  - open hat on off-beat
+
+harmony_idioms:
+  - soul chord samples (7th, 9th voicings)
+  - Rhodes chords via Electric Keyboards
+  - chopped vocal samples as hook
+
+arrangement_idioms:
+  - extended house-track form (7-9 minutes)
+  - long intro, drop at bar 32
+  - vocal/sample flips across sections
+
+texture_idioms:
+  - vinyl-saturated drum bus
+  - Rhodes warmth
+  - analog-tape aesthetic
+
+sample_roles:
+  - melodic_source
+  - rhythmic_chop
+  - vocal_accent
+
+key_techniques:
+  - name: "Tape-warped EP"
+    source: atlas
+    device: Electric Keyboards
+  - name: "slice_and_sequence"
+    source: sample-techniques.md
+  - name: "stab_isolation"
+    source: sample-techniques.md
+  - name: vinyl-saturated drum bus
+    source: sample-techniques.md
+
+evaluation_bias:
+  target_dimensions:
+    groove: 0.24
+    depth: 0.16
+    cohesion: 0.14
+    motion: 0.12
+    contrast: 0.12
+    novelty: 0.12
+    clarity: 0.10
+  protect:
+    clarity: 0.60
+    cohesion: 0.70
+    low_end: 0.72
+
+move_family_bias:
+  favor:
+    - sound_design
+    - arrangement
+    - device_creation
+  deprioritize:
+    - performance
+
+dimensions_in_scope:
+  - rhythmic
+  - timbral
+  - structural
+  - spatial
+dimensions_deprioritized: []
+
+novelty_budget_default: 0.5
+
+tempo_hint:
+  min: 120
+  max: 124
+  time_signature: "4/4"
+
+canonical_artists: []
+canonical_genres:
+  - deep_house
+  - soulful_house
+  - hip_hop
+
+notes: |
+  Moodymann/Theo asks occupy the boundary between house and hip-hop:
+  the drums are more swung than house typically, and the chord
+  content is soul-sampled rather than synthesized. Plans often
+  include Rhodes/EP work via Electric Keyboards, saturated drum-bus
+  treatment, and structural arrangement-family moves for the
+  extended-track form.

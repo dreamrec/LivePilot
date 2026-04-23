@@ -1,0 +1,116 @@
+id: microhouse__akufen
+name: Akufen (Marc Leclair)
+type: artist
+aliases:
+  - "akufen"
+  - "marc leclair"
+
+sonic_identity:
+  - micro-second vocal and radio clippings triggered percussively
+  - melodic AND rhythmic content emerge simultaneously from the same chop source
+  - '"My Way" album is the canonical reference'
+  - no coherent vocal survives — everything is syllable-or-shorter
+
+reach_for:
+  instruments:
+    - Simpler  # slicing mode, 1/64 length
+  effects:
+    - Snipper  # Building Max Devices
+    - PitchLoop89
+    - Auto Filter  # on drum bus
+    - Convolution Reverb
+  packs:
+    - Voice Box
+    - Chop and Swing
+    - Latin Percussion
+    - Lost and Found
+  utilities:
+    - Utility
+
+avoid:
+  - coherent vocal samples (longer than one syllable)
+  - pitched singing
+  - long-sustain material
+  - stock presets
+
+rhythm_idioms:
+  - micro-chopped vocals triggered as percussion
+  - 4/4 underneath but the chops override the grid
+  - off-grid re-trigger via probability
+
+harmony_idioms:
+  - implied tonality via chopped-syllable pitch relationships
+  - no conventional chord changes
+
+arrangement_idioms:
+  - constant chop-pattern variation
+  - single loop evolves through retriggering, not adding layers
+
+texture_idioms:
+  - entire track IS texture — vocal fragments fill the sonic field
+  - reverb/filter sends tucked at -20 to -30 dB
+
+sample_roles:
+  - rhythmic_chop
+  - melodic_chop
+  - transient_ghost
+
+key_techniques:
+  - name: "Vocal micro-chop (Akufen)"
+    source: atlas
+    device: Simpler
+    notes: the technique's name literally comes from this artist
+  - name: "micro_chop"
+    source: sample-techniques.md
+  - name: "stab_isolation"
+    source: sample-techniques.md
+
+evaluation_bias:
+  target_dimensions:
+    groove: 0.24
+    novelty: 0.18
+    motion: 0.16
+    depth: 0.12
+    contrast: 0.12
+    cohesion: 0.10
+    clarity: 0.08
+  protect:
+    clarity: 0.50
+    cohesion: 0.60
+    low_end: 0.60
+
+move_family_bias:
+  favor:
+    - arrangement
+    - sound_design
+    - device_creation
+  deprioritize:
+    - mix
+    - performance
+
+dimensions_in_scope:
+  - rhythmic
+  - timbral
+  - structural
+dimensions_deprioritized:
+  - spatial
+
+novelty_budget_default: 0.65
+
+tempo_hint:
+  min: 122
+  max: 128
+  time_signature: "4/4"
+
+canonical_artists: []
+canonical_genres:
+  - microhouse
+
+notes: |
+  Akufen asks reward extreme source-material discipline: the sample is
+  the instrument, and the patch work is in Simpler's slice envelope,
+  pitch ranges, and re-trigger probability. Plan distribution:
+  arrangement (clip-level chop re-sequencing with
+  dimension_hint="rhythmic"), sound_design (Simpler slice parameters
+  + Snipper drift), device_creation (load Auto Filter + Convolution
+  on the drum bus for the signature filtered-chop tail).

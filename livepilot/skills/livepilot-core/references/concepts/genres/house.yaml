@@ -1,0 +1,126 @@
+id: house
+name: House / Deep House
+type: genre
+aliases:
+  - "house"
+  - "deep house"
+  - "soulful house"
+
+sonic_identity:
+  - 120-126 BPM straight 4/4
+  - full-bodied kick ~60 Hz
+  - open hat on off-beat
+  - chord pads (7th / 9th chords)
+  - Rhodes-style keys
+  - vocal samples
+
+reach_for:
+  instruments:
+    - Poli  # pad
+    - Drift
+    - Electric Keyboards  # Rhodes
+    - Bass
+    - Simpler
+  effects:
+    - Compressor  # sidechained via Envelope Follower
+    - Auto Filter
+    - Reverb
+    - Chorus-Ensemble
+  packs:
+    - Synth Essentials
+    - Electric Keyboards
+    - Core Library
+  utilities:
+    - EQ Eight
+
+avoid:
+  - minor 7th dominance (unless jazz-house)
+  - dry production
+  - modern trap aesthetics
+
+rhythm_idioms:
+  - steady 4/4 house kick
+  - hi-hat on off-beat
+  - clap on 2+4
+  - shakers
+
+harmony_idioms:
+  - major/minor 7th chord pads
+  - 9th extensions
+  - Rhodes-style keys
+  - vocal samples as hook
+
+arrangement_idioms:
+  - long intro (32 bars)
+  - drop at bar 32 or 64
+  - 7-9 minute tracks
+  - breakdown + return
+
+texture_idioms:
+  - clean digital or occasional vinyl samples
+  - chorus on pads
+  - sidechain pumping
+
+sample_roles:
+  - melodic_source
+  - vocal_accent
+  - pad_layer
+
+key_techniques:
+  - name: "Classic Rhodes"
+    source: atlas
+    device: Electric Keyboards
+  - name: "Juno-style detuned chord"
+    source: atlas
+    device: Poli
+  - name: sidechain compression on pad triggered by kick
+    source: sample-techniques.md
+
+evaluation_bias:
+  target_dimensions:
+    groove: 0.22
+    motion: 0.18
+    cohesion: 0.16
+    depth: 0.14
+    novelty: 0.10
+    contrast: 0.10
+    clarity: 0.10
+  protect:
+    clarity: 0.65
+    cohesion: 0.75
+    low_end: 0.72
+
+move_family_bias:
+  favor:
+    - sound_design
+    - mix
+    - arrangement
+  deprioritize:
+    - performance
+
+dimensions_in_scope:
+  - rhythmic
+  - timbral
+  - structural
+  - spatial
+dimensions_deprioritized: []
+
+novelty_budget_default: 0.45
+
+tempo_hint:
+  min: 120
+  max: 126
+  time_signature: "4/4"
+
+canonical_artists:
+  - moodymann-theo-parrish
+  - isolee-luomo
+  - daft-punk
+
+canonical_genres: []
+
+notes: |
+  House is the baseline 120-126 BPM 4/4 genre. Plans should include
+  sidechain work, Rhodes/keys programming, and structural long-form
+  arrangement (32-bar sections). Deep House variant leans more on
+  chord extensions and jazz/soul influence.

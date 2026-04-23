@@ -1,0 +1,120 @@
+id: trap
+name: Trap / Modern Hip-Hop
+type: genre
+aliases:
+  - "trap"
+  - "modern hip-hop"
+  - "modern hip hop"
+
+sonic_identity:
+  - 130-160 BPM (half-time perceived 65-80 BPM)
+  - 808 sub-bass IS the bass
+  - crisp snappy snares
+  - hyper-fast hi-hat rolls (1/32, 1/64)
+  - minor-key melody
+  - atmospheric pads and vocal chops
+
+reach_for:
+  instruments:
+    - Bass  # Creative Extensions — 808
+    - Simpler  # trap one-shots
+    - Wavetable  # stabs
+    - Drum Rack  # programmed hats
+  effects:
+    - Compressor  # aggressive
+    - Saturator
+    - Reverb
+    - Pitch Hack  # ad-lib chops
+  packs:
+    - Trap Drums
+    - Beat Tools
+  utilities:
+    - EQ Eight
+
+avoid:
+  - live drums
+  - major-key dominance
+  - slow tempos
+  - retro aesthetic
+
+rhythm_idioms:
+  - half-time drum pattern
+  - hat rolls at 1/32 and 1/64
+  - sparse snare-on-3
+  - 808 punctuation
+
+harmony_idioms:
+  - minor-key melodic stabs
+  - heavily-tuned synth lead
+  - occasional strings / piano
+
+arrangement_idioms:
+  - intro-buildup-drop-breakdown-return
+  - vocal-driven song form
+  - 3-4 minute standard
+
+texture_idioms:
+  - atmospheric pads
+  - vocal chops and ad-libs
+  - heavy reverb on leads
+
+sample_roles:
+  - vocal_source
+  - percussive_accent
+  - melodic_stab
+
+key_techniques:
+  - name: "808 sub replacement"
+    source: atlas
+    device: Bass
+  - name: "Wobble bass"
+    source: atlas
+    device: Wavetable
+    notes: at reduced depth for tonal 808
+  - name: hat-roll 1/32 programming
+    source: sample-techniques.md
+
+evaluation_bias:
+  target_dimensions:
+    groove: 0.20
+    contrast: 0.16
+    motion: 0.16
+    novelty: 0.12
+    depth: 0.14
+    cohesion: 0.12
+    clarity: 0.10
+  protect:
+    clarity: 0.65
+    cohesion: 0.65
+    low_end: 0.85  # 808 is the foundation
+
+move_family_bias:
+  favor:
+    - sound_design
+    - arrangement
+    - device_creation
+  deprioritize:
+    - performance
+
+dimensions_in_scope:
+  - rhythmic
+  - timbral
+  - structural
+  - spatial
+dimensions_deprioritized: []
+
+novelty_budget_default: 0.45
+
+tempo_hint:
+  min: 130
+  max: 160
+  time_signature: "4/4"  # half-time perceived
+
+canonical_artists: []
+canonical_genres: []
+
+notes: |
+  Trap is the most commercial-leaning entry in the catalog — novelty
+  budget default is conservative. Plans should focus on 808
+  programming, hat-roll precision, and arrangement-level structural
+  moves (buildup + drop).

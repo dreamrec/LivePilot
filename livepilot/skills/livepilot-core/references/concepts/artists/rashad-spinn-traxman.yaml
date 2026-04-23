@@ -1,0 +1,123 @@
+id: footwork__rashad_spinn_traxman
+name: Rashad / Spinn / Traxman
+type: artist
+aliases:
+  - "rashad"
+  - "dj rashad"
+  - "spinn"
+  - "dj spinn"
+  - "traxman"
+  - "teklife"
+
+sonic_identity:
+  - 160 BPM frenetic pace
+  - vocal-chop hyper-rhythms
+  - sparse kick programming (unpredictable placement)
+  - stuttered soul / hip-hop samples
+  - triplet feels inside 4/4
+
+reach_for:
+  instruments:
+    - Simpler  # slicing on vocal/soul samples — short chops
+    - Bass
+  effects:
+    - Slice Shuffler  # MIDI Tools
+    - Polyrhythm  # at 3:2 ratios
+  packs:
+    - Chop and Swing
+    - Trap Drums  # 808 samples — sparse use
+    - MIDI Tools
+  utilities:
+    - EQ Eight
+
+avoid:
+  - quantized-on-grid drums
+  - sustained elements
+  - bright leads
+  - long chord progressions
+
+rhythm_idioms:
+  - 1/16 vocal-chop barrages
+  - triplet feels against 4/4 kick grid
+  - 3:2 polyrhythms via Polyrhythm MIDI tool
+  - sparse kick — not steady
+
+harmony_idioms:
+  - chopped-syllable pitch as melodic content
+  - rarely any sustained chord
+  - minor-key fragments
+
+arrangement_idioms:
+  - short tracks (2-3 minutes)
+  - rapid section changes
+  - chop pattern evolves across bars
+
+texture_idioms:
+  - dense vocal chop texture
+  - 808 sub as punctuation
+  - minimal atmospheric content
+
+sample_roles:
+  - rhythmic_chop
+  - vocal_source
+  - transient_accent
+
+key_techniques:
+  - name: "vocal_chop_rhythm"
+    source: sample-techniques.md
+    notes: at aggressive 160 BPM tempo
+  - name: "slice_shuffler"
+    source: atlas
+    device: Slice Shuffler
+    notes: on 1/16 chops
+  - name: "micro_chop"
+    source: sample-techniques.md
+
+evaluation_bias:
+  target_dimensions:
+    groove: 0.26
+    motion: 0.18
+    novelty: 0.16
+    contrast: 0.12
+    depth: 0.10
+    cohesion: 0.10
+    clarity: 0.08
+  protect:
+    clarity: 0.55
+    cohesion: 0.55
+    low_end: 0.70
+
+move_family_bias:
+  favor:
+    - arrangement
+    - sound_design
+    - device_creation
+  deprioritize:
+    - performance
+
+dimensions_in_scope:
+  - rhythmic
+  - timbral
+  - structural
+dimensions_deprioritized:
+  - spatial
+
+novelty_budget_default: 0.6
+
+tempo_hint:
+  min: 155
+  max: 165
+  time_signature: "4/4"
+
+canonical_artists: []
+canonical_genres:
+  - footwork
+  - juke
+  - drum_and_bass
+
+notes: |
+  Footwork asks demand 160 BPM first — always set tempo before any
+  creative work. Plans center on vocal-chop manipulation: Simpler
+  slicing at 1/16, Slice Shuffler for rapid re-sequencing, Polyrhythm
+  for 3:2 feels. Spatial deprioritized — the genre is dry and
+  rhythm-front.

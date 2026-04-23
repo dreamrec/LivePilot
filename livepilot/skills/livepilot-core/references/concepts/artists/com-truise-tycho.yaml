@@ -1,0 +1,123 @@
+id: synthwave__com_truise_tycho
+name: Com Truise / Tycho
+type: artist
+aliases:
+  - "com truise"
+  - "tycho"
+  - "seth haley"
+  - "scott hansen"
+
+sonic_identity:
+  - 80s analog polysynth nostalgia
+  - gated reverb on drums
+  - chorus-heavy leads
+  - warm analog bass
+  - arpeggiated sequences
+  - mid-tempo groove
+
+reach_for:
+  instruments:
+    - Poli  # Juno-style
+    - Analog
+    - Drift  # warm synthwave pad
+  effects:
+    - Chorus-Ensemble
+    - Gated Delay  # Creative Extensions — gated-reverb-drum aesthetic
+    - Arpeggiator
+  packs:
+    - Synth Essentials
+    - Performance Pack  # Arpeggiator
+    - Core Library
+  utilities:
+    - EQ Eight
+
+avoid:
+  - modern dance production
+  - aggressive compression
+  - digital-only chains
+  - bright harsh synthesis
+
+rhythm_idioms:
+  - mid-tempo 4/4 with gated snare reverb
+  - arpeggiated 16th-note sequences
+  - analog-tape swing feel
+
+harmony_idioms:
+  - suspended chords on pads
+  - minor-key progressions
+  - 80s-style key changes via sequencer transpose
+
+arrangement_idioms:
+  - verse/chorus form with clear payoff moments
+  - arpeggio enters at bar 16, pad enters at bar 32
+  - conventional pop structure adapted for instrumental
+
+texture_idioms:
+  - warm chorus on leads
+  - gated reverb on snare (80s signature)
+  - analog-tape character
+
+sample_roles:
+  - pad_layer
+  - melodic_source
+
+key_techniques:
+  - name: "Juno-style detuned chord"
+    source: atlas
+    device: Poli
+  - name: "Warm synthwave pad"
+    source: atlas
+    device: Drift
+  - name: "Supersaw trance lead"
+    source: atlas
+    device: Wavetable
+    notes: at reduced spread for synthwave intimacy
+
+evaluation_bias:
+  target_dimensions:
+    motion: 0.20
+    cohesion: 0.18
+    groove: 0.14
+    depth: 0.14
+    novelty: 0.12
+    contrast: 0.12
+    clarity: 0.10
+  protect:
+    clarity: 0.65
+    cohesion: 0.75
+    low_end: 0.65
+
+move_family_bias:
+  favor:
+    - sound_design
+    - device_creation
+    - arrangement
+  deprioritize:
+    - performance
+
+dimensions_in_scope:
+  - timbral
+  - structural
+  - spatial
+  - rhythmic
+dimensions_deprioritized: []
+
+novelty_budget_default: 0.45
+
+tempo_hint:
+  min: 85
+  max: 115
+  time_signature: "4/4"
+
+canonical_artists: []
+canonical_genres:
+  - synthwave
+  - vaporwave
+  - electronic
+
+notes: |
+  Synthwave asks reward analog-polysynth authenticity. Plans should
+  include: sound_design (Poli/Drift patch programming with period-
+  appropriate filter/envelope settings), device_creation (Gated Delay
+  on drum bus for gated-reverb snare, Chorus-Ensemble on leads),
+  arrangement (clear verse/chorus payoff moments).

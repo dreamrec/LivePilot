@@ -1,0 +1,127 @@
+id: minimal_techno__hawtin
+name: Richie Hawtin (Plastikman)
+type: artist
+aliases:
+  - "hawtin"
+  - "richie hawtin"
+  - "plastikman"
+
+sonic_identity:
+  - subtractive minimalism
+  - single evolving source
+  - percussive percussion (no tuned percussion)
+  - dub-influenced space
+  - long arrangements that progress by subtraction
+
+reach_for:
+  instruments:
+    - Analog
+    - Simpler
+    - Drone Lab  # sustained sub-bed
+  effects:
+    - Convolution Reverb
+    - Auto Filter  # long LFO
+    - Echo
+  packs:
+    - Core Library synths
+    - Drone Lab
+    - Minimal techno kits
+  utilities:
+    - Utility  # narrow-to-mono sub
+    - EQ Eight
+
+avoid:
+  - thick layering
+  - preset chains
+  - reverb washes
+  - additive arrangement thinking
+  - dense percussion
+
+rhythm_idioms:
+  - rigid 4/4 kick
+  - single percussion element per section
+  - tension built through absence
+
+harmony_idioms:
+  - single modal tonal center
+  - filter automation AS melody
+  - no chord changes
+
+arrangement_idioms:
+  - 10-15 minute arrangements
+  - subtraction over addition
+  - elements removed over time, not added
+  - single source morphs for entire track
+
+texture_idioms:
+  - long filter sweeps (4-16 bars)
+  - sustained sub-bed under everything
+  - tight dub-style send
+
+sample_roles:
+  - drone_source
+  - texture_bed
+
+key_techniques:
+  - name: "Hawtin subtractive pad"
+    source: atlas
+    device: Analog
+    notes: the technique's name literally comes from this artist
+  - name: "Micro-Modulation"
+    source: sound-design-deep.md
+  - name: "Subtraction over addition"
+    source: sound-design-deep.md
+  - name: single-source filter-automation as melody
+    source: sound-design-deep.md
+
+evaluation_bias:
+  target_dimensions:
+    depth: 0.22
+    motion: 0.18
+    cohesion: 0.16
+    novelty: 0.12
+    contrast: 0.12
+    groove: 0.10
+    clarity: 0.10
+  protect:
+    clarity: 0.55
+    cohesion: 0.72
+    low_end: 0.78
+
+move_family_bias:
+  favor:
+    - sound_design
+    - arrangement  # subtractive structure
+    - mix
+  deprioritize:
+    - device_creation  # Hawtin adds nothing — he subtracts
+    - performance
+
+dimensions_in_scope:
+  - timbral
+  - structural
+  - spatial
+dimensions_deprioritized:
+  - rhythmic
+
+novelty_budget_default: 0.4
+
+tempo_hint:
+  min: 128
+  max: 132
+  time_signature: "4/4"
+
+canonical_artists: []
+canonical_genres:
+  - minimal_techno
+  - deep_minimal
+
+notes: |
+  Hawtin is a strict subtractive aesthetic. Plans that ADD elements
+  are anti-pattern — the director should bias toward plans that
+  REMOVE or TRANSFORM rather than add. device_creation family is
+  deprioritized for this packet even when the diversity rule would
+  normally favor it. Three plans often cluster: sound_design (single
+  source via Analog with deep modulation), arrangement (structural —
+  remove a percussion element at bar 32), mix (narrow-to-mono sub +
+  dub-style send).

@@ -1,0 +1,133 @@
+id: modern_classical__johannsson_richter
+name: Jóhann Jóhannsson / Max Richter
+type: artist
+aliases:
+  - "johannsson"
+  - "jóhannsson"
+  - "jóhann jóhannsson"
+  - "max richter"
+  - "richter"
+
+sonic_identity:
+  - sustained string orchestral beds
+  - neo-classical piano fragments
+  - occasional brass swells
+  - contemporary film-score aesthetic
+
+reach_for:
+  instruments:
+    - Sampler  # multi-velocity string libraries
+    - Tension  # bowed cello, pp
+    - Upright Piano  # Spitfire Bechstein
+  effects:
+    - Convolution Reverb  # hall IR
+    - EQ Eight
+    - Compressor  # string bus, gentle
+  packs:
+    - SONiVOX Orchestral Strings
+    - Spitfire Strings/Brass
+    - Upright Piano
+    - Orchestral Mallets
+    - SONiVOX Orchestral Brass  # pp only
+    - SONiVOX Orchestral Woodwinds  # pp only
+  utilities:
+    - EQ Eight
+
+avoid:
+  - electronic percussion
+  - modern production polish
+  - compressed mix
+  - bright EQ
+  - synthesizers (unless sparse & atmospheric)
+
+rhythm_idioms:
+  - rubato (no fixed tempo) or slow 60-90 BPM
+  - timpani when rhythm exists at all
+  - no kit drums
+
+harmony_idioms:
+  - major/minor tonal with occasional chromatic motion
+  - suspensions and resolutions as movement
+  - piano fragments as melodic anchor
+  - string bed as harmonic field
+
+arrangement_idioms:
+  - A-B-A' form common
+  - slow piano statement, string bed enters, return deeper
+  - cinematic pacing (tension + release)
+
+texture_idioms:
+  - natural hall acoustic
+  - grand piano resonance (pedal-down)
+  - breath and bow artifacts embraced
+
+sample_roles:
+  - texture_bed
+  - melodic_source
+
+key_techniques:
+  - name: "Bowed cello low register"
+    source: atlas
+    device: Tension
+  - name: "Orchestral multi-velocity"
+    source: atlas
+    device: Sampler
+  - name: "Single sustained note pedal-down"
+    source: pack-knowledge.md
+    device: Upright Piano
+
+evaluation_bias:
+  target_dimensions:
+    depth: 0.22
+    cohesion: 0.20
+    motion: 0.16
+    contrast: 0.14
+    novelty: 0.10
+    groove: 0.08
+    clarity: 0.10
+  protect:
+    clarity: 0.65
+    cohesion: 0.78
+    low_end: 0.55
+
+move_family_bias:
+  favor:
+    - sound_design
+    - device_creation
+    - arrangement  # structural A-B-A' forms happen here
+  deprioritize:
+    - mix
+    - transition
+    - performance
+
+dimensions_in_scope:
+  - timbral
+  - structural
+  - spatial
+dimensions_deprioritized:
+  - rhythmic
+
+novelty_budget_default: 0.4
+
+tempo_hint:
+  min: 60
+  max: 90
+  time_signature: "4/4"  # or rubato
+
+canonical_artists: []
+canonical_genres:
+  - modern_classical
+  - cinematic
+  - ambient
+
+notes: |
+  Jóhannsson/Richter asks land differently from other ambient: the
+  arrangement (structural) dimension IS in scope, because cinematic
+  form has an actual A-B-A' shape. Three plans often cover timbral
+  (Sampler multi-velocity + Tension bowed cello), structural (piano
+  statement → string bed entry → deeper return), spatial (hall IR on
+  send).
+
+  Rhythmic is deprioritized; if the user explicitly asks for pulse
+  (as in Richter's "Sleep" or "Recomposed"), timpani programming via
+  notes/motif tools re-enters scope.

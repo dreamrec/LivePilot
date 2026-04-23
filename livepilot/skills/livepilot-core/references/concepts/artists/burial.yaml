@@ -1,0 +1,127 @@
+id: dubstep__burial
+name: Burial
+type: artist
+aliases:
+  - "burial"
+  - "william bevan"
+
+sonic_identity:
+  - vinyl-crackle 2-step garage shuffle
+  - ghostly pitched vocals
+  - low-mid bass (not extreme sub)
+  - atmospheric urban-decay aesthetic
+  - rhythmic imperfection — drums feel hand-placed
+
+reach_for:
+  instruments:
+    - Simpler  # vocal chopping
+    - Bass
+  effects:
+    - Grain Delay
+    - Convolution Reverb  # long atmospheric tail
+    - Vinyl Distortion
+    - Erosion
+  packs:
+    - Chop and Swing  # vinyl crackle racks
+    - Skitter and Step  # garage hats
+    - Voice Box
+  utilities:
+    - EQ Eight
+
+avoid:
+  - pristine digital
+  - modern dubstep wobble bass
+  - 128 BPM (use 130-140)
+  - quantized drums
+
+rhythm_idioms:
+  - 2-step garage shuffle (kick on 1, snare on 3, broken hat)
+  - hand-placed drum notes (not quantized)
+  - vinyl crackle under everything at -36 dB
+
+harmony_idioms:
+  - pitched-down soul vocals as hook
+  - minor-key melodic fragments
+  - atmospheric pads under drums
+
+arrangement_idioms:
+  - long intro/outro atmospheric sections
+  - vocal phrases entering and leaving
+  - drums fade in and out across the track
+
+texture_idioms:
+  - vinyl crackle as atmosphere (-36 dB under track)
+  - rain / urban field recordings
+  - atmospheric reverb on vocals
+
+sample_roles:
+  - vocal_source
+  - texture_bed
+  - rhythmic_chop
+
+key_techniques:
+  - name: "vocal_chop_rhythm"
+    source: sample-techniques.md
+    notes: Burial-inspired, literally
+  - name: "granular_scatter"
+    source: sample-techniques.md
+  - name: "reverse_layer"
+    source: sample-techniques.md
+  - name: vinyl-crackle-at--36dB-under-track
+    source: sample-techniques.md
+
+evaluation_bias:
+  target_dimensions:
+    depth: 0.20
+    groove: 0.18
+    motion: 0.14
+    cohesion: 0.14
+    contrast: 0.12
+    novelty: 0.12
+    clarity: 0.10
+  protect:
+    clarity: 0.50
+    cohesion: 0.70
+    low_end: 0.70
+
+move_family_bias:
+  favor:
+    - sound_design
+    - arrangement
+    - device_creation
+  deprioritize:
+    - mix
+    - performance
+
+dimensions_in_scope:
+  - rhythmic
+  - timbral
+  - structural
+  - spatial
+dimensions_deprioritized: []
+
+novelty_budget_default: 0.5
+
+tempo_hint:
+  min: 130
+  max: 140
+  time_signature: "4/4"  # 2-step internal
+
+canonical_artists: []
+canonical_genres:
+  - dubstep
+  - uk_garage
+  - ambient
+  - downtempo
+
+notes: |
+  Burial asks are genuinely full-dimensional: rhythmic (2-step
+  shuffle with hand-placed notes), timbral (pitched-down vocal chops),
+  structural (atmospheric reveal of drum section), spatial (long
+  reverb tails). Unusual compared to other dubstep — plans should
+  favor arrangement-family rhythmic work and vocal-source
+  sound_design before touching bass synthesis.
+
+  The "modern dubstep wobble bass" that Burial famously avoids should
+  be flagged as anti-pattern for every plan generated against this
+  packet.

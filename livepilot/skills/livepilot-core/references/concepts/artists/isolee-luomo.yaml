@@ -1,0 +1,130 @@
+id: microhouse__isolee_luomo
+name: Isolée / Luomo
+type: artist
+aliases:
+  - "isolee"
+  - "isolée"
+  - "luomo"
+  - "rajko muller"
+  - "vladislav delay"
+
+sonic_identity:
+  - lush, slow-evolving microhouse with melodic pads
+  - warm filtered bass
+  - constant micro-variation — no 4-bar loop ever sounds identical to the last
+  - more melodic and less chop-centric than Akufen
+  - deep-house adjacent
+
+reach_for:
+  instruments:
+    - Drift
+    - Poli  # melodic stabs
+    - Wavetable  # slow position LFO
+    - Tree Tone  # asymmetric note cascades
+  effects:
+    - Chorus-Ensemble  # warm pads
+    - Variations  # Performance Pack — morph across bars
+    - PitchLoop89
+    - Convolution Reverb
+  packs:
+    - Voice Box
+    - Mood Reel
+    - Performance Pack  # Variations
+  utilities:
+    - Utility
+    - EQ Eight
+
+avoid:
+  - rigid quantization
+  - static patches
+  - dry mixes
+  - loops that repeat identically
+
+rhythm_idioms:
+  - soft 4/4 kick, off-beat hat
+  - shakers and hand percussion at low level
+  - micro-timing NOT as aggressive as Villalobos
+
+harmony_idioms:
+  - warm minor 9th / sus4 pads
+  - melodic stabs that shift across 16-bar phrases
+  - vocal samples as pads when used
+
+arrangement_idioms:
+  - morph across 16-32 bar phrases
+  - Variations-driven chord morph
+  - slow reveal of elements
+
+texture_idioms:
+  - warm chorus / ensemble thickening
+  - reverb tails at moderate level (-15 to -25 dB)
+  - occasional vinyl crackle
+
+sample_roles:
+  - melodic_chop
+  - texture_bed
+  - pad_layer
+
+key_techniques:
+  - name: "Neo-soul Rhodes-adjacent keys"
+    source: atlas
+    device: Drift
+  - name: "Morphing ambient pad"
+    source: atlas
+    device: Wavetable
+  - name: "reverse_layer"
+    source: sample-techniques.md
+  - name: "Variations-driven chord morph"
+    source: atlas
+    device: Variations
+    notes: 16-bar morph from one voicing to another
+
+evaluation_bias:
+  target_dimensions:
+    depth: 0.20
+    motion: 0.18
+    groove: 0.16
+    cohesion: 0.14
+    novelty: 0.12
+    contrast: 0.10
+    clarity: 0.10
+  protect:
+    clarity: 0.60
+    cohesion: 0.70
+    low_end: 0.65
+
+move_family_bias:
+  favor:
+    - sound_design
+    - arrangement
+    - device_creation
+  deprioritize:
+    - performance
+
+dimensions_in_scope:
+  - timbral
+  - structural
+  - rhythmic
+  - spatial
+dimensions_deprioritized: []
+
+novelty_budget_default: 0.5
+
+tempo_hint:
+  min: 120
+  max: 126
+  time_signature: "4/4"
+
+canonical_artists: []
+canonical_genres:
+  - microhouse
+  - deep_house
+
+notes: |
+  Isolée/Luomo asks favor pad-and-stab development over chop-driven
+  work. Plans often cluster: sound_design (Drift/Wavetable patch
+  evolution with modulation), arrangement (16-bar morph using
+  Variations or probability), device_creation (return chain with
+  Chorus-Ensemble for warmth). Can legitimately cover all four
+  dimensions since the idiom is less restrictive than pure microhouse
+  or dub-techno.

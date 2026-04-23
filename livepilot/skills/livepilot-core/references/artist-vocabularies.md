@@ -13,6 +13,14 @@ tool surface, instead of the LLM guessing at device names.
 > Cross-references: when a technique appears in quotes like `"dub_throw"`, grep
 > `sample-techniques.md` or device `signature_techniques` for the full recipe.
 
+> **v1.18+ structured packets:** each artist below also has a machine-readable
+> YAML packet at `concepts/artists/<slug>.yaml`. The narrative here is the
+> human-facing overview; the YAML is the source-of-truth for director
+> compilation (see `livepilot-creative-director/SKILL.md` Phase 1). When
+> updating an artist, update BOTH — the sync check in
+> `tests/test_concept_packets.py` enforces parity. Schema:
+> `concepts/_schema.md`.
+
 ---
 
 ## Deep Minimal / Microhouse

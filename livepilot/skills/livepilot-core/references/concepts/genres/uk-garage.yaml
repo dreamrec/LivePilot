@@ -1,0 +1,121 @@
+id: uk_garage
+name: Garage / UK Garage / 2-Step
+type: genre
+aliases:
+  - "uk garage"
+  - "ukg"
+  - "garage"
+  - "2-step"
+  - "2 step"
+
+sonic_identity:
+  - 130-140 BPM with 2-step shuffle pattern
+  - kick on 1, snare on 3, broken hat pattern (NOT straight 16ths)
+  - punchy kick often offset off-grid
+  - sub-bass with slide + filter modulation
+  - R&B chord influence
+  - vocal samples chopped
+
+reach_for:
+  instruments:
+    - Simpler  # vocal chops
+    - Bass
+    - Drift
+  effects:
+    - Auto Filter
+    - Ping-Pong Delay
+    - Compressor
+    - Convolution Reverb
+  packs:
+    - Skitter and Step  # pack literally for this genre
+    - Voice Box
+  utilities:
+    - EQ Eight
+
+avoid:
+  - straight 16th hats
+  - trap-style snares
+  - minor-9th minor dominance
+  - aggressive bass
+
+rhythm_idioms:
+  - shuffled broken hat pattern (1/16 shuffle)
+  - kick on 1, snare on 3
+  - occasional tom fills
+  - hand-placed drum notes
+
+harmony_idioms:
+  - R&B-chord influence (major 7th, 9th)
+  - vocal samples chopped as melodic content
+  - tonal bass with slide
+
+arrangement_idioms:
+  - intro at bar 0-16
+  - drop at bar 16 or 32
+  - breakdown/return pattern
+  - 4-6 minute tracks
+
+texture_idioms:
+  - skippy, vibrant feel
+  - dub-influenced reverb (occasional)
+  - vinyl-era warmth
+
+sample_roles:
+  - vocal_source
+  - rhythmic_chop
+  - bass_source
+
+key_techniques:
+  - name: "vocal_chop_rhythm"
+    source: sample-techniques.md
+  - name: shuffled hat programming
+    source: sample-techniques.md
+  - name: bass-glide automation
+    source: sample-techniques.md
+
+evaluation_bias:
+  target_dimensions:
+    groove: 0.24
+    motion: 0.18
+    contrast: 0.14
+    depth: 0.12
+    cohesion: 0.12
+    novelty: 0.10
+    clarity: 0.10
+  protect:
+    clarity: 0.60
+    cohesion: 0.70
+    low_end: 0.75
+
+move_family_bias:
+  favor:
+    - arrangement
+    - sound_design
+    - device_creation
+  deprioritize:
+    - performance
+
+dimensions_in_scope:
+  - rhythmic
+  - timbral
+  - structural
+  - spatial
+dimensions_deprioritized: []
+
+novelty_budget_default: 0.5
+
+tempo_hint:
+  min: 130
+  max: 140
+  time_signature: "4/4"
+
+canonical_artists:
+  - burial
+
+canonical_genres: []
+
+notes: |
+  UK Garage / 2-Step hinges on shuffled hat programming — that pattern
+  IS the genre signature. Plans should prioritize rhythmic work on
+  the hat clip (arrangement-family with dimension_hint="rhythmic")
+  before touching anything else.

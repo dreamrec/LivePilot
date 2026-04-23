@@ -1,0 +1,124 @@
+id: dub_techno__shackleton
+name: Shackleton
+type: artist
+aliases:
+  - "shackleton"
+
+sonic_identity:
+  - polyrhythmic 3-over-4 percussion
+  - Middle-Eastern / ritual aesthetics
+  - low-end heavy
+  - off-kilter kick placement
+  - vocal samples treated as found-sound artefacts
+
+reach_for:
+  instruments:
+    - Simpler  # for vocal/ritual samples
+    - Operator  # microtonal bells
+    - Bass
+  effects:
+    - Polyrhythm  # MIDI Tools
+    - Phase Pattern  # MIDI Tools
+    - Microtuner  # 19-TET for ritual feel
+    - Convolution Reverb
+  packs:
+    - Latin Percussion
+    - Voice Box  # vocal samples
+    - MIDI Tools
+  utilities:
+    - Utility
+
+avoid:
+  - 4/4 kick grid
+  - Western equal-temperament melody
+  - stock drum racks
+  - pristine mix
+
+rhythm_idioms:
+  - 3-over-4 or 5-over-4 polymeter
+  - asymmetric kick placement
+  - ritual hand percussion
+  - phase-shifted pattern accents
+
+harmony_idioms:
+  - microtonal melodic fragments
+  - modal drones
+  - vocal samples as melodic content
+
+arrangement_idioms:
+  - long, patient development
+  - polyrhythmic layers interlock and release
+  - ritualistic repetition with subtle variation
+
+texture_idioms:
+  - cave-like reverb
+  - ritual percussion beds
+  - vocal fragments as atmosphere
+
+sample_roles:
+  - rhythmic_chop
+  - texture_bed
+  - ritual_source
+
+key_techniques:
+  - name: "Make it weird without making it wrong"
+    source: sound-design-deep.md
+  - name: "euclidean_slice_trigger"
+    source: sample-techniques.md
+  - name: asymmetric polymeter
+    source: sample-techniques.md
+
+evaluation_bias:
+  target_dimensions:
+    depth: 0.20
+    groove: 0.20
+    motion: 0.16
+    novelty: 0.14
+    contrast: 0.12
+    cohesion: 0.10
+    clarity: 0.08
+  protect:
+    clarity: 0.55
+    cohesion: 0.65
+    low_end: 0.80
+
+move_family_bias:
+  favor:
+    - arrangement
+    - sound_design
+    - device_creation
+  deprioritize:
+    - mix
+    - performance
+
+dimensions_in_scope:
+  - rhythmic
+  - timbral
+  - structural
+  - spatial
+dimensions_deprioritized: []
+
+novelty_budget_default: 0.6
+
+tempo_hint:
+  min: 125
+  max: 135
+  time_signature: "4/4"  # notional — internal polymeter dominates
+
+canonical_artists: []
+canonical_genres:
+  - dub_techno
+  - experimental
+  - techno
+
+notes: |
+  Shackleton asks are the rare case where all four dimensions are
+  actively in play. Plans typically cover: rhythmic (Polyrhythm +
+  Phase Pattern on percussion, arrangement-family with
+  dimension_hint="rhythmic"), timbral (Microtuner on Operator for
+  microtonal bells, sound_design), spatial (cave reverb send on a
+  return, mix), structural (asymmetric build, transition-family).
+
+  Safer default: 3 plans across rhythmic + timbral + spatial; add
+  structural only if the user specifically asks for arrangement-level
+  change.

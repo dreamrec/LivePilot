@@ -1,0 +1,119 @@
+id: hip_hop__dj_premier_rza
+name: DJ Premier / RZA
+type: artist
+aliases:
+  - "dj premier"
+  - "premier"
+  - "premo"
+  - "rza"
+  - "wu-tang"
+
+sonic_identity:
+  - dusty chopped-soul loops
+  - dirty kicks
+  - snappy snares with reverb
+  - chord-stab-driven arrangement — the stab IS the song
+  - golden-era NYC boom-bap aesthetic
+
+reach_for:
+  instruments:
+    - Simpler  # classic mode, crop tight around stab
+  effects:
+    - Saturator
+    - Erosion
+    - Vinyl Distortion
+    - Convolution Reverb  # plate or spring IR on snare
+  packs:
+    - Golden Era Hip-Hop Drums
+    - Chop and Swing
+  utilities:
+    - EQ Eight
+
+avoid:
+  - clean samples
+  - modern drum samples
+  - synth bass
+  - bright mixes
+  - long arrangements
+
+rhythm_idioms:
+  - tight boom-bap kick-snare
+  - snare drowned in plate reverb on send
+  - simple hat patterns, no complex variation
+
+harmony_idioms:
+  - single chord stab repeated with subtle pitch/filter variation
+  - soul-loop source as tonal center
+  - no chord progressions — the stab IS the harmony
+
+arrangement_idioms:
+  - short loops (2-4 bar repetitions)
+  - stab re-triggered across sections with small variation
+  - vocal sample punctuation
+
+texture_idioms:
+  - dusty vinyl saturation
+  - plate reverb on snare (100% wet on send)
+  - tight mix — no spatial spread
+
+sample_roles:
+  - stab_source
+  - rhythmic_chop
+  - vocal_accent
+
+key_techniques:
+  - name: "stab_isolation"
+    source: sample-techniques.md
+  - name: "slice_and_sequence"
+    source: sample-techniques.md
+  - name: snare-through-Convolution-Reverb-at-100%-wet-on-send
+    source: sample-techniques.md
+
+evaluation_bias:
+  target_dimensions:
+    groove: 0.22
+    depth: 0.16
+    contrast: 0.14
+    cohesion: 0.14
+    novelty: 0.12
+    motion: 0.12
+    clarity: 0.10
+  protect:
+    clarity: 0.60
+    cohesion: 0.70
+    low_end: 0.75
+
+move_family_bias:
+  favor:
+    - sound_design
+    - arrangement
+    - device_creation
+  deprioritize:
+    - performance
+
+dimensions_in_scope:
+  - rhythmic
+  - timbral
+  - structural
+  - spatial  # the snare-plate send IS spatial
+dimensions_deprioritized: []
+
+novelty_budget_default: 0.45
+
+tempo_hint:
+  min: 85
+  max: 95
+  time_signature: "4/4"
+
+canonical_artists: []
+canonical_genres:
+  - hip_hop
+  - boom_bap
+
+notes: |
+  Premier/RZA differs from Dilla: the spatial dimension IS in scope
+  (plate reverb on snare is a signature move, not an afterthought).
+  Plans often include: sound_design (Simpler stab isolation +
+  vinyl distortion chain), arrangement (rhythmic — tight boom-bap
+  drum placement, dimension_hint="rhythmic"), device_creation (return
+  with Convolution Reverb plate for snare send).

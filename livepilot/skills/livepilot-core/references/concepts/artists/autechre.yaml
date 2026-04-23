@@ -1,0 +1,131 @@
+id: idm__autechre
+name: Autechre
+type: artist
+aliases:
+  - "autechre"
+  - "ae"
+
+sonic_identity:
+  - abstract rhythmic programming
+  - non-quantized micro-timing
+  - granular textures
+  - generative processes — track evolves by computation not composition
+
+reach_for:
+  instruments:
+    - Vector FM
+    - Vector Grain
+    - Operator
+  effects:
+    - Euclidean Rhythm  # Sequencers pack
+    - Phase Pattern
+    - Slice Shuffler
+    - Microtuner  # 19-TET or larger
+    - Bouncy Notes  # Inspired by Nature
+    - Performer  # Performance Pack — macro morphing
+  packs:
+    - Sequencers
+    - MIDI Tools
+    - Inspired by Nature
+    - Performance Pack
+  utilities:
+    - EQ Eight
+
+avoid:
+  - quantized beats
+  - equal temperament
+  - straightforward arrangement
+  - preset chains
+
+rhythm_idioms:
+  - Euclidean rhythms
+  - polyrhythmic layering
+  - asymmetric polymeter
+  - phase-shifted patterns
+
+harmony_idioms:
+  - microtonal tuning (19-TET common)
+  - abstract pitch relationships
+  - melodic content as artefact of process
+
+arrangement_idioms:
+  - generative evolution
+  - no traditional sections — patterns morph continuously
+  - performer-driven macro changes
+
+texture_idioms:
+  - granular textures
+  - FM bell clusters
+  - chaotic-lock-in timbres
+
+sample_roles:
+  - texture_bed
+  - rhythmic_chop
+  - percussive_ghost
+
+key_techniques:
+  - name: "euclidean_slice_trigger"
+    source: sample-techniques.md
+  - name: "Chaotic lock-in"
+    source: atlas
+    device: Vector Map
+  - name: "Modulated bell cluster"
+    source: atlas
+    device: Vector FM
+  - name: asymmetric polymeter
+    source: sample-techniques.md
+
+evaluation_bias:
+  target_dimensions:
+    novelty: 0.22
+    groove: 0.18
+    motion: 0.16
+    contrast: 0.14
+    depth: 0.12
+    cohesion: 0.10
+    clarity: 0.08
+  protect:
+    clarity: 0.45
+    cohesion: 0.55
+    low_end: 0.60
+
+move_family_bias:
+  favor:
+    - arrangement
+    - sound_design
+    - device_creation
+  deprioritize:
+    - mix
+    - performance
+
+dimensions_in_scope:
+  - rhythmic
+  - timbral
+  - structural
+dimensions_deprioritized:
+  - spatial
+
+novelty_budget_default: 0.75
+
+tempo_hint:
+  min: 80
+  max: 170
+  time_signature: "4/4"  # with internal polymeter
+
+canonical_artists: []
+canonical_genres:
+  - idm
+  - experimental
+  - electronic
+
+notes: |
+  Autechre asks reward process over decision. Plans should set up
+  generative machinery: Euclidean Rhythm with asymmetric parameters,
+  Phase Pattern on drum clips, Performer macros. Three plans often
+  land: rhythmic (Euclidean + Phase Pattern combinations,
+  arrangement-family with dimension_hint="rhythmic"), timbral (Vector
+  FM patch with chaotic modulation, sound_design), device_creation
+  (Performer + modulation-matrix chain for macro morphing).
+
+  Spatial dimension deprioritized — Autechre's space is usually in
+  the source material's internal behavior, not in send chains.

@@ -1,0 +1,125 @@
+id: downtempo__boards_of_canada
+name: Boards of Canada
+type: artist
+aliases:
+  - "boards of canada"
+  - "boc"
+
+sonic_identity:
+  - degraded-tape analog warmth
+  - detuned synthesizers
+  - child-voice samples
+  - 70s children's TV aesthetic
+  - slow tempos
+  - nostalgic melancholy
+
+reach_for:
+  instruments:
+    - Drift  # warm detune
+    - Simpler  # degraded samples with Erosion
+    - Electric Keyboards  # tape-warped
+  effects:
+    - Echo  # tape-delay via
+    - Grain Delay
+    - Vinyl Distortion
+    - Erosion
+  packs:
+    - Chop and Swing
+    - Electric Keyboards
+    - Mood Reel
+  utilities:
+    - EQ Eight
+
+avoid:
+  - pristine samples
+  - modern drum production
+  - bright mixes
+  - clean synthesis chains
+  - fast tempos
+
+rhythm_idioms:
+  - slow downtempo beats
+  - lo-fi break programming
+  - soft hand-percussion
+
+harmony_idioms:
+  - detuned analog pad chords
+  - minor-key melancholic melodic fragments
+  - child-voice samples as melodic motif
+
+arrangement_idioms:
+  - long slow reveal
+  - 4-6 minute tracks
+  - single mood sustained throughout
+
+texture_idioms:
+  - tape warmth (Erosion + Vinyl Distortion on everything)
+  - slight tuning instability
+  - nostalgic haze
+
+sample_roles:
+  - vocal_source
+  - texture_bed
+  - melodic_source
+
+key_techniques:
+  - name: "Tape-warped EP"
+    source: atlas
+    device: Electric Keyboards
+  - name: "reverse_layer"
+    source: sample-techniques.md
+  - name: "Dense grain cloud"
+    source: atlas
+    device: Vector Grain
+    notes: for vocal processing
+
+evaluation_bias:
+  target_dimensions:
+    depth: 0.22
+    cohesion: 0.18
+    motion: 0.14
+    groove: 0.12
+    contrast: 0.12
+    novelty: 0.12
+    clarity: 0.10
+  protect:
+    clarity: 0.55
+    cohesion: 0.72
+    low_end: 0.65
+
+move_family_bias:
+  favor:
+    - sound_design
+    - device_creation
+    - arrangement
+  deprioritize:
+    - mix
+    - performance
+
+dimensions_in_scope:
+  - timbral
+  - structural
+  - spatial
+  - rhythmic
+dimensions_deprioritized: []
+
+novelty_budget_default: 0.4
+
+tempo_hint:
+  min: 70
+  max: 95
+  time_signature: "4/4"
+
+canonical_artists: []
+canonical_genres:
+  - downtempo
+  - lo_fi
+  - electronica
+
+notes: |
+  BoC asks cluster around tape-warmth and detune. Plans often include:
+  sound_design (Drift with detune + filter drift), device_creation
+  (Vinyl Distortion + Erosion chain on drum bus, Grain Delay on pad),
+  arrangement (long slow reveal structure). Bass-laptop audibility
+  note (per memory): BoC bass is D1-D2 territory — ensure 150-200 Hz
+  harmonic boost for laptop playback.

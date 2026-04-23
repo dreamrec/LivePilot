@@ -1,0 +1,120 @@
+id: dubstep
+name: Dubstep / Bass Music (Modern)
+type: genre
+aliases:
+  - "dubstep"
+  - "bass music"
+
+sonic_identity:
+  - 140 BPM with half-time feel (snare on 3)
+  - wobble bass (filter-modulated saw) or growl bass (FM-heavy)
+  - punchy ~55 Hz kick often layered with sub
+  - heavy snare on 3 + snappy claps
+  - industrial atmosphere + noise risers
+
+reach_for:
+  instruments:
+    - Wavetable  # wobble
+    - Operator  # FM growl
+    - Bass
+    - Drum Rack
+  effects:
+    - Auto Filter  # wobble
+    - Compressor  # heavy
+    - Saturator
+    - Limiter
+    - Ring Modulator  # via Operator
+  packs:
+    - Drum Essentials  # dubstep kits
+    - Skitter and Step
+    - Punch and Tilt
+  utilities:
+    - EQ Eight
+
+avoid:
+  - full-step kick pattern
+  - major key
+  - clean mix
+  - retro aesthetic
+
+rhythm_idioms:
+  - half-time drum feel
+  - 909 hats
+  - occasional glitch percussion
+
+harmony_idioms:
+  - minor-key stabs
+  - filtered chords on breakdowns
+  - wobble/growl as harmonic content
+
+arrangement_idioms:
+  - intro → buildup → drop → breakdown → return
+  - breakdown typically at 48 or 64 bars
+  - dramatic tempo/intensity shifts
+
+texture_idioms:
+  - industrial atmosphere
+  - noise risers before drops
+  - heavy reverb on pads
+
+sample_roles:
+  - growl_bass_source
+  - percussive_accent
+
+key_techniques:
+  - name: "Wobble bass"
+    source: atlas
+    device: Wavetable
+  - name: "Reese-style bass"
+    source: atlas
+    device: Bass
+  - name: half-time drum programming
+    source: sample-techniques.md
+
+evaluation_bias:
+  target_dimensions:
+    contrast: 0.22
+    depth: 0.18
+    motion: 0.16
+    groove: 0.14
+    novelty: 0.10
+    cohesion: 0.10
+    clarity: 0.10
+  protect:
+    clarity: 0.60
+    cohesion: 0.60
+    low_end: 0.85
+
+move_family_bias:
+  favor:
+    - sound_design
+    - device_creation
+    - mix
+  deprioritize:
+    - performance
+
+dimensions_in_scope:
+  - rhythmic
+  - timbral
+  - structural
+  - spatial
+dimensions_deprioritized: []
+
+novelty_budget_default: 0.5
+
+tempo_hint:
+  min: 138
+  max: 142
+  time_signature: "4/4"  # half-time perceived
+
+canonical_artists:
+  - skream-mala
+  - burial
+
+canonical_genres: []
+
+notes: |
+  Dubstep spans from DMZ-era (Burial, Skream/Mala — bass-first, slower)
+  to modern Skrillex-era (aggressive, faster). Plans should match the
+  specific artist reference if provided. Default assumes DMZ-era
+  (bass-first, not aggressive-growl).

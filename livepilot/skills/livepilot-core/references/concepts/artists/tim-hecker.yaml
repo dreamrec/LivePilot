@@ -1,0 +1,122 @@
+id: ambient__tim_hecker
+name: Tim Hecker
+type: artist
+aliases:
+  - "tim hecker"
+
+sonic_identity:
+  - loud-but-fuzzy drone clouds
+  - distorted harmonic content
+  - digital grain from deliberately overloaded DSP
+  - melody hidden inside noise
+
+reach_for:
+  instruments:
+    - Vector Grain
+    - Granulator III  # Cloud mode with pitch spread
+    - Emit  # Inspired by Nature
+  effects:
+    - Erosion
+    - Saturator
+    - Convolution Reverb  # custom IRs
+    - Dynamic Tube
+    - Grain Delay
+    - Spectral Blur
+  packs:
+    - Inspired by Nature
+    - Mood Reel
+  utilities:
+    - EQ Eight
+
+avoid:
+  - clean signal chains
+  - dry tracks
+  - traditional mix philosophy (subtlety)
+  - pristine digital playback
+
+rhythm_idioms:
+  - no rhythm as conventional beat
+  - pulsing swells from Granulator/Emit grain rate
+
+harmony_idioms:
+  - harmonic content buried inside saturation and grain
+  - melodic fragments emerge from the noise cloud
+  - tonal centers that drift
+
+arrangement_idioms:
+  - slow reveals
+  - dense layering of multiple grain clouds
+  - each track is a single "event" sustained
+
+texture_idioms:
+  - digital grain and overloading as aesthetic
+  - harmonic saturation on every bus
+  - loud noise floor
+
+sample_roles:
+  - texture_bed
+  - drone_source
+
+key_techniques:
+  - name: "Grain cloud (Tim Hecker)"
+    source: atlas
+    device: Emit
+    notes: the technique's name is literally derived from this artist
+  - name: "granular_scatter"
+    source: sample-techniques.md
+  - name: "extreme_stretch"
+    source: sample-techniques.md
+  - name: "spectral_freeze"
+    source: sample-techniques.md
+
+evaluation_bias:
+  target_dimensions:
+    depth: 0.24
+    novelty: 0.18
+    cohesion: 0.14
+    motion: 0.14
+    contrast: 0.12
+    groove: 0.08
+    clarity: 0.10
+  protect:
+    clarity: 0.40
+    cohesion: 0.65
+    low_end: 0.60
+
+move_family_bias:
+  favor:
+    - sound_design
+    - device_creation
+  deprioritize:
+    - mix
+    - arrangement
+    - transition
+    - performance
+
+dimensions_in_scope:
+  - timbral
+  - spatial
+dimensions_deprioritized:
+  - rhythmic
+  - structural
+
+novelty_budget_default: 0.55
+
+tempo_hint:
+  min: 0
+  max: 0
+
+canonical_artists: []
+canonical_genres:
+  - ambient
+  - drone
+  - experimental
+  - idm
+
+notes: |
+  Hecker asks reward aggression that stays inside texture — loud,
+  saturated, grain-heavy, but never rhythmic. Three plans can fit
+  here (unlike SotL/Basinski which are strict 2-of-4) because
+  device_creation has real range: Vector Grain + Emit + Granulator III
+  each offer distinct grain behaviors. A saturation-heavy mix plan
+  (Saturator on bus, Dynamic Tube on master) also sits naturally.

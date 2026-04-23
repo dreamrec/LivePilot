@@ -1,0 +1,124 @@
+id: hip_hop__madlib
+name: Madlib
+type: artist
+aliases:
+  - "madlib"
+  - "otis jackson jr"
+
+sonic_identity:
+  - obscure sample flipping
+  - dense percussion layers
+  - dusty mix
+  - hip-hop-adjacent-but-weird — jazz samples, library music, world music sources
+  - cosmic stoner aesthetic
+
+reach_for:
+  instruments:
+    - Simpler  # slicing on any non-obvious source
+    - Voice Box
+    - Electric Keyboards
+  effects:
+    - Roar  # saturation
+    - Saturator
+    - Erosion
+    - Vinyl Distortion
+  packs:
+    - Chop and Swing
+    - Latin Percussion
+    - Voice Box
+    - Drum Booth
+  utilities:
+    - EQ Eight
+
+avoid:
+  - obvious sample sources (Dilla-style soul loops)
+  - clean production
+  - modern trap aesthetics
+  - preset drum kits
+
+rhythm_idioms:
+  - straightforward drums + unusual source material
+  - micro-chopped samples as rhythmic accent
+  - Latin percussion layered with boom-bap kit
+
+harmony_idioms:
+  - jazz-sample harmonic content
+  - library-music chord fragments
+  - world-music modal lines
+
+arrangement_idioms:
+  - 2-4 bar loop with sample-flip moments
+  - vocal interjections
+  - 1-2 minute tracks (Madvillainy-era) or longer beat-tapes
+
+texture_idioms:
+  - heavy saturation across the mix
+  - vinyl crackle
+  - field-recording subtext
+
+sample_roles:
+  - melodic_source
+  - rhythmic_chop
+  - vocal_accent
+
+key_techniques:
+  - name: "micro_chop"
+    source: sample-techniques.md
+  - name: "vocal_chop_rhythm"
+    source: sample-techniques.md
+  - name: "reverse_layer"
+    source: sample-techniques.md
+  - name: unusual source material + straightforward drums
+    source: sample-techniques.md
+
+evaluation_bias:
+  target_dimensions:
+    novelty: 0.20
+    groove: 0.18
+    depth: 0.14
+    contrast: 0.14
+    motion: 0.12
+    cohesion: 0.12
+    clarity: 0.10
+  protect:
+    clarity: 0.55
+    cohesion: 0.60
+    low_end: 0.70
+
+move_family_bias:
+  favor:
+    - sound_design
+    - arrangement
+    - device_creation
+  deprioritize:
+    - mix
+    - performance
+
+dimensions_in_scope:
+  - rhythmic
+  - timbral
+  - structural
+dimensions_deprioritized:
+  - spatial
+
+novelty_budget_default: 0.6
+
+tempo_hint:
+  min: 80
+  max: 100
+  time_signature: "4/4"
+
+canonical_artists: []
+canonical_genres:
+  - hip_hop
+  - lo_fi
+  - experimental
+
+notes: |
+  Madlib differs from Dilla and Premier by source selection: the
+  sample source IS the creative move. Plans often involve loading
+  obscure source material via sample_engine and building a Simpler
+  chop from it. Three plans typically: sound_design (Simpler slicing
+  with unusual source), arrangement (rhythmic — Latin Percussion
+  layer under boom-bap, dimension_hint="rhythmic"), device_creation
+  (Roar + Erosion saturation chain).

@@ -1,0 +1,134 @@
+id: ambient__gas
+name: Wolfgang Voigt (Gas)
+type: artist
+aliases:
+  - "gas"
+  - "wolfgang voigt"
+
+sonic_identity:
+  - orchestral loops (Wagner, Mahler) sampled and crushed into 4/4 kick
+  - blurred by heavy reverb into undifferentiated harmonic drone
+  - forest-deep ambient with a pulse
+  - nothing recognizable as a sample source — everything is texture
+
+reach_for:
+  instruments:
+    - Granulator III  # Cloud mode, 200-500 ms grains
+    - Drone Lab  # Harmonic Drone Generator
+    - Vector Grain
+    - Sampler
+  effects:
+    - Convolution Reverb  # cathedral IR
+    - Auto Filter  # slow LFO sweep
+    - Erosion
+    - Grain Delay
+  packs:
+    - Drone Lab
+    - Inspired by Nature
+  utilities:
+    - Utility
+    - EQ Eight
+
+avoid:
+  - crisp transients
+  - bright EQ
+  - dry tails
+  - anything recognizable as a sample source
+  - fast evolution
+
+rhythm_idioms:
+  - steady 4/4 kick underneath everything
+  - no independent percussion
+  - the kick is a pulse, not a rhythm
+
+harmony_idioms:
+  - single sustained harmonic field
+  - slow chord shifts every 16-32 bars
+  - orchestral source filtered into drone
+
+arrangement_idioms:
+  - 8-15 minute pieces
+  - subtraction and addition happen imperceptibly
+  - no sections — continuous evolution
+
+texture_idioms:
+  - forest/nature subtext
+  - cathedral reverb at 100% wet on send
+  - tape hiss tolerated, even embraced
+
+sample_roles:
+  - texture_bed
+  - drone_source
+  - dub_tail_source
+
+key_techniques:
+  - name: "Grain cloud (Tim Hecker)"
+    source: atlas
+    device: Emit
+  - name: "Basinski tape degradation"
+    source: atlas
+    device: Vector Grain
+  - name: "extreme_stretch"
+    source: sample-techniques.md
+  - name: "tail_harvest"
+    source: sample-techniques.md
+  - name: "drum_to_pad"
+    source: sample-techniques.md
+
+evaluation_bias:
+  target_dimensions:
+    depth: 0.26
+    cohesion: 0.18
+    motion: 0.16
+    contrast: 0.12
+    novelty: 0.10
+    groove: 0.10
+    clarity: 0.08
+  protect:
+    clarity: 0.45
+    cohesion: 0.75
+    low_end: 0.75
+
+move_family_bias:
+  favor:
+    - sound_design
+    - device_creation
+    - mix
+  deprioritize:
+    - transition
+    - performance
+    - arrangement  # the arrangement is "continuous" — formal sections don't apply
+
+dimensions_in_scope:
+  - timbral
+  - spatial
+dimensions_deprioritized:
+  - rhythmic  # no percussion beyond kick
+  - structural  # continuous form, no sections
+
+novelty_budget_default: 0.45
+
+tempo_hint:
+  min: 95
+  max: 115
+  time_signature: "4/4"
+  # Voigt's Pop / Zauberberg / Königsforst sit 95-110; 120-128 was
+  # dub-techno-general, not Gas-specific (per PR 2.5 pressure test).
+
+canonical_artists: []
+canonical_genres:
+  - ambient
+  - dub_techno
+  - modern_classical
+
+notes: |
+  Gas is a legitimately 2-of-4 packet: rhythmic and structural
+  dimensions are out of scope (no percussion beyond the pulse kick, no
+  sections within the continuous drone). Two-plan outputs are idiomatic
+  here, per the-four-move-rule §"narrow-idiom low-novelty" clause.
+
+  Typical plan distribution: (1) sound_design — Granulator III Cloud
+  mode on an orchestral-sample source, (2) device_creation — return
+  chain with cathedral Convolution Reverb and Auto Filter LFO. A
+  third plan (mix) narrowing sub to mono is optional if the current
+  bed has bass issues.

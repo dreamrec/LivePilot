@@ -1,0 +1,126 @@
+id: ambient__basinski
+name: William Basinski
+type: artist
+aliases:
+  - "basinski"
+  - "william basinski"
+
+sonic_identity:
+  - tape loops degrading across long durations
+  - the DECAY of the source IS the piece
+  - a single 2-8 second loop played for 30-60 minutes
+  - the tape physically eroding over the piece's length
+
+reach_for:
+  instruments:
+    - Vector Grain  # Inspired by Nature
+    - Looper
+    - Sampler
+  effects:
+    - Convolution Reverb  # long decay
+    - Erosion
+    - Dynamic Tube
+    - Vinyl Distortion
+    - Grain Delay
+  packs:
+    - Inspired by Nature
+    - Mood Reel
+  utilities:
+    - EQ Eight
+    - Utility
+
+avoid:
+  - crisp digital playback
+  - fresh samples (use degraded/compressed source)
+  - cuts between sections
+  - fast evolution
+
+rhythm_idioms:
+  - no rhythm — sustained loop
+  - any pulse is incidental to the loop content
+
+harmony_idioms:
+  - single loop's harmonic content sustained across entire piece
+  - decay alters perceived harmony as frequencies drop out
+  - no chord changes, only erosion
+
+arrangement_idioms:
+  - single loop, long duration
+  - decay IS the arrangement
+  - Looper on a return for literal tape-loop emulation
+
+texture_idioms:
+  - tape hiss embraced
+  - cassette-IR Convolution
+  - Erosion and Vinyl Distortion as character
+
+sample_roles:
+  - texture_bed
+  - drone_source
+  - dub_tail_source
+
+key_techniques:
+  - name: "Basinski tape degradation"
+    source: atlas
+    device: Vector Grain
+  - name: "tail_harvest"
+    source: sample-techniques.md
+  - name: "extreme_stretch"
+    source: sample-techniques.md
+  - name: "reverse_layer"
+    source: sample-techniques.md
+
+evaluation_bias:
+  target_dimensions:
+    depth: 0.28
+    cohesion: 0.20
+    motion: 0.14
+    contrast: 0.12
+    novelty: 0.10
+    groove: 0.08
+    clarity: 0.08
+  protect:
+    clarity: 0.40
+    cohesion: 0.78
+    low_end: 0.60
+
+move_family_bias:
+  favor:
+    - sound_design
+    - device_creation
+  deprioritize:
+    - mix
+    - arrangement
+    - transition
+    - performance
+
+dimensions_in_scope:
+  - timbral
+  - spatial
+dimensions_deprioritized:
+  - rhythmic
+  - structural
+
+novelty_budget_default: 0.4
+
+tempo_hint:
+  min: 0
+  max: 0  # no tempo — duration-based form
+
+canonical_artists: []
+canonical_genres:
+  - ambient
+  - drone
+  - modern_classical
+
+notes: |
+  Basinski is the strongest 2-of-4 case in the artist catalog. Only
+  timbral and spatial dimensions are legitimately in scope. Two-plan
+  outputs are correct; forcing a third plan invents fabrication.
+
+  Typical plan distribution: (1) sound_design — Vector Grain with
+  degraded source samples, (2) device_creation — Looper on a return
+  + Convolution Reverb + Erosion chain. If the current session is
+  missing a degraded source, a third sample_engine-adjacent plan
+  (device_creation — load Sampler with a compressed degraded source)
+  is acceptable.

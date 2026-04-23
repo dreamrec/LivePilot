@@ -1,0 +1,120 @@
+id: techno__jeff_mills
+name: Jeff Mills
+type: artist
+aliases:
+  - "jeff mills"
+  - "the wizard"
+
+sonic_identity:
+  - relentless percussive techno
+  - minimal melody
+  - sci-fi synth stabs
+  - unbroken 4/4 drive
+  - layered hi-hat patterns
+  - long arrangements (20+ minute live sets)
+
+reach_for:
+  instruments:
+    - Drift  # stabs
+    - Operator  # sci-fi bells
+    - Drum Rack  # 909 samples
+  effects:
+    - Phase Pattern  # organic hat timing
+    - Echo  # tight delay on stabs
+    - Saturator
+  packs:
+    - Drum Essentials  # 909
+    - Core Library
+  utilities:
+    - EQ Eight
+
+avoid:
+  - melodic harmony
+  - breaks
+  - restful moments
+  - slow tempos
+  - long chord progressions
+
+rhythm_idioms:
+  - relentless 909 kick-clap programming
+  - three or four hat layers with Phase Pattern humanization
+  - no break — energy sustained across entire track
+
+harmony_idioms:
+  - single stab chord
+  - no progression — stab is a texture, not harmony
+  - occasional bell cluster for color
+
+arrangement_idioms:
+  - long-form sustain (20+ minute live sets)
+  - drop elements for 32 bars, then reintroduce
+  - energy modulation via element swapping, not tempo change
+
+texture_idioms:
+  - tight Echo on stabs
+  - saturated 909 samples
+  - no reverb washes — dry techno space
+
+sample_roles:
+  - stab_source
+  - percussive_ghost
+
+key_techniques:
+  - name: "Retro stab"
+    source: atlas
+    device: Poli
+  - name: relentless 909 programming
+    source: sample-techniques.md
+  - name: "phase_pattern"
+    source: sample-techniques.md
+    notes: for hi-hat humanization
+
+evaluation_bias:
+  target_dimensions:
+    groove: 0.22
+    motion: 0.20
+    contrast: 0.14
+    cohesion: 0.12
+    novelty: 0.12
+    depth: 0.10
+    clarity: 0.10
+  protect:
+    clarity: 0.65
+    cohesion: 0.70
+    low_end: 0.75
+
+move_family_bias:
+  favor:
+    - arrangement  # the percussive programming is rhythmic dominance
+    - sound_design
+    - mix
+  deprioritize:
+    - transition
+    - performance
+
+dimensions_in_scope:
+  - rhythmic
+  - timbral
+  - structural
+dimensions_deprioritized:
+  - spatial  # dry techno space — no send work
+
+novelty_budget_default: 0.5
+
+tempo_hint:
+  min: 130
+  max: 140
+  time_signature: "4/4"
+
+canonical_artists: []
+canonical_genres:
+  - techno
+  - detroit_techno
+
+notes: |
+  Jeff Mills asks emphasize rhythmic layering and stab texture. Plans
+  should favor percussion programming over spatial effects. Three
+  plans often cluster: arrangement (rhythmic — layered 909 hats with
+  Phase Pattern, dimension_hint="rhythmic"), sound_design (Drift
+  stab patch tuning + Echo delay settings), mix (saturation + tight
+  EQ on drum bus).

@@ -1,0 +1,136 @@
+id: experimental
+name: Experimental / Noise / Found-Sound
+type: genre
+aliases:
+  - "experimental"
+  - "noise"
+  - "found-sound"
+  - "avant"
+
+sonic_identity:
+  - variable or no tempo
+  - kick absent or found-sound substitute
+  - drone / sub-bass / absent bass
+  - found-sound percussion (metal, glass, objects) NOT kit drums
+  - often atonal, microtonal, or noise-based
+  - texture IS everything
+
+reach_for:
+  instruments:
+    - Vector Grain
+    - Emit
+    - Corpus
+    - Tension  # weird settings
+    - Collision
+    - Bell Tower
+  effects:
+    - Erosion
+    - Roar
+    - Spectral Blur
+    - Spectral Resonator
+    - Shifter
+    - Pitch Hack
+    - Grain Delay
+  packs:
+    - Lost and Found
+    - Glitch and Wash
+    - Inspired by Nature
+    - Building Max Devices
+  utilities:
+    - EQ Eight
+
+avoid:
+  - predictable arrangement
+  - traditional harmony
+  - clean signal chains
+  - stock drum kits
+
+rhythm_idioms:
+  - variable or no tempo
+  - found-sound percussion (metal, glass, objects)
+  - polyrhythmic / polymetric structures common
+  - rhythmic loops from non-musical sources
+
+harmony_idioms:
+  - atonal, microtonal, or noise-based
+  - pitch emerges from physical-model resonance
+  - harmonic content embedded in saturation
+
+arrangement_idioms:
+  - non-linear form
+  - abrupt shifts
+  - duration-based rather than section-based
+
+texture_idioms:
+  - granular, spectral, saturated, reversed
+  - physical-impact textures via Corpus / Collision
+  - impossible-acoustic spaces
+
+sample_roles:
+  - texture_bed
+  - percussive_ghost
+  - drone_source
+
+key_techniques:
+  - name: "Noise Bow"
+    source: atlas
+    device: Corpus
+  - name: "Chaotic lock-in"
+    source: atlas
+    device: Vector Map
+  - name: "granular_scatter"
+    source: sample-techniques.md
+  - name: "Modulated bell cluster"
+    source: atlas
+    device: Vector FM
+
+evaluation_bias:
+  target_dimensions:
+    novelty: 0.24
+    contrast: 0.18
+    depth: 0.14
+    motion: 0.14
+    cohesion: 0.10
+    groove: 0.10
+    clarity: 0.10
+  protect:
+    clarity: 0.40
+    cohesion: 0.50
+    low_end: 0.55
+
+move_family_bias:
+  favor:
+    - sound_design
+    - device_creation
+    - arrangement
+  deprioritize:
+    - mix
+    - performance
+
+dimensions_in_scope:
+  - timbral
+  - spatial
+  - structural
+  - rhythmic
+dimensions_deprioritized: []
+
+novelty_budget_default: 0.75
+
+tempo_hint:
+  min: 0
+  max: 0  # variable or no tempo
+
+canonical_artists:
+  - arca-sophie
+  - oneohtrix-point-never
+  - tim-hecker
+  - autechre
+
+canonical_genres: []
+
+notes: |
+  Experimental is the highest-novelty genre. Plans should embrace
+  physical-modeling synthesis (Corpus, Collision, Tension), grain
+  clouds (Vector Grain, Emit), and non-linear arrangement. The
+  packet's target_dimensions DEPRIORITIZES clarity — the aesthetic
+  tolerates and embraces unclean signal chains.

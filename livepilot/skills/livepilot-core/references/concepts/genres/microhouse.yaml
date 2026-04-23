@@ -1,0 +1,138 @@
+id: microhouse
+name: Microhouse
+type: genre
+aliases:
+  - "micro house"
+  - "micro-house"
+
+sonic_identity:
+  - hyper-chopped vocal snippets as percussion AND melody
+  - constant micro-variation across bars
+  - filtered mid-bass warmth
+  - reverb tails hidden at -20 to -30 dB under main elements
+  - the percussion IS the genre — the kick is minimal
+
+reach_for:
+  instruments:
+    - Simpler  # slicing mode for vocals + one-shot for pitched chops
+    - Drift
+    - Poli
+    - Granulator III
+  effects:
+    - Snipper
+    - PitchLoop89
+    - Auto Filter  # band-pass sweeps
+    - Convolution Reverb
+    - Gated Delay
+    - Variations  # stab morphing
+  packs:
+    - Voice Box
+    - Chop and Swing
+    - Latin Percussion
+    - Lost and Found
+    - Mood Reel
+  utilities:
+    - Utility
+    - EQ Eight
+
+avoid:
+  - loud kicks
+  - sidechain compression
+  - long-sustain melody
+  - bright overtones
+  - repeated 8-bar loops
+  - quantized 4/4 drums
+
+rhythm_idioms:
+  - chopped-vocal micro-percussion
+  - glass/metal percussion
+  - shakers and conga/cuica hits
+  - off-grid micro-timing on most hits
+
+harmony_idioms:
+  - filtered chord stabs
+  - pitched vocal fragments as hooks
+  - D minor / A minor / F minor common
+
+arrangement_idioms:
+  - constant variation, no repeated loops
+  - subtraction over addition
+  - filter movement as arrangement
+
+texture_idioms:
+  - field recordings
+  - vinyl crackle
+  - reverb tails hidden under main elements
+
+sample_roles:
+  - melodic_chop
+  - rhythmic_chop
+  - transient_ghost
+  - texture_bed
+
+key_techniques:
+  - name: "Vocal micro-chop (Akufen)"
+    source: atlas
+    device: Simpler
+  - name: "micro_chop"
+    source: sample-techniques.md
+  - name: "dub_throw"
+    source: sample-techniques.md
+  - name: "Hat replay pitch drift"
+    source: atlas
+    device: Snipper
+
+evaluation_bias:
+  target_dimensions:
+    groove: 0.22
+    depth: 0.18
+    motion: 0.16
+    novelty: 0.14
+    contrast: 0.12
+    cohesion: 0.10
+    clarity: 0.08
+  protect:
+    clarity: 0.55
+    cohesion: 0.65
+    low_end: 0.70
+
+move_family_bias:
+  favor:
+    - arrangement
+    - sound_design
+    - device_creation
+  deprioritize:
+    - mix
+    - performance
+
+dimensions_in_scope:
+  - rhythmic
+  - timbral
+  - structural
+dimensions_deprioritized:
+  - spatial  # secondary — filter movement matters more than reverb space
+
+novelty_budget_default: 0.55
+
+tempo_hint:
+  min: 122
+  max: 128
+  time_signature: "4/4"
+
+canonical_artists:
+  - villalobos
+  - akufen
+  - isolee-luomo
+
+canonical_genres: []  # genre packet
+
+notes: |
+  Microhouse asks almost always want three plans across rhythmic
+  (clip-level vocal chop edits, arrangement-family with
+  dimension_hint="rhythmic"), timbral (Simpler slicing parameters,
+  sound_design), and structural (filter-arc over 16-bar phrase,
+  transition-family or an arrangement-family long-form edit).
+
+  The genre's hallmark "no loop sounds the same" requires variation
+  generation at the sample level, not just parameter level. Reach for
+  Variations pack or probability fields before reaching for LFOs.

@@ -1,0 +1,140 @@
+id: dub_techno__basic_channel
+name: Basic Channel / Rhythm & Sound
+type: artist
+aliases:
+  - "basic channel"
+  - "rhythm and sound"
+  - "rhythm & sound"
+  - "moritz von oswald"
+  - "mark ernestus"
+
+sonic_identity:
+  - space IS the instrument
+  - chord stabs feeding long filtered delay and reverb tails
+  - the tails carry the harmonic and melodic content
+  - kick-snare 4/4 but swimming in cavernous space
+  - low-mid warmth, never bright top-end
+
+reach_for:
+  instruments:
+    - Drift
+    - Poli
+    - Simpler  # dub-sub samples
+    - Drone Lab  # Harmonic Drone Generator
+  effects:
+    - Convolution Reverb  # Farfisa Spring IR, Stocktronics RX-4000
+    - Ping Pong Delay
+    - Echo
+    - Auto Filter
+  packs:
+    - Drone Lab
+    - Chop and Swing
+    - Lost and Found
+  utilities:
+    - Utility  # narrow-to-mono sub
+    - EQ Eight
+
+avoid:
+  - dry signals
+  - short tails
+  - bright top-end
+  - pre-mixed "finished" presets
+  - crisp transients
+  - EDM brightness
+
+rhythm_idioms:
+  - kick-snare 4/4 with ghost hits
+  - delayed off-beats from filtered delay
+  - percussion implied via tail interplay, not foreground
+
+harmony_idioms:
+  - single chord stab as source
+  - reverb and delay tails BECOME the harmonic movement
+  - minor 7th or suspended voicings
+  - static harmonic center with color via filter movement
+
+arrangement_idioms:
+  - slow reveal
+  - subtraction before addition
+  - return deeper, not louder
+  - 8-12 minute tracks standard
+
+texture_idioms:
+  - long reverb tails at -10 to -20 dB
+  - vinyl crackle subtext
+  - rain/nature field recordings occasionally
+
+sample_roles:
+  - dub_tail_source
+  - texture_bed
+  - transient_ghost
+
+key_techniques:
+  - name: "The dub chord"
+    source: sound-design-deep.md
+    notes: chord → filtered delay → return-filter becomes the melody
+  - name: "Reverb as harmony"
+    source: sound-design-deep.md
+  - name: "Delay throws"
+    source: sound-design-deep.md
+  - name: "Dub sub-bass"
+    source: atlas
+    device: Bass
+
+evaluation_bias:
+  target_dimensions:
+    depth: 0.24
+    motion: 0.18
+    cohesion: 0.16
+    groove: 0.12
+    contrast: 0.12
+    novelty: 0.10
+    clarity: 0.08
+  protect:
+    clarity: 0.50  # intentionally lower — dub-techno tolerates haze
+    cohesion: 0.72
+    low_end: 0.80
+
+move_family_bias:
+  favor:
+    - sound_design
+    - device_creation  # return chain setup is device_creation heavy
+    - mix  # space via send is legitimate mix work here
+  deprioritize:
+    - transition  # dub-techno evolves slowly, not through transitions
+    - performance
+
+dimensions_in_scope:
+  - timbral
+  - spatial
+  - structural  # optional — only if user expands scope
+dimensions_deprioritized:
+  - rhythmic  # percussion implied not stated
+
+novelty_budget_default: 0.5  # mid — the idiom is conservative
+
+tempo_hint:
+  min: 120
+  max: 130
+  time_signature: "4/4"
+
+canonical_artists: []
+canonical_genres:
+  - dub_techno
+  - dub
+  - deep_minimal
+
+notes: |
+  Basic Channel asks reward the "return-track architecture" approach:
+  the main signal is dry-ish, and a return (Ping-Pong Delay with filter
+  + Convolution Reverb with cathedral IR) carries the aesthetic. Three
+  plans typically land: (1) a device_creation plan that builds the
+  return chain, (2) a sound_design plan that opens Drift/Poli on the
+  chord stab, (3) a mix plan that narrows the sub to mono. Rhythmic
+  plans are idiomatic under-coverage — drop them honestly unless the
+  user specifically asks for swing.
+
+  If the user mixes Basic Channel with a rhythmically-emphatic
+  reference ("Basic Channel but with Dilla swing"), the rhythmic
+  dimension re-enters scope and an arrangement-family plan with
+  dimension_hint="rhythmic" should appear.

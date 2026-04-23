@@ -1,0 +1,135 @@
+id: deep_minimal__villalobos
+name: Ricardo Villalobos
+type: artist
+aliases:
+  - "villalobos"
+  - "ricardo villalobos"
+
+sonic_identity:
+  - micro-sampled vocals and found sounds as melodic content
+  - off-grid percussion with South American polyrhythms
+  - sub-bass at 40-50 Hz fundamental (sub_low analyzer band)
+  - tracks that evolve across 15+ minutes without repetition
+  - constant micro-variation — no 4-bar loop ever sounds the same
+
+reach_for:
+  instruments:
+    - Simpler
+    - Drone Lab
+    - Bass
+    - Operator
+  effects:
+    - Snipper
+    - PitchLoop89
+    - Convolution Reverb
+    - Phase Pattern
+    - Microtuner
+  packs:
+    - Latin Percussion
+    - Lost and Found
+    - Voice Box
+    - Drone Lab
+    - Chop and Swing
+    - Glitch and Wash
+  utilities:
+    - Utility
+    - Spectrum
+
+avoid:
+  - quantized 4/4 drums
+  - bright kicks
+  - repetitive 8-bar loops
+  - stock presets
+  - aggressive sidechain
+  - dry mix
+
+rhythm_idioms:
+  - off-grid micro-timing on almost every hit
+  - polyrhythmic hand percussion (cuica, conga, guiro, claves)
+  - chopped-vocal content doubling as rhythm AND melody
+
+harmony_idioms:
+  - chopped vocals as melodic material
+  - occasional microtonal moments
+  - modal not functional harmony
+
+arrangement_idioms:
+  - long-form evolution (8+ minutes typical)
+  - subtraction over addition
+  - single element morphs across dozens of bars
+
+texture_idioms:
+  - constant field-recording subtext
+  - reverb tails layered at -25 to -30 dB
+  - found-sound as texture bed
+
+sample_roles:
+  - texture_bed
+  - transient_ghost
+  - melodic_chop
+  - rhythmic_chop
+
+key_techniques:
+  - name: "Vocal micro-chop (Akufen)"
+    source: atlas
+    device: Simpler
+  - name: "Villalobos sub-bass layer"
+    source: atlas
+    device: Simpler
+  - name: "dub_throw"
+    source: sample-techniques.md
+  - name: "Micro-Modulation"
+    source: sound-design-deep.md
+    notes: filter + pitch at <5% depth
+
+evaluation_bias:
+  target_dimensions:
+    depth: 0.22
+    groove: 0.20
+    motion: 0.16
+    novelty: 0.14
+    contrast: 0.10
+    cohesion: 0.10
+    clarity: 0.08
+  protect:
+    clarity: 0.55
+    cohesion: 0.65
+    low_end: 0.75
+
+move_family_bias:
+  favor:
+    - arrangement
+    - sound_design
+    - transition
+  deprioritize:
+    - mix
+    - performance
+
+dimensions_in_scope:
+  - rhythmic
+  - timbral
+  - structural
+dimensions_deprioritized:
+  - spatial  # not absent, but subordinate to rhythmic/timbral
+
+novelty_budget_default: 0.6  # Villalobos asks are usually adventurous
+
+tempo_hint:
+  min: 125
+  max: 135
+  time_signature: "4/4"
+
+canonical_artists: []  # artist packet
+canonical_genres:
+  - deep_minimal
+  - minimal_techno
+  - microhouse
+
+notes: |
+  Villalobos asks reward subtraction, patience, and subtle non-repetition.
+  Three plans should ideally span clip-level rhythmic transformation
+  (arrangement-family with dimension_hint="rhythmic"), timbral
+  development of a single source (sound_design), and a structural
+  breathing move (transition-family, create_breakdown or negative-space
+  reveal). Avoid ANY plan that makes the track feel "busier" — even
+  Villalobos's densest moments are subtracted, not added.

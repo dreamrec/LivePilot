@@ -1,0 +1,133 @@
+id: hip_hop__j_dilla
+name: J Dilla
+type: artist
+aliases:
+  - "j dilla"
+  - "dilla"
+  - "jay dee"
+  - "james dewitt yancey"
+
+sonic_identity:
+  - sampled breaks and soul loops
+  - intentionally "drunk" off-grid drum programming
+  - warm saturated mix
+  - chopped chord stabs from records
+  - human micro-timing as aesthetic
+
+reach_for:
+  instruments:
+    - Simpler  # slicing mode on classic breaks
+    - Electric Keyboards  # Rhodes chopped from vinyl
+    - Bass
+  effects:
+    - Saturator
+    - Vinyl Distortion
+    - Erosion
+    - Grain Delay  # tape delay simulation
+  packs:
+    - Chop and Swing
+    - Golden Era Hip-Hop Drums
+    - Electric Keyboards
+    - Drum Booth
+  utilities:
+    - EQ Eight
+
+avoid:
+  - quantized drums
+  - bright mixes
+  - modern trap-style hi-hats
+  - 808 sub-bass in place of electric/sampled bass
+  - clean production
+
+rhythm_idioms:
+  - off-grid drum programming (manual micro-timing)
+  - swing approximation 60-70% via individual note shifts
+  - no groove template — each note is placed by hand
+  - classic break slicing (Amen, Funky Drummer, Impeach the President)
+
+harmony_idioms:
+  - chopped soul/jazz loops as harmonic content
+  - Rhodes/Wurly samples chopped from records
+  - sometimes unintentional key clashes become the sound
+
+arrangement_idioms:
+  - loop-based with sample-flip variations
+  - 8-16 bar loop extensions via chop re-arrangement
+  - no traditional verse/chorus form
+
+texture_idioms:
+  - vinyl crackle as perpetual subtext
+  - tape-warped EP tone
+  - saturator on drum bus
+  - dusty mix aesthetic
+
+sample_roles:
+  - rhythmic_chop
+  - melodic_source
+  - texture_bed
+
+key_techniques:
+  - name: "J Dilla micro-timed kit"
+    source: atlas
+    device: Simpler
+    notes: the technique's name literally comes from this artist
+  - name: "slice_and_sequence"
+    source: sample-techniques.md
+  - name: "stab_isolation"
+    source: sample-techniques.md
+  - name: "Tape-warped EP"
+    source: atlas
+    device: Electric Keyboards
+
+evaluation_bias:
+  target_dimensions:
+    groove: 0.26
+    depth: 0.16
+    novelty: 0.14
+    motion: 0.12
+    contrast: 0.12
+    cohesion: 0.10
+    clarity: 0.10
+  protect:
+    clarity: 0.55
+    cohesion: 0.65
+    low_end: 0.75
+
+move_family_bias:
+  favor:
+    - arrangement  # rhythmic work dominates here
+    - sound_design
+    - device_creation
+  deprioritize:
+    - mix  # dusty-not-polished — mix work is subtle
+    - performance
+
+dimensions_in_scope:
+  - rhythmic
+  - timbral
+  - structural
+dimensions_deprioritized:
+  - spatial  # dry intimacy is the aesthetic
+
+novelty_budget_default: 0.5
+
+tempo_hint:
+  min: 85
+  max: 95
+  time_signature: "4/4"
+
+canonical_artists: []
+canonical_genres:
+  - hip_hop
+  - lo_fi
+  - soul
+  - downtempo
+
+notes: |
+  Dilla is the canonical beat-focused packet: spatial dimension is
+  deprioritized (dry intimacy IS the aesthetic — "boom bap" is a
+  close-miced room, not a cathedral). Plans almost always cluster:
+  rhythmic (manual micro-timing on drum notes, arrangement-family
+  with dimension_hint="rhythmic"), timbral (Saturator + Vinyl
+  Distortion + Erosion chain on drum bus, sound_design),
+  device_creation (Electric Keyboards + Grain Delay for tape-warped EP).

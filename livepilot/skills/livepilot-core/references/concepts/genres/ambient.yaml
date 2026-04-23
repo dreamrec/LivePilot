@@ -1,0 +1,137 @@
+id: ambient
+name: Ambient / Drone
+type: genre
+aliases:
+  - "ambient"
+  - "drone"
+  - "ambient drone"
+
+sonic_identity:
+  - 60-90 BPM or no perceptible tempo
+  - 5-30+ minute pieces
+  - sustained pads, drones, evolving harmonic fields
+  - modal or microtonal common
+  - texture IS the composition
+
+reach_for:
+  instruments:
+    - Granulator III  # Cloud mode
+    - Drone Lab  # Harmonic Drone Generator
+    - Vector Grain
+    - Emit
+    - Tension  # bowed cello
+    - Sampler  # orchestral
+  effects:
+    - Convolution Reverb  # cathedral/hall
+    - Vector Delay
+    - Delay
+    - Erosion
+    - Dynamic Tube
+  packs:
+    - Drone Lab
+    - Inspired by Nature
+    - Mood Reel
+    - SONiVOX Orchestral Strings  # pp only
+    - SONiVOX Orchestral Woodwinds  # pp only
+  utilities:
+    - EQ Eight
+
+avoid:
+  - drums
+  - rhythmic patterns
+  - fast elements
+  - bright EQ
+  - hard cuts
+
+rhythm_idioms:
+  - no rhythm, or very sparse
+  - occasional distant bell / chime / rim-shot
+  - duration-based form
+
+harmony_idioms:
+  - sustained pads
+  - drones
+  - evolving harmonic fields
+  - modal or microtonal common
+
+arrangement_idioms:
+  - 5-30+ minute pieces
+  - no sections — continuous evolution
+  - subtle shifts across long durations
+
+texture_idioms:
+  - reverb, granular, delay, tape degradation
+  - cathedral acoustics
+  - decay AS composition
+
+sample_roles:
+  - texture_bed
+  - drone_source
+
+key_techniques:
+  - name: "Grain cloud (Tim Hecker)"
+    source: atlas
+    device: Emit
+  - name: "Basinski tape degradation"
+    source: atlas
+    device: Vector Grain
+  - name: "Slow-motion sustain"
+    source: atlas
+    device: Vector Grain
+  - name: "extreme_stretch"
+    source: sample-techniques.md
+  - name: "tail_harvest"
+    source: sample-techniques.md
+
+evaluation_bias:
+  target_dimensions:
+    depth: 0.26
+    cohesion: 0.20
+    motion: 0.14
+    contrast: 0.12
+    novelty: 0.10
+    groove: 0.08
+    clarity: 0.10
+  protect:
+    clarity: 0.45
+    cohesion: 0.78
+    low_end: 0.60
+
+move_family_bias:
+  favor:
+    - sound_design
+    - device_creation
+  deprioritize:
+    - mix
+    - arrangement
+    - transition
+    - performance
+
+dimensions_in_scope:
+  - timbral
+  - spatial
+dimensions_deprioritized:
+  - rhythmic
+  - structural
+
+novelty_budget_default: 0.4
+
+tempo_hint:
+  min: 0
+  max: 90
+  time_signature: "4/4"
+
+canonical_artists:
+  - stars-of-the-lid
+  - tim-hecker
+  - basinski
+  - gas
+  - johannsson-richter
+
+canonical_genres: []
+
+notes: |
+  Ambient is the strongest 2-of-4 genre. Plans should rarely exceed
+  timbral + spatial coverage. If the user requests rhythmic work
+  while referencing ambient, disambiguate — ambient with pulse
+  (Gas-adjacent) is a hybrid; pure ambient has no rhythmic work.

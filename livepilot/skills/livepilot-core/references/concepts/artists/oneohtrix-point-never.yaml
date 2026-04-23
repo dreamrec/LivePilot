@@ -1,0 +1,127 @@
+id: experimental__oneohtrix_point_never
+name: Oneohtrix Point Never (Daniel Lopatin)
+type: artist
+aliases:
+  - "oneohtrix point never"
+  - "opn"
+  - "daniel lopatin"
+
+sonic_identity:
+  - synth-as-voice (synthesizers singing)
+  - dense harmonic stacking
+  - vapor-wave tonality
+  - sudden tempo shifts
+  - cinematic sample work
+
+reach_for:
+  instruments:
+    - Wavetable  # morphing pads
+    - Meld  # dual-engine layering
+    - Emit  # grain cloud vocals
+    - Poli  # retro pad
+  effects:
+    - Voice Box  # vocal samples
+    - Pitch Hack
+    - PitchLoop89
+    - Vocoder
+  packs:
+    - Voice Box
+    - Inspired by Nature
+    - Performance Pack
+  utilities:
+    - EQ Eight
+
+avoid:
+  - minimal production philosophy
+  - subtractive thinking
+  - dry mixes
+  - conservative harmonic stacking
+
+rhythm_idioms:
+  - rhythmic sections alternate with ambient
+  - sudden tempo changes
+  - vocal stutters as rhythmic accent
+
+harmony_idioms:
+  - dense vertical harmonic stacks
+  - vapor-wave chord progressions (suspended, unresolved)
+  - pitch-shifted vocal choirs
+
+arrangement_idioms:
+  - cinematic pacing with abrupt cuts
+  - long ambient passages between rhythmic sections
+  - sudden dynamic shifts
+
+texture_idioms:
+  - synthesized vocal fragments
+  - grain-cloud vocals
+  - retro-futurist synth textures
+
+sample_roles:
+  - vocal_source
+  - pad_layer
+  - texture_bed
+
+key_techniques:
+  - name: "Morphing ambient pad"
+    source: atlas
+    device: Wavetable
+  - name: "Retro stab"
+    source: atlas
+    device: Poli
+  - name: "Layered evolving pad"
+    source: atlas
+    device: Meld
+  - name: "vocoder"
+    source: atlas
+    device: Vocoder
+    notes: chain with synth carrier
+
+evaluation_bias:
+  target_dimensions:
+    novelty: 0.20
+    depth: 0.16
+    motion: 0.14
+    contrast: 0.14
+    cohesion: 0.12
+    groove: 0.12
+    clarity: 0.12
+  protect:
+    clarity: 0.60
+    cohesion: 0.60
+    low_end: 0.60
+
+move_family_bias:
+  favor:
+    - sound_design
+    - device_creation
+    - arrangement
+  deprioritize:
+    - performance
+
+dimensions_in_scope:
+  - rhythmic
+  - timbral
+  - structural
+  - spatial
+dimensions_deprioritized: []
+
+novelty_budget_default: 0.65
+
+tempo_hint:
+  min: 80
+  max: 140
+  time_signature: "4/4"
+
+canonical_artists: []
+canonical_genres:
+  - experimental
+  - ambient
+  - electronic
+
+notes: |
+  OPN asks are genuinely full-dimensional — the aesthetic blends
+  ambient, rhythmic, harmonic, and structural work. Plans typically
+  use Meld for layered pads, Emit for grain-cloud vocals, and Poli
+  for retro-stab moments. Sudden arrangement-level contrast plans
+  are especially idiomatic here.

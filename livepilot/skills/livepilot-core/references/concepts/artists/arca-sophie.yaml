@@ -1,0 +1,132 @@
+id: experimental__arca_sophie
+name: Arca / SOPHIE
+type: artist
+aliases:
+  - "arca"
+  - "sophie"
+  - "alejandra ghersi"
+
+sonic_identity:
+  - hyper-detailed rhythmic programming
+  - metallic percussion
+  - vocal pitch extremes
+  - physical-sounding hits
+  - impossible textures — sounds that could not exist acoustically
+
+reach_for:
+  instruments:
+    - Collision  # mallet + metal percussion
+    - Tension  # plucked prepared string
+    - Corpus  # physical modeling on non-pitched sources
+    - Vector FM
+  effects:
+    - Vocoder
+    - Pitch Hack
+    - Snipper
+    - Spectral Resonator
+  packs:
+    - Inspired by Nature
+    - Building Max Devices  # Snipper
+  utilities:
+    - EQ Eight
+
+avoid:
+  - sampled drums
+  - acoustic percussion realism
+  - conservative mixing
+  - stock kits
+  - natural-sounding reverb
+
+rhythm_idioms:
+  - hyper-detailed micro-programming
+  - metal-on-glass percussion timbre
+  - physical-impact hits via Collision/Corpus
+
+harmony_idioms:
+  - pitch-extremes on vocals (up AND down shifts)
+  - harmonic content from physical-model resonance
+  - inharmonic partials embraced
+
+arrangement_idioms:
+  - rapid timbral shifts
+  - physical-impact punctuation
+  - vocal fragments as harmonic color
+
+texture_idioms:
+  - metallic / glass / stone textures via Collision
+  - impossible-sounding acoustic spaces via Corpus
+  - vocal timbres from vocoder + extreme pitch shift
+
+sample_roles:
+  - percussive_ghost
+  - vocal_source
+  - transient_accent
+
+key_techniques:
+  - name: "Inharmonic bell drone"
+    source: atlas
+    device: Collision
+  - name: "Metal-string drone"
+    source: atlas
+    device: Tension
+  - name: "Noise Bow"
+    source: atlas
+    device: Corpus
+  - name: extreme pitch shift on vocals
+    source: atlas
+    device: Pitch Hack
+
+evaluation_bias:
+  target_dimensions:
+    novelty: 0.22
+    contrast: 0.18
+    motion: 0.14
+    groove: 0.14
+    depth: 0.12
+    cohesion: 0.10
+    clarity: 0.10
+  protect:
+    clarity: 0.50
+    cohesion: 0.55
+    low_end: 0.65
+
+move_family_bias:
+  favor:
+    - sound_design
+    - device_creation
+    - arrangement
+  deprioritize:
+    - mix
+    - performance
+
+dimensions_in_scope:
+  - rhythmic
+  - timbral
+  - structural
+dimensions_deprioritized:
+  - spatial  # the spatial work IS the source, not a send
+
+novelty_budget_default: 0.75
+
+tempo_hint:
+  min: 70
+  max: 160
+  time_signature: "4/4"  # or broken
+
+canonical_artists: []
+canonical_genres:
+  - experimental
+  - hyperpop
+  - electronic
+
+notes: |
+  Arca/SOPHIE asks emphasize physical-modeling synthesis and pitch
+  extremes. Plans should prefer Corpus, Collision, and Tension over
+  traditional synths. Three plans often land: sound_design (Corpus
+  on a percussion source for impossible resonance), device_creation
+  (Collision + Tension chain for metallic percussion), arrangement
+  (rhythmic — probability + Pitch Hack stutter on vocal chops,
+  dimension_hint="rhythmic").
+
+  Spatial work is typically internal to the source (Corpus/Collision
+  have their own space), not send-based.

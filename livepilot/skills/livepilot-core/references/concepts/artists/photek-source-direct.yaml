@@ -1,0 +1,121 @@
+id: drum_and_bass__photek_source_direct
+name: Photek / Source Direct (jungle / atmospheric DnB)
+type: artist
+aliases:
+  - "photek"
+  - "source direct"
+  - "rupert parkes"
+  - "atmospheric dnb"
+  - "intelligent jungle"
+
+sonic_identity:
+  - chopped Amen breaks
+  - sub-bass on long held notes (not rapid modulation)
+  - jazz / string samples in melodic role
+  - technical drum programming
+  - atmospheric reverb tails
+
+reach_for:
+  instruments:
+    - Simpler  # Amen break slicing
+    - Bass  # sub
+    - SONiVOX Strings  # pp pizzicato as ghost layer
+  effects:
+    - Convolution Reverb
+    - Saturator
+  packs:
+    - Drum Essentials  # breakbeats
+    - SONiVOX Orchestral Strings
+  utilities:
+    - EQ Eight
+
+avoid:
+  - stock breakbeats (Amen must be chopped and rearranged)
+  - synth bass in place of sub-bass
+  - aggressive neurofunk sound design
+
+rhythm_idioms:
+  - Amen break chopped and rearranged at 174 BPM
+  - half-time perception on kick/snare
+  - ghost snare programming
+
+harmony_idioms:
+  - jazz-string samples as harmonic color
+  - modal pad over sub-bass
+  - minimal melodic content
+
+arrangement_idioms:
+  - long intro with atmospheric pad
+  - Amen chop drop at bar 16 or 32
+  - breakdown / return pattern
+
+texture_idioms:
+  - jazz pad subtext
+  - Convolution Reverb on drum bus (subtle)
+  - vinyl-era warmth
+
+sample_roles:
+  - rhythmic_chop
+  - sub_source
+  - pad_layer
+
+key_techniques:
+  - name: "slice_and_sequence"
+    source: sample-techniques.md
+    notes: at 174 BPM on Amen
+  - name: "Reese bass"
+    source: atlas
+    device: Analog
+  - name: "Villalobos sub-bass layer"
+    source: atlas
+    device: Simpler
+    notes: for sub
+
+evaluation_bias:
+  target_dimensions:
+    groove: 0.20
+    depth: 0.18
+    motion: 0.16
+    cohesion: 0.14
+    contrast: 0.12
+    novelty: 0.10
+    clarity: 0.10
+  protect:
+    clarity: 0.60
+    cohesion: 0.70
+    low_end: 0.80
+
+move_family_bias:
+  favor:
+    - sound_design
+    - arrangement
+    - device_creation
+  deprioritize:
+    - performance
+
+dimensions_in_scope:
+  - rhythmic
+  - timbral
+  - structural
+  - spatial
+dimensions_deprioritized: []
+
+novelty_budget_default: 0.5
+
+tempo_hint:
+  min: 170
+  max: 180
+  time_signature: "4/4"
+
+canonical_artists: []
+canonical_genres:
+  - drum_and_bass
+  - jungle
+
+notes: |
+  Photek / Source Direct is the intelligent / atmospheric end of DnB.
+  Plans should combine: sound_design (Simpler slicing on Amen break),
+  arrangement (rhythmic — re-sequencing chopped break,
+  dimension_hint="rhythmic"), device_creation (SONiVOX Strings on a
+  dedicated track for ghost-pad entry), and optional spatial work
+  via Convolution Reverb on drum bus.

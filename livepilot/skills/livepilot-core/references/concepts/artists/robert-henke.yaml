@@ -1,0 +1,113 @@
+id: minimal_techno__robert_henke
+name: Robert Henke (Monolake)
+type: artist
+aliases:
+  - "robert henke"
+  - "monolake"
+
+sonic_identity:
+  - detailed granular textures
+  - pitch-shift-delay signatures
+  - generative-adjacent sound design
+  - cinematic electronic with rigorous craft
+
+reach_for:
+  instruments:
+    - Granulator III  # Henke MADE this
+    - Operator
+    - Wavetable
+  effects:
+    - PitchLoop89  # Henke emulated the hardware his influences used
+    - Convolution Reverb
+  packs:
+    - Inspired by Nature
+    - Performance Pack
+  utilities:
+    - EQ Eight
+
+avoid:
+  - simple preset chains
+  - unexamined default parameters
+  - conservative mix choices
+
+rhythm_idioms:
+  - rigid 4/4 techno base
+  - granular-texture percussion
+  - phase-shifted accents
+
+harmony_idioms:
+  - modal tonal centers
+  - pitch-shifted detune as harmonic movement
+  - granular pitch-spread textures
+
+arrangement_idioms:
+  - section-level patience
+  - generative process + user macro decisions
+  - cinematic electronic pacing
+
+texture_idioms:
+  - granular textures on every sustained element
+  - dual-detune pitch-shift delay
+  - detailed mod-matrix routings
+
+sample_roles:
+  - texture_bed
+  - drone_source
+
+key_techniques:
+  - name: "PitchLoop89 dual detune"
+    source: pack-knowledge.md
+    notes: canonical Henke pair with Convolution Reverb
+  - name: "Granulator III Cloud mode"
+    source: atlas
+    device: Granulator III
+  - name: "tail_harvest"
+    source: sample-techniques.md
+
+evaluation_bias:
+  target_dimensions:
+    depth: 0.20
+    motion: 0.18
+    novelty: 0.16
+    cohesion: 0.14
+    contrast: 0.12
+    groove: 0.10
+    clarity: 0.10
+  protect:
+    clarity: 0.60
+    cohesion: 0.70
+    low_end: 0.70
+
+move_family_bias:
+  favor:
+    - sound_design
+    - device_creation
+    - arrangement
+  deprioritize:
+    - performance
+
+dimensions_in_scope:
+  - timbral
+  - spatial
+  - structural
+  - rhythmic
+dimensions_deprioritized: []
+
+novelty_budget_default: 0.6
+
+tempo_hint:
+  min: 125
+  max: 132
+  time_signature: "4/4"
+
+canonical_artists: []
+canonical_genres:
+  - minimal_techno
+  - experimental
+  - ambient
+
+notes: |
+  Henke/Monolake asks reward rigorous mod-matrix work: deep Granulator
+  III programming, PitchLoop89 dual-detune chains, custom IRs in
+  Convolution Reverb. Plans should avoid "just load a preset and
+  send to reverb" — the aesthetic demands parameter-level engagement.

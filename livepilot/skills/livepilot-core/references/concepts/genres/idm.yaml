@@ -1,0 +1,134 @@
+id: idm
+name: IDM
+type: genre
+aliases:
+  - "idm"
+  - "intelligent dance music"
+  - "braindance"
+
+sonic_identity:
+  - 80-150 BPM with complex rhythms (quintuplets, polyrhythms, non-4/4 common)
+  - heavy low-end
+  - FM-generated bass common
+  - hyper-detailed non-quantized micro-percussion
+  - atonal or microtonal common
+  - digital artifacts embraced
+
+reach_for:
+  instruments:
+    - Operator  # FM
+    - Vector FM
+    - Wavetable
+    - Emit
+    - Vector Grain
+    - Simpler
+    - Tension
+    - Collision
+  effects:
+    - Erosion
+    - Pitch Hack
+    - Roar
+    - Spectral Blur
+    - Grain Delay
+  packs:
+    - Inspired by Nature
+    - Performance Pack  # Variations
+    - MIDI Tools  # Polyrhythm, Phase Pattern
+  utilities:
+    - EQ Eight
+
+avoid:
+  - clean production
+  - simple 4/4
+  - traditional harmony
+
+rhythm_idioms:
+  - quintuplets, polyrhythms
+  - non-quantized micro-timing
+  - metal/glass percussion samples
+
+harmony_idioms:
+  - atonal or microtonal
+  - melodic fragments rather than sustained melody
+  - FM bell clusters as harmonic content
+
+arrangement_idioms:
+  - generative-adjacent evolution
+  - rapid timbral shifts
+  - non-traditional section structure
+
+texture_idioms:
+  - granular, glitchy
+  - digital artifacts embraced
+  - harmonic saturation on every bus
+
+sample_roles:
+  - rhythmic_chop
+  - percussive_ghost
+  - texture_bed
+
+key_techniques:
+  - name: "Aphex ambient FM pad"
+    source: atlas
+    device: Operator
+  - name: "Modulated bell cluster"
+    source: atlas
+    device: Vector FM
+  - name: "Chaotic lock-in"
+    source: atlas
+    device: Vector Map
+  - name: "granular_scatter"
+    source: sample-techniques.md
+  - name: "euclidean_slice_trigger"
+    source: sample-techniques.md
+
+evaluation_bias:
+  target_dimensions:
+    novelty: 0.20
+    groove: 0.18
+    motion: 0.16
+    contrast: 0.14
+    depth: 0.12
+    cohesion: 0.10
+    clarity: 0.10
+  protect:
+    clarity: 0.50
+    cohesion: 0.55
+    low_end: 0.65
+
+move_family_bias:
+  favor:
+    - sound_design
+    - arrangement
+    - device_creation
+  deprioritize:
+    - mix
+    - performance
+
+dimensions_in_scope:
+  - rhythmic
+  - timbral
+  - structural
+  - spatial
+dimensions_deprioritized: []
+
+novelty_budget_default: 0.7
+
+tempo_hint:
+  min: 80
+  max: 150
+  time_signature: "4/4"  # or complex
+
+canonical_artists:
+  - aphex-twin
+  - autechre
+  - boards-of-canada
+  - oneohtrix-point-never
+
+canonical_genres: []
+
+notes: |
+  IDM asks are genuinely full-dimensional — all four dimensions in
+  play, high novelty tolerance. Plans should favor complex rhythmic
+  programming (Euclidean + Phase Pattern), FM / granular sound design,
+  and embrace digital artifacts as aesthetic.

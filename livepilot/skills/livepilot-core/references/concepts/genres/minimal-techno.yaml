@@ -1,0 +1,116 @@
+id: minimal_techno
+name: Minimal Techno
+type: genre
+aliases:
+  - "minimal techno"
+  - "min-techno"
+
+sonic_identity:
+  - punchy-but-restrained kick at ~60 Hz
+  - single evolving source with filter automation as melody
+  - 909 hats with occasional hand percussion
+  - no clutter
+
+reach_for:
+  instruments:
+    - Analog  # Hawtin subtractive
+    - Drift
+    - Operator
+    - Simpler
+  effects:
+    - Auto Filter  # slow LFO
+    - Convolution Reverb
+    - Echo
+    - Saturator
+  packs:
+    - Core Library synths
+    - Drone Lab
+  utilities:
+    - Utility
+    - EQ Eight
+
+avoid:
+  - additive arrangement
+  - thick layering
+  - busy percussion
+  - preset chains
+
+rhythm_idioms:
+  - punchy 4/4 kick
+  - 909 hats steady
+  - occasional hand percussion
+
+harmony_idioms:
+  - single evolving harmonic source
+  - filter automation AS melody
+  - occasional stab
+
+arrangement_idioms:
+  - long subtractive progression
+  - elements removed more often than added
+  - 8-12 minute tracks
+
+texture_idioms:
+  - minimal texture
+  - one or two background elements
+  - subtle evolution
+
+sample_roles:
+  - drone_source
+  - stab_source
+
+key_techniques:
+  - name: "Hawtin subtractive pad"
+    source: atlas
+    device: Analog
+  - name: "Micro-Modulation"
+    source: sound-design-deep.md
+  - name: "Subtraction over addition"
+    source: sound-design-deep.md
+
+evaluation_bias:
+  target_dimensions:
+    depth: 0.20
+    motion: 0.18
+    groove: 0.16
+    cohesion: 0.14
+    novelty: 0.12
+    contrast: 0.10
+    clarity: 0.10
+  protect:
+    clarity: 0.60
+    cohesion: 0.70
+    low_end: 0.75
+
+move_family_bias:
+  favor:
+    - sound_design
+    - arrangement
+    - mix
+  deprioritize:
+    - device_creation  # minimal genres punish additive device loading
+    - performance
+
+dimensions_in_scope:
+  - timbral
+  - structural
+  - spatial
+dimensions_deprioritized:
+  - rhythmic  # percussion is conservative — no creative rhythmic work
+
+novelty_budget_default: 0.45
+
+tempo_hint:
+  min: 128
+  max: 132
+  time_signature: "4/4"
+
+canonical_artists:
+  - hawtin
+
+canonical_genres: []
+
+notes: |
+  Minimal techno genre asks strongly favor subtractive work. Plans
+  that add new devices should be last-priority — the aesthetic is
+  built on what is NOT there.

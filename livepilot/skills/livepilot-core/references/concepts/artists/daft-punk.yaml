@@ -1,0 +1,119 @@
+id: french_house__daft_punk
+name: Daft Punk
+type: artist
+aliases:
+  - "daft punk"
+
+sonic_identity:
+  - filtered disco loops as main content
+  - vocoder vocals
+  - funk-guitar samples
+  - side-chained 4/4
+  - pitched-down vocal hooks
+  - robot-voice aesthetic
+
+reach_for:
+  instruments:
+    - Simpler  # disco loop chops
+    - Bass
+  effects:
+    - Vocoder
+    - Auto Filter  # band-pass sweeps
+    - Chorus-Ensemble
+    - Compressor  # heavy sidechain via Envelope Follower
+  packs:
+    - Chop and Swing
+    - Core Library
+  utilities:
+    - EQ Eight
+
+avoid:
+  - non-sidechained kick/bass
+  - clean vocals (use vocoder)
+  - long arrangements without filter automation
+  - lack of breathing kick-bass relationship
+
+rhythm_idioms:
+  - straight 4/4 house kick
+  - hi-hat on off-beat
+  - heavy sidechain pumping
+
+harmony_idioms:
+  - disco-sample chord content
+  - minor-key bass
+  - vocoder chord voicings
+
+arrangement_idioms:
+  - filter-automation-driven build
+  - drop + filter-sweep into main section
+  - breakdown with filter closed, build via filter open
+
+texture_idioms:
+  - chorus/ensemble thickening on synths
+  - sidechain pumping as rhythmic texture
+  - filtered disco as sustained element
+
+sample_roles:
+  - melodic_source
+  - vocal_source
+
+key_techniques:
+  - name: "Classic Robot Voice"
+    source: atlas
+    device: Vocoder
+  - name: "Noise-Carried Drums"
+    source: sample-techniques.md
+  - name: band-pass-filter automation on disco samples
+    source: sample-techniques.md
+  - name: "Reese-style bass"
+    source: atlas
+    device: Bass
+
+evaluation_bias:
+  target_dimensions:
+    groove: 0.22
+    motion: 0.20
+    contrast: 0.16
+    cohesion: 0.12
+    novelty: 0.10
+    depth: 0.10
+    clarity: 0.10
+  protect:
+    clarity: 0.65
+    cohesion: 0.75
+    low_end: 0.72
+
+move_family_bias:
+  favor:
+    - sound_design
+    - mix  # sidechain + filter automation is central
+    - arrangement
+  deprioritize:
+    - performance
+
+dimensions_in_scope:
+  - rhythmic
+  - timbral
+  - structural
+  - spatial
+dimensions_deprioritized: []
+
+novelty_budget_default: 0.5
+
+tempo_hint:
+  min: 120
+  max: 128
+  time_signature: "4/4"
+
+canonical_artists: []
+canonical_genres:
+  - french_house
+  - disco
+  - nu_disco
+
+notes: |
+  Daft Punk asks emphasize sidechain + filter automation as the
+  arrangement driver. Plans often include: mix (sidechain compressor
+  with envelope follower), sound_design (Vocoder chain for robot
+  voice), arrangement (filter automation build-and-drop at section
+  boundaries).

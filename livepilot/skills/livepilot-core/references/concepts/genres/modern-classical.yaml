@@ -1,0 +1,123 @@
+id: modern_classical
+name: Modern Classical / Cinematic
+type: genre
+aliases:
+  - "modern classical"
+  - "cinematic"
+  - "neo-classical"
+
+sonic_identity:
+  - 60-90 BPM or rubato (no fixed tempo)
+  - sustained strings, piano fragments, occasional brass swells
+  - major/minor tonal with occasional chromatic motion
+  - natural hall acoustic
+
+reach_for:
+  instruments:
+    - Sampler  # multi-velocity orchestral libraries
+    - Tension  # bowed cello
+    - Collision  # mallets
+    - Upright Piano  # Spitfire
+  effects:
+    - Convolution Reverb  # hall / cathedral
+    - EQ Eight
+    - Compressor  # string bus
+  packs:
+    - Spitfire Strings/Brass
+    - Orchestral Mallets
+    - Upright Piano
+    - SONiVOX Orchestral Strings
+    - SONiVOX Orchestral Brass  # pp only
+    - SONiVOX Orchestral Woodwinds  # pp only
+  utilities:
+    - EQ Eight
+
+avoid:
+  - electronic drums
+  - synthesizers (unless sparse & atmospheric)
+  - compressed mix
+  - bright EQ
+
+rhythm_idioms:
+  - rubato (no fixed tempo)
+  - timpani when rhythm exists
+  - no kit drums
+
+harmony_idioms:
+  - major/minor tonal with chromatic motion
+  - suspensions and resolutions
+  - piano fragments as melodic anchor
+
+arrangement_idioms:
+  - A-B-A' cinematic form
+  - piano statement → string bed entry → deeper return
+  - tension and release pacing
+
+texture_idioms:
+  - natural hall acoustic
+  - breath and bow artifacts
+  - grand piano resonance
+
+sample_roles:
+  - melodic_source
+  - texture_bed
+
+key_techniques:
+  - name: "Orchestral multi-velocity"
+    source: atlas
+    device: Sampler
+  - name: "Bowed cello low register"
+    source: atlas
+    device: Tension
+  - name: "Single sustained note pedal-down"
+    source: pack-knowledge.md
+    device: Upright Piano
+
+evaluation_bias:
+  target_dimensions:
+    depth: 0.22
+    cohesion: 0.20
+    motion: 0.16
+    contrast: 0.14
+    novelty: 0.10
+    groove: 0.08
+    clarity: 0.10
+  protect:
+    clarity: 0.65
+    cohesion: 0.78
+    low_end: 0.55
+
+move_family_bias:
+  favor:
+    - sound_design
+    - device_creation
+    - arrangement
+  deprioritize:
+    - mix
+    - transition
+    - performance
+
+dimensions_in_scope:
+  - timbral
+  - structural
+  - spatial
+dimensions_deprioritized:
+  - rhythmic
+
+novelty_budget_default: 0.4
+
+tempo_hint:
+  min: 60
+  max: 90
+  time_signature: "4/4"  # often rubato
+
+canonical_artists:
+  - johannsson-richter
+  - stars-of-the-lid
+
+canonical_genres: []
+
+notes: |
+  Modern Classical differs from ambient by having ACTUAL section form
+  (A-B-A'), giving structural dimension real scope. Plans should
+  favor orchestral sources over synthesized substitutes.

@@ -1,0 +1,130 @@
+id: deep_minimal
+name: Deep Minimal / Villalobos-school
+type: genre
+aliases:
+  - "deep minimal"
+  - "minimal-deep"
+  - "villalobos-school"
+
+sonic_identity:
+  - deep fundamental kick (40-50 Hz sub_low band)
+  - Latin hand percussion + digital glass/metal + chopped vocals
+  - extreme micro-timing variation across most hits
+  - chopped vocals AS melody
+  - long-form evolution without repetition
+
+reach_for:
+  instruments:
+    - Simpler  # slicing
+    - Bass  # Creative Extensions
+    - Drone Lab  # sub-bed
+    - Operator  # Haas-style deep bass
+  effects:
+    - PitchLoop89
+    - Convolution Reverb
+    - Phase Pattern  # off-grid percussion
+    - Microtuner
+  packs:
+    - Latin Percussion
+    - Lost and Found
+    - Voice Box
+    - Drone Lab
+    - Chop and Swing
+    - Glitch and Wash
+  utilities:
+    - Utility
+    - EQ Eight
+
+avoid:
+  - quantized drums
+  - 8-bar repetition
+  - bright kicks
+  - dry mix
+  - sidechain
+
+rhythm_idioms:
+  - off-grid micro-timing on most hits
+  - Latin hand percussion (cuica, conga, guiro, claves)
+  - digital glass/metal percussion
+  - heavily chopped vocal rhythm
+
+harmony_idioms:
+  - chopped vocals AS melody
+  - occasional chord stab
+  - microtonal moments via Microtuner
+
+arrangement_idioms:
+  - 15+ minute tracks
+  - subtraction over addition
+  - single element evolves across dozens of bars
+
+texture_idioms:
+  - constant field-recording / found-sound subtext
+  - reverb tails layered at -25 to -30 dB
+
+sample_roles:
+  - rhythmic_chop
+  - melodic_chop
+  - texture_bed
+  - sub_source
+
+key_techniques:
+  - name: "Villalobos sub-bass layer"
+    source: atlas
+    device: Simpler
+  - name: "Phase Pattern on drum clips"
+    source: atlas
+    device: Phase Pattern
+  - name: "micro_chop"
+    source: sample-techniques.md
+  - name: "Arpiar dusty-horn"
+    source: atlas
+    device: PitchLoop89
+    notes: trumpet pp through PitchLoop89
+
+evaluation_bias:
+  target_dimensions:
+    depth: 0.22
+    groove: 0.20
+    motion: 0.16
+    novelty: 0.14
+    contrast: 0.10
+    cohesion: 0.10
+    clarity: 0.08
+  protect:
+    clarity: 0.55
+    cohesion: 0.65
+    low_end: 0.78
+
+move_family_bias:
+  favor:
+    - arrangement
+    - sound_design
+    - transition
+  deprioritize:
+    - mix
+    - performance
+
+dimensions_in_scope:
+  - rhythmic
+  - timbral
+  - structural
+dimensions_deprioritized:
+  - spatial
+
+novelty_budget_default: 0.6
+
+tempo_hint:
+  min: 125
+  max: 135
+  time_signature: "4/4"
+
+canonical_artists:
+  - villalobos
+
+canonical_genres: []
+
+notes: |
+  Deep Minimal is Villalobos's territory. The genre asks reward long
+  evolution and micro-timing over spatial work. See artists/villalobos
+  for the canonical packet.

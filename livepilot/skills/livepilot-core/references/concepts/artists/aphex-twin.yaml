@@ -1,0 +1,135 @@
+id: idm__aphex_twin
+name: Aphex Twin (Richard D. James)
+type: artist
+aliases:
+  - "aphex twin"
+  - "aphex"
+  - "richard d. james"
+  - "rdj"
+  - "afx"
+
+sonic_identity:
+  - fast shifting timbres
+  - melodic acid lines
+  - detailed micro-percussion
+  - gliding portamento leads
+  - FM-heavy sound design
+  - occasional brutal distortion
+
+reach_for:
+  instruments:
+    - Operator  # FM with 6+ operators if layered
+    - Analog  # 303-style acid
+    - Simpler  # MIDI auto-trigger for rapid drum variation
+    - Wavetable
+  effects:
+    - Erosion
+    - Pitch Hack
+    - Roar  # distortion
+    - Microtuner
+    - Grain Delay
+  packs:
+    - Core Library synths
+    - MIDI Tools
+  utilities:
+    - EQ Eight
+
+avoid:
+  - single-textured drones (opposite of Hecker)
+  - slow-evolving pads (unless in ambient-phase track)
+  - preset factory drum racks
+  - conservative production
+
+rhythm_idioms:
+  - rapid drum variation via Simpler auto-trigger
+  - micro-percussion at 1/32 and 1/64
+  - breakbeat chopping
+  - Amen break variations
+
+harmony_idioms:
+  - acid basslines (303-derived)
+  - occasional microtonal moments
+  - melodic motifs with heavy portamento
+  - minor-key melodic phrases
+
+arrangement_idioms:
+  - fast timbral shifts — a section may change sound every 4 bars
+  - IDM-adjacent structural non-linearity
+  - ambient pieces on the opposite extreme (long sustain)
+
+texture_idioms:
+  - FM bells
+  - digital grain
+  - acid-bass squelch
+  - DX7-style bell clusters
+
+sample_roles:
+  - rhythmic_chop
+  - melodic_source
+  - percussive_ghost
+
+key_techniques:
+  - name: "Aphex ambient FM pad"
+    source: atlas
+    device: Operator
+  - name: "303 acid bass"
+    source: atlas
+    device: Analog
+  - name: "micro_chop"
+    source: sample-techniques.md
+  - name: "DX7 bell cluster"
+    source: atlas
+    device: Operator
+
+evaluation_bias:
+  target_dimensions:
+    novelty: 0.20
+    motion: 0.18
+    groove: 0.16
+    contrast: 0.14
+    depth: 0.12
+    cohesion: 0.10
+    clarity: 0.10
+  protect:
+    clarity: 0.55
+    cohesion: 0.55
+    low_end: 0.65
+
+move_family_bias:
+  favor:
+    - sound_design
+    - arrangement
+    - device_creation
+  deprioritize:
+    - performance
+
+dimensions_in_scope:
+  - rhythmic
+  - timbral
+  - structural
+  - spatial
+dimensions_deprioritized: []
+
+novelty_budget_default: 0.7
+
+tempo_hint:
+  min: 120
+  max: 170
+  time_signature: "4/4"  # or complex when user specifies
+
+canonical_artists: []
+canonical_genres:
+  - idm
+  - electronic
+  - ambient
+  - acid_techno
+
+notes: |
+  Aphex is the canonical IDM "all dimensions in scope" case. Plans
+  distribute freely. Typical three-plan set: sound_design (FM patch
+  on Operator), arrangement (rhythmic — probability + Simpler
+  auto-trigger with dimension_hint="rhythmic"), device_creation (load
+  Analog for 303-style acid line).
+
+  Ambient-phase Aphex (SAW II, etc.) requires re-reading the brief
+  as a modern_classical/ambient packet — user should disambiguate.

@@ -1,0 +1,120 @@
+id: dubstep__skream_mala
+name: Skream / Mala (DMZ-era dubstep)
+type: artist
+aliases:
+  - "skream"
+  - "mala"
+  - "dmz dubstep"
+  - "digital mystikz"
+
+sonic_identity:
+  - sub-bass wobbles (tonal, not aggressive)
+  - half-time drums at 140 BPM (snare on 3)
+  - reggae / dub influence
+  - heavy sidechain for sub-bass breathing
+
+reach_for:
+  instruments:
+    - Wavetable  # wobble bass
+    - Bass
+    - Operator  # Ring Modulator via
+  effects:
+    - Echo  # dub-style delay
+    - Auto Filter  # synced to tempo for wobble
+    - Saturator
+  packs:
+    - Drum Essentials  # dubstep kits
+  utilities:
+    - Compressor  # heavy sidechain
+
+avoid:
+  - full-step beats (2-step is half-time)
+  - bright overtones
+  - fast tempos
+  - distorted growl bass (that's modern dubstep, not DMZ-era)
+
+rhythm_idioms:
+  - half-time at 140 BPM — snare on the 3
+  - steady 909 hats
+  - occasional syncopated kick variation
+
+harmony_idioms:
+  - minor-key melodic fragments
+  - tonal wobble bass as harmonic content
+  - dub-style chord stabs on the off-beat
+
+arrangement_idioms:
+  - long intro, drop at bar 16 or 32
+  - breakdown with bass removed
+  - return with deeper bass
+
+texture_idioms:
+  - dub-style long delay
+  - heavy sub presence
+  - occasional reggae vocal samples
+
+sample_roles:
+  - melodic_source
+  - dub_tail_source
+
+key_techniques:
+  - name: "Wobble bass"
+    source: atlas
+    device: Wavetable
+  - name: "Reese-style bass"
+    source: atlas
+    device: Bass
+  - name: "Delay throws"
+    source: sound-design-deep.md
+  - name: half-time drum programming
+    source: sample-techniques.md
+
+evaluation_bias:
+  target_dimensions:
+    depth: 0.22
+    groove: 0.18
+    motion: 0.16
+    contrast: 0.14
+    novelty: 0.10
+    cohesion: 0.10
+    clarity: 0.10
+  protect:
+    clarity: 0.55
+    cohesion: 0.65
+    low_end: 0.85  # sub-bass is the genre
+
+move_family_bias:
+  favor:
+    - sound_design
+    - device_creation
+    - mix  # sidechain + send work is central
+  deprioritize:
+    - performance
+
+dimensions_in_scope:
+  - rhythmic
+  - timbral
+  - structural
+  - spatial
+dimensions_deprioritized: []
+
+novelty_budget_default: 0.5
+
+tempo_hint:
+  min: 138
+  max: 142
+  time_signature: "4/4"  # half-time perceived
+
+canonical_artists: []
+canonical_genres:
+  - dubstep
+  - bass_music
+  - dub
+
+notes: |
+  Skream/Mala differs from Burial by emphasis: DMZ-era is bass-first
+  (wobble as harmonic content), Burial is vocal-first (chopped vocals
+  as hook). Plans for DMZ-era typically include: sound_design
+  (Wavetable wobble bass patch), device_creation (Echo send chain for
+  dub delay), mix (heavy sidechain on non-bass elements triggered by
+  kick).

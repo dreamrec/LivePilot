@@ -1,0 +1,119 @@
+id: ambient__stars_of_the_lid
+name: Stars of the Lid
+type: artist
+aliases:
+  - "stars of the lid"
+  - "sotl"
+
+sonic_identity:
+  - sustained orchestral drones
+  - no percussion
+  - glacial pace — 10-20 minute pieces
+  - string tremolos blurred into single sustained note
+
+reach_for:
+  instruments:
+    - Sampler  # multi-velocity orchestral multi-sample
+    - Vector Grain
+    - Granulator III
+    - Tension  # bowed cello
+  effects:
+    - Convolution Reverb  # cathedral/warehouse IR
+  packs:
+    - SONiVOX Orchestral Strings  # pizzicato double-bass as bed
+    - Orchestral Mallets
+    - Mood Reel
+  utilities:
+    - EQ Eight
+
+avoid:
+  - any percussion
+  - drum samples
+  - rhythmic elements
+  - short sounds
+  - fast evolution
+
+rhythm_idioms:
+  - truly no rhythm
+  - duration-based form
+
+harmony_idioms:
+  - modal sustained harmony
+  - glacial chord changes (every 60+ seconds)
+  - bowed-cello low register as harmonic foundation
+
+arrangement_idioms:
+  - 10-20 minute pieces
+  - each piece is one sustained event with subtle shifts
+  - no hard cuts between sections
+
+texture_idioms:
+  - cathedral acoustic
+  - string tremolos blurred
+  - breath and bow noise embraced
+
+sample_roles:
+  - texture_bed
+  - drone_source
+
+key_techniques:
+  - name: "Orchestral multi-velocity"
+    source: atlas
+    device: Sampler
+  - name: "Bowed cello low register"
+    source: atlas
+    device: Tension
+  - name: "Slow-motion sustain"
+    source: atlas
+    device: Vector Grain
+  - name: "spectral_freeze"
+    source: sample-techniques.md
+
+evaluation_bias:
+  target_dimensions:
+    depth: 0.28
+    cohesion: 0.22
+    motion: 0.12
+    contrast: 0.10
+    novelty: 0.10
+    groove: 0.08
+    clarity: 0.10
+  protect:
+    clarity: 0.45
+    cohesion: 0.80
+    low_end: 0.60
+
+move_family_bias:
+  favor:
+    - sound_design
+    - device_creation
+  deprioritize:
+    - mix
+    - arrangement
+    - transition
+    - performance
+
+dimensions_in_scope:
+  - timbral
+  - spatial
+dimensions_deprioritized:
+  - rhythmic
+  - structural
+
+novelty_budget_default: 0.35
+
+tempo_hint:
+  min: 0
+  max: 0
+
+canonical_artists: []
+canonical_genres:
+  - ambient
+  - drone
+  - modern_classical
+
+notes: |
+  SotL is another 2-of-4 case. The plans should be orchestral-source
+  first, not synth first. Sampler with a multi-velocity string library
+  is the usual anchor, followed by a cathedral Convolution Reverb
+  send. Tension for bowed cello as low-register bed.

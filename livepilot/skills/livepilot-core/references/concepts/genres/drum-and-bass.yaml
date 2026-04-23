@@ -1,0 +1,119 @@
+id: drum_and_bass
+name: Drum and Bass / Jungle
+type: genre
+aliases:
+  - "drum and bass"
+  - "drum & bass"
+  - "dnb"
+  - "d&b"
+  - "jungle"
+
+sonic_identity:
+  - 160-180 BPM 4/4 with half-time perception on Amen chops
+  - punchy kick layered with break kick
+  - Reese bass (two detuned saws) + sub-bass under
+  - Amen / Funky Drummer / Apache breaks chopped and rearranged
+  - atmospheric pads, jungle vocal samples
+
+reach_for:
+  instruments:
+    - Simpler  # Amen chopping
+    - Analog  # Reese
+    - Bass
+    - SONiVOX Strings  # pp pad
+  effects:
+    - Compressor  # drum bus glue
+    - Saturator
+    - Roar  # modern neurofunk
+    - Convolution Reverb
+  packs:
+    - Drum Essentials
+  utilities:
+    - EQ Eight
+
+avoid:
+  - quantized drums (Amen must be chopped and rearranged)
+  - synth bass in place of Reese
+  - overly clean mix
+
+rhythm_idioms:
+  - Amen break chopped and re-sequenced
+  - half-time perception on kick/snare
+  - ghost snare programming
+
+harmony_idioms:
+  - minimal melody
+  - occasional jazz / orchestral pad
+  - modal over sub-bass
+
+arrangement_idioms:
+  - intro with atmospheric pad
+  - Amen drop at 16 or 32 bars
+  - breakdown / return pattern
+
+texture_idioms:
+  - jungle vocal samples (dread, lick shot)
+  - atmospheric string pads
+  - jungle-era reverbs
+
+sample_roles:
+  - rhythmic_chop
+  - sub_source
+  - pad_layer
+  - vocal_accent
+
+key_techniques:
+  - name: "Reese bass (drum & bass)"
+    source: atlas
+    device: Analog
+  - name: "slice_and_sequence"
+    source: sample-techniques.md
+    notes: on Amen at 174 BPM
+
+evaluation_bias:
+  target_dimensions:
+    groove: 0.22
+    depth: 0.18
+    motion: 0.16
+    contrast: 0.14
+    cohesion: 0.10
+    novelty: 0.10
+    clarity: 0.10
+  protect:
+    clarity: 0.60
+    cohesion: 0.68
+    low_end: 0.80
+
+move_family_bias:
+  favor:
+    - sound_design
+    - arrangement
+    - device_creation
+  deprioritize:
+    - performance
+
+dimensions_in_scope:
+  - rhythmic
+  - timbral
+  - structural
+  - spatial
+dimensions_deprioritized: []
+
+novelty_budget_default: 0.5
+
+tempo_hint:
+  min: 170
+  max: 180
+  time_signature: "4/4"
+
+canonical_artists:
+  - photek-source-direct
+
+canonical_genres: []
+
+notes: |
+  DnB / Jungle asks are tempo-first — always set 174 BPM before
+  creative work. Plans should focus on break chopping + Reese bass
+  design. Atmospheric variant (Photek / Source Direct) leans more
+  on pad + string work; modern neurofunk (Noisia, Phace) leans on
+  Roar-heavy bass design.

@@ -18,6 +18,11 @@ LLMs encountering "make me a <genre> track" should read this before choosing too
 **These are not recipes.** Every entry is a set of constraints and opinions that
 leave creative choice to the LLM + user.
 
+> **v1.18+ structured packets:** each genre below also has a machine-readable
+> YAML packet at `concepts/genres/<slug>.yaml`. The narrative here is the
+> human-facing overview; the YAML is the source-of-truth for director
+> compilation. When updating a genre, update BOTH. Schema: `concepts/_schema.md`.
+
 ---
 
 ## Microhouse

@@ -1,0 +1,132 @@
+id: hip_hop
+name: Hip-Hop (Boom Bap / Lo-Fi)
+type: genre
+aliases:
+  - "hip hop"
+  - "hip-hop"
+  - "boom bap"
+  - "boom-bap"
+  - "lo-fi hip hop"
+  - "lofi"
+
+sonic_identity:
+  - 85-95 BPM with swing 60-70% (manual micro-timing, not template)
+  - warm dusty kick ~55-65 Hz fundamental
+  - chopped breaks (Amen, Funky Drummer, Impeach the President, Apache)
+  - chopped soul/jazz loops as harmonic content
+  - vinyl-saturated mix aesthetic
+
+reach_for:
+  instruments:
+    - Simpler  # classic mode + slicing
+    - Electric Keyboards
+    - Bass
+  effects:
+    - Saturator
+    - Vinyl Distortion
+    - Erosion
+    - Dynamic Tube
+    - Grain Delay  # tape-delay via
+    - Gated Delay
+  packs:
+    - Chop and Swing
+    - Golden Era Hip-Hop Drums
+    - Drum Booth
+    - Electric Keyboards
+    - Core Library
+  utilities:
+    - EQ Eight
+
+avoid:
+  - quantized drums
+  - clean production
+  - modern trap hats
+  - synth bass
+  - bright mixes
+
+rhythm_idioms:
+  - manual micro-timing (Dilla-feel)
+  - swing approximation 60-70%
+  - classic break slicing
+
+harmony_idioms:
+  - chopped soul/jazz loops
+  - Rhodes/Wurly samples
+  - occasional unintentional key clashes
+
+arrangement_idioms:
+  - loop-based with sample-flip variations
+  - 2-3 minute tracks (Madvillainy-era) or longer beat-tapes
+  - vocal interjection punctuation
+
+texture_idioms:
+  - vinyl crackle, tape hiss
+  - saturator on drum bus
+  - dusty mix
+
+sample_roles:
+  - rhythmic_chop
+  - melodic_source
+  - vocal_accent
+
+key_techniques:
+  - name: "J Dilla micro-timed kit"
+    source: atlas
+    device: Simpler
+  - name: "Tape-warped EP"
+    source: atlas
+    device: Electric Keyboards
+  - name: "slice_and_sequence"
+    source: sample-techniques.md
+  - name: "stab_isolation"
+    source: sample-techniques.md
+
+evaluation_bias:
+  target_dimensions:
+    groove: 0.24
+    depth: 0.16
+    novelty: 0.14
+    contrast: 0.12
+    motion: 0.12
+    cohesion: 0.12
+    clarity: 0.10
+  protect:
+    clarity: 0.55
+    cohesion: 0.68
+    low_end: 0.75
+
+move_family_bias:
+  favor:
+    - arrangement  # rhythmic work dominates
+    - sound_design
+    - device_creation
+  deprioritize:
+    - performance
+
+dimensions_in_scope:
+  - rhythmic
+  - timbral
+  - structural
+dimensions_deprioritized:
+  - spatial  # dry intimacy is the aesthetic
+
+novelty_budget_default: 0.5
+
+tempo_hint:
+  min: 85
+  max: 95
+  time_signature: "4/4"
+
+canonical_artists:
+  - j-dilla
+  - dj-premier-rza
+  - madlib
+  - moodymann-theo-parrish
+
+canonical_genres: []
+
+notes: |
+  Hip-Hop / Boom Bap deprioritizes spatial — the aesthetic is close-
+  miced and dry, not cathedral. Plans should favor rhythmic and
+  timbral work. Exceptions: Premier-style snare plate reverb is
+  spatial but narrow-scope (single element).

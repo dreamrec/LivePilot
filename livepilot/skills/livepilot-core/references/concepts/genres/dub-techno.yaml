@@ -1,0 +1,132 @@
+id: dub_techno
+name: Dub Techno
+type: genre
+aliases:
+  - "dub techno"
+  - "dub-techno"
+
+sonic_identity:
+  - single chord stab feeding long delay + reverb chain
+  - the FX chain IS the arrangement
+  - sub-bass at fundamental, felt not heard
+  - long reverb tails as harmonic motion
+  - rigid 4/4 kick-snare swimming in space
+
+reach_for:
+  instruments:
+    - Poli
+    - Drift
+    - Simpler  # dub-sub samples
+    - Drone Lab  # Harmonic Drone Generator
+  effects:
+    - Convolution Reverb  # Farfisa Spring, Stocktronics
+    - Echo
+    - Ping Pong Delay
+    - Auto Filter  # on delay return
+  packs:
+    - Drone Lab
+    - Chop and Swing  # crackle
+    - Lost and Found
+  utilities:
+    - Utility  # sub → mono
+    - EQ Eight
+
+avoid:
+  - bright EQ
+  - crisp transients
+  - complex melody
+  - fast tempo
+  - sidechain compression
+
+rhythm_idioms:
+  - rigid 4/4 kick
+  - 909-style hat minimal closed/open interplay
+  - stick-click ghost hits
+
+harmony_idioms:
+  - single chord stab (minor 7th or suspended 4th)
+  - FX-tail movement as harmonic motion
+  - static tonal center
+
+arrangement_idioms:
+  - 8-12 minute evolution
+  - subtraction before addition
+  - return deeper, not louder
+
+texture_idioms:
+  - vinyl crackle
+  - rain/nature field recordings
+  - long reverb tails at -10 to -20 dB
+  - hiss
+
+sample_roles:
+  - dub_tail_source
+  - texture_bed
+
+key_techniques:
+  - name: "The dub chord"
+    source: sound-design-deep.md
+  - name: "Reverb as harmony"
+    source: sound-design-deep.md
+  - name: "Delay throws"
+    source: sound-design-deep.md
+  - name: "Dub sub-bass"
+    source: atlas
+    device: Bass
+
+evaluation_bias:
+  target_dimensions:
+    depth: 0.24
+    motion: 0.18
+    cohesion: 0.16
+    contrast: 0.12
+    groove: 0.10
+    novelty: 0.10
+    clarity: 0.10
+  protect:
+    clarity: 0.50
+    cohesion: 0.72
+    low_end: 0.80
+
+move_family_bias:
+  favor:
+    - sound_design
+    - device_creation
+    - mix  # space via send is core dub-techno work
+  deprioritize:
+    - transition
+    - performance
+
+dimensions_in_scope:
+  - timbral
+  - spatial
+  - structural  # optional — sparse, long-form structure
+dimensions_deprioritized:
+  - rhythmic  # percussion implied not stated
+
+novelty_budget_default: 0.45  # idiom is conservative
+
+tempo_hint:
+  min: 120
+  max: 130
+  time_signature: "4/4"
+
+canonical_artists:
+  - basic-channel
+  - gas
+  - shackleton
+
+canonical_genres: []
+
+notes: |
+  Dub techno is an architecture-first aesthetic: before any new synth
+  patch, build the return-track architecture (Ping-Pong Delay with
+  filter → Convolution Reverb with cathedral IR). Three plans typically
+  include: (1) device_creation — return chain setup; (2) sound_design —
+  chord stab synthesis with Drift/Poli; (3) mix — sub narrowed to
+  mono, high-shelf tucked.
+
+  Rhythmic plans are legitimately out of scope for pure dub-techno. If
+  the user combines dub-techno with a rhythmic reference (Dilla swing,
+  Villalobos polyrhythms), re-include rhythmic via arrangement-family
+  plan with dimension_hint="rhythmic".
