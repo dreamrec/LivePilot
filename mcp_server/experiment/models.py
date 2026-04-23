@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 
 from ..branches import BranchSeed
+from .baseline import BaselineTransportState
 
 
 @dataclass
@@ -249,6 +250,10 @@ class ExperimentSet:
     status: str = "open"  # open | evaluated | committed | discarded
     winner_branch_id: Optional[str] = None
     created_at_ms: int = 0
+    # v1.19 Item A — transport state captured before the first branch runs
+    # and used to restore identical starting conditions between branches.
+    # See mcp_server.experiment.baseline for the snapshot / restore pair.
+    baseline_transport: Optional[BaselineTransportState] = None
 
     @property
     def branch_count(self) -> int:
@@ -290,7 +295,7 @@ class ExperimentSet:
         return _branch_rank_key(branch)
 
     def to_dict(self) -> dict:
-        return {
+        d = {
             "experiment_id": self.experiment_id,
             "request_text": self.request_text,
             "status": self.status,
@@ -302,3 +307,6 @@ class ExperimentSet:
                 for b in self.ranked_branches()
             ],
         }
+        if self.baseline_transport is not None:
+            d["baseline_transport"] = self.baseline_transport.to_dict()
+        return d

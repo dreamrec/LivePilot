@@ -343,10 +343,32 @@ async def run_experiment(
     # Import compiler
     from ..semantic_moves import registry, compiler
 
+    # v1.19 Item A — capture baseline transport state BEFORE any branch runs.
+    # Each branch's before_snapshot is only comparable if it starts from the
+    # same reference state. Without this, live testing (v1.18.0 Test 8) showed
+    # 3 branches produce wildly inconsistent before_snapshot.track_meters[0].level
+    # values — clip stopped mid-experiment between branches.
+    if experiment.baseline_transport is None:
+        from .baseline import capture_baseline
+        try:
+            experiment.baseline_transport = capture_baseline(ableton)
+        except Exception as exc:
+            logger.debug("baseline capture failed: %s", exc)
+            experiment.baseline_transport = None
+
     results = []
+    pending_seen = 0
     for branch in experiment.branches:
         if branch.status != "pending":
             continue
+
+        # Between branches (not before the first), restore the baseline so
+        # the next before_snapshot reads from the same reference state.
+        if pending_seen > 0:
+            engine.prepare_for_next_branch(
+                ableton, experiment.baseline_transport, stabilize_ms=300,
+            )
+        pending_seen += 1
 
         # PR3: respect a pre-existing compiled_plan on the branch (freeform /
         # synthesis / composer producers bring their own). Only compile from

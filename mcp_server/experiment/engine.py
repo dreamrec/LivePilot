@@ -445,3 +445,23 @@ def discard_experiment(experiment_id: str) -> dict:
     exp.status = "discarded"
 
     return {"discarded": True, "experiment_id": experiment_id}
+
+
+# ── v1.19 Item A — between-branch baseline restore ───────────────────────────
+
+
+def prepare_for_next_branch(ableton, baseline, stabilize_ms: int = 300) -> None:
+    """Restore baseline transport state before capturing the next branch.
+
+    Called by ``run_experiment`` between branches so each branch's
+    ``before_snapshot`` reads from identical starting conditions. No-op
+    when ``baseline`` is None (first branch — the baseline was just
+    captured, no drift to correct).
+
+    Thin wrapper around ``baseline.restore_baseline``; exists so the
+    MCP tool body stays small and the wiring is testable in isolation.
+    """
+    if baseline is None:
+        return
+    from .baseline import restore_baseline
+    restore_baseline(ableton, baseline, stabilize_ms=stabilize_ms)
