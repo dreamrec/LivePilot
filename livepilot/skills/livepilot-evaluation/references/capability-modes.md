@@ -98,24 +98,50 @@ Never silently skip evaluation. Always inform the user which capability mode is 
 
 ## Checking Capability State
 
-Call `get_capability_state` at the start of any evaluation session. The response includes:
+Call `get_capability_state` at the start of any evaluation session. The response is a nested `domains` dict keyed by capability name — NOT the flat shape older docs described.
 
 ```json
 {
-  "mode": "normal",
-  "analyzer_connected": true,
-  "bridge_version": "1.17.1",
-  "spectral_cache_age_ms": 1200,
-  "flucoma_available": false,
-  "session_connected": true
+  "capability_state": {
+    "generated_at_ms": 1776929160866,
+    "overall_mode": "normal",
+    "domains": {
+      "session_access": {"name": "session_access", "available": true,  "confidence": 1.0, "mode": "healthy",     "reasons": []},
+      "analyzer":       {"name": "analyzer",       "available": true,  "confidence": 0.9, "mode": "available",   "reasons": []},
+      "memory":         {"name": "memory",         "available": true,  "confidence": 1.0, "mode": "available",   "reasons": []},
+      "web":            {"name": "web",            "available": true,  "confidence": 0.7, "mode": "available",   "reasons": []},
+      "research":       {"name": "research",       "available": true,  "confidence": 0.9, "mode": "available",   "reasons": []},
+      "flucoma":        {"name": "flucoma",        "available": false, "confidence": 0.0, "mode": "unavailable", "reasons": ["flucoma_not_installed"]}
+    }
+  }
 }
 ```
 
-- `mode`: one of "normal", "measured_degraded", "judgment_only", "read_only"
-- `analyzer_connected`: whether M4L bridge is active
-- `spectral_cache_age_ms`: milliseconds since last spectral update
-- `flucoma_available`: whether FluCoMa analysis tools are installed
-- `session_connected`: whether TCP connection to Ableton is active
+### Top-level fields
+
+- `capability_state.generated_at_ms`: Unix-ms timestamp of the probe.
+- `capability_state.overall_mode`: one of `"normal"`, `"measured_degraded"`, `"judgment_only"`, `"read_only"` — the global evaluation-quality tier computed from the per-domain signals.
+- `capability_state.domains`: dict keyed by domain name; each value is a capability-domain record.
+
+### Per-domain fields
+
+Every entry in `domains` has the same shape:
+
+- `name`: the domain key (`"session_access"`, `"analyzer"`, `"memory"`, `"web"`, `"research"`, `"flucoma"`).
+- `available`: boolean — is this capability ready to use right now?
+- `confidence`: 0.0–1.0 — how much to trust the `available` flag (e.g. stale analyzer data lowers confidence).
+- `mode`: short human label specific to the domain (`"healthy"`, `"available"`, `"measured"`, `"stale"`, `"targeted_only"`, `"full"`, `"unavailable"`).
+- `reasons`: list of short machine-readable tokens explaining why the domain is in its current state (`"analyzer_offline"`, `"web_unavailable"`, `"flucoma_not_installed"`, …). Empty when healthy.
+- `freshness_ms`: optional — milliseconds since the domain last received fresh data (currently only the analyzer domain populates this).
+
+### Domain definitions
+
+- **session_access** — live TCP connectivity to the Ableton Remote Script on port 9878. `available=true` means a `get_session_info` round-trip succeeded.
+- **analyzer** — the M4L bridge + spectral cache. `available=true` requires the bridge to be connected AND the spectral cache to have recently received data.
+- **memory** — the local technique-store / taste memory. `available=true` means the persistent stores can be read and written.
+- **web** — server-side outbound HTTP capability. True when the MCP host can reach an arbitrary public URL (probed by a 500 ms HEAD request to `https://api.github.com`). Does NOT imply curated research corpora are installed — see the `research` domain for that.
+- **research** — composite over `session_access`, `memory`, and `web`. `mode="full"` when all three are available; `"targeted_only"` when at least one source is up; `"unavailable"` when nothing is reachable.
+- **flucoma** — whether the optional `flucoma` Python package is importable (probed via `importlib.util.find_spec`). FluCoMa-backed tools (`check_flucoma`, `extract_timbre_fingerprint`, etc.) degrade gracefully when this domain is unavailable.
 
 ## Collaborative Mode (Live 12.4+)
 
