@@ -7,6 +7,9 @@ Tools:
 
 from __future__ import annotations
 
+import importlib.util
+import logging
+import urllib.request
 from typing import Optional
 
 from fastmcp import Context
@@ -14,11 +17,53 @@ from fastmcp import Context
 from ..server import mcp
 from ..memory.technique_store import TechniqueStore
 from .capability_state import build_capability_state
-import logging
 
 logger = logging.getLogger(__name__)
 
 _memory_store = TechniqueStore()
+
+
+# ── Capability probes ──────────────────────────────────────────────────
+#
+# These helpers are module-level so tests can monkeypatch them directly.
+
+
+def _probe_web(timeout: float = 0.5) -> bool:
+    """Server-side outbound HTTP probe.
+
+    True when the MCP host can reach an arbitrary public URL. Does NOT
+    imply curated research corpora are installed — see the ``research``
+    domain for that.
+
+    Implementation: a ``timeout``-second HEAD request to
+    ``https://api.github.com`` using stdlib ``urllib.request``. Any
+    exception (DNS failure, TLS error, socket timeout, proxy block,
+    non-2xx response) collapses to False so the probe is safe to call
+    from any code path.
+    """
+    req = urllib.request.Request("https://api.github.com", method="HEAD")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            status = getattr(resp, "status", None)
+            return status is not None and 200 <= status < 400
+    except Exception as exc:  # noqa: BLE001 — swallow everything to False
+        logger.debug("_probe_web failed: %s", exc)
+        return False
+
+
+def _probe_flucoma() -> bool:
+    """Check whether the ``flucoma`` Python package is importable.
+
+    Uses ``importlib.util.find_spec`` so no import side-effects fire
+    (matching the pattern already used for optional capability probes
+    elsewhere in the codebase). Returns False if the package is missing
+    or if the spec lookup itself raises.
+    """
+    try:
+        return importlib.util.find_spec("flucoma") is not None
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("_probe_flucoma failed: %s", exc)
+        return False
 
 
 @mcp.tool()
@@ -59,9 +104,13 @@ def get_capability_state(ctx: Context) -> dict:
         logger.debug("get_capability_state failed: %s", exc)
         memory_ok = False
 
-    # ── Web / FluCoMa — not probed live, default to False ───────────
-    web_ok = False
-    flucoma_ok = False
+    # ── Web — actually probe outbound HTTP egress ───────────────────
+    # Scoped to server-side outbound HTTP reachability; does NOT imply
+    # a curated research corpus is installed (see ``research`` domain).
+    web_ok = _probe_web()
+
+    # ── FluCoMa — optional import via find_spec (no side effects) ───
+    flucoma_ok = _probe_flucoma()
 
     state = build_capability_state(
         session_ok=session_ok,
