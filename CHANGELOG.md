@@ -1,5 +1,124 @@
 # Changelog
 
+## 1.18.1 — Director HIGH-severity patches (April 23 2026)
+
+Patch release addressing 4 of the 12 known issues documented in v1.18.0.
+All three HIGH-severity bugs are fixed, plus 6 medium-severity items
+(data cleanups and doc clarifications). All fixes landed with
+regression-guard tests. 2779 project tests pass + 1 xfail (pre-existing).
+
+### High-severity fixes
+
+- **#1 `create_experiment` auto-proposal returned single-char move_ids.**
+  Python unpacking bug at `mcp_server/experiment/tools.py:267` —
+  `[m[0] for m, _ in scored]` indexed the first character of each
+  move_id string. Fix: `[move_id for move_id, _ in scored[:limit]]`.
+  Pre-fix, calling the director's Flow B with no explicit seeds/move_ids
+  would always fail at run_experiment with `"Move t not found"`.
+
+- **#2 `propose_composer_branches` ignored concept-packet arrangement
+  idioms.** Dub-techno prompts (referencing Basic Channel, Gas, etc.)
+  were collapsed to the generic techno template (Intro→Build→Drop→
+  Breakdown→Drop 2→Outro with 6 standard layers). Fix: "dub techno"
+  is now its own canonical genre in `GENRE_DEFAULTS` and
+  `SECTION_TEMPLATES`, with a continuous-evolution scaffold
+  (Dawn→Pulse→Chord→Depth→Withdraw→Return, 3-5 layers, energy 0.4).
+  Removed the `dub techno → techno` alias that was causing the
+  collapse; added `dub-techno` (hyphenated) as an alias to the new
+  canonical.
+
+- **#3 Director raw-tool-call path bypassed the action ledger.**
+  Min-effective doc fix: Phase 6 of `livepilot-creative-director`
+  now mandates `add_session_memory(category="move_executed", ...)`
+  after raw-tool execution batches, so anti-repetition detection on
+  subsequent creative turns isn't blind. Added a state-inference
+  fallback table in `anti-repetition-rules.md` for when the ledger
+  is still empty (infer recent family from loaded devices, non-default
+  mixer state, clip slot contents). Full architectural fix (route all
+  Phase 6 execution through `apply_semantic_move`/`commit_experiment`)
+  is deferred to v1.19.
+
+### Medium-severity fixes
+
+- **#4 Ping Pong Delay ghost packet.** `affordances/devices/ping-pong-delay.yaml`
+  previously described a standalone device that doesn't exist in
+  Live 12 (`search_browser` returned empty). Rewritten as an explicit
+  mode-alias for Echo with `Channel Mode = 1`. `echo.yaml` now prominently
+  documents the Channel Mode enum (0=Stereo, 1=Ping Pong, 2=Mid/Side).
+
+- **#5 Auto Filter affordance used legacy 20-135 Hz ranges.** Modern
+  `AutoFilter2` class (Live 12 default) uses 0-1 normalized for
+  Frequency, Resonance, and LFO Amount. Live-verified mapping (raw
+  0.45 → display 448 Hz) is now documented in the YAML. Legacy/modern
+  distinction clarified in the notes.
+
+- **#9 `propose_composer_branches` silent count degradation.** Explicit
+  `count=3` at `freshness<0.7` was silently returning 2 seeds because
+  `layer_contrast` was gated behind `freshness>=0.7`. Fix: explicit
+  `count>=3` now raises freshness internally to 0.7 to admit all
+  strategies. Default `count=2` (no override) still respects the
+  freshness gate — preserves the "freshness shapes default strategy
+  count" contract and the existing tests that assert it.
+
+- **#12 Low-novelty-budget escape hatch for 3-plan diversity rule.**
+  `move-family-diversity-rule.md` gained a dedicated section: when
+  `novelty_budget < 0.35` (user prompts like "keep the vibe, just
+  cleaner"), 1-2 family plans is acceptable and honest. Prevents the
+  rule from fighting cleanup requests.
+
+### Bonus fixes
+
+- **`batch_set_parameters` schema gotcha documented.** Core SKILL.md
+  Rule 15 now shows the correct dict-of-dicts shape:
+  `{"ParamName": {"value": v}}`. Live verification surfaced this during
+  v1.18.0 pressure testing.
+
+- **Convolution Reverb phantom `ir_length` already fixed in v1.18.0
+  commit 9** — regression test now guards against reintroduction.
+
+### Tests added
+
+- `test_create_experiment_auto_proposal_no_m0_bug` (source-pattern
+  regression guard)
+- `test_create_experiment_auto_proposal_functional` (mirror-logic
+  integration check)
+- `test_composer_dub_techno_prompt_avoids_drop_scaffold` (no Drop/Drop 2
+  on Basic Channel prompts)
+- `test_propose_composer_branches_honors_explicit_count` (count=3
+  returns 3 regardless of freshness)
+- `test_medium_freshness_count_3_unlocks_all_strategies` (renamed from
+  test encoding the pre-fix bug as desired behavior)
+- `test_medium_freshness_default_count_gives_two` (preserves
+  default-count-respects-freshness contract)
+- `test_ping_pong_delay_is_documented_as_echo_mode`
+- `test_auto_filter_ranges_are_normalized_for_modern_class`
+- `test_low_novelty_escape_hatch_documented`
+- `test_batch_set_parameters_schema_documented`
+- `test_director_phase6_records_ledger_marker`
+- `test_anti_repetition_has_state_inference_fallback`
+
+### Still open for v1.18.2 / v1.19
+
+8 items remain from the v1.18.0 Known Issues list:
+
+- **#7 Packet `avoid` list runtime enforcement** (currently advisory —
+  pre-flight check against tool args needed)
+- **#8 `locked_dimensions` runtime enforcement** (same pattern as #7)
+- **#10 Wonder Mode zero-variant degradation on empty session context**
+- **#11 Evaluation tie-break coarseness** (3-way ties at score 0.6)
+- **Experiment state continuity between branches** (before-snapshot
+  drift)
+- **Hybrid-packet compilation algorithm** (union/intersection logic
+  for "Basic Channel meets Dilla")
+- **~20 missing genre YAMLs** (downtempo, boom_bap, lo_fi, synthwave,
+  techno, etc.) — xfail test tracks this
+- **Full architectural fix for #3** (route director Phase 6 through
+  semantic_move commits, replacing the doc-level fix shipped here)
+
+These are each scoped for focused follow-up sessions — they need new
+infrastructure or architectural decisions not suitable for a patch
+release.
+
 ## 1.18.0 — Creative Director + concept packets + device affordances (April 23 2026)
 
 A structural feature release. Addresses the "agent doesn't variate
