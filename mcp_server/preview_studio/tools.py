@@ -270,7 +270,68 @@ async def commit_preview_variant(
     if not ps:
         return {"error": f"Preview set {set_id} not found"}
 
+    # Resolve the chosen variant WITHOUT mutating state yet. We have to
+    # short-circuit analytical-only / blocked picks BEFORE engine.commit_variant
+    # runs, otherwise `preview_set.status` gets flipped to "committed" and
+    # sibling variants get discarded even though nothing executed.
+    chosen = None
+    for v in ps.variants:
+        if v.variant_id == variant_id:
+            chosen = v
+            break
+    if not chosen:
+        available = [v.variant_id for v in ps.variants]
+        return {
+            "error": f"Variant {variant_id} not found in set {set_id}",
+            "available_variants": available,
+        }
+
+    # ── Truth-gap guard: refuse to "commit" a variant that can't execute ──
+    # If the variant was flagged blocked/failed upstream or lacks a
+    # compiled plan, the old code still marked preview_set.status='committed'
+    # and returned committed=False as a silent contradiction. Close that
+    # gap: return an honest no-op and leave state untouched so the caller
+    # can pick a different variant.
+    plan = chosen.compiled_plan
+    plan_is_empty = (
+        plan is None
+        or (isinstance(plan, list) and len(plan) == 0)
+        or (isinstance(plan, dict) and len(plan.get("steps") or []) == 0)
+    )
+    blocked = chosen.status in {"blocked", "failed"}
+    if plan_is_empty or blocked:
+        reason = "blocked" if blocked and plan_is_empty is False else "analytical_only"
+        return {
+            "committed": False,
+            "status": "analytical_only" if reason == "analytical_only" else "blocked",
+            "reason": reason,
+            "preview_set_id": set_id,
+            "variant_id": chosen.variant_id,
+            "label": chosen.label,
+            "intent": chosen.intent,
+            "move_id": chosen.move_id,
+            "identity_effect": chosen.identity_effect,
+            "what_preserved": chosen.what_preserved,
+            "message": (
+                "chose analytical variant; no session changes applied"
+                if reason == "analytical_only"
+                else "variant is blocked; no session changes applied"
+            ),
+            "note": (
+                "Variant has no compiled plan (analytical-only). Preview set "
+                "was left in its pre-commit state so you can pick a different "
+                "variant."
+                if reason == "analytical_only"
+                else "Variant is blocked/failed. Preview set was left in its "
+                "pre-commit state so you can pick a different variant."
+            ),
+        }
+
+    # Only now do we flip state — the chosen variant has an executable plan.
     chosen = engine.commit_variant(ps, variant_id)
+    # engine.commit_variant cannot return None here (we already verified
+    # the variant_id exists), but keep the defensive check for the type
+    # checker.
     if not chosen:
         available = [v.variant_id for v in ps.variants]
         return {
@@ -289,55 +350,44 @@ async def commit_preview_variant(
     }
 
     # ── v1.10.3: actually execute the compiled plan ──
-    # If there's no compiled plan, the variant is analytical-only — record
-    # the choice and return honestly instead of pretending it was applied.
-    if not chosen.compiled_plan:
-        result["committed"] = False
-        result["status"] = "analytical_only"
-        result["note"] = (
-            "Variant has no compiled plan (analytical-only). Preview set "
-            "marked the choice but no session changes were made. Use an "
-            "executable variant if you want the commit to apply changes."
-        )
+    from ..runtime.execution_router import execute_plan_steps_async
+    plan = chosen.compiled_plan
+    steps = plan if isinstance(plan, list) else plan.get("steps", []) or []
+    ableton = _get_ableton(ctx)
+    bridge = ctx.lifespan_context.get("m4l")
+    mcp_registry = ctx.lifespan_context.get("mcp_dispatch", {})
+
+    exec_results = await execute_plan_steps_async(
+        steps,
+        ableton=ableton,
+        bridge=bridge,
+        mcp_registry=mcp_registry,
+        ctx=ctx,
+        stop_on_failure=False,
+    )
+    log = [
+        {
+            "tool": r.tool,
+            "backend": r.backend,
+            "ok": r.ok,
+            **({"result": r.result} if r.ok else {"error": r.error}),
+        }
+        for r in exec_results
+    ]
+    steps_ok = sum(1 for r in exec_results if r.ok)
+    steps_failed = len(exec_results) - steps_ok
+
+    result["execution_log"] = log
+    result["steps_ok"] = steps_ok
+    result["steps_failed"] = steps_failed
+
+    if steps_failed == 0 and steps_ok > 0:
+        result["status"] = "committed"
+    elif steps_ok > 0:
+        result["status"] = "committed_with_errors"
     else:
-        from ..runtime.execution_router import execute_plan_steps_async
-        plan = chosen.compiled_plan
-        steps = plan if isinstance(plan, list) else plan.get("steps", []) or []
-        ableton = _get_ableton(ctx)
-        bridge = ctx.lifespan_context.get("m4l")
-        mcp_registry = ctx.lifespan_context.get("mcp_dispatch", {})
-
-        exec_results = await execute_plan_steps_async(
-            steps,
-            ableton=ableton,
-            bridge=bridge,
-            mcp_registry=mcp_registry,
-            ctx=ctx,
-            stop_on_failure=False,
-        )
-        log = [
-            {
-                "tool": r.tool,
-                "backend": r.backend,
-                "ok": r.ok,
-                **({"result": r.result} if r.ok else {"error": r.error}),
-            }
-            for r in exec_results
-        ]
-        steps_ok = sum(1 for r in exec_results if r.ok)
-        steps_failed = len(exec_results) - steps_ok
-
-        result["execution_log"] = log
-        result["steps_ok"] = steps_ok
-        result["steps_failed"] = steps_failed
-
-        if steps_failed == 0 and steps_ok > 0:
-            result["status"] = "committed"
-        elif steps_ok > 0:
-            result["status"] = "committed_with_errors"
-        else:
-            result["status"] = "failed"
-            result["committed"] = False
+        result["status"] = "failed"
+        result["committed"] = False
 
     # Wonder lifecycle hooks
     ws = _find_wonder_session_by_preview(set_id)

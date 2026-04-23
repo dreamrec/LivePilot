@@ -92,13 +92,36 @@ def test_comparison_ranks_preserves_highest():
 
 
 def test_comparison_returns_recommended():
-    """Comparison should include a recommended variant."""
-    ps = create_preview_set(
-        request_text="test recommend",
-        kernel_id="test_kern",
+    """Comparison should include a recommended variant when an executable
+    one exists. With no moves registered, every triptych variant is
+    blocked (compiled_plan=None) and ``recommended`` is correctly ``None``
+    — asserted below to lock the post-truth-gap-fix contract.
+    """
+    # Case 1 — no moves available: every variant is blocked, recommended is None.
+    ps_blocked = create_preview_set(
+        request_text="test recommend blocked",
+        kernel_id="test_kern_blocked",
     )
-    comparison = compare_variants(ps)
-    assert comparison.get("recommended")
+    comparison_blocked = compare_variants(ps_blocked)
+    assert comparison_blocked["recommended"] is None, (
+        "when every variant is blocked, recommended must be None, not a lie"
+    )
+    assert len(comparison_blocked["analytical_candidates"]) == len(ps_blocked.variants)
+
+    # Case 2 — at least one executable move: recommended is a variant_id string.
+    ps_exec = create_preview_set(
+        request_text="test recommend exec",
+        kernel_id="test_kern_exec",
+        available_moves=[{
+            "move_id": "make_punchier",
+            "plan_template": [{"tool": "set_track_volume", "params": {}}],
+        }],
+    )
+    comparison_exec = compare_variants(ps_exec)
+    assert comparison_exec.get("recommended"), (
+        "with at least one executable variant, recommended must be set"
+    )
+    assert isinstance(comparison_exec["recommended"], str)
 
 
 def test_comparison_with_custom_weights():

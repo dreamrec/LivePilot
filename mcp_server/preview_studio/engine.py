@@ -258,31 +258,66 @@ def _build_binary(
 # ── Comparison ────────────────────────────────────────────────────
 
 
+_NON_EXECUTABLE_STATUSES = {"blocked", "failed"}
+
+
+def _is_executable(variant: PreviewVariant) -> bool:
+    """A variant is executable when it has a compiled plan AND its status
+    hasn't been flagged as blocked/failed upstream.
+
+    The compiled plan may be a non-empty list of steps OR a dict with a
+    non-empty ``steps`` key — both shapes exist in the wild.
+    """
+    if variant.status in _NON_EXECUTABLE_STATUSES:
+        return False
+    plan = variant.compiled_plan
+    if plan is None:
+        return False
+    if isinstance(plan, list):
+        return len(plan) > 0
+    if isinstance(plan, dict):
+        return len(plan.get("steps") or []) > 0
+    # Any other truthy shape is treated as executable; falsy as not.
+    return bool(plan)
+
+
 def compare_variants(
     preview_set: PreviewSet,
     criteria: Optional[dict] = None,
 ) -> dict:
-    """Compare variants within a preview set and rank them."""
+    """Compare variants within a preview set and rank them.
+
+    Truth-gap fix (PR-A): variants that are blocked/failed OR lack a
+    compiled_plan are partitioned out of the scored ranking. They appear
+    in ``analytical_candidates`` (just their variant_ids) and ALSO stay
+    in ``rankings`` at the bottom for introspection, but they can never
+    populate ``recommended``. When no executable variant exists,
+    ``recommended`` is ``None`` so callers can surface a clear message
+    instead of silently committing a no-op.
+    """
     criteria = criteria or {}
     weight_taste = criteria.get("taste_weight", 0.3)
     weight_novelty = criteria.get("novelty_weight", 0.2)
     weight_identity = criteria.get("identity_weight", 0.5)
 
-    rankings = []
+    executable: list[PreviewVariant] = []
+    analytical: list[PreviewVariant] = []
     for v in preview_set.variants:
-        # Score components
+        (executable if _is_executable(v) else analytical).append(v)
+
+    def _score(v: PreviewVariant) -> float:
         taste_score = v.taste_fit
         novelty_score = 1.0 - abs(v.novelty_level - 0.5) * 2  # bell curve around 0.5
         identity_score = _identity_effect_score(v.identity_effect)
-
         composite = (
             taste_score * weight_taste
             + novelty_score * weight_novelty
             + identity_score * weight_identity
         )
-        v.score = round(composite, 3)
+        return round(composite, 3)
 
-        rankings.append({
+    def _row(v: PreviewVariant) -> dict:
+        return {
             "variant_id": v.variant_id,
             "label": v.label,
             "score": v.score,
@@ -292,13 +327,35 @@ def compare_variants(
             "summary": v.intent,
             "what_preserved": v.what_preserved,
             "why_it_matters": v.why_it_matters,
-        })
+            "status": v.status,
+        }
 
-    rankings.sort(key=lambda r: r["score"], reverse=True)
+    executable_rows: list[dict] = []
+    for v in executable:
+        v.score = _score(v)
+        executable_rows.append(_row(v))
+    executable_rows.sort(key=lambda r: r["score"], reverse=True)
+
+    # Analytical variants still get a score computed so introspection
+    # shows the same shape, but they're appended AFTER the sorted
+    # executables so they can never land at position 0.
+    analytical_rows: list[dict] = []
+    for v in analytical:
+        v.score = _score(v)
+        analytical_rows.append(_row(v))
+
+    rankings = executable_rows + analytical_rows
+
+    recommended: Optional[str]
+    if executable_rows:
+        recommended = executable_rows[0]["variant_id"]
+    else:
+        recommended = None
 
     comparison = {
         "rankings": rankings,
-        "recommended": rankings[0]["variant_id"] if rankings else "",
+        "recommended": recommended,
+        "analytical_candidates": [v.variant_id for v in analytical],
         "criteria_used": {
             "taste_weight": weight_taste,
             "novelty_weight": weight_novelty,
