@@ -275,6 +275,7 @@ The system tracks what the user dislikes. Call `get_anti_preferences` before pla
 
 Load the appropriate skill for domain-specific guidance:
 - **livepilot-core** — golden rules, speed tiers, error handling (always relevant)
+- **livepilot-creative-director** — **load FIRST on open-ended creative intent** ("like X", "develop", "more interesting", reference/style asks); enforces 3-plan divergence across `move.family` before commit, then routes to the skills below
 - **livepilot-devices** — loading/browsing/configuring devices
 - **livepilot-notes** — MIDI content, theory, generative algorithms
 - **livepilot-mixing** — volume, pan, sends, routing, automation

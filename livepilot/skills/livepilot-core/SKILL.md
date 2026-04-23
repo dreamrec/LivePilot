@@ -117,6 +117,7 @@ For agentic evaluation loops, load the appropriate engine skill:
 
 | Skill | When to use |
 |-------|-------------|
+| `livepilot-creative-director` | **Load FIRST on any open-ended creative request** — "like X", "develop", "mutate", "more interesting", reference/style asks. Compiles a Creative Brief and enforces 3-plan divergence across `move.family` before any commit. Routes to the skills below. |
 | `livepilot-mix-engine` | Critic-driven mix analysis and iterative improvement |
 | `livepilot-sound-design-engine` | Critic-driven patch analysis and refinement |
 | `livepilot-composition-engine` | Section analysis, transitions, motifs, form |
@@ -152,7 +153,9 @@ LivePilot's atlas — not recipe scripts.
 
 ## V2 Orchestration Layer
 
-For complex requests, use the V2 orchestration flow instead of ad-hoc tool calls. There are **two peer flows** — choose based on intent:
+For complex requests, use the V2 orchestration flow instead of ad-hoc tool calls. There are **two peer flows** — choose based on intent.
+
+**For creative intent** (reference / style / "more interesting" / open-ended): load `livepilot-creative-director` BEFORE choosing a flow. It compiles a Creative Brief, enforces 3-plan divergence across `move.family`, and routes through Flow B with the right seeds.
 
 ### Flow A — Targeted (recipe-first, for specific fixes)
 Use when the user has a concrete, specific request ("tighten the low end", "make the drums punchier", "fix the masking").
@@ -183,12 +186,13 @@ Use when the user wants options, variants, or is stuck ("surprise me", "try some
 **Rule of thumb**: if the user asked for a specific fix, Flow A. If they asked "what would you do?" or mentioned feel/vibe without parameters, Flow B.
 
 ### Semantic Moves
-High-level musical intents that compile to deterministic tool sequences. 5 families:
+High-level musical intents that compile to deterministic tool sequences. 6 families:
 - **mix** — `tighten_low_end`, `widen_stereo`, `make_punchier`, `darken_without_losing_width`, `reduce_repetition_fatigue`, `make_kick_bass_lock`, `reduce_foreground_competition`
-- **arrangement** — `create_buildup_tension`, `smooth_scene_handoff`, `increase_contrast_before_payoff`, `refresh_repeated_section`
-- **transition** — `increase_forward_motion`, `open_chorus`, `create_breakdown`, `bridge_sections`
+- **arrangement** — `refresh_repeated_section`, plus structural moves defined alongside mix
+- **transition** — `create_buildup_tension`, `smooth_scene_handoff`, `increase_contrast_before_payoff`, `bridge_sections`, `increase_forward_motion`, `open_chorus`, `create_breakdown`
 - **sound_design** — `add_warmth`, `add_texture`, `shape_transients`, `add_space`
 - **performance** — `recover_energy`, `decompress_tension`, `safe_spotlight`, `emergency_simplify`
+- **device_creation** — `add_*_device` moves for loading instruments / effects as intent-level actions
 
 Use `list_semantic_moves(domain="mix")` to discover available moves.
 

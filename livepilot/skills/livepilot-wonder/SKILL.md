@@ -19,6 +19,22 @@ and lets the user preview, compare, and commit.
 - `detect_stuckness` confidence > 0.5
 - 3+ consecutive undos in action ledger
 - Multiple plausible next moves with no clear winner
+- **`livepilot-creative-director` delegates divergence to Wonder** (first-pass creative intent, not only rescue)
+
+## Two contexts — Stuck-Rescue vs Creative-Director Divergence
+
+Wonder Mode now serves two callers:
+
+1. **Stuck-rescue** (original): a specific session is stuck and needs
+   rescue. The "fewer than 3 variants is correct" honesty rule applies —
+   you are not obligated to fabricate options that don't exist.
+
+2. **Creative-director first-pass**: the director is running standard
+   divergence before any commit. Here, actively WIDEN across `move.family`
+   before accepting fewer than 3 variants. Only fall back after honestly
+   re-reading concept packets, anti-preferences, and recent memory. The
+   context comes in via the `wonder_session_id` metadata or the caller's
+   explicit framing.
 
 ## When NOT to Trigger
 
@@ -43,8 +59,12 @@ and lets the user preview, compare, and commit.
 ## Honesty Rules
 
 - **Never describe an analytical variant as previewable**
-- **Never fabricate distinctness** by relabeling the same move
-- **Fewer than 3 variants is correct** when fewer distinct moves exist
+- **Never fabricate distinctness** by relabeling the same move — and
+  specifically, two variants with the same `move.family` are not distinct
+- **Fewer than 3 variants is correct** when fewer distinct moves exist —
+  but on creative-director first-pass, widen across `move.family` values
+  FIRST before accepting that conclusion (see `livepilot-creative-director`
+  references/move-family-diversity-rule.md)
 - 1 executable + 2 analytical is an honest, useful result
 - The `variant_count_actual` field tells you how many are real
 
