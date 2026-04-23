@@ -191,6 +191,10 @@ def _iterate_sync_core(
         ))
 
         if met:
+            # Discard any prior best-so-far before committing the new winner —
+            # otherwise the old non-winning experiment leaks in the store.
+            if best_exp_id is not None and best_exp_id != exp_id:
+                discard_fn(best_exp_id)
             commit_fn(exp_id, winner_branch_id)
             return IterationResult(
                 status="committed",
@@ -203,8 +207,7 @@ def _iterate_sync_core(
             )
 
         if winner_branch_id is not None and winner_score > best_score:
-            # Discard the previous best-so-far — it's now superseded and
-            # needs to free up Ableton's experiment-store slot.
+            # Supersede previous best-so-far. It's now stale, free the slot.
             if best_exp_id is not None:
                 discard_fn(best_exp_id)
             best_score = winner_score
@@ -291,6 +294,8 @@ async def _iterate_async_core(
         ))
 
         if met:
+            if best_exp_id is not None and best_exp_id != exp_id:
+                await _maybe_await(discard_fn(best_exp_id))
             await _maybe_await(commit_fn(exp_id, winner_branch_id))
             return IterationResult(
                 status="committed",
