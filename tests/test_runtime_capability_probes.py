@@ -219,3 +219,62 @@ def test_session_kernel_reports_both_unavailable_when_probes_false(monkeypatch):
     domains = cap_state.get("domains", {})
     assert domains.get("web", {}).get("available") is False
     assert domains.get("flucoma", {}).get("available") is False
+
+
+# ── v1.17.4 — memory_ok must be probed, not hardcoded ──────────────────
+#
+# Prior behavior (v1.17.3): get_session_kernel hardcoded memory_ok=True
+# regardless of whether the memory store was actually functional. If the
+# store raised on list_techniques (disk full, corrupted index, permissions
+# error), the kernel still reported memory as available to orchestration
+# planners. Same truth-gap class as the v1.17.3 web/flucoma fix.
+# get_capability_state already probes correctly; kernel should too.
+
+
+def test_session_kernel_reports_memory_unavailable_when_store_raises(monkeypatch):
+    """When the underlying technique store raises, get_session_kernel must
+    NOT report memory as available. Previously hardcoded True — the bug."""
+    from mcp_server.runtime import tools as runtime_tools
+
+    class _ExplodingStore:
+        def list_techniques(self, **kwargs):
+            raise RuntimeError("simulated store failure")
+
+    monkeypatch.setattr(runtime_tools, "_memory_store", _ExplodingStore())
+
+    ctx = _make_ctx()
+    kernel = runtime_tools.get_session_kernel(ctx)
+
+    outer = kernel.get("capability_state")
+    assert outer is not None
+    cap_state = outer.get("capability_state", outer)
+    domains = cap_state.get("domains", {})
+    memory = domains.get("memory", {})
+    assert memory.get("available") is False, (
+        f"memory probe raised, but kernel reports memory available; "
+        f"domains['memory']={memory!r}"
+    )
+
+
+def test_session_kernel_reports_memory_available_when_store_works(monkeypatch):
+    """Back-compat: when the store works, memory.available must be True."""
+    from mcp_server.runtime import tools as runtime_tools
+
+    class _WorkingStore:
+        def list_techniques(self, **kwargs):
+            return []  # empty list is a valid probe response
+
+    monkeypatch.setattr(runtime_tools, "_memory_store", _WorkingStore())
+
+    ctx = _make_ctx()
+    kernel = runtime_tools.get_session_kernel(ctx)
+
+    outer = kernel.get("capability_state")
+    assert outer is not None
+    cap_state = outer.get("capability_state", outer)
+    domains = cap_state.get("domains", {})
+    memory = domains.get("memory", {})
+    assert memory.get("available") is True, (
+        f"memory probe succeeded, but kernel reports unavailable; "
+        f"domains['memory']={memory!r}"
+    )
