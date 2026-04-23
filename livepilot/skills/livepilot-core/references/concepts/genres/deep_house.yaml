@@ -1,0 +1,130 @@
+id: deep_house
+name: Deep House
+type: genre
+aliases:
+  - "deep house"
+  - "soulful house"
+  - "chicago deep house"
+  - "detroit deep house"
+
+sonic_identity:
+  - 118-124 BPM 4/4 straight
+  - warm analog-polysynth pads (Rhodes-adjacent)
+  - sampled soul chords (7th / 9th voicings)
+  - soft-filtered sub + mid-bass layering
+  - vocal chops as hooks (not lead vocals)
+
+reach_for:
+  instruments:
+    - Poli
+    - Drift
+    - Electric Keyboards  # Rhodes
+    - Bass
+    - Simpler  # vocal chops
+  effects:
+    - Compressor  # sidechained via Envelope Follower
+    - Auto Filter
+    - Reverb
+    - Chorus-Ensemble
+    - Saturator
+  packs:
+    - Synth Essentials
+    - Electric Keyboards
+    - Core Library
+    - Chop and Swing
+  utilities:
+    - EQ Eight
+
+avoid:
+  - minor 7th dominance (unless jazz-house)
+  - dry production
+  - modern trap aesthetics
+  - aggressive sidechain pumping (that's tech-house, not deep)
+
+rhythm_idioms:
+  - steady 4/4 kick
+  - open hat on off-beat
+  - clap on 2+4
+  - shakers for organic feel
+
+harmony_idioms:
+  - major/minor 7th and 9th chord pads
+  - Rhodes-style keys
+  - vocal samples as hook
+  - subtle chord progressions (2-4 bar cycles)
+
+arrangement_idioms:
+  - long intro (32 bars)
+  - drop at bar 32 or 64
+  - 7-10 minute tracks (club format)
+  - breakdown + return with pad emphasis
+
+texture_idioms:
+  - clean digital with occasional vinyl character
+  - chorus on pads
+  - subtle sidechain pumping
+  - soft reverb wash
+
+sample_roles:
+  - melodic_source
+  - vocal_accent
+  - pad_layer
+
+key_techniques:
+  - name: "Classic Rhodes"
+    source: atlas
+    device: Electric Keyboards
+  - name: "Juno-style detuned chord"
+    source: atlas
+    device: Poli
+  - name: sidechain compression on pad triggered by kick
+    source: sample-techniques.md
+
+evaluation_bias:
+  target_dimensions:
+    groove: 0.22
+    motion: 0.18
+    cohesion: 0.16
+    depth: 0.14
+    novelty: 0.10
+    contrast: 0.10
+    clarity: 0.10
+  protect:
+    clarity: 0.65
+    cohesion: 0.75
+    low_end: 0.72
+
+move_family_bias:
+  favor:
+    - sound_design
+    - mix
+    - arrangement
+  deprioritize:
+    - performance
+
+dimensions_in_scope:
+  - rhythmic
+  - timbral
+  - structural
+  - spatial
+dimensions_deprioritized: []
+
+novelty_budget_default: 0.40
+
+tempo_hint:
+  min: 118
+  max: 124
+  time_signature: "4/4"
+
+canonical_artists:
+  - isolee-luomo
+  - moodymann-theo-parrish
+
+canonical_genres: []
+
+notes: |
+  Deep house leans more on chord extensions (jazz/soul influence) than
+  house proper. The distinguishing signal is CHORD voicings — 7ths, 9ths,
+  11ths from sampled Rhodes or Poli. Also slightly slower than main-room
+  house (118-124 vs. 124-128). Soulful-house is aliased here because
+  it shares the same chord-first aesthetic.

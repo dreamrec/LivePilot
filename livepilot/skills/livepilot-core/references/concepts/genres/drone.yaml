@@ -1,0 +1,133 @@
+id: drone
+name: Drone
+type: genre
+aliases:
+  - "drone"
+  - "drone music"
+
+sonic_identity:
+  - no fixed tempo — duration-based form
+  - sustained single events across 10-60 minute durations
+  - decay IS the composition
+  - no percussion, no sections, no harmonic changes within a piece
+  - tape / granular / orchestral source material crushed into texture
+
+reach_for:
+  instruments:
+    - Granulator III
+    - Vector Grain
+    - Emit
+    - Sampler
+    - Tension
+    - Drone Lab
+  effects:
+    - Convolution Reverb
+    - Erosion
+    - Vinyl Distortion
+    - Dynamic Tube
+    - Spectral Blur
+  packs:
+    - Drone Lab
+    - Inspired by Nature
+    - Mood Reel
+  utilities:
+    - EQ Eight
+
+avoid:
+  - any percussion
+  - rhythmic patterns
+  - hard cuts
+  - fast evolution
+  - conventional harmony
+  - dry signals
+
+rhythm_idioms:
+  - no rhythm
+  - occasional distant bell or chime
+
+harmony_idioms:
+  - single sustained harmonic field
+  - modal or microtonal
+  - no chord changes within a piece
+  - decay removes frequencies over time
+
+arrangement_idioms:
+  - duration-based form
+  - continuous evolution without sections
+  - the erosion of the source IS the arrangement
+
+texture_idioms:
+  - reverb, granular, tape degradation
+  - cathedral acoustics
+  - hiss embraced
+
+sample_roles:
+  - drone_source
+  - texture_bed
+
+key_techniques:
+  - name: "Basinski tape degradation"
+    source: atlas
+    device: Vector Grain
+  - name: "Grain cloud (Tim Hecker)"
+    source: atlas
+    device: Emit
+  - name: "Slow-motion sustain"
+    source: atlas
+    device: Vector Grain
+  - name: "extreme_stretch"
+    source: sample-techniques.md
+  - name: "tail_harvest"
+    source: sample-techniques.md
+
+evaluation_bias:
+  target_dimensions:
+    depth: 0.28
+    cohesion: 0.22
+    motion: 0.14
+    contrast: 0.10
+    novelty: 0.10
+    groove: 0.06
+    clarity: 0.10
+  protect:
+    clarity: 0.40
+    cohesion: 0.80
+    low_end: 0.60
+
+move_family_bias:
+  favor:
+    - sound_design
+    - device_creation
+  deprioritize:
+    - mix
+    - arrangement
+    - transition
+    - performance
+
+dimensions_in_scope:
+  - timbral
+  - spatial
+dimensions_deprioritized:
+  - rhythmic
+  - structural
+
+novelty_budget_default: 0.35
+
+tempo_hint:
+  min: 0
+  max: 0
+  time_signature: "4/4"
+
+canonical_artists:
+  - basinski
+  - stars-of-the-lid
+  - tim-hecker
+
+canonical_genres: []
+
+notes: |
+  Drone is the strictest 2-of-4 genre after pure ambient. Even sparser
+  than ambient — no perceptible tempo, no distant percussion, purely
+  sustained material that erodes. Two-plan outputs are the correct
+  scope. Three plans demand force-fabrication of a rhythmic or
+  structural angle that doesn't exist in the aesthetic.

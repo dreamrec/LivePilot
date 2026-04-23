@@ -1,0 +1,123 @@
+id: techno
+name: Techno
+type: genre
+aliases:
+  - "techno"
+
+sonic_identity:
+  - relentless 4/4 drive
+  - 909-lineage kick-clap-hat
+  - minimal melody, texture-heavy
+  - sci-fi synth stabs or bell clusters
+  - long-form arrangement (15-25 minute live sets)
+
+reach_for:
+  instruments:
+    - Drift
+    - Operator
+    - Drum Rack  # 909 samples
+    - Analog
+  effects:
+    - Phase Pattern  # hi-hat humanization
+    - Echo
+    - Saturator
+    - Auto Filter
+  packs:
+    - Drum Essentials
+    - Core Library
+  utilities:
+    - EQ Eight
+    - Utility
+
+avoid:
+  - melodic harmony (chord progressions)
+  - breakdowns that drop to zero
+  - restful moments
+  - slow tempos
+  - trap-style hat rolls
+
+rhythm_idioms:
+  - relentless 909 programming
+  - layered hi-hat patterns
+  - no break — energy sustained throughout
+  - occasional ride cymbal accent
+
+harmony_idioms:
+  - single stab or bell cluster
+  - no progression — stab IS texture
+  - microtonal moments via Operator/Microtuner
+
+arrangement_idioms:
+  - long-form sustain
+  - drop elements for 32 bars, reintroduce
+  - energy modulation via element swapping
+  - no traditional verse/chorus form
+
+texture_idioms:
+  - tight Echo on stabs
+  - saturated 909 samples
+  - minimal reverb (dry techno space)
+
+sample_roles:
+  - stab_source
+  - percussive_ghost
+
+key_techniques:
+  - name: "Retro stab"
+    source: atlas
+    device: Poli
+  - name: "phase_pattern"
+    source: sample-techniques.md
+  - name: "Aphex ambient FM pad"
+    source: atlas
+    device: Operator
+
+evaluation_bias:
+  target_dimensions:
+    groove: 0.22
+    motion: 0.20
+    contrast: 0.14
+    cohesion: 0.12
+    novelty: 0.12
+    depth: 0.10
+    clarity: 0.10
+  protect:
+    clarity: 0.60
+    cohesion: 0.70
+    low_end: 0.75
+
+move_family_bias:
+  favor:
+    - arrangement
+    - sound_design
+    - mix
+  deprioritize:
+    - transition
+    - performance
+
+dimensions_in_scope:
+  - rhythmic
+  - timbral
+  - structural
+dimensions_deprioritized:
+  - spatial
+
+novelty_budget_default: 0.5
+
+tempo_hint:
+  min: 128
+  max: 140
+  time_signature: "4/4"
+
+canonical_artists:
+  - jeff-mills
+  - hawtin
+  - shackleton
+
+canonical_genres: []
+
+notes: |
+  Techno (the broad canon) is percussive-dominant — Jeff Mills is
+  the touchstone. For minimal-techno specifically (Hawtin), use the
+  minimal-techno packet. For dub-techno, use dub-techno. This packet
+  is the parent aesthetic that both subgenres borrow from.

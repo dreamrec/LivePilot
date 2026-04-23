@@ -120,7 +120,10 @@ def test_concept_packets_count():
     artists = list((CONCEPTS_ROOT / "artists").glob("*.yaml"))
     genres = list((CONCEPTS_ROOT / "genres").glob("*.yaml"))
     assert len(artists) == 28, f"Expected 28 artist packets, found {len(artists)}"
-    assert len(genres) == 14, f"Expected 14 genre packets, found {len(genres)}"
+    # v1.18.2: added 13 new genre YAMLs (14 → 27) to resolve the strict
+    # artist→genre cross-ref xfail. Floor is 27 now; ceiling is open to
+    # future additions.
+    assert len(genres) >= 27, f"Expected at least 27 genre packets, found {len(genres)}"
 
 
 def test_concept_packets_parse_and_have_required_fields():
@@ -253,18 +256,18 @@ def test_genre_to_artist_refs_resolve():
     assert not unresolved, f"Unresolved artist cross-refs: {unresolved}"
 
 
-@pytest.mark.xfail(
-    reason="TODO(pr-2.6): Genre YAMLs not yet created for downtempo, boom_bap, "
-    "lo_fi, synthwave, techno, detroit_techno, soul, jungle (aliased via "
-    "drum-and-bass), footwork, deep_house, french_house, disco, electronic, "
-    "electronica, cinematic, hyperpop, drone, bass_music, soulful_house, "
-    "acid_techno, nu_disco, juke. Artists reference them per their narrative "
-    ".md section headings. Either create the YAMLs or trim the artist refs."
-)
 def test_all_artist_genre_refs_resolve_strictly():
-    """Strict version of test_artist_to_genre_refs_resolve_or_alias.
-    Currently xfailing — will convert to required pass when all genre
-    YAMLs exist."""
+    """v1.18.2: formerly xfailing — 13 new genre YAMLs created (drone,
+    downtempo, lo_fi, boom_bap, footwork, techno, detroit_techno,
+    synthwave, deep_house, disco, soul, dub, hyperpop) + 15 too-generic
+    or too-narrow refs removed from artist packets (electronic ×5,
+    electronica, bass_music, cinematic, acid_techno, french_house,
+    nu_disco, soulful_house, vaporwave, juke, jungle).
+
+    Strict resolution: every canonical_genres entry in every artist
+    packet must match a genre YAML's `id` field exactly. Looser alias
+    matching is NOT allowed here (see test_artist_to_genre_refs_resolve_or_alias
+    for the tolerant version)."""
     genre_lookup = set()
     for p in (CONCEPTS_ROOT / "genres").glob("*.yaml"):
         d = yaml.safe_load(p.read_text())

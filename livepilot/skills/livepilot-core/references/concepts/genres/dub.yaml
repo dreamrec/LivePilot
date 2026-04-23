@@ -1,0 +1,129 @@
+id: dub
+name: Dub
+type: genre
+aliases:
+  - "dub"
+  - "dub reggae"
+  - "roots dub"
+
+sonic_identity:
+  - reggae one-drop rhythm base (kick on 3, not 1)
+  - heavy bass presence (sub-forward)
+  - dub-style long delay + reverb throws on snare and chord stabs
+  - minimal foreground content
+  - instruments drop out and return (version aesthetic)
+
+reach_for:
+  instruments:
+    - Bass  # sub-heavy
+    - Drift  # chord stab
+    - Simpler  # vocal samples
+  effects:
+    - Echo  # long dub delay
+    - Convolution Reverb  # spring IR preferred
+    - Auto Filter  # on return chain
+    - Saturator  # warm drive on drums
+  packs:
+    - Drone Lab
+    - Lost and Found
+    - Core Library
+  utilities:
+    - Utility  # mono sub
+    - EQ Eight
+
+avoid:
+  - bright top-end
+  - crisp transients
+  - dry signals
+  - EDM-style drops
+  - fast tempos
+
+rhythm_idioms:
+  - one-drop (kick on 3, hi-hat emphasis on 2+4)
+  - sparse percussion
+  - skank guitar / keys on off-beat
+  - bass as melodic anchor
+
+harmony_idioms:
+  - minor-key or modal
+  - chord stabs with long decay
+  - reggae chord voicings
+
+arrangement_idioms:
+  - version mentality — same track with different element combinations
+  - instruments drop out + return dramatically
+  - dub throws (single delayed sample dominates for 4-8 bars)
+
+texture_idioms:
+  - long delay tails
+  - spring reverb on snare
+  - tape warmth
+  - heavy saturation on bass
+
+sample_roles:
+  - dub_tail_source
+  - vocal_source
+  - texture_bed
+
+key_techniques:
+  - name: "dub_throw"
+    source: sample-techniques.md
+  - name: "The dub chord"
+    source: sound-design-deep.md
+  - name: "Reverb as harmony"
+    source: sound-design-deep.md
+  - name: "Delay throws"
+    source: sound-design-deep.md
+  - name: "Dub sub-bass"
+    source: atlas
+    device: Bass
+
+evaluation_bias:
+  target_dimensions:
+    depth: 0.24
+    groove: 0.18
+    motion: 0.16
+    cohesion: 0.14
+    contrast: 0.12
+    novelty: 0.08
+    clarity: 0.08
+  protect:
+    clarity: 0.50
+    cohesion: 0.72
+    low_end: 0.85
+
+move_family_bias:
+  favor:
+    - sound_design
+    - mix
+    - device_creation
+  deprioritize:
+    - performance
+
+dimensions_in_scope:
+  - rhythmic
+  - timbral
+  - structural
+  - spatial
+dimensions_deprioritized: []
+
+novelty_budget_default: 0.40
+
+tempo_hint:
+  min: 70
+  max: 90
+  time_signature: "4/4"
+
+canonical_artists:
+  - basic-channel
+  - skream-mala
+
+canonical_genres: []
+
+notes: |
+  Dub is the reggae-sound-system source aesthetic that dub-techno and
+  dubstep both borrow from. At tempos 70-90 BPM with one-drop rhythm,
+  it's distinguishable from dub-techno (120-130 BPM, 4/4 kick). A
+  user referencing "dub" likely wants one-drop drums + heavy sub +
+  long send chain. Use dub-techno packet for the 4/4 techno-derived
+  variant; use this packet for the original Jamaican-lineage aesthetic.

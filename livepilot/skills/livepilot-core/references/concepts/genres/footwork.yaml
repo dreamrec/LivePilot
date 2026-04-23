@@ -1,31 +1,29 @@
-id: footwork__rashad_spinn_traxman
-name: Rashad / Spinn / Traxman
-type: artist
+id: footwork
+name: Footwork / Juke
+type: genre
 aliases:
-  - "rashad"
-  - "dj rashad"
-  - "spinn"
-  - "dj spinn"
-  - "traxman"
+  - "footwork"
+  - "juke"
+  - "chicago juke"
   - "teklife"
 
 sonic_identity:
   - 160 BPM frenetic pace
-  - vocal-chop hyper-rhythms
+  - vocal-chop hyper-rhythms (1/16 chops)
   - sparse kick programming (unpredictable placement)
-  - stuttered soul / hip-hop samples
   - triplet feels inside 4/4
+  - stuttered soul / hip-hop sample sources
 
 reach_for:
   instruments:
-    - Simpler  # slicing on vocal/soul samples — short chops
+    - Simpler  # 1/16 vocal slicing
     - Bass
   effects:
     - Slice Shuffler  # MIDI Tools
-    - Polyrhythm  # at 3:2 ratios
+    - Polyrhythm  # 3:2 ratios
   packs:
     - Chop and Swing
-    - Trap Drums  # 808 samples — sparse use
+    - Trap Drums
     - MIDI Tools
   utilities:
     - EQ Eight
@@ -65,11 +63,9 @@ sample_roles:
 key_techniques:
   - name: "vocal_chop_rhythm"
     source: sample-techniques.md
-    notes: at aggressive 160 BPM tempo
   - name: "slice_shuffler"
     source: atlas
     device: Slice Shuffler
-    notes: on 1/16 chops
   - name: "micro_chop"
     source: sample-techniques.md
 
@@ -109,14 +105,15 @@ tempo_hint:
   max: 165
   time_signature: "4/4"
 
-canonical_artists: []
-canonical_genres:
-  - footwork
-  - drum_and_bass
+canonical_artists:
+  - rashad-spinn-traxman
+
+canonical_genres: []
 
 notes: |
-  Footwork asks demand 160 BPM first — always set tempo before any
-  creative work. Plans center on vocal-chop manipulation: Simpler
+  Footwork demands 160 BPM first — always set tempo before any
+  creative work. The vocal-chop manipulation IS the genre: Simpler
   slicing at 1/16, Slice Shuffler for rapid re-sequencing, Polyrhythm
-  for 3:2 feels. Spatial deprioritized — the genre is dry and
-  rhythm-front.
+  for 3:2 feels. "Juke" (the original Chicago style) and "footwork"
+  are treated as the same aesthetic here — both live at 155-165 BPM
+  with the same chop programming approach.

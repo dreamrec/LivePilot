@@ -1,0 +1,125 @@
+id: soul
+name: Soul
+type: genre
+aliases:
+  - "soul"
+  - "neo soul"
+  - "soulful"
+
+sonic_identity:
+  - live-drummer boom-bap feel (around 85-95 BPM)
+  - warm Rhodes / Wurly keys as harmonic core
+  - electric bass (not synth)
+  - organic percussion (congas, shakers)
+  - rich 7th/9th chord voicings
+
+reach_for:
+  instruments:
+    - Electric Keyboards  # Rhodes/Wurly
+    - Bass
+    - Simpler  # live drum samples
+  effects:
+    - Saturator
+    - Vinyl Distortion
+    - Erosion
+  packs:
+    - Electric Keyboards
+    - Chop and Swing
+    - Drum Booth
+    - Live Drums
+    - Core Library  # horns etc
+  utilities:
+    - EQ Eight
+
+avoid:
+  - pristine digital synthesis
+  - quantized drums
+  - synth bass
+  - modern trap production
+
+rhythm_idioms:
+  - live-drummer feel
+  - organic swing (not groove template)
+  - shaker and conga layer
+  - kick on 1+3, snare on 2+4 with ghost notes
+
+harmony_idioms:
+  - 7th / 9th / 11th chord voicings
+  - Rhodes vamp as harmonic core
+  - vocal samples or live vocals as lead
+  - major-minor interplay
+
+arrangement_idioms:
+  - traditional pop/soul form (verse/chorus/bridge)
+  - 3-5 minute tracks
+  - vocal-driven song structure
+
+texture_idioms:
+  - warm tube saturation
+  - vinyl character on drum bus
+  - horns / strings as texture layer
+
+sample_roles:
+  - melodic_source
+  - vocal_source
+  - rhythmic_chop
+
+key_techniques:
+  - name: "Classic Rhodes"
+    source: atlas
+    device: Electric Keyboards
+  - name: "Tape-warped EP"
+    source: atlas
+    device: Electric Keyboards
+  - name: "slice_and_sequence"
+    source: sample-techniques.md
+
+evaluation_bias:
+  target_dimensions:
+    groove: 0.22
+    cohesion: 0.18
+    depth: 0.14
+    motion: 0.14
+    novelty: 0.10
+    contrast: 0.12
+    clarity: 0.10
+  protect:
+    clarity: 0.65
+    cohesion: 0.72
+    low_end: 0.70
+
+move_family_bias:
+  favor:
+    - sound_design
+    - device_creation
+    - arrangement
+  deprioritize:
+    - performance
+
+dimensions_in_scope:
+  - rhythmic
+  - timbral
+  - structural
+  - spatial
+dimensions_deprioritized: []
+
+novelty_budget_default: 0.35
+
+tempo_hint:
+  min: 85
+  max: 100
+  time_signature: "4/4"
+
+canonical_artists:
+  - j-dilla
+  - moodymann-theo-parrish
+
+canonical_genres: []
+
+notes: |
+  Soul (as referenced by Dilla/Moodymann/Theo Parrish) is the source
+  material genre that hip-hop and deep-house both sample. A user
+  referencing "soul" likely wants the SAMPLE aesthetic — Rhodes chords
+  with 7th/9th voicings, organic drums, warm saturation — rather than
+  a full live-band soul track. Plans typically center on Electric
+  Keyboards programming + vinyl-saturated drum bus.

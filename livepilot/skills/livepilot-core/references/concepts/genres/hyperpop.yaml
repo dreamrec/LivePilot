@@ -1,0 +1,128 @@
+id: hyperpop
+name: Hyperpop
+type: genre
+aliases:
+  - "hyperpop"
+  - "pc music"
+  - "deconstructed club"
+
+sonic_identity:
+  - extreme pitch-shifted vocals (up AND down)
+  - metallic physical-modeling percussion
+  - impossible-sounding textures
+  - rapid timbral shifts (SOPHIE lineage)
+  - chaotic energy with pop-adjacent structure
+
+reach_for:
+  instruments:
+    - Corpus  # physical modeling
+    - Collision  # metal/glass percussion
+    - Tension  # plucked prepared strings
+    - Vector FM
+    - Wavetable
+  effects:
+    - Pitch Hack  # extreme shifts
+    - Vocoder
+    - Snipper  # chops
+    - Spectral Resonator
+    - Pitch Shift
+  packs:
+    - Building Max Devices  # Snipper
+    - Inspired by Nature
+  utilities:
+    - EQ Eight
+
+avoid:
+  - acoustic percussion realism
+  - sampled drums (use physical models)
+  - conservative mixing
+  - natural-sounding reverb
+
+rhythm_idioms:
+  - hyper-detailed micro-programming
+  - metal-on-glass percussion timbre
+  - physical-impact hits via Collision
+  - trap-adjacent hat patterns
+
+harmony_idioms:
+  - pitch extremes on vocals
+  - harmonic content from physical-model resonance
+  - pop chord progressions (rarely jazz extensions)
+
+arrangement_idioms:
+  - traditional pop form (verse/chorus/bridge)
+  - rapid timbral shifts within sections
+  - physical-impact punctuation at transitions
+
+texture_idioms:
+  - metallic / glass / stone via Collision
+  - impossible acoustic spaces via Corpus
+  - vocal timbres from vocoder + extreme pitch shift
+
+sample_roles:
+  - vocal_source
+  - percussive_ghost
+  - transient_accent
+
+key_techniques:
+  - name: "Inharmonic bell drone"
+    source: atlas
+    device: Collision
+  - name: "Metal-string drone"
+    source: atlas
+    device: Tension
+  - name: "Noise Bow"
+    source: atlas
+    device: Corpus
+  - name: extreme pitch shift on vocals
+    source: atlas
+    device: Pitch Hack
+
+evaluation_bias:
+  target_dimensions:
+    novelty: 0.22
+    contrast: 0.18
+    motion: 0.14
+    groove: 0.14
+    depth: 0.12
+    cohesion: 0.10
+    clarity: 0.10
+  protect:
+    clarity: 0.50
+    cohesion: 0.55
+    low_end: 0.65
+
+move_family_bias:
+  favor:
+    - sound_design
+    - device_creation
+    - arrangement
+  deprioritize:
+    - mix
+    - performance
+
+dimensions_in_scope:
+  - rhythmic
+  - timbral
+  - structural
+dimensions_deprioritized:
+  - spatial
+
+novelty_budget_default: 0.75
+
+tempo_hint:
+  min: 100
+  max: 160
+  time_signature: "4/4"
+
+canonical_artists:
+  - arca-sophie
+
+canonical_genres: []
+
+notes: |
+  Hyperpop is the SOPHIE/Arca/100-gecs lineage — extreme pitch shifting,
+  physical-modeling synthesis, pop structure with experimental sound
+  palette. Plans should prefer Corpus/Collision/Tension over traditional
+  synths, and embrace Pitch Hack for vocal extremes. Unusual novelty
+  budget default (0.75) — hyperpop IS the extreme-novelty zone.

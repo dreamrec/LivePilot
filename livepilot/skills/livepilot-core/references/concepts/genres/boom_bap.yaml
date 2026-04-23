@@ -1,0 +1,124 @@
+id: boom_bap
+name: Boom Bap
+type: genre
+aliases:
+  - "boom bap"
+  - "boom-bap"
+  - "golden era hip hop"
+  - "east coast hip hop"
+
+sonic_identity:
+  - "chopped soul loops as the primary harmonic content"
+  - "tight kick-snare, no hat complexity"
+  - snare drowned in plate reverb on send
+  - dirty saturated drum bus
+  - chord-stab-driven arrangement (the stab IS the song)
+
+reach_for:
+  instruments:
+    - Simpler  # classic mode for stabs, slicing for breaks
+    - Bass  # Creative Extensions
+  effects:
+    - Saturator
+    - Erosion
+    - Vinyl Distortion
+    - Convolution Reverb  # plate or spring IR on snare
+  packs:
+    - Golden Era Hip-Hop Drums
+    - Chop and Swing
+    - Drum Booth
+  utilities:
+    - EQ Eight
+
+avoid:
+  - clean samples
+  - modern drum samples (trap 808s, crispy hats)
+  - synth bass
+  - long arrangements
+  - bright mixes
+
+rhythm_idioms:
+  - tight boom-bap kick on 1 + snare on 3
+  - simple hat patterns (closed on off-beats)
+  - occasional kick variation
+  - swung 65-70%
+
+harmony_idioms:
+  - single chord stab from vinyl source
+  - stab repeated with subtle pitch/filter variation
+  - no chord progressions — the stab IS the harmony
+  - soul-loop source as tonal center
+
+arrangement_idioms:
+  - short loops (2-4 bar repetitions)
+  - stab re-triggered across sections
+  - vocal sample punctuation
+
+texture_idioms:
+  - dusty vinyl saturation
+  - plate reverb on snare (100% wet on send)
+  - tight mix — no spatial spread
+
+sample_roles:
+  - stab_source
+  - rhythmic_chop
+  - vocal_accent
+
+key_techniques:
+  - name: "stab_isolation"
+    source: sample-techniques.md
+  - name: "slice_and_sequence"
+    source: sample-techniques.md
+  - name: snare-through-Convolution-Reverb-at-100%-wet-on-send
+    source: sample-techniques.md
+
+evaluation_bias:
+  target_dimensions:
+    groove: 0.24
+    depth: 0.16
+    cohesion: 0.14
+    contrast: 0.12
+    novelty: 0.12
+    motion: 0.12
+    clarity: 0.10
+  protect:
+    clarity: 0.60
+    cohesion: 0.70
+    low_end: 0.75
+
+move_family_bias:
+  favor:
+    - sound_design
+    - arrangement
+    - device_creation
+  deprioritize:
+    - performance
+
+dimensions_in_scope:
+  - rhythmic
+  - timbral
+  - structural
+  - spatial  # plate reverb on snare IS spatial work
+dimensions_deprioritized: []
+
+novelty_budget_default: 0.45
+
+tempo_hint:
+  min: 85
+  max: 95
+  time_signature: "4/4"
+
+canonical_artists:
+  - dj-premier-rza
+  - j-dilla
+  - madlib
+
+canonical_genres: []
+
+notes: |
+  Boom-bap distinguishes itself from lo-fi by being TIGHTER — less
+  drift, less hiss, more precise snare-on-3 discipline. The plate
+  reverb on the snare is the signature (Premier's canonical move).
+  Unlike Dilla's "drunk" programming, boom-bap drums are often
+  MORE quantized than the source soul loop — the contrast between
+  tight drums and swinging sample is the feel.

@@ -1,0 +1,116 @@
+id: detroit_techno
+name: Detroit Techno
+type: genre
+aliases:
+  - "detroit techno"
+  - "detroit"
+
+sonic_identity:
+  - afrofuturist aesthetic (Jeff Mills / Juan Atkins lineage)
+  - sci-fi synth stabs + bell clusters
+  - 909 drums with Phase Pattern humanization
+  - space/urban-futurist atmosphere
+  - long-form arrangements
+
+reach_for:
+  instruments:
+    - Drift
+    - Operator  # FM bells
+    - Drum Rack  # 909
+  effects:
+    - Phase Pattern
+    - Echo
+    - Saturator
+  packs:
+    - Drum Essentials
+    - Core Library
+  utilities:
+    - EQ Eight
+
+avoid:
+  - European-minimal-techno restraint (Detroit is maximalist)
+  - melodic harmonic progressions
+  - ambient breakdown drops
+
+rhythm_idioms:
+  - 909 kick + clap + hat with Phase Pattern
+  - relentless 128-140 BPM drive
+  - occasional hi-hat variation via MIDI tools
+
+harmony_idioms:
+  - sci-fi synth stab (single chord, repeated)
+  - FM bell clusters as color
+  - minor-key melodic fragments
+
+arrangement_idioms:
+  - 10-15 minute tracks
+  - energy modulation by element swap
+  - drop pad/stab at breakdown, reintroduce deeper
+
+texture_idioms:
+  - tight Echo on stabs
+  - occasional cosmic chorus on bells
+  - dry drum bus
+
+sample_roles:
+  - stab_source
+  - percussive_ghost
+
+key_techniques:
+  - name: "Retro stab"
+    source: atlas
+    device: Poli
+  - name: "Aphex ambient FM pad"
+    source: atlas
+    device: Operator
+  - name: "phase_pattern"
+    source: sample-techniques.md
+
+evaluation_bias:
+  target_dimensions:
+    groove: 0.22
+    motion: 0.20
+    novelty: 0.14
+    contrast: 0.12
+    cohesion: 0.12
+    depth: 0.10
+    clarity: 0.10
+  protect:
+    clarity: 0.60
+    cohesion: 0.70
+    low_end: 0.75
+
+move_family_bias:
+  favor:
+    - arrangement
+    - sound_design
+    - device_creation
+  deprioritize:
+    - transition
+    - performance
+
+dimensions_in_scope:
+  - rhythmic
+  - timbral
+  - structural
+dimensions_deprioritized:
+  - spatial
+
+novelty_budget_default: 0.5
+
+tempo_hint:
+  min: 128
+  max: 140
+  time_signature: "4/4"
+
+canonical_artists:
+  - jeff-mills
+
+canonical_genres: []
+
+notes: |
+  Detroit techno is distinguished from European techno by its
+  afrofuturist melodic aesthetic — FM bells, sci-fi stabs, cosmic
+  chorus touches. Use this packet when the user names Detroit
+  explicitly or references Jeff Mills / Juan Atkins / Carl Craig.
+  For generic techno asks, use the techno packet.

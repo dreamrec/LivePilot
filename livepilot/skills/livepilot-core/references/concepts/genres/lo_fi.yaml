@@ -1,0 +1,129 @@
+id: lo_fi
+name: Lo-Fi
+type: genre
+aliases:
+  - "lo-fi"
+  - "lofi"
+  - "lo fi"
+  - "lo-fi hip hop"
+  - "study beats"
+
+sonic_identity:
+  - slow boom-bap-adjacent beats (70-90 BPM)
+  - dusty sample-flip aesthetic
+  - Rhodes / Wurly chords from vinyl
+  - tape hiss and vinyl crackle as permanent subtext
+  - warm saturation on every bus
+
+reach_for:
+  instruments:
+    - Simpler  # sample slicing + chopping
+    - Electric Keyboards  # Rhodes/Wurly
+    - Bass
+  effects:
+    - Saturator
+    - Vinyl Distortion
+    - Erosion
+    - Dynamic Tube
+    - Grain Delay
+  packs:
+    - Chop and Swing
+    - Electric Keyboards
+    - Drum Booth
+    - Golden Era Hip-Hop Drums
+  utilities:
+    - EQ Eight
+
+avoid:
+  - pristine digital synthesis
+  - quantized drums
+  - modern trap hats
+  - bright mixes
+  - clean signal chains
+
+rhythm_idioms:
+  - off-grid boom-bap drums
+  - swung 60-70% (manual micro-timing)
+  - occasional vocal-chop accents
+
+harmony_idioms:
+  - sampled Rhodes/Wurly chords
+  - jazz-extended voicings (9th, 11th, 13th)
+  - unintentional key clashes embraced
+
+arrangement_idioms:
+  - loop-based with sample-flip variations
+  - 2-3 minute tracks (study-beats format)
+  - vocal interjections
+
+texture_idioms:
+  - vinyl crackle at -36 dB under track
+  - tape hiss
+  - saturator on every bus
+
+sample_roles:
+  - melodic_source
+  - rhythmic_chop
+  - vocal_accent
+  - texture_bed
+
+key_techniques:
+  - name: "Tape-warped EP"
+    source: atlas
+    device: Electric Keyboards
+  - name: "J Dilla micro-timed kit"
+    source: atlas
+    device: Simpler
+  - name: "slice_and_sequence"
+    source: sample-techniques.md
+  - name: "stab_isolation"
+    source: sample-techniques.md
+
+evaluation_bias:
+  target_dimensions:
+    groove: 0.22
+    depth: 0.16
+    cohesion: 0.14
+    contrast: 0.12
+    motion: 0.12
+    novelty: 0.12
+    clarity: 0.12
+  protect:
+    clarity: 0.55
+    cohesion: 0.68
+    low_end: 0.70
+
+move_family_bias:
+  favor:
+    - sound_design
+    - arrangement
+    - device_creation
+  deprioritize:
+    - performance
+
+dimensions_in_scope:
+  - rhythmic
+  - timbral
+  - structural
+dimensions_deprioritized:
+  - spatial
+
+novelty_budget_default: 0.40
+
+tempo_hint:
+  min: 70
+  max: 90
+  time_signature: "4/4"
+
+canonical_artists:
+  - j-dilla
+  - madlib
+  - boards-of-canada
+
+canonical_genres: []
+
+notes: |
+  Lo-fi overlaps heavily with hip-hop (boom-bap lineage) and downtempo
+  (tempo range). The distinguishing feature is the SATURATION aesthetic —
+  everything goes through vinyl/tape simulation. Spatial dimension is
+  deprioritized (dry intimacy is the aesthetic, not reverb).

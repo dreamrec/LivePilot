@@ -1,29 +1,30 @@
-id: synthwave__com_truise_tycho
-name: Com Truise / Tycho
-type: artist
+id: synthwave
+name: Synthwave
+type: genre
 aliases:
-  - "com truise"
-  - "tycho"
-  - "seth haley"
-  - "scott hansen"
+  - "synthwave"
+  - "retrowave"
+  - "outrun"
+  - "vaporwave"  # vaporwave overlaps aesthetically
 
 sonic_identity:
   - 80s analog polysynth nostalgia
-  - gated reverb on drums
+  - gated reverb on drums (80s signature)
   - chorus-heavy leads
   - warm analog bass
   - arpeggiated sequences
-  - mid-tempo groove
+  - mid-tempo groove (85-115 BPM)
 
 reach_for:
   instruments:
     - Poli  # Juno-style
     - Analog
-    - Drift  # warm synthwave pad
+    - Drift  # warm pads
   effects:
     - Chorus-Ensemble
-    - Gated Delay  # Creative Extensions — gated-reverb-drum aesthetic
+    - Gated Delay  # 80s gated-reverb-drum aesthetic
     - Arpeggiator
+    - Echo
   packs:
     - Synth Essentials
     - Performance Pack  # Arpeggiator
@@ -50,11 +51,11 @@ harmony_idioms:
 arrangement_idioms:
   - verse/chorus form with clear payoff moments
   - arpeggio enters at bar 16, pad enters at bar 32
-  - conventional pop structure adapted for instrumental
+  - conventional pop structure for instrumental
 
 texture_idioms:
   - warm chorus on leads
-  - gated reverb on snare (80s signature)
+  - gated reverb on snare
   - analog-tape character
 
 sample_roles:
@@ -71,7 +72,6 @@ key_techniques:
   - name: "Supersaw trance lead"
     source: atlas
     device: Wavetable
-    notes: at reduced spread for synthwave intimacy
 
 evaluation_bias:
   target_dimensions:
@@ -109,13 +109,15 @@ tempo_hint:
   max: 115
   time_signature: "4/4"
 
-canonical_artists: []
-canonical_genres:
-  - synthwave
+canonical_artists:
+  - com-truise-tycho
+
+canonical_genres: []
 
 notes: |
   Synthwave asks reward analog-polysynth authenticity. Plans should
-  include: sound_design (Poli/Drift patch programming with period-
-  appropriate filter/envelope settings), device_creation (Gated Delay
-  on drum bus for gated-reverb snare, Chorus-Ensemble on leads),
-  arrangement (clear verse/chorus payoff moments).
+  include: sound_design (Poli/Drift patch programming), device_creation
+  (Gated Delay for 80s drums, Chorus-Ensemble on leads), arrangement
+  (clear verse/chorus payoff). Vaporwave is aliased here because it
+  shares the analog-nostalgia aesthetic, though vaporwave specifically
+  tilts toward slower + more detuned + sample-flip-heavy.
