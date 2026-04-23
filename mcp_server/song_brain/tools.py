@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from fastmcp import Context
 
+from ..runtime.degradation import DegradationInfo
 from ..server import mcp
 from . import builder
 from .models import SongBrain
@@ -55,6 +56,12 @@ def _fetch_session_data(ctx: Context) -> dict:
     - composition_analysis: from musical intelligence section inference
     - role_graph: from semantic move resolvers (track role inference)
     - recent_moves: from session-scoped action ledger
+
+    On session-fetch failure the fallback session_info shape is injected
+    (``tempo=120.0, track_count=0``) and a ``DegradationInfo`` is attached
+    under the ``_degradation`` key so callers can tell synthesized data
+    from real data. ``_fetch_session_data`` never raises — it always
+    returns a dict with the expected keys.
     """
     ableton = _get_ableton(ctx)
     data: dict = {
@@ -66,12 +73,19 @@ def _fetch_session_data(ctx: Context) -> dict:
         "role_graph": {},
         "recent_moves": [],
     }
+    degradation = DegradationInfo()
 
     try:
         data["session_info"] = ableton.send_command("get_session_info", {})
     except Exception as exc:
         logger.debug("_fetch_session_data failed: %s", exc)
         data["session_info"] = {"tempo": 120.0, "track_count": 0}
+        degradation.is_degraded = True
+        if "session_fetch_failed" not in degradation.reasons:
+            degradation.reasons.append("session_fetch_failed")
+        for fld in ("tempo", "track_count"):
+            if fld not in degradation.substituted_fields:
+                degradation.substituted_fields.append(fld)
 
     try:
         matrix = ableton.send_command("get_scene_matrix")
@@ -135,6 +149,10 @@ def _fetch_session_data(ctx: Context) -> dict:
     except Exception as exc:
         logger.debug("_fetch_session_data failed: %s", exc)
 
+    # Attach the degradation signal so build_song_brain can surface it.
+    # Under a reserved key (leading underscore) so it never collides with
+    # a real session data field.
+    data["_degradation"] = degradation
     return data
 
 
@@ -180,10 +198,15 @@ def build_song_brain(ctx: Context) -> dict:
     )
     _set_brain(ctx, brain)
 
+    # Surface the degradation payload so callers can distinguish a
+    # tempo=120 / track_count=0 synthesized response from a real one.
+    degradation = data.get("_degradation") or DegradationInfo()
+
     return {
         **brain.to_dict(),
         "summary": brain.summary,
         "capability": cap.to_dict(),
+        "degradation": degradation.to_dict(),
     }
 
 

@@ -11,6 +11,7 @@ import json
 import time
 from typing import Optional
 
+from ..runtime.degradation import DegradationInfo
 from .models import PreviewSet, PreviewVariant
 
 
@@ -52,7 +53,10 @@ def create_preview_set(
     kernel: the live session kernel (track topology + device chains). Compilers
         resolve targets from it — without it, variants degrade into no-ops or
         generic reads. Callers that have a `ctx` should fetch a real kernel
-        via runtime.tools.get_session_kernel(ctx).
+        via runtime.tools.get_session_kernel(ctx). When omitted the engine
+        synthesizes an empty-but-valid kernel (see ``_build_triptych``) and
+        flags the resulting PreviewSet with ``degradation.is_degraded=True``
+        so callers can tell a synthesized compile from a real one.
     """
     set_id = _compute_set_id(request_text, kernel_id)
     now = int(time.time() * 1000)
@@ -60,6 +64,18 @@ def create_preview_set(
     moves = available_moves or []
     song_brain = song_brain or {}
     taste_graph = taste_graph or {}
+
+    # Degradation bookkeeping — if the caller didn't supply a kernel the
+    # compiler receives a synthesized one (see engine.py line 128 area)
+    # and every variant is scored against that synthetic topology.
+    if kernel:
+        degradation = DegradationInfo()
+    else:
+        degradation = DegradationInfo(
+            is_degraded=True,
+            reasons=["empty_kernel_fallback"],
+            substituted_fields=["compile_kernel"],
+        )
 
     if strategy == "creative_triptych":
         variants = _build_triptych(
@@ -79,6 +95,7 @@ def create_preview_set(
         source_kernel_id=kernel_id,
         variants=variants,
         created_at_ms=now,
+        degradation=degradation,
     )
     store_preview_set(ps)
     return ps

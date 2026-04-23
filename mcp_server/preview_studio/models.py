@@ -6,6 +6,8 @@ import time
 from dataclasses import asdict, dataclass, field
 from typing import Optional
 
+from ..runtime.degradation import DegradationInfo
+
 
 @dataclass
 class PreviewVariant:
@@ -59,6 +61,11 @@ class PreviewSet:
     committed_variant_id: str = ""
     status: str = "pending"  # pending, compared, committed, discarded
     created_at_ms: int = field(default_factory=lambda: int(time.time() * 1000))
+    # Degradation signalling — set when the engine substituted a fallback
+    # (e.g. an empty-but-valid kernel) during variant compilation. Callers
+    # can inspect .degradation.is_degraded to tell synthesized preview
+    # topology apart from a real kernel-backed compile.
+    degradation: DegradationInfo = field(default_factory=DegradationInfo)
 
     def to_dict(self) -> dict:
         return {
@@ -71,4 +78,5 @@ class PreviewSet:
             "committed_variant_id": self.committed_variant_id,
             "status": self.status,
             "variant_count": len(self.variants),
+            "degradation": self.degradation.to_dict(),
         }
