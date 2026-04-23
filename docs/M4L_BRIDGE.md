@@ -85,7 +85,7 @@ Commands are sent WITHOUT a leading `/` in the OSC address. This is critical —
 
 | Command | Args | Description |
 |---------|------|-------------|
-| `ping` | (none) | Health check, returns `{ok: true, version: "1.18.1"}` |
+| `ping` | (none) | Health check, returns `{ok: true, version: "1.18.2"}` |
 | `get_params` | track_idx, device_idx | All parameters with value, range, automation state |
 | `get_hidden_params` | track_idx, device_idx | All parameters including hidden ones, with display string |
 | `get_auto_state` | track_idx, device_idx | Only parameters that have automation (active or overridden) |
@@ -288,7 +288,7 @@ function anything() {
 
 ## File Locations
 
-- `m4l_device/LivePilot_Analyzer.amxd` — compiled M4L device (binary). Ping returns `{ok: true, version: "1.18.1"}`
+- `m4l_device/LivePilot_Analyzer.amxd` — compiled M4L device (binary). Ping returns `{ok: true, version: "1.18.2"}`
 - `m4l_device/livepilot_bridge.js` — bridge JS source (30 commands)
 - `m4l_device/LivePilot_MIDITool_Generate.amxd` / `LivePilot_MIDITool_Transform.amxd` — separate Live 12.0+ MIDI Tool devices for in-clip generators (euclidean_rhythm, tintinnabuli, humanize)
 - `m4l_device/miditool_bridge.js` — MIDI Tool bridge JS source

@@ -1,5 +1,80 @@
 # Changelog
 
+## 1.18.2 — Wonder cold-start + tie-break + genre catalog closure (April 24 2026)
+
+Second patch in the v1.18.x series. Three items from the v1.18.0/v1.18.1
+Known Issues list resolved. Test suite grew to 2785 pass, xfail marker
+removed (formerly 1, now 0).
+
+### Fixes
+
+- **#10 Wonder Mode zero-variant degradation on empty session context.**
+  `enter_wonder_mode` on an empty/sparse session was returning 3
+  IDENTICAL `analytical_only` variants all with intent "Analytical
+  suggestion for: <request>". Live-verified during v1.18.0 Test 4
+  ("I'm stuck" on a 4-track empty session). Fix: introduced
+  `_COLD_START_SEEDS` in `mcp_server/wonder_mode/engine.py` — three
+  distinct starting-point suggestions covering different families
+  (`device_creation × rhythmic` + `sound_design × harmonic` +
+  `mix × architecture-first`). When `executable_count == 0`, the
+  padding loop uses `build_cold_start_variant()` which pulls from
+  the seed set by index, producing genuinely distinct variants with
+  specific actionable `what_changed` / `why_it_matters` text.
+  Partial-match case (1-2 executable) still uses the generic
+  fallback to avoid mixing real moves with architecture-first seeds.
+
+- **#11 Experiment ranking tie-break coarseness.**
+  `ExperimentSet.ranked_branches()` was a single-key sort by score,
+  producing unstable rankings at score ties. Live-verified in v1.18.0
+  Test 8 — 3-branch experiment with `add_space` + `add_warmth` +
+  `widen_stereo` all scored 0.6 with no clear winner. Fix: composite
+  sort key via new `_branch_rank_key()` helper, in priority order:
+  (1) `-score` (primary, higher wins), (2) `-novelty_rank` (higher
+  novelty wins score ties — creative asks reward variation),
+  (3) `risk_rank` (lower risk wins secondary ties — safety default),
+  (4) `step_count` (simpler plans win tertiary ties),
+  (5) `branch_id` (deterministic final tiebreak for reproducibility).
+
+- **Concept packet catalog closure.** 13 new genre YAMLs
+  (drone, downtempo, lo_fi, boom_bap, footwork, techno,
+  detroit_techno, synthwave, deep_house, disco, soul, dub, hyperpop)
+  + 15 too-generic/narrow refs removed from 12 artist packets
+  (electronic ×5, electronica, bass_music, cinematic, acid_techno,
+  french_house, nu_disco, soulful_house, vaporwave, juke, jungle).
+  The xfailing `test_all_artist_genre_refs_resolve_strictly` test
+  is now a required green pass. The concept surface has full graph
+  closure — every artist→genre cross-reference resolves to an actual
+  genre YAML's `id` field.
+
+### Tests added / changed
+
+- `test_wonder_cold_start_has_distinct_variants` (new — guards
+  against regression to the 3-identical-generics degradation)
+- `test_experiment_tie_break_prefers_higher_novelty` (new — unexpected
+  > strong > safe at equal scores)
+- `test_experiment_tie_break_is_deterministic` (new — ranking stable
+  across input order)
+- `test_all_artist_genre_refs_resolve_strictly` (was xfailing, now
+  passing — xfail marker removed)
+- `test_concept_packets_count` (floor updated 14 → 27 genres)
+
+### Still open for v1.18.3 / v1.19
+
+5 items remain from the original v1.18.0 Known Issues list:
+
+- **#7 Packet `avoid` list runtime enforcement** (still advisory —
+  pre-flight check against tool args needed)
+- **#8 `locked_dimensions` runtime enforcement** (same pattern as #7)
+- **Experiment state continuity between branches** (before-snapshot
+  drift)
+- **Hybrid-packet compilation algorithm** (union/intersection logic
+  for "Basic Channel meets Dilla")
+- **Full architectural fix for #3** (route director Phase 6 through
+  semantic_move commits — big redesign, v1.19 scope)
+
+These all need new infrastructure or architectural decisions
+unsuitable for a patch release.
+
 ## 1.18.1 — Director HIGH-severity patches (April 23 2026)
 
 Patch release addressing 4 of the 12 known issues documented in v1.18.0.
