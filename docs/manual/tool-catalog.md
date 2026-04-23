@@ -1,13 +1,13 @@
 # LivePilot — Full Tool Catalog (Generated)
 
-426 tools across 52 domains.
+427 tools across 52 domains.
 
 > Auto-generated from `mcp.list_tools()`. Do not hand-edit.
 > Regenerate: `python3 scripts/generate_tool_catalog.py`
 
 ---
 
-## Agent Os (8)
+## Agent Os (9)
 
 | Tool | Description |
 |------|-------------|
@@ -18,6 +18,7 @@
 | `get_taste_profile` | Get the user's production taste profile from outcome history. |
 | `get_technique_card` | Search for technique cards — structured production recipes. |
 | `get_turn_budget` | Get a resource budget for the current agent turn. |
+| `iterate_toward_goal` | Close the evaluation loop: run experiments until threshold or timeout. |
 | `route_request` | Route a production request to the right engine(s). |
 
 ## Analyzer (37)
@@ -694,4 +695,4 @@
 | `rank_wonder_variants` | Rank wonder-mode variants by taste + identity + novelty + coherence. |
 
 ---
-*Generated from 426 registered tools.*
+*Generated from 427 registered tools.*
