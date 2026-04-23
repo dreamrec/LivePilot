@@ -1,5 +1,72 @@
 # Changelog
 
+## 1.18.3 — Brief compliance runtime check (#7 + #8) (April 24 2026)
+
+Third v1.18.x patch. Bundles two Known Issues items (#7 + #8) that
+shared the same "check tool args against brief constraints" machinery.
+
+### Fix
+
+- **#7 Packet `avoid` list runtime enforcement.**
+- **#8 `locked_dimensions` runtime enforcement.**
+
+Both were advisory-only pre-v1.18.3: the director SKILL.md documented
+the hard-filter rules but no runtime machinery verified compliance.
+This release ships a **stateless pure check function** in a new
+`mcp_server/creative_director` module, exposed as the MCP tool
+`check_brief_compliance(brief, tool_name, tool_args)`.
+
+**Usage**: director's Phase 6 calls the tool before each risky
+execution (EQ parameters, filter settings, new scene creation, clip
+note editing, send routing, etc.). The tool returns
+`{"ok": bool, "violations": [...]}`. Violations are reports, not
+automatic blocks — the director surfaces them to the user and offers
+three paths: adjust, override-for-this-turn, or pick a different tool.
+
+**Detection strategy — best-effort heuristic**, not semantic
+understanding:
+
+- anti_pattern matching via keyword tokens + parameter-name heuristics
+  (e.g., pattern "bright top-end" + Hi Gain positive value → fires)
+- locked_dimension matching via tool → dimension map
+  (e.g., structural lock + create_scene → fires)
+
+### Infrastructure
+
+- NEW module `mcp_server/creative_director/` with compliance.py +
+  tools.py
+- NEW MCP tool `check_brief_compliance` (tool count 427 → 428,
+  domain count 52 → 53)
+- Director SKILL.md Phase 6 now documents the check + the
+  three-path violation-response protocol
+- Full session-state active-brief storage is deferred to v1.19;
+  v1.18.3 is stateless (caller passes brief each time)
+
+### Tests added
+
+- `test_compliance_check_detects_anti_pattern_violation` (BC packet
+  + Hi Gain boost → violation)
+- `test_compliance_check_detects_locked_dimension_violation`
+  (structural lock + create_scene → violation)
+- `test_compliance_check_passes_compliant_call` (no false positives)
+- `test_compliance_check_empty_brief_permissive` (fresh session
+  safety)
+
+Test suite: 2792 pass, 1 skipped. Zero regressions.
+
+### Still open for v1.19 (3 items)
+
+- Experiment state continuity between branches (architectural —
+  transport-state locking needed)
+- Hybrid-packet compilation algorithm (union/intersection logic for
+  multi-packet refs like "Basic Channel meets Dilla")
+- Full architectural fix for #3 (route director Phase 6 through
+  `apply_semantic_move` / `commit_experiment` — replaces the
+  doc-level fix shipped in v1.18.1)
+
+These are v1.19 scope — each needs new architectural decisions and
+infrastructure unsuitable for patch releases.
+
 ## 1.18.2 — Wonder cold-start + tie-break + genre catalog closure (April 24 2026)
 
 Second patch in the v1.18.x series. Three items from the v1.18.0/v1.18.1
