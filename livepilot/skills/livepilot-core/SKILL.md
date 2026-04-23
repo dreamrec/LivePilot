@@ -186,13 +186,14 @@ Use when the user wants options, variants, or is stuck ("surprise me", "try some
 **Rule of thumb**: if the user asked for a specific fix, Flow A. If they asked "what would you do?" or mentioned feel/vibe without parameters, Flow B.
 
 ### Semantic Moves
-High-level musical intents that compile to deterministic tool sequences. 6 families:
+High-level musical intents that compile to deterministic tool sequences. 7 families (33 moves as of v1.18.0):
 - **mix** — `tighten_low_end`, `widen_stereo`, `make_punchier`, `darken_without_losing_width`, `reduce_repetition_fatigue`, `make_kick_bass_lock`, `reduce_foreground_competition`
 - **arrangement** — `refresh_repeated_section`, plus structural moves defined alongside mix
 - **transition** — `create_buildup_tension`, `smooth_scene_handoff`, `increase_contrast_before_payoff`, `bridge_sections`, `increase_forward_motion`, `open_chorus`, `create_breakdown`
 - **sound_design** — `add_warmth`, `add_texture`, `shape_transients`, `add_space`
 - **performance** — `recover_energy`, `decompress_tension`, `safe_spotlight`, `emergency_simplify`
-- **device_creation** — `add_*_device` moves for loading instruments / effects as intent-level actions
+- **device_creation** — `create_chaos_modulator`, `create_feedback_resonator`, `create_wavefolder_effect`, `create_bitcrusher_effect`, `create_karplus_string`, `create_stochastic_texture`, `create_fdn_reverb` (procedural M4L device generation)
+- **sample** — `sample_chop_rhythm`, `sample_texture_layer`, `sample_vocal_ghost`, `sample_break_layer`, `sample_resample_destroy`, `sample_one_shot_accent` (registered from `sample_engine/moves.py`)
 
 Use `list_semantic_moves(domain="mix")` to discover available moves.
 

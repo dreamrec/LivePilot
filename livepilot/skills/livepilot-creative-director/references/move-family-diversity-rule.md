@@ -26,10 +26,11 @@ note editing + grooves, which are tooled through those families. Tag
 such a seed with `dimension_hint: "rhythmic"` so downstream evaluation
 knows what dimension was touched.
 
-## The six canonical families
+## The seven canonical families
 
-Source of truth: `mcp_server/semantic_moves/*.py`. Never invent a
-seventh family at the director level.
+Source of truth: the semantic-move registry, populated by both
+`mcp_server/semantic_moves/*.py` AND `mcp_server/sample_engine/moves.py`.
+Never invent an eighth family at the director level.
 
 | Family | What it covers | Typical moves | Maps to dimension |
 |---|---|---|---|
@@ -38,20 +39,30 @@ seventh family at the director level.
 | `transition` | Between-section energy and motion | `create_buildup_tension`, `smooth_scene_handoff`, `increase_contrast_before_payoff`, `bridge_sections`, `open_chorus`, `create_breakdown`, `increase_forward_motion` | structural |
 | `sound_design` | Timbre of individual sources. Per-hit velocity / probability / micro-timing variations also sit here when they change feel, not pattern. | `add_warmth`, `add_texture`, `shape_transients`, `add_space` | timbral — or rhythmic with dimension_hint when per-hit-timing oriented |
 | `performance` | Live-safe energy shaping | `recover_energy`, `decompress_tension`, `safe_spotlight`, `emergency_simplify` | (context-specific) |
-| `device_creation` | New device / rack / instrument load | `add_*_device` moves | timbral |
+| `device_creation` | New device / rack / instrument load. Generates Max for Live M4L devices procedurally. | `create_chaos_modulator`, `create_feedback_resonator`, `create_wavefolder_effect`, `create_bitcrusher_effect`, `create_karplus_string`, `create_stochastic_texture`, `create_fdn_reverb` | timbral |
+| `sample` | Sample-based creative moves — chop, layer, stretch, resample, one-shot. Lives in `sample_engine/moves.py`. | `sample_chop_rhythm`, `sample_texture_layer`, `sample_vocal_ghost`, `sample_break_layer`, `sample_resample_destroy`, `sample_one_shot_accent` | rhythmic (chop / break / one-shot) or timbral (texture / vocal_ghost / resample) |
 
 **Discovery:** always call `list_semantic_moves(domain=<family>)` at
 runtime to enumerate — do not hardcode move IDs. Families are stable;
-the move catalog grows.
+the move catalog grows. As of v1.18.0 the runtime returns 33 moves
+across all 7 domains.
 
-**Why the director never invents a seventh `rhythmic` family:** the
-semantic_moves registry is the execution substrate. A family that
-exists in documentation but not in `mcp_server/semantic_moves/*.py`
+**Why the director never invents an eighth `rhythmic` family:** the
+move registry is the execution substrate. A family that exists in
+documentation but not in `semantic_moves/*.py` or `sample_engine/moves.py`
 cannot be compiled into an experiment seed via the registry path. It
 would force every rhythmic seed onto the `freeform` / `technique`
 source path with a hand-assembled `compiled_plan`. Cleaner to keep the
 family set code-aligned and use `dimension_hint` to record the musical
 consequence.
+
+**Note on the `sample` family:** sample-based creative work was
+historically documented as "sample_engine is not a semantic_move
+family" (see the Sample-heavy workflows section below). That was wrong
+— v1.18.0 verification against `list_semantic_moves()` confirmed
+`sample` is a legitimate domain with 6 moves. Prefer sample-family
+moves over tagging sample work as `sound_design` or `device_creation`
+when the dominant operation IS chopping / stretching / resampling.
 
 ## The rule
 
@@ -156,9 +167,21 @@ Packet specifies the center; diversity rule specifies the spread.
 
 ### Sample-heavy workflows
 
-`sample_engine` is not a semantic_move family. Sample-based creative
-moves usually dominate as `sound_design` or `device_creation` (loading
-Simpler, chopping). Tag the seed's `family_hint` accordingly.
+As of v1.18.0, `sample` IS a semantic_move family (registry lives in
+`sample_engine/moves.py`). For dominant-sample work, prefer sample-
+family moves directly:
+
+- Rhythmic chopping → `sample_chop_rhythm` or `sample_break_layer`
+- Atmospheric layering → `sample_texture_layer`
+- Vocal transformation → `sample_vocal_ghost`
+- Destructive transformation → `sample_resample_destroy`
+- Punctuation → `sample_one_shot_accent`
+
+Only fall back to `sound_design` or `device_creation` when the dominant
+action is PATCH-level programming or NEW-device loading rather than
+sample-level manipulation. Loading Simpler with a degraded source,
+for instance, is `device_creation` (loading the instrument); chopping
+an already-loaded sample is `sample`.
 
 ### Rhythmic plans
 

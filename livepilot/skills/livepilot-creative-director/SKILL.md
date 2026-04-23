@@ -114,14 +114,20 @@ examples.
 
 ### Phase 3 — Generate three plans with distinct `move.family`
 
-The SIX canonical families (from `semantic_moves/`):
+The SEVEN canonical families (from `semantic_moves/` + `sample_engine/moves.py`):
 
 ```
-mix · arrangement · transition · sound_design · performance · device_creation
+mix · arrangement · transition · sound_design · performance · device_creation · sample
 ```
 
 Each plan's dominant move MUST come from a different family. Two plans
 in the same family is fabricated distinctness — see Honesty Rule below.
+
+The `sample` family lives in `mcp_server/sample_engine/moves.py` (not
+`semantic_moves/`) but registers into the same move registry.
+`list_semantic_moves(domain="sample")` enumerates: `sample_chop_rhythm`,
+`sample_texture_layer`, `sample_vocal_ghost`, `sample_break_layer`,
+`sample_resample_destroy`, `sample_one_shot_accent`.
 
 **Family vs. dimension.** Families are code-level (six values from the
 registry). Dimensions are musical (four values: structural / rhythmic /

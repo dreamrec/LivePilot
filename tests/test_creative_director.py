@@ -33,7 +33,10 @@ CORE_REFS = SKILLS_ROOT / "livepilot-core" / "references"
 CONCEPTS_ROOT = CORE_REFS / "concepts"
 AFFORDANCES_ROOT = CORE_REFS / "affordances"
 
-# The six canonical move.family values from mcp_server/semantic_moves/*.py
+# The seven canonical move.family values — six from
+# mcp_server/semantic_moves/*.py plus `sample` from
+# mcp_server/sample_engine/moves.py. Verified against
+# list_semantic_moves() runtime on v1.18.0 ship: 33 moves, 7 domains.
 CANONICAL_FAMILIES = {
     "mix",
     "arrangement",
@@ -41,6 +44,7 @@ CANONICAL_FAMILIES = {
     "sound_design",
     "performance",
     "device_creation",
+    "sample",
 }
 
 # The four canonical dimensions from the-four-move-rule.md
