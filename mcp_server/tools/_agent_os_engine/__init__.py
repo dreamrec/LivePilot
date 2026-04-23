@@ -35,6 +35,12 @@ from .taste import (
     compute_taste_fit,
     get_taste_profile,
 )
+from .iteration import (
+    iterate_toward_goal_engine,
+    iterate_toward_goal_engine_async,
+    IterationResult,
+    IterationStep,
+)
 
 __all__ = [
     "QUALITY_DIMENSIONS", "MEASURABLE_PROXIES",
@@ -49,4 +55,8 @@ __all__ = [
     "analyze_outcome_history",
     "compute_taste_fit",
     "get_taste_profile",
+    "iterate_toward_goal_engine",
+    "iterate_toward_goal_engine_async",
+    "IterationResult",
+    "IterationStep",
 ]
