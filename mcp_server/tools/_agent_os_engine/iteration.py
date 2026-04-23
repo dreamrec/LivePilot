@@ -102,6 +102,13 @@ def _classify_commit_result(result: Any) -> str:
         return "commit_failed"
     if result.get("status") == "failed":
         return "commit_failed"
+    # v1.17.5 (Codex PR#27 review): a top-level "error" key with no
+    # explicit committed=True is a failure signal. commit_branch_async
+    # returns {"error": "Branch not found"} / {"error": "Branch has no
+    # compiled plan"} / {"error": "Experiment not found"} in several
+    # paths — without this check they'd fall through to "committed".
+    if result.get("error") and result.get("committed") is not True:
+        return "commit_failed"
     steps_ok = result.get("steps_ok")
     steps_failed = result.get("steps_failed")
     if steps_ok == 0 and (steps_failed is None or steps_failed > 0):
