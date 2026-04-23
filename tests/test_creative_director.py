@@ -681,6 +681,123 @@ def test_wonder_cold_start_has_distinct_variants():
     )
 
 
+def test_experiment_tie_break_prefers_higher_novelty():
+    """v1.18.2 #11: experiment ranking at score ties produced no clear
+    winner — three branches at 0.6 all got equal rank. Live-verified in
+    v1.18.0 Test 8: add_space + add_warmth + widen_stereo all scored 0.6.
+
+    Fix: secondary sort keys when scores tie. Order of preference:
+      1. -score (primary — higher wins)
+      2. -novelty_rank (higher novelty wins ties — creative asks reward variation)
+      3. risk_rank (lower risk wins secondary ties — safety default)
+      4. step_count (simpler plan wins tertiary ties)
+      5. branch_id (deterministic final tiebreak for reproducibility)"""
+    from mcp_server.experiment.models import ExperimentSet, ExperimentBranch
+    from mcp_server.branches import BranchSeed
+
+    # Three branches all scoring exactly 0.6 — the v1.18.0 Test 8 repro
+    def _branch(branch_id, novelty_label, risk_label, step_count):
+        seed = BranchSeed(
+            seed_id=f"seed_{branch_id}",
+            source="semantic_move",
+            move_id=branch_id,
+            hypothesis="",
+            protected_qualities=[],
+            affected_scope={},
+            distinctness_reason="",
+            risk_label=risk_label,
+            novelty_label=novelty_label,
+            analytical_only=False,
+            producer_payload={},
+        )
+        b = ExperimentBranch(
+            branch_id=f"br_{branch_id}",
+            name=f"Branch: {branch_id}",
+            move_id=branch_id,
+            status="evaluated",
+            score=0.6,
+            compiled_plan={"step_count": step_count, "steps": []},
+            seed=seed,
+        )
+        return b
+
+    # Three branches at identical score 0.6 but different novelty labels
+    exp = ExperimentSet(
+        experiment_id="exp_tiebreak",
+        request_text="deepen the dub aesthetic",
+        branches=[
+            _branch("add_space", novelty_label="safe", risk_label="low", step_count=2),
+            _branch("add_warmth", novelty_label="strong", risk_label="medium", step_count=3),
+            _branch("widen_stereo", novelty_label="unexpected", risk_label="high", step_count=1),
+        ],
+    )
+
+    ranked = exp.ranked_branches()
+    assert len(ranked) == 3
+    # Higher novelty wins first ties: unexpected > strong > safe
+    assert ranked[0].move_id == "widen_stereo", (
+        f"unexpected-novelty should rank first at equal scores. "
+        f"Got ranking: {[b.move_id for b in ranked]}"
+    )
+    assert ranked[1].move_id == "add_warmth", (
+        f"strong-novelty should rank second. "
+        f"Got ranking: {[b.move_id for b in ranked]}"
+    )
+    assert ranked[2].move_id == "add_space", (
+        f"safe-novelty should rank last on equal-score ties. "
+        f"Got ranking: {[b.move_id for b in ranked]}"
+    )
+
+
+def test_experiment_tie_break_is_deterministic():
+    """v1.18.2 #11: the final tie-breaker must be deterministic so
+    repeated calls to compare_experiments return stable rankings.
+    Without a final deterministic key, Python's stable sort depends
+    on input order — making test results sensitive to branch creation
+    order."""
+    from mcp_server.experiment.models import ExperimentSet, ExperimentBranch
+    from mcp_server.branches import BranchSeed
+
+    def _branch(bid, novelty="safe", risk="low", steps=2):
+        seed = BranchSeed(
+            seed_id=f"seed_{bid}",
+            source="semantic_move",
+            move_id=bid,
+            hypothesis="",
+            protected_qualities=[],
+            affected_scope={},
+            distinctness_reason="",
+            risk_label=risk,
+            novelty_label=novelty,
+            analytical_only=False,
+            producer_payload={},
+        )
+        return ExperimentBranch(
+            branch_id=f"br_{bid}",
+            name=bid, move_id=bid, status="evaluated",
+            score=0.5,
+            compiled_plan={"step_count": steps, "steps": []},
+            seed=seed,
+        )
+
+    # Two identical branches except for branch_id
+    exp1 = ExperimentSet(
+        experiment_id="e1", request_text="x",
+        branches=[_branch("aaaa"), _branch("bbbb")],
+    )
+    exp2 = ExperimentSet(
+        experiment_id="e2", request_text="x",
+        branches=[_branch("bbbb"), _branch("aaaa")],  # reversed creation order
+    )
+
+    r1_ids = [b.move_id for b in exp1.ranked_branches()]
+    r2_ids = [b.move_id for b in exp2.ranked_branches()]
+    assert r1_ids == r2_ids, (
+        f"Ranking must be deterministic regardless of creation order. "
+        f"exp1: {r1_ids}, exp2: {r2_ids}"
+    )
+
+
 def test_batch_set_parameters_schema_documented():
     """v1.18.1 bonus: the batch_set_parameters schema requires
     {'Name': {'value': v}}, not {'Name': v}. Live verification bit me on

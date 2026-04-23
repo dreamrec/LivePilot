@@ -194,6 +194,52 @@ class ExperimentBranch:
         return d
 
 
+# v1.18.2 #11: composite tie-break ranking for experiment branches.
+# Maps novelty_label / risk_label strings to integer ranks.
+_NOVELTY_RANK: dict[str, int] = {
+    "safe": 0,
+    "medium": 1,       # rarely used, but accept it for robustness
+    "strong": 1,
+    "unexpected": 2,
+    "bold": 2,         # alias in some producer outputs
+}
+_RISK_RANK: dict[str, int] = {
+    "low": 0,
+    "medium": 1,
+    "high": 2,
+}
+
+
+def _branch_rank_key(branch: "ExperimentBranch") -> tuple:
+    """Composite sort key for ExperimentSet.ranked_branches().
+
+    Returns a tuple (-score, -novelty, risk, step_count, branch_id) such
+    that Python's default ascending sort produces the desired ranking:
+    higher scores first, then higher novelty at score ties, then lower
+    risk under equal novelty, then simpler plans, then branch_id as a
+    deterministic final tiebreak.
+    """
+    score = float(getattr(branch, "score", 0.0) or 0.0)
+    seed = getattr(branch, "seed", None)
+
+    if seed is not None:
+        novelty_label = (seed.novelty_label or "").lower()
+        risk_label = (seed.risk_label or "").lower()
+    else:
+        novelty_label = ""
+        risk_label = ""
+
+    novelty_rank = _NOVELTY_RANK.get(novelty_label, 1)  # middle if unknown
+    risk_rank = _RISK_RANK.get(risk_label, 1)
+
+    plan = getattr(branch, "compiled_plan", None) or {}
+    step_count = int(plan.get("step_count", 0) or 0)
+
+    branch_id = getattr(branch, "branch_id", "") or ""
+
+    return (-score, -novelty_rank, risk_rank, step_count, branch_id)
+
+
 @dataclass
 class ExperimentSet:
     """A collection of branches being compared for one request."""
@@ -215,9 +261,33 @@ class ExperimentSet:
         return None
 
     def ranked_branches(self) -> list[ExperimentBranch]:
-        """Return branches sorted by score descending."""
+        """Return evaluated branches sorted by composite rank.
+
+        v1.18.2 #11 fix: pre-fix this was a single-key sort by score,
+        which produced unstable rankings at score ties (live-verified in
+        v1.18.0 Test 8 — three branches at 0.6 with no winner).
+
+        Sort keys, in priority order:
+          1. -score                     — higher score wins
+          2. -novelty_rank              — higher novelty wins at score ties
+                                          (creative asks reward variation)
+          3. risk_rank                  — lower risk wins secondary ties
+                                          (safety default under equal novelty)
+          4. step_count                 — simpler plans win tertiary ties
+          5. branch_id                  — deterministic final tiebreak
+                                          (stable ranking across equal branches)
+
+        Novelty labels rank: "safe"=0, "strong"=1, "unexpected"=2, "bold"=2.
+        Risk labels rank: "low"=0, "medium"=1, "high"=2.
+        Unknown labels default to the middle (1).
+        """
         evaluated = [b for b in self.branches if b.status == "evaluated"]
-        return sorted(evaluated, key=lambda b: -b.score)
+        return sorted(evaluated, key=_branch_rank_key)
+
+    # expose the key function for testing + custom rankers
+    def rank_key_for(self, branch: "ExperimentBranch") -> tuple:
+        """Return the composite rank key for a branch (for tie-break debugging)."""
+        return _branch_rank_key(branch)
 
     def to_dict(self) -> dict:
         return {
