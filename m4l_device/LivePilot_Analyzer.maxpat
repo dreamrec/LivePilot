@@ -1531,6 +1531,108 @@
 						22
 					]
 				}
+			},
+			{
+				"box": {
+					"id": "obj-version-loadbang",
+					"maxclass": "newobj",
+					"text": "loadbang",
+					"numinlets": 1,
+					"numoutlets": 1,
+					"outlettype": [
+						"bang"
+					],
+					"patching_rect": [
+						50.0,
+						600.0,
+						60.0,
+						22.0
+					]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-version-msg",
+					"maxclass": "message",
+					"text": "get_version",
+					"numinlets": 2,
+					"numoutlets": 1,
+					"outlettype": [
+						""
+					],
+					"patching_rect": [
+						50.0,
+						630.0,
+						80.0,
+						22.0
+					]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-version-recv",
+					"maxclass": "newobj",
+					"text": "receive livepilot_version",
+					"numinlets": 0,
+					"numoutlets": 1,
+					"outlettype": [
+						""
+					],
+					"patching_rect": [
+						200.0,
+						600.0,
+						140.0,
+						22.0
+					]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-version-prepend",
+					"maxclass": "newobj",
+					"text": "prepend set",
+					"numinlets": 1,
+					"numoutlets": 1,
+					"outlettype": [
+						""
+					],
+					"patching_rect": [
+						200.0,
+						630.0,
+						80.0,
+						22.0
+					]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-version-label",
+					"maxclass": "comment",
+					"text": "v1.17.5",
+					"numinlets": 1,
+					"numoutlets": 0,
+					"patching_rect": [
+						200.0,
+						660.0,
+						100.0,
+						22.0
+					],
+					"presentation": 1,
+					"presentation_rect": [
+						150.0,
+						8.0,
+						50.0,
+						14.0
+					],
+					"fontname": "Arial",
+					"fontsize": 9.0,
+					"textcolor": [
+						0.45,
+						0.45,
+						0.45,
+						1.0
+					]
+				}
 			}
 		],
 		"lines": [
@@ -2779,6 +2881,54 @@
 					"destination": [
 						"obj-rms-snap",
 						1
+					]
+				}
+			},
+			{
+				"patchline": {
+					"source": [
+						"obj-version-loadbang",
+						0
+					],
+					"destination": [
+						"obj-version-msg",
+						0
+					]
+				}
+			},
+			{
+				"patchline": {
+					"source": [
+						"obj-version-msg",
+						0
+					],
+					"destination": [
+						"obj-js",
+						0
+					]
+				}
+			},
+			{
+				"patchline": {
+					"source": [
+						"obj-version-recv",
+						0
+					],
+					"destination": [
+						"obj-version-prepend",
+						0
+					]
+				}
+			},
+			{
+				"patchline": {
+					"source": [
+						"obj-version-prepend",
+						0
+					],
+					"destination": [
+						"obj-version-label",
+						0
 					]
 				}
 			}

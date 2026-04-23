@@ -31,6 +31,11 @@ autowatch = 1;
 inlets = 2;  // 0: OSC commands, 1: dspstate~ (sample rate)
 outlets = 2; // 0: to udpsend (responses), 1: to buffer~/status
 
+// Single source of truth for the bridge version — bumped alongside the
+// rest of the release manifest. Surfaced in the UI via messnamed("livepilot_version", ...)
+// so the frozen .amxd visibly reports which build it was last exported from.
+var VERSION = "1.17.5";
+
 // ── State ──────────────────────────────────────────────────────────────────
 
 var cursor_a = null;  // Primary LiveAPI cursor
@@ -95,7 +100,13 @@ function anything() {
 function dispatch(cmd, args) {
     switch(cmd) {
         case "ping":
-            send_response({"ok": true, "version": "1.17.5"});
+            send_response({"ok": true, "version": VERSION});
+            break;
+        case "get_version":
+            // Side-channel for the UI label — emits on the "livepilot_version"
+            // named bus so a [r livepilot_version] in the patcher can set a
+            // [comment] without touching the OSC response outlet.
+            messnamed("livepilot_version", VERSION);
             break;
         case "get_params":
             cmd_get_params(args);
