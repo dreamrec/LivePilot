@@ -2,6 +2,35 @@
 
 ## Unreleased
 
+### Added
+
+- **`iterate_toward_goal` MCP tool** (`mcp_server/tools/agent_os.py`,
+  `mcp_server/tools/_agent_os_engine/iteration.py`): closes the outer
+  evaluation loop. Given a compiled `GoalVector` and a list of candidate
+  move sets, runs up to N experiments sequentially. Each iteration
+  creates an experiment, runs all branches (with per-branch
+  apply-snapshot-undo already handled by the existing experiment engine),
+  scores the top branch against the goal, and either commits (score ≥
+  threshold) or discards and tries the next candidate set. On timeout,
+  commits the best-so-far (`on_timeout="commit_best"`, default) or
+  commits nothing (`on_timeout="discard_on_timeout"`). Per-branch undo
+  stays inside `run_experiment` — this loop never issues a raw undo.
+  Tool count: 426 → 427.
+
+  Engine ships as both a pure-sync `iterate_toward_goal_engine` (for
+  tests with in-memory fakes) and `iterate_toward_goal_engine_async`
+  (for the live MCP wrapper with coroutine callbacks); the sync entry
+  auto-detects coroutine callbacks and dispatches accordingly. Covered
+  by 11 tests in `tests/test_iterate_toward_goal.py` spanning happy
+  path, exhaustion + commit-best, exhaustion + discard, no candidates,
+  no-winner iterations, max_iterations capping, async coroutine
+  callbacks, and MCP registration.
+
+  This is the P0 item from the v1.17.1 review gap-analysis between
+  "tool orchestration" and "agentic optimization" — the create /
+  run / compare / commit primitives existed but nothing drove them
+  toward a scalar goal. `iterate_toward_goal` is that driver.
+
 ### Fixed
 
 - **Preview Studio truth-gap** (`mcp_server/preview_studio/engine.py`,
