@@ -124,7 +124,18 @@ def propose_composer_branches(
 
     intent = parse_prompt(request_text)
 
-    # Gate high-novelty strategies on freshness.
+    # v1.18.1 #9 fix: explicit count=3 overrides the freshness default.
+    # Pre-fix, count=3 at freshness=0.6 silently returned 2 (canonical +
+    # energy_shift only; layer_contrast was gated behind freshness>=0.7).
+    # Now: caller asking for all 3 strategies gets them by internally
+    # raising freshness to 0.7. Count=2 (the default) does NOT raise
+    # freshness — the freshness gate still caps at 1 on low-freshness
+    # runs, which is the documented "freshness cautiously shapes default
+    # strategy count" contract.
+    if count >= 3:
+        freshness = max(freshness, 0.7)
+
+    # Gate high-novelty strategies on (possibly-raised) freshness.
     if freshness < 0.4:
         strategies = [_STRATEGIES[0]]  # canonical only
     elif freshness < 0.7:

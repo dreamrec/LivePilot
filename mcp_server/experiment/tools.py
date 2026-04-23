@@ -244,18 +244,22 @@ def create_experiment(
 
     # ── Mode 2/3: legacy move_ids path ──────────────────────────────────
     if not move_ids:
-        # Auto-propose moves from the registry
+        # Auto-propose moves from the registry by keyword overlap.
+        # v1.18.1 #1 fix: the previous selector indexed the first character
+        # of each move_id (a Python unpacking trap — the variable was
+        # already the full string, the [0] subscript sliced into it).
+        # Result pre-fix: single-char move_ids like 't', 'w', 'm' that
+        # failed at run_experiment with "Move t not found". Now the whole
+        # move_id string is kept.
         from ..semantic_moves import registry
-        from ..semantic_moves.tools import propose_next_best_move
-        # Use the propose function's logic directly
         all_moves = list(registry._REGISTRY.values())
         request_lower = request_text.lower()
-        scored = []
+        request_words = set(request_lower.split())
+        scored: list[tuple[str, float]] = []
         for move in all_moves:
             score = 0.0
             move_words = set(move.move_id.replace("_", " ").split())
             intent_words = set(move.intent.lower().split())
-            request_words = set(request_lower.split())
             overlap = request_words & (move_words | intent_words)
             score += len(overlap) * 0.3
             for dim in move.targets:
@@ -264,7 +268,7 @@ def create_experiment(
             if score > 0.1:
                 scored.append((move.move_id, score))
         scored.sort(key=lambda x: -x[1])
-        move_ids = [m[0] for m, _ in scored[:limit]] if scored else []
+        move_ids = [move_id for move_id, _ in scored[:limit]] if scored else []
 
     if not move_ids:
         return {"error": "No matching semantic moves found for this request"}

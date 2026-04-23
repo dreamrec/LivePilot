@@ -441,6 +441,154 @@ def test_low_novelty_escape_hatch_documented():
     )
 
 
+def test_create_experiment_auto_proposal_no_m0_bug():
+    """v1.18.1 #1 HIGH SEV: create_experiment auto-proposal was taking
+    the FIRST CHARACTER of each move_id (m[0]) instead of the whole
+    string. Result: experiments built with move_ids like 't', 'w', 'm'
+    that fail at run_experiment with 'Move t not found'.
+
+    The bug was a Python unpacking trap: `[m[0] for m, _ in scored]`
+    where `m` is already the move_id string — `m[0]` indexes into it.
+
+    Regression guard via source-level pattern scan, because the tool
+    itself requires an MCP Context to call directly."""
+    path = REPO_ROOT / "mcp_server" / "experiment" / "tools.py"
+    text = path.read_text()
+    # The exact bug pattern
+    assert "m[0] for m, _" not in text, (
+        "Regression: auto-proposal selector reintroduced the m[0] bug. "
+        "Should be `[m for m, _ in scored[:limit]]` (strip the [0]). "
+        "See CHANGELOG v1.18.0 Known Issues #1 for the live repro."
+    )
+    # The function MUST produce move_ids longer than 1 char on realistic input
+    # — guard against a variant of the same bug (e.g. m[:1] or slice(0,1)).
+    # This is best-effort pattern scan, not exhaustive.
+    for bad_pattern in ["m[:1]", "[0:1]", "slice(0, 1)"]:
+        assert bad_pattern not in text, (
+            f"Regression: auto-proposal has suspicious pattern {bad_pattern!r}"
+        )
+
+
+def test_create_experiment_auto_proposal_functional():
+    """v1.18.1 #1 functional check: the keyword-overlap scoring logic
+    produces real multi-character move_ids. Tests the pure scoring logic
+    directly (not the MCP tool wrapper) by re-implementing the fix as a
+    local mirror and confirming it returns valid registry move_ids."""
+    from mcp_server.semantic_moves import registry
+
+    all_moves = list(registry._REGISTRY.values())
+    assert all_moves, "registry must be non-empty for this test to be useful"
+    # Pick a representative move_id and confirm it's multi-char
+    sample_move = all_moves[0]
+    assert len(sample_move.move_id) > 1, (
+        f"sample move_id {sample_move.move_id!r} should be multi-char"
+    )
+
+    # Re-implement the fixed logic locally (mirror of tools.py:250-267)
+    request_lower = "deepen the dub aesthetic on this".lower()
+    request_words = set(request_lower.split())
+    scored = []
+    for move in all_moves:
+        score = 0.0
+        move_words = set(move.move_id.replace("_", " ").split())
+        intent_words = set(move.intent.lower().split())
+        overlap = request_words & (move_words | intent_words)
+        score += len(overlap) * 0.3
+        for dim in move.targets:
+            if dim in request_lower:
+                score += 0.2
+        if score > 0.1:
+            scored.append((move.move_id, score))
+    scored.sort(key=lambda x: -x[1])
+    move_ids_correct = [m for m, _ in scored[:3]]
+    move_ids_buggy = [m[0] for m, _ in scored[:3]]
+
+    # Both shapes may be empty if nothing scored — that's acceptable here.
+    # But if anything DID score, the correct shape returns multi-char
+    # move_ids while the buggy shape returns single chars.
+    if scored:
+        assert all(len(mid) > 1 for mid in move_ids_correct), (
+            f"Fixed path must return multi-char move_ids. "
+            f"Got: {move_ids_correct}"
+        )
+        # Sanity: the buggy shape WOULD have returned single chars,
+        # confirming our repro is valid
+        assert all(len(mid) == 1 for mid in move_ids_buggy), (
+            f"Buggy shape repro failed — test setup is wrong. "
+            f"Got: {move_ids_buggy}"
+        )
+
+
+def test_composer_dub_techno_prompt_avoids_drop_scaffold():
+    """v1.18.1 #2 HIGH SEV: propose_composer_branches was producing generic
+    techno scaffold (Intro→Build→Drop→Breakdown→Drop2→Outro + 6 standard
+    layers) for dub-techno prompts referencing Basic Channel. Dub-techno
+    is a continuous-evolution aesthetic with NO drop structure — the
+    packet's arrangement_idioms say 'slow reveal, subtraction before
+    addition, return deeper not louder'.
+
+    Live repro from v1.18.0 testing with prompt:
+      'dub techno track like Basic Channel at 120 BPM'
+    produced sections: Intro, Build, Drop, Breakdown, Drop 2, Outro.
+    This test guards against regression to that behavior."""
+    from mcp_server.composer.prompt_parser import parse_prompt
+    from mcp_server.composer.layer_planner import plan_sections
+
+    intent = parse_prompt("dub techno track like Basic Channel at 120 BPM")
+    sections = plan_sections(intent)
+    section_names = [s["name"] for s in sections]
+
+    # CORE assertion: no drop structure
+    assert "Drop" not in section_names, (
+        f"Dub-techno prompts must not produce Drop-based scaffold — "
+        f"drops are foreign to the aesthetic. Got: {section_names}"
+    )
+    assert "Drop 2" not in section_names, (
+        f"Dub-techno must not have a 'Drop 2' — got {section_names}"
+    )
+    # Must still have a reasonable section count (not 0 sections)
+    assert len(section_names) >= 3, (
+        f"need at least 3 sections in scaffold, got {len(section_names)}: "
+        f"{section_names}"
+    )
+
+    # Dub-techno identity must be preserved — either as primary genre or sub_genre
+    combined = f"{intent.genre} {intent.sub_genre}".lower()
+    assert "dub" in combined, (
+        f"Intent must retain dub-techno identity. "
+        f"genre={intent.genre!r}, sub_genre={intent.sub_genre!r}"
+    )
+
+    # Tempo from prompt (120) must stick — not be overwritten by genre default
+    assert intent.tempo == 120, (
+        f"Explicit tempo '120 BPM' from prompt must be preserved, "
+        f"got {intent.tempo}"
+    )
+
+
+def test_propose_composer_branches_honors_explicit_count():
+    """v1.18.1 #9: propose_composer_branches silently clamped to freshness-
+    gated strategy count even when caller explicitly requested more.
+    Live repro: requested count=3 at freshness=0.6 returned only 2 seeds
+    (canonical + energy_shift; layer_contrast gated behind freshness>=0.7).
+
+    Fix: explicit count should override the freshness gate — if caller
+    asks for 3, they get 3 (raising freshness internally to admit them)."""
+    from mcp_server.composer.branch_producer import propose_composer_branches
+
+    # Exact repro of v1.18.0 live test
+    results = propose_composer_branches(
+        request_text="dub techno track at 120 BPM",
+        kernel={"freshness": 0.6},  # below 0.7 threshold for layer_contrast
+        count=3,
+    )
+    assert len(results) == 3, (
+        f"Requested count=3 at freshness=0.6 should return 3 seeds "
+        f"(explicit count overrides freshness gate). Got {len(results)}: "
+        f"{[s[0].seed_id for s in results]}"
+    )
+
+
 def test_batch_set_parameters_schema_documented():
     """v1.18.1 bonus: the batch_set_parameters schema requires
     {'Name': {'value': v}}, not {'Name': v}. Live verification bit me on

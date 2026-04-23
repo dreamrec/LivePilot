@@ -38,11 +38,34 @@ class TestProposeComposerBranches:
         assert len(pairs) == 1
         assert "canonical" in pairs[0][0].hypothesis.lower()
 
-    def test_medium_freshness_gives_canonical_plus_energy_shift(self):
+    def test_medium_freshness_count_3_unlocks_all_strategies(self):
+        """v1.18.1 #9 fix: explicit count=3 overrides the medium-freshness
+        gate (which defaults to only 2 strategies). Caller who asks for 3
+        at freshness=0.5 gets 3 — freshness is internally raised to 0.7 to
+        admit layer_contrast. Pre-fix this silently returned 2 (the bug)."""
         pairs = propose_composer_branches(
             "build a techno loop",
             kernel={"freshness": 0.5},
             count=3,
+        )
+        assert len(pairs) == 3, (
+            f"count=3 must override freshness gate; pre-v1.18.1 this "
+            f"silently returned 2. Got {len(pairs)}"
+        )
+        hyps = [s.hypothesis.lower() for s, _ in pairs]
+        assert any("canonical" in h for h in hyps)
+        assert any("energy_shift" in h for h in hyps)
+        assert any("layer_contrast" in h for h in hyps)
+
+    def test_medium_freshness_default_count_gives_two(self):
+        """Default count (no explicit count arg) still respects the freshness
+        gate: at freshness=0.5 with default count=2, returns 2 strategies
+        (canonical + energy_shift). The freshness-default contract is
+        preserved for callers that DON'T explicitly override count."""
+        pairs = propose_composer_branches(
+            "build a techno loop",
+            kernel={"freshness": 0.5},
+            # count not passed → default count=2
         )
         assert len(pairs) == 2
         hyps = [s.hypothesis.lower() for s, _ in pairs]

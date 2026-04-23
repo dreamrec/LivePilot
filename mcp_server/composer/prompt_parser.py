@@ -51,6 +51,13 @@ GENRE_DEFAULTS: dict[str, dict] = {
         "tempo": 128, "keys": ["Am", "Cm"], "energy": 0.7,
         "layers_min": 5, "layers_max": 7,
     },
+    # Dub techno is its own canonical genre — continuous-evolution aesthetic
+    # referencing Basic Channel / Rhythm & Sound / Gas. Previously aliased to
+    # "techno" which defaulted to Drop-based scaffolds (v1.18.1 #2 fix).
+    "dub techno": {
+        "tempo": 125, "keys": ["Am", "Em"], "energy": 0.4,
+        "layers_min": 3, "layers_max": 5,
+    },
     "house": {
         "tempo": 124, "keys": ["Cm", "Fm"], "energy": 0.6,
         "layers_min": 5, "layers_max": 6,
@@ -93,7 +100,11 @@ _GENRE_ALIASES: dict[str, str] = {
     "industrial techno": "techno",
     "minimal techno": "techno",
     "detroit techno": "techno",
-    "dub techno": "techno",
+    # NOTE: "dub techno" is intentionally NOT aliased to "techno" —
+    # it's now its own canonical genre with dub-appropriate defaults
+    # (see GENRE_DEFAULTS above) and a non-Drop section template (see
+    # layer_planner.SECTION_TEMPLATES).  v1.18.1 #2 fix.
+    "dub-techno": "dub techno",
 }
 
 

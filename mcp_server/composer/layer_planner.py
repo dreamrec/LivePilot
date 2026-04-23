@@ -172,6 +172,19 @@ SECTION_TEMPLATES: dict[str, list[dict]] = {
         {"name": "Drop 2",   "bars": 16, "layers": ["drums", "bass", "lead", "percussion", "vocal", "texture"]},
         {"name": "Outro",     "bars": 8,  "layers": ["drums:-6dB", "texture", "pad"]},
     ],
+    # Dub techno — continuous-evolution aesthetic. No Drop structure, no
+    # Build/Break cycle. Section names reflect dub-techno arrangement idioms:
+    # slow reveal, subtraction before addition, return deeper not louder.
+    # Source: concepts/artists/basic-channel.yaml arrangement_idioms +
+    # live-verification finding from v1.18.0 CHANGELOG #2. v1.18.1 #2 fix.
+    "dub techno": [
+        {"name": "Dawn",      "bars": 16, "layers": ["texture:-12dB"]},
+        {"name": "Pulse",     "bars": 16, "layers": ["drums:-6dB", "texture"]},
+        {"name": "Chord",     "bars": 32, "layers": ["drums", "bass", "pad:-6dB", "texture"]},
+        {"name": "Depth",     "bars": 32, "layers": ["drums", "bass", "pad", "texture"]},
+        {"name": "Withdraw",  "bars": 16, "layers": ["pad:-6dB", "texture:-6dB"]},
+        {"name": "Return",    "bars": 16, "layers": ["texture:-12dB"]},
+    ],
     "house": [
         {"name": "Intro",     "bars": 8,  "layers": ["drums:-6dB", "pad"]},
         {"name": "Verse",     "bars": 16, "layers": ["drums", "bass", "pad"]},
