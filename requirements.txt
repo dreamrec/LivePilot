@@ -4,7 +4,7 @@ fastmcp>=3.0.0,<3.3.0  # pinned upper bound — _get_all_tools() accesses privat
 midiutil>=1.2.1
 pretty_midi>=0.2.11
 # v1.8 Perception Layer (offline analysis)
-pyloudnorm>=0.1.0
+pyloudnorm>=0.2.0
 soundfile>=0.13.1
 scipy>=1.17.1
 mutagen>=1.47.0
