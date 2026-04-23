@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog (Generated)
 
-428 tools across 53 domains.
+429 tools across 53 domains.
 
 > Auto-generated from `mcp.list_tools()`. Do not hand-edit.
 > Regenerate: `python3 scripts/generate_tool_catalog.py`
@@ -181,11 +181,12 @@
 | `generate_reference_inspired_variants` | Generate creative variants inspired by a distilled reference. |
 | `map_reference_principles_to_song` | Map distilled reference principles to the current song. |
 
-## Creative Director (1)
+## Creative Director (2)
 
 | Tool | Description |
 |------|-------------|
 | `check_brief_compliance` | Check whether an intended tool call complies with the active creative brief. |
+| `compile_hybrid_brief` | Merge 2+ concept packets into a single hybrid brief (e.g., "Basic Channel meets Dilla swing"). |
 
 ## Device Forge (3)
 
