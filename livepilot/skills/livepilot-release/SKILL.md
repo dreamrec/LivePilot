@@ -28,20 +28,20 @@ Run this checklist EVERY time the user says "update everything", "push", "releas
 
 ## 2. Tool Count (must ALL match)
 
-Current: **427 tools across 52 domains**.
+Current: **428 tools across 53 domains**.
 Spectral/analyzer (bridge-only): **32**. All others: **292** (work without bridge, some with graceful fallbacks). Backed by 31 bridge commands.
 
 Verify: `grep -rc "@mcp.tool" mcp_server/tools/ | grep -v ":0" | awk -F: '{sum+=$2} END{print sum}'`
 
 Files that reference tool count:
-- [ ] `README.md` — header ("427 tools. 52 domains"), bridge section ("32 spectral/analyzer tools require bridge")
+- [ ] `README.md` — header ("428 tools. 53 domains"), bridge section ("32 spectral/analyzer tools require bridge")
 - [ ] `package.json` → `"description"`
 - [ ] `server.json` → `"description"`
 - [ ] `manifest.json` → `"description"`
 - [ ] `livepilot/.Codex-plugin/plugin.json` → `"description"` (primary Codex manifest)
 - [ ] `livepilot/.claude-plugin/plugin.json` → `"description"` (must match Codex plugin)
 - [ ] `.claude-plugin/marketplace.json` → `"description"`
-- [ ] `CLAUDE.md` → "427 tools across 52 domains"
+- [ ] `CLAUDE.md` → "428 tools across 53 domains"
 - [ ] `CONTRIBUTING.md` → tool count in intro
 - [ ] `livepilot/skills/livepilot-core/SKILL.md` — tool/domain count
 - [ ] `livepilot/skills/livepilot-core/references/overview.md` — tool/domain count
@@ -59,9 +59,9 @@ Files that reference tool count:
 
 ## 3. Domain Count
 
-Current: **52 domains**: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, analyzer, automation, theory, generative, harmony, midi_io, perception, agent_os, composition, motif, research, planner, project_brain, runtime, evaluation, mix_engine, sound_design, transition_engine, reference_engine, translation_engine, performance_engine, song_brain, preview_studio, hook_hunter, stuckness_detector, wonder_mode, session_continuity, creative_constraints, device_forge, sample_engine, atlas, composer, experiment, musical_intelligence, semantic_moves, diagnostics, follow_actions, grooves, scales, take_lanes, miditool, synthesis_brain.
+Current: **53 domains**: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, analyzer, automation, theory, generative, harmony, midi_io, perception, agent_os, composition, motif, research, planner, project_brain, runtime, evaluation, mix_engine, sound_design, transition_engine, reference_engine, translation_engine, performance_engine, song_brain, preview_studio, hook_hunter, stuckness_detector, wonder_mode, session_continuity, creative_constraints, device_forge, sample_engine, atlas, composer, experiment, musical_intelligence, semantic_moves, diagnostics, follow_actions, grooves, scales, take_lanes, miditool, synthesis_brain, creative_director.
 
-- [ ] All files that mention domain count say "52 domains"
+- [ ] All files that mention domain count say "53 domains"
 - [ ] Domain lists include ALL 45 (especially newer domains — they're the most often omitted)
 
 ## 4. npm Registry
@@ -92,7 +92,7 @@ Current: **52 domains**: transport, tracks, clips, notes, devices, scenes, mixin
 
 - [ ] `README.md` — features match current capabilities, "Coming" section is accurate
 - [ ] `docs/manual/getting-started.md` — install instructions current
-- [ ] `docs/manual/tool-reference.md` — all 52 domains listed, all 427 tools present
+- [ ] `docs/manual/tool-reference.md` — all 53 domains listed, all 428 tools present
 - [ ] `docs/M4L_BRIDGE.md` — architecture accurate, core/bridge counts correct
 
 ## 9. Derived Artifacts

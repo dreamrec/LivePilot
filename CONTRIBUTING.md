@@ -98,7 +98,7 @@ Prefix with `fix:`, `feat:`, `docs:`, `refactor:`, `test:`, or `chore:`.
 
 ## Tool Count Discipline
 
-Currently **427 tools**. If you add or remove a `@mcp.tool()` decorator, the
+Currently **428 tools**. If you add or remove a `@mcp.tool()` decorator, the
 `sync_metadata.py` script will propagate the new count automatically:
 
 ```bash

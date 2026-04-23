@@ -183,6 +183,34 @@ and to queue the required `remeasure` diagnostics for Phase 7. See
 `livepilot-core/references/affordances/_schema.md` for the packet
 structure.
 
+**Brief compliance check (v1.18.3):** before any tool call that could
+plausibly violate the brief's `anti_patterns` or `locked_dimensions`,
+call `check_brief_compliance(brief, tool_name, tool_args)`. The tool
+returns `{"ok": bool, "violations": [...]}` — best-effort keyword
+heuristic, NOT semantic understanding. Use it especially for:
+
+- `set_device_parameter` calls on EQ/saturation/filter parameters
+  (catches "bright top-end", "aggressive transient" style anti_patterns)
+- `load_browser_item` for new devices (check against `avoid` device
+  lists in concept packets)
+- `create_scene` / `set_scene_*` / `refresh_repeated_section`
+  (catches `locked_dimensions: [structural]` violations)
+- `add_notes` / `modify_notes` / `quantize_clip` when
+  `locked_dimensions: [rhythmic]` is set
+
+When a violation fires:
+1. **Do NOT auto-proceed.** Surface the violation to the user with
+   the reason + suggestion from the check response.
+2. Offer three paths: (a) adjust the call to avoid the pattern,
+   (b) user explicitly overrides this anti_pattern for this turn,
+   (c) pick a different tool/plan.
+3. Record the user's choice via `add_session_memory(category="override")`
+   so future anti-preference writes know this was an explicit decision.
+
+The check is STATELESS — you pass the brief each time. Empty brief
+(no anti_patterns, no locked_dimensions) always returns ok=True.
+Full session-state active-brief storage is v1.19 scope.
+
 **Ledger-marker discipline (v1.18.1):** the action ledger (`get_last_move`,
 `memory_list`) is populated by `apply_semantic_move` and `commit_experiment`.
 When Phase 6 executes via raw tool calls (`set_device_parameter`,

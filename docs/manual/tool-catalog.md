@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog (Generated)
 
-427 tools across 52 domains.
+428 tools across 53 domains.
 
 > Auto-generated from `mcp.list_tools()`. Do not hand-edit.
 > Regenerate: `python3 scripts/generate_tool_catalog.py`
@@ -180,6 +180,12 @@
 | `generate_constrained_variants` | Generate creative variants under active constraints. |
 | `generate_reference_inspired_variants` | Generate creative variants inspired by a distilled reference. |
 | `map_reference_principles_to_song` | Map distilled reference principles to the current song. |
+
+## Creative Director (1)
+
+| Tool | Description |
+|------|-------------|
+| `check_brief_compliance` | Check whether an intended tool call complies with the active creative brief. |
 
 ## Device Forge (3)
 
@@ -695,4 +701,4 @@
 | `rank_wonder_variants` | Rank wonder-mode variants by taste + identity + novelty + coherence. |
 
 ---
-*Generated from 427 registered tools.*
+*Generated from 428 registered tools.*

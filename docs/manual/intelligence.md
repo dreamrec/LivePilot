@@ -1,6 +1,6 @@
 # The Intelligence Layer
 
-LivePilot has a dozen creative-intelligence engines plus supporting perception / memory / kernel modules that sit on top of 427 tools. This chapter explains how they work together — not what each one does in isolation, but how a production request flows through them.
+LivePilot has a dozen creative-intelligence engines plus supporting perception / memory / kernel modules that sit on top of 428 tools. This chapter explains how they work together — not what each one does in isolation, but how a production request flows through them.
 
 ---
 

@@ -1,6 +1,6 @@
 # Tool Reference
 
-LivePilot gives you 427 tools that control every part of Ableton Live 12. You don't call these tools directly -- you describe what you want in plain language, and the AI picks the right tools behind the scenes. But knowing what's available helps you ask better questions and understand what's happening when the AI works on your session.
+LivePilot gives you 428 tools that control every part of Ableton Live 12. You don't call these tools directly -- you describe what you want in plain language, and the AI picks the right tools behind the scenes. But knowing what's available helps you ask better questions and understand what's happening when the AI works on your session.
 
 This chapter covers every tool, grouped by what it does. Each entry tells you the tool name, what it does in practice, what parameters it accepts, and when you'd want it.
 
@@ -3397,7 +3397,7 @@ Lightweight health check — parameter_count sanity (≤1 parameter = probably d
 
 ## More tools
 
-This chapter covers the most-used tools. The complete list of all 427 tools across 52 domains — including all intelligence-engine tools, creative-constraints, preview-studio, wonder-mode, memory, song-brain, transition/reference/translation engines — is auto-generated at **[Tool Catalog](tool-catalog.md)** from the running MCP server.
+This chapter covers the most-used tools. The complete list of all 428 tools across 52 domains — including all intelligence-engine tools, creative-constraints, preview-studio, wonder-mode, memory, song-brain, transition/reference/translation engines — is auto-generated at **[Tool Catalog](tool-catalog.md)** from the running MCP server.
 
 See also:
 - **[The Intelligence Layer](intelligence.md)** — how the engines connect

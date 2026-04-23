@@ -801,6 +801,116 @@ def test_experiment_tie_break_is_deterministic():
     )
 
 
+def test_compliance_check_detects_anti_pattern_violation():
+    """v1.18.3 #7: Director's anti_patterns list was advisory — no runtime
+    check prevented tool calls that violated the brief's avoid contract.
+    Fix: pure check_brief_compliance function that takes brief + intended
+    tool call, returns violations via keyword-token matching. Test repro:
+    Basic Channel packet avoid list + an EQ Hi Gain boost should flag
+    'bright top-end' as violated."""
+    from mcp_server.creative_director.compliance import check_brief_compliance
+
+    brief = {
+        "identity": "Basic Channel-style dub-techno",
+        "anti_patterns": [
+            "bright transient-heavy hats",
+            "dry signals / short tails",
+            "bright top-end",
+        ],
+        "locked_dimensions": [],
+        "reference_anchors": [{"name": "Basic Channel", "source": "user"}],
+    }
+
+    # User tries to boost EQ Hi Gain — violates 'bright top-end'
+    result = check_brief_compliance(
+        brief=brief,
+        tool_name="set_device_parameter",
+        tool_args={
+            "track_index": 0,
+            "device_index": 0,
+            "parameter_name": "Hi Gain",
+            "value": 8,
+        },
+    )
+    assert result["ok"] is False, (
+        f"Hi Gain boost under BC packet should trip 'bright top-end' "
+        f"anti_pattern. Got: {result}"
+    )
+    violations = result["violations"]
+    assert any(v["rule"] == "anti_pattern" for v in violations), (
+        f"Expected anti_pattern violation, got: {violations}"
+    )
+
+
+def test_compliance_check_detects_locked_dimension_violation():
+    """v1.18.3 #8: Director's locked_dimensions was advisory — raw tool
+    calls could violate user's 'don't touch the arrangement' lock. Fix:
+    compliance check maps tools to dimensions (structural/rhythmic/
+    timbral/spatial) and flags when a locked dimension is touched."""
+    from mcp_server.creative_director.compliance import check_brief_compliance
+
+    brief = {
+        "identity": "Tighten the drums, don't touch arrangement",
+        "anti_patterns": [],
+        "locked_dimensions": ["structural"],
+    }
+
+    # User tries to create a new scene — touches structural dimension
+    result = check_brief_compliance(
+        brief=brief,
+        tool_name="create_scene",
+        tool_args={"index": -1},
+    )
+    assert result["ok"] is False, (
+        f"create_scene under structural-locked brief should flag violation. "
+        f"Got: {result}"
+    )
+    violations = result["violations"]
+    assert any(v["rule"] == "locked_dimension" for v in violations), (
+        f"Expected locked_dimension violation, got: {violations}"
+    )
+
+
+def test_compliance_check_passes_compliant_call():
+    """v1.18.3: the compliance function must NOT false-positive. A tool
+    call that doesn't touch any anti_pattern or locked dimension should
+    return ok=True with empty violations."""
+    from mcp_server.creative_director.compliance import check_brief_compliance
+
+    brief = {
+        "identity": "Basic Channel dub-techno",
+        "anti_patterns": ["bright top-end", "full-grid quantization"],
+        "locked_dimensions": ["structural"],
+    }
+
+    # Loading a Drift instrument — doesn't violate anti_patterns or locks
+    result = check_brief_compliance(
+        brief=brief,
+        tool_name="load_browser_item",
+        tool_args={"track_index": 0, "uri": "query:Synths#Drift"},
+    )
+    assert result["ok"] is True, (
+        f"Compliant tool call should pass. Got: {result}"
+    )
+    assert result["violations"] == [], (
+        f"No violations expected. Got: {result['violations']}"
+    )
+
+
+def test_compliance_check_empty_brief_permissive():
+    """v1.18.3: an empty or nearly-empty brief (no anti_patterns, no
+    locks) must pass all tool calls. Otherwise the checker would be a
+    hard block for any creative work done without a full brief."""
+    from mcp_server.creative_director.compliance import check_brief_compliance
+
+    result = check_brief_compliance(
+        brief={"identity": "whatever"},  # no anti_patterns, no locks
+        tool_name="set_device_parameter",
+        tool_args={"track_index": 0, "device_index": 0, "parameter_name": "Drive", "value": 0.8},
+    )
+    assert result["ok"] is True
+
+
 def test_batch_set_parameters_schema_documented():
     """v1.18.1 bonus: the batch_set_parameters schema requires
     {'Name': {'value': v}}, not {'Name': v}. Live verification bit me on
