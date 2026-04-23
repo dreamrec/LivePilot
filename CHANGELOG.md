@@ -106,8 +106,108 @@ schema-level bugs (`atlas_uri` semantic mismatch, phantom
   bass_music, soulful_house, acid_techno, nu_disco, juke) referenced
   by artist packets but not yet YAML-ified. Tracked via
   `test_all_artist_genre_refs_resolve_strictly` xfail.
-- Live Ableton session pressure test pending — all v1.18.0 verification
-  to date was dry-run subagent tests.
+
+### Known issues from pre-ship live verification (v1.18.1 patch targets)
+
+12 issues surfaced while running director end-to-end against a real
+Ableton session before pushing v1.18.0. Shipping as-is rather than
+blocking the release; patching in a focused follow-up. Severity is
+this author's subjective production-impact rating.
+
+**High severity — users will hit these in the first 30 seconds:**
+
+1. **`create_experiment` auto-proposal is broken.** When called without
+   explicit `seeds` or `move_ids`, the keyword-overlap selector
+   generates single-character `move_id` values (`"t"`, `"w"`, `"m"`)
+   that fail with `"Move t not found"` at run time. All three branches
+   fail. Workaround: director MUST pass explicit `move_ids=[...]` —
+   auto-proposal path is unusable. (`mcp_server/experiment/engine.py`
+   auto-propose logic.)
+2. **`propose_composer_branches` ignores concept packets.** A prompt
+   referencing Basic Channel produced generic EDM scaffold
+   (`Intro → Build → Drop → Breakdown → Drop 2 → Outro` + 6 standard
+   layers) instead of BC's continuous-evolution dub-techno form.
+   Composer falls back to genre-family defaults and doesn't consult
+   `concepts/artists/*.yaml` or `concepts/genres/*.yaml` arrangement_idioms.
+3. **Director Plan A bypasses the action ledger.** When the director
+   executes via raw tool calls (`load_browser_item`, `set_device_parameter`,
+   etc.) instead of `apply_semantic_move` / `create_experiment +
+   commit_experiment`, `get_last_move` returns empty and anti-repetition
+   goes blind. Either make semantic_move commits mandatory for director
+   plan execution, or add a session-state inference fallback that reads
+   device/track deltas directly.
+
+**Medium severity — edges and enforcement gaps:**
+
+4. **Affordance YAML — Ping Pong Delay is a ghost packet.**
+   `affordances/devices/ping-pong-delay.yaml` describes a standalone
+   device that doesn't exist in Live 12 (empty `search_browser` result).
+   Ping-pong is a MODE of `Echo` (`Channel Mode = 1`). Merge the
+   affordance into `echo.yaml` or delete the file.
+5. **Affordance YAML — Auto Filter ranges are legacy.** Modern
+   `AutoFilter2` class uses 0-1 normalized for Frequency (display
+   `"448 Hz"` at raw `0.45`), NOT the 20-135 legacy range the affordance
+   YAML documents. Either update the affordance to reflect
+   AutoFilter2 OR ship separate legacy/modern variants.
+6. **Affordance YAML — `ir_length` phantom on Convolution Reverb.**
+   Already fixed in commit 9 by renaming to `decay_time`, but worth
+   flagging that this class of field-vs-actual drift needs a
+   systematic check (script that compares affordance parameter names
+   to `get_device_parameters` output for each device).
+7. **Packet `avoid` list is advisory, not runtime-enforced.** Director
+   SKILL.md documents the hard-filter rule but there's no code path
+   that compares user requests or tool args against the active packet's
+   `avoid` list before executing. Ask for "bump the high-end" under an
+   active BC packet and nothing blocks the EQ boost.
+8. **`locked_dimensions` respect is declarative only.** Same class as
+   (7) — director compiles a brief with explicit locks but no runtime
+   pre-flight check blocks tool calls that touch locked dimensions.
+9. **`propose_composer_branches` silent `count` degradation.** Requesting
+   3 branches at `freshness < 0.7` returns 2 (only canonical +
+   energy_shift). User-visible surface returns fewer than requested
+   without flagging.
+10. **Wonder Mode degrades to zero executable variants on empty/sparse
+    session context.** Tested with `enter_wonder_mode("I'm stuck")` on
+    a mostly-empty session — returned 3 identical analytical-only
+    variants with `"No matching executable moves found"`. Needs a
+    cold-start path that proposes starting-point seeds from memory
+    or concept packets rather than requiring existing session content.
+11. **Evaluation tie-break is coarse.** 3-branch experiment with
+    different semantic moves (add_space, add_warmth, widen_stereo)
+    all scored identical 0.6. No clear winner emerges. Classifier
+    needs finer resolution OR explicit tie-break by novelty/taste.
+12. **Low-novelty-budget escape hatch missing from 3-plan rule.**
+    `"keep the vibe, just cleaner"` → `novelty_budget = 0.30`. The
+    3-distinct-families rule fights against narrow cleanup requests.
+    Need explicit clause: "if `novelty_budget < 0.35`, 1-2 mix-family
+    plans is acceptable and honest."
+
+**Also worth fixing:**
+
+- `batch_set_parameters` schema — requires `{"Name": {"value": v}}`,
+  not `{"Name": v}`. Docs didn't make this obvious.
+- State continuity between experiment branches — before-snapshot
+  track levels drifted between branches (0.76 → 0 → 0.87). Each
+  branch sees a different baseline. Needs transport-state locking.
+- Hybrid-reference compilation algorithm — multi-packet asks
+  ("Basic Channel meets Dilla swing") work via LLM ad-hoc reasoning,
+  not via explicit union/intersection logic. Define the rule.
+
+All 15 items are tracked for a v1.18.1 patch. The core v1.18.0
+machinery (8-phase director contract, concept packets, affordances,
+evaluation dimensions, verdict taxonomy) works correctly when plans
+are constructed with explicit `move_ids` — which is the documented
+primary path.
+
+### Live Ableton session result
+
+Test scenario: build a Basic Channel dub chain on a return track, then
+source (Meld Juno Square chord stab) with sends. Chain built cleanly.
+User feedback on initial Plan A: "super basic" (default presets lack
+character). Swapped Drift default → `Poly Juno Square.adv` preset.
+Improved character. Flow A of the director (build a single plan, verify,
+iterate) is production-viable today. Flow B (divergence via experiment)
+has the 3 high-severity issues above.
 
 ### Process note
 
