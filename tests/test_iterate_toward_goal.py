@@ -291,3 +291,12 @@ def test_iterate_async_variant_awaits_coroutine_callbacks():
     assert result.committed_branch_id == "br_y"
     assert committed == [("exp_async_1", "br_y")]
     assert "exp_async_0" in discarded
+
+
+# ── MCP tool registration smoke ────────────────────────────────────────
+
+def test_iterate_toward_goal_tool_registered():
+    import asyncio
+    from mcp_server.server import mcp
+    names = {t.name for t in asyncio.run(mcp.list_tools())}
+    assert "iterate_toward_goal" in names

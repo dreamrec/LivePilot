@@ -471,3 +471,194 @@ def route_request(
 
     plan = conductor.classify_request(request)
     return plan.to_dict()
+
+
+# ── iterate_toward_goal (closed evaluation loop) ──────────────────────
+
+
+@mcp.tool()
+async def iterate_toward_goal(
+    ctx: Context,
+    goal_vector: dict | str,
+    candidate_move_sets: list,
+    threshold: float = 0.70,
+    max_iterations: int = 3,
+    on_timeout: str = "commit_best",
+    render_verify: bool = False,
+) -> dict:
+    """Close the evaluation loop: run experiments until threshold or timeout.
+
+    Each iteration creates an experiment from one candidate_move_sets entry,
+    runs all branches (which auto-undo per-branch via the experiment engine),
+    and checks the top-ranked branch's score against the GoalVector. If score
+    >= threshold, commit that branch permanently and stop. Otherwise discard
+    the experiment and try the next candidate set. On timeout, commit the
+    best-so-far (on_timeout='commit_best') or commit nothing
+    (on_timeout='discard_on_timeout').
+
+    Args:
+        goal_vector: Compiled GoalVector dict (from compile_goal_vector) or
+            JSON string. Provides the scoring target passed through to the
+            evaluation scorer inside each run_experiment call.
+        candidate_move_sets: List of move_id lists — one per iteration.
+            Example: [["make_punchier", "widen_stereo"], ["tighten_low_end"]].
+            Iteration 0 tries the first list, iteration 1 the second, etc.
+            If shorter than max_iterations, iteration stops when exhausted.
+        threshold: Winner score required to commit early. 0.0–1.0. Default 0.70.
+        max_iterations: Hard cap on outer-loop iterations. Default 3.
+        on_timeout: "commit_best" (commit highest-scoring experiment at end)
+            or "discard_on_timeout" (no commit if threshold never met).
+        render_verify: When True each branch captures + analyzes audio
+            (~6s extra per branch). Default False.
+
+    Returns: IterationResult dict with status, iterations_run,
+        committed_experiment_id, committed_branch_id, final_score, steps,
+        reason.
+
+    Safety: Only commits when threshold_met OR (on_timeout='commit_best' AND
+    best-so-far exists). Never double-undoes — per-branch undo is handled
+    inside run_experiment; this tool only issues commit or discard.
+    """
+    import time as _time
+    from ..branches import seed_from_move_id
+    from ..experiment import engine as exp_engine
+    from ..experiment.tools import (
+        _capture_snapshot,
+        _capture_snapshot_with_render_verify,
+    )
+    from ..semantic_moves import registry, compiler
+    from ..evaluation.policy import classify_branch_outcome
+    from ._agent_os_engine import iterate_toward_goal_engine_async
+
+    gv_dict = _parse_json_param(goal_vector, "goal_vector")
+
+    if not isinstance(candidate_move_sets, list) or not all(
+        isinstance(s, list) and all(isinstance(m, str) for m in s)
+        for s in candidate_move_sets
+    ):
+        return {
+            "error": (
+                "candidate_move_sets must be a list of lists of move_id strings"
+            )
+        }
+
+    ableton = _get_ableton(ctx)
+    bridge = ctx.lifespan_context.get("m4l")
+    mcp_registry = ctx.lifespan_context.get("mcp_dispatch", {})
+
+    # Pre-validate the GoalVector once — the eval_fn closure reuses this.
+    goal = engine.validate_goal_vector(
+        request_text=gv_dict.get("request_text", "iterate_toward_goal"),
+        targets=gv_dict.get("targets", {}),
+        protect=gv_dict.get("protect", {}),
+        mode=gv_dict.get("mode", "improve"),
+        aggression=float(gv_dict.get("aggression", 0.5)),
+        research_mode=gv_dict.get("research_mode", "none"),
+    )
+
+    # ── Callbacks wire the pure-logic engine to real experiment I/O ──
+
+    async def _create(move_ids: list[str]) -> str:
+        seeds = [seed_from_move_id(mid) for mid in move_ids]
+        kernel_id = f"iter_kern_{int(_time.time())}"
+        exp = exp_engine.create_experiment_from_seeds(
+            request_text=gv_dict.get("request_text", "iterate_toward_goal"),
+            seeds=seeds,
+            kernel_id=kernel_id,
+        )
+        return exp.experiment_id
+
+    async def _run(experiment_id: str):
+        experiment = exp_engine.get_experiment(experiment_id)
+        if experiment is None:
+            return None, 0.0
+
+        if render_verify:
+            capture_fn = lambda: _capture_snapshot_with_render_verify(ctx, 2.0)
+        else:
+            capture_fn = lambda: _capture_snapshot(ctx)
+
+        for branch in experiment.branches:
+            if branch.status != "pending":
+                continue
+
+            # Compile plan from semantic move when branch doesn't carry one
+            if branch.compiled_plan is None and branch.move_id:
+                move = registry.get_move(branch.move_id)
+                if move is None:
+                    branch.status = "failed"
+                    continue
+                session_info = ableton.send_command("get_session_info")
+                kernel = {"session_info": session_info, "mode": "explore"}
+                plan = compiler.compile(move, kernel)
+                branch.compiled_plan = plan.to_dict()
+
+            if branch.compiled_plan is None:
+                branch.status = "failed"
+                continue
+
+            await exp_engine.run_branch_async(
+                branch=branch,
+                ableton=ableton,
+                compiled_plan=branch.compiled_plan,
+                capture_fn=capture_fn,
+                bridge=bridge,
+                mcp_registry=mcp_registry,
+                ctx=ctx,
+            )
+
+            def eval_fn(before, after):
+                score_result = engine.compute_evaluation_score(goal, before, after)
+                outcome = classify_branch_outcome(
+                    score=score_result.get("score", 0.0),
+                    protection_violated=not score_result.get("keep_change", True)
+                    and "protected" in " ".join(score_result.get("notes", [])).lower(),
+                    measurable_count=0,
+                    target_count=0,
+                    goal_progress=score_result.get("goal_progress", 0.0),
+                    exploration_rules=False,
+                )
+                return {
+                    "score": outcome.score,
+                    "keep_change": outcome.keep_change,
+                    "status": outcome.status,
+                    "note": outcome.note,
+                    "dimension_changes": score_result.get("dimension_changes", {}),
+                }
+
+            exp_engine.evaluate_branch(branch, eval_fn)
+            if branch.evaluation and branch.evaluation.get("status") == "keep":
+                branch.status = "evaluated"
+            elif branch.evaluation and branch.evaluation.get("status") == "undo":
+                branch.status = "rejected"
+
+        ranked = experiment.ranked_branches()
+        if not ranked:
+            return None, 0.0
+        top = ranked[0]
+        return top.branch_id, float(top.score or 0.0)
+
+    async def _commit(experiment_id: str, branch_id: str) -> dict:
+        return await exp_engine.commit_branch_async(
+            exp_engine.get_experiment(experiment_id),
+            branch_id,
+            ableton,
+            bridge=bridge,
+            mcp_registry=mcp_registry,
+            ctx=ctx,
+        )
+
+    async def _discard(experiment_id: str) -> dict:
+        return exp_engine.discard_experiment(experiment_id)
+
+    result = await iterate_toward_goal_engine_async(
+        candidate_move_sets=candidate_move_sets,
+        threshold=float(threshold),
+        max_iterations=int(max_iterations),
+        create_experiment_fn=_create,
+        run_experiment_fn=_run,
+        commit_fn=_commit,
+        discard_fn=_discard,
+        on_timeout=on_timeout,
+    )
+    return result.to_dict()
