@@ -293,6 +293,189 @@ def test_iterate_async_variant_awaits_coroutine_callbacks():
     assert "exp_async_0" in discarded
 
 
+# ── Commit-result inspection (P1#1 fix, v1.17.3) ───────────────────────
+#
+# Prior behavior: _iterate_async_core awaited commit_fn and dropped the
+# return value on the floor, then unconditionally returned
+# status="committed". If the underlying experiment commit failed (zero
+# steps applied) or partially succeeded, the iteration result lied.
+# These tests reproduce the bug and lock the truthful shape.
+
+
+def _make_scripted_commit_callbacks(run_results, commit_results):
+    """Like _make_fake_callbacks but commit_fn pulls from a scripted list.
+
+    commit_results[i] is the dict returned by the i-th commit_fn call.
+    Allows simulating {committed: False}, {status: "committed_with_errors"},
+    {steps_failed: N} etc. in deterministic order.
+    """
+    committed_calls = []
+    discarded = []
+    iteration_idx = [0]
+    commit_idx = [0]
+
+    def fake_create(seeds):
+        return f"exp_iter_{iteration_idx[0]}"
+
+    def fake_run(experiment_id):
+        idx = iteration_idx[0]
+        iteration_idx[0] += 1
+        if idx >= len(run_results):
+            return None, 0.0
+        return run_results[idx]
+
+    def fake_commit(experiment_id, branch_id):
+        idx = commit_idx[0]
+        commit_idx[0] += 1
+        committed_calls.append((experiment_id, branch_id))
+        if idx >= len(commit_results):
+            return {"ok": True, "steps_failed": 0, "steps_ok": 1}
+        return commit_results[idx]
+
+    def fake_discard(experiment_id):
+        discarded.append(experiment_id)
+        return {"ok": True}
+
+    return (
+        fake_create, fake_run, fake_commit, fake_discard,
+        committed_calls, discarded,
+    )
+
+
+def test_iterate_reports_commit_failed_when_commit_returns_committed_false():
+    """Commit returning {committed: False, error: ...} must not be reported
+    as status='committed'. Iteration must surface the commit failure."""
+    from mcp_server.tools._agent_os_engine.iteration import iterate_toward_goal_engine
+
+    create, run, commit, discard, committed_calls, _ = _make_scripted_commit_callbacks(
+        run_results=[("br_win", 0.85)],
+        commit_results=[
+            {"committed": False, "error": "No steps executed successfully"},
+        ],
+    )
+
+    result = iterate_toward_goal_engine(
+        candidate_move_sets=[["make_punchier"]],
+        threshold=0.70,
+        max_iterations=1,
+        create_experiment_fn=create,
+        run_experiment_fn=run,
+        commit_fn=commit,
+        discard_fn=discard,
+        on_timeout="commit_best",
+    )
+
+    assert result.status == "commit_failed", (
+        f"commit returned committed=False; iteration must not claim success. "
+        f"Got status={result.status!r}"
+    )
+    assert result.committed_experiment_id is None
+    assert result.committed_branch_id is None
+    # commit_fn was called exactly once
+    assert len(committed_calls) == 1
+    # The commit payload is surfaced on the result for inspection
+    assert "commit_result" in result.to_dict()
+    assert result.to_dict()["commit_result"]["committed"] is False
+
+
+def test_iterate_reports_committed_with_errors_on_partial_commit():
+    """Commit returning status='committed_with_errors' with steps_failed > 0
+    must NOT be reported as plain 'committed'. The partial failure must
+    be surfaced on the IterationResult."""
+    from mcp_server.tools._agent_os_engine.iteration import iterate_toward_goal_engine
+
+    create, run, commit, discard, committed_calls, _ = _make_scripted_commit_callbacks(
+        run_results=[("br_win", 0.85)],
+        commit_results=[
+            {
+                "committed": True,
+                "status": "committed_with_errors",
+                "steps_ok": 2,
+                "steps_failed": 1,
+            },
+        ],
+    )
+
+    result = iterate_toward_goal_engine(
+        candidate_move_sets=[["make_punchier"]],
+        threshold=0.70,
+        max_iterations=1,
+        create_experiment_fn=create,
+        run_experiment_fn=run,
+        commit_fn=commit,
+        discard_fn=discard,
+        on_timeout="commit_best",
+    )
+
+    assert result.status == "committed_with_errors", (
+        f"Partial commit must not be reported as plain 'committed'. "
+        f"Got status={result.status!r}"
+    )
+    assert result.committed_experiment_id == "exp_iter_0"
+    assert result.committed_branch_id == "br_win"
+    assert result.to_dict()["commit_result"]["steps_failed"] == 1
+
+
+def test_iterate_commit_best_path_also_inspects_commit_result():
+    """Same inspection discipline on the timeout commit-best path."""
+    from mcp_server.tools._agent_os_engine.iteration import iterate_toward_goal_engine
+
+    # Below threshold → exhaustion triggers commit_best.
+    # Commit fails → must not claim 'exhausted' success.
+    create, run, commit, discard, committed_calls, _ = _make_scripted_commit_callbacks(
+        run_results=[("br_a", 0.50), ("br_b", 0.60)],  # best=br_b at 0.60
+        commit_results=[
+            {"committed": False, "error": "all steps failed"},
+        ],
+    )
+
+    result = iterate_toward_goal_engine(
+        candidate_move_sets=[["m1"], ["m2"]],
+        threshold=0.80,
+        max_iterations=2,
+        create_experiment_fn=create,
+        run_experiment_fn=run,
+        commit_fn=commit,
+        discard_fn=discard,
+        on_timeout="commit_best",
+    )
+
+    assert result.status == "commit_failed", (
+        f"timeout commit_best with failing commit must report commit_failed. "
+        f"Got {result.status!r}"
+    )
+    assert result.committed_experiment_id is None
+    assert result.committed_branch_id is None
+
+
+def test_iterate_plain_committed_still_reported_for_clean_success():
+    """Back-compat: when commit returns {ok: True, steps_failed: 0, steps_ok: N>0}
+    (or the legacy fake shape {ok: True, steps_failed: 0}), status='committed'
+    must still work — we're tightening failure detection, not breaking success."""
+    from mcp_server.tools._agent_os_engine.iteration import iterate_toward_goal_engine
+
+    create, run, commit, discard, committed_calls, _ = _make_scripted_commit_callbacks(
+        run_results=[("br_win", 0.85)],
+        commit_results=[
+            {"ok": True, "committed": True, "steps_failed": 0, "steps_ok": 3},
+        ],
+    )
+
+    result = iterate_toward_goal_engine(
+        candidate_move_sets=[["make_punchier"]],
+        threshold=0.70,
+        max_iterations=1,
+        create_experiment_fn=create,
+        run_experiment_fn=run,
+        commit_fn=commit,
+        discard_fn=discard,
+        on_timeout="commit_best",
+    )
+
+    assert result.status == "committed"
+    assert result.committed_branch_id == "br_win"
+
+
 # ── MCP tool registration smoke ────────────────────────────────────────
 
 def test_iterate_toward_goal_tool_registered():

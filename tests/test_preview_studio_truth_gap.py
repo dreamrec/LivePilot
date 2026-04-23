@@ -387,3 +387,210 @@ def test_auditor_repro_blocked_variant_wins_bug(monkeypatch):
     assert ps_after is not None
     assert ps_after.status == "committed"
     assert ps_after.committed_variant_id == executable.variant_id
+
+
+# ── P1#2 truth-gap — executable variant whose plan fails at apply time ──
+#
+# Prior behavior: commit_preview_variant called engine.commit_variant()
+# BEFORE execute_plan_steps_async ran. If every execution step then
+# failed, the returned payload correctly said status="failed" /
+# committed=False, but:
+#   • preview_set.status was already "committed"
+#   • preview_set.committed_variant_id was already set
+#   • Wonder lifecycle was advanced to "resolved" / "committed"
+# So the response said failure while the stored state said success.
+
+
+def test_executable_variant_all_steps_fail_leaves_preview_set_uncommitted(monkeypatch):
+    """If every step of an executable variant's plan fails, the preview set
+    must NOT be flipped to status='committed'. The response already says
+    committed=False / status='failed'; the stored state must agree.
+    """
+    import mcp_server.runtime.execution_router as execution_router
+    from mcp_server.preview_studio.tools import commit_preview_variant
+
+    set_id = "ps_truthgap_p1_2_allfail"
+
+    exec_1 = _executable_variant(
+        "v_exec_1",
+        compiled_plan=[
+            {"tool": "set_track_volume", "params": {"track_index": 0, "volume": 0.5}},
+            {"tool": "set_track_pan", "params": {"track_index": 0, "pan": 0.3}},
+        ],
+    )
+    exec_2 = _executable_variant("v_exec_2")
+    ps = _make_set(set_id, [exec_1, exec_2])
+    original_status = ps.status
+
+    async def _fake_exec_all_fail(
+        steps, ableton=None, bridge=None, mcp_registry=None,
+        ctx=None, stop_on_failure=True,
+    ):
+        # Every step returns ok=False — reproduces "plan runs, all steps fail"
+        return [
+            SimpleNamespace(
+                ok=False,
+                tool=step.get("tool"),
+                backend="remote_command",
+                result=None,
+                error="simulated tool failure",
+            )
+            for step in steps
+        ]
+
+    monkeypatch.setattr(execution_router, "execute_plan_steps_async", _fake_exec_all_fail)
+
+    class _Ableton:
+        def send_command(self, cmd, params=None):
+            return {"ok": True}
+
+    ctx = SimpleNamespace(lifespan_context={"ableton": _Ableton()})
+    result = asyncio.run(
+        commit_preview_variant(ctx, set_id=set_id, variant_id="v_exec_1")
+    )
+
+    # Response honesty — already correct pre-fix
+    assert result["committed"] is False, result
+    assert result["status"] == "failed"
+    assert result["steps_ok"] == 0
+    assert result["steps_failed"] == 2
+
+    # State honesty — THIS is what the P1#2 fix enforces
+    ps_after = get_preview_set(set_id)
+    assert ps_after is not None
+    assert ps_after.status != "committed", (
+        f"preview_set.status must not be 'committed' when every step failed; "
+        f"got {ps_after.status!r}"
+    )
+    assert ps_after.committed_variant_id == "", (
+        f"committed_variant_id must be empty on failed commit; "
+        f"got {ps_after.committed_variant_id!r}"
+    )
+    # Sibling must not be discarded either — the commit didn't happen
+    labels_by_id = {v.variant_id: v.status for v in ps_after.variants}
+    assert labels_by_id["v_exec_2"] != "discarded", (
+        f"sibling variant must not be discarded on failed commit; "
+        f"got {labels_by_id}"
+    )
+
+
+def test_executable_variant_all_steps_fail_does_not_advance_wonder_lifecycle(monkeypatch):
+    """Companion to above: WonderSession must NOT be marked resolved when
+    the committed variant's plan entirely failed.
+    """
+    import mcp_server.runtime.execution_router as execution_router
+    from mcp_server.preview_studio.tools import commit_preview_variant
+    from mcp_server.wonder_mode.session import (
+        WonderSession,
+        store_wonder_session,
+        get_wonder_session,
+    )
+
+    set_id = "ps_truthgap_p1_2_wonder_allfail"
+
+    exec_1 = _executable_variant("v_p12_wonder_exec")
+    _make_set(set_id, [exec_1])
+
+    ws = WonderSession(
+        session_id="ws_truthgap_p1_2",
+        request_text="wonder-linked failure repro",
+        preview_set_id=set_id,
+        status="previewing",
+        variants=[{"variant_id": "v_p12_wonder_exec", "family": "evolve"}],
+    )
+    store_wonder_session(ws)
+
+    async def _fake_exec_all_fail(
+        steps, ableton=None, bridge=None, mcp_registry=None,
+        ctx=None, stop_on_failure=True,
+    ):
+        return [
+            SimpleNamespace(
+                ok=False,
+                tool=step.get("tool"),
+                backend="remote_command",
+                result=None,
+                error="simulated failure",
+            )
+            for step in steps
+        ]
+
+    monkeypatch.setattr(execution_router, "execute_plan_steps_async", _fake_exec_all_fail)
+
+    class _Ableton:
+        def send_command(self, cmd, params=None):
+            return {"ok": True}
+
+    ctx = SimpleNamespace(lifespan_context={"ableton": _Ableton()})
+    asyncio.run(
+        commit_preview_variant(ctx, set_id=set_id, variant_id="v_p12_wonder_exec")
+    )
+
+    ws_after = get_wonder_session("ws_truthgap_p1_2")
+    assert ws_after is not None
+    assert ws_after.status != "resolved", (
+        f"Wonder lifecycle must not advance to 'resolved' when every step "
+        f"failed; got status={ws_after.status!r}"
+    )
+    assert ws_after.outcome != "committed", (
+        f"Wonder outcome must not be 'committed' for zero-step-success pick; "
+        f"got outcome={ws_after.outcome!r}"
+    )
+
+
+def test_executable_variant_partial_success_commits_honestly(monkeypatch):
+    """Partial success (some steps ok, some fail) IS a legitimate commit —
+    state should reflect 'committed_with_errors'. Wonder advances to
+    resolved because something actually applied.
+    """
+    import mcp_server.runtime.execution_router as execution_router
+    from mcp_server.preview_studio.tools import commit_preview_variant
+
+    set_id = "ps_truthgap_p1_2_partial"
+
+    exec_1 = _executable_variant(
+        "v_p12_partial",
+        compiled_plan=[
+            {"tool": "set_track_volume", "params": {"track_index": 0, "volume": 0.5}},
+            {"tool": "set_track_pan", "params": {"track_index": 0, "pan": 0.3}},
+        ],
+    )
+    _make_set(set_id, [exec_1])
+
+    async def _fake_exec_partial(
+        steps, ableton=None, bridge=None, mcp_registry=None,
+        ctx=None, stop_on_failure=True,
+    ):
+        # First step succeeds, second fails.
+        outcomes = [True, False]
+        return [
+            SimpleNamespace(
+                ok=ok,
+                tool=step.get("tool"),
+                backend="remote_command",
+                result={"ok": True} if ok else None,
+                error="" if ok else "simulated partial failure",
+            )
+            for step, ok in zip(steps, outcomes)
+        ]
+
+    monkeypatch.setattr(execution_router, "execute_plan_steps_async", _fake_exec_partial)
+
+    class _Ableton:
+        def send_command(self, cmd, params=None):
+            return {"ok": True}
+
+    ctx = SimpleNamespace(lifespan_context={"ableton": _Ableton()})
+    result = asyncio.run(
+        commit_preview_variant(ctx, set_id=set_id, variant_id="v_p12_partial")
+    )
+
+    assert result["status"] == "committed_with_errors"
+    assert result["steps_ok"] == 1
+    assert result["steps_failed"] == 1
+
+    # Partial success IS a commit — state agrees
+    ps_after = get_preview_set(set_id)
+    assert ps_after is not None
+    assert ps_after.status == "committed"
+    assert ps_after.committed_variant_id == "v_p12_partial"

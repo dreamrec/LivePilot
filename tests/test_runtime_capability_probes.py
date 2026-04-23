@@ -140,3 +140,82 @@ def test_flucoma_probe_helper_uses_find_spec(monkeypatch):
 
     monkeypatch.setattr(importlib.util, "find_spec", lambda name: _Spec())
     assert runtime_tools._probe_flucoma() is True
+
+
+# ── P2#3 (v1.17.3) — probes must propagate through get_session_kernel ──
+#
+# Prior behavior: get_session_kernel called build_capability_state() with
+# only session/analyzer/memory arguments, so web_ok and flucoma_ok
+# defaulted to False. Meanwhile get_capability_state correctly probed
+# both and passed them through. Higher-level planners use the session
+# kernel as the orchestration entrypoint, so they stayed on degraded
+# paths even when probes would have reported available.
+
+
+def test_session_kernel_surfaces_web_probe_result(monkeypatch):
+    """monkeypatch _probe_web to return True; get_session_kernel must
+    report web as available in its capability state."""
+    from mcp_server.runtime import tools as runtime_tools
+
+    monkeypatch.setattr(runtime_tools, "_probe_web", lambda timeout=0.5: True)
+    # Keep flucoma default (off) to isolate the web signal
+    monkeypatch.setattr(runtime_tools, "_probe_flucoma", lambda: False)
+
+    ctx = _make_ctx()
+    kernel = runtime_tools.get_session_kernel(ctx)
+
+    # Kernel exposes capability state double-wrapped: kernel["capability_state"]
+    # is the dict from build_capability_state(...).to_dict(), which itself
+    # has shape {"capability_state": {"overall_mode": ..., "domains": {...}}}.
+    outer = kernel.get("capability_state")
+    assert outer is not None, (
+        f"kernel must expose capability_state; got kernel keys {list(kernel.keys())!r}"
+    )
+    cap_state = outer.get("capability_state", outer)
+    domains = cap_state.get("domains", {})
+    assert "web" in domains, (
+        f"kernel capability state must include web domain; got {list(domains)!r}"
+    )
+    assert domains["web"]["available"] is True, (
+        f"web probe returned True, but kernel reports web unavailable; "
+        f"domains['web']={domains['web']!r}"
+    )
+
+
+def test_session_kernel_surfaces_flucoma_probe_result(monkeypatch):
+    """monkeypatch _probe_flucoma to return True; kernel must report it."""
+    from mcp_server.runtime import tools as runtime_tools
+
+    monkeypatch.setattr(runtime_tools, "_probe_web", lambda timeout=0.5: False)
+    monkeypatch.setattr(runtime_tools, "_probe_flucoma", lambda: True)
+
+    ctx = _make_ctx()
+    kernel = runtime_tools.get_session_kernel(ctx)
+
+    outer = kernel.get("capability_state")
+    assert outer is not None
+    cap_state = outer.get("capability_state", outer)
+    domains = cap_state.get("domains", {})
+    assert domains.get("flucoma", {}).get("available") is True, (
+        f"flucoma probe returned True, but kernel reports unavailable; "
+        f"domains['flucoma']={domains.get('flucoma')!r}"
+    )
+
+
+def test_session_kernel_reports_both_unavailable_when_probes_false(monkeypatch):
+    """Back-compat: when both probes return False, kernel still reports
+    them correctly (unavailable)."""
+    from mcp_server.runtime import tools as runtime_tools
+
+    monkeypatch.setattr(runtime_tools, "_probe_web", lambda timeout=0.5: False)
+    monkeypatch.setattr(runtime_tools, "_probe_flucoma", lambda: False)
+
+    ctx = _make_ctx()
+    kernel = runtime_tools.get_session_kernel(ctx)
+
+    outer = kernel.get("capability_state")
+    assert outer is not None
+    cap_state = outer.get("capability_state", outer)
+    domains = cap_state.get("domains", {})
+    assert domains.get("web", {}).get("available") is False
+    assert domains.get("flucoma", {}).get("available") is False

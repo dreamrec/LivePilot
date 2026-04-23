@@ -1,5 +1,64 @@
 # Changelog
 
+## 1.17.3 — Truth-gap remediation, for real (April 23 2026)
+
+### Fixed
+
+- **`iterate_toward_goal` now inspects `commit_fn` return value** (P1,
+  `mcp_server/tools/_agent_os_engine/iteration.py`): prior to this release
+  the iteration loop awaited the commit callback and dropped the return
+  value on the floor, then unconditionally returned `status="committed"`.
+  If the underlying `commit_branch_async` applied zero steps or partially
+  succeeded, the iteration result claimed success — the exact bug pattern
+  the release was meant to fix elsewhere. New `_classify_commit_result()`
+  helper maps known payload shapes to three statuses: `"committed"` (clean),
+  `"committed_with_errors"` (steps_ok > 0 AND steps_failed > 0), and
+  `"commit_failed"` (committed=False, ok=False, status="failed", or
+  steps_ok == 0). Both sync and async cores now zero out
+  `committed_experiment_id`/`committed_branch_id` when the commit truly
+  failed, and surface the raw commit payload on `IterationResult.commit_result`.
+- **Preview Studio commit-before-execute ordering** (P1,
+  `mcp_server/preview_studio/tools.py`): `commit_preview_variant()` called
+  `engine.commit_variant()` BEFORE `execute_plan_steps_async` ran. That
+  flipped `preview_set.status = "committed"` and `committed_variant_id`
+  up front, so when every execution step failed the response correctly
+  said `committed: false / status: "failed"` but the stored state still
+  said the opposite. Wonder lifecycle advance also fired regardless.
+  Reorder: execute first, then flip state only when `steps_ok > 0`.
+  Zero-success path now returns honestly and leaves `preview_set` and
+  WonderSession untouched. Partial-success stays a legitimate commit
+  with `status="committed_with_errors"`.
+- **`get_session_kernel` propagates web + flucoma probe results** (P2,
+  `mcp_server/runtime/tools.py`): the kernel builder called
+  `build_capability_state(...)` with only session/analyzer/memory params,
+  so `web_ok` and `flucoma_ok` silently defaulted to `False`. Meanwhile
+  `get_capability_state()` correctly probed both. Planners that read
+  the kernel (the documented orchestration entrypoint) stayed on
+  degraded paths even when probes would have reported available. Fix:
+  call `_probe_web()` + `_probe_flucoma()` inside `get_session_kernel`
+  and pass through.
+
+### Added
+
+- **10 new tests** covering the three truth-gap classes:
+  - `test_iterate_toward_goal.py`: 4 tests for commit inspection
+    (failed commit, partial commit, timeout commit_best, back-compat
+    clean success).
+  - `test_preview_studio_truth_gap.py`: 3 tests for
+    executable-variant-fails paths (all-steps-fail preserves state,
+    Wonder not advanced, partial-success honest commit).
+  - `test_runtime_capability_probes.py`: 3 tests for kernel
+    propagation (web probe → kernel, flucoma probe → kernel,
+    both-unavailable back-compat).
+- **`IterationResult.commit_result`** — the raw commit_fn payload,
+  surfaced on the returned dict whenever a commit was attempted.
+  Callers can inspect `result["commit_result"]["steps_failed"]`,
+  `result["commit_result"]["error"]`, etc.
+
+This release closes what the post-v1.17.2 review correctly flagged:
+the feature we shipped to "close the evaluation loop" had a truth-gap
+at the innermost step. 2712 → 2722 tests pass.
+
 ## 1.17.2 — iterate_toward_goal + preview-studio truth-gap (April 23 2026)
 
 ### Added

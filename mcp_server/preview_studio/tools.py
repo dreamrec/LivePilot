@@ -327,20 +327,17 @@ async def commit_preview_variant(
             ),
         }
 
-    # Only now do we flip state — the chosen variant has an executable plan.
-    chosen = engine.commit_variant(ps, variant_id)
-    # engine.commit_variant cannot return None here (we already verified
-    # the variant_id exists), but keep the defensive check for the type
-    # checker.
-    if not chosen:
-        available = [v.variant_id for v in ps.variants]
-        return {
-            "error": f"Variant {variant_id} not found in set {set_id}",
-            "available_variants": available,
-        }
-
+    # ── P1#2 fix (v1.17.3): execute BEFORE flipping state ──
+    # Prior behavior: engine.commit_variant() ran here, BEFORE execution.
+    # If every step then failed, the returned payload correctly said
+    # committed=False / status='failed' — but preview_set.status was
+    # already "committed" and Wonder lifecycle advance fired regardless.
+    # Response and stored state contradicted each other.
+    #
+    # New flow: we already have `chosen` from the resolution block above.
+    # Execute the plan first, count successes, THEN flip state only when
+    # at least one step actually applied. Zero successes = honest no-op.
     result = {
-        "committed": True,
         "variant_id": chosen.variant_id,
         "label": chosen.label,
         "intent": chosen.intent,
@@ -381,15 +378,24 @@ async def commit_preview_variant(
     result["steps_ok"] = steps_ok
     result["steps_failed"] = steps_failed
 
+    # ── P1#2: only flip preview-set state when at least one step succeeded ──
     if steps_failed == 0 and steps_ok > 0:
         result["status"] = "committed"
+        result["committed"] = True
+        engine.commit_variant(ps, variant_id)
     elif steps_ok > 0:
         result["status"] = "committed_with_errors"
+        result["committed"] = True  # partial but real commit
+        engine.commit_variant(ps, variant_id)
     else:
+        # Every step failed — do NOT flip preview-set state, do NOT advance
+        # Wonder. The response already reflects the failure; the stored
+        # state must agree.
         result["status"] = "failed"
         result["committed"] = False
+        return result
 
-    # Wonder lifecycle hooks
+    # Wonder lifecycle hooks — only reached when steps_ok > 0.
     ws = _find_wonder_session_by_preview(set_id)
     if ws:
         ws.selected_variant_id = variant_id

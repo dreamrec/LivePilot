@@ -39,11 +39,16 @@ class IterationResult:
     """Final result of iterate_toward_goal.
 
     status:
-      - "committed" — a winner hit threshold, was committed permanently
-      - "exhausted" — max_iterations reached, committed best-so-far (on_timeout=commit_best)
+      - "committed" — a winner hit threshold AND commit succeeded (steps_ok>0, steps_failed==0)
+      - "committed_with_errors" — commit applied some steps but not all (steps_ok>0 AND steps_failed>0)
+      - "commit_failed" — commit was attempted but applied zero steps (steps_ok==0 OR committed:false)
+      - "exhausted" — max_iterations reached, committed best-so-far cleanly (on_timeout=commit_best)
       - "timeout_no_commit" — max_iterations reached, no commit (on_timeout=discard_on_timeout)
       - "no_candidates" — caller provided empty candidate_move_sets
-      - "error" — unrecoverable error; see reason
+
+    commit_result: the raw dict returned by commit_fn, surfaced for caller
+      inspection. Populated whenever commit_fn was called (regardless of
+      whether the commit succeeded). None when no commit was attempted.
     """
     status: str
     iterations_run: int
@@ -52,9 +57,10 @@ class IterationResult:
     final_score: float
     steps: list[IterationStep] = field(default_factory=list)
     reason: str = ""
+    commit_result: Optional[dict] = None
 
     def to_dict(self) -> dict:
-        return {
+        d = {
             "status": self.status,
             "iterations_run": self.iterations_run,
             "committed_experiment_id": self.committed_experiment_id,
@@ -63,6 +69,55 @@ class IterationResult:
             "steps": [s.to_dict() for s in self.steps],
             "reason": self.reason,
         }
+        if self.commit_result is not None:
+            d["commit_result"] = self.commit_result
+        return d
+
+
+def _classify_commit_result(result: Any) -> str:
+    """Inspect a commit_fn return value and classify into an IterationResult
+    status. Conservative: any failure signal produces 'commit_failed', any
+    partial signal produces 'committed_with_errors', only clean success
+    produces 'committed'.
+
+    Known failure signals:
+      - {"committed": False, ...}
+      - {"status": "failed", ...}
+      - {"ok": False, ...}
+      - {"error": ...} present at top level (unless committed explicitly True)
+      - {"steps_ok": 0, ...}
+
+    Known partial signals:
+      - {"status": "committed_with_errors", ...}
+      - {"steps_failed": N, "steps_ok": M>0} where N>0
+    """
+    if not isinstance(result, dict):
+        # Non-dict returns: trust the caller but don't confirm partial/error.
+        return "committed"
+
+    # Hard failure signals
+    if result.get("committed") is False:
+        return "commit_failed"
+    if result.get("ok") is False:
+        return "commit_failed"
+    if result.get("status") == "failed":
+        return "commit_failed"
+    steps_ok = result.get("steps_ok")
+    steps_failed = result.get("steps_failed")
+    if steps_ok == 0 and (steps_failed is None or steps_failed > 0):
+        return "commit_failed"
+
+    # Partial success
+    if result.get("status") == "committed_with_errors":
+        return "committed_with_errors"
+    if (
+        isinstance(steps_failed, int) and steps_failed > 0
+        and isinstance(steps_ok, int) and steps_ok > 0
+    ):
+        return "committed_with_errors"
+
+    # Otherwise: clean success
+    return "committed"
 
 
 def iterate_toward_goal_engine(
@@ -195,15 +250,37 @@ def _iterate_sync_core(
             # otherwise the old non-winning experiment leaks in the store.
             if best_exp_id is not None and best_exp_id != exp_id:
                 discard_fn(best_exp_id)
-            commit_fn(exp_id, winner_branch_id)
+            commit_payload = commit_fn(exp_id, winner_branch_id)
+            commit_status = _classify_commit_result(commit_payload)
+            commit_dict = commit_payload if isinstance(commit_payload, dict) else None
+            if commit_status == "commit_failed":
+                return IterationResult(
+                    status="commit_failed",
+                    iterations_run=i + 1,
+                    committed_experiment_id=None,
+                    committed_branch_id=None,
+                    final_score=winner_score,
+                    steps=steps,
+                    reason=(
+                        f"threshold {threshold} met on iteration {i} but commit "
+                        f"applied no steps; see commit_result"
+                    ),
+                    commit_result=commit_dict,
+                )
             return IterationResult(
-                status="committed",
+                status=commit_status,  # "committed" or "committed_with_errors"
                 iterations_run=i + 1,
                 committed_experiment_id=exp_id,
                 committed_branch_id=winner_branch_id,
                 final_score=winner_score,
                 steps=steps,
-                reason=f"threshold {threshold} met on iteration {i}",
+                reason=(
+                    f"threshold {threshold} met on iteration {i}"
+                    if commit_status == "committed"
+                    else f"threshold {threshold} met on iteration {i}; "
+                         f"commit applied with partial failures (see commit_result)"
+                ),
+                commit_result=commit_dict,
             )
 
         if winner_branch_id is not None and winner_score > best_score:
@@ -217,9 +294,26 @@ def _iterate_sync_core(
             discard_fn(exp_id)
 
     if on_timeout == "commit_best" and best_exp_id and best_branch_id:
-        commit_fn(best_exp_id, best_branch_id)
+        commit_payload = commit_fn(best_exp_id, best_branch_id)
+        commit_status = _classify_commit_result(commit_payload)
+        commit_dict = commit_payload if isinstance(commit_payload, dict) else None
+        if commit_status == "commit_failed":
+            return IterationResult(
+                status="commit_failed",
+                iterations_run=n,
+                committed_experiment_id=None,
+                committed_branch_id=None,
+                final_score=best_score,
+                steps=steps,
+                reason=(
+                    f"max_iterations={n} reached; commit_best selected best-so-far "
+                    f"(score {best_score}) but the commit applied no steps; "
+                    f"see commit_result"
+                ),
+                commit_result=commit_dict,
+            )
         return IterationResult(
-            status="exhausted",
+            status="exhausted" if commit_status == "committed" else "committed_with_errors",
             iterations_run=n,
             committed_experiment_id=best_exp_id,
             committed_branch_id=best_branch_id,
@@ -228,7 +322,9 @@ def _iterate_sync_core(
             reason=(
                 f"max_iterations={n} reached, threshold {threshold} never met; "
                 f"committed best-so-far with score {best_score}"
+                + ("" if commit_status == "committed" else " (partial commit — see commit_result)")
             ),
+            commit_result=commit_dict,
         )
 
     if best_exp_id:
@@ -296,15 +392,37 @@ async def _iterate_async_core(
         if met:
             if best_exp_id is not None and best_exp_id != exp_id:
                 await _maybe_await(discard_fn(best_exp_id))
-            await _maybe_await(commit_fn(exp_id, winner_branch_id))
+            commit_payload = await _maybe_await(commit_fn(exp_id, winner_branch_id))
+            commit_status = _classify_commit_result(commit_payload)
+            commit_dict = commit_payload if isinstance(commit_payload, dict) else None
+            if commit_status == "commit_failed":
+                return IterationResult(
+                    status="commit_failed",
+                    iterations_run=i + 1,
+                    committed_experiment_id=None,
+                    committed_branch_id=None,
+                    final_score=winner_score,
+                    steps=steps,
+                    reason=(
+                        f"threshold {threshold} met on iteration {i} but commit "
+                        f"applied no steps; see commit_result"
+                    ),
+                    commit_result=commit_dict,
+                )
             return IterationResult(
-                status="committed",
+                status=commit_status,
                 iterations_run=i + 1,
                 committed_experiment_id=exp_id,
                 committed_branch_id=winner_branch_id,
                 final_score=winner_score,
                 steps=steps,
-                reason=f"threshold {threshold} met on iteration {i}",
+                reason=(
+                    f"threshold {threshold} met on iteration {i}"
+                    if commit_status == "committed"
+                    else f"threshold {threshold} met on iteration {i}; "
+                         f"commit applied with partial failures (see commit_result)"
+                ),
+                commit_result=commit_dict,
             )
 
         if winner_branch_id is not None and winner_score > best_score:
@@ -317,9 +435,26 @@ async def _iterate_async_core(
             await _maybe_await(discard_fn(exp_id))
 
     if on_timeout == "commit_best" and best_exp_id and best_branch_id:
-        await _maybe_await(commit_fn(best_exp_id, best_branch_id))
+        commit_payload = await _maybe_await(commit_fn(best_exp_id, best_branch_id))
+        commit_status = _classify_commit_result(commit_payload)
+        commit_dict = commit_payload if isinstance(commit_payload, dict) else None
+        if commit_status == "commit_failed":
+            return IterationResult(
+                status="commit_failed",
+                iterations_run=n,
+                committed_experiment_id=None,
+                committed_branch_id=None,
+                final_score=best_score,
+                steps=steps,
+                reason=(
+                    f"max_iterations={n} reached; commit_best selected best-so-far "
+                    f"(score {best_score}) but the commit applied no steps; "
+                    f"see commit_result"
+                ),
+                commit_result=commit_dict,
+            )
         return IterationResult(
-            status="exhausted",
+            status="exhausted" if commit_status == "committed" else "committed_with_errors",
             iterations_run=n,
             committed_experiment_id=best_exp_id,
             committed_branch_id=best_branch_id,
@@ -328,7 +463,9 @@ async def _iterate_async_core(
             reason=(
                 f"max_iterations={n} reached, threshold {threshold} never met; "
                 f"committed best-so-far with score {best_score}"
+                + ("" if commit_status == "committed" else " (partial commit — see commit_result)")
             ),
+            commit_result=commit_dict,
         )
 
     if best_exp_id:
