@@ -5,6 +5,36 @@ that breaks pattern repetition, because LLM-driven generation collapses
 to the most-likely completion by default — and "most-likely" is almost
 always "what I did last time."
 
+## Ledger-state inference fallback (v1.18.1)
+
+The detection mechanisms below (`get_last_move`, `memory_list`) ONLY
+see moves that went through `apply_semantic_move` or `commit_experiment`.
+If a prior Phase 6 executed via raw tool calls WITHOUT an
+`add_session_memory` ledger marker (per director SKILL.md Phase 6
+ledger discipline), the ledger will appear empty even though creative
+work happened.
+
+**Fallback when `get_last_move` returns `{}` and `memory_list` shows
+no recent creative entries**: perform session-state inference. Compare
+the current session state (track count, return track device chains,
+clip slot contents) against a naive "blank session" baseline. Any
+non-default device loadout or non-empty return track suggests recent
+creative work that the ledger missed. Infer the move family from
+what's loaded:
+
+| Session-state signal | Inferred recent family |
+|---|---|
+| Non-empty return tracks with delay/reverb chains | `device_creation` / `mix` (spatial) |
+| New devices on MIDI tracks (Drift, Meld, Operator, etc.) | `sound_design` / `device_creation` (timbral) |
+| Modified mixer state (volume/pan/sends non-default) | `mix` |
+| Clips with notes in previously-empty slots | `arrangement` / `sound_design` (rhythmic) |
+| New scenes / renamed scenes | `arrangement` (structural) |
+
+State inference is a best-effort fallback, not a replacement for the
+ledger. Director SHOULD use `add_session_memory` after raw-tool
+execution to populate the ledger properly — the fallback exists to
+reduce blast radius when Phase 6 discipline was skipped.
+
 ## Mandatory pre-generation reads
 
 Run all three in parallel during Phase 1. Skipping any of them = the

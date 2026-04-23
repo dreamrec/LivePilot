@@ -183,6 +183,38 @@ and to queue the required `remeasure` diagnostics for Phase 7. See
 `livepilot-core/references/affordances/_schema.md` for the packet
 structure.
 
+**Ledger-marker discipline (v1.18.1):** the action ledger (`get_last_move`,
+`memory_list`) is populated by `apply_semantic_move` and `commit_experiment`.
+When Phase 6 executes via raw tool calls (`set_device_parameter`,
+`load_browser_item`, `set_track_send`, etc.) — for example when affordance
+parameters are being applied directly — NOTHING gets written to the ledger
+automatically. This blinds subsequent anti-repetition detection on the
+next creative turn.
+
+**Mandatory ledger marker for raw-tool execution:** after a raw-tool
+execution batch, call `add_session_memory` with a one-line summary
+covering the move's family + target + brief identity:
+
+```
+add_session_memory(
+    category="move_executed",
+    content="device_creation:return-A dub-chain (Echo + Auto Filter + "
+            "Convolution Reverb) — brief: Basic Channel dub architecture",
+    engine="creative_director",
+)
+```
+
+Keep the `content` field terse but include: family (from move-family-
+diversity-rule.md), target (track / return / master), and the brief's
+identity sentence. This is the minimum-effective ledger marker until
+v1.19 routes all director execution through semantic_move commits.
+
+Prefer `apply_semantic_move` or `commit_experiment` when a semantic-move
+exists that matches the plan — they populate the ledger for free.
+`add_session_memory` is the fallback when no semantic-move matches
+(e.g., device-creation sequences, custom preset loads, signal-chain
+architecture).
+
 ### Phase 7 — Evaluate (critics fire HERE, not earlier)
 
 `evaluate_move` with artistic dimensions (`style_fit`, `distinctiveness`,

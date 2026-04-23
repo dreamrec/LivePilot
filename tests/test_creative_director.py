@@ -589,6 +589,45 @@ def test_propose_composer_branches_honors_explicit_count():
     )
 
 
+def test_director_phase6_records_ledger_marker():
+    """v1.18.1 #3 MED-HIGH SEV: director's raw-tool-call execution path
+    bypasses the action ledger, making get_last_move return {} and
+    breaking anti-repetition on subsequent creative turns.
+
+    Minimum fix: Phase 6 must explicitly document that raw-tool execution
+    requires a manual ledger marker via add_session_memory OR memory_learn.
+    Full architectural fix (route all execution through semantic_move) is
+    deferred to v1.19."""
+    skill = (DIRECTOR_ROOT / "SKILL.md").read_text()
+    assert "### Phase 6" in skill, "director must have a Phase 6 section"
+    phase_6 = skill.split("### Phase 6")[1].split("### Phase 7")[0]
+    # Must reference manual ledger writing
+    has_session_memory = "add_session_memory" in phase_6 or "session_memory" in phase_6
+    has_ledger_guidance = "ledger" in phase_6.lower()
+    assert has_session_memory and has_ledger_guidance, (
+        "Phase 6 must document add_session_memory as the ledger-marker "
+        "for raw-tool execution paths. Currently missing — get_last_move "
+        "returns empty on creative turns that bypass semantic_move."
+    )
+
+
+def test_anti_repetition_has_state_inference_fallback():
+    """v1.18.1 #3: When the action ledger is empty because the director
+    used raw tool calls (not semantic_move commits), anti-repetition
+    must fall back to session-state inference — scan currently-loaded
+    devices and track-assignment deltas to infer recent family activity.
+    Without this fallback, the director is blind to its own recent
+    actions across turns."""
+    rules = (DIRECTOR_ROOT / "references" / "anti-repetition-rules.md").read_text().lower()
+    # Must reference the fallback mechanism explicitly
+    fallback_keywords = ("state inference", "session state", "ledger is empty",
+                        "ledger empty", "state-based inference")
+    assert any(kw in rules for kw in fallback_keywords), (
+        "anti-repetition-rules.md must document the state-inference "
+        "fallback for when get_last_move / memory_list is empty"
+    )
+
+
 def test_batch_set_parameters_schema_documented():
     """v1.18.1 bonus: the batch_set_parameters schema requires
     {'Name': {'value': v}}, not {'Name': v}. Live verification bit me on
