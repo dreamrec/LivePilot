@@ -6,7 +6,7 @@ pretty_midi>=0.2.11
 # v1.8 Perception Layer (offline analysis)
 pyloudnorm>=0.1.0
 soundfile>=0.13.1
-scipy>=1.11.0
+scipy>=1.17.1
 mutagen>=1.47.0
 # v1.10.5 Splice online catalog integration — required, not optional.
 # Without these, SpliceGRPCClient silently disables itself and search_samples
