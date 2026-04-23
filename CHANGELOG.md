@@ -1,6 +1,32 @@
 # Changelog
 
-## 1.17.1 — Splice auto-reconnect + Codex installer fix (April 23 2026)
+## Unreleased
+
+### Fixed
+
+- **Preview Studio truth-gap** (`mcp_server/preview_studio/engine.py`,
+  `mcp_server/preview_studio/tools.py`): two compounding bugs made the
+  system lie about committed state.
+  1. `compare_variants()` scored every variant without filtering for
+     `status="blocked"` or missing `compiled_plan`. A blocked /
+     analytical-only variant could win the recommendation even with a
+     higher taste_fit than the only executable option. Fix: partition
+     variants into executable vs analytical, score only the executable
+     list, surface the analytical bucket on a new `analytical_candidates`
+     field for introspection. `recommended` stays a bare string (or
+     `None` when no executable variant exists) so no API shape breaks.
+  2. `commit_preview_variant()` called `engine.commit_variant()` — which
+     flips `preview_set.status = "committed"` and discards every sibling
+     variant — BEFORE checking whether the chosen variant had a compiled
+     plan. Analytical-only picks therefore got recorded as committed
+     with `committed=False` in the response and the preview set's
+     in-memory state said the opposite. Wonder lifecycle also advanced
+     to `resolved`. Fix: short-circuit analytical/blocked picks at the
+     top of the handler, return `{committed: False, reason:
+     "analytical_only" | "blocked", ...}`, leave `preview_set.status`
+     untouched, and gate Wonder lifecycle hooks behind the executable
+     branch. New regressions in `tests/test_preview_studio_truth_gap.py`
+     lock all four scenarios (A1-A4 from the remediation plan).
 
 Two bug fixes discovered in a parallel worktree hours after v1.17.0
 shipped. Non-breaking, test-locked, ships as a patch.
