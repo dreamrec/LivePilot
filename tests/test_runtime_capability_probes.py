@@ -164,14 +164,11 @@ def test_session_kernel_surfaces_web_probe_result(monkeypatch):
     ctx = _make_ctx()
     kernel = runtime_tools.get_session_kernel(ctx)
 
-    # Kernel exposes capability state double-wrapped: kernel["capability_state"]
-    # is the dict from build_capability_state(...).to_dict(), which itself
-    # has shape {"capability_state": {"overall_mode": ..., "domains": {...}}}.
-    outer = kernel.get("capability_state")
-    assert outer is not None, (
+    # v1.17.4: capability_state is flat — kernel["capability_state"]["domains"].
+    cap_state = kernel.get("capability_state")
+    assert cap_state is not None, (
         f"kernel must expose capability_state; got kernel keys {list(kernel.keys())!r}"
     )
-    cap_state = outer.get("capability_state", outer)
     domains = cap_state.get("domains", {})
     assert "web" in domains, (
         f"kernel capability state must include web domain; got {list(domains)!r}"
@@ -192,9 +189,8 @@ def test_session_kernel_surfaces_flucoma_probe_result(monkeypatch):
     ctx = _make_ctx()
     kernel = runtime_tools.get_session_kernel(ctx)
 
-    outer = kernel.get("capability_state")
-    assert outer is not None
-    cap_state = outer.get("capability_state", outer)
+    cap_state = kernel.get("capability_state")
+    assert cap_state is not None
     domains = cap_state.get("domains", {})
     assert domains.get("flucoma", {}).get("available") is True, (
         f"flucoma probe returned True, but kernel reports unavailable; "
@@ -213,9 +209,8 @@ def test_session_kernel_reports_both_unavailable_when_probes_false(monkeypatch):
     ctx = _make_ctx()
     kernel = runtime_tools.get_session_kernel(ctx)
 
-    outer = kernel.get("capability_state")
-    assert outer is not None
-    cap_state = outer.get("capability_state", outer)
+    cap_state = kernel.get("capability_state")
+    assert cap_state is not None
     domains = cap_state.get("domains", {})
     assert domains.get("web", {}).get("available") is False
     assert domains.get("flucoma", {}).get("available") is False
@@ -245,9 +240,8 @@ def test_session_kernel_reports_memory_unavailable_when_store_raises(monkeypatch
     ctx = _make_ctx()
     kernel = runtime_tools.get_session_kernel(ctx)
 
-    outer = kernel.get("capability_state")
-    assert outer is not None
-    cap_state = outer.get("capability_state", outer)
+    cap_state = kernel.get("capability_state")
+    assert cap_state is not None
     domains = cap_state.get("domains", {})
     memory = domains.get("memory", {})
     assert memory.get("available") is False, (
@@ -269,12 +263,74 @@ def test_session_kernel_reports_memory_available_when_store_works(monkeypatch):
     ctx = _make_ctx()
     kernel = runtime_tools.get_session_kernel(ctx)
 
-    outer = kernel.get("capability_state")
-    assert outer is not None
-    cap_state = outer.get("capability_state", outer)
+    cap_state = kernel.get("capability_state")
+    assert cap_state is not None
     domains = cap_state.get("domains", {})
     memory = domains.get("memory", {})
     assert memory.get("available") is True, (
         f"memory probe succeeded, but kernel reports unavailable; "
         f"domains['memory']={memory!r}"
     )
+
+
+# ── v1.17.4 — flatten capability_state shape (no double-nesting) ───────
+#
+# Prior behavior: get_session_kernel passed build_capability_state(...).to_dict()
+# as-is to build_session_kernel. state.to_dict() already wraps its own
+# output in {"capability_state": {...}}, so consumers had to navigate
+# kernel["capability_state"]["capability_state"]["domains"] — ugly.
+# v1.17.3 tests worked around it with `outer.get("capability_state", outer)`.
+# Fix: pass state.to_dict()["capability_state"] so the kernel stores the
+# inner dict directly. Consumer path becomes kernel["capability_state"]["domains"].
+
+
+def test_kernel_capability_state_is_flat_not_double_nested(monkeypatch):
+    """The kernel's capability_state field must be the capability state dict
+    directly — NOT a dict wrapping another 'capability_state' key.
+
+    Old shape (broken): kernel["capability_state"]["capability_state"]["domains"]
+    New shape (fixed):  kernel["capability_state"]["domains"]
+    """
+    from mcp_server.runtime import tools as runtime_tools
+
+    monkeypatch.setattr(runtime_tools, "_probe_web", lambda timeout=0.5: False)
+    monkeypatch.setattr(runtime_tools, "_probe_flucoma", lambda: False)
+
+    ctx = _make_ctx()
+    kernel = runtime_tools.get_session_kernel(ctx)
+
+    cap_state = kernel["capability_state"]
+    # The flat shape MUST expose domains + overall_mode at this level
+    assert "domains" in cap_state, (
+        f"kernel['capability_state'] must contain 'domains' directly; "
+        f"got keys {list(cap_state.keys())!r}"
+    )
+    assert "overall_mode" in cap_state, (
+        f"kernel['capability_state'] must contain 'overall_mode' directly; "
+        f"got keys {list(cap_state.keys())!r}"
+    )
+    # And MUST NOT have a nested 'capability_state' key (the old broken shape)
+    assert "capability_state" not in cap_state, (
+        f"kernel['capability_state'] must not double-wrap 'capability_state' "
+        f"key; found keys {list(cap_state.keys())!r}. Old shape was "
+        f"kernel['capability_state']['capability_state']['domains'] — we "
+        f"want the inner dict at kernel['capability_state'] directly."
+    )
+
+
+def test_kernel_flat_shape_preserves_domain_access():
+    """End-to-end: with the flat shape, planners access
+    kernel['capability_state']['domains']['session_access'] directly
+    without any outer-wrapper hop."""
+    from mcp_server.runtime import tools as runtime_tools
+
+    ctx = _make_ctx()
+    kernel = runtime_tools.get_session_kernel(ctx)
+
+    # Direct access without any defensive fallback
+    cap_state = kernel["capability_state"]
+    domains = cap_state["domains"]
+    session = domains["session_access"]
+
+    assert session["available"] is True  # _Ableton returns a valid session_info
+    assert session["name"] == "session_access"

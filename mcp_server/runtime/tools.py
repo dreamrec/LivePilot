@@ -258,9 +258,18 @@ def get_session_kernel(
     except Exception as e:
         kernel_warnings.append(f"session_memory_unavailable: {e}")
 
+    # v1.17.4: state.to_dict() wraps its output as {"capability_state": {...}}
+    # because that shape is what the standalone get_capability_state tool
+    # returns. When building the session kernel, that wrapper becomes the
+    # ugly double-nested kernel["capability_state"]["capability_state"]["domains"]
+    # path. Unwrap once here so kernel consumers get
+    # kernel["capability_state"]["domains"] directly.
+    _cap_dict = state.to_dict()
+    _cap_flat = _cap_dict.get("capability_state", _cap_dict)
+
     kernel = build_session_kernel(
         session_info=session_info,
-        capability_state=state.to_dict(),
+        capability_state=_cap_flat,
         request_text=request_text,
         mode=mode,
         aggression=aggression,
