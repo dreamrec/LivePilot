@@ -27,6 +27,73 @@
      untouched, and gate Wonder lifecycle hooks behind the executable
      branch. New regressions in `tests/test_preview_studio_truth_gap.py`
      lock all four scenarios (A1-A4 from the remediation plan).
+- **Runtime capability probes stop lying about `web` and `flucoma`**
+  (`mcp_server/runtime/tools.py`, `mcp_server/runtime/capability_state.py`):
+  `get_capability_state` previously hardcoded `web_ok=False` and never
+  emitted a `flucoma` domain at all, causing `route_request` to pick
+  degraded research/perception paths on machines where those
+  capabilities were actually available. `_probe_web()` now runs a
+  500 ms HEAD request to `https://api.github.com` using stdlib
+  `urllib.request` (no new dependency); `_probe_flucoma()` uses
+  `importlib.util.find_spec("flucoma")` with safe exception swallowing.
+  The `flucoma` domain is now emitted unconditionally so consumers can
+  distinguish "probed and missing" from "not probed yet".
+- **`build_song_brain` flags degraded responses**
+  (`mcp_server/song_brain/tools.py`): When `get_session_info` fails,
+  the tool injected `{tempo: 120.0, track_count: 0}` and returned a
+  polished SongBrain with no indication the inputs were synthesized.
+  The fallback is preserved for backward compatibility but the
+  response now carries a top-level `degradation` payload
+  (`{is_degraded, reasons, substituted_fields}`) so callers can branch
+  on synthesized vs real data.
+- **`create_preview_set` flags the empty-kernel fallback**
+  (`mcp_server/preview_studio/engine.py`,
+  `mcp_server/preview_studio/models.py`): When the caller omits a real
+  session kernel, `create_preview_set` synthesizes an empty-but-valid
+  shape so compilers degrade to no-op steps. `PreviewSet` now carries a
+  `degradation` field that is marked
+  `is_degraded=True, reasons=["empty_kernel_fallback"]` whenever that
+  substitution fires, so downstream consumers can tell a synthesized
+  compile from a kernel-backed one.
+
+### Added
+
+- **`DegradationInfo` dataclass** (`mcp_server/runtime/degradation.py`):
+  New shared payload that engines attach to their responses whenever
+  they substitute fallback data. Three fields:
+  `is_degraded: bool`, `reasons: list[str]`, `substituted_fields: list[str]`.
+  Intentionally minimal and import-safe so any engine can adopt it
+  without circular-import risk. Wired into `song_brain` and
+  `preview_studio`; other engines will adopt it as audits surface more
+  silent-fallback paths.
+- **`flucoma` capability domain** now emitted by
+  `build_capability_state` alongside `session_access`, `analyzer`,
+  `memory`, `web`, and `research`. Matches the existing
+  `CapabilityDomain` schema.
+
+### Changed
+
+- **`capability-modes.md` reference doc rewritten to match the actual
+  response shape** (`livepilot/skills/livepilot-evaluation/references/capability-modes.md`).
+  The old example JSON described a flat
+  `{mode, analyzer_connected, bridge_version, spectral_cache_age_ms, flucoma_available, session_connected}`
+  shape that hasn't matched `get_capability_state` for releases. The
+  new section documents the nested `capability_state.domains.<name>`
+  structure, explicit per-domain and per-field definitions, and
+  explicitly scopes the `web` domain as *"server-side outbound HTTP
+  capability; does NOT imply curated research corpora are installed"*.
+
+### Tests
+
+- `tests/test_preview_studio_truth_gap.py` — 5 tests locking the four
+  A1-A4 scenarios from the remediation plan.
+- `tests/test_runtime_capability_probes.py` — 6 tests covering the
+  web probe (true/false/exception-swallow) and the flucoma probe
+  (emitted-when-importable, emitted-when-missing, find_spec-backed).
+- `tests/test_degradation_signalling.py` — 8 tests covering the
+  `DegradationInfo` dataclass defaults, `song_brain` degradation on
+  session failure, and `preview_studio` degradation on empty-kernel
+  fallback.
 
 ## 1.17.1 — Splice auto-reconnect + Codex installer fix (April 23 2026)
 
