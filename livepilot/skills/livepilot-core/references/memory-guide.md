@@ -105,3 +105,74 @@ The bad version is factual but tells the agent nothing about *feel*. It can't di
 - Generic, unfinished, or placeholder work
 - Things that are already in the shipped reference corpus
 - Exact duplicates of existing saved techniques
+
+## Reflection Promotion Rubric (for creative-director turns)
+
+When a move is driven by `livepilot-creative-director`, the evaluation
+engine assigns a **verdict** (see `livepilot-evaluation/SKILL.md` §8b).
+The verdict drives promotion decisions — not the raw score alone.
+
+### Promotion matrix
+
+| Verdict | Promote? | Required conditions | Payload fields |
+|---|---|---|---|
+| `safe_win` | Conditional | User kept move for ≥ 2 subsequent turns (avoid over-promotion of minor moves) | technique type, context, concept_packet id (if any), novelty_budget |
+| `bold_win` | Immediate | One turn is enough — boldness + user-kept = high signal | technique type, full context, concept_packet id, novelty_budget, what-made-it-bold paragraph |
+| `interesting_failure` | Curiosity store only | User kept BUT low technical score — novel-but-untested | store as "curiosity" note; do NOT add to `memory_learn` promotion candidates |
+| `identity_break` | Never promote | Protected quality violated | instead call `record_anti_preference` with the violated quality |
+| `generic_fallback` | Never promote | Low both scores + collapse-to-pattern signature | instead call `record_anti_preference` with the family+target combo |
+
+### Why this discipline matters
+
+The "stuck in patterns" failure mode (the core problem the creative
+director exists to solve) happens when memory fills up with
+`safe_win`-adjacent moves that reinforce the same family over time.
+Unfiltered promotion turns memory into a convergence engine.
+Verdict-gated promotion keeps memory biased toward useful diversity.
+
+Specifically:
+- `safe_win` without the 2-turn requirement pollutes memory with moves
+  the user only tolerated in the moment
+- `bold_win` without immediate promotion loses the signal when the
+  session moves on
+- `interesting_failure` without a clear "do not auto-replay" flag
+  trains the agent to reach for failures
+- `identity_break` and `generic_fallback` without anti-preference
+  records let the same bad pattern reappear next session
+
+### Cross-check before promoting
+
+Before calling `memory_learn`, run these checks:
+
+1. **Verdict is `safe_win` or `bold_win`** — other verdicts don't promote
+2. **Context is recorded** — concept_packet id, novelty_budget, brief's
+   identity line. Without context, the memory is noise.
+3. **Payload is interpretable** — someone reading the `qualities` field
+   in 3 months should understand why it worked, not just what it was
+4. **No duplicate** — `memory_list` for similar techniques; if one
+   already exists for this family+target combo, update it instead
+
+### Recording anti-preferences correctly
+
+When verdict is `identity_break` or `generic_fallback`:
+
+```python
+record_anti_preference(
+    dimension=<the violated protected quality or family>,
+    direction=<"increase" or "decrease">,
+    context=<brief's identity line + move family + target>,
+)
+```
+
+The `context` field is what lets future sessions know WHEN to apply
+this anti-preference — rejecting "bright hats" blanketly is too
+aggressive; rejecting "bright hats on dub-techno context" is correct.
+
+### Cross-refs
+
+- `livepilot-creative-director/references/anti-repetition-rules.md` —
+  when to record anti-preferences
+- `livepilot-evaluation/SKILL.md` §"Memory Promotion" — verdict-driven
+  promotion from the evaluator side
+- `livepilot-creative-director/SKILL.md` Phase 8 — the director's
+  recording step
