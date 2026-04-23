@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.17.2 — iterate_toward_goal + preview-studio truth-gap (April 23 2026)
 
 ### Added
 
