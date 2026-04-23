@@ -13,6 +13,7 @@ musical_roles:
   - tail harvesting
   - stereo widening via time-offset
   - implied-groove creation (delayed hits complete the rhythm)
+  - "ping-pong delay (via Channel Mode = 1 — see note below)"
 
 strong_for:
   - widening sparse material (low-density drum or chord clips)
@@ -91,6 +92,16 @@ notes: |
   filter the input, not the tail), and Convolution Reverb AFTER for
   the fog field. Send sparingly (15–35% for subtle, 45–65% for
   signature).
+
+  **Channel Mode parameter** (discrete enum, values 0–2, confirmed
+  against live device state v1.18.0 — value_string in set_device_parameter
+  response is the source of truth):
+  - 0 = Stereo (default) — left/right delay times can be independent
+  - 1 = Ping Pong — alternating L↔R bounce; this is the "Ping Pong Delay"
+        mode. No standalone Ping Pong Delay device exists in Live 12;
+        use Echo with Channel Mode = 1 instead. See
+        affordances/devices/ping-pong-delay.yaml for the mode-alias packet.
+  - 2 = Mid/Side — delay applied to mid/side rather than stereo L/R
 
   Internal filter on return makes the tails "move" over time — this
   is the "filtered delay return" technique that carries harmonic

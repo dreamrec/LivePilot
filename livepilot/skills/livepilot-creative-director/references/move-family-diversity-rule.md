@@ -79,6 +79,47 @@ plan_A.dominant.family != plan_C.dominant.family
 
 If any two match → regenerate the offending plan from a different family.
 
+## Low-novelty escape hatch
+
+The 3-distinct-families rule exists to prevent collapse-to-mode on
+creative intent. But "creative intent" spans a wide novelty range (see
+`creative-brief-template.md` novelty_budget table). At the conservative
+end, the rule fights against the user's ask.
+
+**If the brief's `novelty_budget < 0.35`** (e.g., "keep the vibe, just
+cleaner", "tighten it up", "final polish"), the 3-family rule is
+RELAXED:
+
+| novelty_budget | Minimum distinct families |
+|---|---|
+| `< 0.35` | 1-2 is honest; 3 is fabricated |
+| `0.35 – 0.50` | 2 minimum; 3 ideal |
+| `> 0.50` | 3 required (standard rule) |
+
+**Rationale:** low novelty_budget signals refinement, not exploration.
+A user asking "make it cleaner" under an active Basic Channel packet
+rightly gets 1-2 mix-family plans (low-end clean-up, tail tail-taming,
+send level adjustment) — inventing a structural or sound_design plan
+for them would ignore what they asked for. That's exactly the
+"generic_fallback" failure mode the verdict taxonomy catches on the
+OTHER end — the director shouldn't produce it preemptively by forcing
+divergence the user didn't want.
+
+**Honesty requirements when the escape hatch applies:**
+- State the novelty_budget value in the brief's notes
+- Name the rule: "Low-novelty escape hatch — 3-family rule relaxed"
+- Still differentiate the 1-2 plans meaningfully (different target,
+  different parameter direction) — the rule relaxation is about the
+  family-count constraint, NOT the no-fabricated-distinctness rule
+  which applies always
+
+**Anti-pattern under the escape hatch:** shipping 2 plans that are
+"same move with different EQ Q" or "same send at different levels".
+Even under relaxed family rules, plans must have distinct musical
+consequence. Use different TARGETS (different tracks) or different
+MECHANISMS (EQ vs. Utility gain vs. saturator input drive) to stay
+honest.
+
 ## How to pick the dominant move for a multi-step seed
 
 For `source="freeform"` / `"synthesis"` / `"composer"` / `"technique"`

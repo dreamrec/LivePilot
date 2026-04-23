@@ -31,6 +31,18 @@ Agentic production system for Ableton Live 12. 427 tools across 52 domains, thre
     - After `set_device_parameter` or `batch_set_parameters`: read `value_string` in the response to confirm the actual Hz/dB/% value makes sense
     - After any filter, EQ, or effect parameter change: call `get_track_meters(include_stereo=true)` and verify the target track has non-zero left AND right levels
     - After `apply_automation_recipe`: check that the recipe didn't push the parameter to an extreme that kills audio
+    - **`batch_set_parameters` schema gotcha**: the `parameters` argument
+      is a dict of `{"ParamName": {"value": v}}`, NOT `{"ParamName": v}`.
+      The bare-value shape raises `Each parameter entry must include 'value'`.
+      Live-verified v1.18.0 — example:
+      ```
+      batch_set_parameters(
+          track_index=-1, device_index=0,
+          parameters={"Feedback": {"value": 0.45}, "Channel Mode": {"value": 1}}
+      )
+      ```
+      (For single params, `set_device_parameter` takes the value directly —
+      only `batch_set_parameters` wraps it in a dict.)
     - If a track's stereo output drops to 0: the effect is killing the signal — check `get_device_parameters` for `value_string`, fix, re-verify
     - **Parameter ranges are NOT always 0-1.** Auto Filter Frequency is 20-135. Bit Depth is 1-16. Always read `value_string` to see actual units.
 16. **NEVER apply automation recipes without understanding the target parameter's range** — recipes generate 0-1 curves that get auto-scaled for device parameters, but always verify the result

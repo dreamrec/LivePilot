@@ -353,6 +353,121 @@ def test_affordance_dimensional_impact_fields():
             )
 
 
+# ---------------------------------------------------------------------------
+# v1.18.1 patch-target regression guards
+# ---------------------------------------------------------------------------
+
+
+def test_ping_pong_delay_is_documented_as_echo_mode():
+    """v1.18.1 #4: Ping Pong Delay is NOT a standalone device in Live 12 —
+    search_browser(audio_effects, "Ping Pong Delay") returns empty. The
+    affordance MUST document this and redirect to Echo with Channel Mode=1.
+    Regression guard: no future edit can silently re-assert standalone status."""
+    p = AFFORDANCES_ROOT / "devices" / "ping-pong-delay.yaml"
+    d = yaml.safe_load(p.read_text())
+
+    # atlas_search_query must be "Echo" (the actually-loadable device) — a
+    # query for "Ping Pong Delay" returns empty on Live 12.
+    assert d["atlas_search_query"] == "Echo", (
+        f"ping-pong-delay.atlas_search_query must be 'Echo', "
+        f"got {d['atlas_search_query']!r}. Ping Pong Delay is not a "
+        f"standalone device; the search target is Echo."
+    )
+
+    # notes must explain the mode-alias relationship
+    notes = d.get("notes", "").lower()
+    assert "echo" in notes, "notes must reference Echo as the real device"
+    assert "channel mode" in notes, (
+        "notes must explain the 'Channel Mode' parameter (value 1 = Ping Pong)"
+    )
+    assert "not a standalone" in notes or "mode of echo" in notes, (
+        "notes must explicitly state this is not a standalone Live 12 device"
+    )
+
+
+def test_auto_filter_ranges_are_normalized_for_modern_class():
+    """v1.18.1 #5: Modern AutoFilter2 class uses 0-1 normalized for Frequency
+    and Resonance (confirmed live: raw 0.45 → value_string '448 Hz'). The
+    legacy 20-135 range from pre-2010 Auto Filter doesn't apply. Regression
+    guard: no future edit can reintroduce legacy Hz values."""
+    p = AFFORDANCES_ROOT / "devices" / "auto-filter.yaml"
+    d = yaml.safe_load(p.read_text())
+
+    for band_name in ("subtle_ranges", "moderate_ranges", "aggressive_ranges"):
+        band = d.get(band_name, {})
+        freq_range = band.get("frequency")
+        if freq_range is None:
+            continue  # frequency not specified in this band — acceptable
+        lo, hi = freq_range
+        assert 0 <= lo <= 1, (
+            f"auto-filter.{band_name}.frequency[0] = {lo} — must be 0-1 "
+            f"normalized (modern AutoFilter2), not legacy Hz value"
+        )
+        assert 0 <= hi <= 1, (
+            f"auto-filter.{band_name}.frequency[1] = {hi} — must be 0-1 "
+            f"normalized (modern AutoFilter2), not legacy Hz value"
+        )
+
+        # Resonance is also 0-1 on modern, not 0-1.25 legacy
+        res_range = band.get("resonance")
+        if res_range is not None:
+            r_lo, r_hi = res_range
+            assert 0 <= r_hi <= 1.0, (
+                f"auto-filter.{band_name}.resonance[1] = {r_hi} — must be "
+                f"0-1 on AutoFilter2 (legacy was 0-1.25)"
+            )
+
+
+def test_low_novelty_escape_hatch_documented():
+    """v1.18.1 #12: 3-plan diversity rule must have a documented escape
+    hatch for low-novelty_budget requests ('keep the vibe, just cleaner').
+    Current bug: the rule demands 3 distinct families even when the ask is
+    a cleanup that naturally lives entirely in the mix family."""
+    diversity_rule = (
+        DIRECTOR_ROOT / "references" / "move-family-diversity-rule.md"
+    ).read_text().lower()
+    # Must mention low-novelty threshold explicitly
+    assert "novelty_budget" in diversity_rule, (
+        "move-family-diversity-rule.md must reference novelty_budget"
+    )
+    # Must have a clause about narrow mix-only acceptance
+    lowish = ("0.35" in diversity_rule or "0.3" in diversity_rule
+              or "< 0.35" in diversity_rule or "low novelty" in diversity_rule)
+    assert lowish, (
+        "move-family-diversity-rule.md must document that low novelty_budget "
+        "(<0.35) allows 1-2 mix-family plans as honest coverage — "
+        "without this clause the rule incorrectly demands 3 families on "
+        "cleanup asks like 'keep the vibe, just cleaner'"
+    )
+
+
+def test_batch_set_parameters_schema_documented():
+    """v1.18.1 bonus: the batch_set_parameters schema requires
+    {'Name': {'value': v}}, not {'Name': v}. Live verification bit me on
+    this. Regression guard: the core skill or creative-brief-template
+    must document the correct shape."""
+    # Check multiple likely locations for the doc
+    candidates = [
+        SKILLS_ROOT / "livepilot-core" / "SKILL.md",
+        DIRECTOR_ROOT / "SKILL.md",
+        DIRECTOR_ROOT / "references" / "creative-brief-template.md",
+        CORE_REFS / "ableton-workflow-patterns.md",
+    ]
+    found = False
+    for candidate in candidates:
+        if not candidate.exists():
+            continue
+        text = candidate.read_text()
+        if "batch_set_parameters" in text and '"value"' in text:
+            found = True
+            break
+    assert found, (
+        "batch_set_parameters schema must be documented somewhere in the "
+        "core skill docs — at least one location should show the "
+        "{'Name': {'value': v}} form"
+    )
+
+
 def test_affordance_appears_in_packets_artists_resolve():
     """Every artist referenced in affordance appears_in_packets must exist.
     Artist YAMLs are complete (28), so any unresolved ref is a typo."""

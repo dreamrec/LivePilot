@@ -27,23 +27,40 @@ risky_for:
   - busses with multiple harmonic sources (filter sweeps mask key)
   - short sounds (filter envelope never resolves)
 
+# All parameter values are 0-1 NORMALIZED (raw values you pass to
+# set_device_parameter). The modern AutoFilter2 class uses 0-1 for every
+# band-relevant parameter. value_string in the response is the source of
+# truth for the display-unit (Hz, %, etc.) — always read it.
+#
+# Live-verified frequency mapping (AutoFilter2, v1.18.0):
+#     raw 0.10 → ~40 Hz    (sub)
+#     raw 0.25 → ~100 Hz   (low)
+#     raw 0.45 → ~450 Hz   (low-mid — dub-filtered tails)
+#     raw 0.55 → ~900 Hz   (mid)
+#     raw 0.65 → ~2 kHz    (presence)
+#     raw 0.80 → ~5 kHz    (brightness)
+#     raw 0.90 → ~10 kHz   (air)
+# The curve is roughly exponential — raw → display is NOT linear.
 subtle_ranges:
-  frequency: [1200, 8000]   # hz — sitting in the mid-high range
+  frequency: [0.60, 0.85]    # ~1.2-8 kHz (mid-high, opening the top end)
   resonance: [0.0, 0.3]
   envelope_amount: [0.0, 0.2]
   lfo_amount: [0.0, 0.15]
 moderate_ranges:
-  frequency: [300, 1500]
+  frequency: [0.40, 0.60]    # ~300-1500 Hz (vocal / chord-stab territory)
   resonance: [0.3, 0.6]
   envelope_amount: [0.2, 0.5]
   lfo_amount: [0.15, 0.4]
 aggressive_ranges:
-  frequency: [80, 400]
-  resonance: [0.6, 0.9]
+  frequency: [0.25, 0.45]    # ~100-450 Hz (dub / low-pass chop)
+  resonance: [0.6, 0.9]      # still ≤1 — AutoFilter2 caps at 1.0
   envelope_amount: [0.5, 1.0]
   lfo_amount: [0.4, 1.0]
-  # Note: Auto Filter Frequency parameter maps 20-135 in Ableton's 0-1
-  # range — value_string via get_device_parameters gives actual Hz.
+  # Pre-v1.18.1 this YAML had LEGACY Hz values (1200-8000 etc) which
+  # applied to the pre-2010 AutoFilter device (class name AutoFilter,
+  # Frequency range 20-135 absolute). Live 12 ships AutoFilter2 which
+  # normalizes everything to 0-1 — the legacy values made set_device_parameter
+  # calls silently clamp or behave unpredictably.
 
 pairings:
   - device: Echo
@@ -67,8 +84,8 @@ remeasure:
   - spectral_balance       # filters directly change spectrum
   - track_meters           # narrow filtering can kill signal
   - groove_motion          # LFO-rate filter changes groove feel
-  # CLAUDE.md memory: Auto Filter Frequency is 20-135, not 0-1 — always
-  # read value_string after setting.
+  # Always read value_string after setting any Auto Filter parameter —
+  # the raw 0-1 input maps non-linearly to display Hz/%/etc.
 
 dimensional_impact:
   structural: moderate     # long sweeps ARE arrangement moves
@@ -93,14 +110,22 @@ appears_in_packets:
     - uk-garage
 
 notes: |
-  Auto Filter's biggest trap is forgetting its parameter range. The
-  Frequency parameter uses a 20-135 mapping (Ableton's internal
-  representation), NOT 0-1 normalized. Always call
-  get_device_parameters after setting and read value_string for the
-  actual Hz value.
+  Live 12 ships two Auto Filter classes. The modern `AutoFilter2` uses
+  0-1 NORMALIZED for Frequency and Resonance (live-verified against
+  v1.18.0). The legacy `AutoFilter` used an absolute 20-135 Hz range
+  for Frequency. This affordance documents the MODERN class — always
+  inspect the `class_name` field in `get_device_parameters` output
+  before applying: if it's `AutoFilter` (not `AutoFilter2`), the raw
+  values in this YAML will silently clamp or behave unexpectedly.
+
+  Defensive discipline: regardless of class, call
+  `get_device_parameters` after setting and read `value_string` for
+  the actual Hz value. The raw-to-display mapping is non-linear on both
+  classes.
 
   For dub-techno delay returns: put Auto Filter ON the return track,
-  AFTER the Echo device. Low-pass at 400-800 Hz with slow LFO (0.1-0.3 Hz)
+  AFTER the Echo device. Low-pass at moderate frequency (raw ~0.40-0.55,
+  display ~300-900 Hz) with slow LFO (0.15 raw = ~0.26 Hz display)
   gives the "tail movement" that carries harmony.
 
   For minimal-techno subtractive: map a macro to the Frequency, draw

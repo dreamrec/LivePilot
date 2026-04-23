@@ -5,43 +5,51 @@ category: delay
 aliases:
   - "ping pong delay"
   - "ping-pong delay"
-atlas_search_query: "Ping Pong Delay"
+  - "ppd"
+# IMPORTANT: Ping Pong Delay is NOT a standalone device in Live 12. The atlas
+# search for "Ping Pong Delay" returns empty. This packet is a mode-alias that
+# resolves to Echo with Channel Mode = 1 (Ping Pong). Director should load
+# Echo via atlas_search_query below, then set Channel Mode to 1.
+atlas_search_query: "Echo"
 
 musical_roles:
   - stereo widening via left-right bounce
   - dub-techno send delay (canonical placement on return)
-  - filter-on-return for dub tails (internal filter)
+  - filter-on-return for dub tails (Echo's internal LP/HP filter)
   - rhythmic bouncing accent (1/4, 1/8, 1/16 sync)
 
 strong_for:
-  - dub-techno return chain (Ping-Pong Delay → filtered → feeds Convolution Reverb)
+  - dub-techno return chain (Echo in ping-pong mode feeds filter + reverb)
   - widening mono-source chord stabs
-  - creating off-beat rhythmic accents
+  - off-beat rhythmic accents
   - sparse clip material that wants implied density
 
 risky_for:
-  - dense percussion (PPD smears transients, worsens mud)
+  - dense percussion (PPD mode smears transients, worsens mud)
   - already-stereo sources (double-spreading)
   - low-frequency sources (stereo bass destroys mono compatibility)
-  - clip material with its own strong groove (PPD fights the groove)
+  - clip material with its own strong groove (fights the groove)
 
+# All parameter names below are Echo's actual parameter names. Load Echo,
+# set Channel Mode = 1, then configure these. Confirmed against live
+# device state v1.18.0.
 subtle_ranges:
   feedback: [0.10, 0.25]
-  time_sync: ["1/16", "1/8"]    # note value
-  filter_freq: [400, 1500]      # when filter is on
+  channel_mode: 1                 # Ping Pong mode — mandatory for PPD behavior
+  lp_freq: [0.50, 0.70]           # 0-1 normalized, display ~600-2000 Hz
 moderate_ranges:
-  feedback: [0.30, 0.50]
-  time_sync: ["1/8", "1/4"]
-  filter_freq: [200, 700]
+  feedback: [0.30, 0.55]
+  channel_mode: 1
+  lp_freq: [0.30, 0.55]           # display ~200-700 Hz (dub-filtered)
 aggressive_ranges:
-  feedback: [0.55, 0.85]
-  time_sync: ["1/4", "1/2"]
-  filter_freq: [80, 300]
+  feedback: [0.60, 0.85]
+  channel_mode: 1
+  lp_freq: [0.15, 0.35]           # heavy low-pass — deep dub tails
 
 pairings:
   - device: Auto Filter
     order: after
-    purpose: filter the delayed tails on the return
+    purpose: filter delayed tails on the return
   - device: Convolution Reverb
     order: after
     purpose: dub chain — reverb the filtered PPD tails
@@ -53,14 +61,14 @@ pairings:
     purpose: warm saturation on delayed repetitions
 
 anti_pairings:
-  - "Echo running in ping-pong mode (pick ONE ping-pong delay, not two)"
-  - "Panner after PPD (PPD already handles stereo; panner creates phase issues)"
+  - "Another Echo in series (use one with higher feedback instead)"
+  - "Panner after this Echo (Echo already handles stereo; panner causes phase issues)"
 
 remeasure:
   - stereo_width
   - spectral_balance
   - low_headroom
-  - mono_compatibility       # stereo delay can phase-cancel in mono
+  - mono_compatibility           # stereo delay can phase-cancel in mono
 
 dimensional_impact:
   structural: low
@@ -77,12 +85,20 @@ appears_in_packets:
     - uk-garage
 
 notes: |
-  Ping Pong Delay is the canonical dub-techno return chain starter.
-  Basic Channel / Rhythm & Sound architecture: SEND → Ping Pong Delay
-  (internal filter at 400-700 Hz) → Convolution Reverb (Farfisa
-  Spring IR, 100% wet) → return back to mix. The chord stab's WET
-  path becomes the harmonic content.
+  Ping Pong Delay is NOT a standalone device in Live 12 — it's a mode of
+  Echo. Load the Echo device (atlas_search_query: "Echo"), then set the
+  "Channel Mode" parameter to 1 (value_string will confirm "Ping Pong").
 
-  For microhouse and UK garage, use shorter sync times (1/16, 1/8)
-  with moderate feedback for rhythmic bounce accent rather than
-  sustained dub tail.
+  Canonical Basic Channel / Rhythm & Sound architecture:
+      SEND → Echo (Channel Mode = 1, internal LP filter at 400–700 Hz)
+           → Convolution Reverb (Farfisa Spring IR, 100% wet)
+           → return back to mix
+  The chord stab's WET path becomes the harmonic content.
+
+  For microhouse and UK garage, use shorter sync times (1/16, 1/8) with
+  moderate feedback for rhythmic bounce accent rather than sustained dub
+  tail.
+
+  If a future Live version adds a standalone Ping Pong Delay device,
+  this packet should be rewritten to point at it; for now the mode-alias
+  framing is the accurate one.
