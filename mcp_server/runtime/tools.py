@@ -179,11 +179,19 @@ def get_session_kernel(
         if analyzer_ok:
             analyzer_fresh = spectral.get("spectrum") is not None
 
+    # P2#3 (v1.17.3): probe web + flucoma the same way get_capability_state
+    # does, and propagate through. Without this the kernel's capability view
+    # lies to orchestration planners.
+    web_ok = _probe_web()
+    flucoma_ok = _probe_flucoma()
+
     state = build_capability_state(
         session_ok=session_ok,
         analyzer_ok=analyzer_ok,
         analyzer_fresh=analyzer_fresh,
         memory_ok=True,
+        web_ok=web_ok,
+        flucoma_ok=flucoma_ok,
     )
 
     # Optional subcomponents — degrade gracefully, but reach into the SAME
