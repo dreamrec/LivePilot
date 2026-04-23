@@ -1,4 +1,4 @@
-# LivePilot v1.17.5 — Ableton Live 12
+# LivePilot v1.18.0 — Ableton Live 12
 
 ## Project
 - **Repo:** This directory (LivePilot)
@@ -13,7 +13,7 @@
 - **M4L Bridge** (`m4l_device/`): Max for Live Audio Effect on master track, UDP/OSC bridge for deep LOM access
   - UDP 9880: M4L -> Server (spectral data, responses)
   - OSC 9881: Server -> M4L (commands)
-  - `livepilot_bridge.js`: 30 bridge commands for LiveAPI access
+  - `livepilot_bridge.js`: 31 bridge commands for LiveAPI access
   - `SpectralCache`: thread-safe, time-expiring data cache (5s max age)
   - Bridge is optional — all core tools work without it
 - **Device Atlas** (`mcp_server/atlas/`): In-memory indexed JSON database — 1305 devices with URIs, 120 enriched with sonic intelligence (YAML), 47 with aesthetic-tagged `signature_techniques`. **7 indexes**: by_id, by_name, by_uri, by_category, by_tag, by_genre, by_pack (641 devices indexed by pack). Reverse-index `device_techniques_index.json` (146 cross-references across 58 devices) powers `atlas_techniques_for_device`. Tools: `atlas_search`, `atlas_suggest`, `atlas_chain_suggest`, `atlas_compare`, `atlas_device_info`, `atlas_pack_info` (v1.17), `atlas_describe_chain` (v1.17 — free-text, mirror of `splice_describe_sound`), `atlas_techniques_for_device` (v1.17 — reverse-lookup), `scan_full_library`, `reload_atlas`

@@ -67,7 +67,13 @@ def test_no_stray_js_cases_outside_whitelist():
     js_cases = _js_dispatch_cases()
     # JS-internal commands that are never invoked through Python plans. Keep
     # this list tight — every addition here needs a code review.
-    internal_only = {"ping"}
+    internal_only = {
+        "ping",
+        # get_version: v1.18.0 — emits on the `livepilot_version` named Max
+        # bus so a [comment] in the patcher can show the current version
+        # in the analyzer UI. No OSC response, never called by Python plans.
+        "get_version",
+    }
     stray = sorted(
         c for c in js_cases
         if c not in BRIDGE_COMMANDS and c not in internal_only

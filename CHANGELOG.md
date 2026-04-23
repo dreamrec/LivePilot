@@ -1,5 +1,124 @@
 # Changelog
 
+## 1.18.0 — Creative Director + concept packets + device affordances (April 23 2026)
+
+A structural feature release. Addresses the "agent doesn't variate
+enough, feels stuck in the same repetitive patterns" failure mode by
+adding an enforcement layer on top of the existing tool surface.
+**Zero new Python. Zero new MCP tools.** The entire feature is skill
+documentation, structured YAML data, and prompt-level contracts.
+
+### Added
+
+- **`livepilot-creative-director` skill** — new top-level skill that
+  routes creative intent through mandatory divergence before any
+  commit. Eight-phase contract: ground → compile brief → generate 3
+  plans with distinct `move.family` → cover 4 dimensions → preview
+  or rank → select + execute → evaluate → record. Critics (analyze_mix,
+  evaluate_move) DEFER until Phase 7 — firing them earlier pre-converges
+  the answer. Includes four reference files:
+  - `creative-brief-template.md` — YAML schema + 4 filled examples,
+    novelty_budget table with 6 user-framing buckets
+  - `move-family-diversity-rule.md` — canonical 6 families + family-vs-
+    dimension split + collision-avoidance rules
+  - `anti-repetition-rules.md` — recency threshold table (0-2/10
+    neutral, 3-4/10 least-weighted, ≥5/10 EXCLUDED) + borderline-
+    stuckness band (0.4-0.5 surfaces user option)
+  - `the-four-move-rule.md` — structural + rhythmic + timbral + spatial
+    dimension coverage with narrow-idiom exceptions for dub-techno /
+    ambient / beat-focused packets
+
+- **Structured concept packets** (42 YAMLs under
+  `livepilot/skills/livepilot-core/references/concepts/`) — 28 artist
+  packets + 14 genre packets. Each packet carries `sonic_identity`,
+  `reach_for`, `avoid` (HARD filter), `evaluation_bias.target_dimensions`
+  + `protect` floors, `move_family_bias.favor` + `deprioritize`,
+  `dimensions_in_scope` + `dimensions_deprioritized`, and
+  `novelty_budget_default`. Narrative `artist-vocabularies.md` and
+  `genre-vocabularies.md` stay as human-facing overviews; YAMLs are
+  the machine source-of-truth.
+
+- **Device affordance metadata** (20 YAMLs under
+  `livepilot/skills/livepilot-core/references/affordances/`) — per-
+  device affordance packets for Echo, Auto Filter, Convolution Reverb,
+  Hybrid Reverb, Ping Pong Delay, Drift, Corpus, Granulator III,
+  Simpler, Wavetable, Operator, Poli, Saturator, Compressor, Glue
+  Compressor, Utility, EQ Eight, Chorus-Ensemble, Shifter, Vinyl
+  Distortion. Each covers `musical_roles`, `strong_for` / `risky_for`,
+  `subtle` / `moderate` / `aggressive` parameter ranges, `pairings`
+  (with before/after/parallel order), `anti_pairings`, `remeasure`
+  queue, and `dimensional_impact` mapping to the four-move-rule.
+
+- **Evaluation artistic dimensions** — `livepilot-evaluation/SKILL.md`
+  extended with Family B dimensions (style_fit, distinctiveness,
+  motif_coherence, section_contrast, restraint, surprise_without_breakage)
+  in addition to Family A (punch, weight, etc). Both required for
+  creative-director turns.
+
+- **Creative-success verdict taxonomy** — 5 verdicts assigned at
+  evaluation Step 8b: `safe_win`, `bold_win`, `interesting_failure`,
+  `identity_break`, `generic_fallback`. Drives promotion decisions.
+
+- **Verdict-gated reflection promotion rubric** — `memory-guide.md`
+  extended with a promotion matrix that keeps memory from converging
+  on safe_win-adjacent moves. `bold_win` promotes immediately;
+  `safe_win` conditional on user-keep-for-2-turns; `interesting_failure`
+  curiosity-store only; `identity_break` and `generic_fallback` record
+  anti-preferences instead.
+
+- **Schema test harness** — `tests/test_creative_director.py` (27
+  passing, 1 xfail tracking missing genre YAMLs). Verifies skill file
+  structure, packet counts, canonical family/dimension enforcement,
+  cross-reference resolution, and cross-skill integration (director ↔
+  evaluation ↔ memory-guide).
+
+### Changed
+
+- `livepilot-core/SKILL.md`: fixed semantic_moves family count (5→6,
+  `device_creation` was missing from the docs). Added director routing
+  pointer in the V2 Engine Skills table and Flow B preamble.
+- `livepilot-wonder/SKILL.md`: added creative-director as a trigger
+  (not only stuck-rescue); split honesty rule to actively widen across
+  families BEFORE accepting <3 variants on first-pass creative calls.
+- `livepilot-producer/AGENT.md`: director added to subagent skills
+  index with "load FIRST on open-ended creative intent" note.
+- `artist-vocabularies.md` + `genre-vocabularies.md`: cross-reference
+  callouts pointing to the new YAML packets.
+- `m4l_device/LivePilot_Analyzer.amxd` + `.maxpat` + `livepilot_bridge.js`:
+  versioning text added to analyzer UI for live identification across
+  instances.
+
+### Pressure-testing
+
+The director was developed under TDD-for-skills discipline: three
+subagent pressure-scenarios run in two rounds, with verdict-driven
+fixes between rounds. Round 1 surfaced 9 issues, Round 2 verified
+each was fixed and surfaced 3 more (higher-order patterns only visible
+after first-order bugs were gone). PR 3 affordance work caught 3
+schema-level bugs (`atlas_uri` semantic mismatch, phantom
+`ir_length`, parameter-name canonicalization gap) before ship.
+
+### Known gaps
+
+- ~20 narrative-only genres (downtempo, boom_bap, lo_fi, synthwave,
+  techno, detroit_techno, soul, footwork, deep_house, french_house,
+  disco, electronic, electronica, cinematic, hyperpop, drone,
+  bass_music, soulful_house, acid_techno, nu_disco, juke) referenced
+  by artist packets but not yet YAML-ified. Tracked via
+  `test_all_artist_genre_refs_resolve_strictly` xfail.
+- Live Ableton session pressure test pending — all v1.18.0 verification
+  to date was dry-run subagent tests.
+
+### Process note
+
+This release was authored in a single session as a series of 6 PRs
+(Creative Director skill → Concept packets → Affordances → Evaluation
+dimensions → Reflection rubric → Test harness), each pressure-tested
+before moving to the next. Outside-reviewer design plan is at
+`docs/plans/livepilot_creativity_plan.md`.
+
+---
+
 ## 1.17.5 — Classify error-only commit payloads as failures (April 23 2026)
 
 ### Fixed

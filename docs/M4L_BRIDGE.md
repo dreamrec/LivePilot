@@ -21,7 +21,7 @@ MCP Server  <=============>  Remote Script (ControlSurface)
 - **UDP 9880** — M4L device sends spectral data stream and LiveAPI responses to MCP Server
 - **OSC 9881** — MCP Server sends LiveAPI commands to M4L device
 
-The bridge is optional. Most tools work without it. The 33 MCP tools in the analyzer domain depend on the bridge for spectral data; sample- and device-mutation tools that call the bridge have graceful fallbacks (and on Live 12.4+, several sample tools take a native LOM path that bypasses the bridge entirely). Backed by 30 bridge commands.
+The bridge is optional. Most tools work without it. The 33 MCP tools in the analyzer domain depend on the bridge for spectral data; sample- and device-mutation tools that call the bridge have graceful fallbacks (and on Live 12.4+, several sample tools take a native LOM path that bypasses the bridge entirely). Backed by 31 bridge commands.
 
 ## Audio Signal Chain
 
@@ -79,13 +79,13 @@ Sampling rate: 5 Hz (200ms snapshots). CPU impact: ~3-4% total.
 
 Commands are sent WITHOUT a leading `/` in the OSC address. This is critical — see "OSC Address Dispatch" below.
 
-## Bridge Commands (30 total)
+## Bridge Commands (31 total)
 
 ### Phase 1: Core LOM Access
 
 | Command | Args | Description |
 |---------|------|-------------|
-| `ping` | (none) | Health check, returns `{ok: true, version: "1.17.5"}` |
+| `ping` | (none) | Health check, returns `{ok: true, version: "1.18.0"}` |
 | `get_params` | track_idx, device_idx | All parameters with value, range, automation state |
 | `get_hidden_params` | track_idx, device_idx | All parameters including hidden ones, with display string |
 | `get_auto_state` | track_idx, device_idx | Only parameters that have automation (active or overridden) |
@@ -288,7 +288,7 @@ function anything() {
 
 ## File Locations
 
-- `m4l_device/LivePilot_Analyzer.amxd` — compiled M4L device (binary). Ping returns `{ok: true, version: "1.17.5"}`
+- `m4l_device/LivePilot_Analyzer.amxd` — compiled M4L device (binary). Ping returns `{ok: true, version: "1.18.0"}`
 - `m4l_device/livepilot_bridge.js` — bridge JS source (30 commands)
 - `m4l_device/LivePilot_MIDITool_Generate.amxd` / `LivePilot_MIDITool_Transform.amxd` — separate Live 12.0+ MIDI Tool devices for in-clip generators (euclidean_rhythm, tintinnabuli, humanize)
 - `m4l_device/miditool_bridge.js` — MIDI Tool bridge JS source

@@ -29,7 +29,7 @@ Run this checklist EVERY time the user says "update everything", "push", "releas
 ## 2. Tool Count (must ALL match)
 
 Current: **427 tools across 52 domains**.
-Spectral/analyzer (bridge-only): **32**. All others: **292** (work without bridge, some with graceful fallbacks). Backed by 30 bridge commands.
+Spectral/analyzer (bridge-only): **32**. All others: **292** (work without bridge, some with graceful fallbacks). Backed by 31 bridge commands.
 
 Verify: `grep -rc "@mcp.tool" mcp_server/tools/ | grep -v ":0" | awk -F: '{sum+=$2} END{print sum}'`
 
