@@ -28,6 +28,8 @@
      branch. New regressions in `tests/test_preview_studio_truth_gap.py`
      lock all four scenarios (A1-A4 from the remediation plan).
 
+## 1.17.1 — Splice auto-reconnect + Codex installer fix (April 23 2026)
+
 Two bug fixes discovered in a parallel worktree hours after v1.17.0
 shipped. Non-breaking, test-locked, ships as a patch.
 
