@@ -1,5 +1,47 @@
 # Changelog
 
+## 1.17.5 — Classify error-only commit payloads as failures (April 23 2026)
+
+### Fixed
+
+- **`_classify_commit_result` now catches error-only commit payloads**
+  (`mcp_server/tools/_agent_os_engine/iteration.py`): Codex review on
+  PR #27 caught a gap I shipped in v1.17.3. My docstring listed
+  `{"error": ...}` as a known failure signal, but the implementation
+  never checked for a top-level `error` key. `commit_branch_async` in
+  `mcp_server/experiment/engine.py` returns error-only dicts in 5+
+  paths (`Branch {id} not found`, `Branch has no compiled plan`,
+  `Experiment {id} not found`). These fell through to
+  `"committed"` because they had no explicit `committed: false` /
+  `ok: false` / `status: "failed"` / `steps_ok: 0` signal. Classic
+  truth-gap: the iteration loop could claim success while the commit
+  applied zero steps.
+
+  Fix: if `result.get("error")` is truthy AND `result.get("committed")`
+  is not explicitly `True`, return `"commit_failed"`. The explicit-
+  committed caveat handles the edge case where a payload reports
+  success with a warning in the `error` field.
+
+### Tests
+
+4 new TDD tests in `tests/test_iterate_toward_goal.py`:
+- `{"error": "Experiment not found"}` → `commit_failed`
+- `{"error": "Branch not found"}` (real commit_branch_async shape) →
+  `commit_failed`, with the payload surfaced on `commit_result`
+- Same discipline on the `on_timeout="commit_best"` path
+- Edge case: `{"committed": True, "error": "warning...",
+  steps_ok: 3}` still returns `committed` (explicit success overrides)
+
+2726 → 2730 passing.
+
+### Process note
+
+The fix that shipped in v1.17.3 was itself caught by a subsequent
+review. Writing a docstring listing a failure signal and forgetting
+to implement the check is the classic TDD violation the discipline
+exists to prevent. Codex's automated review acted as the missing
+failing-test-first pass.
+
 ## 1.17.4 — Shape cleanup + memory probe (April 23 2026)
 
 ### Fixed

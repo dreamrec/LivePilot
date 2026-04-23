@@ -476,6 +476,135 @@ def test_iterate_plain_committed_still_reported_for_clean_success():
     assert result.committed_branch_id == "br_win"
 
 
+# ── v1.17.5 — classify error-only commit payloads as failures ──────────
+#
+# Codex review on PR #27 caught a gap: _classify_commit_result's
+# docstring lists {"error": ...} as a known failure signal, but the
+# implementation never checks for a top-level "error" key. Payloads like
+# {"error": "Experiment not found"} — which commit_branch_async in
+# experiment/engine.py returns in 5+ spots — fall through to "committed"
+# because they have no "committed: false" / "ok: false" / "status:
+# failed" / "steps_ok: 0" signal. Classic truth-gap.
+
+
+def test_iterate_reports_commit_failed_on_error_only_payload():
+    """Commit_fn returning {"error": ...} with no other failure signal must
+    NOT be classified as committed. commit_branch_async returns this shape
+    for 'Branch not found', 'Branch has no compiled plan', and 'Experiment
+    not found' cases — the classifier must catch all three."""
+    from mcp_server.tools._agent_os_engine.iteration import iterate_toward_goal_engine
+
+    create, run, commit, discard, committed_calls, _ = _make_scripted_commit_callbacks(
+        run_results=[("br_win", 0.85)],
+        commit_results=[
+            {"error": "Experiment exp_abc not found"},
+        ],
+    )
+
+    result = iterate_toward_goal_engine(
+        candidate_move_sets=[["make_punchier"]],
+        threshold=0.70,
+        max_iterations=1,
+        create_experiment_fn=create,
+        run_experiment_fn=run,
+        commit_fn=commit,
+        discard_fn=discard,
+        on_timeout="commit_best",
+    )
+
+    assert result.status == "commit_failed", (
+        f"commit returned error-only payload; iteration must not claim "
+        f"success. Got status={result.status!r}"
+    )
+    assert result.committed_experiment_id is None
+    assert result.committed_branch_id is None
+
+
+def test_iterate_reports_commit_failed_on_branch_not_found_error():
+    """Exact shape that commit_branch_async returns when the branch has
+    been GC'd mid-iteration: {"error": "Branch {id} not found"}."""
+    from mcp_server.tools._agent_os_engine.iteration import iterate_toward_goal_engine
+
+    create, run, commit, discard, committed_calls, _ = _make_scripted_commit_callbacks(
+        run_results=[("br_gc", 0.85)],
+        commit_results=[
+            {"error": "Branch br_gc not found"},
+        ],
+    )
+
+    result = iterate_toward_goal_engine(
+        candidate_move_sets=[["make_punchier"]],
+        threshold=0.70,
+        max_iterations=1,
+        create_experiment_fn=create,
+        run_experiment_fn=run,
+        commit_fn=commit,
+        discard_fn=discard,
+    )
+
+    assert result.status == "commit_failed"
+    assert result.to_dict().get("commit_result") == {"error": "Branch br_gc not found"}
+
+
+def test_iterate_reports_commit_failed_on_error_in_timeout_commit_best_path():
+    """Same truth-gap applies to the on_timeout='commit_best' path."""
+    from mcp_server.tools._agent_os_engine.iteration import iterate_toward_goal_engine
+
+    create, run, commit, discard, committed_calls, _ = _make_scripted_commit_callbacks(
+        run_results=[("br_a", 0.40), ("br_b", 0.55)],
+        commit_results=[
+            {"error": "Branch has no compiled plan"},
+        ],
+    )
+
+    result = iterate_toward_goal_engine(
+        candidate_move_sets=[["m1"], ["m2"]],
+        threshold=0.80,
+        max_iterations=2,
+        create_experiment_fn=create,
+        run_experiment_fn=run,
+        commit_fn=commit,
+        discard_fn=discard,
+        on_timeout="commit_best",
+    )
+
+    assert result.status == "commit_failed"
+    assert result.committed_experiment_id is None
+
+
+def test_iterate_error_plus_explicit_committed_true_still_committed():
+    """Edge case: if a commit payload has BOTH error AND committed=True,
+    trust the explicit committed flag. This matches the docstring's
+    'unless committed explicitly True' caveat."""
+    from mcp_server.tools._agent_os_engine.iteration import iterate_toward_goal_engine
+
+    create, run, commit, discard, committed_calls, _ = _make_scripted_commit_callbacks(
+        run_results=[("br_x", 0.85)],
+        commit_results=[
+            {
+                "committed": True,
+                "error": "warning: analyzer was unavailable",
+                "steps_ok": 3,
+                "steps_failed": 0,
+            },
+        ],
+    )
+
+    result = iterate_toward_goal_engine(
+        candidate_move_sets=[["make_punchier"]],
+        threshold=0.70,
+        max_iterations=1,
+        create_experiment_fn=create,
+        run_experiment_fn=run,
+        commit_fn=commit,
+        discard_fn=discard,
+    )
+
+    # The explicit committed=True + successful steps override the error.
+    assert result.status == "committed"
+    assert result.committed_branch_id == "br_x"
+
+
 # ── MCP tool registration smoke ────────────────────────────────────────
 
 def test_iterate_toward_goal_tool_registered():

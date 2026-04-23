@@ -1,4 +1,4 @@
-# LivePilot v1.17.4 — Ableton Live 12
+# LivePilot v1.17.5 — Ableton Live 12
 
 ## Project
 - **Repo:** This directory (LivePilot)
