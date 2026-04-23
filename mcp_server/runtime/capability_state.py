@@ -155,6 +155,9 @@ def build_capability_state(
     )
 
     # ── web ──────────────────────────────────────────────────────────
+    # Server-side outbound HTTP capability.  True when the MCP host can
+    # reach an arbitrary public URL.  Does NOT imply curated research
+    # corpora are installed — see the ``research`` domain below.
     web_reasons: list[str] = []
     if not web_ok:
         web_reasons.append("web_unavailable")
@@ -164,6 +167,21 @@ def build_capability_state(
         confidence=0.7 if web_ok else 0.0,
         mode="available" if web_ok else "unavailable",
         reasons=web_reasons,
+    )
+
+    # ── flucoma ──────────────────────────────────────────────────────
+    # Optional dependency (the ``flucoma`` Python package).  Emitted
+    # unconditionally so consumers can distinguish "probed and missing"
+    # from "probe not run yet".
+    flucoma_reasons: list[str] = []
+    if not flucoma_ok:
+        flucoma_reasons.append("flucoma_not_installed")
+    domains["flucoma"] = CapabilityDomain(
+        name="flucoma",
+        available=flucoma_ok,
+        confidence=0.9 if flucoma_ok else 0.0,
+        mode="available" if flucoma_ok else "unavailable",
+        reasons=flucoma_reasons,
     )
 
     # ── research (composite) ────────────────────────────────────────
