@@ -1,0 +1,98 @@
+id: compressor
+name: Compressor
+type: effect
+category: dynamics
+aliases:
+  - "compressor"
+atlas_search_query: "Compressor"
+
+musical_roles:
+  - sidechain compression triggered by kick (pumping aesthetic)
+  - individual-track dynamics taming
+  - transient shaping (attack parameter)
+  - parallel compression for drum-bus density
+  - envelope-follower-triggered dynamic filtering
+
+strong_for:
+  - house / disco / dance sidechain pumping (via Envelope Follower)
+  - vocal compression for consistency
+  - drum-bus glue (moderate ratio, slow attack)
+  - controlling peaks on transient-heavy material
+  - parallel processing for density without killing transients
+
+risky_for:
+  - ambient / drone material (compression kills the dynamic evolution)
+  - transient-critical sources at aggressive settings (squash kills punch)
+  - already-limited material (compounded compression = lifeless)
+  - subtle-aesthetic contexts (Basic Channel, Gas) — the genre avoids compression
+
+subtle_ranges:
+  threshold: [-6, -3]             # dB
+  ratio: [1.5, 2.5]
+  attack: [10, 30]                # ms
+  release: [50, 200]              # ms
+  gain_reduction: [1, 3]          # dB actual reduction target
+moderate_ranges:
+  threshold: [-12, -6]
+  ratio: [2.5, 4.0]
+  attack: [2, 10]
+  release: [20, 50]
+  gain_reduction: [3, 6]
+aggressive_ranges:
+  threshold: [-20, -12]
+  ratio: [4.0, 10.0]
+  attack: [0.1, 2]
+  release: [5, 20]
+  gain_reduction: [6, 15]
+
+pairings:
+  - device: Envelope Follower
+    order: before  # routed from external kick track
+    purpose: sidechain pumping (house / disco / dance)
+  - device: EQ Eight
+    order: before
+    purpose: cut problem frequencies before compressing
+  - device: Saturator
+    order: before
+    purpose: tame saturation peaks with downstream compression
+  - device: EQ Eight
+    order: after
+    purpose: restore lost brightness after compression
+
+anti_pairings:
+  - "Multiple compressors in series at aggressive settings (squash compound)"
+  - "Limiter after compressor at aggressive settings (double-dynamics-kill)"
+
+remeasure:
+  - track_meters            # compression changes level
+  - spectral_balance        # dynamic EQ shift
+  - groove_motion           # sidechain pumping changes groove
+
+dimensional_impact:
+  structural: none
+  rhythmic: moderate        # sidechain pumping IS rhythmic texture
+  timbral: low
+  spatial: none
+
+appears_in_packets:
+  artists:
+    - daft-punk
+    - moodymann-theo-parrish
+    - com-truise-tycho
+    - skream-mala
+  genres:
+    - house
+    - dubstep
+    - trap
+    - modern-classical
+    - drum-and-bass
+
+notes: |
+  Compressor's most distinctive LivePilot use is sidechain pumping
+  via Envelope Follower — route the kick track's audio into
+  Compressor's sidechain input, ratio 4:1, attack 0.1 ms, release
+  150-250 ms, and non-kick elements breathe with the kick.
+
+  For genres that AVOID compression (Basic Channel dub-techno,
+  Gas ambient), the packet's `avoid` list will explicitly name
+  heavy compression — respect it.

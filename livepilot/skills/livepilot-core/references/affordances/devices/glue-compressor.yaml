@@ -1,0 +1,88 @@
+id: glue_compressor
+name: Glue Compressor
+type: effect
+category: dynamics
+aliases:
+  - "glue compressor"
+  - "glue"
+atlas_search_query: "Glue Compressor"
+
+musical_roles:
+  - bus glue (drum bus, master bus, group glue)
+  - SSL-style cohesion
+  - low-compression-count master buss dynamics
+  - rhythmic density via slight compression pumping
+
+strong_for:
+  - drum-bus glue (2:1 or 4:1, slow attack, moderate release)
+  - master-bus light compression (1.5:1, auto-release)
+  - group-bus cohesion (similar sounds through one compressor)
+  - cohesion-focused production (house, pop, modern-classical)
+
+risky_for:
+  - individual-track dynamics (use Compressor instead — more control)
+  - sidechain pumping (use Compressor with Envelope Follower)
+  - aggressive transient shaping (Glue is smoother than Compressor)
+  - ambient / dub-techno / Gas-style aesthetics (avoids compression by design)
+
+subtle_ranges:
+  threshold: [-4, -1]
+  ratio: [1.5, 2.0]
+  attack: [10, 30]
+  release: [100, 400]
+  gain_reduction: [1, 2]
+moderate_ranges:
+  threshold: [-8, -4]
+  ratio: [2.0, 4.0]
+  attack: [3, 10]
+  release: [50, 100]
+  gain_reduction: [2, 4]
+aggressive_ranges:
+  threshold: [-14, -8]
+  ratio: [4.0, 10.0]
+  attack: [0.1, 3]
+  release: [auto]
+  gain_reduction: [4, 8]
+
+pairings:
+  - device: EQ Eight
+    order: after
+    purpose: post-glue tone shaping
+  - device: Saturator
+    order: before
+    purpose: saturation into glue for warmth
+  - device: Limiter
+    order: after                  # on master bus
+    purpose: final peak control after glue
+
+anti_pairings:
+  - "Compressor on the same bus (pick one — Glue is a Compressor specialist)"
+  - "Aggressive sidechain via Glue (use Compressor for sidechain work)"
+
+remeasure:
+  - track_meters
+  - spectral_balance
+  - low_headroom
+  - master_lufs             # on master-bus application
+
+dimensional_impact:
+  structural: none
+  rhythmic: low
+  timbral: low
+  spatial: none             # dynamics, not spatial
+
+appears_in_packets:
+  artists: []
+  genres:
+    - house
+    - drum-and-bass
+
+notes: |
+  Glue Compressor is specialist: bus glue, not individual tracks.
+  For drum-bus glue, 2:1-4:1 with slow attack (10-20 ms) and moderate
+  release (100-200 ms) gives SSL-style cohesion without crushing
+  transients.
+
+  Genres that explicitly avoid compression (Basic Channel, Gas,
+  ambient) should AVOID Glue on master; instead, send minimal
+  volume + Utility + Saturator for gentle warmth.

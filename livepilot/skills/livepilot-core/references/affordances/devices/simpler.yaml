@@ -1,0 +1,113 @@
+id: simpler
+name: Simpler
+type: instrument
+category: sampler
+aliases:
+  - "simpler"
+atlas_search_query: "Simpler"
+
+musical_roles:
+  - slice-based rhythm programming (chopped breaks, chopped vocals)
+  - melodic chop tool (Akufen-style micro-chop)
+  - one-shot playback with envelope
+  - stab source (classic mode, tight crop)
+  - sub-bass sample playback (Villalobos layer)
+
+strong_for:
+  - classic break slicing (Amen, Funky Drummer, Impeach the President, Apache)
+  - micro-chopping vocal samples (sub-syllable chops triggered percussively)
+  - loading a drum break with per-slice MIDI notes
+  - stab isolation (classic mode with loop disabled, short crop)
+  - replacing a kick sample for tonal kick work
+  - Villalobos-style sub-bass layer (slicing a sine or sampled sub)
+
+risky_for:
+  - multi-velocity orchestral playback (use Sampler — multi-sample capable)
+  - complex envelope shapes beyond ADSR (use Sampler)
+  - sustained pads from single sample (Looper mode can work but Sampler is cleaner)
+
+subtle_ranges:
+  volume: [0.0, 0.0]             # Simpler default is -12 dB — BUMP to 0 for sustained sources
+  attack: [0.0, 0.05]
+  release: [0.1, 0.3]
+  pitch_drift: [0, 5]            # cents
+moderate_ranges:
+  volume: [0.0, 0.0]
+  attack: [0.0, 0.15]
+  release: [0.3, 0.8]
+  pitch_drift: [5, 25]
+aggressive_ranges:
+  attack: [0.15, 1.0]
+  release: [0.8, 3.0]
+  pitch_drift: [25, 100]
+
+pairings:
+  - device: Saturator
+    order: after
+    purpose: warmth on chopped breaks (Dilla aesthetic)
+  - device: Vinyl Distortion
+    order: after
+    purpose: vinyl-warp on break samples
+  - device: Snipper
+    order: parallel  # external via routing
+    purpose: pitch-drift chops (microhouse)
+  - device: Slice Shuffler
+    order: parallel
+    purpose: re-sequence slice order (footwork)
+
+anti_pairings:
+  - "Loading Simpler without confirming Snap=OFF — the Simpler Snap bug (see CLAUDE.md memory); after load_sample_to_simpler, Snap must be OFF or sample plays silently"
+
+remeasure:
+  - plugin_health          # confirm sample loaded (parameter_count > 1)
+  - track_meters           # confirm audio reaches master (Volume default -12 dB is a trap)
+  - slice_count            # when loading a break, confirm slices exist
+  # CLAUDE.md memory: Simpler Slice mode maps slice N to MIDI pitch 36+N,
+  # not 60+N. Always analyze slices before programming drums.
+
+dimensional_impact:
+  structural: low
+  rhythmic: high           # breaks + chops ARE rhythm
+  timbral: moderate
+  spatial: low
+
+appears_in_packets:
+  artists:
+    - villalobos
+    - akufen
+    - j-dilla
+    - dj-premier-rza
+    - madlib
+    - burial
+    - photek-source-direct
+    - rashad-spinn-traxman
+    - moodymann-theo-parrish
+    - boards-of-canada
+    - daft-punk
+    - basic-channel
+  genres:
+    - microhouse
+    - deep-minimal
+    - hip-hop
+    - dubstep
+    - drum-and-bass
+    - footwork
+    - uk-garage
+    - house
+
+notes: |
+  Simpler is the single most-referenced instrument across the concept
+  catalog — it appears in 12 artist packets and 8 genre packets. It is
+  the LivePilot default for any sample-based creative work.
+
+  Critical gotchas (per CLAUDE.md memory):
+  - Default Volume is -12 dB. Set to 0 for sustained / melodic use.
+  - Snap bug: Snap MUST be OFF after load_sample_to_simpler or silent.
+  - Slice mode maps to MIDI 36+N (C1), not 60+N (C3).
+  - Always use `load_browser_item` with a browser URI, NOT
+    `replace_simpler_sample` or `load_sample_to_simpler` — those two
+    silently fail and keep the kick bootstrap.
+
+  See atlas signature_techniques for recipes: "J Dilla micro-timed kit",
+  "Vocal micro-chop (Akufen)", "Villalobos sub-bass layer",
+  "slice_and_sequence".

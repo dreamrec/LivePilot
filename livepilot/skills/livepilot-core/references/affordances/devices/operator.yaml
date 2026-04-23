@@ -1,0 +1,98 @@
+id: operator
+name: Operator
+type: instrument
+category: synth
+aliases:
+  - "operator"
+atlas_search_query: "Operator"
+
+musical_roles:
+  - FM bell clusters (DX7-adjacent)
+  - Aphex-style FM pads
+  - sci-fi / metallic timbres
+  - Haas-style deep bass (minimal-techno)
+  - ring-modulator via internal modulation matrix
+
+strong_for:
+  - FM-heavy timbres (bells, metal, glass-like tones)
+  - atmospheric Aphex-style ambient pads
+  - DX7-era sound design
+  - inharmonic partials (microtonal bells)
+  - when the aesthetic explicitly calls for FM character
+
+risky_for:
+  - warm analog pads (use Drift or Poli)
+  - acid leads (use Analog's 303 mode)
+  - sampled percussion (use Simpler)
+  - wobble bass (use Wavetable)
+  - granular textures (use Granulator III or Vector Grain)
+
+subtle_ranges:
+  operator_ratio: [0.5, 3.0]      # ratio between operators
+  feedback: [0.0, 0.15]
+  envelope_release: [0.1, 0.4]
+moderate_ranges:
+  operator_ratio: [3.0, 8.0]
+  feedback: [0.15, 0.5]
+  envelope_release: [0.4, 1.5]
+aggressive_ranges:
+  operator_ratio: [8.0, 20.0]     # extreme FM (metallic, inharmonic)
+  feedback: [0.5, 0.9]
+  envelope_release: [1.5, 10.0]
+
+pairings:
+  - device: Erosion
+    order: after
+    purpose: digital grit complementing FM metallic timbre
+  - device: Pitch Hack
+    order: after
+    purpose: pitch-shift FM output for further timbral extremes
+  - device: Convolution Reverb
+    order: parallel
+    purpose: cathedral space for Aphex ambient pads
+  - device: Auto Filter
+    order: after
+    purpose: shape FM harmonics via filter automation
+
+anti_pairings:
+  - "Wavetable in same chain (redundant complex synth)"
+  - "Chorus-Ensemble (warms out the FM character Operator is for)"
+
+remeasure:
+  - plugin_health
+  - track_meters
+  - spectral_balance        # FM creates unpredictable high-frequency content
+  - low_headroom            # deep FM bass needs headroom
+
+dimensional_impact:
+  structural: low
+  rhythmic: low
+  timbral: high
+  spatial: low
+
+appears_in_packets:
+  artists:
+    - aphex-twin
+    - autechre
+    - jeff-mills
+    - shackleton
+    - villalobos
+  genres:
+    - idm
+    - minimal-techno
+    - deep-minimal
+    - dubstep
+    - experimental
+
+notes: |
+  Operator is the FM specialist. Reach for it ONLY when the aesthetic
+  explicitly names FM character (Aphex, Autechre, IDM-adjacent) — for
+  warmth use Drift, for analog classic use Poli/Analog.
+
+  Signature techniques in atlas: "Aphex ambient FM pad" (specific
+  algorithm), "DX7 bell cluster", "303 acid bass" (also Analog).
+  Check atlas signature_techniques for algorithm-level recipes.
+
+  Operator's 6-operator algorithm matters — the "FM pad" sounds use
+  different algorithms from the "metallic bell" sounds. Load from
+  atlas preset, don't invent from scratch.

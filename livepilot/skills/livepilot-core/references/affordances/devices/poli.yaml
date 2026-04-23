@@ -1,0 +1,98 @@
+id: poli
+name: Poli
+type: instrument
+category: synth
+aliases:
+  - "poli"
+atlas_search_query: "Poli"
+
+musical_roles:
+  - Juno-style detuned chord stab
+  - retro polysynth pad
+  - 80s synthwave lead
+  - dub-techno chord stab (short release)
+  - house melodic stab
+
+strong_for:
+  - Juno-6 / Juno-60 character
+  - chord stabs with authentic analog-polysynth feel
+  - synthwave arpeggios (Com Truise / Tycho aesthetic)
+  - dub-techno chord source (with filtered-delay send)
+  - retro 80s patches
+
+risky_for:
+  - modern digital-sounding synthesis (use Wavetable)
+  - extreme FM timbres (use Operator)
+  - granular textures (use Granulator III)
+  - trap 808 (use Bass)
+  - warm neutral pads without retro character (use Drift)
+
+subtle_ranges:
+  detune: [0.0, 0.15]
+  filter_cutoff: [0.5, 0.75]
+  envelope_release: [0.1, 0.3]
+  chorus_amount: [0.0, 0.3]       # Poli has internal chorus
+moderate_ranges:
+  detune: [0.15, 0.35]
+  filter_cutoff: [0.3, 0.6]
+  envelope_release: [0.3, 0.8]
+  chorus_amount: [0.3, 0.6]
+aggressive_ranges:
+  detune: [0.35, 0.7]
+  filter_cutoff: [0.1, 0.4]
+  envelope_release: [0.8, 2.0]
+  chorus_amount: [0.6, 1.0]
+
+pairings:
+  - device: Chorus-Ensemble
+    order: after
+    purpose: additional thickening beyond internal chorus
+  - device: Echo
+    order: parallel
+    purpose: dub chord stab tail via send
+  - device: Arpeggiator
+    order: before
+    purpose: synthwave arpeggios
+  - device: Auto Filter
+    order: after
+    purpose: extra filter movement beyond Poli's internal filter
+
+anti_pairings:
+  - "Drift in the same role (pick one warm synth for a given part)"
+  - "Heavy distortion (breaks retro-polysynth character)"
+
+remeasure:
+  - plugin_health
+  - track_meters
+  - spectral_balance
+  - stereo_width
+
+dimensional_impact:
+  structural: low
+  rhythmic: low
+  timbral: high
+  spatial: low-moderate
+
+appears_in_packets:
+  artists:
+    - basic-channel
+    - com-truise-tycho
+    - jeff-mills
+  genres:
+    - dub-techno
+    - microhouse
+    - synthwave
+    - techno
+    - house
+
+notes: |
+  Poli is the Juno emulation — reach for it when the aesthetic wants
+  classic 80s polysynth character. It differs from Drift (warm
+  generic analog) by leaning into Juno-6/60 timbre.
+
+  Signature techniques in atlas: "Juno-style detuned chord",
+  "Retro stab". See atlas for parameter recipes.
+
+  For dub-techno chord stab: short attack + short release + moderate
+  filter cutoff + slight detune + internal chorus at 0.3-0.5. Route
+  to send with Ping-Pong Delay + Auto Filter + Convolution Reverb.

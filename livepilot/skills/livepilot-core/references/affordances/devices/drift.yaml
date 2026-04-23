@@ -1,0 +1,105 @@
+id: drift
+name: Drift
+type: instrument
+category: synth
+aliases:
+  - "drift"
+atlas_search_query: "Drift"
+
+musical_roles:
+  - warm analog-style pad
+  - detuned chord stab
+  - synthwave lead
+  - Rhodes-adjacent electric-piano tones
+  - minimal-techno single-source evolution
+
+strong_for:
+  - warm pads with subtle detune
+  - dub-techno chord stabs (short release, filtered delay on send)
+  - synthwave detuned leads (reduced spread)
+  - sustained textural drones
+  - single-source filter-automation aesthetic
+
+risky_for:
+  - aggressive acid lines (use Analog instead)
+  - FM-complex timbres (use Operator or Vector FM)
+  - granular textures (use Granulator III or Vector Grain)
+  - trap 808 replacement (use Bass instead)
+
+subtle_ranges:
+  osc_detune: [0.0, 0.15]          # 0-1 normalized in Drift's internal scale
+  filter_cutoff: [0.5, 0.75]
+  envelope_attack: [0.0, 0.1]
+  envelope_release: [0.1, 0.3]
+  lfo_amount: [0.0, 0.15]
+moderate_ranges:
+  osc_detune: [0.15, 0.35]
+  filter_cutoff: [0.3, 0.6]
+  envelope_release: [0.3, 0.7]
+  lfo_amount: [0.15, 0.4]
+aggressive_ranges:
+  osc_detune: [0.35, 0.7]
+  filter_cutoff: [0.1, 0.4]
+  envelope_release: [0.7, 1.0]
+  lfo_amount: [0.4, 0.8]
+
+pairings:
+  - device: Chorus-Ensemble
+    order: after
+    purpose: thicken pads and synthwave leads
+  - device: Auto Filter
+    order: after
+    purpose: additional filter movement beyond Drift's internal filter
+  - device: Echo
+    order: parallel  # via send
+    purpose: dub-chord stab tail
+  - device: Convolution Reverb
+    order: parallel  # via send
+    purpose: hall reverb on pads
+
+anti_pairings:
+  - "Heavy distortion (Saturator on drive) — Drift's warm character conflicts with aggressive saturation; use Analog for that sound"
+  - "Pitch Hack — Drift's internal pitch is clean; Pitch Hack compounds with oscillator character unpredictably"
+
+remeasure:
+  - plugin_health          # Drift is native but confirm load
+  - track_meters           # Drift's default Volume is NOT -12dB (Simpler is); confirm
+  - spectral_balance
+  - stereo_width           # detune widens
+
+dimensional_impact:
+  structural: low
+  rhythmic: low
+  timbral: high
+  spatial: low-moderate    # detune creates stereo width
+
+appears_in_packets:
+  artists:
+    - basic-channel
+    - isolee-luomo
+    - com-truise-tycho
+    - jeff-mills
+    - boards-of-canada
+  genres:
+    - dub-techno
+    - minimal-techno
+    - microhouse
+    - house
+    - synthwave
+    - downtempo
+    - uk-garage
+
+notes: |
+  Drift is the LivePilot answer for "warm, simple synth" — the first
+  device to reach for when the aesthetic calls for classic analog
+  character without the dedicated emulation (Analog = acid, Poli =
+  Juno, Drift = "none of the above, just warm").
+
+  Key signature techniques in atlas: "Neo-soul Rhodes-adjacent keys",
+  "Warm synthwave pad". See atlas `signature_techniques` for full
+  parameter recipes.
+
+  For dub-techno chord stab: short attack + short release + high
+  resonance + slight detune, then route to a send with Ping-Pong
+  Delay + Auto Filter + Convolution Reverb. The PATCH is minimal;
+  the SEND CHAIN carries the aesthetic.

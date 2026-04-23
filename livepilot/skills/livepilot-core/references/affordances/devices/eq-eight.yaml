@@ -1,0 +1,95 @@
+id: eq_eight
+name: EQ Eight
+type: utility
+category: equalizer
+aliases:
+  - "eq eight"
+  - "eq 8"
+atlas_search_query: "EQ Eight"
+
+musical_roles:
+  - corrective EQ (cutting problem frequencies)
+  - tonal shaping (shelf / bell / pass filters)
+  - surgical notches (resonance removal)
+  - spectral tilt (adjusting overall brightness / darkness)
+  - dynamic-EQ via automation
+
+strong_for:
+  - surgical notch cuts (high-Q narrow bell)
+  - low-shelf / high-shelf tilt for warmth / brightness
+  - high-pass filter to remove low-end rumble
+  - mid-cut to create space for vocals / leads
+  - dynamic spectral shaping via automation
+
+risky_for:
+  - creative effect (EQ is subtractive shaping, not creative device — use Auto Filter for creative filter work)
+  - extreme cut/boost settings (>±12 dB — use multiple bands instead)
+  - transient shaping (EQ doesn't touch transients; use Compressor with attack)
+  - aggressive character (Saturator adds character, EQ just removes)
+
+subtle_ranges:
+  gain_per_band: [-3, 3]          # dB
+  q_factor: [0.5, 2.0]
+  cut_below: [20, 40]             # high-pass at
+  cut_above: [15000, 20000]       # low-pass at
+moderate_ranges:
+  gain_per_band: [-6, 6]
+  q_factor: [2.0, 5.0]
+  cut_below: [40, 80]
+  cut_above: [10000, 15000]
+aggressive_ranges:
+  gain_per_band: [-12, 12]
+  q_factor: [5.0, 18.0]           # surgical notch
+  cut_below: [80, 250]
+  cut_above: [5000, 10000]
+
+pairings:
+  - device: Compressor
+    order: after
+    purpose: de-essing pattern (EQ notch before compression)
+  - device: Saturator
+    order: after
+    purpose: EQ-first-then-saturate for warmth on shaped source
+  - device: Reverb / Convolution Reverb
+    order: after
+    purpose: high-pass the input BEFORE reverb to prevent mud
+  - device: Utility
+    order: either
+    purpose: utility is always compatible
+
+anti_pairings:
+  - "Multiple EQ Eights in series for minor adjustments (use bands in one)"
+  - "Auto Filter replicating a simple low-pass (use EQ — cheaper CPU)"
+
+remeasure:
+  - spectral_balance        # the whole point
+  - track_meters            # cuts/boosts change level
+  - master_spectrum
+
+dimensional_impact:
+  structural: none
+  rhythmic: none
+  timbral: moderate         # tone shaping affects timbre
+  spatial: none
+
+appears_in_packets:
+  artists:
+    - basic-channel
+    - hawtin
+    - com-truise-tycho
+    # ... appears universally, but listed in packets where it's specifically named
+  genres:
+    - dub-techno
+    - modern-classical
+    - ambient
+    # ... also near-universal
+
+notes: |
+  EQ Eight is plumbing for creative work. It's rarely THE move — it
+  supports creative moves by removing unwanted frequencies or adding
+  subtle tilt. A Phase-3 plan's dominant family should almost never
+  be an EQ Eight plan (that's a mix cleanup, not a creative move).
+
+  Per CLAUDE.md: always pair with read_value_string checks after
+  any parameter change — EQ Eight's gain parameter is actual dB,
+  frequency is actual Hz.

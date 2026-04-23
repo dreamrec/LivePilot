@@ -1,0 +1,95 @@
+id: utility
+name: Utility
+type: utility
+category: utility
+aliases:
+  - "utility"
+atlas_search_query: "Utility"
+
+musical_roles:
+  - mono-ize sub-bass below a frequency (dub-techno, house, EDM)
+  - gain staging on individual tracks
+  - phase-flip for stereo correction
+  - width control (narrow / wide)
+  - DC-offset elimination
+
+strong_for:
+  - narrowing sub-bass to mono under 80-100 Hz (mono-compatibility)
+  - precise track gain adjustment (dB, not normalized 0-1)
+  - phase flipping when stacking similar sources
+  - '"Bass Mono" for club playback'
+  - simple gain staging before other effects
+
+risky_for:
+  - when used as a general "effect" — Utility does exactly what it says and nothing else
+  - attempting to use for EQ (Utility has no frequency shaping; use EQ Eight)
+  - trying to replace EQ Eight's width control (Utility's width is coarser)
+
+subtle_ranges:
+  gain: [-3, 3]                   # dB
+  width: [0.9, 1.0]               # narrow to slightly-narrow
+  bass_mono_freq: [30, 80]        # Hz
+moderate_ranges:
+  gain: [-6, 6]
+  width: [0.5, 0.9]
+  bass_mono_freq: [80, 150]
+aggressive_ranges:
+  gain: [-12, 12]
+  width: [0.0, 0.5]               # mono to narrow
+  bass_mono_freq: [150, 350]
+
+pairings:
+  - device: EQ Eight
+    order: after
+    purpose: after mono-summing, EQ the mono path
+  - device: Compressor
+    order: before
+    purpose: pre-compression gain staging
+  - device: Saturator
+    order: before
+    purpose: pre-saturation level control
+
+anti_pairings: []
+  # Utility plays well with everything — it's genuinely utility.
+
+remeasure:
+  - track_meters            # gain changes reflect immediately
+  - mono_compatibility      # when narrowing
+  - stereo_width            # when narrowing
+
+dimensional_impact:
+  structural: none
+  rhythmic: none
+  timbral: none             # no tone shaping
+  spatial: moderate         # width and mono affect placement
+
+appears_in_packets:
+  artists:
+    - basic-channel
+    - hawtin
+    - villalobos
+    - gas
+    - basinski
+    - skream-mala
+  genres:
+    - dub-techno
+    - deep-minimal
+    - minimal-techno
+    - microhouse
+    - dubstep
+    - house
+    - uk-garage
+
+notes: |
+  Utility is the most-ubiquitous utility in the catalog — 6 artist
+  packets and 7 genre packets. It's not a creative tool; it's the
+  plumbing that makes other creative tools sound professional.
+
+  Canonical dub-techno move: Utility on master or sub-bus with
+  "Bass Mono" at 80-100 Hz narrows the low end to mono for club
+  playback. This is so common it's often the FIRST mix move before
+  any creative work.
+
+  Also critical: when stacking two sub-bass sources (Bass + Drone Lab),
+  Utility's phase flip resolves cancellation issues before saturator
+  or EQ choices get blamed.

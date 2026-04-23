@@ -1,0 +1,98 @@
+id: wavetable
+name: Wavetable
+type: instrument
+category: synth
+aliases:
+  - "wavetable"
+atlas_search_query: "Wavetable"
+
+musical_roles:
+  - morphing ambient pad (position LFO)
+  - wobble bass (position modulation at LFO rate)
+  - supersaw lead (detune + position drift)
+  - vapor-wave pad (slow morph across bars)
+  - evolving texture source
+
+strong_for:
+  - morphing pads (Wavetable's position parameter = source of motion)
+  - wobble bass (saw-adjacent tables + filter modulation)
+  - OPN-style dense harmonic stacking
+  - pad textures that need to CHANGE over long durations
+  - synthwave leads (reduced detune spread)
+
+risky_for:
+  - traditional analog-emulation sounds (use Analog or Drift)
+  - FM-complex bells (use Operator or Vector FM)
+  - acid bass (use Analog's 303 mode)
+  - classic Juno pad (use Poli)
+
+subtle_ranges:
+  position: [0.0, 0.15]           # 0-1 of wavetable length
+  detune: [0, 10]                 # cents
+  lfo_rate: [0.1, 2.0]            # Hz
+  lfo_amount: [0.0, 0.15]
+moderate_ranges:
+  position: [0.15, 0.5]
+  detune: [10, 30]
+  lfo_rate: [0.05, 0.3]           # slower for morph pads
+  lfo_amount: [0.15, 0.45]
+aggressive_ranges:
+  position: [0.5, 1.0]
+  detune: [30, 80]
+  lfo_rate: [0.05, 8.0]           # wobble-bass territory
+  lfo_amount: [0.45, 1.0]
+
+pairings:
+  - device: Chorus-Ensemble
+    order: after
+    purpose: thickening pads (synthwave aesthetic)
+  - device: Auto Filter
+    order: after
+    purpose: wobble-bass filter modulation (dubstep)
+  - device: Echo
+    order: parallel
+    purpose: pad dub-tail via send
+  - device: Convolution Reverb
+    order: parallel
+    purpose: morph pad spatial placement
+
+anti_pairings:
+  - "Operator in same chain (use one complex synth per source)"
+  - "Heavy saturation on morphing pad (destroys the motion nuance)"
+
+remeasure:
+  - plugin_health
+  - track_meters
+  - spectral_balance
+  - stereo_width
+
+dimensional_impact:
+  structural: low
+  rhythmic: low
+  timbral: high
+  spatial: moderate
+
+appears_in_packets:
+  artists:
+    - oneohtrix-point-never
+    - aphex-twin
+    - skream-mala
+  genres:
+    - microhouse
+    - dubstep
+    - trap
+    - synthwave
+    - idm
+
+notes: |
+  Wavetable's position parameter IS the device's most distinctive
+  feature — LFO-modulated position gives continuously-morphing
+  timbre that no other LivePilot synth offers. For pads, map a
+  slow LFO (0.1-0.3 Hz) to position + another to cutoff for
+  multi-axis morph.
+
+  For wobble bass, same position-modulation at LFO rate (0.5-8 Hz)
+  + resonant low-pass filter.
+
+  See atlas signature_techniques for "Morphing ambient pad",
+  "Wobble bass", "Supersaw trance lead" recipes.

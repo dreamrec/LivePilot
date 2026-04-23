@@ -1,0 +1,92 @@
+id: vinyl_distortion
+name: Vinyl Distortion
+type: effect
+category: distortion
+aliases:
+  - "vinyl distortion"
+atlas_search_query: "Vinyl Distortion"
+
+musical_roles:
+  - vinyl-era warmth on drum busses (Dilla, Premier, Madlib aesthetic)
+  - crackle and hiss as texture
+  - dusty hip-hop mix aesthetic
+  - lo-fi mix character
+  - aging digital sources (BoC, Burial)
+
+strong_for:
+  - drum-bus dustiness (hip-hop / boom-bap)
+  - adding crackle to otherwise clean samples
+  - lo-fi aesthetic mix bus processing
+  - Burial atmospheric subtext (at -36 dB under track)
+  - BoC tape-warmth emulation
+
+risky_for:
+  - pristine aesthetic contexts (ambient, modern-classical)
+  - club-system release masters (crackle = perceived as artifact)
+  - vocal-forward mixes (crackle fights vocal intelligibility)
+  - already-distorted material (compounded character)
+
+subtle_ranges:
+  drive: [0.0, 0.15]
+  crackle: [0.0, 0.1]
+  pinch: [0.0, 0.2]
+moderate_ranges:
+  drive: [0.15, 0.40]
+  crackle: [0.1, 0.35]
+  pinch: [0.2, 0.5]
+aggressive_ranges:
+  drive: [0.40, 0.85]
+  crackle: [0.35, 1.0]
+  pinch: [0.5, 1.0]
+
+pairings:
+  - device: Saturator
+    order: before
+    purpose: saturation into Vinyl Distortion for double-character warmth
+  - device: EQ Eight
+    order: after
+    purpose: shelf-cut highs if crackle is too bright
+  - device: Erosion
+    order: parallel
+    purpose: different noise-character stackable on same bus
+
+anti_pairings:
+  - "Modern clean-aesthetic tracks (the character is anti-clean)"
+  - "Master-bus application without explicit lo-fi intent"
+
+remeasure:
+  - spectral_balance        # crackle adds high-end content
+  - low_headroom            # drive pushes level
+  - track_meters
+
+dimensional_impact:
+  structural: none
+  rhythmic: low
+  timbral: high
+  spatial: low
+
+appears_in_packets:
+  artists:
+    - j-dilla
+    - dj-premier-rza
+    - madlib
+    - burial
+    - boards-of-canada
+    - moodymann-theo-parrish
+  genres:
+    - hip-hop
+    - microhouse
+    - dubstep
+    - downtempo
+
+notes: |
+  Vinyl Distortion is the Dilla / Premier / Madlib dusty-drum-bus
+  signature. Moderate settings (drive 0.2-0.4, crackle 0.2-0.3) on
+  a drum bus give the hip-hop aesthetic.
+
+  For Burial: 100% wet on a dedicated crackle track sent at -36 dB
+  under the full mix is the canonical move. This creates the
+  perpetual vinyl-subtext atmosphere.
+
+  For BoC: subtle crackle (0.1) + moderate drive (0.2) on every
+  sustained element emulates tape warmth.

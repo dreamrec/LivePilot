@@ -1,0 +1,91 @@
+id: chorus_ensemble
+name: Chorus-Ensemble
+type: effect
+category: modulation
+aliases:
+  - "chorus-ensemble"
+  - "chorus ensemble"
+  - "chorus"
+atlas_search_query: "Chorus-Ensemble"
+
+musical_roles:
+  - thickening pads and leads
+  - synthwave / 80s lead character
+  - warming single-oscillator synths
+  - Juno-style ensemble emulation
+  - subtle stereo spread
+
+strong_for:
+  - synthwave leads (Com Truise / Tycho aesthetic)
+  - warming Poli / Drift patches
+  - Juno-60-style ensemble chorus
+  - pads that feel "thin" from a single oscillator
+  - house / deep-house Rhodes thickening
+
+risky_for:
+  - percussion (chorus smears transients)
+  - bass (chorus widens — destroys mono bass)
+  - already-chorused sources (Poli has internal chorus)
+  - modern-classical / ambient (adds period-specific character — may conflict)
+
+subtle_ranges:
+  amount: [0.0, 0.15]
+  rate: [0.1, 0.8]                # Hz
+  depth: [0.0, 0.2]
+moderate_ranges:
+  amount: [0.15, 0.40]
+  rate: [0.3, 1.2]
+  depth: [0.2, 0.5]
+aggressive_ranges:
+  amount: [0.40, 0.85]
+  rate: [0.8, 3.0]
+  depth: [0.5, 1.0]
+
+pairings:
+  - device: Drift
+    order: after
+    purpose: thickening Drift pads (synthwave, house)
+  - device: Poli
+    order: after
+    purpose: extra thickness beyond Poli's internal chorus
+  - device: Wavetable
+    order: after
+    purpose: thickening wavetable pads (OPN aesthetic)
+  - device: Echo
+    order: after
+    purpose: chorus INTO echo for lush doubled tails
+
+anti_pairings:
+  - "Bass tracks (chorus destroys mono compatibility on bass)"
+  - "Drum bus (chorus smears drum transients)"
+  - "Heavily-detuned Drift/Poli (already wide; chorus compounds)"
+
+remeasure:
+  - stereo_width            # chorus widens
+  - mono_compatibility
+  - spectral_balance
+
+dimensional_impact:
+  structural: none
+  rhythmic: none
+  timbral: moderate
+  spatial: moderate
+
+appears_in_packets:
+  artists:
+    - isolee-luomo
+    - com-truise-tycho
+    - daft-punk
+  genres:
+    - microhouse
+    - synthwave
+    - house
+
+notes: |
+  Chorus-Ensemble is specialist: thickening synths, mostly pads
+  and leads. Never on percussion or bass. For synthwave,
+  moderate amount (0.3-0.5) + slow rate (0.5 Hz) is canonical.
+
+  In concept packets that list Chorus-Ensemble in reach_for, it's
+  typically paired with Drift or Poli — the chorus completes the
+  analog-polysynth character.

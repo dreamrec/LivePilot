@@ -1,0 +1,108 @@
+id: auto_filter
+name: Auto Filter
+type: effect
+category: filter
+aliases:
+  - "auto filter"
+  - "auto-filter"
+atlas_search_query: "Auto Filter"
+
+musical_roles:
+  - filter-sweep arranging
+  - dub-tail shaping on delay returns
+  - wobble-bass foundation (filter + LFO)
+  - build-up tension (closing filter into drop)
+  - single-source-morph melody (filter-as-melody)
+
+strong_for:
+  - long-arc filter sweeps (4-16 bar)
+  - shaping delay returns (on the RETURN, not the input)
+  - LFO-driven wobble bass
+  - subtractive minimal-techno arrangement (filter-as-melody)
+  - removing high-end from samples that feel too bright
+
+risky_for:
+  - already-filtered sources (compounded narrowness)
+  - tracks that depend on top-end for clarity (vocals, cymbals)
+  - busses with multiple harmonic sources (filter sweeps mask key)
+  - short sounds (filter envelope never resolves)
+
+subtle_ranges:
+  frequency: [1200, 8000]   # hz — sitting in the mid-high range
+  resonance: [0.0, 0.3]
+  envelope_amount: [0.0, 0.2]
+  lfo_amount: [0.0, 0.15]
+moderate_ranges:
+  frequency: [300, 1500]
+  resonance: [0.3, 0.6]
+  envelope_amount: [0.2, 0.5]
+  lfo_amount: [0.15, 0.4]
+aggressive_ranges:
+  frequency: [80, 400]
+  resonance: [0.6, 0.9]
+  envelope_amount: [0.5, 1.0]
+  lfo_amount: [0.4, 1.0]
+  # Note: Auto Filter Frequency parameter maps 20-135 in Ableton's 0-1
+  # range — value_string via get_device_parameters gives actual Hz.
+
+pairings:
+  - device: Echo
+    order: after
+    purpose: filter the input before it hits the delay (dub chain)
+  - device: Saturator
+    order: after
+    purpose: harmonic saturation on the filtered signal
+  - device: Envelope Follower
+    order: parallel
+    purpose: kick-triggered filter sweeps on non-kick elements
+  - device: LFO  # standalone LFO via mapped parameter
+    order: parallel
+    purpose: long-arc filter movement via mapped macro
+
+anti_pairings:
+  - Multiple Auto Filters in series (use one with steeper slope instead)
+  - EQ Eight doing the same cut (redundant with filter)
+
+remeasure:
+  - spectral_balance       # filters directly change spectrum
+  - track_meters           # narrow filtering can kill signal
+  - groove_motion          # LFO-rate filter changes groove feel
+  # CLAUDE.md memory: Auto Filter Frequency is 20-135, not 0-1 — always
+  # read value_string after setting.
+
+dimensional_impact:
+  structural: moderate     # long sweeps ARE arrangement moves
+  rhythmic: low-moderate
+  timbral: high            # filter is fundamental timbre
+  spatial: low
+
+appears_in_packets:
+  artists:
+    - villalobos
+    - basic-channel
+    - hawtin
+    - skream-mala
+    - daft-punk
+  genres:
+    - dub-techno
+    - minimal-techno
+    - microhouse
+    - house
+    - deep-minimal
+    - dubstep
+    - uk-garage
+
+notes: |
+  Auto Filter's biggest trap is forgetting its parameter range. The
+  Frequency parameter uses a 20-135 mapping (Ableton's internal
+  representation), NOT 0-1 normalized. Always call
+  get_device_parameters after setting and read value_string for the
+  actual Hz value.
+
+  For dub-techno delay returns: put Auto Filter ON the return track,
+  AFTER the Echo device. Low-pass at 400-800 Hz with slow LFO (0.1-0.3 Hz)
+  gives the "tail movement" that carries harmony.
+
+  For minimal-techno subtractive: map a macro to the Frequency, draw
+  a 32-bar ramp from closed to open, and let the filter BE the
+  arrangement (Hawtin technique).

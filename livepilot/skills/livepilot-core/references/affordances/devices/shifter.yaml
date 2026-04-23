@@ -1,0 +1,77 @@
+id: shifter
+name: Shifter
+type: effect
+category: pitch_effect
+aliases:
+  - "shifter"
+atlas_search_query: "Shifter"
+
+musical_roles:
+  - pitch shifting (semitones or cents)
+  - formant-preserving vocal shifts
+  - doubled octaves / fifths on a source
+  - detune-via-shift for ensemble feel
+  - experimental pitch transforms (Arca/SOPHIE aesthetic)
+
+strong_for:
+  - doubling a source one octave up or down (adds body to bass or air to lead)
+  - formant-preserving vocal pitch shifts (lower or raise without chipmunk/ogre effect)
+  - cents-level detune for pseudo-chorus on mono sources
+  - experimental / noise work with extreme shifts
+
+risky_for:
+  - material that needs pristine transients (Shifter adds latency / artifacts)
+  - non-pitched percussion (pitch shift on noise = artifacts)
+  - already-processed pitch material (compounded shift artifacts)
+  - real-time performance (Shifter has latency)
+
+subtle_ranges:
+  pitch_shift_semitones: [-2, 2]
+  pitch_shift_cents: [-20, 20]
+  wet: [0.05, 0.3]                # parallel wet for subtle doubling
+moderate_ranges:
+  pitch_shift_semitones: [-7, 7]
+  pitch_shift_cents: [-50, 50]
+  wet: [0.3, 0.7]
+aggressive_ranges:
+  pitch_shift_semitones: [-24, 24]   # two octaves
+  pitch_shift_cents: [-100, 100]
+  wet: [0.7, 1.0]
+
+pairings:
+  - device: Auto Filter
+    order: after
+    purpose: filter shifted signal for tone-shaped doubles
+  - device: Convolution Reverb
+    order: after
+    purpose: spatialize shifted signal
+
+anti_pairings:
+  - "Pitch Hack in same chain (redundant pitch effects — pick one)"
+  - "PitchLoop89 in same chain (redundant — PitchLoop89 is specialized)"
+
+remeasure:
+  - plugin_health
+  - spectral_balance
+  - track_meters
+
+dimensional_impact:
+  structural: none
+  rhythmic: none
+  timbral: high             # pitch IS timbral in this context
+  spatial: none
+
+appears_in_packets:
+  artists:
+    - arca-sophie
+  genres:
+    - experimental
+
+notes: |
+  Shifter is a newer Ableton device. For octave doubling on bass
+  or lead, use parallel wet (30-50%) rather than 100% wet to
+  preserve original transients.
+
+  For experimental/noise aesthetic, aggressive range (±24 semitones)
+  with 100% wet on a drone/noise source creates impossible pitch
+  content.

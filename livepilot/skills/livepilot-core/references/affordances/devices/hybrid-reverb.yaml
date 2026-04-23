@@ -1,0 +1,83 @@
+id: hybrid_reverb
+name: Hybrid Reverb
+type: effect
+category: reverb
+aliases:
+  - "hybrid reverb"
+atlas_search_query: "Hybrid Reverb"
+
+musical_roles:
+  - "modern versatile reverb (algorithmic + convolution hybrid)"
+  - default reverb when IR specificity isn't needed
+  - modular-room reverb with shape parameters
+  - transparent hall / plate / chamber emulation
+
+strong_for:
+  - general-purpose reverb for house, techno, pop production
+  - when you want the sound of a good-IR reverb without choosing an IR
+  - vocal reverb (less character than Convolution Reverb's vintage IRs)
+  - moderate-density pad reverb
+  - sessions where CPU is tight (lower than full Convolution)
+
+risky_for:
+  - tracks that need SPECIFIC vintage character (Farfisa Spring, etc. — use Convolution)
+  - dub-techno (Convolution Reverb with Stocktronics/Farfisa IR is canonical)
+  - ambient drone (Convolution Reverb with cathedral IR is canonical)
+  - plate-reverb snare (Convolution Reverb with plate IR more authentic)
+
+subtle_ranges:
+  wet: [0.08, 0.22]
+  decay: [0.3, 1.5]              # seconds
+  predelay: [0, 20]              # ms
+moderate_ranges:
+  wet: [0.25, 0.50]
+  decay: [1.5, 4.0]
+  predelay: [20, 60]
+aggressive_ranges:
+  wet: [0.55, 1.0]
+  decay: [4.0, 12.0]
+  predelay: [60, 200]
+
+pairings:
+  - device: EQ Eight
+    order: before
+    purpose: shelf-cut bass from the dry input so reverb doesn't mud
+  - device: EQ Eight
+    order: after
+    purpose: shelf-cut bass from the wet return if multiple sources share reverb
+  - device: Compressor
+    order: after
+    purpose: tame reverb dynamic range on dense passages
+
+anti_pairings:
+  - "Another reverb in series (stack reverbs by bus-routing, not series)"
+  - "Convolution Reverb on the same return (redundant — pick one)"
+
+remeasure:
+  - spectral_balance
+  - stereo_width
+  - low_headroom
+  - mud_content
+
+dimensional_impact:
+  structural: low
+  rhythmic: low
+  timbral: moderate
+  spatial: high
+
+appears_in_packets:
+  artists: []
+  genres: []
+  # Hybrid Reverb is a modern Ableton device — not named in the current
+  # concept packets (which favor Convolution Reverb for character). Use
+  # when a packet doesn't specify an IR.
+
+notes: |
+  Hybrid Reverb is the reach-for reverb when the aesthetic doesn't
+  require a specific IR. For dub-techno, ambient, and modern-classical
+  — use Convolution Reverb with a specific IR. For house, techno,
+  pop, vocal — Hybrid Reverb is often the cleaner choice.
+
+  In pressure-test terms: if a concept packet's reach_for.effects
+  list names "Convolution Reverb" (as most do), do NOT substitute
+  Hybrid Reverb. The packet specifies the character explicitly.

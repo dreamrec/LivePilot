@@ -1,0 +1,104 @@
+id: granulator_iii
+name: Granulator III
+type: instrument
+category: granular_synth
+aliases:
+  - "granulator iii"
+  - "granulator 3"
+  - "granulator"
+atlas_search_query: "Granulator III"
+
+musical_roles:
+  - grain-cloud generator (Cloud mode)
+  - ambient-drone source from orchestral samples
+  - Gas-style crushed-orchestral textures
+  - Henke-style detailed granular design
+  - texture-bed creation from any source sample
+
+strong_for:
+  - ambient / drone textures (Tim Hecker, Gas)
+  - transforming orchestral loops into drone (Gas aesthetic)
+  - long sustained textures from short source
+  - pitch-spread / detuned clouds
+  - slow-motion sustain
+
+risky_for:
+  - rhythmic programming (grain cloud has no pulse)
+  - transient-critical sources (grains destroy transients)
+  - mixes that need source-recognizability
+  - tempo-synced work (grain rate works in time but feels timeless)
+
+subtle_ranges:
+  grain_size: [50, 150]           # ms — tight grain, source-recognizable
+  grain_density: [0.2, 0.5]       # 0-1
+  pitch_spread: [0, 10]           # cents
+  position_spread: [0, 0.1]
+moderate_ranges:
+  grain_size: [150, 400]
+  grain_density: [0.5, 0.8]
+  pitch_spread: [10, 50]
+  position_spread: [0.1, 0.5]
+aggressive_ranges:
+  grain_size: [400, 2000]         # ms — true cloud, source-unrecognizable
+  grain_density: [0.8, 1.0]
+  pitch_spread: [50, 1200]        # cents — up to an octave
+  position_spread: [0.5, 1.0]
+
+pairings:
+  - device: Convolution Reverb
+    order: after
+    purpose: cathedral space for grain cloud
+  - device: Auto Filter
+    order: after
+    purpose: slow LFO sweep on grain cloud (Gas signature)
+  - device: Erosion
+    order: after
+    purpose: digital grit on grain cloud
+  - device: Saturator
+    order: after
+    purpose: harmonic saturation (Tim Hecker)
+
+anti_pairings:
+  - "Vector Grain in same chain (redundant granular sources)"
+  - "Sharp transient shaper (transients are what grains destroy)"
+
+remeasure:
+  - plugin_health
+  - spectral_balance        # grain clouds have wide frequency content
+  - low_headroom
+  - stereo_width            # position-spread widens
+
+dimensional_impact:
+  structural: low
+  rhythmic: low
+  timbral: high
+  spatial: moderate
+
+appears_in_packets:
+  artists:
+    - gas
+    - tim-hecker
+    - stars-of-the-lid
+    - basinski
+    - villalobos
+    - robert-henke
+    - shackleton
+  genres:
+    - ambient
+    - microhouse
+    - deep-minimal
+    - idm
+    - modern-classical
+
+notes: |
+  Granulator III is the ambient / drone workhorse. Cloud mode with
+  200-500 ms grains is the Gas / Wolfgang Voigt canonical setting.
+  For Tim Hecker aesthetic: pitch-spread wide + saturation after.
+
+  Per atlas: "Granulator III Cloud mode" technique. Signature pair
+  with Convolution Reverb (cathedral IR) for ambient drone bed.
+
+  Henke's relationship to Granulator III is special — he made the
+  original. The Granulator III Cloud mode implementation reflects
+  his specific design choices. Reference packet/artist `robert-henke`
+  for technique-level parameter guidance.

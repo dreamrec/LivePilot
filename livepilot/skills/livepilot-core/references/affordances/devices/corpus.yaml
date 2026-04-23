@@ -1,0 +1,84 @@
+id: corpus
+name: Corpus
+type: effect
+category: physical_model
+aliases:
+  - "corpus"
+atlas_search_query: "Corpus"
+
+musical_roles:
+  - physical-modeling resonance on non-pitched sources
+  - metallic / glass / stone percussion textures (Arca / SOPHIE)
+  - pitched resonator on drums
+  - inharmonic bell-drone generator
+  - impossible-acoustic space creation
+
+strong_for:
+  - transforming percussion into pitched tonal content
+  - creating metal-on-glass textures (Arca aesthetic)
+  - resonance-based sound design where the SOURCE gets replaced by its resonance
+  - experimental / noise work (atonal resonance)
+  - noise-bow technique (bowing noise through Corpus)
+
+risky_for:
+  - pitched melodic material (Corpus will fight the source's harmony)
+  - already-resonant sources (double-resonance = chaos)
+  - dense mixes (Corpus's output has complex harmonic content)
+  - conservative production (it always sounds "processed")
+
+subtle_ranges:
+  resonance_amount: [0.0, 0.25]
+  decay: [0.1, 0.5]
+  body_size: [0.3, 0.6]
+moderate_ranges:
+  resonance_amount: [0.25, 0.55]
+  decay: [0.5, 2.0]
+  body_size: [0.15, 0.85]
+aggressive_ranges:
+  resonance_amount: [0.55, 1.0]
+  decay: [2.0, 10.0]              # long sustained resonance
+  body_size: [0.0, 1.0]           # extremes
+
+pairings:
+  - device: Erosion
+    order: before
+    purpose: noise input for resonance coloring
+  - device: Spectral Resonator
+    order: parallel
+    purpose: additional spectral content beyond Corpus model
+  - device: Convolution Reverb
+    order: after
+    purpose: spatial placement of resonance
+
+anti_pairings:
+  - "Another Corpus in series (unpredictable feedback)"
+  - "Tension with Corpus (both physical models — pick one)"
+
+remeasure:
+  - spectral_balance        # Corpus dramatically changes spectrum
+  - low_headroom            # resonance can build up level
+  - plugin_health
+
+dimensional_impact:
+  structural: low
+  rhythmic: low
+  timbral: high
+  spatial: moderate         # Corpus has inherent spatial character
+
+appears_in_packets:
+  artists:
+    - arca-sophie
+  genres:
+    - experimental
+    - idm
+
+notes: |
+  Corpus is the physical-modeling signature for Arca/SOPHIE aesthetic.
+  Use it to transform percussion into pitched textures, or to add
+  metallic resonance that sounds physical rather than synthesized.
+
+  Canonical technique: "Noise Bow" — bow a noise source through Corpus
+  to generate inharmonic drone. See atlas signature_techniques.
+
+  Plans using Corpus should note its `dimensional_impact.timbral=high`
+  means a Corpus plan counts as a timbral plan for the four-move rule.

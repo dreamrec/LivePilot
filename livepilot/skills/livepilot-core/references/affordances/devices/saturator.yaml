@@ -1,0 +1,98 @@
+id: saturator
+name: Saturator
+type: effect
+category: distortion
+aliases:
+  - "saturator"
+atlas_search_query: "Saturator"
+
+musical_roles:
+  - warm harmonic saturation
+  - drum-bus glue
+  - Dilla-style dusty warmth
+  - Tim Hecker harmonic density
+  - subtle tape-style compression via soft clipping
+
+strong_for:
+  - warming drum busses (boom-bap, Dilla aesthetic)
+  - adding harmonic content to samples
+  - Tim Hecker / Arca drone saturation
+  - final master-bus warmth (subtle settings)
+  - Reese bass saturation (neurofunk)
+
+risky_for:
+  - already-saturated material (compounds distortion)
+  - dynamic sources where clipping kills dynamics
+  - transient-critical material (squashes attack)
+  - high-end cymbals (harsh digital aliasing)
+
+subtle_ranges:
+  drive: [0.0, 0.15]              # 0-1 normalized (atlas value_string gives dB)
+  output: [0.0, 0.0]              # compensate for drive
+  dc_offset: [0.0, 0.1]
+moderate_ranges:
+  drive: [0.15, 0.45]
+  output: [-0.1, -0.3]
+  dc_offset: [0.0, 0.3]
+aggressive_ranges:
+  drive: [0.45, 0.85]
+  output: [-0.3, -0.6]
+  dc_offset: [0.0, 1.0]
+  # Saturator's curve types (analog / soft / medium / hard) affect
+  # aggressive-range character more than drive amount.
+
+pairings:
+  - device: EQ Eight
+    order: before
+    purpose: shape input spectrum before saturation
+  - device: Compressor
+    order: after
+    purpose: control dynamics after saturation
+  - device: Simpler
+    order: after                   # when Simpler sends to a saturated bus
+    purpose: Dilla drum-bus warmth
+  - device: Vinyl Distortion
+    order: parallel
+    purpose: different saturation flavors in parallel chain
+
+anti_pairings:
+  - "Another Saturator in series (compounded distortion — set one hotter instead)"
+  - "Erosion + Saturator on the same source (pick one noise-character device)"
+
+remeasure:
+  - spectral_balance        # saturation adds harmonics
+  - track_meters            # drive compensation needs level check
+  - low_headroom            # saturation can push master
+
+dimensional_impact:
+  structural: none
+  rhythmic: low             # softens transients
+  timbral: high             # adds harmonics = changes tone
+  spatial: none
+
+appears_in_packets:
+  artists:
+    - j-dilla
+    - dj-premier-rza
+    - madlib
+    - jeff-mills
+    - moodymann-theo-parrish
+    - tim-hecker
+    - skream-mala
+  genres:
+    - hip-hop
+    - deep-minimal
+    - minimal-techno
+    - dubstep
+    - drum-and-bass
+    - experimental
+
+notes: |
+  Saturator is the most-used timbral coloration device across the
+  catalog. Curve type matters: "Analog Clip" for warm, "Soft Sine"
+  for tube-like, "Hard Curve" for aggressive. See atlas
+  signature_techniques for curve-specific recipes.
+
+  Per CLAUDE.md effects-distortion reference: every curve type has
+  distinct creative applications — do NOT default to "Analog Clip"
+  for everything.

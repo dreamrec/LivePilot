@@ -1,0 +1,97 @@
+id: echo
+name: Echo
+type: effect
+category: delay
+aliases:
+  - "echo"
+  - "ping-pong delay"  # Echo can run in ping-pong mode
+atlas_search_query: "Echo"
+
+musical_roles:
+  - dub space
+  - rhythm shadow
+  - tail harvesting
+  - stereo widening via time-offset
+  - implied-groove creation (delayed hits complete the rhythm)
+
+strong_for:
+  - widening sparse material (low-density drum or chord clips)
+  - implied groove without adding notes
+  - dub-techno chord-stab tails
+  - creating off-beat rhythmic accents
+  - vocal doubling with slapback
+
+risky_for:
+  - dense high-hat patterns (Echo smears transients)
+  - muddy low-end sources (delayed sub-bass becomes undefined)
+  - already-percussion-heavy busses
+  - sources with their own strong reverb (double-spatial)
+  - kick drums (delayed kick kills groove)
+
+subtle_ranges:
+  feedback: [0.15, 0.30]
+  time_L: [1/16, 1/8]             # Ableton's sync-division
+  filter_freq: [400, 1200]        # when using internal filter on return
+moderate_ranges:
+  feedback: [0.35, 0.55]
+  time_L: [1/8, 1/4]
+  filter_freq: [200, 600]
+aggressive_ranges:
+  feedback: [0.60, 0.85]
+  time_L: [1/4, 1/2]
+  filter_freq: [80, 350]
+  # Above 0.85 feedback → self-oscillation, usable but requires Limiter after
+
+pairings:
+  - device: Auto Filter
+    order: before
+    purpose: dub sweeps — filter the input before it hits the delay
+  - device: Convolution Reverb
+    order: after
+    purpose: fog field — reverb the delayed tails for dub atmosphere
+  - device: Utility
+    order: before
+    purpose: mono-ize the input before stereo delay (cleaner dub-chord)
+  - device: Compressor
+    order: after
+    purpose: glue delayed repetitions when feedback is high
+
+anti_pairings:
+  - Another Echo in series (use one Echo with higher feedback instead)
+  - Any transient shaper immediately before (Echo needs stable input)
+
+remeasure:
+  - spectral_balance       # tails often shift EQ
+  - low_headroom           # feedback piles up level
+  - groove_motion          # check that delay doesn't kill groove
+  - stereo_width           # ping-pong mode widens
+
+dimensional_impact:
+  structural: low
+  rhythmic: moderate       # delayed hits add rhythmic texture
+  timbral: moderate        # filter on return shapes tone
+  spatial: high            # dominant consequence
+
+appears_in_packets:
+  artists:
+    - basic-channel
+    - gas
+    - hawtin
+    - boards-of-canada
+    - skream-mala
+  genres:
+    - dub-techno
+    - deep-minimal
+    - minimal-techno
+    - dubstep
+
+notes: |
+  Echo is THE dub-techno and dub-minimal workhorse. Typical deployment:
+  on a return track, with Auto Filter BEFORE the delay (not after —
+  filter the input, not the tail), and Convolution Reverb AFTER for
+  the fog field. Send sparingly (15–35% for subtle, 45–65% for
+  signature).
+
+  Internal filter on return makes the tails "move" over time — this
+  is the "filtered delay return" technique that carries harmonic
+  content in Basic Channel / Rhythm & Sound.

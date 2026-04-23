@@ -1,0 +1,113 @@
+id: convolution_reverb
+name: Convolution Reverb
+type: effect
+category: reverb
+aliases:
+  - "convolution reverb"
+  - "convolution"
+atlas_search_query: "Convolution Reverb"
+
+musical_roles:
+  - cathedral / hall space for ambient and modern-classical
+  - dub-techno fog chain (100% wet on send)
+  - plate-reverb snare (Golden-era hip-hop)
+  - custom-IR aesthetic (spring, cassette, impulse loops)
+  - tail-harvesting (extract reverb tail as separate source)
+
+strong_for:
+  - creating a specific real-world acoustic (hall, cathedral, chamber)
+  - dub-techno reverb chain (behind Echo on return, 100% wet)
+  - vintage plate / spring character via IR
+  - low CPU reverb for many simultaneous returns
+  - non-standard IRs (metal cabinet, car cabin, sampled vinyl noise)
+
+risky_for:
+  - dry-aesthetic genres (hip-hop without intended plate, trap, boom-bap)
+  - tracks that already have strong spatial identity from another device
+  - short-tail needs (use Hybrid Reverb or Reverb instead)
+  - CPU-constrained sessions with many returns (less of a concern in 12.3+)
+
+subtle_ranges:
+  wet: [0.05, 0.20]              # dry/wet mix
+  decay_time: [0.5, 2.0]         # seconds — actual parameter name
+moderate_ranges:
+  wet: [0.25, 0.50]
+  decay_time: [2.0, 5.0]
+aggressive_ranges:
+  wet: [0.55, 1.0]
+  decay_time: [5.0, 15.0]
+  # 100% wet on a return is the dub-techno default — context-dependent.
+  # On a send-return architecture (not an insert), wet=1.0 is functionally
+  # moderate (send level controls intensity); on an insert it's aggressive.
+
+pairings:
+  - device: Echo
+    order: before
+    purpose: dub chain — Echo feeds the reverb for filtered-delay tails
+  - device: Auto Filter
+    order: before
+    purpose: filter the input before reverb for tone-shaped tails
+  - device: EQ Eight
+    order: after
+    purpose: shelf-cut low-end from reverb tails to prevent mud
+  - device: Utility
+    order: before
+    purpose: mono-ize input before reverb for centered space
+
+anti_pairings:
+  - "Another large-IR reverb in series (use one at 100% wet on a send)"
+  - "Gated Delay on a reverb tail (Gated Delay expects dry input)"
+
+remeasure:
+  - spectral_balance        # reverb bloom can push low-mid
+  - stereo_width            # hall IRs spread stereo
+  - low_headroom            # tail buildup over time
+  - mud_content             # low-end buildup from tail
+
+dimensional_impact:
+  structural: low
+  rhythmic: low
+  timbral: moderate         # IR choice colors tone
+  spatial: high             # dominant consequence
+
+appears_in_packets:
+  artists:
+    - basic-channel
+    - gas
+    - hawtin
+    - basinski
+    - stars-of-the-lid
+    - tim-hecker
+    - shackleton
+    - villalobos
+    - dj-premier-rza
+    - daft-punk
+    - johannsson-richter
+    - robert-henke
+    - photek-source-direct
+    - skream-mala
+    - burial
+  genres:
+    - ambient
+    - dub-techno
+    - deep-minimal
+    - minimal-techno
+    - microhouse
+    - modern-classical
+    - hip-hop
+    - drum-and-bass
+    - uk-garage
+
+notes: |
+  Convolution Reverb is the most-referenced spatial device in the
+  catalog (15 artist packets). IR choice matters more than any other
+  parameter — Farfisa Spring for Basic Channel, cathedral for Gas,
+  Stocktronics RX-4000 for dub-techno variety, hall for Jóhannsson.
+
+  For dub-techno: place on a return track behind Echo, set wet to
+  100%, let tracks send to it. For hip-hop snare: place on a return,
+  set IR to a plate, send snare at -9 dB.
+
+  Per CLAUDE.md analyzer-placement rule: if you load Convolution
+  Reverb on the master chain, the LivePilot_Analyzer must be AFTER
+  it, not before.

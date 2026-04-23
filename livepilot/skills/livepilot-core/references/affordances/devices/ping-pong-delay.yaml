@@ -1,0 +1,88 @@
+id: ping_pong_delay
+name: Ping Pong Delay
+type: effect
+category: delay
+aliases:
+  - "ping pong delay"
+  - "ping-pong delay"
+atlas_search_query: "Ping Pong Delay"
+
+musical_roles:
+  - stereo widening via left-right bounce
+  - dub-techno send delay (canonical placement on return)
+  - filter-on-return for dub tails (internal filter)
+  - rhythmic bouncing accent (1/4, 1/8, 1/16 sync)
+
+strong_for:
+  - dub-techno return chain (Ping-Pong Delay → filtered → feeds Convolution Reverb)
+  - widening mono-source chord stabs
+  - creating off-beat rhythmic accents
+  - sparse clip material that wants implied density
+
+risky_for:
+  - dense percussion (PPD smears transients, worsens mud)
+  - already-stereo sources (double-spreading)
+  - low-frequency sources (stereo bass destroys mono compatibility)
+  - clip material with its own strong groove (PPD fights the groove)
+
+subtle_ranges:
+  feedback: [0.10, 0.25]
+  time_sync: ["1/16", "1/8"]    # note value
+  filter_freq: [400, 1500]      # when filter is on
+moderate_ranges:
+  feedback: [0.30, 0.50]
+  time_sync: ["1/8", "1/4"]
+  filter_freq: [200, 700]
+aggressive_ranges:
+  feedback: [0.55, 0.85]
+  time_sync: ["1/4", "1/2"]
+  filter_freq: [80, 300]
+
+pairings:
+  - device: Auto Filter
+    order: after
+    purpose: filter the delayed tails on the return
+  - device: Convolution Reverb
+    order: after
+    purpose: dub chain — reverb the filtered PPD tails
+  - device: Utility
+    order: before
+    purpose: mono-ize input before stereo delay (centers the dub chord)
+  - device: Saturator
+    order: after
+    purpose: warm saturation on delayed repetitions
+
+anti_pairings:
+  - "Echo running in ping-pong mode (pick ONE ping-pong delay, not two)"
+  - "Panner after PPD (PPD already handles stereo; panner creates phase issues)"
+
+remeasure:
+  - stereo_width
+  - spectral_balance
+  - low_headroom
+  - mono_compatibility       # stereo delay can phase-cancel in mono
+
+dimensional_impact:
+  structural: low
+  rhythmic: moderate
+  timbral: low-moderate
+  spatial: high
+
+appears_in_packets:
+  artists:
+    - basic-channel
+  genres:
+    - microhouse
+    - dub-techno
+    - uk-garage
+
+notes: |
+  Ping Pong Delay is the canonical dub-techno return chain starter.
+  Basic Channel / Rhythm & Sound architecture: SEND → Ping Pong Delay
+  (internal filter at 400-700 Hz) → Convolution Reverb (Farfisa
+  Spring IR, 100% wet) → return back to mix. The chord stab's WET
+  path becomes the harmonic content.
+
+  For microhouse and UK garage, use shorter sync times (1/16, 1/8)
+  with moderate feedback for rhythmic bounce accent rather than
+  sustained dub tail.
