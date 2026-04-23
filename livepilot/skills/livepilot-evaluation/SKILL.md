@@ -17,7 +17,22 @@ Call `compile_goal_vector(request_text, targets, protect, mode, aggression)` to 
 
 **request_text**: a plain-text description of the intended improvement (e.g., "reduce masking between bass and kick in 100-200 Hz range").
 
-**targets**: dict of dimension → weight (e.g., `{"punch": 0.4, "weight": 0.3, "clarity": 0.3}`). Weights are normalized to sum to 1.0. Valid dimensions: energy, punch, weight, density, brightness, warmth, width, depth, motion, contrast, clarity, cohesion, groove, tension, novelty, polish, emotion.
+**targets**: dict of dimension → weight (e.g., `{"punch": 0.4, "weight": 0.3, "clarity": 0.3}`). Weights are normalized to sum to 1.0.
+
+**Valid dimensions split into two families:**
+
+**Family A — Technical / measurable** (derived from spectrum, RMS, LUFS, masking reports):
+energy, punch, weight, density, brightness, warmth, width, depth, motion, contrast, clarity, cohesion, groove, tension, novelty, polish, emotion.
+
+**Family B — Artistic / identity** (derived from concept packets, motif graphs, section labels, taste graphs): required on any goal vector invoked by `livepilot-creative-director`:
+- **style_fit** — how well the result matches the concept packet's sonic_identity
+- **distinctiveness** — how much the result differs from the baseline completion pattern
+- **motif_coherence** — whether recurring motifs survive / evolve meaningfully
+- **section_contrast** — whether section-level differences stay legible
+- **restraint** — whether the result respects protected qualities and avoids additive drift
+- **surprise_without_breakage** — whether novelty was introduced without violating identity
+
+Both families share the same 0.0 – 1.0 scale. A technically improved result can still be artistically worse — both must pass for a creative-director turn to be kept.
 
 **protect**: dict of dimension → minimum threshold (e.g., `{"clarity": 0.7}`). If a dimension drops below this value after a move, the move is undone.
 
@@ -89,6 +104,23 @@ Every evaluator returns:
 - `collateral_damage` (list): things that got worse as a side effect
 - `explanation` (string): human-readable judgment summary
 
+### Step 8b — Creative-Success Verdict (for creative-director turns)
+
+When the evaluation is invoked by `livepilot-creative-director`, also
+assign one of five verdict tags. This is a structured classification
+on top of `keep_change` / `score`, for learning and debugging:
+
+| Verdict | Meaning | Technical score | Artistic score | User kept | Action |
+|---|---|---|---|---|---|
+| `safe_win` | Low-novelty move that landed cleanly | ≥ 0.6 | ≥ 0.55 | yes | Memory-learn candidate. Use as baseline for future similar asks. |
+| `bold_win` | High-novelty move that landed and stuck | ≥ 0.55 | ≥ 0.65 | yes | STRONG memory-learn candidate. Surface when user asks for similar in the future. |
+| `interesting_failure` | Novel, didn't land technically, but user kept for study | < 0.55 | ≥ 0.60 | yes | Note in memory but DO NOT promote for auto-replay. User keeping it ≠ reusability. |
+| `identity_break` | Technically OK but violated protected qualities | ≥ 0.55 | < 0.45 | no | Auto-undo. `record_anti_preference` with the protected quality that was violated. |
+| `generic_fallback` | Both scores ≤ mid, collapsed to a default pattern | < 0.55 | < 0.55 | no | Auto-undo. This is the "stuck in patterns" signature. `record_anti_preference` with the family+target combo. |
+
+Include the verdict in `memory_learn` payload so future sessions can
+filter by type. The director's Phase 8 uses these tags explicitly.
+
 ### Step 9 — Keep or Undo
 
 If `keep_change` is `false`:
@@ -144,6 +176,13 @@ Successful moves can be promoted to persistent memory for future sessions.
 2. Anti-preferences are permanent until explicitly deleted
 3. Check `get_anti_preferences` before suggesting any move to avoid repeating rejected ideas
 4. Promotion is optional — never force it. Suggest when appropriate: "That scored 0.85 — want me to save this technique for future sessions?"
+5. **For creative-director turns**, apply the verdict-driven promotion rubric:
+   - `safe_win` → promote if user keeps ≥ 2 subsequent turns (avoid over-promoting minor moves)
+   - `bold_win` → promote immediately; tag with concept packet + novelty_budget context
+   - `interesting_failure` → DO NOT auto-promote; store as a "curiosity" note only
+   - `identity_break` → NEVER promote; `record_anti_preference` instead
+   - `generic_fallback` → NEVER promote; `record_anti_preference` with family+target combo
+   - See `livepilot-core/references/memory-guide.md` for the full promotion rubric.
 
 ## A/B Comparison
 
