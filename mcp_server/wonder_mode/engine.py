@@ -321,6 +321,82 @@ def build_analytical_variant(label: str, request_text: str, novelty_level: float
     }
 
 
+# v1.18.2 #10 fix: distinct cold-start variant seeds for empty/sparse
+# sessions. Used when no semantic moves match the request. Each seed has
+# a specific `what_changed` + `why_it_matters` covering a different
+# starting-point family (device_creation × rhythm + device_creation ×
+# harmony + mix-architecture-first). Replaces the 3-identical-generics
+# degradation that v1.18.0 Test 4 surfaced.
+_COLD_START_SEEDS: list[dict] = [
+    {
+        "label": "safe",
+        "family": "device_creation",
+        "intent": "Begin with a rhythmic foundation",
+        "what_changed": "Load a drum kit (Drum Rack or Core Kit) on a fresh MIDI track, program a 4-bar kick-and-hat pattern",
+        "what_preserved": "blank slate — first move sets the tempo and grid foundation",
+        "why_it_matters": "Every track needs a rhythmic anchor before timbral or structural work. Safe starting point — drums-first is the most common composition entry.",
+        "novelty_level": 0.3,
+        "identity_effect": "establishes",
+    },
+    {
+        "label": "strong",
+        "family": "sound_design",
+        "intent": "Begin with a harmonic source",
+        "what_changed": "Load Drift or Meld on a MIDI track with a chord-stab patch (short attack, moderate release, slight detune), sketch a 2-bar chord pattern",
+        "what_preserved": "tempo and key are still open to discovery — lets the harmony suggest the rhythm",
+        "why_it_matters": "A harmonic source opens a different emotional palette than drums-first. Chord-first composition (Isolée / Luomo style) is less common but produces distinctive results.",
+        "novelty_level": 0.55,
+        "identity_effect": "establishes",
+    },
+    {
+        "label": "unexpected",
+        "family": "mix",
+        "intent": "Begin with the space, not the source",
+        "what_changed": "Configure return tracks BEFORE any instrument work — set up Return A with Convolution Reverb (cathedral IR) and Return B with Echo in ping-pong mode",
+        "what_preserved": "the blank slate IS the canvas; the sends are the frame you'll paint into",
+        "why_it_matters": "Dub techno and ambient producers (Basic Channel, Gas, Henke) build sound AROUND pre-configured sends. Unusual but genre-appropriate starting point.",
+        "novelty_level": 0.85,
+        "identity_effect": "establishes",
+    },
+]
+
+
+def build_cold_start_variant(seed: dict, request_text: str, variant_id: str = "") -> dict:
+    """Build a cold-start variant seed for an empty/sparse session.
+
+    Used when no semantic moves match the request. Returns a variant with
+    distinct, actionable `what_changed` / `why_it_matters` text — NOT the
+    generic 'No matching moves found' fallback. Each seed covers a
+    different starting-point family; together they give the user three
+    genuinely distinct first-moves to choose from.
+
+    See `_COLD_START_SEEDS` for the seed set. The variant is
+    `analytical_only=True` (no compiled_plan) — turning these into
+    one-click executable plans is a v1.19 enhancement.
+    """
+    return {
+        "variant_id": variant_id,
+        "label": seed["label"],
+        "move_id": "",
+        "family": seed["family"],
+        "intent": seed["intent"],
+        "what_changed": seed["what_changed"],
+        "what_preserved": seed["what_preserved"],
+        "why_it_matters": seed["why_it_matters"],
+        "identity_effect": seed["identity_effect"],
+        "novelty_level": seed["novelty_level"],
+        "taste_fit": 0.5,
+        "targets_snapshot": {},
+        "compiled_plan": None,
+        "score": 0.0,
+        "rank": 0,
+        "score_breakdown": {},
+        "analytical_only": True,
+        "distinctness_reason": f"Cold-start seed ({seed['family']}) — empty session, no moves matched",
+        "cold_start": True,
+    }
+
+
 # ── Taste fit scoring ────────────────────────────────────────────
 
 
@@ -577,16 +653,37 @@ def generate_wonder_variants(
 
     executable_count = len(variants)
 
-    # Pad with analytical variants
-    while len(variants) < 3:
-        idx = len(variants)
-        v = build_analytical_variant(
-            label=labels[idx],
-            request_text=request_text,
-            novelty_level=_NOVELTY_LEVELS.get(labels[idx], 0.5),
-            variant_id=f"{set_prefix}_{labels[idx]}",
-        )
-        variants.append(v)
+    # v1.18.2 #10 fix: when NO executable moves matched, seed from the
+    # cold-start distinct-starting-points set instead of padding with
+    # identical generic analytical variants. Pre-fix, cold-start on an
+    # empty session returned 3 variants all with the same generic
+    # "No matching moves found" text — unhelpful to the user.
+    #
+    # The partial-match case (1 or 2 executable variants) still pads with
+    # the generic analytical fallback because we don't want to mix real
+    # move-based variants with architecture-first seeds — that would
+    # confuse the presentation.
+    if executable_count == 0:
+        while len(variants) < 3:
+            idx = len(variants)
+            seed = _COLD_START_SEEDS[idx]
+            v = build_cold_start_variant(
+                seed=seed,
+                request_text=request_text,
+                variant_id=f"{set_prefix}_{seed['label']}",
+            )
+            variants.append(v)
+    else:
+        # Partial-match: pad to 3 with generic analytical variants
+        while len(variants) < 3:
+            idx = len(variants)
+            v = build_analytical_variant(
+                label=labels[idx],
+                request_text=request_text,
+                novelty_level=_NOVELTY_LEVELS.get(labels[idx], 0.5),
+                variant_id=f"{set_prefix}_{labels[idx]}",
+            )
+            variants.append(v)
 
     novelty_band = 0.5
     taste_evidence = 0
@@ -603,7 +700,13 @@ def generate_wonder_variants(
 
     degraded_reason = ""
     if executable_count == 0:
-        degraded_reason = "No matching executable moves found"
+        # v1.18.2 #10: cold-start path — distinct starting-point seeds
+        # rather than identical-generic padding.
+        degraded_reason = (
+            "No matching executable moves — cold-start variants seeded "
+            "from distinct starting-point families (device_creation × 2 "
+            "+ mix-architecture-first)"
+        )
     elif executable_count == 1:
         degraded_reason = "Only 1 distinct executable move found"
 

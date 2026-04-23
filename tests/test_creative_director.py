@@ -628,6 +628,59 @@ def test_anti_repetition_has_state_inference_fallback():
     )
 
 
+def test_wonder_cold_start_has_distinct_variants():
+    """v1.18.2 #10: enter_wonder_mode on an empty/sparse session (where
+    no semantic moves match the request) previously returned 3 IDENTICAL
+    analytical_only variants all with intent 'Analytical suggestion for:
+    <request>'. Live-verified during v1.18.0 Test 4 with prompt 'I'm
+    stuck' on a 4-track empty session.
+
+    Cold-start fix: when executable_count == 0, seed from distinct
+    starting-point suggestions covering different families (at minimum
+    2 of {device_creation, sound_design, mix}). Each seed has a
+    specific, actionable 'what_changed' and 'why_it_matters' string —
+    no generic boilerplate repetition."""
+    from mcp_server.wonder_mode.engine import generate_wonder_variants
+
+    # Simulated empty-session context — no diagnosis, no song brain,
+    # no session_info. Matches what enter_wonder_mode produces on a
+    # cold-start 'I'm stuck' prompt.
+    result = generate_wonder_variants(
+        request_text="I'm stuck",
+        session_info={},
+    )
+    variants = result["variants"]
+    assert len(variants) >= 2, (
+        f"Wonder must return at least 2 variants even on cold-start. "
+        f"Got {len(variants)}"
+    )
+
+    # CORE assertion: intent fields must be distinct across variants
+    intents = [v.get("intent", "") for v in variants]
+    distinct_intents = set(intents)
+    assert len(distinct_intents) >= 2, (
+        f"Cold-start variants must have at least 2 distinct 'intent' "
+        f"strings (pre-fix they were all identical). Got: {intents}"
+    )
+
+    # Variants should not all be the generic fallback text
+    generic_intent = "Analytical suggestion for: I'm stuck"
+    non_generic = [i for i in intents if i != generic_intent]
+    assert len(non_generic) >= 2, (
+        f"At least 2 of the returned variants must have non-generic "
+        f"cold-start intent text. Got intents: {intents}"
+    )
+
+    # what_changed fields should also be distinct — not all 'No specific
+    # move matched' boilerplate
+    changes = [v.get("what_changed", "") for v in variants]
+    distinct_changes = set(changes)
+    assert len(distinct_changes) >= 2, (
+        f"Cold-start variants must describe distinct what_changed "
+        f"actions. Got: {changes}"
+    )
+
+
 def test_batch_set_parameters_schema_documented():
     """v1.18.1 bonus: the batch_set_parameters schema requires
     {'Name': {'value': v}}, not {'Name': v}. Live verification bit me on
