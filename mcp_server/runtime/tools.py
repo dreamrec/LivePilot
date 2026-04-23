@@ -185,11 +185,21 @@ def get_session_kernel(
     web_ok = _probe_web()
     flucoma_ok = _probe_flucoma()
 
+    # v1.17.4: probe memory the same way too. Previously memory_ok=True was
+    # hardcoded — if the store raised, the kernel still reported memory
+    # available. Same truth-gap class as the v1.17.3 web/flucoma fix.
+    memory_ok = False
+    try:
+        _memory_store.list_techniques(limit=1)
+        memory_ok = True
+    except Exception as exc:
+        logger.debug("get_session_kernel memory probe failed: %s", exc)
+
     state = build_capability_state(
         session_ok=session_ok,
         analyzer_ok=analyzer_ok,
         analyzer_fresh=analyzer_fresh,
-        memory_ok=True,
+        memory_ok=memory_ok,
         web_ok=web_ok,
         flucoma_ok=flucoma_ok,
     )
@@ -248,9 +258,18 @@ def get_session_kernel(
     except Exception as e:
         kernel_warnings.append(f"session_memory_unavailable: {e}")
 
+    # v1.17.4: state.to_dict() wraps its output as {"capability_state": {...}}
+    # because that shape is what the standalone get_capability_state tool
+    # returns. When building the session kernel, that wrapper becomes the
+    # ugly double-nested kernel["capability_state"]["capability_state"]["domains"]
+    # path. Unwrap once here so kernel consumers get
+    # kernel["capability_state"]["domains"] directly.
+    _cap_dict = state.to_dict()
+    _cap_flat = _cap_dict.get("capability_state", _cap_dict)
+
     kernel = build_session_kernel(
         session_info=session_info,
-        capability_state=state.to_dict(),
+        capability_state=_cap_flat,
         request_text=request_text,
         mode=mode,
         aggression=aggression,

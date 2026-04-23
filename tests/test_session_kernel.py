@@ -200,7 +200,8 @@ def test_get_session_kernel_marks_analyzer_available_when_fresh():
     )
 
     result = get_session_kernel(ctx, request_text="make it drift")
-    analyzer = result["capability_state"]["capability_state"]["domains"]["analyzer"]
+    # v1.17.4: capability_state is now flat (no double-nesting).
+    analyzer = result["capability_state"]["domains"]["analyzer"]
 
     assert analyzer["available"] is True
     assert analyzer["mode"] == "measured"

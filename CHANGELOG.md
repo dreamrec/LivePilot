@@ -1,5 +1,53 @@
 # Changelog
 
+## 1.17.4 — Shape cleanup + memory probe (April 23 2026)
+
+### Fixed
+
+- **`get_session_kernel` now probes the memory store** instead of
+  hardcoding `memory_ok=True` (`mcp_server/runtime/tools.py`). If the
+  underlying technique store raises on `list_techniques` (disk full,
+  corrupted index, permissions error), the kernel previously still
+  reported memory as available to orchestration planners. Same
+  truth-gap class as the v1.17.3 web/flucoma fix — should have been
+  caught by the same review pass. Now probed the same way
+  `get_capability_state` does, wrapped in try/except.
+- **`capability_state` flat shape** in session kernel
+  (`mcp_server/runtime/tools.py`): `state.to_dict()` wraps its output as
+  `{"capability_state": {...}}` — that's the right shape for the
+  standalone `get_capability_state` tool, but when stored on the kernel
+  it produced the ugly double-nested
+  `kernel["capability_state"]["capability_state"]["domains"]`. v1.17.3
+  probe tests worked around it with defensive
+  `outer.get("capability_state", outer)`. Fix: unwrap the outer key
+  once before passing to `build_session_kernel`. Consumer path is
+  now `kernel["capability_state"]["domains"]` directly. Standalone
+  `get_capability_state` return shape unchanged.
+
+### Tests
+
+- 4 new TDD tests in `tests/test_runtime_capability_probes.py`:
+  - memory probe raises → kernel reports memory unavailable
+  - memory probe succeeds → kernel reports available
+  - kernel's capability_state has no nested `capability_state` key
+  - end-to-end flat access without defensive fallbacks
+- Consumer updates:
+  - `test_session_kernel.py:203` — removed extra level
+  - `test_runtime_capability_probes.py` (4 places) — removed
+    defensive `outer.get('capability_state', outer)` pattern now that
+    the shape is known-flat
+
+2722 → 2726 passing.
+
+### Known follow-up
+
+Audit while writing this release flagged a third bug in
+`mcp_server/runtime/safety_kernel.py:244`: the safety kernel reads
+`capability_state.get("mode", "normal")` but the actual shape uses
+`overall_mode`, not `mode`. The `.get(..., "normal")` default silently
+falls back, so `read_only` mode gating never kicks in. Separate fix,
+out of scope for this release.
+
 ## 1.17.3 — Truth-gap remediation, for real (April 23 2026)
 
 ### Fixed
