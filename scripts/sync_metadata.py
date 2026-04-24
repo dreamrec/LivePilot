@@ -127,6 +127,31 @@ def get_lockfile_version() -> str:
     return data.get("version", "")
 
 
+def get_atlas_device_count() -> int:
+    """Canonical device count from shipped ``device_atlas.json.stats``.
+
+    Added in v1.21.3 audit-response #3: v1.21.2's CHANGELOG deferred this
+    prose-claim check to v1.22, reasoning that the generic noun ``device``
+    would false-positive on every historical "5 devices" mention. In
+    practice, ``threshold=1000`` in the PROSE_CLAIM entry filters those
+    out entirely — only 4-digit counts get compared, and those are
+    always atlas references in this codebase. Enabling here instead of
+    v1.22 based on audit #3 finding three manual files still claiming
+    the stale 1305 count.
+
+    Reads ``stats.total_devices`` from the shipped atlas JSON. Matches
+    what ``AtlasManager.stats['total_devices']`` exposes at runtime.
+    """
+    path = ROOT / "mcp_server" / "atlas" / "device_atlas.json"
+    if not path.exists():
+        return 0
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return 0
+    return int(data.get("stats", {}).get("total_devices", 0))
+
+
 def get_domains() -> tuple[int, list[str]]:
     """Derive the set of tool domains from mcp_server source layout.
 
@@ -236,6 +261,12 @@ PROSE_CLAIM_FILES = {
             "README.md",
             "CLAUDE.md",
             "livepilot/skills/livepilot-core/references/overview.md",
+            # v1.21.3 audit-response #3: manual pages were blind-spots
+            # for this check because they weren't listed here. That let
+            # "135 enriched" strings drift in manual docs while README
+            # and CLAUDE showed "120 enriched".
+            "docs/manual/device-atlas.md",
+            "docs/manual/tool-reference.md",
         ],
     },
     "genre default": {
@@ -278,6 +309,37 @@ PROSE_CLAIM_FILES = {
             "livepilot/skills/livepilot-release/SKILL.md",
         ],
     },
+    # v1.21.3 audit-response #3 addition:
+    "device": {
+        # Atlas total-device count (stats.total_devices in the shipped
+        # atlas JSON). Threshold=1000 filters out historical "5 devices",
+        # "2 devices" etc — only 4-digit claims are compared. In this
+        # codebase, 4-digit ``N devices`` mentions are always atlas
+        # references, so the false-positive risk is zero.
+        #
+        # Deferred from v1.21.2 CHANGELOG but pulled forward to v1.21.3
+        # after the third audit surfaced docs/manual/device-atlas.md,
+        # docs/manual/index.md, and docs/manual/tool-reference.md all
+        # still claiming the stale 1305 count.
+        "getter": get_atlas_device_count,
+        "threshold": 1000,
+        "files": [
+            "README.md",
+            "AGENTS.md",
+            "CLAUDE.md",
+            "package.json",
+            "server.json",
+            "manifest.json",
+            ".claude-plugin/marketplace.json",
+            "livepilot/.Codex-plugin/plugin.json",
+            "livepilot/.claude-plugin/plugin.json",
+            "livepilot/skills/livepilot-core/references/overview.md",
+            "livepilot/skills/livepilot-core/SKILL.md",
+            "docs/manual/device-atlas.md",
+            "docs/manual/index.md",
+            "docs/manual/tool-reference.md",
+        ],
+    },
 }
 
 # Files that must contain the current domain count ("N domains").
@@ -296,6 +358,11 @@ DOMAIN_COUNT_FILES = [
     "docs/manual/index.md",
     "docs/manual/tool-catalog.md",
     "docs/manual/tool-catalog-generated.md",
+    # v1.21.3 audit-response #3: tool-reference.md was a blind-spot —
+    # it said "52 domains" at line 3400 while the rest of the repo
+    # advertised 53. Missing from this list was the reason
+    # sync_metadata --check never caught it.
+    "docs/manual/tool-reference.md",
     "tests/test_tools_contract.py",
 ]
 
@@ -343,7 +410,15 @@ def check_tool_count(count: int) -> list[str]:
     """
     issues = []
     count_str = str(count)
-    pattern = re.compile(r"(\d+)[-\s]+(?:[A-Z][A-Za-z]*\s+)?[Tt]ools?\b")
+    # v1.21.3 audit-response #3: leading \b prevents the regex from
+    # matching digits embedded in JSON unicode escapes (e.g. the "2014"
+    # inside "\u2014"). Without \b, check_prose_claim(noun="device")
+    # flagged manifest.json's em-dash \u2014 as a stale "2014 device"
+    # claim — and --fix would have rewritten \u2014 to \u5264, corrupting
+    # the JSON. The same fix is applied to all 4 regex patterns in
+    # this file (check_tool_count, check_prose_claim, fix_tool_count,
+    # _fix_count) for defensive uniformity.
+    pattern = re.compile(r"\b(\d+)[-\s]+(?:[A-Z][A-Za-z]*\s+)?[Tt]ools?\b")
     for rel_path in TOOL_COUNT_FILES:
         path = ROOT / rel_path
         if not path.exists():
@@ -384,9 +459,11 @@ def check_prose_claim(noun: str, spec: dict) -> list[str]:
     threshold = spec["threshold"]
     # Escape noun for regex, allow singular/plural and optional word between
     # the number and noun (e.g. "81 devices enriched", "81 enriched with ...").
+    # Leading \b prevents matches against digits embedded in unicode escapes
+    # like \u2014 (see check_tool_count for the full context).
     escaped = re.escape(noun)
     pattern = re.compile(
-        rf"(\d+)[-\s]+(?:[A-Za-z]+\s+)?{escaped}s?\b",
+        rf"\b(\d+)[-\s]+(?:[A-Za-z]+\s+)?{escaped}s?\b",
         flags=re.IGNORECASE,
     )
     for rel_path in spec["files"]:
@@ -476,7 +553,9 @@ def _fix_count(
     """
     fixed: list[str] = []
     count_str = str(count)
-    pattern = re.compile(rf"(\d+)(\s+{re.escape(noun)}s?)\b")
+    # Leading \b matches check_prose_claim's — prevents --fix from
+    # rewriting digits inside unicode escapes like \u2014.
+    pattern = re.compile(rf"\b(\d+)(\s+{re.escape(noun)}s?)\b")
     for rel_path in files:
         path = ROOT / rel_path
         if not path.exists():
@@ -503,7 +582,9 @@ def fix_tool_count(count: int) -> list[str]:
     fixed: list[str] = []
     count_str = str(count)
     # Matches ``323 tools`` and ``323-tool`` (hyphenated variant).
-    pattern = re.compile(r"(\d+)([-\s]+)(tools?)\b")
+    # Leading \b matches check_tool_count's — prevents --fix from
+    # rewriting digits inside unicode escapes like \u2014.
+    pattern = re.compile(r"\b(\d+)([-\s]+)(tools?)\b")
     for rel_path in TOOL_COUNT_FILES:
         path = ROOT / rel_path
         if not path.exists():
@@ -584,12 +665,15 @@ def main():
     # v1.21.2 audit-response #2 additions:
     move_count = get_move_count()
     analyzer_tool_count = get_analyzer_tool_count()
+    # v1.21.3 audit-response #3 addition:
+    atlas_device_count = get_atlas_device_count()
 
     print(
         f"Source of truth: version={version}, tools={tool_count}, "
         f"domains={domain_count}, bridge_cmds={bridge_count}, "
         f"enriched={enriched_count}, genres={genre_count}, "
-        f"moves={move_count}, analyzer_tools={analyzer_tool_count}"
+        f"moves={move_count}, analyzer_tools={analyzer_tool_count}, "
+        f"atlas_devices={atlas_device_count}"
     )
 
     if mode == "--fix":
