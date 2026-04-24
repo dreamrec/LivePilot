@@ -596,3 +596,9 @@ def invalidate_atlas() -> None:
 def _load_atlas() -> AtlasManager:
     """Legacy shim — kept so atlas/tools.py still works. Prefer get_atlas()."""
     return get_atlas()
+
+
+# v1.23.0: re-export overlay accessor so callers can do
+# `from mcp_server.atlas import get_overlay_index` mirroring the existing
+# `from mcp_server.atlas import get_atlas` ergonomic.
+from .overlays import get_overlay_index, load_overlays  # noqa: E402, F401

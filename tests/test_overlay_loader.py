@@ -205,3 +205,138 @@ def test_load_overlays_loads_list_form(tmp_path):
     idx = load_overlays(root=tmp_path)
     assert idx.get("elektron", "a") is not None
     assert idx.get("elektron", "b") is not None
+
+
+def test_load_overlays_idempotent(tmp_path):
+    """Calling load_overlays twice with same root produces identical singleton state."""
+    from mcp_server.atlas.overlays import load_overlays
+    ns = tmp_path / "elektron"
+    ns.mkdir(parents=True)
+    (ns / "x.yaml").write_text("entity_id: a\nentity_type: machine\nname: A\ndescription: x\n")
+
+    idx1 = load_overlays(root=tmp_path)
+    snap1 = sorted([(e.namespace, e.entity_type, e.entity_id) for e in idx1.all_entries()])
+    idx2 = load_overlays(root=tmp_path)
+    snap2 = sorted([(e.namespace, e.entity_type, e.entity_id) for e in idx2.all_entries()])
+    assert snap1 == snap2 and idx1 is idx2  # same singleton
+
+
+def test_load_overlays_skips_invalid_yaml(tmp_path, caplog):
+    """Bad YAML → file skipped, others continue, WARN logged."""
+    import logging
+    from mcp_server.atlas.overlays import load_overlays
+    ns = tmp_path / "elektron"
+    ns.mkdir(parents=True)
+    (ns / "good.yaml").write_text("entity_id: a\nentity_type: machine\nname: A\ndescription: x\n")
+    (ns / "bad.yaml").write_text(": : : not valid yaml : :\n")
+
+    with caplog.at_level(logging.WARNING):
+        idx = load_overlays(root=tmp_path)
+
+    assert idx.get("elektron", "a") is not None
+    assert any("bad.yaml" in r.message for r in caplog.records)
+
+
+def test_load_overlays_rejects_unsafe_yaml_tags(tmp_path, caplog):
+    """YAML with !!python tags is rejected by safe_load. Per spec §7.
+
+    Key behavior: ANY !!python/* tag is rejected by safe_load, regardless of
+    whether the underlying object would be benign or harmful. We use a benign
+    Python tag here just to demonstrate the rejection — the loader treats all
+    !!python/* tags identically (logged + skipped).
+
+    This test also defends against a future maintainer naively swapping
+    yaml.safe_load for yaml.load(Loader=yaml.FullLoader) — that swap would
+    break security and this test would catch it.
+    """
+    import logging
+    from mcp_server.atlas.overlays import load_overlays
+    ns = tmp_path / "elektron"
+    ns.mkdir(parents=True)
+    (ns / "tagged.yaml").write_text(
+        "entity_id: x\n"
+        "entity_type: machine\n"
+        "name: !!python/name:datetime.datetime\n"
+        "description: hax\n"
+    )
+    with caplog.at_level(logging.WARNING):
+        idx = load_overlays(root=tmp_path)
+    assert idx.get("elektron", "x") is None
+    assert any("tagged.yaml" in r.message for r in caplog.records)
+
+
+def test_load_overlays_missing_required_field(tmp_path, caplog):
+    """Entry missing entity_id → skipped + WARN logged."""
+    import logging
+    from mcp_server.atlas.overlays import load_overlays
+    ns = tmp_path / "elektron"
+    ns.mkdir(parents=True)
+    (ns / "x.yaml").write_text("entity_type: machine\nname: A\ndescription: x\n")
+
+    with caplog.at_level(logging.WARNING):
+        idx = load_overlays(root=tmp_path)
+
+    assert idx.list_namespaces() == []
+    assert any("entity_id" in r.message for r in caplog.records)
+
+
+def test_signature_chain_required_fields(tmp_path, caplog):
+    """signature_chain entries missing tags or artists → skipped. Per spec §5.1."""
+    import logging
+    from mcp_server.atlas.overlays import load_overlays
+    ns = tmp_path / "elektron"
+    ns.mkdir(parents=True)
+    (ns / "missing_tags.yaml").write_text(
+        "entity_id: a\nentity_type: signature_chain\nname: A\ndescription: x\nartists: [sophie]\n"
+    )
+    (ns / "missing_artists.yaml").write_text(
+        "entity_id: b\nentity_type: signature_chain\nname: B\ndescription: x\ntags: [k]\n"
+    )
+    (ns / "machine_no_tags_ok.yaml").write_text(
+        "entity_id: c\nentity_type: machine\nname: C\ndescription: x\n"
+    )
+    with caplog.at_level(logging.WARNING):
+        idx = load_overlays(root=tmp_path)
+
+    assert idx.get("elektron", "a") is None  # skipped
+    assert idx.get("elektron", "b") is None  # skipped
+    assert idx.get("elektron", "c") is not None  # machine OK without tags/artists
+
+
+def test_load_overlays_duplicate_id_last_wins(tmp_path, caplog):
+    """Two YAMLs with same (namespace, entity_type, entity_id) → second overwrites; WARN logged."""
+    import logging
+    from mcp_server.atlas.overlays import load_overlays
+    ns = tmp_path / "elektron"
+    ns.mkdir(parents=True)
+    (ns / "01_first.yaml").write_text(
+        "entity_id: dup\nentity_type: machine\nname: First\ndescription: x\n"
+    )
+    (ns / "02_second.yaml").write_text(
+        "entity_id: dup\nentity_type: machine\nname: Second\ndescription: x\n"
+    )
+    with caplog.at_level(logging.WARNING):
+        idx = load_overlays(root=tmp_path)
+    assert idx.get("elektron", "dup").name == "Second"
+    assert any("duplicate" in r.message.lower() for r in caplog.records)
+
+
+def test_load_overlays_coerces_entity_id_and_type_to_str(tmp_path):
+    """Defends against integer entity_ids (e.g., YAML `entity_id: 42`)
+    breaking downstream search() which calls .lower() on the field.
+    Per Tasks 7+8 code reviewer M1 (folded into Task 9)."""
+    from mcp_server.atlas.overlays import load_overlays
+    ns = tmp_path / "elektron"
+    ns.mkdir(parents=True)
+    (ns / "int_id.yaml").write_text(
+        "entity_id: 42\nentity_type: machine\nname: AnswerMachine\ndescription: x\n"
+    )
+    idx = load_overlays(root=tmp_path)
+    entry = idx.get("elektron", "42")
+    assert entry is not None
+    assert entry.entity_id == "42"
+    assert isinstance(entry.entity_id, str)
+    assert isinstance(entry.entity_type, str)
+    # Downstream sanity: search must not raise AttributeError
+    results = idx.search("answer")
+    assert len(results) == 1

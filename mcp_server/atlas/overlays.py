@@ -176,11 +176,16 @@ def _validate_entry(entry: dict, source_path: Path,
 def _entry_from_dict(d: dict, namespace: str) -> OverlayEntry:
     """Build an OverlayEntry from a validated YAML dict.
     The full original dict is preserved as `body` so callers can read
-    arbitrary extra fields (architecture, requires_machines, sources, etc.)."""
+    arbitrary extra fields (architecture, requires_machines, sources, etc.).
+
+    Coerces entity_id and entity_type to str() defensively — guards against
+    YAMLs that use non-string scalar values (e.g., `entity_id: 42`) which
+    would otherwise break downstream search() (.lower() on int).
+    """
     return OverlayEntry(
         namespace=namespace,
-        entity_type=d["entity_type"],
-        entity_id=d["entity_id"],
+        entity_type=str(d["entity_type"]),
+        entity_id=str(d["entity_id"]),
         name=d.get("name", ""),
         description=d.get("description", ""),
         tags=list(d.get("tags") or []),
