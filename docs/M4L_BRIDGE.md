@@ -21,7 +21,7 @@ MCP Server  <=============>  Remote Script (ControlSurface)
 - **UDP 9880** — M4L device sends spectral data stream and LiveAPI responses to MCP Server
 - **OSC 9881** — MCP Server sends LiveAPI commands to M4L device
 
-The bridge is optional. Most tools work without it. The 33 MCP tools in the analyzer domain depend on the bridge for spectral data; sample- and device-mutation tools that call the bridge have graceful fallbacks (and on Live 12.4+, several sample tools take a native LOM path that bypasses the bridge entirely). Backed by 31 bridge commands.
+The bridge is optional. Most tools work without it. The 38 MCP tools in the analyzer domain depend on the bridge for spectral data; sample- and device-mutation tools that call the bridge have graceful fallbacks (and on Live 12.4+, several sample tools take a native LOM path that bypasses the bridge entirely). Backed by 31 bridge commands.
 
 ## Audio Signal Chain
 
@@ -85,7 +85,7 @@ Commands are sent WITHOUT a leading `/` in the OSC address. This is critical —
 
 | Command | Args | Description |
 |---------|------|-------------|
-| `ping` | (none) | Health check, returns `{ok: true, version: "1.21.0"}` |
+| `ping` | (none) | Health check, returns `{ok: true, version: "1.21.1"}` |
 | `get_params` | track_idx, device_idx | All parameters with value, range, automation state |
 | `get_hidden_params` | track_idx, device_idx | All parameters including hidden ones, with display string |
 | `get_auto_state` | track_idx, device_idx | Only parameters that have automation (active or overridden) |
@@ -288,10 +288,10 @@ function anything() {
 
 ## File Locations
 
-- `m4l_device/LivePilot_Analyzer.amxd` — compiled M4L device (binary). Ping returns `{ok: true, version: "1.21.0"}`
+- `m4l_device/LivePilot_Analyzer.amxd` — compiled M4L device (binary). Ping returns `{ok: true, version: "1.21.1"}`
 - `m4l_device/livepilot_bridge.js` — bridge JS source (30 commands)
 - `m4l_device/LivePilot_MIDITool_Generate.amxd` / `LivePilot_MIDITool_Transform.amxd` — separate Live 12.0+ MIDI Tool devices for in-clip generators (euclidean_rhythm, tintinnabuli, humanize)
 - `m4l_device/miditool_bridge.js` — MIDI Tool bridge JS source
 - `mcp_server/m4l_bridge.py` — SpectralCache, SpectralReceiver, M4LBridge, MidiToolCache, generator registry
-- `mcp_server/tools/analyzer.py` — 33 MCP tools for the analyzer domain (spectrum, RMS, pitch, key, spectral shape, mel, chroma, onsets, novelty, loudness, capture, simpler/warp marker ops, plugin introspection)
+- `mcp_server/tools/analyzer.py` — 38 MCP tools for the analyzer domain (spectrum, RMS, pitch, key, spectral shape, mel, chroma, onsets, novelty, loudness, capture, simpler/warp marker ops, plugin introspection)
 - `docs/specs/2026-03-18-m4l-bridge-spec.md` — original design spec
