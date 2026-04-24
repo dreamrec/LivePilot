@@ -134,6 +134,35 @@ def verify_device_alive(
     }
 
 
+def _find_name_collisions(ctx: Context, name: str) -> list[int]:
+    """Return track indices whose name exactly matches `name` (case-sensitive).
+
+    BUG #5 fix (v1.20.2): downstream role-based resolvers like
+    find_tracks_by_role match on track names. If create_midi_track
+    creates a second "Pad" while another "Pad" already exists, mix
+    moves like widen_stereo match BOTH — applying the change twice.
+    This helper enables create_*_track to warn the caller so they can
+    pick a unique name or explicitly accept the collision.
+
+    Best-effort: returns [] when session_info can't be fetched —
+    collision detection must never block creation.
+    """
+    try:
+        info = _get_ableton(ctx).send_command("get_session_info")
+    except Exception:
+        return []
+    if not isinstance(info, dict):
+        return []
+    tracks = info.get("tracks") or []
+    matches: list[int] = []
+    for t in tracks:
+        if isinstance(t, dict) and t.get("name") == name:
+            idx = t.get("index")
+            if isinstance(idx, int):
+                matches.append(idx)
+    return matches
+
+
 @mcp.tool()
 def create_midi_track(
     ctx: Context,
@@ -141,7 +170,18 @@ def create_midi_track(
     name: Optional[str] = None,
     color: Optional[int] = None,
 ) -> dict:
-    """Create a new MIDI track. index=-1 appends at end."""
+    """Create a new MIDI track. index=-1 appends at end.
+
+    Response (v1.20.2+): when `name` is provided, the response carries
+    a ``name_collision`` bool and ``existing_tracks_with_same_name``
+    list[int]. Downstream role-based resolvers (find_tracks_by_role)
+    match duplicate names and apply mix changes twice — check the
+    warning before proceeding with mix moves on the new track's role.
+    """
+    collisions: list[int] = []
+    if name is not None and name.strip():
+        collisions = _find_name_collisions(ctx, name)
+
     params = {"index": index}
     if name is not None:
         if not name.strip():
@@ -150,7 +190,13 @@ def create_midi_track(
     if color is not None:
         _validate_color_index(color)
         params["color_index"] = color
-    return _get_ableton(ctx).send_command("create_midi_track", params)
+    result = _get_ableton(ctx).send_command("create_midi_track", params)
+    if isinstance(result, dict):
+        # Always stamp both fields so callers can check unconditionally
+        # (False + [] when no name provided or no collision).
+        result["name_collision"] = bool(collisions)
+        result["existing_tracks_with_same_name"] = collisions
+    return result
 
 
 @mcp.tool()
@@ -160,7 +206,15 @@ def create_audio_track(
     name: Optional[str] = None,
     color: Optional[int] = None,
 ) -> dict:
-    """Create a new audio track. index=-1 appends at end."""
+    """Create a new audio track. index=-1 appends at end.
+
+    Response (v1.20.2+): ``name_collision`` + ``existing_tracks_with_same_name``
+    same as create_midi_track — see BUG #5 rationale there.
+    """
+    collisions: list[int] = []
+    if name is not None and name.strip():
+        collisions = _find_name_collisions(ctx, name)
+
     params = {"index": index}
     if name is not None:
         if not name.strip():
@@ -169,7 +223,11 @@ def create_audio_track(
     if color is not None:
         _validate_color_index(color)
         params["color_index"] = color
-    return _get_ableton(ctx).send_command("create_audio_track", params)
+    result = _get_ableton(ctx).send_command("create_audio_track", params)
+    if isinstance(result, dict):
+        result["name_collision"] = bool(collisions)
+        result["existing_tracks_with_same_name"] = collisions
+    return result
 
 
 @mcp.tool()
