@@ -1,5 +1,186 @@
 # Changelog
 
+## 1.19.0 — Experiment baseline + hybrid packet compilation (April 24 2026)
+
+Minor version bump. Ships two of the three open items documented in
+`docs/plans/v1.19-structural-plan.md`. Item C (full architectural
+routing of director Phase 6 through `apply_semantic_move`) is
+deferred to v1.20 per the plan's blast-radius rationale.
+
+Both items shipped under strict TDD: 52 new unit tests, zero
+regressions across the 2854-test suite. Both items live-tested in
+production (real Ableton session, Live 12.4.0, 13 live-test
+scenarios green).
+
+### Item A — Experiment baseline transport snapshot/restore
+
+Live-verified in v1.18.0 Test 8: running a 3-branch experiment
+sequentially produced inconsistent `before_snapshot` values
+because playback position, mute/solo/arm, and playing-clip state
+drifted across branches. `undo()` reverts command history but
+doesn't guarantee transport state is identical when each branch's
+`before_snapshot` fires. Track_meters[0].level values of 0.764 /
+0.000 / 0.873 across three branches rendered the before/after
+comparisons meaningless.
+
+Fix — snapshot-and-restore pattern, experiment-level:
+
+- NEW `mcp_server/experiment/baseline.py` — `BaselineTransportState`
+  dataclass + `capture_baseline(ableton)` +
+  `restore_baseline(ableton, baseline, stabilize_ms=300)`.
+  Captures `is_playing`, `song_time`, and per-track
+  `mute`/`solo`/`arm` via a single `get_session_info` round-trip.
+  Restore issues `stop_playback` → per-track
+  `set_track_mute`/`set_track_solo`/`set_track_arm` → 300 ms
+  stabilize sleep. Per-track failures are logged, not fatal (a
+  single flaky track never aborts restore for the rest).
+- `ExperimentSet` gains a `baseline_transport: Optional[BaselineTransportState]`
+  field. `to_dict()` surfaces it when populated.
+- `engine.prepare_for_next_branch(ableton, baseline, stabilize_ms)`
+  — thin wrapper called by `run_experiment` between branches.
+  No-op when baseline is None (first branch).
+- `run_experiment` captures the baseline once before the branch
+  loop starts, stashes it on the experiment, and calls
+  `prepare_for_next_branch` before every branch after the first.
+  Capture failure logs + degrades to None (pre-v1.19 behavior).
+
+**Stabilize window defaults to 300 ms** — midpoint of plan §2's
+200-500 ms empirical range. Per-branch overhead stayed at
+~1.04 s amortized under live 5-branch testing (well under the
+plan's 2-second-per-branch success criterion target).
+
+**Live evidence of state preservation:** 5-branch test with two
+mutations on track 0 "Dub Chord" (pan -0.35 by `widen_stereo`,
+then volume 0.4 by `darken_without_losing_width`) returned the
+track to identical pre-experiment state (arm=true, mute=false,
+solo=false) after every branch cycle.
+
+Known limitations (accepted per plan §2):
+- Automation drift is not frozen — deeper refactor out of scope.
+- Send values + device parameters mutated outside a branch's own
+  steps fall back to `undo()` alone — no explicit restore.
+- Transport position is NOT re-seeked; `song_time` is captured
+  but unused (stopping is enough).
+
+21 unit tests added: capture (transport fields, empty tracks,
+missing-field defaults, epoch-ms timestamp), restore (command
+sequence, per-track mute/solo/arm restoration, stabilize sleep
+with monkey-patched time.sleep, flaky-track resilience,
+return-track arm skip), `ExperimentSet.baseline_transport`
+(default None, to_dict surfacing/omission), engine helper
+(None no-op, delegation), tool-level wiring (`run_experiment`
+populates baseline once + idempotent on second run).
+
+### Item B — Hybrid concept packet compilation
+
+Pre-v1.19 the director handled "Basic Channel meets Dilla swing"
+via LLM ad-hoc reasoning — no explicit rule for contradictions
+(e.g., Gas deprioritizes rhythmic, Dilla emphasizes rhythmic;
+what survives the hybrid?). v1.18.0 Test 7 verified plausible
+output but entirely improvisational, with no guarantee either
+source packet's `avoid` list or tempo constraints would persist.
+
+Fix — explicit merge algorithm with canonical rules per plan §3:
+
+- NEW `mcp_server/creative_director/hybrid.py` —
+  `compile_hybrid_brief(packet_ids, weights=None)` loads concept
+  packets from `livepilot/skills/livepilot-core/references/concepts/`
+  and applies merge rules:
+    * `sonic_identity` / `avoid` / `reach_for.*` / `*_idioms` /
+      `sample_roles` / `dimensions_in_scope`: UNION, deduplicated,
+      first-packet order preserved.
+    * `dimensions_deprioritized` / `move_family_bias.deprioritize`:
+      INTERSECTION — only deprioritize if ALL packets agree.
+      Safer default: one packet's ignored dimension shouldn't
+      starve another packet's wanted one.
+    * `move_family_bias.favor`: INTERSECTION when non-empty
+      (hybrid focuses where both agree), UNION fallback with
+      warning when empty.
+    * `evaluation_bias.target_dimensions`: WEIGHTED AVERAGE
+      (default uniform; override via `weights`).
+    * `evaluation_bias.protect`: MAX per dimension (stricter
+      floor wins).
+    * `novelty_budget_default`: MAX (hybrid asks skew
+      exploratory).
+    * `tempo_hint`: NEAREST-OVERLAP — intersect overlapping
+      ranges, else midpoint + `disjoint: true` flag + warning.
+
+- NEW MCP tool `compile_hybrid_brief` in
+  `mcp_server/creative_director/tools.py` (tool count 428 → 429).
+  Accepts packet IDs as filename stems (`"basic-channel"`),
+  aliases (`"dilla"`), or packet `id` values
+  (`"dub_techno__basic_channel"`). Returns ValueError as an
+  error-dict response (doesn't raise).
+
+- NEW reference doc
+  `livepilot/skills/livepilot-creative-director/references/hybrid-compilation.md`
+  — canonical merge-rule table, output shape, interop notes,
+  guidance for handling the `warnings` list.
+
+- Director SKILL.md Phase 1 — explicit guidance to call
+  `compile_hybrid_brief` when the user names 2+ references,
+  with a mandate to surface any `warnings` entries (don't
+  silently average disjoint tempos).
+
+- Output exposes merged `avoid` also as `anti_patterns` alias
+  for drop-in compat with `check_brief_compliance` (v1.18.3).
+  Live interop test: Basic Channel × J Dilla hybrid correctly
+  flagged a Hi Gain boost via `check_brief_compliance`.
+
+31 unit tests added: packet loading (stem / alias / id /
+underscore-to-hyphen normalization / missing), input validation
+(min 2 packets / missing packet / weights length mismatch),
+UNION rules (avoid / sonic_identity / reach_for /
+dimensions_in_scope), INTERSECTION rules (deprioritized
+dimensions / `move_family_bias.deprioritize` /
+`move_family_bias.favor` non-empty case / UNION fallback with
+warning), WEIGHTED AVERAGE (default + custom weights), MAX rules
+(protect / novelty_budget), tempo_hint (overlap intersection /
+disjoint midpoint with warning), 3+ packet composition, output
+metadata (`type` / `source_packets` / hybrid name /
+`locked_dimensions=[]` / warnings list), and interoperability
+(hybrid brief passed through `check_brief_compliance`).
+
+### Live test coverage (13 scenarios)
+
+Item B: BC × Dilla (disjoint tempos) · BC × Villalobos
+(overlapping tempos, NO disjoint flag) · alias + spaced-name
+resolution · invalid packet error · 3-packet hybrid
+(BC + Dilla + Villalobos) · weighted average 75/25 · genre ×
+artist (ambient × basinski, tempo=0 case) · full hybrid brief
+→ `check_brief_compliance` interop (quantize_clip flagged).
+
+Item A: 3-branch experiment (all snapshots populated, ranking
+produced) · 5-branch experiment (1.04s/branch amortized
+overhead) · state preservation under 2 mutations on track 0
+(Dub Chord) across 5-branch cycle · `discard_experiment` cleanup.
+
+### Known gaps deferred to v1.19.1
+
+- `experiment.baseline_transport` populated internally but not
+  surfaced through `compare_experiments` response. 3-line fix
+  for operator visibility; not a correctness issue.
+- `warnings` message rounds tempo midpoint to int display (128
+  BPM) while range returned is exact (125-130, centered 127.5).
+  Two rounding conventions. Cosmetic.
+- `weights` in response show full float precision
+  (`0.3333333333333333`) instead of rounding to 4 dp like
+  `target_dimensions` already does. Cosmetic.
+
+### Still open for v1.20 (Item C from the plan)
+
+- Route director's Phase 6 execution through `apply_semantic_move`
+  / `create_experiment + commit_experiment` so the action ledger
+  populates automatically and anti-repetition becomes reliable.
+  Doc-level fix shipped in v1.18.1; architectural fix deferred
+  to v1.20 per plan §5 blast-radius rationale. Requires 5-10
+  new semantic_moves to cover current Phase 6 patterns
+  (return-chain builds, multi-param device presets, chord
+  source loading, send routing, etc.).
+
+Test suite: 2854 pass, 1 skipped (from 2792 pre-v1.19). Zero
+regressions. sync_metadata --check clean.
+
 ## 1.18.3 — Brief compliance runtime check (#7 + #8) (April 24 2026)
 
 Third v1.18.x patch. Bundles two Known Issues items (#7 + #8) that
