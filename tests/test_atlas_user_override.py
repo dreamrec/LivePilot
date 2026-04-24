@@ -77,6 +77,10 @@ def test_resolver_returns_user_path_when_present(tmp_path, monkeypatch):
     not the bundled path. This is the "personalized scan wins"
     invariant."""
     monkeypatch.setenv("HOME", str(tmp_path))
+    # Windows: Path.home() reads USERPROFILE, not HOME. Patch both so the
+    # test works on POSIX + Windows. (Production code has nothing to do —
+    # Path.home() is already cross-platform; this is a pytest concern only.)
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
     user_atlas = tmp_path / ".livepilot" / "atlas" / "device_atlas.json"
     user_atlas.parent.mkdir(parents=True)
     user_atlas.write_text(json.dumps({
@@ -110,6 +114,10 @@ def test_resolver_falls_back_to_bundled_when_user_atlas_missing(
     the resolver falls back to the bundled baseline. This is the
     fresh-install case."""
     monkeypatch.setenv("HOME", str(tmp_path))
+    # Windows: Path.home() reads USERPROFILE, not HOME. Patch both so the
+    # test works on POSIX + Windows. (Production code has nothing to do —
+    # Path.home() is already cross-platform; this is a pytest concern only.)
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
     # Deliberately do NOT create the user atlas.
 
     for name in list(sys.modules):
@@ -132,6 +140,10 @@ def test_atlas_manager_loads_from_user_path_when_present(tmp_path, monkeypatch):
     atlas, ``get_atlas()`` must return an AtlasManager whose data
     reflects the user atlas — not the bundled baseline."""
     monkeypatch.setenv("HOME", str(tmp_path))
+    # Windows: Path.home() reads USERPROFILE, not HOME. Patch both so the
+    # test works on POSIX + Windows. (Production code has nothing to do —
+    # Path.home() is already cross-platform; this is a pytest concern only.)
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
     user_atlas = tmp_path / ".livepilot" / "atlas" / "device_atlas.json"
     user_atlas.parent.mkdir(parents=True)
     user_atlas.write_text(json.dumps({
@@ -174,6 +186,10 @@ def test_atlas_manager_falls_back_to_bundled_when_user_atlas_missing(
     atlas), ``get_atlas()`` loads the bundled baseline. Device count
     should match the shipped v1.21.4 baseline (5264)."""
     monkeypatch.setenv("HOME", str(tmp_path))
+    # Windows: Path.home() reads USERPROFILE, not HOME. Patch both so the
+    # test works on POSIX + Windows. (Production code has nothing to do —
+    # Path.home() is already cross-platform; this is a pytest concern only.)
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
 
     for name in list(sys.modules):
         if name == "mcp_server.atlas" or name.startswith("mcp_server.atlas."):
@@ -201,6 +217,10 @@ def test_scan_full_library_writes_to_user_path(tmp_path, monkeypatch):
     asserting the write target.
     """
     monkeypatch.setenv("HOME", str(tmp_path))
+    # Windows: Path.home() reads USERPROFILE, not HOME. Patch both so the
+    # test works on POSIX + Windows. (Production code has nothing to do —
+    # Path.home() is already cross-platform; this is a pytest concern only.)
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
 
     # Fresh import after HOME change.
     for name in list(sys.modules):
@@ -253,6 +273,10 @@ def test_user_atlas_dir_created_if_missing(tmp_path, monkeypatch):
     """First-run scenario: no ``~/.livepilot/atlas/`` directory yet.
     ``scan_full_library`` must create it before writing."""
     monkeypatch.setenv("HOME", str(tmp_path))
+    # Windows: Path.home() reads USERPROFILE, not HOME. Patch both so the
+    # test works on POSIX + Windows. (Production code has nothing to do —
+    # Path.home() is already cross-platform; this is a pytest concern only.)
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
     # Explicitly: HOME/.livepilot does not exist yet.
     assert not (tmp_path / ".livepilot").exists()
 
