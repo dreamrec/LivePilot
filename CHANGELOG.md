@@ -1,5 +1,138 @@
 # Changelog
 
+## 1.21.3 — Third audit-response: manual-docs drift + sync_metadata file-list widening + unicode-escape regex fix (April 24 2026)
+
+Fourth same-day patch in 48 hours, third audit-response in 24 hours.
+Audit #3 surfaced that v1.21.2's `sync_metadata` scope expansion had
+added new check TYPES but didn't widen the FILE LISTS — so docs/manual
+pages kept drifting (1305 devices, 135 enriched, 52 domains) while
+`sync_metadata --check` passed. This patch widens the file lists AND
+fixes a latent regex bug that v1.21.2's new "device" check would have
+triggered with data-corrupting consequences.
+
+No API changes. No test additions beyond what `sync_metadata` newly
+enforces. No new features.
+
+### P2 — Manual-doc atlas/domain drift (audit finding)
+
+Three manual pages shipped with stale counts through v1.21.2 because
+they weren't in the `sync_metadata` file lists for `enriched` /
+`domain` / the new `device` check:
+
+| File | Stale claim | Corrected to |
+|---|---|---|
+| `docs/manual/device-atlas.md` | 1305 devices / 135 enriched / 641 pack-indexed | 5264 / 120 / (claim dropped) |
+| `docs/manual/index.md` | 1305 devices | 5264 |
+| `docs/manual/tool-reference.md` | 1305 devices / 135 enriched / 52 domains | 5264 / 120 / 53 |
+
+The 5 numeric substitutions (device count, enriched count, domain count)
+were auto-closed by `sync_metadata --fix` once the file lists were
+widened. The `641 pack-indexed` claim was manually dropped (the fixer
+substitutes numbers, doesn't delete claims) — the shipped atlas has an
+empty `.packs` list, so any specific pack-indexed number would be
+meaningless anyway.
+
+### Critical — Latent regex bug in `check_prose_claim` and `_fix_count`
+
+Adding the `"device"` noun to `PROSE_CLAIM_FILES` exposed a regex
+vulnerability that had existed since v1.15-era. `check_prose_claim`'s
+pattern was:
+
+```python
+r"(\d+)[-\s]+(?:[A-Za-z]+\s+)?{noun}s?\b"
+```
+
+No word-boundary assertion at the start. In `manifest.json`, the em-dash
+is stored as the JSON escape `\u2014`. Raw characters are
+`\`, `u`, `2`, `0`, `1`, `4` — so the literal text "2014" appears
+next to a space, next to "device atlas". The regex matched:
+
+```
+...\u2014 device atlas...
+       ^^^^^^^^^^^^^^^
+       (captures "2014", next optional word is empty, then "device")
+```
+
+Reported as `manifest.json: has '2014 device', expected '5264 device'`.
+If `sync_metadata --fix` had run, it would have rewritten `\u2014`
+(em-dash) to `\u5264` (CJK ideograph `剤`). The JSON would become
+visually corrupted and linguistically nonsensical.
+
+**Prior versions got away with this** because no earlier PROSE_CLAIM
+noun could align adjacent to the 4-char "2014":
+  - "tool" starts with `t` — no match
+  - "bridge command" starts with `b` — no match
+  - "enriched" starts with `e` — no match
+  - "semantic move" / "analyzer tool" / "genre default" — none start with `d`
+
+The new `"device"` noun (starts with `d`) was the first to align.
+v1.21.2's extension would have shipped a corrupting `--fix` if anyone
+had run it immediately.
+
+Fix: leading `\b` assertion on all 4 regex patterns in sync_metadata
+(`check_tool_count`, `check_prose_claim`, `fix_tool_count`,
+`_fix_count`). Word-boundary before `\d+` means the digit must start
+at a non-word-to-word transition — which excludes digits adjacent to
+other word chars (like the `u` in `\u2014`).
+
+Verified: post-fix, `check_prose_claim(noun="device")` reports only
+the intended `5264 devices` in `manifest.json` — the `2014` ghost is
+gone. All existing checks (tool count, bridge command, enriched, etc.)
+continue to match correctly because their valid matches are always
+preceded by non-word chars (space, parenthesis, start-of-string, etc.).
+
+### `sync_metadata.py` expansion — new scope + 3 new file-list entries
+
+Added:
+  * **`get_atlas_device_count()`** + `PROSE_CLAIM_FILES["device"]`
+    (threshold=1000) — enforces atlas device-count claims match
+    `stats.total_devices`. Deferred from v1.21.2 because generic
+    noun="device" was thought too broad; threshold=1000 filters
+    historical "5 devices" mentions entirely. Enabled here based on
+    audit #3 finding.
+  * **`PROSE_CLAIM_FILES["enriched"]`** file list widened: added
+    `docs/manual/device-atlas.md`, `docs/manual/tool-reference.md`.
+    These had stale "135 enriched" while README said "120".
+  * **`DOMAIN_COUNT_FILES`** file list widened: added
+    `docs/manual/tool-reference.md`. Its "52 domains" had drifted
+    while the rest of the repo was at 53.
+
+New `sync_metadata --check` banner reports:
+`version=1.21.3, tools=430, domains=53, bridge_cmds=31, enriched=120,
+genres=4, moves=44, analyzer_tools=38, atlas_devices=5264`.
+
+### Deferred to v1.22
+
+- **`check_prose_claim` regex slash-prefix broadening** — still needs
+  doing (would let "spectral/analyzer tools" match the "analyzer tool"
+  check). Not landed in this patch because it would touch every
+  existing noun and warrants its own regression test pass.
+- **Atlas `.enriched` schema decision** — three definitions (87 stats,
+  120 YAML files, 135 flag count). v1.21.3 standardized on 120 across
+  all descriptions via widened `enriched` check, but the schema
+  question is still open.
+- **`dev-install` path** — still open.
+
+### Scope stats
+
+- 1 code fix (`sync_metadata.py` regex `\b` insertion on 4 patterns —
+  prevents future unicode-escape corruption)
+- 1 code expansion (`sync_metadata.py` — new `device` check type +
+  file-list widening on 2 existing checks)
+- 3 doc corrections auto-closed by `sync_metadata --fix` (9 numeric
+  substitutions across 3 manual files) + 1 manual prose-drop (641
+  pack-indexed in device-atlas.md)
+- 15 version-string sites + `.amxd` binary patch (2 bytes) + `.maxpat`
+  source label + `package-lock.json` (2 fields) bumped 1.21.2 → 1.21.3
+- Test suite: 3124 passed, 1 skipped (unchanged — no-regression patch)
+
+### Credits
+
+Third external audit by the repo owner. Fourth same-day patch since
+v1.20.1. Audit-to-ship pattern stable at ~2h per round.
+
+---
+
 ## 1.21.2 — Second audit-response: atlas reconciliation + manual hygiene + sync_metadata expansion (April 24 2026)
 
 Second same-day audit-response patch. After v1.21.1 shipped, the repo
