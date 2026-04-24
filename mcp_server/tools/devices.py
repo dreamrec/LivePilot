@@ -349,6 +349,80 @@ def _normalize_batch_entry(entry: dict) -> dict:
     return {"name_or_index": key, "value": entry["value"]}
 
 
+_SNAP_EPSILON = 1e-5
+
+
+def _detect_snapped_params(
+    requested: list[dict], response: dict,
+) -> list[dict]:
+    """Compare requested parameter values against Ableton's returned
+    values; surface any that were silently snapped.
+
+    BUG #4 fix (v1.20.2): quantized-enum params (e.g., Beat Repeat's
+    "Gate" at 0/1/2/... integer enum) silently snap a caller's float
+    request to the nearest step. Pre-fix, the response gave no signal —
+    callers saw success with the snapped value hidden in `value_string`.
+
+    Returns a list of {name, requested, actual, display_value} entries
+    for params whose actual (returned) value differs from the requested
+    value by more than _SNAP_EPSILON. String params are compared
+    exactly. Integer params use int equality.
+
+    Empty list when nothing snapped — callers can check
+    ``result.get("snapped_params") == []`` as a go/no-go signal.
+    """
+    result_params = response.get("parameters") or []
+    if not isinstance(result_params, list):
+        return []
+
+    # Build {key → requested_value} from the original caller input.
+    # Accept any of the same schemas _normalize_batch_entry accepts.
+    by_key: dict = {}
+    for entry in requested:
+        if not isinstance(entry, dict):
+            continue
+        for key_name in ("parameter_name", "name", "parameter_index",
+                         "index", "name_or_index"):
+            if key_name in entry:
+                by_key[entry[key_name]] = entry.get("value")
+                break
+
+    snapped: list[dict] = []
+    for rp in result_params:
+        if not isinstance(rp, dict):
+            continue
+        name = rp.get("name")
+        # Match by name first (most common), fall back to index
+        requested_val = by_key.get(name)
+        if requested_val is None and "index" in rp:
+            requested_val = by_key.get(rp["index"])
+        if requested_val is None:
+            continue
+        actual_val = rp.get("value")
+        if actual_val is None:
+            continue
+
+        # Compare with type-appropriate tolerance. Numeric → epsilon;
+        # other types → strict equality.
+        try:
+            req_f = float(requested_val)
+            act_f = float(actual_val)
+            did_snap = abs(req_f - act_f) > _SNAP_EPSILON
+        except (TypeError, ValueError):
+            did_snap = requested_val != actual_val
+
+        if did_snap:
+            snapped.append({
+                "name": name,
+                "requested": requested_val,
+                "actual": actual_val,
+                "display_value": rp.get("display_value"),
+                "value_string": rp.get("value_string"),
+            })
+
+    return snapped
+
+
 @mcp.tool()
 def batch_set_parameters(
     ctx: Context,
@@ -363,18 +437,30 @@ def batch_set_parameters(
       - {"parameter_name": "Dry/Wet", "value": V} (preferred)
       - {"name_or_index": X, "value": V}          (legacy, still accepted)
 
-    track_index: 0+ for regular tracks, -1/-2/... for return tracks (A/B/...), -1000 for master."""
+    track_index: 0+ for regular tracks, -1/-2/... for return tracks (A/B/...), -1000 for master.
+
+    Response (v1.20.2+): the dict now includes a ``snapped_params`` list
+    when quantized-enum parameters were silently snapped by Ableton
+    (requested 0.3, received 0). Empty list means every requested value
+    round-tripped within 1e-5 tolerance. Callers using this tool to
+    drive deterministic state should inspect ``snapped_params`` before
+    assuming success — see BUG #4 in the v1.20 live-test campaign for
+    the motivating case (Beat Repeat Gate).
+    """
     _validate_track_index(track_index)
     _validate_device_index(device_index)
-    parameters = _ensure_list(parameters)
-    if not parameters:
+    parameters_list = _ensure_list(parameters)
+    if not parameters_list:
         raise ValueError("parameters list cannot be empty")
-    normalized = [_normalize_batch_entry(e) for e in parameters]
-    return _get_ableton(ctx).send_command("batch_set_parameters", {
+    normalized = [_normalize_batch_entry(e) for e in parameters_list]
+    response = _get_ableton(ctx).send_command("batch_set_parameters", {
         "track_index": track_index,
         "device_index": device_index,
         "parameters": normalized,
     })
+    if isinstance(response, dict):
+        response["snapped_params"] = _detect_snapped_params(parameters_list, response)
+    return response
 
 
 @mcp.tool()
