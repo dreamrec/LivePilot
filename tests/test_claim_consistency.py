@@ -189,3 +189,93 @@ def test_session_continuity_binder_is_wired():
         f"No non-test caller of {binder}() found. Session continuity is "
         "effectively in-memory again — wire it back into lifespan/startup."
     )
+
+
+# ---------------------------------------------------------------------------
+# v1.21.4 — slashed-compound filler detection
+#
+# Before v1.21.4, the filler group in check_prose_claim (and _fix_count)
+# required trailing whitespace: `[A-Za-z]+\s+`. That rejected slashed
+# compounds like "38 spectral/analyzer tools" even though "spectral/" is
+# a meaningful compound-prefix on the noun "analyzer tool". The v1.21.2
+# audit #2 noted this as an open item — documents could carry stale
+# counts inside slashed compounds and sync_metadata would silently let
+# them pass.
+#
+# v1.21.4 widens the filler to also permit a trailing slash (compound
+# marker). The tests below lock the behavior in: drift inside slashed
+# compounds must be caught by `--check` and rewritable by `--fix`.
+# ---------------------------------------------------------------------------
+
+
+def test_prose_claim_catches_slashed_compound(sync_metadata, tmp_path, monkeypatch):
+    """check_prose_claim must flag drift inside slashed-compound forms.
+
+    Regression test for the v1.21.2 audit #2 finding — "38 spectral/analyzer
+    tools" would carry the wrong count past sync_metadata because the filler
+    regex rejected the slash.
+    """
+    stale = tmp_path / "fake_doc.md"
+    stale.write_text("The 38 spectral/analyzer tools require the bridge.\n")
+    monkeypatch.setattr(sync_metadata, "ROOT", tmp_path)
+    spec = {
+        "getter": lambda: 40,  # drift: doc says 38, expected 40
+        "threshold": 20,
+        "files": ["fake_doc.md"],
+    }
+    issues = sync_metadata.check_prose_claim("analyzer tool", spec)
+    assert issues, "Expected drift flag for '38 spectral/analyzer tools' vs 40"
+    assert "fake_doc.md" in issues[0]
+    assert "'38 analyzer tool'" in issues[0]
+    assert "'40 analyzer tool'" in issues[0]
+
+
+def test_fix_count_rewrites_slashed_compound(sync_metadata, tmp_path, monkeypatch):
+    """_fix_count must rewrite the number inside a slashed compound,
+    preserving the adjective ('spectral/') verbatim."""
+    stale = tmp_path / "fake_doc.md"
+    stale.write_text("The 38 spectral/analyzer tools require the bridge.\n")
+    monkeypatch.setattr(sync_metadata, "ROOT", tmp_path)
+    fixed = sync_metadata._fix_count(
+        count=40,
+        files=["fake_doc.md"],
+        noun="analyzer tool",
+        threshold=20,
+    )
+    assert fixed, "_fix_count must report at least one rewrite"
+    new_content = stale.read_text()
+    assert "40 spectral/analyzer tools" in new_content, (
+        f"Rewrite must preserve the slashed prefix; got: {new_content!r}"
+    )
+    # Original "38" must be gone from the slashed context
+    assert "38 spectral/" not in new_content
+
+
+def test_tool_count_catches_slashed_compound(sync_metadata, tmp_path, monkeypatch):
+    """check_tool_count's widened filler catches drift in slashed forms
+    like '430 MCP/analyzer tools' too. The uppercase anchor is preserved
+    for space-joined fillers (so 'the tools' can't false-positive), but
+    the slash-joined branch allows any case (the slash itself is a clear
+    compound marker)."""
+    stale = tmp_path / "fake_doc.md"
+    stale.write_text("Ships 300 spectral/MCP tools.\n")
+    monkeypatch.setattr(sync_metadata, "ROOT", tmp_path)
+    monkeypatch.setattr(sync_metadata, "TOOL_COUNT_FILES", ["fake_doc.md"])
+    issues = sync_metadata.check_tool_count(430)
+    assert issues, "Expected drift flag for '300 spectral/MCP tools' vs 430"
+    assert "fake_doc.md" in issues[0]
+    assert "'300 tool" in issues[0]
+
+
+def test_tool_count_no_false_positive_on_year_prose(sync_metadata, tmp_path, monkeypatch):
+    """Widening the filler must NOT admit 'In 2020 the tool was released'
+    as drift. The uppercase anchor on the space-joined branch prevents
+    matching 'the' (lowercase English article) as filler."""
+    stale = tmp_path / "fake_doc.md"
+    stale.write_text("Released in 2020 the tool was first previewed.\n")
+    monkeypatch.setattr(sync_metadata, "ROOT", tmp_path)
+    monkeypatch.setattr(sync_metadata, "TOOL_COUNT_FILES", ["fake_doc.md"])
+    issues = sync_metadata.check_tool_count(430)
+    assert not issues, (
+        f"'the' filler must NOT match (false-positive guard); got: {issues}"
+    )

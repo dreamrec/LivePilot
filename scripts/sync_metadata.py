@@ -418,7 +418,27 @@ def check_tool_count(count: int) -> list[str]:
     # the JSON. The same fix is applied to all 4 regex patterns in
     # this file (check_tool_count, check_prose_claim, fix_tool_count,
     # _fix_count) for defensive uniformity.
-    pattern = re.compile(r"\b(\d+)[-\s]+(?:[A-Z][A-Za-z]*\s+)?[Tt]ools?\b")
+    #
+    # v1.21.4: filler group now has two branches and matches 0+ times:
+    #   (a) [A-Z][A-Za-z\-]*\s+    — uppercase-anchored, space-joined
+    #                                 (matches "MCP " in "430 MCP Tools";
+    #                                  uppercase anchor guards against
+    #                                  lowercase English articles like
+    #                                  "the" producing false matches on
+    #                                  prose such as "in 2020 the tool").
+    #   (b) [A-Za-z][A-Za-z\-]*/   — any-case, slash-joined
+    #                                 (matches "spectral/" in
+    #                                  "38 spectral/analyzer tools"; the
+    #                                  trailing slash is an explicit
+    #                                  compound marker, safe for any case).
+    # The ``*`` quantifier lets fillers chain, so "300 spectral/MCP tools"
+    # parses as filler=(b)"spectral/" + (a)"MCP " + noun="tools". Before
+    # v1.21.4, (b) didn't exist and the filler was single-only; slashed
+    # and chained compounds escaped sync_metadata silently (surfaced
+    # manually in v1.21.2 audit #2).
+    pattern = re.compile(
+        r"\b(\d+)[-\s]+(?:[A-Z][A-Za-z\-]*\s+|[A-Za-z][A-Za-z\-]*/)*[Tt]ools?\b"
+    )
     for rel_path in TOOL_COUNT_FILES:
         path = ROOT / rel_path
         if not path.exists():
@@ -462,8 +482,15 @@ def check_prose_claim(noun: str, spec: dict) -> list[str]:
     # Leading \b prevents matches against digits embedded in unicode escapes
     # like \u2014 (see check_tool_count for the full context).
     escaped = re.escape(noun)
+    # v1.21.4: filler accepts slashed compounds like "spectral/" in
+    # "38 spectral/analyzer tools" (noun="analyzer tool"), and chains
+    # them via ``*`` so "32 new spectral/analyzer tools" also parses.
+    # See check_tool_count's banner comment for the full rationale. For
+    # prose-claim nouns the filler is not uppercase-anchored (pre-v1.21.4
+    # behavior); the threshold filter above already guards drift against
+    # legit prose like "in 2020 the bridge command was deprecated".
     pattern = re.compile(
-        rf"\b(\d+)[-\s]+(?:[A-Za-z]+\s+)?{escaped}s?\b",
+        rf"\b(\d+)[-\s]+(?:[A-Za-z][A-Za-z\-]*(?:/|\s+))*{escaped}s?\b",
         flags=re.IGNORECASE,
     )
     for rel_path in spec["files"]:
@@ -555,7 +582,16 @@ def _fix_count(
     count_str = str(count)
     # Leading \b matches check_prose_claim's — prevents --fix from
     # rewriting digits inside unicode escapes like \u2014.
-    pattern = re.compile(rf"\b(\d+)(\s+{re.escape(noun)}s?)\b")
+    #
+    # v1.21.4: filler must mirror check_prose_claim so --fix can rewrite
+    # anything --check flags. Group 2 captures everything from the first
+    # separator through the noun; replacement preserves group 2 verbatim
+    # so a slashed prefix like "spectral/" (and chained fillers) survive
+    # the rewrite.
+    pattern = re.compile(
+        rf"\b(\d+)([-\s]+(?:[A-Za-z][A-Za-z\-]*(?:/|\s+))*{re.escape(noun)}s?)\b",
+        flags=re.IGNORECASE,
+    )
     for rel_path in files:
         path = ROOT / rel_path
         if not path.exists():
@@ -581,10 +617,20 @@ def fix_tool_count(count: int) -> list[str]:
     """Fix stale tool counts — catches both ``N tools`` and ``N-tool``."""
     fixed: list[str] = []
     count_str = str(count)
-    # Matches ``323 tools`` and ``323-tool`` (hyphenated variant).
+    # Matches ``323 tools``, ``323-tool`` (hyphenated variant), and
+    # compound forms like ``323 MCP tools`` or ``323 spectral/MCP tools``.
     # Leading \b matches check_tool_count's — prevents --fix from
     # rewriting digits inside unicode escapes like \u2014.
-    pattern = re.compile(r"\b(\d+)([-\s]+)(tools?)\b")
+    #
+    # v1.21.4: filler mirrors check_tool_count (two-branch: uppercase
+    # space-joined OR any-case slash-joined, 0+ iterations). Group 2
+    # captures the entire separator+filler, group 3 captures the
+    # "tools?" suffix. Replacement preserves groups 2 and 3 verbatim so
+    # a slashed prefix like "spectral/" (and chained fillers) survive
+    # the rewrite.
+    pattern = re.compile(
+        r"\b(\d+)([-\s]+(?:[A-Z][A-Za-z\-]*\s+|[A-Za-z][A-Za-z\-]*/)*)([Tt]ools?)\b"
+    )
     for rel_path in TOOL_COUNT_FILES:
         path = ROOT / rel_path
         if not path.exists():
