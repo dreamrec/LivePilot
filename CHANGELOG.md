@@ -1,5 +1,106 @@
 # Changelog
 
+## 1.21.4 — v1.21.2 audit carry-over: slashed-compound filler + dev-install runbook (April 25 2026)
+
+Ships two items the v1.21.2 audit #2 deferred to v1.22 but that turned
+out to be safer to close in a patch cycle than to carry forward:
+
+1. **`check_prose_claim` regex widen for slashed/chained compound fillers** —
+   `"38 spectral/analyzer tools"` drift across 3 docs silently passed
+   `sync_metadata --check` because the filler group required trailing
+   whitespace. Now caught.
+2. **Dev-install runbook** (`docs/manual/dev-install.md`) — documented
+   path for contributors to run LivePilot from a local checkout without
+   publishing to npm. Previously every contributor had to reverse-engineer
+   this from `bin/livepilot.js` + `mcp_server/__main__.py`.
+
+No API changes. No user-observable behavior change at runtime. Four new
+TDD regression tests for the regex widening; ~180 lines of new
+documentation. `sync_metadata --check` now catches an entire class of
+compound-form drift that would otherwise have shipped untracked.
+
+### 1. `sync_metadata` slashed/chained compound filler
+
+All 4 regex patterns in `scripts/sync_metadata.py` (`check_tool_count`,
+`check_prose_claim`, `fix_tool_count`, `_fix_count`) had an optional
+filler group that required trailing whitespace —
+`[A-Za-z]+\s+` — and matched at most once (`?` quantifier). Slashed
+compounds like `"spectral/analyzer"` were rejected because `/` is not
+whitespace; chained compounds like `"spectral/MCP tools"` (two filler
+segments) were rejected because of the single-match quantifier.
+
+v1.21.4 widens the filler to two branches, iterable 0+ times:
+
+| Branch | Pattern | Matches |
+|---|---|---|
+| (a) Space-joined, uppercase-anchored | `[A-Z][A-Za-z\-]*\s+` | `"MCP "` in `"430 MCP Tools"` |
+| (b) Slash-joined, any-case | `[A-Za-z][A-Za-z\-]*/` | `"spectral/"` in `"38 spectral/analyzer tools"` |
+
+The uppercase anchor on branch (a) is preserved deliberately — without
+it, lowercase English articles ("the tool") would false-positive on
+prose like "released in 2020 the tool was first previewed." The slash
+on branch (b) is itself an unambiguous compound marker that doesn't
+appear in normal English, so any-case there is safe. The `*` quantifier
+lets branches chain: `"300 spectral/MCP tools"` now parses as
+`(b)"spectral/"` + `(a)"MCP "` + `"tools"`.
+
+For `check_prose_claim` + its paired `_fix_count`, the filler is a
+simpler single-branch `[A-Za-z][A-Za-z\-]*(?:/|\s+)` — these don't need
+the uppercase anchor (prose-claim nouns predate the v1.21.4 cycle and
+already allowed lowercase-start fillers).
+
+**Concrete effect**: `sync_metadata --check` now flags drift in all 3
+real surfaces that previously escaped:
+
+- `README.md` — `"38 spectral/analyzer tools"` × 2
+- `docs/manual/getting-started.md` — `"38 spectral/analyzer tools"` × 1
+- `livepilot/skills/livepilot-release/SKILL.md` — `"38 spectral/analyzer tools"` × 1
+
+(Today these say "38" and the count is 38, so no drift reported — but
+the next time the analyzer module gains or loses a `@mcp.tool`, CI will
+fail loudly instead of silently drifting.)
+
+Tests added to `tests/test_claim_consistency.py` (4):
+
+- `test_prose_claim_catches_slashed_compound` — drift detection
+- `test_fix_count_rewrites_slashed_compound` — `--fix` preserves the adjective
+- `test_tool_count_catches_slashed_compound` — chained filler (`"300 spectral/MCP tools"`)
+- `test_tool_count_no_false_positive_on_year_prose` — uppercase anchor guard
+
+### 2. Dev-install runbook
+
+New file `docs/manual/dev-install.md` (~180 lines) documents the
+bare-python local-checkout workflow for contributors:
+
+1. **venv setup** — `python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt`
+2. **Local Remote Script install** — `node bin/livepilot.js --install` (NOT `npx livepilot --install`, which resolves to the registry and silently discards local edits)
+3. **MCP client config pointing at `python -m mcp_server`** — per-client examples for Claude Desktop, Claude Code, Cursor/VS Code
+4. **Iterate loop** — client restart for `mcp_server/` edits; `node bin/livepilot.js --install` + `reload_handlers` tool for `remote_script/` edits
+5. **Test suite** — `python -m pytest tests/ -q` (3128 tests as of v1.21.4)
+6. **`sync_metadata` drift check** — `python scripts/sync_metadata.py --check` / `--fix`
+7. **Going back to published** — remove the dev MCP entry or stop using it
+
+Plus a troubleshooting section for the 4 most common first-run failures:
+`ModuleNotFoundError: No module named 'mcp_server'`, `Another client is
+already connected` on port 9878, stale `__pycache__` shadowing edits, and
+module-level constants not reloading via `reload_handlers` (full Ableton
+restart required).
+
+Cross-links added:
+
+- `docs/manual/getting-started.md` — callout at top routing contributors to dev-install before they commit to the npm path
+- `docs/manual/index.md` — new "Contributing" section in the Chapters TOC
+- `CLAUDE.md` — pointer in the Project section
+
+### Carried forward to v1.22
+
+Still deferred from the v1.21.2 audit:
+
+- Atlas `.enriched` schema canonicalization (`stats.enriched_devices = 87`
+  vs 120 YAML files vs 135 historical claim — pick one and derive the
+  others at build time; add a sync_metadata gate matching JSON stats to
+  YAML file count)
+
 ## 1.21.3 — Third audit-response: manual-docs drift + sync_metadata file-list widening + unicode-escape regex fix (April 24 2026)
 
 Fourth same-day patch in 48 hours, third audit-response in 24 hours.
