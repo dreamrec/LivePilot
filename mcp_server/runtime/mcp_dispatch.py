@@ -122,6 +122,17 @@ async def _list_miditool_generators(params: dict, ctx: Any = None) -> dict:
     return await _call(list_miditool_generators, ctx, params)
 
 
+# ── Session memory writes (v1.20) ─────────────────────────────────────────
+#
+# remove_device emits an add_session_memory step to log its audit reason.
+# Director Phase 6's escape hatch also writes tech_debt entries through
+# this path. In-process — no TCP, no bridge.
+
+async def _add_session_memory(params: dict, ctx: Any = None) -> dict:
+    from ..memory.tools import add_session_memory
+    return await _call(add_session_memory, ctx, params)
+
+
 def build_mcp_dispatch_registry() -> dict[str, Callable]:
     """Return the canonical registry of MCP-only tools for plan execution.
 
@@ -147,4 +158,7 @@ def build_mcp_dispatch_registry() -> dict[str, Callable]:
         "set_miditool_target": _set_miditool_target,
         "get_miditool_context": _get_miditool_context,
         "list_miditool_generators": _list_miditool_generators,
+        # v1.20 — session memory writes for remove_device audit + director
+        # escape-hatch tech_debt logging.
+        "add_session_memory": _add_session_memory,
     }

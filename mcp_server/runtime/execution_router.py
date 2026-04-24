@@ -54,6 +54,10 @@ MCP_TOOLS: frozenset[str] = frozenset({
     "set_miditool_target",
     "get_miditool_context",
     "list_miditool_generators",
+    # Session memory writes (v1.20) — MCP-side store in mcp_server/memory/tools.py.
+    # No TCP round-trip. Used by remove_device to audit destructive ops + by
+    # the director's escape-hatch tech_debt logging.
+    "add_session_memory",
 })
 
 
