@@ -72,11 +72,16 @@ undo signals). Treat the response as a HARD filter on Phase 3 seeds.
 If a candidate plan's dominant move appears in anti-preferences → do
 not include it. Regenerate from a different family.
 
-### 2. `memory_list(limit=10)`
+### 2. `get_action_ledger_summary(limit=10)`
 
-Returns the last 10 saved techniques / moves. The window is fixed at
-the last 10 committed (or kept) moves. Inspect their `move_family`
-distribution:
+**v1.20 correction**: previous docs pointed at `memory_list`, which
+reads the persistent technique library — a DIFFERENT store from
+the action ledger. Technique-library entries require explicit
+`memory_learn` opt-in; the ledger records every committed move.
+For recency detection, the ledger is the correct source.
+
+Returns `recent_moves` — the last N kept moves in this session.
+Inspect their `move_class` (family) distribution:
 
 | Recency count for one family | Rule |
 |---|---|

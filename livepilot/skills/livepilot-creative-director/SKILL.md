@@ -71,7 +71,7 @@ advisory — skipping them is how pattern-repetition survives:
 - `get_session_info` · `get_capability_state`
 - `memory_recall` (taste + recent context)
 - `get_anti_preferences` — what the user has rejected before (HARD filter)
-- `memory_list(limit=10)` — what was tried recently (repeat detection, see `references/anti-repetition-rules.md` for the recency threshold table)
+- `get_action_ledger_summary(limit=10)` — recent committed moves (repeat detection, see `references/anti-repetition-rules.md` for the recency threshold table). **v1.20 correction**: previous docs pointed at `memory_list`, which actually reads the persistent technique library (opt-in `memory_learn` writes) — a DIFFERENT store. The action ledger is the authoritative source; `apply_semantic_move` in explore mode populates it automatically.
 - `get_last_move` — the single most recent committed move; populate the brief's `last_move_target` field so Phase 3 cannot repeat it
 - `get_project_brain_summary` (or `build_project_brain` if absent) — track identity, accepted novelty band
 - `explain_song_identity` when the project has one
@@ -177,12 +177,15 @@ changes directly from this skill.
 - Harmonic changes → `livepilot-composition-engine`
 
 **Default execution surface (v1.20+): `apply_semantic_move` or
-`commit_experiment`.** These two tools populate the action ledger
-automatically — no manual `add_session_memory(move_executed)` required.
-Anti-repetition (Phase 3) reads the ledger via `get_last_move` and
-`memory_list`; as long as the dispatched plan used one of these two
-tools, the family/target signature is captured for the next turn's
-recency check.
+`commit_experiment`.** `apply_semantic_move` in explore mode
+populates the action ledger automatically — no manual
+`add_session_memory(move_executed)` required. Anti-repetition
+(Phase 3) reads the ledger via `get_last_move` and
+`get_action_ledger_summary`; as long as the dispatched plan used
+`apply_semantic_move`, the family/target signature is captured for
+the next turn's recency check. `commit_experiment` is the other
+default; automatic ledger write for it is tracked as tech_debt in
+v1.20 and closes in a follow-up minor release.
 
 Pick the right one:
 

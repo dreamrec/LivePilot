@@ -390,9 +390,46 @@ async def apply_semantic_move(
             "ok": er.ok,
         })
 
+    success_count = sum(1 for s in executed_steps if s["ok"])
+    failure_count = sum(1 for s in executed_steps if not s["ok"])
+
+    # v1.20: write the executed move to the SessionLedger so
+    # get_last_move / memory_list / anti-repetition-rules can see it
+    # WITHOUT requiring the director to call add_session_memory
+    # manually. Best-effort — a ledger write failure must not fail
+    # the overall move.
+    ledger_entry_id: Optional[str] = None
+    try:
+        from ..runtime.action_ledger import SessionLedger
+        ledger = ctx.lifespan_context.setdefault("action_ledger", SessionLedger())
+        ledger_entry_id = ledger.start_move(
+            engine="semantic_moves",
+            move_class=move.family,
+            intent=f"{move.move_id}: {move.intent}",
+            undo_scope="micro",
+        )
+        for es in executed_steps:
+            if es["ok"]:
+                ledger.append_action(
+                    ledger_entry_id,
+                    tool_name=es["tool"],
+                    summary=es.get("description", "") or es["tool"],
+                )
+        # Provisional keep — evaluate_move / user undo flip this later.
+        ledger.finalize_move(
+            ledger_entry_id,
+            kept=(failure_count == 0),
+            score=(float(success_count) / len(executed_steps)) if executed_steps else 0.0,
+            memory_candidate=False,
+        )
+    except Exception as exc:  # pragma: no cover — ledger is best-effort
+        logger.warning("apply_semantic_move ledger write failed: %s", exc)
+
     result = plan.to_dict()
     result["executed"] = True
     result["execution_results"] = executed_steps
-    result["success_count"] = sum(1 for s in executed_steps if s["ok"])
-    result["failure_count"] = sum(1 for s in executed_steps if not s["ok"])
+    result["success_count"] = success_count
+    result["failure_count"] = failure_count
+    if ledger_entry_id is not None:
+        result["ledger_entry_id"] = ledger_entry_id
     return result

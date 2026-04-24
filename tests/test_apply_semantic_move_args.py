@@ -38,7 +38,9 @@ def _seed_args_probe_compiler(move: SemanticMove, kernel: dict) -> CompiledPlan:
             tool="get_session_info",
             params={},
             description="probe — should never execute in improve mode",
-            backend="mcp_tool",
+            # remote_command so the minimal _MinimalAbleton.send_command
+            # mock handles it without needing a real mcp_dispatch registry.
+            backend="remote_command",
         )],
         summary="probe",
     )
@@ -160,3 +162,109 @@ class TestApplySemanticMoveArgs:
             args={"anything": 1},
         ))
         assert "error" in result
+
+
+# ── Ledger write contract (v1.20) ─────────────────────────────────────────────
+#
+# v1.20's director SKILL promises apply_semantic_move populates the action
+# ledger automatically in explore mode. This suite enforces that — caller
+# should see get_last_move() return a non-empty entry after an explore-mode
+# apply, WITHOUT having to call add_session_memory themselves.
+
+
+class TestApplySemanticMoveLedgerWrite:
+    def test_explore_mode_populates_action_ledger(self):
+        """After apply_semantic_move in explore mode, get_last_move() must
+        return the entry. v1.20 director SKILL relies on this for
+        anti-repetition recency detection."""
+        from mcp_server.semantic_moves.tools import apply_semantic_move
+        from mcp_server.runtime.action_ledger import SessionLedger
+
+        ctx = _make_ctx()
+        result = asyncio.run(apply_semantic_move(
+            ctx,
+            move_id=_PROBE_ID,
+            mode="explore",
+            args={"track_index": 0, "something": "value"},
+        ))
+        assert result.get("executed") is True, result
+
+        ledger: SessionLedger = ctx.lifespan_context["action_ledger"]
+        last = ledger.get_last_move()
+        assert last is not None, "ledger should contain the just-applied move"
+        assert last.engine == "semantic_moves"
+        assert last.move_class == "mix", f"expected family mix, got {last.move_class}"
+        assert _PROBE_ID in last.intent, (
+            f"expected move_id {_PROBE_ID} in intent, got {last.intent!r}"
+        )
+
+    def test_explore_mode_ledger_records_each_successful_step(self):
+        from mcp_server.semantic_moves.tools import apply_semantic_move
+        ctx = _make_ctx()
+        asyncio.run(apply_semantic_move(
+            ctx,
+            move_id=_PROBE_ID,
+            mode="explore",
+            args={"x": 1},
+        ))
+        ledger = ctx.lifespan_context["action_ledger"]
+        last = ledger.get_last_move()
+        assert len(last.actions) >= 1
+
+    def test_explore_mode_sets_kept_and_score_provisionally(self):
+        from mcp_server.semantic_moves.tools import apply_semantic_move
+        ctx = _make_ctx()
+        asyncio.run(apply_semantic_move(
+            ctx,
+            move_id=_PROBE_ID,
+            mode="explore",
+            args={"x": 1},
+        ))
+        ledger = ctx.lifespan_context["action_ledger"]
+        last = ledger.get_last_move()
+        assert last.kept is True
+        assert 0.0 <= last.score <= 1.0
+
+    def test_explore_mode_returns_ledger_entry_id_in_response(self):
+        """Callers can correlate the MCP response with the ledger entry
+        for post-hoc evaluation via the returned ledger_entry_id."""
+        from mcp_server.semantic_moves.tools import apply_semantic_move
+        ctx = _make_ctx()
+        result = asyncio.run(apply_semantic_move(
+            ctx,
+            move_id=_PROBE_ID,
+            mode="explore",
+            args={"x": 1},
+        ))
+        assert "ledger_entry_id" in result
+        ledger = ctx.lifespan_context["action_ledger"]
+        assert ledger.get_entry(result["ledger_entry_id"]) is not None
+
+    def test_improve_mode_does_NOT_write_to_ledger(self):
+        """improve mode compiles without executing — no ledger entry should
+        be written, otherwise anti-repetition would see 'moves' the user
+        never approved."""
+        from mcp_server.semantic_moves.tools import apply_semantic_move
+        from mcp_server.runtime.action_ledger import SessionLedger
+        ctx = _make_ctx()
+        asyncio.run(apply_semantic_move(
+            ctx,
+            move_id=_PROBE_ID,
+            mode="improve",
+            args={"x": 1},
+        ))
+        ledger = ctx.lifespan_context.get("action_ledger") or SessionLedger()
+        assert ledger.get_last_move() is None
+
+    def test_observe_mode_does_NOT_write_to_ledger(self):
+        from mcp_server.semantic_moves.tools import apply_semantic_move
+        from mcp_server.runtime.action_ledger import SessionLedger
+        ctx = _make_ctx()
+        asyncio.run(apply_semantic_move(
+            ctx,
+            move_id=_PROBE_ID,
+            mode="observe",
+            args={"x": 1},
+        ))
+        ledger = ctx.lifespan_context.get("action_ledger") or SessionLedger()
+        assert ledger.get_last_move() is None
