@@ -1,5 +1,44 @@
 # Changelog
 
+## 1.20.1 — CI hardening: Windows UTF-8 encoding + .amxd ping drift (April 24 2026)
+
+Patch release fixing CI regressions that v1.20.0 shipped with (caught
+by the actual CI run post-tag). No runtime behavior changes — tests
+pass on every platform, and the .amxd ping now matches the repo
+version. Zero new tests (both fixes are mechanical), zero regressions.
+
+### Fixes
+
+- **Windows-only `UnicodeDecodeError` in `tests/test_creative_director.py`.**
+  27 bare `Path.read_text()` calls used the locale default encoding.
+  On Windows that's cp1252, which chokes on the em-dashes (—), arrows
+  (→), and smart quotes v1.20 added to `SKILL.md` and the new
+  `phase-6-execution.md` reference. All 27 calls now pass
+  `encoding="utf-8"` explicitly. Cross-platform hygiene, applies
+  beyond the trigger case — any future markdown additions with
+  non-ASCII chars are now safe on Windows.
+
+- **`LivePilot_Analyzer.amxd` ping reported v1.17.5 for 9 releases.**
+  The CI `amxd-freeze-drift` job has been red since v1.18.0 because
+  nobody re-froze the .amxd in Max Editor after the JS source bumps.
+  Users of v1.18.0-v1.20.0 got `{ok: true, version: "1.17.5"}` from
+  the bridge ping regardless of the installed version. Per
+  `feedback_amxd_safe_binary_patch` memory, same-length version
+  strings can be patched in-place without Max re-export. Both
+  occurrences in the binary updated to 1.20.1 (file size unchanged);
+  the JS source `livepilot_bridge.js` VERSION constant also bumped
+  so future clean freezes stay consistent.
+
+### CI status after this release
+
+| Job | Pre-v1.20.1 | v1.20.1 |
+|---|---|---|
+| python-tests (ubuntu, macos) × {3.11, 3.12} | ✓ | ✓ |
+| python-tests (windows) × {3.11, 3.12} | ✗ UnicodeDecodeError | ✓ |
+| metadata-drift | ✓ | ✓ |
+| amxd-freeze-drift | ✗ stuck at 1.17.5 | ✓ |
+| js-entrypoint | ✓ | ✓ |
+
 ## 1.20.0 — Item C phased cutover: 10 new semantic moves + Director Phase 6 rewrite (April 24 2026)
 
 Implements the plan in `docs/plans/v1.20-structural-plan.md`. Ships 10
