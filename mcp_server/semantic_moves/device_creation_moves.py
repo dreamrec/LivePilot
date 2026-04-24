@@ -28,7 +28,7 @@ CREATE_CHAOS_MODULATOR = SemanticMove(
         },
         {
             "tool": "find_and_load_device",
-            "params": {"query": "Wonder Chaos Mod"},
+            "params": {"device_name": "Wonder Chaos Mod"},
             "description": "Load generated device onto target track",
             "backend": "remote_command",
         },
@@ -59,7 +59,7 @@ CREATE_FEEDBACK_RESONATOR = SemanticMove(
         },
         {
             "tool": "find_and_load_device",
-            "params": {"query": "Wonder Resonator"},
+            "params": {"device_name": "Wonder Resonator"},
             "description": "Load resonator onto target track",
             "backend": "remote_command",
         },
@@ -90,7 +90,7 @@ CREATE_WAVEFOLDER_EFFECT = SemanticMove(
         },
         {
             "tool": "find_and_load_device",
-            "params": {"query": "Wonder Wavefolder"},
+            "params": {"device_name": "Wonder Wavefolder"},
             "description": "Load wavefolder onto target track",
             "backend": "remote_command",
         },
@@ -121,7 +121,7 @@ CREATE_BITCRUSHER_EFFECT = SemanticMove(
         },
         {
             "tool": "find_and_load_device",
-            "params": {"query": "Wonder Bitcrusher"},
+            "params": {"device_name": "Wonder Bitcrusher"},
             "description": "Load bitcrusher onto target track",
             "backend": "remote_command",
         },
@@ -152,7 +152,7 @@ CREATE_KARPLUS_STRING = SemanticMove(
         },
         {
             "tool": "find_and_load_device",
-            "params": {"query": "Wonder String"},
+            "params": {"device_name": "Wonder String"},
             "description": "Load string synth onto target track",
             "backend": "remote_command",
         },
@@ -183,7 +183,7 @@ CREATE_STOCHASTIC_TEXTURE = SemanticMove(
         },
         {
             "tool": "find_and_load_device",
-            "params": {"query": "Wonder Stochastic"},
+            "params": {"device_name": "Wonder Stochastic"},
             "description": "Load stochastic texture device onto target track",
             "backend": "remote_command",
         },
@@ -214,7 +214,7 @@ CREATE_FDN_REVERB = SemanticMove(
         },
         {
             "tool": "find_and_load_device",
-            "params": {"query": "Wonder FDN Verb"},
+            "params": {"device_name": "Wonder FDN Verb"},
             "description": "Load FDN reverb onto target track",
             "backend": "remote_command",
         },

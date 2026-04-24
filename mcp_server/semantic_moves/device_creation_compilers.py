@@ -44,7 +44,33 @@ _MOVE_TO_TEMPLATE: dict[str, str] = {
 
 def _compile_device_creation(move: SemanticMove, kernel: dict) -> CompiledPlan:
     """Map plan_template steps to CompiledStep, injecting Device Forge
-    `gen_code` when the move is in _MOVE_TO_TEMPLATE."""
+    `gen_code` and threading `track_index` through `find_and_load_device`."""
+    # v1.21 parity-gate fix: thread track_index from seed_args into
+    # find_and_load_device steps. Pre-fix, plan_templates emitted the
+    # ergonomic key ``query`` with no track_index — broken at runtime
+    # since pre-v1.20 because the ``remote_command`` backend bypasses
+    # MCP normalization and Ableton's handler requires
+    # ``track_index`` + ``device_name``.
+    seed_args = kernel.get("seed_args") or {}
+    track_index = seed_args.get("track_index")
+    needs_load_step = any(
+        s.get("tool") == "find_and_load_device" for s in move.plan_template
+    )
+    if needs_load_step and track_index is None:
+        return CompiledPlan(
+            move_id=move.move_id,
+            intent=move.intent,
+            steps=[],
+            risk_level=move.risk_level,
+            summary=f"{move.move_id} requires seed_args.track_index",
+            warnings=[
+                f"{move.move_id} requires seed_args.track_index (int) to "
+                "load the generated device onto a track. Example: "
+                f"apply_semantic_move(\"{move.move_id}\", mode=\"explore\", "
+                "args={\"track_index\": 0})"
+            ],
+        )
+
     # Resolve the GenExpr template once per compile (idempotent).
     template_code: str | None = None
     template_id = _MOVE_TO_TEMPLATE.get(move.move_id)
@@ -60,14 +86,22 @@ def _compile_device_creation(move: SemanticMove, kernel: dict) -> CompiledPlan:
     steps: list[CompiledStep] = []
     for step in move.plan_template:
         params = dict(step.get("params") or {})
+        tool = step.get("tool", "")
 
         # Inject gen_code for Device Forge moves. Done BEFORE CompiledStep
         # construction so the step snapshot is correct, not mutated later.
-        if template_code is not None and step.get("tool") == "generate_m4l_effect":
+        if template_code is not None and tool == "generate_m4l_effect":
             params["gen_code"] = template_code
 
+        # v1.21: inject track_index into find_and_load_device. plan_templates
+        # now emit {"device_name": ...} (wire-format key); compiler adds
+        # {"track_index": ...} from seed_args so the remote_command backend
+        # sends a handler-compatible payload.
+        if tool == "find_and_load_device":
+            params["track_index"] = track_index
+
         steps.append(CompiledStep(
-            tool=step.get("tool", ""),
+            tool=tool,
             params=params,
             description=step.get("description", ""),
             verify_after=bool(step.get("verify_after", True)),

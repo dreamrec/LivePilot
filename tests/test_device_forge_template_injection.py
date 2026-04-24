@@ -48,9 +48,13 @@ class TestDeviceForgeTemplateInjection:
         'missing 1 required positional argument: gen_code'."""
         move = get_move(move_id)
         assert move is not None, f"Move {move_id} not registered"
+        # v1.21: compiler now requires seed_args.track_index for Device
+        # Forge moves (threaded into find_and_load_device step). Pass 0 so
+        # this test continues to exercise gen_code injection — the actual
+        # invariant under test here.
         plan = move_compiler.compile(
             move,
-            {"session_info": {}, "seed_args": {}, "mode": "improve"},
+            {"session_info": {}, "seed_args": {"track_index": 0}, "mode": "improve"},
         )
         gen_steps = [s for s in plan.steps if s.tool == "generate_m4l_effect"]
         assert gen_steps, f"{move_id} emits no generate_m4l_effect step"
