@@ -41,3 +41,42 @@ class OverlayEntry:
     artists: list[str] = field(default_factory=list)
     requires_box: Optional[str] = None
     body: dict = field(default_factory=dict)
+
+
+class OverlayIndex:
+    """In-memory index of overlay entries, partitioned by (namespace, entity_type, entity_id).
+
+    Mutated in place by load_overlays() (added in a later task). Tools call
+    get_overlay_index() at request time to read the current state — never
+    capture a reference at import time.
+    """
+
+    def __init__(self) -> None:
+        self._entries: dict[tuple[str, str, str], OverlayEntry] = {}
+
+    def add(self, entry: OverlayEntry) -> Optional[OverlayEntry]:
+        """Insert or replace. Returns previous entry on collision so callers can log
+        the duplicate-id warning."""
+        key = (entry.namespace, entry.entity_type, entry.entity_id)
+        previous = self._entries.get(key)
+        self._entries[key] = entry
+        return previous
+
+    def get(self, namespace: str, entity_id: str) -> Optional[OverlayEntry]:
+        for (ns, _et, eid), entry in self._entries.items():
+            if ns == namespace and eid == entity_id:
+                return entry
+        return None
+
+    def list_namespaces(self) -> list[str]:
+        return sorted({ns for (ns, _, _) in self._entries.keys()})
+
+    def list_entity_types(self, namespace: str) -> list[str]:
+        return sorted({et for (ns, et, _) in self._entries.keys() if ns == namespace})
+
+    def clear(self) -> None:
+        """Reset for idempotency (used by load_overlays in a later task)."""
+        self._entries.clear()
+
+    def all_entries(self) -> list[OverlayEntry]:
+        return list(self._entries.values())
