@@ -1,5 +1,123 @@
 # Changelog
 
+## 1.21.1 — Audit-response patch: experiment-commit safety + doc hygiene + lockfile (April 24 2026)
+
+Small patch release responding to an external audit of v1.21.0 performed
+the same day it shipped. The audit surfaced one real safety bug
+(commit_experiment status allowlist was an exclusion list when the
+intent was an inclusion list) plus several doc-consistency drifts.
+No new features. No API changes beyond the tightened commit_experiment
+contract. v1.21.0 callers already doing the right thing
+(run_experiment → commit the ranked winner) continue to work unchanged.
+
+### P1 — commit_experiment only accepts `status='evaluated'`
+
+Pre-fix (v1.21.0 and all prior versions with commit_experiment), the
+status check was an EXCLUSION list:
+
+```python
+if target.status in ("rejected", "analytical", "failed"):
+    return {"error": ...}
+```
+
+Blocks 3 statuses; implicitly allows the other 6 — including `pending`,
+`running`, `discarded`, and `interesting_but_failed`. Those branches
+can't be ranked by `compare_experiments()`, but `commit_experiment`
+would accept them as long as a compiled plan was attached. The code's
+own inline comment already described the correct contract ("only
+status='evaluated' branches are ranking candidates"); the implementation
+had the wrong polarity. The fix flips it to an INCLUSION check:
+
+```python
+if target.status != "evaluated":
+    return {"error": ...}
+```
+
+Error message updated to enumerate all 9 possible statuses and explain
+which state each represents (pending/running = not yet evaluated;
+rejected/analytical/failed = classifier exclusions; committed =
+already committed; discarded = explicitly thrown out;
+interesting_but_failed = exploration-audit only).
+
+Why this matters: v1.21.0's `commit_experiment` ledger writer records
+every commit into `SessionLedger` where anti-repetition filters read
+it. Without the tighter status check, a caller bypassing the ranking
+layer could pollute the ledger with entries the system explicitly
+classified as non-winners — degrading anti-repetition signal quality.
+
+**Regression tests added (4)** in `tests/test_commit_experiment_ledger.py`:
+`test_commit_on_pending_branch_rejects`,
+`test_commit_on_running_branch_rejects`,
+`test_commit_on_discarded_branch_rejects`,
+`test_commit_on_interesting_but_failed_branch_rejects`. All FAILED
+pre-fix (reproducing the audit's finding), all PASS post-fix.
+
+### P1 — package-lock.json bumped 1.17.5 → 1.21.1
+
+Lockfile's root `.version` and `.packages[""].version` had been stale
+at 1.17.5 since before v1.18. `npm publish` doesn't read these fields
+(it reads package.json), so the npm registry was always correct — but
+the repo-local lockfile misled local `npm install` workflows and any
+release-check tooling that compared package.json vs lockfile. Fixed by
+surgical replace on the 2 stale strings; no dependency tree
+regeneration (keeps dep versions identical to v1.21.0).
+
+### P2 — Analyzer tool count: 32/33 → 38 (actual)
+
+README.md previously said "32 spectral/analyzer tools" in one place
+and "38 analyzer tools" in another — inconsistent within the same file.
+`docs/M4L_BRIDGE.md` said "33 MCP tools in the analyzer domain" in two
+places. Actual `@mcp.tool` count in `mcp_server/tools/analyzer.py` is
+**38** (grep-verified). All stale 32/33 refs corrected to 38.
+
+### P2 — Reversibility language hedge
+
+README's header NOTE block said "Everything is reversible with undo,"
+which is too strong. Live-session mutations (clips, devices, mixer,
+arrangement) do route through Ableton's undo stack and are reversible
+— but Splice downloads, memory/ledger writes, installer actions, atlas
+scans, and filesystem writes persist beyond undo. Hedged the language
+to reflect this.
+
+### Deferred to v1.22
+
+Audit-surfaced items that aren't patch-release material:
+
+- **Atlas statistics reconciliation.** Docs claim "1305 devices / 120
+  enriched / 641 pack-indexed" across 9 description fields, but the
+  shipped `device_atlas.json` has 5264 devices and 135 entries with
+  `.enriched` truthy. The "1305" number appears to be a long-stale
+  cargo-culted count. Requires deciding whether `.devices` contains
+  duplicates, what the canonical "enriched" definition is, and
+  whether to restructure atlas JSON or fix the readers that look for
+  `.meta.version`. v1.22 scope.
+- **`sync_metadata` expansion** to check package-lock.json project
+  version, semantic-move count via `registry.count()`, and
+  analyzer-tool count via grep on `analyzer.py`. Would convert this
+  entire class of drift into CI failures.
+- **Dev-install path** for local contributors hitting missing
+  `soundfile` / `scipy` / `pretty_midi` / `pytest_asyncio` deps during
+  bare-python local runs. CI has these installed via requirements.txt.
+
+### Credits
+
+External audit performed same day v1.21.0 shipped. Findings
+file-linked and reproducible. Response time: ~2 hours from audit
+receipt to v1.21.1 patch shipping.
+
+### Scope stats
+
+- 1 code fix (`mcp_server/experiment/tools.py` — commit_experiment status check)
+- 4 new regression tests (all initially FAILING pre-fix to reproduce
+  the audit, all PASSING post-fix)
+- 3 doc corrections (README.md × 2, docs/M4L_BRIDGE.md × 2, plus the
+  reversibility hedge)
+- 15 version-string sites + `.amxd` binary patch (2 bytes) +
+  package-lock.json (2 version fields)
+- Test suite: 3120 → 3124 pass (+4). Zero regressions.
+
+---
+
 ## 1.21.0 — Consolidation: experiment ledger + preset library + record-readiness + reader audit (April 24 2026)
 
 Consolidation release closing five items from the v1.20 plan §12 non-goals
