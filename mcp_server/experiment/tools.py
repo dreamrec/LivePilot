@@ -630,6 +630,54 @@ def compare_experiments(
     }
 
 
+# v1.21: helpers for commit_experiment's ledger-write block. Mirrors the
+# v1.20 apply_semantic_move pattern (commit 0b3489b) — both writers feed
+# the same SessionLedger, so anti-repetition filters downstream see a
+# unified recency log regardless of which surface executed the move.
+
+_TOOL_TO_FAMILY: dict[str, str] = {
+    # Minimal first-step-tool → family mapping. Used only when a branch
+    # lacks an explicit seed.family. Uncovered tools fall through to
+    # default "mix" (same safe default apply_semantic_move would use).
+    "set_track_volume": "mix",
+    "set_track_pan": "mix",
+    "set_track_send": "mix",
+    "set_device_parameter": "sound_design",
+    "batch_set_parameters": "sound_design",
+    "create_clip": "arrangement",
+    "add_notes": "arrangement",
+    "create_scene": "arrangement",
+    "set_scene_tempo": "arrangement",
+    "create_midi_track": "arrangement",
+    "find_and_load_device": "device_creation",
+    "generate_m4l_effect": "device_creation",
+    "apply_gesture_template": "transition",
+    "set_track_arm": "performance",
+    "load_sample_to_simpler": "sample",
+}
+
+
+def _infer_move_family(target) -> str:
+    """Determine move_class for a commit_experiment ledger entry.
+
+    Priority:
+      1. ``target.seed.family`` — explicit seed classification.
+      2. First compiled_plan step's tool via _TOOL_TO_FAMILY lookup.
+      3. Default "mix" — safe fallback.
+    """
+    seed = getattr(target, "seed", None)
+    if seed is not None and getattr(seed, "family", None):
+        return seed.family
+
+    plan = getattr(target, "compiled_plan", None) or {}
+    steps = plan.get("steps", []) or []
+    if steps:
+        first_tool = steps[0].get("tool", "")
+        return _TOOL_TO_FAMILY.get(first_tool, "mix")
+
+    return "mix"
+
+
 @mcp.tool()
 async def commit_experiment(
     ctx: Context,
@@ -759,6 +807,65 @@ async def commit_experiment(
         ctx=ctx,
     )
 
+    # v1.21: write the committed experiment to the SessionLedger so
+    # get_last_move / anti-repetition can see it. Best-effort — a
+    # ledger write failure is logged but does not fail the commit.
+    ledger_entry_id: Optional[str] = None
+    if isinstance(commit_result, dict) and commit_result.get("committed") is True:
+        try:
+            # store_purpose: writer (v1.21 commit_experiment auto-ledger
+            # write; shape mirrors apply_semantic_move commit 0b3489b).
+            from ..runtime.action_ledger import SessionLedger
+            ledger = ctx.lifespan_context.setdefault(
+                "action_ledger", SessionLedger()
+            )
+            # Engine tag reflects branch SOURCE (not escalation success).
+            # A composer-sourced branch that fell back to scaffold is still
+            # a composer-engine commit; the escalation-success detail is
+            # captured in target.evaluation["composer_escalation"], and
+            # doubling up on the engine tag would be noise for the
+            # anti-repetition filters downstream.
+            engine_tag = (
+                "composer"
+                if (
+                    target.seed is not None
+                    and target.seed.source == "composer"
+                )
+                else "experiment"
+            )
+            move_class = _infer_move_family(target)
+            ledger_entry_id = ledger.start_move(
+                engine=engine_tag,
+                move_class=move_class,
+                intent=(
+                    f"{experiment_id}/{branch_id}: "
+                    f"{target.name or 'committed winner'}"
+                ),
+                undo_scope="micro",
+            )
+            # Actions from the POST-escalation plan (execution_log is the
+            # router's actual execution record — captures the swapped plan
+            # when composer escalation fired successfully).
+            for er in (commit_result.get("execution_log") or []):
+                if er.get("ok"):
+                    ledger.append_action(
+                        ledger_entry_id,
+                        tool_name=er.get("tool", ""),
+                        summary=er.get("tool", "") or "step",
+                    )
+            steps_executed = int(commit_result.get("steps_executed", 0))
+            steps_failed = int(commit_result.get("steps_failed", 0))
+            total = steps_executed + steps_failed
+            ledger.finalize_move(
+                ledger_entry_id,
+                kept=(steps_failed == 0),
+                score=(float(steps_executed) / total) if total else 0.0,
+                memory_candidate=False,
+            )
+        except Exception as exc:  # pragma: no cover — ledger is best-effort
+            logger.warning("commit_experiment ledger write failed: %s", exc)
+            ledger_entry_id = None
+
     # Surface escalation details on the commit response so the caller
     # sees whether a scaffold or resolved plan was applied.
     if escalation_info is not None and isinstance(commit_result, dict):
@@ -769,6 +876,12 @@ async def commit_experiment(
             "error": escalation_info.get("error"),
             "warnings": escalation_info.get("warnings", []),
         }
+
+    # Surface ledger_entry_id on the commit response so callers can
+    # correlate their MCP response with the ledger entry for post-hoc
+    # evaluation. Same pattern as apply_semantic_move.
+    if ledger_entry_id is not None and isinstance(commit_result, dict):
+        commit_result["ledger_entry_id"] = ledger_entry_id
 
     return commit_result
 
