@@ -178,6 +178,12 @@ All 430 tools across 53 domains, in source-truth per-domain counts:
 | [Troubleshooting](troubleshooting.md) | Connection issues, common errors, diagnostics |
 | [Splice Endpoint Capture](splice-endpoint-capture.md) | mitmproxy runbook for capturing additional Splice GraphQL operations |
 
+### Contributing
+
+| Chapter | What's inside |
+|---------|---------------|
+| [Dev Install](dev-install.md) | Run LivePilot from a local checkout — venv setup, local MCP config, iterate-without-publish workflow, test suite, `sync_metadata` drift check |
+
 ---
 
 Next: [The Intelligence Layer](intelligence.md)

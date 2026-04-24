@@ -2,6 +2,8 @@
 
 This guide takes you from zero to making sound in about five minutes.
 
+> **Contributing to LivePilot?** Use [dev-install.md](dev-install.md) instead — it sets up a local checkout so edits to `mcp_server/` or `remote_script/` take effect without republishing to npm.
+
 ## What you need
 
 - **Ableton Live 12** (any edition — Intro, Standard, or Suite)

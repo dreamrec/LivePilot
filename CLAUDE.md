@@ -6,6 +6,7 @@
 - **Three layers:** Device Atlas (knowledge) + M4L Analyzer (perception) + Technique Memory (learning)
 - **Sister projects:** TDPilot (TouchDesigner), ComfyPilot (ComfyUI)
 - **Design spec:** `docs/specs/2026-03-17-livepilot-design.md`
+- **Dev install runbook:** `docs/manual/dev-install.md` — run from a local checkout (venv + `node bin/livepilot.js --install` + point MCP client at `python -m mcp_server` directly); use this whenever iterating on `mcp_server/` or `remote_script/` without republishing to npm
 
 ## Architecture
 - **Remote Script** (`remote_script/LivePilot/`): Runs inside Ableton's Python, ControlSurface base class, TCP socket on port 9878. Version detection at startup, four capability tiers: Core (12.0+), Enhanced Arrangement (12.1.10+), Full Intelligence (12.3+), Collaborative (12.4+)
