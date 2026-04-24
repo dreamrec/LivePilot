@@ -11,7 +11,23 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Optional
 
-_VALID_CATEGORIES = {"observation", "hypothesis", "decision", "issue"}
+_VALID_CATEGORIES = {
+    # Pre-v1.20 categories — observations, working hypotheses, decisions, issues.
+    "observation",
+    "hypothesis",
+    "decision",
+    "issue",
+    # v1.20 categories — creative director Phase 6 escape-hatch discipline.
+    # The director must write BOTH of these when executing a raw-tool call
+    # that no semantic move covers. See
+    # livepilot/skills/livepilot-creative-director/references/phase-6-execution.md
+    # §escape-hatch policy for the three-call contract.
+    "move_executed",  # ledger marker (consumed by anti-repetition)
+    "tech_debt",      # "pattern should be a semantic move" (consumed by release planning)
+    # v1.20 director override log — explicit user decisions to proceed
+    # despite a check_brief_compliance violation.
+    "override",
+}
 
 
 @dataclass
@@ -20,7 +36,10 @@ class SessionMemoryEntry:
 
     id: str
     timestamp_ms: int
-    category: str  # "observation", "hypothesis", "decision", "issue"
+    # Allowed categories are declared in _VALID_CATEGORIES (module level).
+    # Current set: observation / hypothesis / decision / issue (pre-v1.20)
+    # plus move_executed / tech_debt / override (v1.20 director Phase 6).
+    category: str
     content: str
     engine: str  # which engine created this
     confidence: float

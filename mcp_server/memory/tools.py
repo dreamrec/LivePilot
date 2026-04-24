@@ -93,7 +93,13 @@ def get_session_memory(
 def add_session_memory(
     ctx: Context, category: str, content: str, engine: str = "agent_os"
 ) -> dict:
-    """Add an ephemeral session memory entry (observation, hypothesis, decision, issue)."""
+    """Add an ephemeral session memory entry.
+
+    Categories:
+      - observation / hypothesis / decision / issue (pre-v1.20)
+      - move_executed, tech_debt, override (v1.20 director Phase 6 —
+        escape-hatch discipline + anti-pattern override logging)
+    """
     store = _get_session_memory(ctx)
     try:
         entry_id = store.add(category=category, content=content, engine=engine)
