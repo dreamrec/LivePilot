@@ -18,7 +18,17 @@ class AtlasManager:
         with open(atlas_path, "r") as f:
             data = json.load(f)
 
-        self._meta = data.get("meta", {})
+        # v1.21.2 audit-response #2: atlas JSONs ship with `.version` at
+        # top level (e.g. "2.0.0"), not under `.meta.version`. Pre-fix,
+        # `self._meta = data.get("meta", {})` always evaluated to {} on
+        # the shipped atlas because there's no `meta` key, which made
+        # `self.version` return "unknown". Read both locations and let
+        # the top-level win — falling back to `.meta.version` preserves
+        # backward-compat with any internal/dev atlas using the older
+        # schema.
+        self._meta = dict(data.get("meta", {}))
+        if "version" in data and "version" not in self._meta:
+            self._meta["version"] = data["version"]
         self._devices: List[Dict[str, Any]] = data.get("devices", [])
 
         # ── Build indexes ───────────────────────────────────────────

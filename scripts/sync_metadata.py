@@ -77,6 +77,56 @@ def get_genre_default_count() -> int:
     return len(re.findall(r'^\s{4}"[a-z_]+"\s*:\s*\{', body, flags=re.MULTILINE))
 
 
+def get_move_count() -> int:
+    """Count of registered semantic moves via the Python registry.
+
+    Added in v1.21.2 audit-response #2: v1.21.0 shipped with "43
+    semantic moves" strings across 9 description fields even though the
+    registry had 44 (configure_record_readiness was added). Post-ship
+    hygiene sweep fixed the strings but sync_metadata didn't catch it.
+    Adding this check closes the audit window.
+    """
+    import sys as _sys
+    if str(ROOT) not in _sys.path:
+        _sys.path.insert(0, str(ROOT))
+    import mcp_server.semantic_moves  # noqa: F401 — triggers registrations
+    from mcp_server.semantic_moves import registry
+    return registry.count()
+
+
+def get_analyzer_tool_count() -> int:
+    """Count of ``@mcp.tool`` decorators in mcp_server/tools/analyzer.py.
+
+    Added in v1.21.2 audit-response #2: README/M4L_BRIDGE/manual had
+    stale "32"/"33" claims while actual count is 38. Grepping the
+    decorator is the authoritative measure — matches whatever the
+    registry sees at import time.
+    """
+    path = ROOT / "mcp_server" / "tools" / "analyzer.py"
+    if not path.exists():
+        return 0
+    content = path.read_text(encoding="utf-8")
+    return len(re.findall(r"^\s*@mcp\.tool", content, re.MULTILINE))
+
+
+def get_lockfile_version() -> str:
+    """Project version as recorded in package-lock.json.
+
+    Added in v1.21.2 audit-response #2: lockfile drifted at 1.17.5 from
+    pre-v1.18 until v1.21.1 — invisible to previous sync_metadata scope
+    because the lockfile wasn't checked. check_lockfile_version() now
+    asserts it matches package.json.
+    """
+    path = ROOT / "package-lock.json"
+    if not path.exists():
+        return ""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return ""
+    return data.get("version", "")
+
+
 def get_domains() -> tuple[int, list[str]]:
     """Derive the set of tool domains from mcp_server source layout.
 
@@ -196,6 +246,38 @@ PROSE_CLAIM_FILES = {
             "CLAUDE.md",
         ],
     },
+    # v1.21.2 audit-response #2 additions:
+    "semantic move": {
+        "getter": get_move_count,
+        "threshold": 30,  # below this is a historical subset mention
+        "files": [
+            "README.md",
+            "AGENTS.md",
+            "CLAUDE.md",
+            "package.json",
+            "server.json",
+            "manifest.json",
+            ".claude-plugin/marketplace.json",
+            "livepilot/.Codex-plugin/plugin.json",
+            "livepilot/.claude-plugin/plugin.json",
+            "livepilot/skills/livepilot-core/references/overview.md",
+            "livepilot/skills/livepilot-core/SKILL.md",
+        ],
+    },
+    "analyzer tool": {
+        # NOTE: this catches "38 analyzer tools" patterns but NOT
+        # "38 spectral/analyzer tools" (the `/` breaks the check_prose_claim
+        # regex's optional-word prefix). Those variants must be kept in
+        # sync manually — or the regex broadened in a future patch.
+        "getter": get_analyzer_tool_count,
+        "threshold": 20,
+        "files": [
+            "README.md",
+            "docs/M4L_BRIDGE.md",
+            "docs/manual/getting-started.md",
+            "livepilot/skills/livepilot-release/SKILL.md",
+        ],
+    },
 }
 
 # Files that must contain the current domain count ("N domains").
@@ -272,6 +354,22 @@ def check_tool_count(count: int) -> list[str]:
                 issues.append(f"  {rel_path}: has '{m} tool(s)', expected '{count_str}'")
                 break
     return issues
+
+
+def check_lockfile_version(version: str) -> list[str]:
+    """package-lock.json must match package.json's version.
+
+    Added in v1.21.2 audit-response #2: previously the lockfile drifted
+    silently (was at 1.17.5 for multiple releases) because sync_metadata
+    didn't check it.
+    """
+    lock_version = get_lockfile_version()
+    if lock_version and lock_version != version:
+        return [
+            f"  package-lock.json: has version={lock_version!r}, "
+            f"expected {version!r} (must match package.json)"
+        ]
+    return []
 
 
 def check_prose_claim(noun: str, spec: dict) -> list[str]:
@@ -483,11 +581,15 @@ def main():
     bridge_count = get_bridge_command_count()
     enriched_count = get_enriched_device_count()
     genre_count = get_genre_default_count()
+    # v1.21.2 audit-response #2 additions:
+    move_count = get_move_count()
+    analyzer_tool_count = get_analyzer_tool_count()
 
     print(
         f"Source of truth: version={version}, tools={tool_count}, "
         f"domains={domain_count}, bridge_cmds={bridge_count}, "
-        f"enriched={enriched_count}, genres={genre_count}"
+        f"enriched={enriched_count}, genres={genre_count}, "
+        f"moves={move_count}, analyzer_tools={analyzer_tool_count}"
     )
 
     if mode == "--fix":
@@ -506,6 +608,7 @@ def main():
 
         remaining = (
             check_version(version)
+            + check_lockfile_version(version)
             + check_tool_count(tool_count)
             + check_domain_count(domain_count)
             + check_domain_list(domains)
@@ -526,6 +629,7 @@ def main():
     # --check mode (default)
     all_issues = (
         check_version(version)
+        + check_lockfile_version(version)
         + check_tool_count(tool_count)
         + check_domain_count(domain_count)
         + check_domain_list(domains)
