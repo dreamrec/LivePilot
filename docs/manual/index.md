@@ -19,7 +19,7 @@ The difference: a tool collection executes "set volume to -6dB." LivePilot under
 AI Client  ──MCP──►  FastMCP Server  ──TCP/9878──►  Remote Script (inside Ableton)
                         (validates)                    (executes on main thread)
                             │
-                            ├── Device Atlas (1305 devices, 120 enriched, 7 indexes)
+                            ├── Device Atlas (5264 devices, 120 enriched, 7 indexes)
                             ├── M4L Analyzer ──UDP/OSC──► LivePilot_Analyzer.amxd
                             └── Technique Memory (~/.livepilot/memory/)
 ```
@@ -120,7 +120,7 @@ All 430 tools across 53 domains, in source-truth per-domain counts:
 |--------|:-:|-------|
 | Sample Engine | 23 | Multi-source search (Splice gRPC + browser + filesystem), Splice catalog hunt, downloads, previews, pack info, collections, presets, describe-a-sound (LIVE), variations (LIVE), http-diagnose (v1.17+) |
 | Hook Hunter | 9 | Hook detection, salience scoring, neglect detection, phrase impact |
-| Atlas | 10 | Search 1305 devices, suggest by intent, chain building, comparison, library scan, `atlas_pack_info`, `atlas_describe_chain` (free-text), `atlas_techniques_for_device` (reverse-lookup) — all v1.17+ |
+| Atlas | 10 | Search 5264 devices, suggest by intent, chain building, comparison, library scan, `atlas_pack_info`, `atlas_describe_chain` (free-text), `atlas_techniques_for_device` (reverse-lookup) — all v1.17+ |
 | Agent OS | 8 | Session kernel, action ledger, capability state, routing, goal vectors, taste |
 | Session Continuity | 7 | Creative threads, turn resolution, session story, anti-preferences |
 | Musical Intelligence | 6 | Phrase arc, impact scoring, comparison, rendering, grid analysis, snapshot |
@@ -155,7 +155,7 @@ All 430 tools across 53 domains, in source-truth per-domain counts:
 | Chapter | What's inside |
 |---------|---------------|
 | [The Intelligence Layer](intelligence.md) | How the engines connect — conductor, kernel, moves, preview, evaluation |
-| [Device Atlas](device-atlas.md) | 1305 devices indexed — search, suggest, chain building, comparison, pack browsing |
+| [Device Atlas](device-atlas.md) | 5264 devices indexed — search, suggest, chain building, comparison, pack browsing |
 | [Samples & Slicing](samples.md) | 3-source search, Splice describe-a-sound, variations, fitness critics |
 | [Automation](automation.md) | 16 curve types, 15 recipes, spectral suggestions, two-phase arrangement-record workaround |
 | [Composition & Arrangement](composition.md) | Composer, section analysis, arrangement planning with sample roles |

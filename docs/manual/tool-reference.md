@@ -3075,7 +3075,7 @@ Plans a safe transition between two scenes with timing and crossfade suggestions
 
 ## Device Atlas
 
-The atlas is LivePilot's indexed, enriched knowledge of every loadable device in your Live install — 1305 devices total, 135 enriched with sonic intelligence (character tags, sweet-spot parameters, starter recipes, pairings, gotchas). It's what stops the AI from hallucinating a preset that doesn't exist: every load goes through a URI the atlas verified.
+The atlas is LivePilot's indexed, enriched knowledge of every loadable device in your Live install — 5264 devices total, 120 enriched with sonic intelligence (character tags, sweet-spot parameters, starter recipes, pairings, gotchas). It's what stops the AI from hallucinating a preset that doesn't exist: every load goes through a URI the atlas verified.
 
 ### atlas_search
 
@@ -3397,12 +3397,12 @@ Lightweight health check — parameter_count sanity (≤1 parameter = probably d
 
 ## More tools
 
-This chapter covers the most-used tools. The complete list of all 430 tools across 52 domains — including all intelligence-engine tools, creative-constraints, preview-studio, wonder-mode, memory, song-brain, transition/reference/translation engines — is auto-generated at **[Tool Catalog](tool-catalog.md)** from the running MCP server.
+This chapter covers the most-used tools. The complete list of all 430 tools across 53 domains — including all intelligence-engine tools, creative-constraints, preview-studio, wonder-mode, memory, song-brain, transition/reference/translation engines — is auto-generated at **[Tool Catalog](tool-catalog.md)** from the running MCP server.
 
 See also:
 - **[The Intelligence Layer](intelligence.md)** — how the engines connect
 - **[Samples & Slicing](samples.md)** — 3-source search, Splice integration, fitness critics
-- **[Device Atlas](device-atlas.md)** — 1305 devices, pack browsing, enrichment coverage
+- **[Device Atlas](device-atlas.md)** — 5264 devices, pack browsing, enrichment coverage
 
 ---
 

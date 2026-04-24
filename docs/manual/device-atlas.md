@@ -1,9 +1,9 @@
 # Device Atlas
 
 The Device Atlas is an in-memory indexed database of every device in
-Ableton's library — **1305 devices** with browser URIs, **135 enriched**
-with sonic-intelligence profiles, **641 indexed by pack** (Core Library
-auto-indexing + explicit-pack YAML declarations). It replaces guessing
+Ableton's library — **5264 devices** with browser URIs, **120 enriched**
+with sonic-intelligence profiles (YAML files on disk), plus a by-pack
+index built from explicit-pack YAML declarations. It replaces guessing
 device names with querying a knowledge base — and as of v1.17 it's the
 primary bridge between the LLM's producer knowledge and LivePilot's
 tool surface.
@@ -163,7 +163,7 @@ atlas_pack_info()  # no arg → full pack list
   ]
 ```
 
-Indexes 641 devices by pack — Core Library heuristic (all native
+Indexes devices by pack — Core Library heuristic (all native
 instruments, effects, MIDI effects, and M4L devices without an
 explicit pack) plus 27 explicit-pack enrichment YAMLs (Drone Lab,
 Creative Extensions, Inspired by Nature, CV Tools, Performance Pack,
@@ -193,7 +193,7 @@ Re-read `device_atlas.json` after an out-of-band edit (rare). Normally
 
 ## The Concept Surface (v1.17+)
 
-The atlas alone is 1305 device entries with character tags. The
+The atlas alone is 5264 device entries with character tags. The
 concept surface bridges the LLM's **training** to those entries — so
 queries like "sound like Wolfgang Voigt" or "microhouse chord stab"
 have a concrete path.
