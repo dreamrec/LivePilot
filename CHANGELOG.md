@@ -1,5 +1,95 @@
 # Changelog
 
+## 1.20.2 — 5 bugs + 1 race condition from the live-test campaign (April 24 2026)
+
+Patch release fixing every issue surfaced during the v1.20.1 five-project
+live-test campaign documented at `~/Desktop/DREAM AI/demo Project/REPORT.md`.
+Each fix landed as its own atomic commit with TDD contract tests. Full
+test suite: 2985 → 3037 pass (+52 new tests), zero regressions.
+
+### Fixes
+
+**🐛 #1 — Device Forge: all 7 `create_*` moves ship broken (CRITICAL).**
+Each move's `plan_template` emitted `generate_m4l_effect` WITHOUT the
+required `gen_code` argument, so every move failed with `missing 1
+required positional argument: 'gen_code'` in explore mode. The 7
+GenExpr templates already existed in `mcp_server/device_forge/
+templates.py` (lorenz_attractor, wavefolder, bitcrusher, etc.) but
+weren't wired. Fix: `device_creation_compilers._MOVE_TO_TEMPLATE`
+routes each move_id to its template and the compiler injects `gen_code`
+at compile time. (commit `61abbeb`)
+
+**🐛 #2 — Sample family: `{sample_file_path}` template placeholder leaked
+to compiled plans.** `_resolve_sample_path` returned a literal
+`"{sample_file_path}"` string when the kernel had no path set —
+falling through to `load_sample_to_simpler` with a non-existent file.
+Fix: resolver now reads `seed_args["file_path"]` (v1.20 convention),
+falls back to legacy `kernel["sample_file_path"]` (wonder_mode
+setter), returns `None` on miss. Each of the 6 sample moves rejects
+with a non-executable plan + actionable warning when path is None.
+(commit `26de33c`)
+
+**🐛 #3 — Analyzer-gated moves hard-fail their mutation steps.**
+`tighten_low_end` and `make_kick_bass_lock` emitted
+`get_master_spectrum` as a pre-read. When the analyzer wasn't loaded
+on master, step 0 failed and `execute_plan_steps_async`
+`stop_on_failure=True` halted the plan BEFORE the mutation steps
+(bass volume change) ran. Fix: general `CompiledStep.optional: bool`
+field + router skip-and-continue on optional failures; affected
+compilers tag their analyzer pre-reads as `optional=True`. The
+mechanism is reusable for any future soft-gated diagnostic step.
+(commit `5f9f0ae`)
+
+**🐛 #4 — `batch_set_parameters` silently snaps quantized enum params.**
+Beat Repeat's `Gate=0.3` and `Variation=0.8` became `Gate=0` / `Variation=0`
+— valid snaps for quantized enum params, but the response gave callers
+no signal that their intent was discarded. Fix: `batch_set_parameters`
+post-processes Ableton's response, comparing requested vs returned
+values with 1e-5 epsilon; appends a `snapped_params` list when
+mismatches occur, each carrying `{name, requested, actual,
+display_value, value_string}`. Empty list = nothing snapped.
+(commit `b472976`)
+
+**🐛 #5 — `create_midi_track` can create duplicate-name tracks silently.**
+When `set_track_name(2, "Pad")` runs and then `create_midi_track(index=2,
+name="Pad")` shifts the existing track to index 4 while retaining its
+name, the session ends up with two "Pad" tracks. Downstream
+`find_tracks_by_role` matches both and mix moves apply twice. Fix:
+`create_midi_track` and `create_audio_track` now pre-query session
+for tracks with the requested name and stamp the response with
+`name_collision: bool` + `existing_tracks_with_same_name: list[int]`.
+Doesn't block creation — callers decide whether to rename or accept.
+(commit `69bc545`)
+
+**🔁 Race condition — "Connection closed by Ableton" on UI transitions.**
+Observed 3× during the campaign: after `Cmd+N` (new live set), the
+next MCP call would drop with `Connection closed by Ableton`.
+Ableton's Remote Script briefly rejects commands during UI state
+transitions. Fix: `connection.send_command` now retries once with
+400ms backoff on that specific error, reconnecting between attempts.
+Timeouts still raise immediately (mutation-duplicate risk). Retry
+budget capped at 1 — second failure raises cleanly. (commit `cf019d5`)
+
+### Scope of the campaign
+
+See `~/Desktop/DREAM AI/demo Project/` for the 5 `.als` files, `PLAN.md`,
+and `REPORT.md` that produced this backlog:
+- `01 basic-channel-dub.als` — dub techno @ 130
+- `02 dilla-swing-drums.als` — hip-hop @ 90 with MIDI-native swing
+- `03 opn-wonder-texture.als` — ambient @ 70 (Device Forge failure noted)
+- `04 aphex-destruction.als` — IDM @ 155 (Beat Repeat snap noted)
+- `05 mix-polish.als` — house @ 125 (analyzer-gate failure noted)
+
+### CI status
+
+All 9 CI jobs expected green: python-tests × {ubuntu, macos, windows} ×
+{3.11, 3.12}, metadata-drift, amxd-freeze-drift, js-entrypoint.
+
+### Non-goals
+
+No new moves in v1.20.2 — every change is a fix to existing surfaces.
+v1.21 remains the consolidation release (see `docs/plans/v1.21-structural-plan.md`).
+
 ## 1.20.1 — CI hardening: Windows UTF-8 encoding + .amxd ping drift (April 24 2026)
 
 Patch release fixing CI regressions that v1.20.0 shipped with (caught
