@@ -63,7 +63,7 @@ def test_director_skill_exists():
 
 def test_director_skill_frontmatter():
     skill = DIRECTOR_ROOT / "SKILL.md"
-    text = skill.read_text()
+    text = skill.read_text(encoding="utf-8")
     assert text.startswith("---\n"), "SKILL.md must start with YAML frontmatter"
     end = text.find("\n---\n", 4)
     assert end > 0, "SKILL.md frontmatter must close"
@@ -98,7 +98,7 @@ def _load_concept_packets():
     packets = {}
     for subdir in ("artists", "genres"):
         for p in sorted((CONCEPTS_ROOT / subdir).glob("*.yaml")):
-            packets[p.stem] = yaml.safe_load(p.read_text())
+            packets[p.stem] = yaml.safe_load(p.read_text(encoding="utf-8"))
     return packets
 
 
@@ -144,7 +144,7 @@ def test_concept_packets_types_valid():
 
 def test_artist_packets_have_canonical_genres():
     for p in sorted((CONCEPTS_ROOT / "artists").glob("*.yaml")):
-        d = yaml.safe_load(p.read_text())
+        d = yaml.safe_load(p.read_text(encoding="utf-8"))
         assert d.get("canonical_genres"), (
             f"{p.stem}: artist packet must have canonical_genres populated"
         )
@@ -152,7 +152,7 @@ def test_artist_packets_have_canonical_genres():
 
 def test_genre_packets_have_canonical_artists():
     for p in sorted((CONCEPTS_ROOT / "genres").glob("*.yaml")):
-        d = yaml.safe_load(p.read_text())
+        d = yaml.safe_load(p.read_text(encoding="utf-8"))
         # Canonical_artists may be empty for very new genres — allow but warn
         # For the shipped 14, each should name at least one canonical artist
         # EXCEPTIONS: trap, dubstep in some cases — but we currently have them
@@ -215,7 +215,7 @@ def test_artist_to_genre_refs_resolve_or_alias():
     see TODO in test_missing_genre_yamls_as_todo below."""
     genre_lookup = set()
     for p in (CONCEPTS_ROOT / "genres").glob("*.yaml"):
-        d = yaml.safe_load(p.read_text())
+        d = yaml.safe_load(p.read_text(encoding="utf-8"))
         genre_lookup.add(d["id"])
         genre_lookup.add(p.stem)
         for alias in d.get("aliases", []) or []:
@@ -225,7 +225,7 @@ def test_artist_to_genre_refs_resolve_or_alias():
 
     unresolved = []
     for p in (CONCEPTS_ROOT / "artists").glob("*.yaml"):
-        d = yaml.safe_load(p.read_text())
+        d = yaml.safe_load(p.read_text(encoding="utf-8"))
         for genre_ref in d.get("canonical_genres", []):
             if genre_ref not in genre_lookup:
                 unresolved.append((p.stem, genre_ref))
@@ -248,7 +248,7 @@ def test_genre_to_artist_refs_resolve():
 
     unresolved = []
     for p in (CONCEPTS_ROOT / "genres").glob("*.yaml"):
-        d = yaml.safe_load(p.read_text())
+        d = yaml.safe_load(p.read_text(encoding="utf-8"))
         for artist_ref in d.get("canonical_artists", []) or []:
             if artist_ref not in artist_slugs:
                 unresolved.append((p.stem, artist_ref))
@@ -270,12 +270,12 @@ def test_all_artist_genre_refs_resolve_strictly():
     for the tolerant version)."""
     genre_lookup = set()
     for p in (CONCEPTS_ROOT / "genres").glob("*.yaml"):
-        d = yaml.safe_load(p.read_text())
+        d = yaml.safe_load(p.read_text(encoding="utf-8"))
         genre_lookup.add(d["id"])
 
     unresolved = []
     for p in (CONCEPTS_ROOT / "artists").glob("*.yaml"):
-        d = yaml.safe_load(p.read_text())
+        d = yaml.safe_load(p.read_text(encoding="utf-8"))
         for genre_ref in d.get("canonical_genres", []):
             if genre_ref not in genre_lookup:
                 unresolved.append((p.stem, genre_ref))
@@ -313,7 +313,7 @@ def test_affordance_packets_count():
 
 def test_affordance_packets_parse_and_have_required_fields():
     for p in sorted((AFFORDANCES_ROOT / "devices").glob("*.yaml")):
-        d = yaml.safe_load(p.read_text())
+        d = yaml.safe_load(p.read_text(encoding="utf-8"))
         missing = AFFORDANCE_REQUIRED_FIELDS - set(d.keys())
         assert not missing, f"{p.stem}: missing fields {missing}"
 
@@ -321,7 +321,7 @@ def test_affordance_packets_parse_and_have_required_fields():
 def test_affordance_types_valid():
     valid_types = {"effect", "instrument", "utility", "rack"}
     for p in sorted((AFFORDANCES_ROOT / "devices").glob("*.yaml")):
-        d = yaml.safe_load(p.read_text())
+        d = yaml.safe_load(p.read_text(encoding="utf-8"))
         assert d["type"] in valid_types, (
             f"{p.stem}: invalid type {d['type']} (expected one of {valid_types})"
         )
@@ -331,7 +331,7 @@ def test_affordance_no_stale_atlas_uri():
     """PR 3 quality fix — the field was renamed from atlas_uri to
     atlas_search_query. Prevent regression."""
     for p in sorted((AFFORDANCES_ROOT / "devices").glob("*.yaml")):
-        d = yaml.safe_load(p.read_text())
+        d = yaml.safe_load(p.read_text(encoding="utf-8"))
         assert "atlas_uri" not in d, (
             f"{p.stem}: stale atlas_uri field — rename to atlas_search_query"
         )
@@ -345,7 +345,7 @@ def test_affordance_no_stale_atlas_uri():
 def test_affordance_dimensional_impact_fields():
     valid_levels = {"none", "low", "low-moderate", "moderate", "high"}
     for p in sorted((AFFORDANCES_ROOT / "devices").glob("*.yaml")):
-        d = yaml.safe_load(p.read_text())
+        d = yaml.safe_load(p.read_text(encoding="utf-8"))
         impact = d["dimensional_impact"]
         for dim in CANONICAL_DIMENSIONS:
             assert dim in impact, f"{p.stem}: missing dimensional_impact.{dim}"
@@ -367,7 +367,7 @@ def test_ping_pong_delay_is_documented_as_echo_mode():
     affordance MUST document this and redirect to Echo with Channel Mode=1.
     Regression guard: no future edit can silently re-assert standalone status."""
     p = AFFORDANCES_ROOT / "devices" / "ping-pong-delay.yaml"
-    d = yaml.safe_load(p.read_text())
+    d = yaml.safe_load(p.read_text(encoding="utf-8"))
 
     # atlas_search_query must be "Echo" (the actually-loadable device) — a
     # query for "Ping Pong Delay" returns empty on Live 12.
@@ -394,7 +394,7 @@ def test_auto_filter_ranges_are_normalized_for_modern_class():
     legacy 20-135 range from pre-2010 Auto Filter doesn't apply. Regression
     guard: no future edit can reintroduce legacy Hz values."""
     p = AFFORDANCES_ROOT / "devices" / "auto-filter.yaml"
-    d = yaml.safe_load(p.read_text())
+    d = yaml.safe_load(p.read_text(encoding="utf-8"))
 
     for band_name in ("subtle_ranges", "moderate_ranges", "aggressive_ranges"):
         band = d.get(band_name, {})
@@ -428,7 +428,7 @@ def test_low_novelty_escape_hatch_documented():
     a cleanup that naturally lives entirely in the mix family."""
     diversity_rule = (
         DIRECTOR_ROOT / "references" / "move-family-diversity-rule.md"
-    ).read_text().lower()
+    ).read_text(encoding="utf-8").lower()
     # Must mention low-novelty threshold explicitly
     assert "novelty_budget" in diversity_rule, (
         "move-family-diversity-rule.md must reference novelty_budget"
@@ -456,7 +456,7 @@ def test_create_experiment_auto_proposal_no_m0_bug():
     Regression guard via source-level pattern scan, because the tool
     itself requires an MCP Context to call directly."""
     path = REPO_ROOT / "mcp_server" / "experiment" / "tools.py"
-    text = path.read_text()
+    text = path.read_text(encoding="utf-8")
     # The exact bug pattern
     assert "m[0] for m, _" not in text, (
         "Regression: auto-proposal selector reintroduced the m[0] bug. "
@@ -601,7 +601,7 @@ def test_director_phase6_records_ledger_marker():
     requires a manual ledger marker via add_session_memory OR memory_learn.
     Full architectural fix (route all execution through semantic_move) is
     deferred to v1.19."""
-    skill = (DIRECTOR_ROOT / "SKILL.md").read_text()
+    skill = (DIRECTOR_ROOT / "SKILL.md").read_text(encoding="utf-8")
     assert "### Phase 6" in skill, "director must have a Phase 6 section"
     phase_6 = skill.split("### Phase 6")[1].split("### Phase 7")[0]
     # Must reference manual ledger writing
@@ -621,7 +621,7 @@ def test_anti_repetition_has_state_inference_fallback():
     devices and track-assignment deltas to infer recent family activity.
     Without this fallback, the director is blind to its own recent
     actions across turns."""
-    rules = (DIRECTOR_ROOT / "references" / "anti-repetition-rules.md").read_text().lower()
+    rules = (DIRECTOR_ROOT / "references" / "anti-repetition-rules.md").read_text(encoding="utf-8").lower()
     # Must reference the fallback mechanism explicitly
     fallback_keywords = ("state inference", "session state", "ledger is empty",
                         "ledger empty", "state-based inference")
@@ -927,7 +927,7 @@ def test_batch_set_parameters_schema_documented():
     for candidate in candidates:
         if not candidate.exists():
             continue
-        text = candidate.read_text()
+        text = candidate.read_text(encoding="utf-8")
         if "batch_set_parameters" in text and '"value"' in text:
             found = True
             break
@@ -945,7 +945,7 @@ def test_affordance_appears_in_packets_artists_resolve():
 
     unresolved = []
     for p in (AFFORDANCES_ROOT / "devices").glob("*.yaml"):
-        d = yaml.safe_load(p.read_text())
+        d = yaml.safe_load(p.read_text(encoding="utf-8"))
         appears = d.get("appears_in_packets", {})
         for artist in appears.get("artists", []) or []:
             if artist not in artist_slugs:
@@ -961,7 +961,7 @@ def test_affordance_appears_in_packets_genres_tolerated():
 
     unresolved = []
     for p in (AFFORDANCES_ROOT / "devices").glob("*.yaml"):
-        d = yaml.safe_load(p.read_text())
+        d = yaml.safe_load(p.read_text(encoding="utf-8"))
         appears = d.get("appears_in_packets", {})
         for genre in appears.get("genres", []) or []:
             if genre not in genre_slugs:
@@ -997,7 +997,7 @@ def test_affordance_schema_exists():
 def test_director_references_concept_packets():
     """The director's SKILL.md should point at the structured packets
     (PR 2 integration), not only the narrative .md files."""
-    skill = (DIRECTOR_ROOT / "SKILL.md").read_text()
+    skill = (DIRECTOR_ROOT / "SKILL.md").read_text(encoding="utf-8")
     assert "concepts/artists" in skill, (
         "Director SKILL.md must reference concepts/artists/ YAML packets"
     )
@@ -1009,7 +1009,7 @@ def test_director_references_concept_packets():
 def test_director_references_affordances():
     """PR 3 integration — the director's SKILL.md should reference the
     affordance YAMLs in Phase 6."""
-    skill = (DIRECTOR_ROOT / "SKILL.md").read_text()
+    skill = (DIRECTOR_ROOT / "SKILL.md").read_text(encoding="utf-8")
     assert "affordances/" in skill or "Affordance lookup" in skill, (
         "Director SKILL.md must reference affordance packets in Phase 6"
     )
@@ -1018,7 +1018,7 @@ def test_director_references_affordances():
 def test_evaluation_skill_has_artistic_dimensions():
     """PR 4 integration — livepilot-evaluation should document the
     Family B artistic dimensions."""
-    eval_skill = (SKILLS_ROOT / "livepilot-evaluation" / "SKILL.md").read_text()
+    eval_skill = (SKILLS_ROOT / "livepilot-evaluation" / "SKILL.md").read_text(encoding="utf-8")
     for dim in [
         "style_fit",
         "distinctiveness",
@@ -1033,7 +1033,7 @@ def test_evaluation_skill_has_artistic_dimensions():
 
 def test_evaluation_skill_has_verdict_taxonomy():
     """PR 4 integration — the 5 verdicts must be documented."""
-    eval_skill = (SKILLS_ROOT / "livepilot-evaluation" / "SKILL.md").read_text()
+    eval_skill = (SKILLS_ROOT / "livepilot-evaluation" / "SKILL.md").read_text(encoding="utf-8")
     for verdict in [
         "safe_win",
         "bold_win",
@@ -1049,7 +1049,7 @@ def test_evaluation_skill_has_verdict_taxonomy():
 def test_memory_guide_has_promotion_rubric():
     """PR 5 integration — memory-guide must have the verdict-driven
     promotion rubric."""
-    guide = (CORE_REFS / "memory-guide.md").read_text()
+    guide = (CORE_REFS / "memory-guide.md").read_text(encoding="utf-8")
     assert "Reflection Promotion Rubric" in guide or "Promotion matrix" in guide, (
         "memory-guide.md must include the verdict-driven promotion rubric"
     )
