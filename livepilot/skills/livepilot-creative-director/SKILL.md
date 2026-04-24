@@ -68,6 +68,7 @@ When triggered, these phases are REQUIRED in order. Skip none.
 Read in parallel (all are fast). All of these are REQUIRED, not
 advisory — skipping them is how pattern-repetition survives:
 
+- **`ensure_analyzer_on_master` (v1.20.3)** — idempotent pre-flight. Call this FIRST (before or alongside `get_session_info`), every turn, whether the project looks empty or not. The tool short-circuits when the analyzer is already loaded, so it's free to call repeatedly. Skipping it is how the v1.20.1 live-test campaign produced basic mixes — the analyzer-gated moves (`tighten_low_end`, `sculpt_midrange`, `balance_stereo_image`, etc.) degrade silently when there's no master spectrum to read. If the tool returns `install_required`, call `install_m4l_device(source_path="<repo>/m4l_device/LivePilot_Analyzer.amxd")` and retry. If it returns `warning: "not LAST on master"`, surface that to the user — the invariant is theirs to repair in Ableton's GUI.
 - `get_session_info` · `get_capability_state`
 - `memory_recall` (taste + recent context)
 - `get_anti_preferences` — what the user has rejected before (HARD filter)

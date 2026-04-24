@@ -17,7 +17,7 @@
 
 <p align="center">
   An agentic production system for Ableton Live 12.<br>
-  429 tools. 53 domains. Device atlas. Plan-aware Splice integration. Auto-composition. Spectral perception. Technique memory. Drum-rack pad builder. Live dead-device detection.
+  430 tools. 53 domains. Device atlas. Plan-aware Splice integration. Auto-composition. Spectral perception. Technique memory. Drum-rack pad builder. Live dead-device detection.
 </p>
 
 <br>
@@ -80,7 +80,7 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 │         └─────────────────┼──────────────────┘                       │
 │                           ▼                                          │
 │                  ┌─────────────────┐                                  │
-│                  │   429 MCP Tools  │                                  │
+│                  │   430 MCP Tools  │                                  │
 │                  │   53 domains     │                                  │
 │                  └────────┬────────┘                                  │
 │                           │                                          │
@@ -121,7 +121,7 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 
 ## The Intelligence Layer
 
-12 engines sit on top of the 429 tools. They give the AI musical judgment, not just musical execution.
+12 engines sit on top of the 430 tools. They give the AI musical judgment, not just musical execution.
 
 ### SongBrain — What the Song Is
 
@@ -173,7 +173,7 @@ Every engine follows: **measure before → act → measure after → compare**. 
 
 ## Tools
 
-429 tools across 53 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
+430 tools across 53 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
 
 <br>
 
@@ -362,7 +362,7 @@ The V2 intelligence layer. These tools analyze, diagnose, plan, evaluate, and le
 | Creative Constraints | 5 | constraint activation, reference-inspired variants |
 | Preview Studio | 5 | variant creation, preview rendering, comparison, commit |
 
-> **[View all 429 tools →](docs/manual/tool-catalog.md)**
+> **[View all 430 tools →](docs/manual/tool-catalog.md)**
 
 <br>
 
@@ -589,7 +589,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for architecture details, code guidelines
 
 | Document | What's inside |
 |----------|---------------|
-| [Manual](docs/manual/index.md) | Complete reference: architecture, all 429 tools, workflows |
+| [Manual](docs/manual/index.md) | Complete reference: architecture, all 430 tools, workflows |
 | [Intelligence Layer](docs/manual/intelligence.md) | How the 12 engines connect — conductor, moves, preview, evaluation |
 | [Device Atlas](docs/manual/device-atlas.md) | 1305 devices indexed — search, suggest, chain building |
 | [Samples & Slicing](docs/manual/samples.md) | 3-source search, fitness critics, slice workflows |

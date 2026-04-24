@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog (Generated)
 
-429 tools across 53 domains.
+430 tools across 53 domains.
 
 > Auto-generated from `mcp.list_tools()`. Do not hand-edit.
 > Regenerate: `python3 scripts/generate_tool_catalog.py`
@@ -21,7 +21,7 @@
 | `iterate_toward_goal` | Close the evaluation loop: run experiments until threshold or timeout. |
 | `route_request` | Route a production request to the right engine(s). |
 
-## Analyzer (37)
+## Analyzer (38)
 
 | Tool | Description |
 |------|-------------|
@@ -34,6 +34,7 @@
 | `classify_simpler_slices` | Classify each Simpler slice as KICK / SNARE / HAT / ghost via FFT analysis. |
 | `compressor_set_sidechain` | Configure a Compressor's sidechain INPUT ROUTING (BUG-A3). |
 | `crop_simpler` | Crop a Simpler's sample to the currently active region. |
+| `ensure_analyzer_on_master` | Idempotent pre-flight: load LivePilot_Analyzer on master if missing (v1.20.3). |
 | `get_automation_state` | Get automation state for all parameters on a device. |
 | `get_chroma` | Get 12 pitch class energies from FluCoMa for real-time chord detection. |
 | `get_clip_file_path` | Get the audio file path of a clip on disk. |

@@ -1913,3 +1913,128 @@ async def compressor_set_sidechain(
         params["source_channel"] = str(source_channel)
     ableton = ctx.lifespan_context["ableton"]
     return ableton.send_command("set_compressor_sidechain", params)
+
+
+# ──────────────────────────────────────────────────────────────────────
+# v1.20.3 — ensure_analyzer_on_master
+#
+# Motivated by the v1.20.1 live-test campaign operator-error (see
+# ~/Desktop/DREAM AI/demo Project/REPORT.md). The LLM operator had a
+# clear global-memory instruction to load LivePilot_Analyzer on master
+# proactively on a fresh session, and missed it — leaving analyzer-
+# gated moves brittle. This tool closes that class of error by making
+# the load idempotent + automatable.
+
+_ANALYZER_DEVICE_NAME = "LivePilot_Analyzer"
+
+
+def _load_analyzer_impl(ctx, track_index: int, device_name: str,
+                        allow_duplicate: bool = False) -> dict:
+    """Indirection so tests can monkeypatch the load call without having
+    to fake the full find_and_load_device MCP-tool machinery. Production
+    calls straight through to the existing tool."""
+    from .devices import find_and_load_device
+    return find_and_load_device(
+        ctx,
+        track_index=track_index,
+        device_name=device_name,
+        allow_duplicate=allow_duplicate,
+    )
+
+
+@mcp.tool()
+def ensure_analyzer_on_master(ctx: Context) -> dict:
+    """Idempotent pre-flight: load LivePilot_Analyzer on master if missing.
+
+    Safe to call at the start of any session or before any move that
+    declares analyzer dependency. Calling it repeatedly is cheap —
+    subsequent calls short-circuit via a single get_master_track read.
+
+    CLAUDE.md invariant: "LivePilot_Analyzer must be LAST on master."
+    This tool reports whether the invariant holds via ``is_last_on_master``;
+    it does NOT move the device (that's a user action in Ableton's GUI).
+
+    Return shape:
+    - status: one of {"already_loaded", "loaded", "install_required", "failed"}
+    - device_index: int  — position of the analyzer on master (when present)
+    - is_last_on_master: bool — True when analyzer is the last device
+    - duplicate_count: int — 2+ when multiple analyzers exist (shouldn't)
+    - warning: str | None — surfaces last-on-master violations
+    - hint: str — actionable next step when status != "already_loaded"/"loaded"
+    - error: str | None — present on status="failed"
+    """
+    ableton = ctx.lifespan_context["ableton"]
+
+    # 1. Inspect the master chain for an existing analyzer.
+    try:
+        master = ableton.send_command("get_master_track")
+    except Exception as exc:
+        return {
+            "status": "failed",
+            "error": f"Could not read master track: {exc}",
+            "hint": "Verify MCP connection to Ableton; retry with get_session_info first.",
+        }
+
+    devices = (master or {}).get("devices") or []
+    matches = [d for d in devices if d.get("name") == _ANALYZER_DEVICE_NAME]
+
+    if matches:
+        # 2. Already loaded — build a status report without side effects.
+        first = matches[0]
+        device_index = first.get("index")
+        is_last = False
+        if devices:
+            last_name = devices[-1].get("name")
+            is_last = (last_name == _ANALYZER_DEVICE_NAME)
+
+        result: dict = {
+            "status": "already_loaded",
+            "device_index": device_index,
+            "is_last_on_master": is_last,
+            "duplicate_count": len(matches),
+        }
+        if len(matches) > 1:
+            result["warning"] = (
+                f"{len(matches)} instances of {_ANALYZER_DEVICE_NAME} on master — "
+                "only one is needed. Remove extras in Ableton's GUI."
+            )
+        elif not is_last:
+            result["warning"] = (
+                f"{_ANALYZER_DEVICE_NAME} is not the LAST device on master. "
+                "CLAUDE.md invariant requires it to come after ALL effects so "
+                "it reads the final output, not pre-effect signal. "
+                "Move it to the end of the master chain in Ableton's GUI."
+            )
+        return result
+
+    # 3. Not on master — try loading from the Ableton browser.
+    try:
+        loaded = _load_analyzer_impl(
+            ctx,
+            track_index=-1000,  # master convention
+            device_name=_ANALYZER_DEVICE_NAME,
+            allow_duplicate=False,
+        )
+    except Exception as exc:
+        # Typical path: device not in browser (user hasn't installed via
+        # install_m4l_device yet).
+        return {
+            "status": "install_required",
+            "error": str(exc),
+            "hint": (
+                "LivePilot_Analyzer not found in Ableton's browser. Install "
+                "first with install_m4l_device(source_path="
+                "\"<repo>/m4l_device/LivePilot_Analyzer.amxd\") — that copies "
+                "the .amxd into ~/Music/Ableton/User Library/Presets/Audio "
+                "Effects/Max Audio Effect/. Then call ensure_analyzer_on_master "
+                "again to complete the load."
+            ),
+        }
+
+    device_index = (loaded or {}).get("device_index")
+    return {
+        "status": "loaded",
+        "device_index": device_index,
+        "is_last_on_master": True,  # fresh load always lands at the end
+        "duplicate_count": 1,
+    }

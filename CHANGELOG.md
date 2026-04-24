@@ -1,5 +1,55 @@
 # Changelog
 
+## 1.20.3 — Automated analyzer pre-flight (April 24 2026)
+
+Micro-release closing one class of operator error that broke the v1.20.1
+five-project live-test campaign: the LLM operator had a clear memory
+instruction to load `LivePilot_Analyzer` on master at the start of a
+fresh Ableton session but missed it in 5 of 5 projects — producing
+basic mixes instead of the intended mix-polish outcomes because every
+analyzer-gated move (`tighten_low_end`, `sculpt_midrange`,
+`balance_stereo_image`, etc.) silently degraded. Fixed forward with a
+new idempotent pre-flight tool + Director skill wiring.
+
+### Added
+
+**New tool: `ensure_analyzer_on_master`** (`mcp_server/tools/analyzer.py`).
+Idempotent pre-flight that loads `LivePilot_Analyzer.amxd` on master
+when missing, no-ops when already loaded. Returns one of:
+- `already_loaded` (with `is_last_on_master`, `duplicate_count`)
+- `loaded` (first-time load from Ableton browser)
+- `install_required` (device not in browser — actionable hint points at
+  `install_m4l_device`)
+- `failed` (any other error)
+
+Post-load report surfaces the CLAUDE.md invariant "LivePilot_Analyzer
+must be LAST on master" via `is_last_on_master: bool` and warns when
+violated. Duplicate-count warning covers the edge case of multiple
+analyzers on the master chain.
+
+Safe to call every turn — subsequent calls short-circuit via one
+`get_master_track` read. Tool count: 429 → 430. 6 new contract tests
+covering already-loaded, missing-loads, install-required,
+duplicate-handling, is-last warning, and two-call idempotence.
+
+### Changed
+
+**Director Phase 1** (`livepilot-creative-director/SKILL.md`). Added
+`ensure_analyzer_on_master` at the top of the "Ground" reads as a
+REQUIRED call, ahead of `get_session_info`. Wording explicitly connects
+the step to the failure it prevents so future agents don't rationalize
+skipping it: "Skipping it is how the v1.20.1 live-test campaign
+produced basic mixes — the analyzer-gated moves degrade silently when
+there's no master spectrum to read."
+
+### Notes
+
+No breaking changes. Calling code that assumed the analyzer was loaded
+continues to work; the new tool adds an explicit pre-flight path.
+`install_m4l_device` contract unchanged.
+
+---
+
 ## 1.20.2 — 5 bugs + 1 race condition from the live-test campaign (April 24 2026)
 
 Patch release fixing every issue surfaced during the v1.20.1 five-project
