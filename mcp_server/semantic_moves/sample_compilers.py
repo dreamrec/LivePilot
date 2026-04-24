@@ -2,22 +2,81 @@
 
 These compile sample manipulation intents into concrete tool call sequences
 using the session kernel to find appropriate tracks and devices.
+
+v1.20.2 (BUG #2 fix): sample moves now resolve ``file_path`` from
+``kernel["seed_args"]["file_path"]`` (v1.20 convention). Pre-fix, the
+resolver returned a literal ``"{sample_file_path}"`` placeholder when
+no path was in the kernel — which leaked into ``load_sample_to_simpler``
+at execution and failed with a non-existent-file error. Now the
+resolver returns ``None`` on miss and each compiler rejects with a
+non-executable plan + clear warning.
+
+Legacy fallback: wonder_mode/tools.py writes ``kernel["sample_file_path"]``
+directly (pre-v1.20 path). Still honored for back-compat, just after
+seed_args.
 """
 
 from __future__ import annotations
+
+from typing import Optional
 
 from .compiler import CompiledPlan, CompiledStep, register_compiler
 from .models import SemanticMove
 from . import resolvers
 
 
-def _resolve_sample_path(kernel: dict) -> str:
-    """Get the sample file path from kernel, or return placeholder."""
-    return kernel.get("sample_file_path", "{sample_file_path}")
+def _resolve_sample_path(kernel: dict) -> Optional[str]:
+    """Get the sample file path from kernel, or None if not set.
+
+    Resolution order (v1.20.2 BUG #2 fix):
+      1. kernel["seed_args"]["file_path"]  — v1.20 seed_args convention
+      2. kernel["sample_file_path"]         — legacy wonder_mode setter
+
+    Returns None when neither is present. Callers must check for None
+    and reject the plan with an actionable warning; do NOT substitute a
+    placeholder (which was the original bug).
+    """
+    seed = kernel.get("seed_args") or {}
+    path = seed.get("file_path")
+    if isinstance(path, str) and path.strip():
+        return path
+    legacy = kernel.get("sample_file_path")
+    if isinstance(legacy, str) and legacy.strip():
+        return legacy
+    return None
+
+
+def _empty_sample_plan(move: SemanticMove, kernel: dict) -> CompiledPlan:
+    """Return a non-executable plan indicating a sample path is required.
+
+    Used by every sample-family compiler when _resolve_sample_path returns
+    None. Caller should still inspect the warnings for the actionable text.
+    """
+    return CompiledPlan(
+        move_id=move.move_id,
+        intent=move.intent,
+        steps=[],
+        risk_level="low",
+        summary=(
+            f"{move.move_id} requires a sample file_path. Pass via "
+            f"apply_semantic_move(..., args={{\"file_path\": \"/abs/path/to.wav\"}})"
+        ),
+        requires_approval=True,
+        warnings=[
+            f"{move.move_id} requires seed_args.file_path (absolute path to the "
+            "audio file). Not provided; plan not executable. Example: "
+            "apply_semantic_move(\"" + move.move_id + "\", mode=\"explore\", "
+            "args={\"file_path\": \"/path/to/sample.wav\"})"
+        ],
+    )
 
 
 def _compile_sample_chop_rhythm(move: SemanticMove, kernel: dict) -> CompiledPlan:
     """Compile 'sample_chop_rhythm': load, slice, and chop a sample for rhythm."""
+    file_path = _resolve_sample_path(kernel)
+    if file_path is None:
+        return _empty_sample_plan(move, kernel)
+
     steps = []
     descriptions = []
     warnings = []
@@ -39,7 +98,7 @@ def _compile_sample_chop_rhythm(move: SemanticMove, kernel: dict) -> CompiledPla
 
     steps.append(CompiledStep(
         tool="load_sample_to_simpler",
-        params={"track_index": new_idx, "file_path": _resolve_sample_path(kernel)},
+        params={"track_index": new_idx, "file_path": file_path},
         description="Load sample into Simpler for slicing",
     ))
 
@@ -79,6 +138,10 @@ def _compile_sample_chop_rhythm(move: SemanticMove, kernel: dict) -> CompiledPla
 
 def _compile_sample_texture_layer(move: SemanticMove, kernel: dict) -> CompiledPlan:
     """Compile 'sample_texture_layer': load and filter a sample as background texture."""
+    file_path = _resolve_sample_path(kernel)
+    if file_path is None:
+        return _empty_sample_plan(move, kernel)
+
     steps = []
     descriptions = []
 
@@ -93,7 +156,7 @@ def _compile_sample_texture_layer(move: SemanticMove, kernel: dict) -> CompiledP
 
     steps.append(CompiledStep(
         tool="load_sample_to_simpler",
-        params={"track_index": new_idx, "file_path": _resolve_sample_path(kernel)},
+        params={"track_index": new_idx, "file_path": file_path},
         description="Load textural sample into Simpler",
     ))
     descriptions.append("Load texture sample")
@@ -132,6 +195,10 @@ def _compile_sample_texture_layer(move: SemanticMove, kernel: dict) -> CompiledP
 
 def _compile_sample_vocal_ghost(move: SemanticMove, kernel: dict) -> CompiledPlan:
     """Compile 'sample_vocal_ghost': reverse, pitch, and wash a vocal sample."""
+    file_path = _resolve_sample_path(kernel)
+    if file_path is None:
+        return _empty_sample_plan(move, kernel)
+
     steps = []
     descriptions = []
 
@@ -146,7 +213,7 @@ def _compile_sample_vocal_ghost(move: SemanticMove, kernel: dict) -> CompiledPla
 
     steps.append(CompiledStep(
         tool="load_sample_to_simpler",
-        params={"track_index": new_idx, "file_path": _resolve_sample_path(kernel)},
+        params={"track_index": new_idx, "file_path": file_path},
         description="Load vocal sample into Simpler",
     ))
 
@@ -191,6 +258,10 @@ def _compile_sample_vocal_ghost(move: SemanticMove, kernel: dict) -> CompiledPla
 
 def _compile_sample_break_layer(move: SemanticMove, kernel: dict) -> CompiledPlan:
     """Compile 'sample_break_layer': slice a break and layer over existing drums."""
+    file_path = _resolve_sample_path(kernel)
+    if file_path is None:
+        return _empty_sample_plan(move, kernel)
+
     steps = []
     descriptions = []
     warnings = []
@@ -210,7 +281,7 @@ def _compile_sample_break_layer(move: SemanticMove, kernel: dict) -> CompiledPla
 
     steps.append(CompiledStep(
         tool="load_sample_to_simpler",
-        params={"track_index": new_idx, "file_path": _resolve_sample_path(kernel)},
+        params={"track_index": new_idx, "file_path": file_path},
         description="Load breakbeat into Simpler",
     ))
 
@@ -252,6 +323,10 @@ def _compile_sample_resample_destroy(move: SemanticMove, kernel: dict) -> Compil
     SAFETY: This is a high-risk move — always requires approval.
     Only adjusts device params when a known device is confirmed present.
     """
+    file_path = _resolve_sample_path(kernel)
+    if file_path is None:
+        return _empty_sample_plan(move, kernel)
+
     steps = []
     descriptions = []
     warnings = ["High-risk: destructive processing — consider duplicating track first"]
@@ -267,7 +342,7 @@ def _compile_sample_resample_destroy(move: SemanticMove, kernel: dict) -> Compil
 
     steps.append(CompiledStep(
         tool="load_sample_to_simpler",
-        params={"track_index": new_idx, "file_path": _resolve_sample_path(kernel)},
+        params={"track_index": new_idx, "file_path": file_path},
         description="Load sample for destruction",
     ))
     descriptions.append("Load source")
@@ -312,6 +387,10 @@ def _compile_sample_resample_destroy(move: SemanticMove, kernel: dict) -> Compil
 
 def _compile_sample_one_shot_accent(move: SemanticMove, kernel: dict) -> CompiledPlan:
     """Compile 'sample_one_shot_accent': load a one-shot for rhythmic punctuation."""
+    file_path = _resolve_sample_path(kernel)
+    if file_path is None:
+        return _empty_sample_plan(move, kernel)
+
     steps = []
     descriptions = []
 
@@ -326,7 +405,7 @@ def _compile_sample_one_shot_accent(move: SemanticMove, kernel: dict) -> Compile
 
     steps.append(CompiledStep(
         tool="load_sample_to_simpler",
-        params={"track_index": new_idx, "file_path": _resolve_sample_path(kernel)},
+        params={"track_index": new_idx, "file_path": file_path},
         description="Load one-shot into Simpler",
     ))
 
