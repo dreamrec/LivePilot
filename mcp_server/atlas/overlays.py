@@ -139,3 +139,118 @@ class OverlayIndex:
             counts.setdefault(ns, {}).setdefault(et, 0)
             counts[ns][et] += 1
         return counts
+
+
+def _resolve_overlay_root() -> Path:
+    """Lazy resolver mirroring v1.22.0 _resolve_atlas_path() pattern.
+    Tests monkeypatch Path.home() and expect this to re-evaluate."""
+    return Path.home() / ".livepilot" / "atlas-overlays"
+
+
+def _validate_entry(entry: dict, source_path: Path,
+                    log: logging.Logger) -> bool:
+    """True if entry has required fields. Log + return False otherwise.
+
+    Per spec §5.1:
+      - All entries: entity_id + entity_type required
+      - entity_type=signature_chain: also tags + artists required
+    """
+    eid = entry.get("entity_id")
+    etype = entry.get("entity_type")
+    if not eid:
+        log.warning(f"overlays: skipped entry in {source_path}: missing 'entity_id'")
+        return False
+    if not etype:
+        log.warning(f"overlays: skipped {eid} in {source_path}: missing 'entity_type'")
+        return False
+    if etype == "signature_chain":
+        if not entry.get("tags"):
+            log.warning(f"overlays: skipped {eid} in {source_path}: signature_chain requires 'tags'")
+            return False
+        if not entry.get("artists"):
+            log.warning(f"overlays: skipped {eid} in {source_path}: signature_chain requires 'artists'")
+            return False
+    return True
+
+
+def _entry_from_dict(d: dict, namespace: str) -> OverlayEntry:
+    """Build an OverlayEntry from a validated YAML dict.
+    The full original dict is preserved as `body` so callers can read
+    arbitrary extra fields (architecture, requires_machines, sources, etc.)."""
+    return OverlayEntry(
+        namespace=namespace,
+        entity_type=d["entity_type"],
+        entity_id=d["entity_id"],
+        name=d.get("name", ""),
+        description=d.get("description", ""),
+        tags=list(d.get("tags") or []),
+        artists=list(d.get("artists") or []),
+        requires_box=d.get("requires_box"),
+        body=d,
+    )
+
+
+def load_overlays(root: Optional[Path] = None,
+                  log: Optional[logging.Logger] = None) -> "OverlayIndex":
+    """Scan root for namespace subdirs; load YAMLs; mutate the singleton; return it.
+
+    Per spec §5.1:
+      - Each immediate subdirectory of root is a namespace.
+      - Within each namespace, *.yaml/*.yml files are loaded recursively.
+      - File may contain a single dict OR a list of dicts.
+      - yaml.safe_load ONLY (rejects Python tags).
+      - Idempotent: clears the singleton first.
+    """
+    log = log or logger
+    if root is None:
+        root = _resolve_overlay_root()
+
+    idx = get_overlay_index()
+    idx.clear()
+
+    if not root.exists():
+        return idx
+
+    for ns_dir in sorted(root.iterdir()):
+        if not ns_dir.is_dir():
+            continue
+        namespace = ns_dir.name
+        for yaml_path in sorted(list(ns_dir.rglob("*.yaml")) +
+                                list(ns_dir.rglob("*.yml"))):
+            try:
+                with yaml_path.open("r") as f:
+                    parsed = yaml.safe_load(f)
+            except yaml.YAMLError as e:
+                log.warning(f"overlays: skipped {yaml_path}: {e}")
+                continue
+
+            if parsed is None:
+                continue
+            entries = parsed if isinstance(parsed, list) else [parsed]
+            for entry_dict in entries:
+                if not isinstance(entry_dict, dict):
+                    log.warning(f"overlays: skipped non-dict entry in {yaml_path}")
+                    continue
+                if not _validate_entry(entry_dict, yaml_path, log):
+                    continue
+                new_entry = _entry_from_dict(entry_dict, namespace)
+                previous = idx.add(new_entry)
+                if previous is not None:
+                    log.warning(
+                        f"overlays: duplicate ({new_entry.namespace}, "
+                        f"{new_entry.entity_type}, {new_entry.entity_id}) "
+                        f"in {yaml_path} — last-loaded wins"
+                    )
+    return idx
+
+
+# Module-level singleton — initialized empty at import. Per spec §5.1, §6.1.
+# load_overlays() mutates this in place. Tools call get_overlay_index() at
+# request time so they always see current state (never capture a reference).
+_overlay_index: "OverlayIndex" = OverlayIndex()
+
+
+def get_overlay_index() -> "OverlayIndex":
+    """Accessor for the live overlay singleton. Always returns the same
+    instance — load_overlays() mutates it in place rather than replacing."""
+    return _overlay_index

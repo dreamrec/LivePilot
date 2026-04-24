@@ -72,7 +72,7 @@ def test_overlay_index_list_entity_types_in_namespace():
     assert idx.list_entity_types("nonexistent") == []
 
 
-def _mk_entry(namespace="ns", entity_type="machine", entity_id="x",
+def _mk_entry(*, namespace="ns", entity_type="machine", entity_id="x",
               name="X", description="", tags=None, artists=None,
               requires_box=None, body=None):
     """Test helper — keyword-only construction so failures point at the missing field.
@@ -144,3 +144,64 @@ def test_overlay_index_search_limit():
         idx.add(_mk_entry(entity_id=f"e{i}", name=f"thing {i}"))
     assert len(idx.search("thing", limit=5)) == 5
     assert len(idx.search("thing", limit=10)) == 10
+
+
+def test_overlay_index_stats_smoke():
+    """stats() returns nested {namespace: {entity_type: count}} per spec §5.3."""
+    from mcp_server.atlas.overlays import OverlayIndex
+    idx = OverlayIndex()
+    idx.add(_mk_entry(namespace="elektron", entity_type="machine", entity_id="a"))
+    idx.add(_mk_entry(namespace="elektron", entity_type="machine", entity_id="b"))
+    idx.add(_mk_entry(namespace="elektron", entity_type="signature_chain",
+                      entity_id="c", tags=["t"], artists=["x"]))
+    s = idx.stats()
+    assert s == {"elektron": {"machine": 2, "signature_chain": 1}}
+
+
+def test_resolve_overlay_root_uses_path_home(monkeypatch, tmp_path):
+    """Critical: _resolve_overlay_root() evaluates Path.home() at CALL time,
+    not import time. Tests must be able to monkeypatch Path.home() and
+    expect the new value (no module-level capture). Per spec §5.1."""
+    fake_home = tmp_path / "fake_home"
+    fake_home.mkdir()
+    monkeypatch.setattr(Path, "home", lambda: fake_home)
+
+    from mcp_server.atlas.overlays import _resolve_overlay_root
+    root = _resolve_overlay_root()
+    assert root == fake_home / ".livepilot" / "atlas-overlays"
+
+
+def test_load_overlays_missing_root_returns_empty_index(tmp_path):
+    """Missing root → empty index, NO exception. Per spec §7."""
+    from mcp_server.atlas.overlays import load_overlays
+    idx = load_overlays(root=tmp_path / "does-not-exist")
+    assert idx.list_namespaces() == []
+
+
+def test_load_overlays_loads_simple_yaml(tmp_path):
+    from mcp_server.atlas.overlays import load_overlays
+    ns_dir = tmp_path / "elektron"
+    ns_dir.mkdir(parents=True)
+    (ns_dir / "machines.yaml").write_text(
+        "entity_id: mm_sid_6581\n"
+        "entity_type: machine\n"
+        "name: SID 6581\n"
+        "description: SID emulation\n"
+        "tags: [sid, monomachine]\n"
+    )
+    idx = load_overlays(root=tmp_path)
+    assert idx.list_namespaces() == ["elektron"]
+    assert idx.get("elektron", "mm_sid_6581").name == "SID 6581"
+
+
+def test_load_overlays_loads_list_form(tmp_path):
+    from mcp_server.atlas.overlays import load_overlays
+    ns_dir = tmp_path / "elektron"
+    ns_dir.mkdir(parents=True)
+    (ns_dir / "things.yaml").write_text(
+        "- entity_id: a\n  entity_type: machine\n  name: A\n  description: x\n"
+        "- entity_id: b\n  entity_type: machine\n  name: B\n  description: y\n"
+    )
+    idx = load_overlays(root=tmp_path)
+    assert idx.get("elektron", "a") is not None
+    assert idx.get("elektron", "b") is not None
