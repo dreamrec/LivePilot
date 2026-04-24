@@ -1,5 +1,59 @@
 # Changelog
 
+## 1.19.1 — v1.19.0 polish (April 24 2026)
+
+Patch release addressing the three "Known gaps" documented at the
+end of the v1.19.0 CHANGELOG entry. All three were cosmetic or
+observability issues — no correctness changes. 3 new tests + 1
+pre-existing test tolerance widened. Test suite 2854 → 2858 pass.
+
+### Fixes
+
+- **#1 `baseline_transport` not exposed via `compare_experiments`.**
+  The field was populated internally on `ExperimentSet` (verified
+  by unit tests) but `compare_experiments`' MCP response omitted
+  it — operators had no surface-level path to verify the
+  between-branch drift fix was actually firing. Now present on
+  every response (`None` when the experiment hasn't run yet, so
+  clients can rely on key presence and check
+  `result["baseline_transport"] is None` without `in` guards).
+
+- **#2 Tempo warning midpoint rounds to int while range is exact.**
+  Pre-v1.19.1 `compile_hybrid_brief` with disjoint tempo ranges
+  reported warning text "midpoint 108 BPM" while the returned
+  range was 105-110 (centered on 107.5). Two rounding
+  conventions — human-facing text rounded to `:0f`, machine-facing
+  range kept the exact float. Fix: `:g` format in the warning
+  produces the shortest accurate representation (107.5 stays
+  "107.5"; 128.0 renders as "128") so both surfaces agree.
+
+- **#3 `weights` display full float precision.**
+  Uniform 3-packet hybrids rendered weights as
+  `0.3333333333333333` — noisy output that contrasted with
+  `evaluation_bias.target_dimensions` values already being
+  rounded to 4 decimal places. Weights are now rounded to 4 dp
+  in the response dict (`[0.3333, 0.3333, 0.3333]`). Internal
+  computation still uses full precision; only the output is
+  rounded.
+
+### Tests added
+
+- `test_compare_experiments_surfaces_baseline_transport` — round-trip
+  seed a distinctive baseline on ExperimentSet, assert
+  `compare_experiments` surfaces all fields (is_playing, song_time,
+  track_states, captured_at_ms).
+- `test_compare_experiments_baseline_none_when_not_captured` — fresh
+  experiment has `baseline_transport: None` in the response rather
+  than an omitted key.
+- `test_tempo_warning_midpoint_matches_range_center` — regex-parse
+  the warning text and assert its numeric midpoint matches the
+  returned range's center within 0.01 BPM.
+- `test_weights_rounded_to_4dp` — uniform 3-packet weights must be
+  representable at 4 dp precision (`round(w, 4) == w`).
+
+Test suite: 2858 pass, 1 skipped. Zero regressions. `sync_metadata
+--check` clean.
+
 ## 1.19.0 — Experiment baseline + hybrid packet compilation (April 24 2026)
 
 Minor version bump. Ships two of the three open items documented in

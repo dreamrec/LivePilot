@@ -275,6 +275,37 @@ class TestHybridTempoRules:
         assert brief["tempo_hint"]["max"] == pytest.approx(130)
         assert not brief["tempo_hint"].get("disjoint")
 
+    def test_tempo_warning_midpoint_matches_range_center(self):
+        """v1.19.1 #2 — the midpoint in the warning text must equal the
+        center of the returned tempo range. Pre-v1.19.1 warning used
+        `:.0f` (int rounding) while range used exact floats, so BC+Dilla
+        produced warning '108 BPM' with range 105-110 centered on 107.5.
+        Two rounding conventions; the text and the range disagreed by 0.5.
+        """
+        from mcp_server.creative_director.hybrid import compile_hybrid_brief
+        import re
+
+        brief = compile_hybrid_brief(["basic-channel", "j-dilla"])
+        assert brief["tempo_hint"]["disjoint"] is True
+        range_center = (brief["tempo_hint"]["min"] + brief["tempo_hint"]["max"]) / 2
+
+        # Extract the midpoint value the warning reported
+        warnings = brief["warnings"]
+        assert warnings, "expected a tempo warning"
+        tempo_warning = next((w for w in warnings if "tempo" in w.lower()), None)
+        assert tempo_warning is not None
+
+        # Match the midpoint number in the warning text (may be int or float)
+        m = re.search(r"midpoint\s+(\d+(?:\.\d+)?)\s*BPM", tempo_warning)
+        assert m, f"couldn't find midpoint value in warning: {tempo_warning}"
+        warning_midpoint = float(m.group(1))
+
+        # The warning must agree with the range center within 0.01 BPM
+        assert warning_midpoint == pytest.approx(range_center, abs=0.01), (
+            f"tempo warning midpoint ({warning_midpoint}) disagrees with "
+            f"range center ({range_center})"
+        )
+
     def test_disjoint_tempo_ranges_surface_warning_and_midpoint(self):
         """BC 120-130, Dilla 85-95 → no overlap. Gap midpoint = (95+120)/2 = 107.5.
         Must surface a warning and NOT silently return the midpoint."""
@@ -302,8 +333,29 @@ class TestHybridThreePlusPackets:
         ])
         assert brief["source_packets"] == ["basic-channel", "j-dilla", "villalobos"]
         assert len(brief["weights"]) == 3
-        # Default uniform weights
-        assert all(w == pytest.approx(1.0 / 3) for w in brief["weights"])
+        # Default uniform weights — v1.19.1 rounds to 4 dp so allow 1/3
+        # to be represented as 0.3333 without breaking the "uniform" claim.
+        assert all(w == pytest.approx(1.0 / 3, abs=1e-3) for w in brief["weights"])
+
+    def test_weights_rounded_to_4dp(self):
+        """v1.19.1 #3 — weights in the response should round to 4 decimal
+        places, matching the convention target_dimensions already uses.
+        Pre-v1.19.1 three-packet uniform weights rendered as
+        `0.3333333333333333` — noisy in the brief output."""
+        from mcp_server.creative_director.hybrid import compile_hybrid_brief
+
+        brief = compile_hybrid_brief([
+            "basic-channel", "j-dilla", "villalobos",
+        ])
+        # Each weight must be representable as a 4-dp float (no trailing
+        # repeating decimals in the dict representation)
+        for w in brief["weights"]:
+            # Round-trip should be a no-op at 4 dp
+            assert w == round(w, 4), (
+                f"weight {w!r} has more than 4 dp precision"
+            )
+        # Uniform 3-packet case = 0.3333 exactly
+        assert brief["weights"] == [0.3333, 0.3333, 0.3333]
 
     def test_three_packet_deprioritize_still_intersects_properly(self):
         """With 3 packets, a family is deprioritized only if ALL THREE say so.

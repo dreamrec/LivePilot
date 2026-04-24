@@ -364,6 +364,67 @@ class TestRunExperimentWiresBaseline:
         assert len(exp.baseline_transport.track_states) == 2
         assert exp.baseline_transport.track_states[1]["mute"] is True
 
+    def test_compare_experiments_surfaces_baseline_transport(self):
+        """v1.19.1 #1 — compare_experiments must expose baseline_transport so
+        operators can verify the drift-fix is actually firing per experiment.
+
+        Pre-v1.19.1 the field was populated internally on ExperimentSet but
+        compare_experiments' return dict omitted it — no MCP-surface path to
+        verify the baseline was captured.
+        """
+        import asyncio
+        from types import SimpleNamespace
+        from mcp_server.experiment.tools import compare_experiments
+        from mcp_server.experiment import engine
+        from mcp_server.experiment.baseline import BaselineTransportState
+
+        exp = engine.create_experiment(
+            request_text="baseline observability test",
+            move_ids=["make_punchier"],
+        )
+        # Seed a distinctive baseline so we can assert it comes through
+        exp.baseline_transport = BaselineTransportState(
+            is_playing=True,
+            song_time=42.0,
+            track_states=[
+                {"index": 0, "mute": False, "solo": False, "arm": True},
+            ],
+            captured_at_ms=1234567890,
+        )
+
+        ctx = SimpleNamespace(lifespan_context={"ableton": MockAbleton()})
+        result = compare_experiments(ctx, exp.experiment_id)
+
+        assert "baseline_transport" in result
+        assert result["baseline_transport"] is not None
+        assert result["baseline_transport"]["is_playing"] is True
+        assert result["baseline_transport"]["song_time"] == pytest.approx(42.0)
+        assert result["baseline_transport"]["track_states"][0]["arm"] is True
+        assert result["baseline_transport"]["captured_at_ms"] == 1234567890
+
+    def test_compare_experiments_baseline_none_when_not_captured(self):
+        """When no baseline captured (e.g., experiment never run), field is None
+        — not absent, not a crash."""
+        import asyncio
+        from types import SimpleNamespace
+        from mcp_server.experiment.tools import compare_experiments
+        from mcp_server.experiment import engine
+
+        exp = engine.create_experiment(
+            request_text="no-baseline test",
+            move_ids=["make_punchier"],
+        )
+        # baseline_transport is None by default
+
+        ctx = SimpleNamespace(lifespan_context={"ableton": MockAbleton()})
+        result = compare_experiments(ctx, exp.experiment_id)
+
+        # Must be present in the response with value None, so clients can
+        # reliably check `result["baseline_transport"] is None` instead of
+        # needing to check for key presence first.
+        assert "baseline_transport" in result
+        assert result["baseline_transport"] is None
+
     def test_run_experiment_preserves_existing_baseline(self):
         """Second run_experiment call shouldn't re-capture (baseline is idempotent)."""
         import asyncio

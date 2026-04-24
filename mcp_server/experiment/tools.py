@@ -601,10 +601,21 @@ def compare_experiments(
             "evaluation": b.evaluation,
         }
 
+    # v1.19.1 #1 — surface baseline_transport for operator observability.
+    # Always present in the response (None when not captured) so clients
+    # can `result["baseline_transport"] is None` instead of checking for
+    # key presence first. Populated during run_experiment's first pass.
+    baseline_dict = (
+        experiment.baseline_transport.to_dict()
+        if experiment.baseline_transport is not None
+        else None
+    )
+
     return {
         "experiment_id": experiment_id,
         "request": experiment.request_text,
         "branch_count": experiment.branch_count,
+        "baseline_transport": baseline_dict,
         "ranking": [
             {
                 "rank": i + 1,

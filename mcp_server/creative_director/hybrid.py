@@ -333,9 +333,15 @@ def _compile_from_packets(
                 f"{name or 'packet'} {lo:.0f}-{hi:.0f}"
                 for lo, hi, name in tempo_ranges
             )
+            # v1.19.1 #2 — :g format keeps warning midpoint consistent with
+            # the returned range center. Pre-v1.19.1 used :.0f (int-rounded)
+            # so BC+Dilla reported 'midpoint 108 BPM' while range was
+            # 105-110 centered on 107.5 — two rounding conventions.
+            # :g gives the shortest accurate representation: 107.5 stays
+            # "107.5", 128.0 becomes "128".
             warnings.append(
                 f"Tempo ranges don't overlap ({range_desc}) — defaulting "
-                f"to midpoint {midpoint:.0f} BPM. Specify which anchor "
+                f"to midpoint {midpoint:g} BPM. Specify which anchor "
                 f"you want or pick a single packet."
             )
 
@@ -346,7 +352,10 @@ def _compile_from_packets(
     return {
         "type": "hybrid",
         "source_packets": list(packet_ids),
-        "weights": list(weights),
+        # v1.19.1 #3 — round weights to 4 dp for clean display, matching the
+        # convention target_dimensions already uses. Pre-v1.19.1 uniform
+        # 3-packet weights rendered as 0.3333333333333333 — noisy output.
+        "weights": [round(w, 4) for w in weights],
         "name": hybrid_name,
         "sonic_identity": sonic_identity,
         "reach_for": reach_for,
