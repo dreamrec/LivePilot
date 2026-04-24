@@ -1,5 +1,67 @@
 # Changelog
 
+## 1.22.1 — Bundled enrichment coverage gate (April 25 2026)
+
+Closes the one item carried from v1.22.0's atlas-separation work: a
+visibility + soft-gate for the drift between the atlas file's
+self-reported enrichment count and the YAML files on disk.
+
+### What changed
+
+Two enrichment numbers now surface in `sync_metadata --check`:
+
+- **`enriched=N`** (existing) — YAML profiles authored in `mcp_server/atlas/enrichments/`. Measures "what's available for merge."
+- **`bundled_enriched=N`** (new) — `stats.enriched_devices` from the shipped `mcp_server/atlas/device_atlas.json`. Measures "what the last scan_full_library run actually applied at build time."
+
+These measure different things. YAML count is authoring effort; bundled
+count is runtime coverage as of the atlas's last regeneration. They
+drift naturally (someone adds a YAML without re-scanning) — but until
+v1.22.1 the drift was invisible to CI.
+
+### Soft gate
+
+Warns (doesn't fail) on two conditions:
+
+1. **`bundled_enriched == 0`** with YAMLs on disk — scanner never ran
+   or failed completely. Most likely the repo's bundled atlas got
+   accidentally emptied or mis-committed.
+2. **`bundled_enriched / yaml_count < 50%`** — scanner truncated or had
+   severe pack-coverage failures. Current shipped atlas is 87/120 = 72%
+   coverage (healthy — the 33 orphan gap is the miditool-domain YAMLs
+   that Live's browser scanner can't see).
+
+Why soft: the relationship `yaml >= bundled` is only true in
+single-pack-scan scenarios. Multi-category duplication (native +
+max_for_live + user_library for the same device_id) can push
+`bundled > yaml`. Strict equality would produce false alarms. The soft
+gate catches the two real failure modes while staying silent on healthy
+cases.
+
+### Output format
+
+```
+Source of truth: version=1.22.1, tools=430, domains=53, bridge_cmds=31,
+                 enriched=120, bundled_enriched=87, genres=4, moves=44,
+                 analyzer_tools=38, atlas_devices=5264
+```
+
+Warnings (if any) print above the fail/pass line with a ⚠️ header,
+separate from the issue list. The exit code is unchanged — warnings
+don't fail CI.
+
+### Tests
+
+7 new TDD tests in `tests/test_claim_consistency.py`. Full suite: 3143
+pass (3136 prior + 7 new), 1 skipped.
+
+### Why this is a patch, not a feature
+
+Pure CI-gate tightening. Zero user-visible runtime behavior change;
+the only observable delta is one additional field in the banner plus
+the possibility of a soft-warning line during `sync_metadata --check`.
+No new tools, no atlas behavior change. The v1.22.0 user/bundled split
+is the feature release; v1.22.1 is its mechanical follow-through.
+
 ## 1.22.0 — User atlas separation: ~/.livepilot/atlas/ (April 25 2026)
 
 First v1.22 release. Splits the device atlas into two files that serve
