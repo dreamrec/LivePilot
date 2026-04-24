@@ -202,7 +202,13 @@ class TestSetTrackRoutingMove:
         assert move is not None
         assert move.family == "mix"
 
-    def test_compiler_emits_single_routing_step(self):
+    def test_compiler_emits_single_routing_step_in_wire_format(self):
+        """BUG-2026-04-24 (same family as the batch_set_parameters bug):
+        the MCP tool set_track_routing renames
+        output_routing_type → output_type before ableton.send_command.
+        Compiled steps must emit the wire-format keys directly because
+        the remote_command backend bypasses the MCP tool layer.
+        Authoritative names: remote_script/LivePilot/mixing.py:227."""
         move = get_move("set_track_routing")
         kernel = {
             "seed_args": {
@@ -216,9 +222,17 @@ class TestSetTrackRoutingMove:
         plan = move_compiler.compile(move, kernel)
         routing_steps = [s for s in plan.steps if s.tool == "set_track_routing"]
         assert len(routing_steps) == 1
-        assert routing_steps[0].params["track_index"] == 0
-        assert routing_steps[0].params["output_routing_type"] == "Sends Only"
-        assert routing_steps[0].params["output_routing_channel"] == "Post Mixer"
+        params = routing_steps[0].params
+        assert params["track_index"] == 0
+        # Wire-format keys (what Ableton reads):
+        assert params["output_type"] == "Sends Only"
+        assert params["output_channel"] == "Post Mixer"
+        # Ergonomic keys MUST NOT leak through:
+        assert "output_routing_type" not in params, (
+            "compiled step leaked ergonomic key output_routing_type — "
+            "Ableton would silently ignore it"
+        )
+        assert "output_routing_channel" not in params
 
     def test_compiler_requires_output_fields(self):
         move = get_move("set_track_routing")

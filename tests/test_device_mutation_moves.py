@@ -52,10 +52,15 @@ class TestConfigureDeviceMove:
         assert params["track_index"] == 0
         assert params["device_index"] == 1
 
-    def test_compiler_translates_param_overrides_to_batch_format(self):
-        """batch_set_parameters expects a list of {parameter_name, value} dicts.
-        The compiler must normalize the ergonomic ``param_overrides`` dict
-        into that shape."""
+    def test_compiler_translates_param_overrides_to_wire_format(self):
+        """BUG-2026-04-24: compiled plans use the remote_command backend,
+        which calls ableton.send_command() DIRECTLY — bypassing the MCP
+        tool's _normalize_batch_entry that renames ``parameter_name`` to
+        ``name_or_index``. Ableton's Remote Script
+        (remote_script/LivePilot/devices.py:149) reads ``name_or_index``
+        exclusively. Emitting ``parameter_name`` gets silently dropped
+        and the handler errors out with 'Parameter None not found'.
+        Compiled steps MUST emit the wire format directly."""
         move = get_move("configure_device")
         kernel = {
             "seed_args": {
@@ -69,7 +74,15 @@ class TestConfigureDeviceMove:
         plan = move_compiler.compile(move, kernel)
         batch = [s for s in plan.steps if s.tool == "batch_set_parameters"][0]
         parameters = batch.params["parameters"]
-        by_name = {p["parameter_name"]: p["value"] for p in parameters}
+        for p in parameters:
+            assert "name_or_index" in p, (
+                f"expected wire-format key 'name_or_index', got {list(p.keys())}"
+            )
+            assert "parameter_name" not in p, (
+                "compiler must NOT emit parameter_name — that's the MCP tool "
+                "input field, which the compiled-step path bypasses"
+            )
+        by_name = {p["name_or_index"]: p["value"] for p in parameters}
         assert by_name == {"Freq": 440.0, "Q": 0.7}
 
     def test_compiler_rejects_empty_param_overrides(self):

@@ -175,6 +175,13 @@ def _compile_configure_send_architecture(move: SemanticMove, kernel: dict) -> Co
 def _compile_set_track_routing(move: SemanticMove, kernel: dict) -> CompiledPlan:
     args = kernel.get("seed_args") or {}
     track_index = args.get("track_index")
+    # Seed_args keeps the ergonomic ``output_routing_type`` /
+    # ``output_routing_channel`` names (matching the MCP tool's public
+    # surface, so the director can type them naturally). But compiled
+    # steps must use the wire-format names — the remote_command backend
+    # bypasses the MCP tool's rename at mcp_server/tools/mixing.py:230
+    # (output_routing_type → output_type). Ableton's Remote Script at
+    # remote_script/LivePilot/mixing.py:227 keys on the wire format.
     out_type = args.get("output_routing_type")
     out_channel = args.get("output_routing_channel")
 
@@ -189,9 +196,9 @@ def _compile_set_track_routing(move: SemanticMove, kernel: dict) -> CompiledPlan
 
     params: dict = {"track_index": track_index}
     if out_type is not None:
-        params["output_routing_type"] = str(out_type)
+        params["output_type"] = str(out_type)
     if out_channel is not None:
-        params["output_routing_channel"] = str(out_channel)
+        params["output_channel"] = str(out_channel)
 
     step = CompiledStep(
         tool="set_track_routing",

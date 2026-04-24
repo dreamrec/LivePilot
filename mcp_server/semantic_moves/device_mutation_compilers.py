@@ -53,9 +53,14 @@ def _compile_configure_device(move: SemanticMove, kernel: dict) -> CompiledPlan:
             "is a different move)"
         ])
 
-    # Normalize into the {parameter_name, value} shape batch_set_parameters expects
+    # WIRE-FORMAT NOTE: compiled steps use the remote_command backend,
+    # which calls ableton.send_command() directly — bypassing the MCP
+    # tool's ergonomic rename at mcp_server/tools/devices.py:292
+    # (_normalize_batch_entry). Ableton's Remote Script handler
+    # (remote_script/LivePilot/devices.py:149) reads `name_or_index`
+    # exclusively. Emit that key directly.
     parameters = [
-        {"parameter_name": str(name), "value": value}
+        {"name_or_index": str(name), "value": value}
         for name, value in overrides.items()
     ]
 
@@ -69,7 +74,7 @@ def _compile_configure_device(move: SemanticMove, kernel: dict) -> CompiledPlan:
         description=(
             f"Configure device at track {track_index}, device_index {device_index} — "
             f"set {len(parameters)} parameter(s): "
-            f"{', '.join(p['parameter_name'] for p in parameters)}"
+            f"{', '.join(p['name_or_index'] for p in parameters)}"
         ),
         verify_after=True,
         backend="remote_command",
