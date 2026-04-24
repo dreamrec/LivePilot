@@ -279,3 +279,111 @@ def test_tool_count_no_false_positive_on_year_prose(sync_metadata, tmp_path, mon
     assert not issues, (
         f"'the' filler must NOT match (false-positive guard); got: {issues}"
     )
+
+
+# ---------------------------------------------------------------------------
+# v1.22.1 — bundled enrichment coverage gate
+#
+# The bundled atlas file (mcp_server/atlas/device_atlas.json) self-reports
+# ``stats.enriched_devices`` — how many devices received enrichment during
+# the LAST scan_full_library run that produced the shipped atlas. This
+# number can drift silently from the YAML file count on disk: somebody
+# adds an enrichment YAML, nobody re-runs the scan, and the bundled JSON
+# still reports the old tally.
+#
+# v1.22.1 adds get_bundled_enriched_device_count() + a soft coverage gate
+# that surfaces both numbers in the banner and warns if the bundled count
+# is suspiciously low (0, or < 50% of YAML count — strong signal the
+# scanner truncated silently or failed altogether).
+# ---------------------------------------------------------------------------
+
+
+def test_get_bundled_enriched_device_count_reads_shipped_json(sync_metadata):
+    """The getter reads stats.enriched_devices from the repo's bundled
+    atlas. Must be a positive integer — if it's 0 the bundled atlas is
+    broken or was never scanned (which the soft gate catches)."""
+    count = sync_metadata.get_bundled_enriched_device_count()
+    assert isinstance(count, int)
+    assert count >= 0
+    # Sanity: the current shipped atlas should report at least some
+    # enriched devices (else someone shipped an empty/broken atlas).
+    assert count > 0, (
+        "bundled atlas reports 0 enriched devices — either "
+        "mcp_server/atlas/device_atlas.json is broken or was never "
+        "scanned. Run scan_full_library against a stock Ableton install "
+        "and regenerate."
+    )
+
+
+def test_get_bundled_enriched_handles_missing_file(
+    sync_metadata, tmp_path, monkeypatch
+):
+    """If the bundled atlas is missing entirely (e.g. pre-build state),
+    the getter must return 0 — not crash. This lets the rest of
+    sync_metadata still run usefully."""
+    monkeypatch.setattr(sync_metadata, "TOOLS_ROOT", tmp_path)
+    count = sync_metadata.get_bundled_enriched_device_count()
+    assert count == 0
+
+
+def test_get_bundled_enriched_handles_malformed_json(
+    sync_metadata, tmp_path, monkeypatch
+):
+    """Malformed JSON in the atlas file: return 0, don't crash.
+    Safety against mid-write crashes or manual edits."""
+    atlas_dir = tmp_path / "atlas"
+    atlas_dir.mkdir()
+    (atlas_dir / "device_atlas.json").write_text("{ not valid json")
+    monkeypatch.setattr(sync_metadata, "TOOLS_ROOT", tmp_path)
+    count = sync_metadata.get_bundled_enriched_device_count()
+    assert count == 0
+
+
+def test_check_bundled_enrichment_coverage_passes_when_healthy(
+    sync_metadata, monkeypatch
+):
+    """When bundled enriched count is within a reasonable fraction of
+    the YAML count, no warning is raised. 'Reasonable' is coverage
+    >= 50% (empirically: bundled scans that missed more than half the
+    YAMLs are the broken ones worth flagging)."""
+    # Synthetic: 100 YAMLs, 80 bundled — 80% coverage, healthy.
+    monkeypatch.setattr(sync_metadata, "get_enriched_device_count", lambda: 100)
+    monkeypatch.setattr(sync_metadata, "get_bundled_enriched_device_count", lambda: 80)
+    warnings = sync_metadata.check_bundled_enrichment_coverage()
+    assert warnings == [], f"Expected no warnings for 80% coverage; got: {warnings}"
+
+
+def test_check_bundled_enrichment_coverage_warns_on_zero(
+    sync_metadata, monkeypatch
+):
+    """Bundled count of 0 means the scan never ran or failed completely.
+    Raise a warning so CI surfaces it."""
+    monkeypatch.setattr(sync_metadata, "get_enriched_device_count", lambda: 120)
+    monkeypatch.setattr(sync_metadata, "get_bundled_enriched_device_count", lambda: 0)
+    warnings = sync_metadata.check_bundled_enrichment_coverage()
+    assert warnings, "Expected warning when bundled count is 0"
+    assert "0" in warnings[0]
+
+
+def test_check_bundled_enrichment_coverage_warns_on_low_coverage(
+    sync_metadata, monkeypatch
+):
+    """If bundled matched < 50% of YAML count, the bundled scan was
+    likely truncated or broken. Raise a warning."""
+    # 120 YAMLs, 40 bundled — 33% coverage, suspicious.
+    monkeypatch.setattr(sync_metadata, "get_enriched_device_count", lambda: 120)
+    monkeypatch.setattr(sync_metadata, "get_bundled_enriched_device_count", lambda: 40)
+    warnings = sync_metadata.check_bundled_enrichment_coverage()
+    assert warnings, "Expected warning when coverage is below 50%"
+    assert "40" in warnings[0] and "120" in warnings[0]
+
+
+def test_check_bundled_enrichment_coverage_skips_when_yaml_count_zero(
+    sync_metadata, monkeypatch
+):
+    """If YAML count is 0 (pre-authoring state), don't divide by zero
+    and don't warn. The gate is meaningful only when YAMLs exist."""
+    monkeypatch.setattr(sync_metadata, "get_enriched_device_count", lambda: 0)
+    monkeypatch.setattr(sync_metadata, "get_bundled_enriched_device_count", lambda: 0)
+    warnings = sync_metadata.check_bundled_enrichment_coverage()
+    assert warnings == []

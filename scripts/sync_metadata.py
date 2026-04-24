@@ -57,6 +57,92 @@ def get_enriched_device_count() -> int:
     )
 
 
+def get_bundled_enriched_device_count() -> int:
+    """Read ``stats.enriched_devices`` from the bundled atlas JSON.
+
+    Added in v1.22.1. This number reflects how many devices received
+    enrichment during the scan_full_library run that produced the
+    CURRENT ``mcp_server/atlas/device_atlas.json`` in the repo. It's
+    orthogonal to ``get_enriched_device_count()`` which counts YAML
+    files on disk:
+
+    - YAML count = authoring effort (what's available)
+    - Bundled count = runtime coverage at build time (what the last
+      scan actually applied)
+
+    The two can drift if someone adds a YAML without re-running the
+    scan against a stock Ableton install. ``check_bundled_enrichment_
+    coverage()`` surfaces the drift as a soft warning.
+
+    Returns 0 on missing file, malformed JSON, or missing stats key —
+    the soft gate catches these cases and warns, rather than crashing
+    the whole sync_metadata run.
+    """
+    import json
+    atlas_path = TOOLS_ROOT / "atlas" / "device_atlas.json"
+    if not atlas_path.exists():
+        return 0
+    try:
+        data = json.loads(atlas_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return 0
+    if not isinstance(data, dict):
+        return 0
+    stats = data.get("stats")
+    if not isinstance(stats, dict):
+        return 0
+    count = stats.get("enriched_devices", 0)
+    if not isinstance(count, int):
+        return 0
+    return count
+
+
+def check_bundled_enrichment_coverage() -> list[str]:
+    """Soft gate: warn if the bundled atlas's enrichment coverage looks
+    broken relative to the YAML files on disk.
+
+    Added in v1.22.1. Does NOT fail the sync_metadata run — warnings
+    are printed alongside issues but the exit code is unchanged. The
+    rationale: bundled count and YAML count MEASURE DIFFERENT THINGS
+    (runtime coverage at build time vs authoring effort), so strict
+    equality would produce false alarms whenever someone adds a YAML
+    that targets a pack the scanner doesn't walk. But the SHAPE of the
+    relationship — "bundled should be a non-trivial fraction of YAML"
+    — catches the two real failure modes: scanner truncation
+    (``bundled == 0``) and scanner partial-failure (``bundled ≪ yaml``).
+
+    Threshold: warn if bundled < 50% of YAML count. Empirically, the
+    v1.21.x-era bundled atlas shipped with ``87/120 = 72%`` coverage
+    (healthy despite the orphan gap from 33 miditool-domain YAMLs that
+    the browser scanner can't see); a truncated scan typically shows
+    < 20% coverage.
+    """
+    yaml_count = get_enriched_device_count()
+    bundled_count = get_bundled_enriched_device_count()
+    if yaml_count == 0:
+        # No YAMLs authored yet — nothing to compare against. Don't warn.
+        return []
+    warnings: list[str] = []
+    if bundled_count == 0:
+        warnings.append(
+            f"  bundled atlas reports 0 enriched devices (YAML count: "
+            f"{yaml_count}) — mcp_server/atlas/device_atlas.json may be "
+            f"broken or never-scanned. Run scan_full_library against a "
+            f"stock Ableton install and commit the updated baseline."
+        )
+        return warnings
+    coverage = bundled_count / yaml_count
+    if coverage < 0.5:
+        warnings.append(
+            f"  bundled atlas has {bundled_count}/{yaml_count} enrichment "
+            f"coverage ({coverage:.0%}) — below the 50% soft threshold. "
+            f"The bundled scan likely truncated or missed most YAMLs. "
+            f"Re-run scan_full_library against a stock Ableton install "
+            f"and commit the updated baseline."
+        )
+    return warnings
+
+
 def get_genre_default_count() -> int:
     """Count keys in composer.prompt_parser.GENRE_DEFAULTS.
 
@@ -713,14 +799,26 @@ def main():
     analyzer_tool_count = get_analyzer_tool_count()
     # v1.21.3 audit-response #3 addition:
     atlas_device_count = get_atlas_device_count()
+    # v1.22.1 addition:
+    bundled_enriched_count = get_bundled_enriched_device_count()
 
     print(
         f"Source of truth: version={version}, tools={tool_count}, "
         f"domains={domain_count}, bridge_cmds={bridge_count}, "
-        f"enriched={enriched_count}, genres={genre_count}, "
-        f"moves={move_count}, analyzer_tools={analyzer_tool_count}, "
-        f"atlas_devices={atlas_device_count}"
+        f"enriched={enriched_count}, bundled_enriched={bundled_enriched_count}, "
+        f"genres={genre_count}, moves={move_count}, "
+        f"analyzer_tools={analyzer_tool_count}, atlas_devices={atlas_device_count}"
     )
+
+    # v1.22.1: soft coverage gate — warns (doesn't fail) if the bundled
+    # atlas's runtime enrichment coverage is suspiciously low relative
+    # to the YAML files on disk. Print warnings ABOVE the fail/pass line
+    # so they're visible regardless of exit code.
+    coverage_warnings = check_bundled_enrichment_coverage()
+    if coverage_warnings:
+        print(f"\n⚠️  {len(coverage_warnings)} soft warning(s):")
+        for w in coverage_warnings:
+            print(w)
 
     if mode == "--fix":
         fixed = (
