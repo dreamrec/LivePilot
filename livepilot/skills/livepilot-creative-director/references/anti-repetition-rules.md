@@ -5,22 +5,45 @@ that breaks pattern repetition, because LLM-driven generation collapses
 to the most-likely completion by default — and "most-likely" is almost
 always "what I did last time."
 
-## Ledger-state inference fallback (v1.18.1)
+## Ledger-state inference fallback
 
-The detection mechanisms below (`get_last_move`, `memory_list`) ONLY
-see moves that went through `apply_semantic_move` or `commit_experiment`.
-If a prior Phase 6 executed via raw tool calls WITHOUT an
-`add_session_memory` ledger marker (per director SKILL.md Phase 6
-ledger discipline), the ledger will appear empty even though creative
-work happened.
+### v1.20 update: DEPRECATED in favor of the semantic-move ledger
 
-**Fallback when `get_last_move` returns `{}` and `memory_list` shows
-no recent creative entries**: perform session-state inference. Compare
-the current session state (track count, return track device chains,
-clip slot contents) against a naive "blank session" baseline. Any
-non-default device loadout or non-empty return track suggests recent
-creative work that the ledger missed. Infer the move family from
-what's loaded:
+The detection mechanisms below (`get_last_move`, `memory_list`) see
+every move executed through `apply_semantic_move` or
+`commit_experiment`. As of v1.20, the director SKILL.md Phase 6
+defaults to these two tools — the pre-v1.20 "raw tools + manual
+`add_session_memory` marker" path is now the ESCAPE HATCH only, used
+when no semantic move covers the pattern (see
+`phase-6-execution.md` §escape-hatch policy).
+
+**Expected state:** the ledger is populated for every committed
+creative move. `get_last_move` returns the most recent; `memory_list`
+returns the recent window. No inference needed.
+
+**State-inference is DEPRECATED** — kept below for the narrow case
+where:
+
+  1. Phase 6 used the escape hatch, AND
+  2. BOTH the `move_executed` marker AND the `tech_debt` log were
+     accidentally skipped.
+
+That is a director-discipline bug, not a design state to route around.
+Fix it at the source (policy: v1.20 `phase-6-execution.md` §escape
+hatch — the two memory writes are MANDATORY). Do NOT use state-
+inference as a general-purpose substitute for the ledger; the
+heuristic can double-count moves that ARE already in the ledger,
+which inflates recency scores and over-penalizes families.
+
+### The heuristic (retained for emergency-only use)
+
+**Only when ALL of: `get_last_move()=={}`, `memory_list(limit=10)` is
+empty, AND you have visual evidence Phase 6 ran via escape hatch
+without logs.** Compare the current session state (track count,
+return track device chains, clip slot contents) against a naive
+"blank session" baseline. Any non-default device loadout or non-empty
+return track suggests recent creative work that the ledger missed.
+Infer the move family from what's loaded:
 
 | Session-state signal | Inferred recent family |
 |---|---|
@@ -31,9 +54,9 @@ what's loaded:
 | New scenes / renamed scenes | `arrangement` (structural) |
 
 State inference is a best-effort fallback, not a replacement for the
-ledger. Director SHOULD use `add_session_memory` after raw-tool
-execution to populate the ledger properly — the fallback exists to
-reduce blast radius when Phase 6 discipline was skipped.
+ledger. When you find yourself reaching for it, log a `tech_debt`
+entry describing WHY you had to — the root-cause fix belongs in
+Phase 6 discipline, not in propagating inference.
 
 ## Mandatory pre-generation reads
 

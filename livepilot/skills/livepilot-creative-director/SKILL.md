@@ -176,6 +176,45 @@ changes directly from this skill.
 - Rhythmic changes → `livepilot-notes`
 - Harmonic changes → `livepilot-composition-engine`
 
+**Default execution surface (v1.20+): `apply_semantic_move` or
+`commit_experiment`.** These two tools populate the action ledger
+automatically — no manual `add_session_memory(move_executed)` required.
+Anti-repetition (Phase 3) reads the ledger via `get_last_move` and
+`memory_list`; as long as the dispatched plan used one of these two
+tools, the family/target signature is captured for the next turn's
+recency check.
+
+Pick the right one:
+
+- `apply_semantic_move(move_id, mode, args)` — when a single semantic
+  move matches the plan. `args` carries the user's seed targets
+  (return_track_index, device_chain, notes, etc. — see
+  `references/phase-6-execution.md` for each move's contract).
+- `commit_experiment(winner)` — when divergence produced multiple
+  candidates and the user / taste-ranker picked one.
+
+**v1.20 Phase 6 decision table.** Look up the pattern, use the listed
+move. "ESCAPE HATCH" means no semantic move yet covers this pattern —
+drop to raw tools under the policy below.
+
+| Pattern | Move | Notes |
+|---|---|---|
+| Load device on track | `find_and_load_device` + `add_*_device_*` family | Pre-v1.20, unchanged |
+| Load device chain on a RETURN | `build_send_chain` | NEW — v1.20 |
+| Set multiple params on a device | `configure_device` | NEW — replaces batch `set_device_parameter` |
+| Delete a device (with audit reason) | `remove_device` | NEW — reason auto-logged to session memory |
+| Load a chord-source MIDI clip | `load_chord_source` | NEW — creates + names + voices in one move |
+| Add one pad to a Drum Rack | `create_drum_rack_pad` | NEW — Dilla-style kit building |
+| Set send levels across tracks | `configure_send_architecture` | NEW — one move, N sends |
+| Rewire track output routing | `set_track_routing` | NEW — e.g., "Sends Only" bus |
+| Configure a groove on clips | `configure_groove` | NEW — assign + tune timing_amount |
+| Set scene metadata (name/color/tempo) | `set_scene_metadata` | NEW — conditional per-field |
+| Rename / color a track | `set_track_metadata` | NEW — bundled rename + color |
+| Any other pattern | **ESCAPE HATCH (see policy below)** | v1.21+ closes these as patterns accumulate |
+
+Full contract (seed_args shape, emitted step sequence, verification
+reads) for every NEW move: `references/phase-6-execution.md`.
+
 **Affordance lookup:** before executing any plan that LOADS a device,
 check if the device has an affordance YAML in
 `livepilot-core/references/affordances/devices/<slug>.yaml`. Use it
@@ -183,22 +222,34 @@ to pick parameter ranges (subtle / moderate / aggressive) that match
 the brief's `novelty_budget`, to identify the right `pairings` chain,
 and to queue the required `remeasure` diagnostics for Phase 7. See
 `livepilot-core/references/affordances/_schema.md` for the packet
-structure.
+structure. The affordance's resolved parameter dict is the ergonomic
+input to `configure_device` (via `apply_semantic_move("configure_device", args={"param_overrides": ...})`).
 
-**Brief compliance check (v1.18.3):** before any tool call that could
-plausibly violate the brief's `anti_patterns` or `locked_dimensions`,
-call `check_brief_compliance(brief, tool_name, tool_args)`. The tool
-returns `{"ok": bool, "violations": [...]}` — best-effort keyword
-heuristic, NOT semantic understanding. Use it especially for:
+**Brief compliance check (v1.18.3, still required under v1.20):**
+before any tool call that could plausibly violate the brief's
+`anti_patterns` or `locked_dimensions`, call
+`check_brief_compliance(brief, tool_name, tool_args)`. This fires
+even when you dispatch via `apply_semantic_move` — the compliance
+check inspects each compiled plan step's per-tool signature against
+the brief. A compiled plan CAN violate the brief (e.g., a
+`configure_device` preset that reaches for "bright top-end" when the
+brief forbids it). Check each step.
 
-- `set_device_parameter` calls on EQ/saturation/filter parameters
-  (catches "bright top-end", "aggressive transient" style anti_patterns)
-- `load_browser_item` for new devices (check against `avoid` device
-  lists in concept packets)
-- `create_scene` / `set_scene_*` / `refresh_repeated_section`
-  (catches `locked_dimensions: [structural]` violations)
-- `add_notes` / `modify_notes` / `quantize_clip` when
-  `locked_dimensions: [rhythmic]` is set
+The tool returns `{"ok": bool, "violations": [...]}` — best-effort
+keyword heuristic, NOT semantic understanding. Use it especially for:
+
+- `set_device_parameter` / `batch_set_parameters` calls on EQ /
+  saturation / filter parameters (catches "bright top-end",
+  "aggressive transient" style anti_patterns)
+- `load_browser_item` / `find_and_load_device` for new devices
+  (check against `avoid` device lists in concept packets)
+- `create_scene` / `set_scene_*` / `set_scene_metadata` /
+  `refresh_repeated_section` (catches `locked_dimensions:
+  [structural]` violations)
+- `add_notes` / `modify_notes` / `quantize_clip` / `assign_clip_groove`
+  when `locked_dimensions: [rhythmic]` is set
+- `set_track_routing` (changing a routing to "Sends Only" can silence
+  a track — treat as structural under locked_dimensions)
 
 When a violation fires:
 1. **Do NOT auto-proceed.** Surface the violation to the user with
@@ -211,39 +262,54 @@ When a violation fires:
 
 The check is STATELESS — you pass the brief each time. Empty brief
 (no anti_patterns, no locked_dimensions) always returns ok=True.
-Full session-state active-brief storage is v1.19 scope.
 
-**Ledger-marker discipline (v1.18.1):** the action ledger (`get_last_move`,
-`memory_list`) is populated by `apply_semantic_move` and `commit_experiment`.
-When Phase 6 executes via raw tool calls (`set_device_parameter`,
-`load_browser_item`, `set_track_send`, etc.) — for example when affordance
-parameters are being applied directly — NOTHING gets written to the ledger
-automatically. This blinds subsequent anti-repetition detection on the
-next creative turn.
+**Escape hatch policy (v1.20).** When no semantic move in the
+decision table covers the pattern, raw tools remain permitted — BUT
+only with the following mandatory logging contract. The hatch exists
+because v1.20 ships a phased cutover, not a hard cutover; v1.21+
+closes patterns as they accumulate.
 
-**Mandatory ledger marker for raw-tool execution:** after a raw-tool
-execution batch, call `add_session_memory` with a one-line summary
-covering the move's family + target + brief identity:
+Using the hatch requires ALL THREE, in this order:
 
-```
-add_session_memory(
-    category="move_executed",
-    content="device_creation:return-A dub-chain (Echo + Auto Filter + "
-            "Convolution Reverb) — brief: Basic Channel dub architecture",
-    engine="creative_director",
-)
-```
+1. The raw tool call itself (e.g., `set_device_parameter(...)`).
+2. `add_session_memory(category="move_executed", content="...")` —
+   one-line ledger entry covering family + target + brief identity.
+   Without this, the next creative turn's anti-repetition read goes
+   blind (get_last_move / memory_list see nothing).
+3. `add_session_memory(category="tech_debt", content="no semantic_move
+   for <pattern>", ...)` — tracking log that says "a semantic move
+   should exist for this." The content should name the pattern
+   precisely enough that a future commit can add the move.
 
-Keep the `content` field terse but include: family (from move-family-
-diversity-rule.md), target (track / return / master), and the brief's
-identity sentence. This is the minimum-effective ledger marker until
-v1.19 routes all director execution through semantic_move commits.
+**Both category="move_executed" AND category="tech_debt" are
+required** — they serve different consumers:
 
-Prefer `apply_semantic_move` or `commit_experiment` when a semantic-move
-exists that matches the plan — they populate the ledger for free.
-`add_session_memory` is the fallback when no semantic-move matches
-(e.g., device-creation sequences, custom preset loads, signal-chain
-architecture).
+- `move_executed` is consumed by anti-repetition (recency table,
+  Phase 3 hard-bias rule).
+- `tech_debt` is consumed by release planning — v1.21 scope is driven
+  by the tech_debt log's contents. If patterns accumulate with
+  identical phrasing, they graduate to semantic moves in the next
+  minor release.
+
+After the hatch write, propose adding the missing semantic move in
+a follow-up turn. Do NOT silently continue using the hatch — that's
+how the cutover stalls.
+
+**Default-preference rule.** In doubt between `apply_semantic_move`
+and the escape hatch: default to `apply_semantic_move`. Skip to the
+hatch ONLY if the decision table has no row for the pattern AND
+`list_semantic_moves(domain="<family>")` confirms no existing move
+matches. The `apply_semantic_move` + `commit_experiment` pair is the
+production-line; the hatch is an explicitly-logged branch, not a
+shortcut.
+
+**State-inference fallback is DEPRECATED** (see
+`references/anti-repetition-rules.md` §v1.20 update). Pre-v1.20, the
+director used "scan loaded devices + non-default mixer values to
+guess recent moves" when `memory_list` came back empty. With
+`apply_semantic_move` as default, that heuristic routes around the
+real ledger and can double-count. Keep it documented ONLY for the
+escape-hatch case where both memory entries were accidentally dropped.
 
 ### Phase 7 — Evaluate (critics fire HERE, not earlier)
 
