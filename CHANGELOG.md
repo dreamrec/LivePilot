@@ -1,5 +1,114 @@
 # Changelog
 
+## 1.22.0 — User atlas separation: ~/.livepilot/atlas/ (April 25 2026)
+
+First v1.22 release. Splits the device atlas into two files that serve
+different roles — a long-standing ambiguity that finally bit hard enough
+to be worth fixing at minor-version scope.
+
+### What changed
+
+**New: `~/.livepilot/atlas/device_atlas.json`** — the **user atlas**.
+Written by `scan_full_library` on your machine. Reflects YOUR installed
+packs, User Library, and plugins. Lives in the user-data directory
+(same convention as `~/.livepilot/memory/`) so `npm install livepilot`
+upgrades can't blow it away.
+
+**Unchanged: `mcp_server/atlas/device_atlas.json`** — the **bundled
+baseline**. Ships with the package (still 5264 devices, 120 enriched
+— stock Ableton 12 Suite inventory). Gives fresh installs a functional
+atlas before any personalized scan has run.
+
+**Resolution** at load time: user atlas wins if present, else bundled
+baseline falls through. Writes **always** go to the user path; the
+bundled path is read-only from the scanner's perspective.
+
+### Why this matters
+
+Prior to v1.22.0, the single `mcp_server/atlas/device_atlas.json` file
+served three conflicting roles — repo seed, personal scan cache, and
+runtime index. Three bugs resulted:
+
+1. **`npm install livepilot` wiped personal scans.** Every package
+   update overwrote the installed atlas with the bundled baseline. Users
+   who had carefully scanned their library (30-90 seconds per scan) lost
+   that work on every upgrade with no warning.
+2. **Dev installs polluted the repo.** Contributors running
+   LivePilot from a git checkout would scan their library (to test atlas
+   tools against live Ableton) and accidentally commit their personal
+   scan — pack names, user-library previews — to the public repo. This
+   happened once in the v1.21.x cycle and was the proximate trigger for
+   v1.22.
+3. **The "enriched" count ambiguity.** A single atlas file couldn't
+   honestly answer "how many devices are enriched?" — the right number
+   differed depending on whether you meant the bundled baseline (87 per
+   the scanner's last truncated pass), YAML files authored on disk (120),
+   or runtime coverage including native/M4L duplicates (137+ on a
+   fully-scanned install). The user/bundled split clarifies this by
+   letting each file carry its own honest count.
+
+### Migration for existing users
+
+Users with a personalized scan in `mcp_server/atlas/device_atlas.json`
+(most dev-install contributors) can migrate in one command:
+
+```bash
+mkdir -p ~/.livepilot/atlas
+cp "$(python3 -c 'import mcp_server.atlas; print(mcp_server.atlas.BUNDLED_ATLAS_PATH)')" \
+   ~/.livepilot/atlas/device_atlas.json
+# Then optionally restore the bundled baseline to its shipped state:
+git -C $(python3 -c 'import mcp_server.atlas, pathlib; print(pathlib.Path(mcp_server.atlas.__file__).parents[2])') \
+    checkout mcp_server/atlas/device_atlas.json
+```
+
+Users on the npm-installed path (no personalized scan yet) need nothing
+— the next `scan_full_library` call will write to the new user path
+automatically.
+
+### Code changes
+
+- `mcp_server/atlas/__init__.py` — new module-level constants
+  `BUNDLED_ATLAS_PATH`, `USER_ATLAS_DIR`, `USER_ATLAS_PATH`, and
+  function `_resolve_atlas_path()`. Existing `ATLAS_PATH` kept as a
+  backward-compat alias pointing at the resolved value.
+- `mcp_server/atlas/tools.py::scan_full_library` — writes to
+  `USER_ATLAS_PATH` and creates the user-data directory on demand.
+  Enrichments still read from the bundled package (they're authored
+  in-repo under `mcp_server/atlas/enrichments/`).
+
+### Tests
+
+8 new TDD regression tests in `tests/test_atlas_user_override.py`:
+
+- `test_bundled_path_is_in_package_dir`
+- `test_user_path_is_in_home_dir`
+- `test_resolver_returns_user_path_when_present`
+- `test_resolver_falls_back_to_bundled_when_user_atlas_missing`
+- `test_atlas_manager_loads_from_user_path_when_present`
+- `test_atlas_manager_falls_back_to_bundled_when_user_atlas_missing`
+- `test_scan_full_library_writes_to_user_path`
+- `test_user_atlas_dir_created_if_missing`
+
+Full suite: 3136 pass (3128 prior + 8 new), 1 skipped.
+
+### Documentation
+
+- `docs/manual/getting-started.md` — new "Step 5 (optional): Personalize
+  the device atlas" section.
+- `docs/manual/dev-install.md` — new "3a. User atlas vs bundled atlas"
+  subsection, critical for contributors.
+- `docs/manual/device-atlas.md` — header callout on the two-file split.
+- `CLAUDE.md` + `README.md` — short pointers to the new resolver.
+
+### Carried to future releases
+
+The atlas schema-canonicalization originally deferred from the v1.21.2
+audit is now **partially closed**: the user/bundled split makes the
+"which number counts as enriched?" question honest per-file, but the
+sync_metadata gate for `stats.enriched_devices` vs YAML file count
+hasn't been added. Deferred to a future patch because it's orthogonal
+to the user-atlas split.
+
 ## 1.21.4 — v1.21.2 audit carry-over: slashed-compound filler + dev-install runbook (April 25 2026)
 
 Ships two items the v1.21.2 audit #2 deferred to v1.22 but that turned
