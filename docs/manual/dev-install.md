@@ -96,6 +96,31 @@ alongside (or instead of) the published `LivePilot` entry — tool calls to
 `LivePilot-dev` route through your local Python. The published entry still
 works in parallel; nothing here touches it.
 
+## 3a. User atlas vs bundled atlas (v1.22.0+)
+
+Your personal atlas lives at `~/.livepilot/atlas/device_atlas.json` —
+**not** inside the repo. The repo's `mcp_server/atlas/device_atlas.json`
+is the bundled baseline that new installs inherit. `AtlasManager` prefers
+the user path if it exists, else falls back to the bundled baseline.
+
+When you run `scan_full_library(force=true)` against live Ableton, it
+writes to `~/.livepilot/atlas/device_atlas.json` — regardless of whether
+you're running the dev install or the published package. So:
+
+- **Your dev scans can't pollute the repo.** The bundled atlas in the
+  worktree stays at whatever version you checked out from main.
+- **Your personal atlas survives `git checkout`, `git reset --hard`,
+  and worktree churn.** It lives in your home directory.
+- **To reset your personal atlas**, delete it: `rm ~/.livepilot/atlas/device_atlas.json`.
+  Next client restart falls back to the bundled baseline until you rescan.
+- **To regenerate the bundled baseline** (rare — contributor work when
+  shipping a new version of the canonical shipped atlas), run the scan
+  from a stock Ableton install (no third-party packs, no User Library
+  additions), then manually copy the result from
+  `~/.livepilot/atlas/device_atlas.json` into
+  `mcp_server/atlas/device_atlas.json` and commit. This path is
+  deliberately manual so accidental personal-scan leaks don't happen.
+
 ## 4. Iterate
 
 **After editing `mcp_server/**/*.py`:**

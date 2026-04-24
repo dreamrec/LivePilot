@@ -94,6 +94,25 @@ This pings Ableton over TCP. If you see `Connected`, you're good. If it says `Co
 2. LivePilot is selected as Control Surface in Preferences
 3. No firewall is blocking localhost port 9878
 
+## Step 5 (optional): Personalize the device atlas
+
+LivePilot ships with a baseline device atlas — a few thousand stock Ableton devices indexed with URIs and enrichment profiles. That's enough for core tools to work, but the baseline doesn't know about **your** installed packs, User Library presets, or plugins. To index your full library, ask the AI to scan it:
+
+**You:** "Run `scan_full_library` with `max_per_category=30000`"
+
+Or, if you prefer an explicit tool invocation from an MCP-capable client:
+
+```
+scan_full_library(force=true, max_per_category=30000)
+```
+
+The scan walks every browser category (Instruments, Audio Effects, Drums, Samples, Sounds, Plug-Ins, Max for Live, User Library) and records every loadable item. Takes 30-90 seconds depending on library size. The result is saved to **`~/.livepilot/atlas/device_atlas.json`** — your personal atlas, separate from the bundled baseline.
+
+- **npm updates don't touch it.** `npx livepilot --install` / version upgrades leave your personal atlas alone.
+- **Per-user, not per-project.** One scan covers every project on this machine.
+- **Rescan when you install new packs.** The atlas doesn't update automatically — run `scan_full_library(force=true)` again after any pack install or major User Library change.
+- **Skip this step if you're just exploring.** The bundled baseline is enough for `atlas_search`, `atlas_suggest`, and most `find_and_load_device` calls against stock Ableton devices. You only need the personal scan once you want LivePilot to know about **your** specific library.
+
 ## Your first session
 
 With Ableton open and LivePilot connected, try this conversation:
