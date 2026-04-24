@@ -55,6 +55,14 @@ When modifying .amxd attributes that Max editor won't persist (e.g., `openinpres
 ## Version Bump
 If bumping the version, update ALL of these: package.json, server.json (Marketplace reads this), livepilot/.Codex-plugin/plugin.json, livepilot/.claude-plugin/plugin.json, .claude-plugin/marketplace.json, mcp_server/__init__.py, remote_script/LivePilot/__init__.py, CLAUDE.md, AGENTS.md, CHANGELOG.md, livepilot/skills/livepilot-core/references/overview.md, docs/M4L_BRIDGE.md (ping version string)
 
+### Post-push marketplace mirror sync (REQUIRED — stale-mirror trap)
+After `git push origin main` + `git push --tags` + `gh release create`, verify Claude Code's local marketplace mirror picked up the new commit:
+```bash
+cd ~/.claude/plugins/marketplaces/dreamrec-LivePilot && git fetch && git reset --hard origin/main
+cat .claude-plugin/marketplace.json | python3 -c "import json,sys; print(json.load(sys.stdin)['plugins'][0]['version'])"
+```
+Expected output: the new version string. If the mirror is stale (happened silently across v1.18.0-v1.18.3 — panel stuck at "1.17.5 installed"), Claude Code's plugin panel will show the old version and `Update` button points at a stale target. The mirror is a git clone that Claude Code fetches from but does NOT auto-pull. Hard-reset is safe — nothing writes to it locally.
+
 ## Tool Count
 Currently 429 tools (up from 403 in v1.15.0-beta — added 12: 10 Splice tools + add_drum_rack_pad + analyze_loudness_live + fire_test_note + cleanup_test_note + verify_device_alive). If adding/removing tools, update: README.md, package.json description, livepilot/.Codex-plugin/plugin.json, livepilot/.claude-plugin/plugin.json, server.json, livepilot/skills/livepilot-core/SKILL.md, livepilot/skills/livepilot-core/references/overview.md, CLAUDE.md, CHANGELOG.md, tests/test_tools_contract.py, docs/manual/index.md, docs/manual/tool-reference.md
 
