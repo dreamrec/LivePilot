@@ -1,6 +1,6 @@
 {
   "name": "livepilot",
-  "version": "1.20.3",
+  "version": "1.21.0",
   "mcpName": "io.github.dreamrec/livepilot",
   "description": "Agentic production system for Ableton Live 12 — 430 tools, 53 domains, 43 semantic moves. Device atlas (1305 devices, 120 enriched, 7 indexes), Splice intelligence (gRPC + GraphQL describe-a-sound + preview + collections + presets), 9-band spectral perception auto-loaded via ensure_analyzer_on_master, Creative Director skill, technique memory, 12 creative intelligence engines",
   "author": "Pilot Studio",

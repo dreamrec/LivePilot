@@ -1,5 +1,177 @@
 # Changelog
 
+## 1.21.0 — Consolidation: experiment ledger + preset library + record-readiness + reader audit (April 24 2026)
+
+Consolidation release closing five items from the v1.20 plan §12 non-goals
+that were tractable in a 2-session scope. Adds 1 new semantic move + 1
+major-tool auto-ledger-write + minimal preset-library infrastructure +
+a store-purpose audit that turns the v1.20 director-SKILL fix into a
+codebase-wide invariant, all gated behind a test-first wire-format
+parity extension that caught 1 pre-v1.20 drift bug and closed the
+audit window.
+
+Registry: 43 → 44 moves. Test suite: 3043 → 3118 pass (+75 across all
+chunks). Wire-format parity suite: 10 → 44 scenarios. Zero regressions.
+
+### New semantic moves (1)
+
+- **`configure_record_readiness`** (performance family, low risk, protects
+  `signal_integrity=0.7`)
+  - seed_args: `{track_index, armed, exclusive?}`
+  - Non-exclusive: single step `set_track_arm(track_index, arm=armed)` — note
+    the wire-format key is `arm`, not `armed` (the MCP tool accepts `armed`
+    as an ergonomic kwarg but renames to `arm` before send_command; the
+    remote_command backend bypasses that rename).
+  - Exclusive (`exclusive=True` + `armed=True`): N+1 step plan —
+    `set_track_arm(arm=False)` for every other regular track, then
+    `set_track_arm(target, arm=True)` for the target. Emulates Ableton's
+    exclusive-arm mode manually because `song.exclusive_arm` has no
+    Python setter in Live 12.4 (pre-existing v1.20.3 Remote Script bug
+    surfaced during v1.21 live-test pre-flight — see plan correction #6).
+    Requires `session_info.tracks` (automatically built by
+    `apply_semantic_move`).
+  - Rejects `exclusive=True + armed=False` (contradictory), missing `armed`
+    seed_arg, and negative `track_index` (return tracks can't be armed
+    per Ableton's handler at `remote_script/LivePilot/tracks.py:261`).
+  - Closes the one tech_debt entry seeded during v1.20 live test 6.
+
+### Experiment-engine ledger writer
+
+- **`commit_experiment`** now writes to `SessionLedger` after a successful
+  commit, mirroring v1.20's `apply_semantic_move` pattern (commit `0b3489b`).
+  Anti-repetition filters downstream now see experiment commits the same
+  way they see direct semantic-move applies.
+  - `engine` tag reflects branch SOURCE (not escalation success): `"composer"`
+    when `target.seed.source == "composer"`, else `"experiment"`. A composer-
+    sourced branch that fell back to scaffold execution is still
+    `engine=composer` — the escalation-success detail lives in
+    `target.evaluation["composer_escalation"]`.
+  - `move_class` via `_infer_move_family(target)`: `seed.family` when set,
+    else inspect first compiled_plan step's tool via `_TOOL_TO_FAMILY`
+    lookup, else default `"mix"`.
+  - `actions` = one entry per ok row in `commit_result["execution_log"]`
+    (the router's actual execution record — captures the post-escalation
+    plan when composer escalation fired).
+  - Response gains `ledger_entry_id` field (same pattern as
+    `apply_semantic_move`). Best-effort — a ledger-write exception is logged
+    and swallowed so the commit never fails on a bookkeeping path.
+
+### Minimal affordance preset library
+
+- New path `mcp_server/affordances/` with loader (`presets.py`), schema
+  validator (`_schema.py`), and 3 seed YAML files:
+  - `reverb.yaml` — preset `dub-cathedral` (Basic Channel-adjacent huge
+    space; Decay 0.85, Room 0.95, Dry/Wet 0.40, Predelay 0.45, Diffusion 0.80)
+  - `delay.yaml` — preset `ping-pong-dub` (dotted 8th, feedback 0.45,
+    HP+LP filtered)
+  - `auto-filter.yaml` — preset `slow-sweep` (LP type, bar-long LFO,
+    moderate resonance)
+- `configure_device` compiler gained optional `preset` + `device_slug`
+  seed_args (additive — v1.20 callers unaffected). Merge: preset resolves
+  first, explicit `param_overrides` win on per-key conflict (last-write-wins).
+  v1.21 requires explicit `device_slug` when `preset` is used; v1.22
+  adds class_name → slug auto-inference.
+- `livepilot-creative-director/references/phase-6-execution.md` §Affordance-
+  preset resolution rewritten to document the live import path and the
+  three dispatch patterns (preset reference, preset + explicit override,
+  fallback to Python resolve).
+
+### Wire-format parity retroactive gate
+
+- `tests/test_compiler_wire_format_parity.py` extended from 10 to 44
+  scenarios (10 v1.20 + 33 pre-v1.20 + 1 new `configure_record_readiness`).
+  Gate surfaced **1 pre-v1.20 drift pattern** affecting 7 moves:
+  `create_chaos_modulator`, `create_feedback_resonator`,
+  `create_wavefolder_effect`, `create_bitcrusher_effect`,
+  `create_karplus_string`, `create_stochastic_texture`, `create_fdn_reverb`
+  all shipped with a `find_and_load_device` plan_template emitting
+  `{"query": "Wonder X"}` but no `track_index`. The `remote_command`
+  backend bypasses MCP normalization, so Ableton's handler threw
+  `KeyError` on `params["track_index"]` — broken at runtime since
+  pre-v1.20, caught now.
+- Fix: `device_creation_compilers.py::_compile_device_creation` threads
+  `track_index` from `seed_args` into `find_and_load_device` steps.
+  Plan templates updated from `{"query": ...}` to `{"device_name": ...}`
+  across all 7 Device Forge moves.
+- Variant-B' consideration (>3 drift bugs → pause v1.21, ship patch):
+  all 7 failures were one pattern in one file, fixable in one commit.
+  Path B (inline fix as part of Task 1.1.5a) taken — single-pattern
+  single-file fixes are exactly what Task 1.1.5a was written for.
+  See `docs/plans/v1.21-impl-status.md` §3 for the decision log.
+
+### Store-purpose reader audit
+
+- Every file in `mcp_server/` that imports `SessionLedger` or calls
+  `memory_list` / `get_session_memory` now carries a
+  `# store_purpose: <purpose>` comment naming its intent.
+- Allowed purposes (closed set): `writer`, `anti_repetition`,
+  `audit_readonly`, `technique_library`, `session_observations`,
+  `escape_hatch_log`, `mcp_tool_definition`.
+- **`tests/test_ledger_readers.py`** new (5 test cases): enforces the
+  annotation contract at CI, AND guards against any file annotated
+  `anti_repetition` also calling `memory_list` — which would be the
+  latent v1.20 store-confusion bug (director SKILL originally pointed
+  at `memory_list` for recency; `memory_list` reads the persistent
+  technique library, not the action ledger).
+- Audit was clean across the entire `mcp_server` tree — no anti-repetition
+  caller was found reading the wrong store. The audit is purely
+  documentation contracts enforced at CI.
+
+### Plan corrections applied during execution (6, logged in impl-status doc)
+
+Documented for future release planners in `docs/plans/v1.21-impl-status.md`:
+
+1. **Baseline drift** — v1.20.2 and v1.20.3 shipped between plan-write and
+   execution; all version-string literals in the plan needed `1.20.1 →
+   1.20.3` remapping.
+2. **Wire-format drift in device_creation** — plan_templates emitted
+   `{"query": ...}`; handler requires `{"track_index", "device_name"}`.
+3. **`set_track_arm` wire format** — plan §3.1 used `{"armed": ...}`;
+   handler reads `params["arm"]`. MCP tool renames `armed → arm` before
+   send_command; remote_command backend bypasses the rename.
+4. **`set_exclusive_arm` shape** — plan §3.1 assumed a per-track signature
+   `(track_index=...)`; handler is a global mode toggle taking
+   `{"enabled": bool}`.
+5. **Return-track arm rejection** — plan's test expected negative
+   `track_index` to succeed; handler raises `ValueError: "Cannot arm a
+   return track"`. Corrected test pins compile-time rejection.
+6. **`set_exclusive_arm` is broken in Live 12.4 LOM** — live-test pre-flight
+   (2026-04-24) surfaced that `song.exclusive_arm` is a property WITHOUT a
+   Python setter in Live 12.4's Remote Script API. The v1.20.3 handler's
+   direct assignment `song.exclusive_arm = bool(...)` errors with
+   "property of 'Song' object has no setter". v1.21's
+   `configure_record_readiness` exclusive-mode now emulates the behavior
+   manually (disarm-all-others + arm-target loop) — correctness is
+   identical, works in any Live version. The broken v1.20.3
+   `set_exclusive_arm` handler is LEFT AS-IS for potential future fix
+   (when/if Ableton re-exposes the setter, or someone finds a LOM method
+   alternative); it's tracked as an independent bug in the Remote Script.
+
+### Non-goals (deferred)
+
+- **Hard cutover of the escape hatch.** v1.22+ target, conditional on
+  zero `tech_debt` log entries accumulating in one month of production.
+- **Standard / Deep preset catalog.** v1.22+. Minimal library from v1.21
+  proves the loader; catalog fills in after real-usage signal.
+- **class_name → slug auto-inference** for the preset library. v1.22+.
+- **Pre-v1.20 move compiler refactors** beyond the 1 drift fix. v1.22+.
+- **New move families beyond the canonical 7.** The performance family
+  already exists; `configure_record_readiness` joins it.
+- **Taste-graph integration for preset ranking.** v1.22+ once the catalog
+  exists.
+
+### Scope stats
+
+- 7 atomic commits on `v1.21.0-dev` (fix + gate + 4 feature + refactor + release)
+- 28 files changed, +1933 / -63 lines
+- 3 new test files (commit_experiment_ledger, performance_moves,
+  affordance_presets, ledger_readers) + 1 doc (impl-status)
+- 1 new package (`mcp_server/affordances/`) + 3 YAML seed files
+- 15 version-string sites bumped + `.amxd` binary patch (2 bytes)
+- 10 files annotated with `# store_purpose:`
+
+---
+
 ## 1.20.3 — Automated analyzer pre-flight (April 24 2026)
 
 Micro-release closing one class of operator error that broke the v1.20.1
