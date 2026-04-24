@@ -466,11 +466,17 @@ def scan_full_library(
     """
     from .scanner import normalize_scan_results
     from .enrichments import load_enrichments, merge_enrichments
-    from . import AtlasManager
+    from . import AtlasManager, USER_ATLAS_DIR, USER_ATLAS_PATH
 
+    # v1.22.0: scans always write to the user atlas path, never the
+    # bundled baseline. The user-data directory is created on demand
+    # so a brand-new install (no ~/.livepilot/ at all) still works.
+    # Enrichments are read from the bundled package (same as before —
+    # they're authored in-repo).
     atlas_dir = os.path.dirname(os.path.abspath(__file__))
-    atlas_path = os.path.join(atlas_dir, "device_atlas.json")
     enrichments_dir = os.path.join(atlas_dir, "enrichments")
+    USER_ATLAS_DIR.mkdir(parents=True, exist_ok=True)
+    atlas_path = str(USER_ATLAS_PATH)
 
     if not force and os.path.exists(atlas_path):
         age = time.time() - os.path.getmtime(atlas_path)

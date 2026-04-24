@@ -519,28 +519,75 @@ class AtlasManager:
 from pathlib import Path
 from ..services.singletons import Singleton
 
-ATLAS_PATH = Path(__file__).parent / "device_atlas.json"
+# v1.22.0: the atlas now has TWO possible homes —
+#
+#   BUNDLED_ATLAS_PATH — mcp_server/atlas/device_atlas.json
+#     Ships with the package. Gives fresh installs a functional
+#     baseline device index before any personalized scan has run.
+#     Updated only when the repo's canonical baseline is regenerated.
+#
+#   USER_ATLAS_PATH — ~/.livepilot/atlas/device_atlas.json
+#     Written by scan_full_library on the user's machine. Reflects
+#     their actual installed packs, User Library, and plugins. Lives
+#     in the user-data directory (same convention as
+#     ~/.livepilot/memory/) so npm updates can't blow it away.
+#
+# Resolution order at load time: user atlas wins if present, else
+# bundled baseline. Written scans ALWAYS go to the user path — never
+# the bundled path — so the repo/npm package stays clean regardless of
+# where a user runs scan_full_library from. This split lands in v1.22.0
+# and solves three prior issues (see tests/test_atlas_user_override.py
+# for the full rationale).
+BUNDLED_ATLAS_PATH = Path(__file__).parent / "device_atlas.json"
+USER_ATLAS_DIR = Path.home() / ".livepilot" / "atlas"
+USER_ATLAS_PATH = USER_ATLAS_DIR / "device_atlas.json"
+
+
+def _resolve_atlas_path() -> Path:
+    """Return the effective atlas path — user if present, bundled if not.
+
+    Called from _build_atlas and get_atlas. Kept as a module-level
+    function (rather than inlined) so tests can monkeypatch HOME and
+    reimport the module to re-evaluate USER_ATLAS_PATH cleanly.
+    """
+    if USER_ATLAS_PATH.exists():
+        return USER_ATLAS_PATH
+    return BUNDLED_ATLAS_PATH
+
+
+# Backward-compat alias. External code that imported ATLAS_PATH before
+# v1.22.0 (e.g. pre-existing scripts outside this repo) gets the
+# resolved path. Internal code should call _resolve_atlas_path() so the
+# value is re-evaluated after the user first runs scan_full_library.
+ATLAS_PATH = _resolve_atlas_path()
 
 _atlas_instance: Optional[AtlasManager] = None  # kept for legacy imports
 
 
 def _build_atlas() -> AtlasManager:
-    return AtlasManager(str(ATLAS_PATH))
+    return AtlasManager(str(_resolve_atlas_path()))
 
 
 _atlas_holder = Singleton(_build_atlas)
 
 
 def get_atlas() -> AtlasManager:
-    """Thread-safe accessor. Re-reads device_atlas.json if its mtime advanced."""
+    """Thread-safe accessor. Re-reads the resolved atlas path if its
+    mtime advanced. Uses the resolver, so if the user's first
+    scan_full_library call runs mid-session, the next get_atlas()
+    picks up the new user path (via invalidate_atlas, which
+    scan_full_library already calls on success)."""
     global _atlas_instance
-    instance = _atlas_holder.get(reload_if_newer=ATLAS_PATH)
+    instance = _atlas_holder.get(reload_if_newer=_resolve_atlas_path())
     _atlas_instance = instance   # keep legacy attribute in sync
     return instance
 
 
 def invalidate_atlas() -> None:
-    """Force the next get_atlas() to re-read device_atlas.json from disk."""
+    """Force the next get_atlas() to re-read the resolved atlas path
+    from disk. Called by scan_full_library after writing a fresh
+    user atlas so subsequent tool calls see the new data without
+    an MCP server restart."""
     global _atlas_instance
     _atlas_holder.invalidate()
     _atlas_instance = None
