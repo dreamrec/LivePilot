@@ -1,18 +1,22 @@
-"""BUG-2026-04-24 regression: ensure every v1.20 semantic-move compiler
-emits its steps using the WIRE-FORMAT param names — the exact keys
+"""Wire-format parity guard: ensure every semantic-move compiler emits
+steps using the WIRE-FORMAT param names — the exact keys
 ``ableton.send_command()`` expects, not the ergonomic MCP tool
 input-field names.
 
-Background: the execution router's ``remote_command`` backend calls
-``ableton.send_command(tool, params)`` directly, bypassing the MCP
-tool's input-normalization layer. Two v1.20 compilers initially
-emitted MCP-input keys (``parameter_name``, ``output_routing_type``)
-that the MCP tool renames to the wire format; compiled plans skipped
-that rename and Ableton got unknown keys → silent failures / obscure
-errors.
+v1.20 origin: commit 8bdf8bf fixed two v1.20 compilers that emitted
+MCP-input keys (``parameter_name``, ``output_routing_type``) which the
+MCP tool renames to the wire format; compiled plans skipped that rename
+and Ableton got unknown keys → silent failures / obscure errors.
+
+v1.21 extension: the guard now covers all 43 pre-v1.21 moves (10 v1.20
++ 33 pre-v1.20) so any latent drift that shipped silently across
+pre-v1.20 compilers surfaces as a fixable gate failure rather than a
+runtime error. See ``docs/plans/v1.21-structural-plan.md §4.4`` for
+the rationale (test-first discovery gate, variant-B' escape hatch if
+>3 drift bugs are surfaced).
 
 This suite locks the wire-format contract at the compiler boundary
-for each v1.20 move. It does NOT test the Remote Script handler
+for every registered move. It does NOT test the Remote Script handler
 itself — just that compiler output stays in sync with the handler's
 expected keys.
 """
@@ -30,10 +34,10 @@ from mcp_server.semantic_moves.registry import get_move
 
 # ── Wire-format key inventory (authoritative per remote_script/LivePilot) ─────
 #
-# For each tool a v1.20 compiler emits, list the param keys the Remote
-# Script handler reads. Steps must contain these keys; they must NOT
-# contain MCP-tool-layer ergonomic aliases that the MCP tool renames
-# before send_command.
+# For each tool a compiler emits, list the param keys the Remote Script
+# handler reads. Steps must contain these keys; they must NOT contain
+# MCP-tool-layer ergonomic aliases that the MCP tool renames before
+# send_command.
 
 _WIRE_FORMAT: dict[str, dict[str, object]] = {
     # tool_name -> {"required": {k,...}, "forbidden_aliases": {k: "expected_name"}}
@@ -99,12 +103,111 @@ _WIRE_FORMAT: dict[str, dict[str, object]] = {
     "add_session_memory": {
         "required_keys": {"category", "content"},
     },
+
+    # ── v1.21 additions: tools emitted by pre-v1.20 compilers. ───────────────
+    # Required-key sets derived from Remote Script handler signatures
+    # (remote_script/LivePilot/mixing.py, devices.py) and MCP tool signatures
+    # (mcp_server/device_forge/tools.py).
+    "set_track_volume": {
+        # handler: track_index = int(params["track_index"]); volume = float(params["volume"])
+        "required_keys": {"track_index", "volume"},
+    },
+    "set_master_volume": {
+        # handler: volume = float(params["volume"])
+        "required_keys": {"volume"},
+    },
+    "get_track_meters": {
+        # handler: track_index = params.get("track_index")  — optional
+        # handler: include_stereo = bool(params.get("include_stereo", False)) — optional
+        "required_keys": set(),
+    },
+    "get_master_meters": {
+        # handler reads master directly, no params consumed
+        "required_keys": set(),
+    },
+    "get_master_spectrum": {
+        # bridge-backed read; no params required at compile time
+        "required_keys": set(),
+    },
+    "generate_m4l_effect": {
+        # Compiler injects gen_code (v1.20.2 BUG #1 fix); name + device_type
+        # come from the move's plan_template.
+        "required_keys": {"name", "device_type", "gen_code"},
+    },
+
+    # Tools emitted by sample/automation compilers — signatures from
+    # mcp_server/tools/analyzer.py + tools/devices.py + tools/mixing.py
+    # + tools/automation.py (mcp_tool backend) and
+    # remote_script/LivePilot/tracks.py (remote_command backend).
+    "create_midi_track": {
+        # handler: index = int(params.get("index", -1)) — all optional
+        "required_keys": set(),
+    },
+    "set_track_pan": {
+        # MCP tool signature: (track_index, pan) — both required
+        "required_keys": {"track_index", "pan"},
+    },
+    "load_sample_to_simpler": {
+        # MCP tool signature: (track_index, file_path, device_index=0)
+        "required_keys": {"track_index", "file_path"},
+    },
+    "set_simpler_playback_mode": {
+        # handler: track_index, device_index, playback_mode required;
+        # slice_by + sensitivity optional
+        "required_keys": {"track_index", "device_index", "playback_mode"},
+    },
+    "reverse_simpler": {
+        # MCP tool signature: (track_index, device_index=0)
+        "required_keys": {"track_index"},
+    },
+    "crop_simpler": {
+        # MCP tool signature: (track_index, device_index=0)
+        "required_keys": {"track_index"},
+    },
+    "apply_automation_shape": {
+        # MCP tool signature: (track_index, clip_index, parameter_type,
+        # curve_type, duration=4.0, density=16, device_index=Optional)
+        "required_keys": {"track_index", "clip_index", "parameter_type", "curve_type"},
+    },
+    "warp_simpler": {
+        # MCP tool signature: (track_index, device_index=0, beats=4)
+        "required_keys": {"track_index"},
+    },
 }
 
 
-# ── Fixtures: one valid seed_args per v1.20 move ──────────────────────────────
+# ── Session-info injection for session-info-dependent compilers ───────────────
+#
+# Three pre-v1.20 compilers return a non-executable plan when session_info
+# is empty: safe_spotlight, shape_transients, tighten_low_end. They
+# inspect session_info["tracks"] for specific role_tags and decline to
+# emit steps otherwise. To exercise their wire-format emissions, the
+# parity test injects a rich session_info (below) when compiling them.
+#
+# Not a scope change — the parity test's contract is "emitted steps match
+# wire format"; session_info is the input that makes them executable in
+# the first place.
 
-_V1_20_SCENARIOS: list[tuple[str, dict]] = [
+_SESSION_INFO_DEPENDENT: set[str] = {
+    "safe_spotlight",
+    "shape_transients",
+    "tighten_low_end",
+}
+
+_RICH_SESSION_INFO: dict = {
+    "tracks": [
+        {"index": 0, "name": "Kick", "role_tags": ["drums", "kick"],        "type": "midi"},
+        {"index": 1, "name": "Bass", "role_tags": ["bass"],                 "type": "midi"},
+        {"index": 2, "name": "Hats", "role_tags": ["drums", "percussion"],  "type": "midi"},
+        {"index": 3, "name": "Lead", "role_tags": ["lead", "chords"],       "type": "midi"},
+    ],
+}
+
+
+# ── Fixtures: one valid seed_args per registered move ─────────────────────────
+
+_ALL_MOVE_SCENARIOS: list[tuple[str, dict]] = [
+    # ── v1.20 moves (seed_args carried forward from v1.20's suite) ──────────
     ("build_send_chain", {"return_track_index": 0, "device_chain": ["Echo", "Auto Filter"]}),
     ("configure_send_architecture", {"source_track_indices": [0, 1], "send_index": 0, "levels": [0.4, 0.2]}),
     ("set_track_routing", {"track_index": 0, "output_routing_type": "Sends Only", "output_routing_channel": "Post Mixer"}),
@@ -119,19 +222,80 @@ _V1_20_SCENARIOS: list[tuple[str, dict]] = [
     ("configure_groove", {"track_index": 0, "clip_indices": [0], "groove_id": 1, "timing_amount": 0.6}),
     ("set_scene_metadata", {"scene_index": 0, "name": "Drop", "color_index": 5, "tempo": 128.0}),
     ("set_track_metadata", {"track_index": 0, "name": "Bass", "color_index": 7}),
+
+    # ── v1.21 retroactive: pre-v1.20 moves (33 entries) ──────────────────────
+    # Most compile with seed_args={}. Exceptions:
+    #   - sample_* family (6 moves): v1.20.2 BUG #2 fix mandates seed_args.file_path
+    #   - tighten_low_end / shape_transients / safe_spotlight (3 moves): need
+    #     populated session_info — injected via _SESSION_INFO_DEPENDENT in _compile()
+
+    # mix family (6)
+    ("tighten_low_end", {}),
+    ("widen_stereo", {}),
+    ("make_punchier", {}),
+    ("darken_without_losing_width", {}),
+    ("reduce_repetition_fatigue", {}),
+    ("make_kick_bass_lock", {}),
+
+    # arrangement family (2)
+    ("create_buildup_tension", {}),
+    ("smooth_scene_handoff", {}),
+
+    # transition family (4)
+    ("increase_forward_motion", {}),
+    ("open_chorus", {}),
+    ("create_breakdown", {}),
+    ("bridge_sections", {}),
+
+    # sound_design family (4)
+    ("add_warmth", {}),
+    ("add_texture", {}),
+    ("shape_transients", {}),
+    ("add_space", {}),
+
+    # performance family (4)
+    ("recover_energy", {}),
+    ("decompress_tension", {}),
+    ("safe_spotlight", {}),
+    ("emergency_simplify", {}),
+
+    # device_creation family (7 Device Forge moves).
+    # Post-v1.21 parity-gate fix: the compiler threads track_index from
+    # seed_args into the find_and_load_device step (pre-fix, plan_templates
+    # emitted {"query": ...} with no track_index — broken at runtime).
+    ("create_chaos_modulator",   {"track_index": 0}),
+    ("create_feedback_resonator", {"track_index": 0}),
+    ("create_wavefolder_effect",  {"track_index": 0}),
+    ("create_bitcrusher_effect",  {"track_index": 0}),
+    ("create_karplus_string",     {"track_index": 0}),
+    ("create_stochastic_texture", {"track_index": 0}),
+    ("create_fdn_reverb",         {"track_index": 0}),
+
+    # sample family (6) — file_path required per v1.20.2 BUG #2 fix
+    ("sample_chop_rhythm",      {"file_path": "/tmp/test_sample.wav"}),
+    ("sample_texture_layer",    {"file_path": "/tmp/test_sample.wav"}),
+    ("sample_vocal_ghost",      {"file_path": "/tmp/test_sample.wav"}),
+    ("sample_break_layer",      {"file_path": "/tmp/test_sample.wav"}),
+    ("sample_resample_destroy", {"file_path": "/tmp/test_sample.wav"}),
+    ("sample_one_shot_accent",  {"file_path": "/tmp/test_sample.wav"}),
 ]
 
 
 def _compile(move_id: str, seed_args: dict):
     move = get_move(move_id)
     assert move is not None, f"move {move_id} not registered"
+    session_info = _RICH_SESSION_INFO if move_id in _SESSION_INFO_DEPENDENT else {}
     return move_compiler.compile(
         move,
-        {"seed_args": seed_args, "session_info": {}, "mode": "improve"},
+        {"seed_args": seed_args, "session_info": session_info, "mode": "improve"},
     )
 
 
-@pytest.mark.parametrize("move_id,seed_args", _V1_20_SCENARIOS, ids=[s[0] for s in _V1_20_SCENARIOS])
+@pytest.mark.parametrize(
+    "move_id,seed_args",
+    _ALL_MOVE_SCENARIOS,
+    ids=[s[0] for s in _ALL_MOVE_SCENARIOS],
+)
 def test_compiler_steps_use_wire_format_keys(move_id: str, seed_args: dict):
     plan = _compile(move_id, seed_args)
     assert plan.executable, f"{move_id} compiled to non-executable plan; warnings={plan.warnings}"
