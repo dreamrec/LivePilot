@@ -29,12 +29,12 @@ Run this checklist EVERY time the user says "update everything", "push", "releas
 ## 2. Tool Count (must ALL match)
 
 Current: **430 tools across 53 domains**.
-Spectral/analyzer (bridge-only): **32**. All others: **292** (work without bridge, some with graceful fallbacks). Backed by 31 bridge commands.
+Spectral/analyzer (bridge-only): **38**. All others: **292** (work without bridge, some with graceful fallbacks). Backed by 31 bridge commands.
 
 Verify: `grep -rc "@mcp.tool" mcp_server/tools/ | grep -v ":0" | awk -F: '{sum+=$2} END{print sum}'`
 
 Files that reference tool count:
-- [ ] `README.md` — header ("430 tools. 53 domains"), bridge section ("32 spectral/analyzer tools require bridge")
+- [ ] `README.md` — header ("430 tools. 53 domains"), bridge section ("38 spectral/analyzer tools require bridge")
 - [ ] `package.json` → `"description"`
 - [ ] `server.json` → `"description"`
 - [ ] `manifest.json` → `"description"`
@@ -46,11 +46,11 @@ Files that reference tool count:
 - [ ] `livepilot/skills/livepilot-core/SKILL.md` — tool/domain count
 - [ ] `livepilot/skills/livepilot-core/references/overview.md` — tool/domain count
 - [ ] `docs/manual/index.md` — domain table with correct per-domain counts
-- [ ] `docs/manual/getting-started.md` — bridge copy (avoid hard numeric core/bridge split — use "32 spectral tools require bridge")
+- [ ] `docs/manual/getting-started.md` — bridge copy (avoid hard numeric core/bridge split — use "38 spectral tools require bridge")
 - [ ] `docs/manual/tool-reference.md` — all domains present with correct counts
 - [ ] `docs/manual/tool-catalog.md` — regenerated from source
       (`python3 scripts/generate_tool_catalog.py > docs/manual/tool-catalog.md`)
-- [ ] `docs/M4L_BRIDGE.md` — bridge copy (avoid hard numeric core/bridge split — use "32 spectral tools require bridge")
+- [ ] `docs/M4L_BRIDGE.md` — bridge copy (avoid hard numeric core/bridge split — use "38 spectral tools require bridge")
 - [ ] `docs/social-banner.html`
 - [ ] `tests/test_tools_contract.py` → expected total count
 - [ ] `tests/test_skill_contracts.py` → catalog sync test passes

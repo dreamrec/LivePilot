@@ -1,4 +1,4 @@
-# LivePilot v1.21.1 — Ableton Live 12
+# LivePilot v1.21.2 — Ableton Live 12
 
 ## Project
 - **Repo:** This directory (LivePilot)
@@ -17,7 +17,7 @@
   - `SpectralCache`: thread-safe, time-expiring data cache (5s max age)
   - Bridge is optional — all core tools work without it
   - `ensure_analyzer_on_master` (v1.20.3) auto-loads the device on first use
-- **Device Atlas** (`mcp_server/atlas/`): In-memory indexed JSON database — 1305 devices with URIs, 120 enriched with sonic intelligence (YAML), 47 with aesthetic-tagged `signature_techniques`. **7 indexes**: by_id, by_name, by_uri, by_category, by_tag, by_genre, by_pack (641 devices indexed by pack). Reverse-index `device_techniques_index.json` (146 cross-references across 58 devices) powers `atlas_techniques_for_device`. Tools: `atlas_search`, `atlas_suggest`, `atlas_chain_suggest`, `atlas_compare`, `atlas_device_info`, `atlas_pack_info`, `atlas_describe_chain`, `atlas_techniques_for_device`, `scan_full_library`, `reload_atlas`
+- **Device Atlas** (`mcp_server/atlas/`): In-memory indexed JSON database — 5264 devices with URIs, 120 enriched with sonic intelligence (YAML), 47 with aesthetic-tagged `signature_techniques`. **7 indexes**: by_id, by_name, by_uri, by_category, by_tag, by_genre, by_pack . Reverse-index `device_techniques_index.json` (146 cross-references across 58 devices) powers `atlas_techniques_for_device`. Tools: `atlas_search`, `atlas_suggest`, `atlas_chain_suggest`, `atlas_compare`, `atlas_device_info`, `atlas_pack_info`, `atlas_describe_chain`, `atlas_techniques_for_device`, `scan_full_library`, `reload_atlas`
 - **Concept surface** (`livepilot/skills/livepilot-core/references/`): translation layer between LLM training and LivePilot tools. `artist-vocabularies.md` maps ~25 producers (Villalobos, Hawtin, Basic Channel, Gas, Basinski, Hecker, Aphex, Autechre, OPN, Arca, Dilla, Premier, Madlib, Burial, Henke, Daft Punk, Photek, Com Truise, Boards of Canada) to `sonic_fingerprint` / `reach_for` / `avoid` / `key_techniques`. `genre-vocabularies.md` maps 15 genres (microhouse, dub_techno, deep_minimal, minimal_techno, ambient, idm, modern_classical, hip_hop, trap, dubstep, house, dnb, garage, experimental, synthwave) to tempo / kick / bass / percussion / harmonic / texture / reach-for / avoid. Read these BEFORE device selection when the user says "sound like X" or "make me a <genre> track"
 - **Sample Engine** (`mcp_server/sample_engine/`): Three-source sample intelligence — BrowserSource (Ableton browser), SpliceSource (local sounds.db SQLite), FilesystemSource (user dirs). 6-critic fitness battery, 29-technique library, Surgeon/Alchemist dual philosophy
 - **Splice Client** (`mcp_server/splice_client/`): gRPC client for Splice desktop API. Port auto-detected from port.conf, TLS with self-signed certs. Credit safety floor of 5. Plan-aware download gating (Ableton Live plan: 100 samples/day; Sounds+/Creator: credit floor); see §Splice plan-aware model below
