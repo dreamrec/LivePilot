@@ -55,14 +55,21 @@ class OverlayIndex:
         self._entries: dict[tuple[str, str, str], OverlayEntry] = {}
 
     def add(self, entry: OverlayEntry) -> Optional[OverlayEntry]:
-        """Insert or replace. Returns previous entry on collision so callers can log
-        the duplicate-id warning."""
+        """Insert or replace. Returns the previous entry on collision (or None
+        on a fresh insert) so callers can log a duplicate-id warning per spec §7."""
         key = (entry.namespace, entry.entity_type, entry.entity_id)
         previous = self._entries.get(key)
         self._entries[key] = entry
         return previous
 
     def get(self, namespace: str, entity_id: str) -> Optional[OverlayEntry]:
+        """Lookup by (namespace, entity_id), ignoring entity_type.
+
+        If two entries share the same (namespace, entity_id) across different
+        entity_types, returns whichever the dict iterator yields first
+        (insertion order in CPython 3.7+). The loader (Tasks 7+8) is responsible
+        for preventing such collisions via dup-id warnings.
+        """
         for (ns, _et, eid), entry in self._entries.items():
             if ns == namespace and eid == entity_id:
                 return entry
@@ -80,3 +87,55 @@ class OverlayIndex:
 
     def all_entries(self) -> list[OverlayEntry]:
         return list(self._entries.values())
+
+    def search(self, query: str, namespace: Optional[str] = None,
+               entity_type: Optional[str] = None,
+               limit: int = 10) -> list[OverlayEntry]:
+        """Weighted substring search.
+
+        Scores per entry:
+          +1000 if query == entity_id (case-insensitive exact)
+          +100  per substring hit in name
+          +50   per substring hit in tag or artist
+          +10   per substring hit in description
+
+        Sorts by descending score, then by entity_id for stable ties.
+        Filters by namespace and/or entity_type if provided.
+        Empty query returns empty list.
+        """
+        q = (query or "").strip().lower()
+        if not q:
+            return []
+
+        scored: list[tuple[int, str, OverlayEntry]] = []
+        for entry in self._entries.values():
+            if namespace is not None and entry.namespace != namespace:
+                continue
+            if entity_type is not None and entry.entity_type != entity_type:
+                continue
+            score = 0
+            if entry.entity_id.lower() == q:
+                score += 1000
+            if q in entry.name.lower():
+                score += 100
+            for tag in entry.tags:
+                if q in str(tag).lower():
+                    score += 50
+            for artist in entry.artists:
+                if q in str(artist).lower():
+                    score += 50
+            if q in entry.description.lower():
+                score += 10
+            if score > 0:
+                scored.append((score, entry.entity_id, entry))
+
+        scored.sort(key=lambda triple: (-triple[0], triple[1]))
+        return [entry for (_, _, entry) in scored[:max(0, limit)]]
+
+    def stats(self) -> dict:
+        """Counts per namespace per entity_type (used by extension_atlas_list in Task 12)."""
+        counts: dict[str, dict[str, int]] = {}
+        for (ns, et, _eid) in self._entries.keys():
+            counts.setdefault(ns, {}).setdefault(et, 0)
+            counts[ns][et] += 1
+        return counts
