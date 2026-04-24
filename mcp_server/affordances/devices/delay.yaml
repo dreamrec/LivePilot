@@ -1,0 +1,18 @@
+device_slug: delay
+device_class_name: Delay
+presets:
+  ping-pong-dub:
+    description: >
+      Dotted-eighth ping-pong for dub-techno sends. Moderate feedback,
+      high wet, HP+LP filtered to stay out of the kick's sub and the
+      vocal's top end.
+    param_overrides:
+      Sync: 1
+      16th Note: 6              # dotted 8th
+      Feedback: 0.45
+      Filter On: 1
+      HP Freq: 0.20             # ~100 Hz cut below
+      LP Freq: 0.65             # mid-top rolloff
+      Dry/Wet: 0.55
+    risk_notes: "Feedback above 0.6 self-oscillates; keep the return track's output watchable."
+    suggested_pairings: ["Auto Filter", "Saturator"]

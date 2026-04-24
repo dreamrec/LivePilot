@@ -1,0 +1,14 @@
+device_slug: auto-filter
+device_class_name: AutoFilter2
+presets:
+  slow-sweep:
+    description: >
+      Slow LFO sweep for return chains. Synced rate (bar-long), moderate
+      resonance, low-pass type. Layers well with dub-cathedral reverb.
+    param_overrides:
+      Filter Type: 0            # LP
+      LFO Amount: 0.60
+      LFO Sync: 1
+      LFO Rate: 4               # bar-long sweep
+      Resonance: 0.25
+    suggested_pairings: ["Echo", "Reverb"]

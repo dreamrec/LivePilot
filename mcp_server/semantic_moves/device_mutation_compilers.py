@@ -27,14 +27,30 @@ def _empty_plan(move: SemanticMove, warnings: list[str]) -> CompiledPlan:
 
 
 def _compile_configure_device(move: SemanticMove, kernel: dict) -> CompiledPlan:
+    """Compile configure_device.
+
+    v1.20 contract: seed_args.param_overrides (explicit dict of
+    {param_name: value}).
+
+    v1.21 additions (additive — v1.20 callers unaffected):
+      - seed_args.preset: str        — named preset in the affordance library
+      - seed_args.device_slug: str   — required when preset is used; v1.21
+                                       does not auto-infer from class_name
+
+    Merge contract: preset resolves first, then explicit param_overrides
+    entries merge on top (last-write-wins at dict-key granularity).
+    """
     args = kernel.get("seed_args") or {}
     track_index = args.get("track_index")
     device_index = args.get("device_index")
-    overrides = args.get("param_overrides")
+    explicit_overrides = args.get("param_overrides")
+    preset_name = args.get("preset")
+    device_slug = args.get("device_slug")
 
-    if track_index is None or device_index is None or overrides is None:
+    if track_index is None or device_index is None:
         return _empty_plan(move, [
-            "configure_device requires seed_args.track_index + device_index + param_overrides"
+            "configure_device requires seed_args.track_index + device_index "
+            "(plus either param_overrides or a preset+device_slug pair)"
         ])
     if not isinstance(track_index, int) or not isinstance(device_index, int):
         return _empty_plan(move, [
@@ -43,14 +59,49 @@ def _compile_configure_device(move: SemanticMove, kernel: dict) -> CompiledPlan:
         ])
     if device_index < 0:
         return _empty_plan(move, [f"device_index must be non-negative, got {device_index}"])
-    if not isinstance(overrides, dict):
+
+    # explicit param_overrides is now optional (may be None if preset provides
+    # everything), but when present must be a dict.
+    if explicit_overrides is not None and not isinstance(explicit_overrides, dict):
         return _empty_plan(move, [
-            f"param_overrides must be a dict[str, Any], got {type(overrides).__name__}"
+            f"param_overrides must be a dict[str, Any], got "
+            f"{type(explicit_overrides).__name__}"
         ])
-    if not overrides:
+
+    # v1.21: resolve preset if requested
+    preset_overrides: dict = {}
+    if preset_name is not None:
+        if not device_slug:
+            return _empty_plan(move, [
+                "preset seed_arg requires device_slug (v1.21 contract — "
+                "auto-inference from class_name is v1.22 scope). Example: "
+                "args={\"track_index\": -1, \"device_index\": 0, "
+                "\"device_slug\": \"reverb\", \"preset\": \"dub-cathedral\"}"
+            ])
+        # Late import so mcp_server.semantic_moves doesn't hard-depend on
+        # mcp_server.affordances at import time — branch is only taken
+        # when a caller explicitly asks for a preset.
+        from ..affordances import resolve_preset
+        resolved = resolve_preset(device_slug, preset_name)
+        if resolved is None:
+            return _empty_plan(move, [
+                f"No preset {preset_name!r} for device slug {device_slug!r}. "
+                f"Check mcp_server/affordances/devices/{device_slug}.yaml "
+                f"exists and contains the named preset."
+            ])
+        preset_overrides = resolved
+
+    # Merge: preset resolves first, explicit param_overrides merge on top
+    # (last-write-wins at dict-key granularity).
+    merged: dict = dict(preset_overrides)
+    if explicit_overrides:
+        merged.update(explicit_overrides)
+
+    if not merged:
         return _empty_plan(move, [
-            "param_overrides is empty — nothing to configure (delete_device "
-            "is a different move)"
+            "configure_device requires either a non-empty param_overrides "
+            "dict OR a preset+device_slug combination that resolves to "
+            "params. Neither was provided."
         ])
 
     # WIRE-FORMAT NOTE: compiled steps use the remote_command backend,
@@ -61,9 +112,12 @@ def _compile_configure_device(move: SemanticMove, kernel: dict) -> CompiledPlan:
     # exclusively. Emit that key directly.
     parameters = [
         {"name_or_index": str(name), "value": value}
-        for name, value in overrides.items()
+        for name, value in merged.items()
     ]
 
+    preset_suffix = (
+        f" from preset {device_slug}/{preset_name}" if preset_name else ""
+    )
     step = CompiledStep(
         tool="batch_set_parameters",
         params={
@@ -72,9 +126,9 @@ def _compile_configure_device(move: SemanticMove, kernel: dict) -> CompiledPlan:
             "parameters": parameters,
         },
         description=(
-            f"Configure device at track {track_index}, device_index {device_index} — "
-            f"set {len(parameters)} parameter(s): "
-            f"{', '.join(p['name_or_index'] for p in parameters)}"
+            f"Configure device at track {track_index}, device_index "
+            f"{device_index}{preset_suffix} — set {len(parameters)} "
+            f"parameter(s): {', '.join(p['name_or_index'] for p in parameters)}"
         ),
         verify_after=True,
         backend="remote_command",

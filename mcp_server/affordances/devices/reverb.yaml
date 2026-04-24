@@ -1,0 +1,16 @@
+device_slug: reverb
+device_class_name: Reverb
+presets:
+  dub-cathedral:
+    description: >
+      Basic Channel-adjacent huge-space reverb. Long decay, large room,
+      noticeable predelay, high diffusion. Pairs well with Echo + Auto
+      Filter on a return chain for dub-techno sends.
+    param_overrides:
+      Decay Time: 0.85
+      Room Size: 0.95
+      Dry/Wet: 0.40
+      Predelay: 0.45
+      Diffusion: 0.80
+    risk_notes: "Long decay masks transients; avoid routing percussion here."
+    suggested_pairings: ["Echo", "Auto Filter"]

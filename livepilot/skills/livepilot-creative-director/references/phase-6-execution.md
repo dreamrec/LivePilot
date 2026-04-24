@@ -312,32 +312,92 @@ add_session_memory(
 
 ## Affordance-preset resolution (bridge into configure_device)
 
-When the plan calls for a preset-style reconfiguration (e.g., "dub
-cathedral reverb", "warm tape saturation"), resolve the preset via the
-affordance YAML at `livepilot-core/references/affordances/devices/<slug>.yaml`
-BEFORE calling `configure_device`. The resolved preset becomes the
-`param_overrides` dict:
+**Shipping in v1.21.** The affordance library lives at
+`mcp_server/affordances/devices/<slug>.yaml` and exposes a Python loader
+at `mcp_server.affordances`. When the plan calls for a preset-style
+reconfiguration (e.g., "dub cathedral reverb", "ping-pong dub delay"),
+you have two equivalent dispatch paths:
+
+### Preferred (v1.21+): pass the preset reference to configure_device
+
+The compiler resolves the preset YAML at compile time. This keeps the
+director's turn clean (no filesystem call in Python) and makes the
+dispatch self-describing:
 
 ```python
-# 1. Resolve affordance → param dict (read-only filesystem lookup)
-preset = load_affordance_preset("reverb", "dub-cathedral")
-# preset = {"Decay Time": 4000.0, "Size": 1.0, "Dry/Wet": 0.35, ...}
-
-# 2. Dispatch configure_device with the resolved dict
 apply_semantic_move(
     "configure_device",
     mode="explore",
     args={
         "track_index": -1,
         "device_index": 0,
-        "param_overrides": preset,
+        "device_slug": "reverb",       # required when preset is used
+        "preset": "dub-cathedral",     # v1.21 library name
     },
 )
 ```
 
-A preset library is v1.21 scope. Until then, construct the
-`param_overrides` dict inline from the affordance YAML or from the
-concept packet's `sonic_fingerprint` hints.
+`device_slug` is REQUIRED when `preset` is supplied — v1.21 doesn't
+auto-infer from class_name (that's v1.22 scope). The compiler returns
+a clear warning if `device_slug` is missing.
+
+### Preset + explicit override (merge semantics)
+
+The compiler merges preset-resolved params first, then applies any
+explicit `param_overrides` on top (last-write-wins at dict-key
+granularity):
+
+```python
+apply_semantic_move(
+    "configure_device",
+    mode="explore",
+    args={
+        "track_index": -1,
+        "device_index": 0,
+        "device_slug": "reverb",
+        "preset": "dub-cathedral",
+        "param_overrides": {"Decay Time": 0.5},   # overrides preset's 0.85
+    },
+)
+# Result: Decay Time=0.5 (explicit wins), Room Size=0.95 (from preset),
+#         Dry/Wet=0.40 (from preset), etc.
+```
+
+### Fallback: resolve explicitly in Python
+
+When you want to inspect or modify the resolved params before dispatch,
+call the loader directly:
+
+```python
+from mcp_server.affordances import resolve_preset
+
+preset = resolve_preset("reverb", "dub-cathedral")
+# preset = {"Decay Time": 0.85, "Room Size": 0.95, "Dry/Wet": 0.40, ...}
+
+apply_semantic_move(
+    "configure_device",
+    mode="explore",
+    args={
+        "track_index": -1,
+        "device_index": 0,
+        "param_overrides": preset,     # equivalent to path (1) above
+    },
+)
+```
+
+### v1.21 library content
+
+Minimal (3 seed presets, by design — v1.22 expands):
+
+| device_slug    | preset         | description                              |
+|----------------|----------------|------------------------------------------|
+| `reverb`       | `dub-cathedral`| Basic Channel-adjacent huge space        |
+| `delay`        | `ping-pong-dub`| Dotted-8th ping-pong, feedback 0.45      |
+| `auto-filter`  | `slow-sweep`   | Bar-long LFO LP sweep, moderate resonance|
+
+List available presets programmatically via
+`mcp_server.affordances.list_devices()` and
+`mcp_server.affordances.list_presets(device_slug)`.
 
 ---
 
