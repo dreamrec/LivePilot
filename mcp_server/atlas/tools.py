@@ -588,3 +588,101 @@ def reload_atlas(ctx: Context) -> dict:
         "reloaded": True,
         "device_count": atlas.device_count if atlas else 0,
     }
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# v1.23.0: User-local atlas overlays (extension_atlas_*)
+#
+# These tools surface the OverlayIndex populated by load_overlays() at
+# server boot from ~/.livepilot/atlas-overlays/<namespace>/. Independent
+# of the existing atlas_* tools, which are tightly coupled to the device
+# schema (URIs, packs, categories). Per spec §5.3.
+# ─────────────────────────────────────────────────────────────────────────
+
+
+def _serialize_overlay_entry(entry) -> dict:
+    """Serialize an OverlayEntry to a JSON-safe dict for MCP tool returns."""
+    return {
+        "namespace": entry.namespace,
+        "entity_type": entry.entity_type,
+        "entity_id": entry.entity_id,
+        "name": entry.name,
+        "description": entry.description,
+        "tags": entry.tags,
+        "artists": entry.artists,
+        "requires_box": entry.requires_box,
+        "body": entry.body,
+    }
+
+
+@mcp.tool()
+def extension_atlas_search(ctx: Context, query: str,
+                           namespace: str = "",
+                           entity_type: str = "",
+                           limit: int = 10) -> dict:
+    """Search user-local atlas overlays under ~/.livepilot/atlas-overlays/.
+
+    Use this for content from extension namespaces (e.g., 'elektron', 'prophet') —
+    NOT for the main Ableton device atlas (use atlas_search for that).
+
+    query:       case-insensitive substring; matches against entity_id (highest weight),
+                 name, tags/artists, description (lowest weight).
+    namespace:   restrict to one namespace (e.g., 'elektron'); empty = search all.
+    entity_type: restrict to one entity_type (e.g., 'signature_chain'); empty = all.
+    limit:       maximum results to return.
+    """
+    from .overlays import get_overlay_index
+    idx = get_overlay_index()
+    ns = namespace or None
+    et = entity_type or None
+    matches = idx.search(query, namespace=ns, entity_type=et, limit=limit)
+    return {
+        "query": query,
+        "namespace": namespace or None,
+        "entity_type": entity_type or None,
+        "count": len(matches),
+        "results": [_serialize_overlay_entry(e) for e in matches],
+    }
+
+
+@mcp.tool()
+def extension_atlas_get(ctx: Context, namespace: str, entity_id: str) -> dict:
+    """Fetch a single overlay entry by namespace + entity_id.
+
+    Returns the full entry including the original YAML body so callers can read
+    arbitrary extension-specific fields (architecture, requires_machines,
+    requires_firmware, sources, etc.).
+
+    If the entry has a `requires_firmware` field, surface it to the user before
+    recommending the chain (per spec §7) — e.g., "this needs Monomachine OS 1.32+".
+    """
+    from .overlays import get_overlay_index
+    idx = get_overlay_index()
+    entry = idx.get(namespace, entity_id)
+    if entry is None:
+        return {
+            "error": f"entity '{entity_id}' not found in namespace '{namespace}'",
+            "suggestion": "Use extension_atlas_search to find available entries, "
+                          "or extension_atlas_list to see installed namespaces."
+        }
+    return _serialize_overlay_entry(entry)
+
+
+@mcp.tool()
+def extension_atlas_list(ctx: Context, namespace: str = "") -> dict:
+    """Enumerate user-local overlay namespaces and their entity_type counts.
+
+    With no namespace: returns full list of namespaces and per-type counts.
+    With a namespace: returns just the entity_types present in that namespace.
+    """
+    from .overlays import get_overlay_index
+    idx = get_overlay_index()
+    if namespace:
+        return {
+            "namespace": namespace,
+            "entity_types": idx.list_entity_types(namespace),
+        }
+    return {
+        "namespaces": idx.list_namespaces(),
+        "counts": idx.stats(),
+    }
