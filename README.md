@@ -38,12 +38,12 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 | Layer | What it provides |
 |-------|-----------------|
 | **Deterministic Tools** | Direct control: transport, tracks, clips, notes, devices, scenes, mixing, arrangement, browser, automation |
-| **Device Atlas** | Knowledge of every device in Ableton's library — 1305 devices indexed by name, URI, category, tag, genre, and pack (641 pack-indexed). 120 enriched with sonic intelligence (47 with aesthetic-tagged `signature_techniques`). 683 drum kits mapped. **Free-text `atlas_describe_chain`** ("a granular pad like Tim Hecker") and **reverse-lookup `atlas_techniques_for_device`** (what techniques reference this device?) added in v1.17 |
-| **Concept Surface** | **New in v1.17.** Two reference files let the LLM's training translate into LivePilot: `artist-vocabularies.md` maps ~25 producers (Villalobos, Hawtin, Basic Channel, Gas, Basinski, Hecker, Aphex, Autechre, Dilla, Burial, Henke, Daft Punk, …) to `reach_for` / `avoid` / `key_techniques`; `genre-vocabularies.md` maps 15 genres to tempo / kick / bass / percussion / harmonic / texture / devices. 146 cross-references between devices and techniques. The LLM reads "sound like Gas" and gets a concrete device chain, not guesswork |
-| **Sample Engine** | Three-source sample intelligence — Ableton's browser, your filesystem, and Splice's catalog (plan-aware: Ableton Live plan uses daily quota, Sounds+/Creator uses credits, free samples bypass both). 6 fitness critics. 29 processing techniques. Collections, presets, preview-URL audition, **LIVE Describe-a-Sound + Variations via Splice GraphQL (v1.17)** |
-| **Spectral Perception** | Real-time ears via M4L — **9-band FFT (v1.17+, sub_low split at 20-60 Hz)**, RMS/peak metering, Krumhansl-Schmuckler key detection, pitch tracking, FluCoMa mel/chroma/onset. Closes the feedback loop so the AI hears its own changes |
+| **Device Atlas** | Knowledge of every device in Ableton's library — 1305 devices indexed 7 ways (by_id, by_name, by_uri, by_category, by_tag, by_genre, by_pack — 641 pack-indexed). 120 enriched with sonic intelligence (47 with aesthetic-tagged `signature_techniques`). 683 drum kits mapped. Free-text `atlas_describe_chain` ("a granular pad like Tim Hecker") and reverse-lookup `atlas_techniques_for_device` cross-reference 146 techniques across 58 devices |
+| **Concept Surface** | Two reference files let the LLM's training translate into LivePilot: `artist-vocabularies.md` maps ~25 producers (Villalobos, Hawtin, Basic Channel, Gas, Basinski, Hecker, Aphex, Autechre, Dilla, Burial, Henke, Daft Punk, …) to `reach_for` / `avoid` / `key_techniques`; `genre-vocabularies.md` maps 15 genres to tempo / kick / bass / percussion / harmonic / texture / devices. The LLM reads "sound like Gas" and gets a concrete device chain, not guesswork |
+| **Sample Engine** | Three-source sample intelligence — Ableton's browser, your filesystem, and Splice's catalog (plan-aware: Ableton Live plan uses daily quota, Sounds+/Creator uses credits, free samples bypass both). 6 fitness critics. 29 processing techniques. Collections, presets, preview-URL audition, LIVE Describe-a-Sound + Variations via Splice GraphQL |
+| **Spectral Perception** | Real-time ears via M4L — 9-band FFT (with sub_low split at 20-60 Hz for kick fundamentals), RMS/peak metering, Krumhansl-Schmuckler key detection, pitch tracking, FluCoMa mel/chroma/onset. Auto-loaded via `ensure_analyzer_on_master` (v1.20.3) — no more silently-degraded mix moves from forgotten analyzer |
 | **Technique Memory** | Persistent library of production decisions. Save a beat pattern, device chain, or mix template. Recall by mood, genre, or texture across sessions |
-| **Creative Intelligence** | A dozen engines that understand song identity, learn your taste, diagnose stuck sessions, generate creative options, and evaluate results before claiming success |
+| **Creative Intelligence** | 12 engines on top of the tools: SongBrain, Taste Graph, Wonder Mode, Mix/Sound-Design/Transition/Reference/Translation engines, Hook Hunter, Stuckness Detector, Session Continuity, Preview Studio. **43 semantic moves** (v1.20) — musical intents like "tighten the low end" or "make kick and bass lock" that compile into tool sequences with risk levels and target dimensions |
 
 <br>
 
@@ -103,7 +103,7 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 
 **M4L Bridge** (`m4l_device/`) — Optional Max for Live Audio Effect on the master track. Provides deep LOM access through Max's LiveAPI that the ControlSurface API can't reach. UDP 9880 (M4L to server) carries spectral data and LiveAPI responses. OSC 9881 (server to M4L) sends commands. The 32 spectral/analyzer tools strictly require the bridge; device and sample tools that call the bridge also have graceful fallbacks, so core functionality works without it. Backed by 31 bridge commands for hidden parameters, Simpler internals, warp markers, display values, and Simpler warp / Compressor sidechain writes that live on child objects Python can't reach.
 
-**Device Atlas** (`mcp_server/atlas/`) — In-memory indexed JSON database. 1305 devices with browser URIs, 120 enriched with YAML sonic intelligence profiles (mood, genre, texture, recommended chains). 6 indexes: by_id, by_name, by_uri, by_category, by_tag, by_genre. The AI never hallucinates a device name or preset — it always resolves against the atlas first.
+**Device Atlas** (`mcp_server/atlas/`) — In-memory indexed JSON database. 1305 devices with browser URIs, 120 enriched with YAML sonic intelligence profiles (mood, genre, texture, recommended chains). 7 indexes: by_id, by_name, by_uri, by_category, by_tag, by_genre, by_pack (641 devices mapped to their source pack). Reverse-index `device_techniques_index.json` powers `atlas_techniques_for_device` (146 cross-references across 58 devices). The AI never hallucinates a device name or preset — it always resolves against the atlas first.
 
 **Sample Engine** (`mcp_server/sample_engine/`) — Searches three sources simultaneously: BrowserSource (Ableton's library), SpliceSource (local Splice catalog via SQLite), FilesystemSource (user directories). Every result passes through a 6-critic fitness battery (key, tempo, spectral, genre, mood, technical). 29 processing techniques (Surgeon precision vs. Alchemist experimentation). Builds complete sample processing plans with warp, slice, and effect recommendations.
 
@@ -133,7 +133,7 @@ Learns your production preferences across sessions. Tracks which move families y
 
 ### Semantic Moves — Musical Actions, Not Parameters
 
-26+ high-level intents ("add contrast," "tighten the low end," "build tension") that compile into tool sequences. Each move carries a risk level, target dimensions, and protection thresholds. The AI knows what it's risking with every action.
+**43 high-level intents** across 7 families (mix, arrangement, transition, sound_design, performance, device_creation, sample) — "add contrast," "tighten the low end," "make kick and bass lock," "sample vocal ghost," "destroy then rebuild." Each move compiles into a concrete tool sequence with risk level, target dimensions, and protection thresholds. Analyzer-gated moves (`tighten_low_end`, `make_kick_bass_lock`) mark their spectrum pre-reads as optional so the plan continues even when the analyzer isn't available. The AI knows what it's risking with every action.
 
 ### Wonder Mode — Stuck-Rescue Workflow
 
@@ -177,7 +177,7 @@ Every engine follows: **measure before → act → measure after → compare**. 
 
 <br>
 
-### Core (210 tools)
+### Core Ableton Control — highlights
 
 | Domain | # | What it covers |
 |--------|:-:|----------------|
@@ -200,12 +200,12 @@ Every engine follows: **measure before → act → measure after → compare**. 
 
 <br>
 
-### M4L Bridge — 30 tools `[optional]`
+### M4L Bridge — 38 analyzer tools `[optional]`, 31 bridge commands
 
-The M4L Analyzer sits on the master track. UDP 9880 carries spectral data to the server. OSC 9881 sends commands back.
+The M4L Analyzer sits on the master track. UDP 9880 carries spectral data to the server. OSC 9881 sends commands back. The `ensure_analyzer_on_master` pre-flight (v1.20.3) loads the analyzer idempotently on first use — call it once at session start and forget about it.
 
 > [!TIP]
-> Most tools work without the analyzer — it adds 32 spectral/analyzer tools (frequency, loudness, perception) and closes the feedback loop.
+> Most tools work without the analyzer — it adds 38 spectral/analyzer tools (frequency, loudness, perception, Simpler, warp) and closes the feedback loop.
 
 ```
 SPECTRAL ─────── 9-band frequency decomposition (sub_low → air)
@@ -228,36 +228,43 @@ WARP ─────────── get / add / move / remove markers
 
 <br>
 
-### Device Atlas — 6 tools
+### Device Atlas — 10 tools
 
 The atlas is an in-memory indexed database of Ableton's entire device library.
 
 ```
 1305 devices total
   120 enriched with sonic intelligence (mood, genre, texture, chains)
- 683 drum kits mapped with note assignments
-   6 indexes: by_id, by_name, by_uri, by_category, by_tag, by_genre
+   47 with aesthetic-tagged signature_techniques
+  683 drum kits mapped with note assignments
+    7 indexes: by_id, by_name, by_uri, by_category, by_tag, by_genre, by_pack
+  146 technique cross-references across 58 devices (reverse-index)
 ```
 
 ```
-atlas_search           Search devices by name, category, or tag
-atlas_suggest          Suggest devices for a musical intent (e.g., "warm pad")
-atlas_chain            Build a device chain from a genre or purpose
-atlas_compare          Compare two devices side-by-side
-atlas_detail           Get full enriched profile for a device
-atlas_library_scan     Scan what's actually installed on this machine
+atlas_search                   Search devices by name, category, or tag
+atlas_device_info              Full enriched profile for a single device
+atlas_suggest                  Suggest devices for a musical intent (e.g., "warm pad")
+atlas_chain_suggest            Build a device chain from a genre, artist, or purpose
+atlas_compare                  Compare two devices side-by-side
+atlas_describe_chain           Free-text describe-a-chain ("granular pad like Tim Hecker")
+atlas_techniques_for_device    Reverse-lookup: what techniques reference this device?
+atlas_pack_info                Inspect a single Ableton pack — devices + enrichment coverage
+scan_full_library              Scan what's actually installed on this machine
+reload_atlas                   Hot-reload the atlas after adding enrichments
 ```
 
 <br>
 
-### Sample Engine — 6 tools
+### Sample Engine — 23 tools
 
-Three-source sample intelligence with critic-driven fitness scoring.
+Three-source sample intelligence with critic-driven fitness scoring, plus deep Splice integration (catalog search, preview, collections, preset downloads).
 
 ```
 SOURCES ─────────── BrowserSource  (Ableton's built-in library)
                     SpliceSource   (local Splice catalog via SQLite)
                     FilesystemSource (user-specified directories)
+                    Splice LIVE    (gRPC + GraphQL for the full catalog)
 
 CRITICS ─────────── key fitness · tempo fitness · spectral match
                     genre alignment · mood alignment · technical quality
@@ -265,15 +272,35 @@ CRITICS ─────────── key fitness · tempo fitness · spectr
 TECHNIQUES ─────── 29 processing recipes:
                     Surgeon (precise, transparent) vs.
                     Alchemist (experimental, transformative)
+
+PLAN-AWARE ─────── Ableton Live plan   100 samples/day (no credit drain)
+                    Sounds+/Creator     CREDIT_HARD_FLOOR=5 safety gate
+                    Free samples        bypass both gates
 ```
 
 ```
-analyze_sample         Build a complete SampleProfile (material, key, BPM, spectral)
-search_samples         Multi-source search with critic scoring
-suggest_sample_move    Recommend processing technique for a sample
-build_sample_plan      Full processing pipeline: warp + slice + effects
-list_sample_techniques Browse the 29-technique library
-get_sample_technique   Get detailed recipe for a specific technique
+Sample analysis & planning
+  analyze_sample            Build complete SampleProfile (material, key, BPM, spectral)
+  search_samples            Multi-source search with critic scoring
+  evaluate_sample_fit       Score a candidate sample against session context
+  suggest_sample_technique  Recommend processing technique for a sample
+  plan_sample_workflow      Full processing pipeline: warp + slice + effects
+  plan_slice_workflow       Slice-specific workflow for breaks / drum loops
+  get_sample_opportunities  Surface sample-friendly spots in the session
+
+Splice LIVE (catalog, collections, presets)
+  get_splice_credits        Plan + remaining credits + daily quota state
+  splice_catalog_hunt       Query the full Splice catalog (gRPC)
+  splice_download_sample    Plan-aware download (credit floor + quota check)
+  splice_preview_sample     Zero-cost audition via PreviewURL
+  splice_describe_sound     Natural-language search via Splice GraphQL
+  splice_generate_variation Find catalog samples similar to a given UUID
+  splice_list_collections   Enumerate user's Likes / bass / keys folders
+  splice_search_in_collection / add_to_collection / remove_from_collection / create_collection
+  splice_list_presets       Purchased instrument presets
+  splice_preset_info · splice_download_preset
+  splice_pack_info          Per-pack metadata
+  splice_http_diagnose      Debug the Splice HTTPS bridge
 ```
 
 <br>
@@ -461,12 +488,12 @@ livepilot --install
 </details>
 
 <details>
-<summary><strong>3. M4L Analyzer (optional — adds 27 tools)</strong></summary>
+<summary><strong>3. M4L Analyzer (optional — adds 38 tools)</strong></summary>
 
 Drag `LivePilot_Analyzer.amxd` onto the master track for real-time spectral analysis.
-The `--setup` wizard and Desktop Extension do this automatically.
+The `--setup` wizard and Desktop Extension do this automatically. From v1.20.3, your AI client can also call `ensure_analyzer_on_master` — an idempotent pre-flight that loads the device if missing and no-ops otherwise. The Creative Director skill does this on every session's Phase 1 ground read so you can't forget.
 
-> **Important:** The Analyzer must be the LAST device on the master track — after all effects (EQ, Compressor, Utility) so it reads the final output signal.
+> **Important:** The Analyzer must be the LAST device on the master track — after all effects (EQ, Compressor, Utility) so it reads the final output signal. The pre-flight tool reports `is_last_on_master: bool` and warns if the invariant is broken.
 
 </details>
 

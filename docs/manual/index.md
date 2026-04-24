@@ -19,13 +19,13 @@ The difference: a tool collection executes "set volume to -6dB." LivePilot under
 AI Client  ──MCP──►  FastMCP Server  ──TCP/9878──►  Remote Script (inside Ableton)
                         (validates)                    (executes on main thread)
                             │
-                            ├── Device Atlas (1305 devices, 135 enriched with sonic intelligence)
+                            ├── Device Atlas (1305 devices, 120 enriched, 7 indexes)
                             ├── M4L Analyzer ──UDP/OSC──► LivePilot_Analyzer.amxd
                             └── Technique Memory (~/.livepilot/memory/)
 ```
 
-The **atlas** resolves device names and browser URIs — the AI never hallucinates a preset. 641 devices are indexed by pack (Core Library + explicit-pack assignments) so "what's in Drone Lab?" is an instant lookup.
-The **analyzer** feeds back spectral data from the master bus so the AI hears its own changes. As of v1.17 the analyzer reports **9 frequency bands** (sub_low / sub / low / low_mid / mid / high_mid / high / presence / air) — the new sub_low band (20-60 Hz) separates kick fundamental from DC rumble.
+The **atlas** resolves device names and browser URIs — the AI never hallucinates a preset. 641 devices are indexed by pack (Core Library + explicit-pack assignments) so "what's in Drone Lab?" is an instant lookup. Reverse-index `device_techniques_index.json` cross-references 146 techniques across 58 devices (the `atlas_techniques_for_device` tool).
+The **analyzer** feeds back spectral data from the master bus so the AI hears its own changes — **9 frequency bands** (sub_low / sub / low / low_mid / mid / high_mid / high / presence / air); the sub_low band (20-60 Hz) separates kick fundamental from DC rumble. From v1.20.3 the analyzer is auto-loaded via `ensure_analyzer_on_master` — the Creative Director skill calls this at the top of every turn's Phase 1 ground read.
 The **memory** persists production decisions across sessions as searchable, replayable data structures.
 
 All 430 tools execute as deterministic LOM calls on Ableton's main thread. Everything is reversible with undo.
