@@ -695,23 +695,47 @@ async def commit_experiment(
     if not experiment:
         return {"error": f"Experiment {experiment_id} not found"}
 
-    # Refuse to commit branches the classifier rejected or that were
-    # analytical-only. Those statuses exist specifically so callers
-    # can't route them into re-application, and ranked_branches()
-    # already excludes them — so reaching commit with such a branch
-    # means the caller is bypassing the ranking layer.
+    # v1.21.1 fix (external audit 2026-04-24): accept ONLY status='evaluated'.
+    # Pre-fix, the check was an exclusion list —
+    # `if target.status in ("rejected", "analytical", "failed"):` — which
+    # implicitly allowed 'pending', 'running', 'discarded', and
+    # 'interesting_but_failed' to commit even though
+    # compare_experiments() never ranks them. The code's inline comment
+    # below ("only status='evaluated' branches are ranking candidates")
+    # already described the correct contract; this fix flips the
+    # polarity so the implementation matches. See
+    # docs/plans/v1.21-impl-status.md Appendix C for the audit-response log.
+    #
+    # Status semantics (from ExperimentBranch lifecycle):
+    #   pending                — create_experiment landed; run_experiment hasn't touched it
+    #   running                — run_experiment is mid-flight on this branch
+    #   evaluated              — run_experiment finished; ranking candidate ✓
+    #   rejected               — hard-rule classifier rolled back (protect violation, etc.)
+    #   analytical             — no executable plan (seed was analytical_only)
+    #   failed                 — zero steps applied successfully
+    #   committed              — already committed (re-commit is wrong)
+    #   discarded              — caller explicitly threw it out
+    #   interesting_but_failed — exploration-mode audit trail; not ranked
     target = experiment.get_branch(branch_id)
     if target is None:
         return {"error": f"Branch {branch_id} not found"}
-    if target.status in ("rejected", "analytical", "failed"):
+    if target.status != "evaluated":
         return {
             "error": (
-                f"Cannot commit branch with status '{target.status}'. "
-                f"'rejected' = hard-rule classifier rolled back; "
-                f"'analytical' = no executable plan; "
-                f"'failed' = zero steps applied successfully. "
-                f"Use compare_experiments to see eligible winners "
-                f"(only status='evaluated' branches are ranking candidates)."
+                f"Cannot commit branch with status '{target.status}' — "
+                f"only status='evaluated' branches are commit candidates. "
+                f"Reason depends on current status: "
+                f"'pending' / 'running' = run_experiment hasn't evaluated "
+                f"this branch yet (run it first); "
+                f"'rejected' = hard-rule classifier rolled it back; "
+                f"'analytical' = no executable plan (analytical_only seed); "
+                f"'failed' = zero steps applied successfully during run; "
+                f"'committed' = already committed (don't re-run); "
+                f"'discarded' = caller explicitly threw this branch out; "
+                f"'interesting_but_failed' = kept for audit in "
+                f"exploration mode, but classifier excluded from ranking. "
+                f"Use compare_experiments to see eligible (ranked) "
+                f"winners — they are always status='evaluated'."
             ),
             "branch_id": branch_id,
             "branch_status": target.status,

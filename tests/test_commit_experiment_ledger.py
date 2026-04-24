@@ -312,6 +312,72 @@ class TestCommitExperimentLedgerWrite:
         ledger = ctx.lifespan_context.get("action_ledger") or SessionLedger()
         assert ledger.get_last_move() is None
 
+    # ── v1.21.1 regression tests: only 'evaluated' branches should commit ──
+    # External audit (2026-04-24) surfaced that commit_experiment's status
+    # check was an EXCLUSION list — `if target.status in ("rejected",
+    # "analytical", "failed")` — which implicitly allowed pending, running,
+    # discarded, and interesting_but_failed branches to commit. The code's
+    # own inline comment said "only status='evaluated' branches are ranking
+    # candidates", so the intent was an INCLUSION contract; the
+    # implementation had the wrong polarity. These 4 tests pin the correct
+    # behavior. See docs/plans/v1.21-impl-status.md Appendix C for the
+    # audit-response log.
+
+    def test_commit_on_pending_branch_rejects(self, make_ctx):
+        """Pending = create_experiment just returned; run_experiment hasn't
+        evaluated it yet. Commit must reject (caller should run_experiment
+        first, then commit only the ranked winner)."""
+        from mcp_server.experiment.tools import commit_experiment
+        branch = _FakeBranch(status="pending")
+        ctx, exp, _ = make_ctx(branch=branch)
+        result = asyncio.run(commit_experiment(
+            ctx, exp.experiment_id, branch.branch_id,
+        ))
+        assert "error" in result
+        assert "pending" in str(result).lower() or "evaluated" in result["error"].lower()
+        ledger = ctx.lifespan_context.get("action_ledger") or SessionLedger()
+        assert ledger.get_last_move() is None
+
+    def test_commit_on_running_branch_rejects(self, make_ctx):
+        """Running = run_experiment is mid-flight on this branch.
+        Commit mid-evaluation is never correct — would race with the run."""
+        from mcp_server.experiment.tools import commit_experiment
+        branch = _FakeBranch(status="running")
+        ctx, exp, _ = make_ctx(branch=branch)
+        result = asyncio.run(commit_experiment(
+            ctx, exp.experiment_id, branch.branch_id,
+        ))
+        assert "error" in result
+        ledger = ctx.lifespan_context.get("action_ledger") or SessionLedger()
+        assert ledger.get_last_move() is None
+
+    def test_commit_on_discarded_branch_rejects(self, make_ctx):
+        """Discarded = caller explicitly threw this branch away. Commit
+        must not quietly resurrect it."""
+        from mcp_server.experiment.tools import commit_experiment
+        branch = _FakeBranch(status="discarded")
+        ctx, exp, _ = make_ctx(branch=branch)
+        result = asyncio.run(commit_experiment(
+            ctx, exp.experiment_id, branch.branch_id,
+        ))
+        assert "error" in result
+        ledger = ctx.lifespan_context.get("action_ledger") or SessionLedger()
+        assert ledger.get_last_move() is None
+
+    def test_commit_on_interesting_but_failed_branch_rejects(self, make_ctx):
+        """interesting_but_failed = classifier kept the branch for audit
+        (exploration mode) but explicitly excluded it from ranking. Commit
+        must honor the ranking exclusion — these are not winners."""
+        from mcp_server.experiment.tools import commit_experiment
+        branch = _FakeBranch(status="interesting_but_failed")
+        ctx, exp, _ = make_ctx(branch=branch)
+        result = asyncio.run(commit_experiment(
+            ctx, exp.experiment_id, branch.branch_id,
+        ))
+        assert "error" in result
+        ledger = ctx.lifespan_context.get("action_ledger") or SessionLedger()
+        assert ledger.get_last_move() is None
+
     def test_ledger_write_failure_does_not_fail_commit(self, make_ctx, monkeypatch):
         """Simulate SessionLedger.start_move raising — commit must still
         return the normal success payload (just without ledger_entry_id).
