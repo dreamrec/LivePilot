@@ -1,5 +1,158 @@
 # Changelog
 
+## 1.20.0 — Item C phased cutover: 10 new semantic moves + Director Phase 6 rewrite (April 24 2026)
+
+Implements the plan in `docs/plans/v1.20-structural-plan.md`. Ships 10
+new semantic moves across four family-themed commits, rewrites the
+creative director's Phase 6 to make `apply_semantic_move` the default
+execution surface with a documented + tracked escape hatch, and hardens
+three systemic issues surfaced during live pressure testing. Registry:
+33 → 43 moves across the same 7 canonical families. Full test suite:
+2858 → 2985 pass (+127, zero regressions).
+
+### New semantic moves (10 total)
+
+**Routing family (`mcp_server/semantic_moves/routing_moves.py`):**
+- `build_send_chain` (device_creation, medium risk) — load an ordered
+  chain of devices onto a return track; the Basic Channel / dub-techno
+  / ambient send-architecture primitive. `protect: low_end=0.6`.
+- `configure_send_architecture` (mix, low risk) — set send levels
+  across multiple source tracks in one move.
+- `set_track_routing` (mix, medium risk) — rewire a track's output
+  routing, e.g. "Sends Only" for bus architectures.
+
+**Device-mutation family:**
+- `configure_device` (sound_design, low risk) — bulk-configure N
+  parameters on an existing device in a single undoable move. Takes
+  `param_overrides: dict` (preset library deferred to v1.21).
+- `remove_device` (sound_design, medium risk, protects
+  `signal_integrity=0.9`) — destructive removal with a required
+  `reason` string auto-logged to session memory for audit.
+
+**Content family:**
+- `load_chord_source` (sound_design, low risk) — create+voice+name a
+  MIDI chord clip in one move; feeds `build_send_chain` return chains.
+- `create_drum_rack_pad` (device_creation, low risk) — add one pad to
+  a Drum Rack, Dilla-style kit-at-a-time.
+
+**Metadata family:**
+- `configure_groove` (arrangement, low risk) — the Dilla-swing
+  primitive; assigns a groove + optionally tunes its timing_amount.
+- `set_scene_metadata` (arrangement, low risk) — conditional
+  name/color/tempo in one move.
+- `set_track_metadata` (mix, low risk) — bundled rename + color, since
+  the two are always paired in Phase 6 usage.
+
+### Director SKILL — Phase 6 rewrite
+
+- **Decision table (authoritative):** each uncovered-pattern row now
+  points at a specific v1.20 move (e.g. "Set multiple params on a
+  device" → `configure_device`). 10 NEW rows marked explicitly.
+- **Default execution surface**: `apply_semantic_move` +
+  `commit_experiment`, replacing the pre-v1.20 "raw tools + manual
+  `add_session_memory(move_executed)` marker" pattern.
+- **Escape hatch policy** (v1.20 transitional state): when no move
+  covers the pattern, raw-tool execution is permitted only with the
+  three-call discipline — the raw call, an `add_session_memory(
+  category="move_executed")` marker, AND an `add_session_memory(
+  category="tech_debt")` log naming the uncovered pattern. Both
+  categories are mandatory; they serve different consumers (ledger
+  vs release planning).
+- **New reference doc** `phase-6-execution.md` (349 lines) — full
+  contract (seed_args, compiled steps, risk/protect, typical caller)
+  for each of the 10 moves, plus a worked escape-hatch example.
+
+### Architectural extension (commit 1)
+
+`apply_semantic_move(args: dict)` and `preview_semantic_move(args: dict)`
+now accept user seed parameters that flow into the compiler's kernel as
+`kernel["seed_args"]`. Pre-v1.20 moves are unaffected (they read only
+from `session_info`); the new routing/content/metadata moves read from
+`seed_args` for user targets like `return_track_index`, `device_chain`,
+`notes`, `track_index`, etc.
+
+### Live-test hardening (bugs caught during the 6 pressure-test gate)
+
+**Wire-format compiler fix.** `configure_device` and `set_track_routing`
+initially emitted MCP-tool-input keys (`parameter_name`,
+`output_routing_type`) which the MCP tool layer would normalize — but
+compiled plans use the `remote_command` backend that goes directly to
+`ableton.send_command()`, bypassing the MCP tool entirely. Ableton's
+Remote Script reads wire-format keys (`name_or_index`, `output_type`)
+exclusively. Fix: both compilers emit wire format. New regression suite
+`tests/test_compiler_wire_format_parity.py` — 10 parametrized cases,
+one per v1.20 move, asserting every compiled step's params match the
+Remote Script handler's actual key inventory.
+
+**Automatic ledger write.** `apply_semantic_move` in explore mode now
+writes a LedgerEntry to `SessionLedger` (family, intent, per-step
+actions, provisional `kept=True`, `score = success_fraction`). Returns
+a `ledger_entry_id` in the response so callers can correlate with
+post-hoc `evaluate_move` evaluation. Pre-v1.20 docs pointed
+anti-repetition at `memory_list` which actually reads the persistent
+technique library — wrong store. Director SKILL now points at
+`get_action_ledger_summary`. `commit_experiment` auto-ledger is v1.21
+scope.
+
+**Session memory categories.** `_VALID_CATEGORIES` in
+`mcp_server/memory/session_memory.py` now includes the three v1.20
+director Phase 6 categories: `move_executed`, `tech_debt`, and
+`override`. Pre-v1.20 categories preserved (backward compat);
+arbitrary strings still rejected. 7 new contract tests.
+
+### New tests (+127 across the release)
+
+- `tests/test_registry_uniqueness.py` (4) — guard against dict-insertion
+  collisions; baseline move count.
+- `tests/test_apply_semantic_move_args.py` (13) — seed_args threading +
+  ledger-write contract for each mode.
+- `tests/test_routing_moves.py` (21) — per-move + cross-family.
+- `tests/test_device_mutation_moves.py` (15).
+- `tests/test_content_moves.py` (14).
+- `tests/test_metadata_moves.py` (15).
+- `tests/test_director_move_coverage.py` (8) — SKILL ↔ registry drift
+  detection; phase-6-execution.md contract coverage.
+- `tests/test_compiler_wire_format_parity.py` (10) — wire-format
+  invariant across all 10 v1.20 moves.
+- `tests/test_v1_20_session_memory_categories.py` (7) — allowlist
+  contract.
+- Various in-place additions (execution_router / mcp_dispatch
+  classifier entries for `add_session_memory` and `add_drum_rack_pad`;
+  test_device_creation_moves invariant generalized to admit
+  device-loading moves alongside Device Forge moves).
+
+### Live pressure-test results (the 6 plan §5 scenarios, all passing)
+
+1. `build_send_chain` on Return A with Echo + Auto Filter + Hybrid
+   Reverb — 4 steps, 4 successes.
+2. `configure_device` on the Reverb with dub-cathedral overrides
+   (Decay 25.5s, Room Size 339.89, Dry/Wet 40%, Predelay 8.19ms,
+   Diffusion 77%) — 5 params set in one batch_set_parameters call.
+3. `configure_send_architecture` on track 0 → Send A at 0.4 — single
+   step, success.
+4. `load_chord_source` on track 0 slot 0 with a C minor 7 voicing —
+   create_clip + add_notes + set_clip_name, 3/3 success.
+5. 4 moves in sequence → `get_action_ledger_summary` returns 4 entries
+   (engine=semantic_moves, mix+arrangement families), zero `tech_debt`
+   entries — automatic ledger write confirmed end-to-end.
+6. Escape hatch: raw `set_track_arm(track=2, armed=true)` + both
+   mandatory `add_session_memory` markers; `get_session_memory(
+   category="tech_debt")` returns the log entry as expected.
+
+### Scope / non-goals
+
+Not in v1.20, explicitly deferred:
+- Hard cutover (closing the escape hatch). v1.21 target, conditional
+  on zero `tech_debt` entries over one month of production use.
+- Preset YAML library for `configure_device`. The move's
+  `param_overrides` dict already accepts a pre-resolved preset; the
+  library is the layer that produces those dicts.
+- `commit_experiment` automatic ledger write. Tracked as tech-debt.
+- Rewriting the existing 33 moves to a new shape. v1.22+.
+- Director Phase 6 compiler that picks moves automatically from user
+  intent. Current Phase 6 is user/director-selected; auto-selection
+  is a separate feature.
+
 ## 1.19.1 — v1.19.0 polish (April 24 2026)
 
 Patch release addressing the three "Known gaps" documented at the
