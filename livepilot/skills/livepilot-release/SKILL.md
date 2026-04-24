@@ -99,6 +99,21 @@ Current: **53 domains**: transport, tracks, clips, notes, devices, scenes, mixin
 
 - [ ] `m4l_device/LivePilot_Analyzer.amxd` — frozen JS matches source? All commands present?
 - [ ] If `livepilot_bridge.js` changed → amxd needs rebuilding in Max editor
+- [ ] `dist/livepilot-${VERSION}.mcpb` — MCPB bundle for Claude Desktop one-click install.
+      **REQUIRED for every release** — the README's "Easiest: Claude Desktop Extension (1 click)"
+      path points at this asset. From v1.17 through v1.20.2 every release silently shipped
+      without it; v1.20.3+ MUST attach the bundle to the GitHub release.
+      ```bash
+      # Build (produces dist/livepilot-${VERSION}.mcpb — versioned, in dist/, ~4-5 MB)
+      bash scripts/build_mcpb.sh
+
+      # Attach to the release (run after `gh release create`)
+      VERSION=$(python3 -c "import json; print(json.load(open('manifest.json'))['version'])")
+      gh release upload "v${VERSION}" "dist/livepilot-${VERSION}.mcpb" --clobber
+      ```
+      The script stages `manifest.json` + `bin/livepilot.js` + `mcp_server/` + `remote_script/`
+      + `m4l_device/` + `installer/` + `requirements.txt`, strips `__pycache__`/`*.pyc`/`.DS_Store`,
+      zips into `dist/`, and verifies the embedded manifest name+version+entry_point.
 
 ## 10. Code Consistency
 

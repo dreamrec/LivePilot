@@ -58,6 +58,15 @@ When modifying .amxd attributes that Max editor won't persist (e.g., `openinpres
 ## Version Bump
 If bumping the version, update ALL of these: package.json, server.json (Marketplace reads this), livepilot/.Codex-plugin/plugin.json, livepilot/.claude-plugin/plugin.json, .claude-plugin/marketplace.json, mcp_server/__init__.py, remote_script/LivePilot/__init__.py, CLAUDE.md, AGENTS.md, CHANGELOG.md, livepilot/skills/livepilot-core/references/overview.md, docs/M4L_BRIDGE.md (ping version string), manifest.json, m4l_device/LivePilot_Analyzer.amxd (2 in-place byte patches — same size), m4l_device/livepilot_bridge.js (VERSION const)
 
+### MCPB bundle (REQUIRED for every release)
+After version files are synced and the GitHub release is created, build + attach the MCPB bundle. The README promises a `.mcpb` one-click install; from v1.17–v1.20.2 every release silently shipped without it. Never ship a release without this step:
+```bash
+bash scripts/build_mcpb.sh   # produces dist/livepilot-${VERSION}.mcpb (~4-5 MB)
+VERSION=$(python3 -c "import json; print(json.load(open('manifest.json'))['version'])")
+gh release upload "v${VERSION}" "dist/livepilot-${VERSION}.mcpb" --clobber
+```
+The script is the source of truth — it stages only the MCPB runtime (manifest, bin/livepilot.js, mcp_server, remote_script, m4l_device, installer, requirements.txt), strips caches, and post-build verifies the embedded manifest name/version/entry_point.
+
 ### Post-push marketplace mirror sync (REQUIRED — stale-mirror trap)
 After `git push origin main` + `git push --tags` + `gh release create`, verify Claude Code's local marketplace mirror picked up the new commit:
 ```bash
