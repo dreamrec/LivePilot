@@ -210,19 +210,23 @@ def _compile_configure_record_readiness(move: SemanticMove, kernel: dict) -> Com
 
     Steps:
       exclusive=True + armed=True
-          → [set_exclusive_arm(enabled=True),
-             set_track_arm(track_index, arm=True)]
-          — Ableton's exclusive-arm mode auto-disarms other regular tracks
-            when one gets armed.
+          → N+1 steps: set_track_arm(other_idx, arm=False) for every
+            regular track ≠ target, then set_track_arm(target, arm=True).
+          — Emulates Ableton's exclusive-arm mode manually. Cannot use
+            ``set_exclusive_arm`` directly: ``song.exclusive_arm`` has
+            no Python setter in Live 12.4 (property getter only — a
+            pre-existing v1.20.3 Remote Script bug surfaced during v1.21's
+            live-test pre-flight). The manual disarm loop produces the
+            same user-facing outcome (target is the single armed track)
+            without depending on the broken toggle.
       else
           → [set_track_arm(track_index, arm=armed)]
 
-    Wire-format discipline: emit `arm` (not `armed`) and `enabled`. The
-    remote_command backend bypasses the MCP tool rename layer, so the
-    Remote Script handlers see exactly what the compiler emitted.
-    See remote_script/LivePilot/tracks.py:263 (set_track_arm reads
-    params["arm"]) and transport.py:183 (set_exclusive_arm reads
-    params["enabled"]).
+    Wire-format discipline: emit `arm` (not `armed`). The remote_command
+    backend bypasses the MCP tool rename layer (``tools/tracks.py:317``
+    renames ``armed → arm`` before send_command), so the compiler must
+    emit ``arm`` directly. See remote_script/LivePilot/tracks.py:263
+    for the Remote Script handler.
     """
     args = kernel.get("seed_args") or {}
     track_index = args.get("track_index")
@@ -288,25 +292,51 @@ def _compile_configure_record_readiness(move: SemanticMove, kernel: dict) -> Com
 
     steps: list[CompiledStep] = []
     if exclusive and armed:
-        # 2-step plan: enable global exclusive mode + arm target.
-        # Ableton disarms other regular tracks because exclusive is on.
-        steps.append(CompiledStep(
-            tool="set_exclusive_arm",
-            params={"enabled": True},
-            description="Enable exclusive-arm mode (only one track armed at a time)",
-            backend="remote_command",
-            verify_after=False,
-        ))
+        # Manual emulation of Ableton's exclusive-arm mode (set_exclusive_arm
+        # handler is broken in Live 12.4 per above docstring). Emit N+1
+        # steps: disarm every other regular track, then arm target.
+        all_tracks = kernel.get("session_info", {}).get("tracks", []) or []
+        if not all_tracks:
+            return CompiledPlan(
+                move_id=move.move_id, intent=move.intent,
+                summary="exclusive mode requires session_info.tracks",
+                warnings=[
+                    "configure_record_readiness exclusive=True requires "
+                    "session_info.tracks to know which other tracks to disarm. "
+                    "apply_semantic_move builds session_info automatically; "
+                    "direct compiler callers must supply it explicitly."
+                ],
+            )
+        for track in all_tracks:
+            idx = track.get("index")
+            if idx is None or idx == track_index:
+                continue
+            # Skip return / master — can't be armed anyway, and Ableton's
+            # set_track_arm rejects negative indices (tracks.py:261).
+            if track.get("type") in ("return", "master"):
+                continue
+            if isinstance(idx, int) and idx < 0:
+                continue
+            name = track.get("name", f"track {idx}")
+            steps.append(CompiledStep(
+                tool="set_track_arm",
+                params={"track_index": idx, "arm": False},
+                description=f"Disarm {name} (exclusive-arm emulation)",
+                backend="remote_command",
+            ))
         steps.append(CompiledStep(
             tool="set_track_arm",
             params={"track_index": track_index, "arm": True},
             description=(
                 f"Arm track {track_index} "
-                "(exclusive mode — other regular tracks auto-disarm)"
+                f"(exclusive — single-armed, {len(steps)} other(s) disarmed)"
             ),
             backend="remote_command",
         ))
-        summary = f"Exclusive-arm track {track_index}"
+        summary = (
+            f"Exclusive-arm track {track_index} — "
+            f"{len(steps)-1} other regular track(s) disarmed first"
+        )
     else:
         steps.append(CompiledStep(
             tool="set_track_arm",

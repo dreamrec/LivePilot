@@ -86,9 +86,11 @@ CONFIGURE_RECORD_READINESS = SemanticMove(
     move_id="configure_record_readiness",
     family="performance",
     intent=(
-        "Arm or disarm a track for recording. When exclusive=True, enables "
-        "Ableton's exclusive-arm mode so only the target track stays armed "
-        "(other regular tracks auto-disarm) — the standard one-take setup."
+        "Arm or disarm a track for recording. When exclusive=True, disarms "
+        "all other regular tracks then arms the target — the standard "
+        "one-take recording setup (Live 12.4's `song.exclusive_arm` toggle "
+        "is read-only from Python, so the compiler emulates the mode via "
+        "a manual disarm loop)."
     ),
     targets={},
     protect={"signal_integrity": 0.7},

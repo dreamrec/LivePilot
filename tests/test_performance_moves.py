@@ -81,36 +81,94 @@ class TestConfigureRecordReadinessMove:
         # Wire-format key is `arm`, not `armed`.
         assert arm_steps[0].params == {"track_index": 2, "arm": True}
 
-    def test_compiler_emits_exclusive_arm_plus_set_track_arm_when_exclusive(self):
-        """exclusive=True + armed=True → 2-step plan:
-            1. set_exclusive_arm(enabled=True) — enable Ableton's exclusive mode
-            2. set_track_arm(track_index, arm=True) — arm the target
+    def test_compiler_emits_disarm_others_plus_arm_target_when_exclusive(self):
+        """exclusive=True + armed=True → N+1 steps emulating Ableton's
+        exclusive-arm mode manually:
+            * set_track_arm(other_idx, arm=False) for every regular track
+              ≠ target
+            * set_track_arm(target, arm=True) for the target
 
-        Ableton's exclusive_arm mode auto-disarms other regular tracks when
-        one gets armed. See remote_script/LivePilot/transport.py:181-184 for
-        the set_exclusive_arm handler and tracks.py:256-264 for set_track_arm.
-        """
+        Live 12.4 live-test pre-flight (2026-04-24) surfaced that
+        ``song.exclusive_arm`` has no Python setter in current LOM —
+        ``set_exclusive_arm`` errors with "property of 'Song' object has
+        no setter". The compiler emulates the mode manually rather than
+        relying on the broken toggle. See
+        remote_script/LivePilot/transport.py:180 for the (pre-existing,
+        tracked) broken handler."""
         move = get_move("configure_record_readiness")
         kernel = {
             "seed_args": {"track_index": 2, "armed": True, "exclusive": True},
-            "session_info": {},
+            "session_info": {
+                "tracks": [
+                    {"index": 0, "name": "Kick", "type": "midi"},
+                    {"index": 1, "name": "Bass", "type": "midi"},
+                    {"index": 2, "name": "Lead", "type": "audio"},  # target
+                    {"index": 3, "name": "Pad", "type": "midi"},
+                ],
+            },
             "mode": "improve",
         }
         plan = move_compiler.compile(move, kernel)
         assert plan.executable, f"plan should be executable; warnings={plan.warnings}"
+        # Every step is set_track_arm — no set_exclusive_arm (broken in 12.4).
         tools = [s.tool for s in plan.steps]
-        assert "set_exclusive_arm" in tools, (
-            f"exclusive mode must include set_exclusive_arm; got tools={tools}"
+        assert all(t == "set_track_arm" for t in tools), (
+            f"exclusive mode emulation should only emit set_track_arm steps; "
+            f"got tools={tools}"
         )
-        assert "set_track_arm" in tools, (
-            f"exclusive mode must still arm the target track; got tools={tools}"
+        # 3 disarm steps (tracks 0, 1, 3) + 1 arm step (track 2) = 4 steps
+        assert len(plan.steps) == 4
+        # Exactly one arm=True step (the target)
+        arm_true = [s for s in plan.steps if s.params.get("arm") is True]
+        assert len(arm_true) == 1
+        assert arm_true[0].params["track_index"] == 2
+        # The rest disarm the other regular tracks
+        arm_false = [s for s in plan.steps if s.params.get("arm") is False]
+        assert len(arm_false) == 3
+        disarmed_indices = sorted(s.params["track_index"] for s in arm_false)
+        assert disarmed_indices == [0, 1, 3]
+
+    def test_compiler_exclusive_skips_return_and_master_tracks(self):
+        """Exclusive mode must not try to disarm return/master tracks —
+        Ableton's set_track_arm rejects negative indices (tracks.py:261)."""
+        move = get_move("configure_record_readiness")
+        kernel = {
+            "seed_args": {"track_index": 1, "armed": True, "exclusive": True},
+            "session_info": {
+                "tracks": [
+                    {"index": 0, "name": "Regular", "type": "midi"},
+                    {"index": 1, "name": "Target", "type": "audio"},
+                    {"index": -1, "name": "A-Reverb", "type": "return"},
+                    {"index": -2, "name": "B-Delay", "type": "return"},
+                ],
+            },
+            "mode": "improve",
+        }
+        plan = move_compiler.compile(move, kernel)
+        assert plan.executable
+        # Should emit 2 steps: disarm track 0, arm track 1. Returns skipped.
+        assert len(plan.steps) == 2
+        indices_emitted = {s.params["track_index"] for s in plan.steps}
+        assert indices_emitted == {0, 1}, (
+            f"return/master tracks must be skipped; got {indices_emitted}"
         )
-        # set_exclusive_arm toggles global mode — wire params {"enabled": True}.
-        excl = [s for s in plan.steps if s.tool == "set_exclusive_arm"][0]
-        assert excl.params == {"enabled": True}
-        # set_track_arm arms the target — wire params {"track_index": N, "arm": True}.
-        arm = [s for s in plan.steps if s.tool == "set_track_arm"][0]
-        assert arm.params == {"track_index": 2, "arm": True}
+
+    def test_compiler_exclusive_without_session_info_rejects(self):
+        """The manual-disarm strategy needs session_info.tracks. Without
+        it, the compiler rejects with an actionable warning."""
+        move = get_move("configure_record_readiness")
+        kernel = {
+            "seed_args": {"track_index": 2, "armed": True, "exclusive": True},
+            "session_info": {},  # no tracks
+            "mode": "improve",
+        }
+        plan = move_compiler.compile(move, kernel)
+        assert not plan.executable
+        joined = " ".join(plan.warnings).lower()
+        assert "session_info" in joined, (
+            f"warning should point at the session_info requirement; "
+            f"got: {plan.warnings}"
+        )
 
     def test_compiler_rejects_exclusive_true_with_armed_false(self):
         """`exclusive=True + armed=False` is a contradiction — the point
