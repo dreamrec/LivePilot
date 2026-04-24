@@ -45,6 +45,7 @@ def list_semantic_moves(
 def preview_semantic_move(
     ctx: Context,
     move_id: str,
+    args: Optional[dict] = None,
 ) -> dict:
     """Preview what a semantic move will do before applying it.
 
@@ -53,6 +54,11 @@ def preview_semantic_move(
     kernel of the current session. Use compiled_plan to inspect the concrete
     tool calls the move would emit right now; use plan_template to understand
     the move's shape independent of session state.
+
+    args (v1.20+): user-supplied seed parameters threaded into the kernel as
+    ``kernel["seed_args"]``. Routing / content / metadata moves require these
+    (e.g., ``{"return_track_index": 0, "device_chain": ["Echo", ...]}``).
+    Pre-v1.20 moves read only from ``session_info`` and ignore seed_args.
 
     Existing callers reading plan_template are unaffected by the addition.
     """
@@ -96,7 +102,10 @@ def preview_semantic_move(
             session_info=session_info,
             capability_state=state.to_dict(),
         )
-        plan = move_compiler.compile(move, kernel.to_dict())
+        kernel_dict = kernel.to_dict()
+        # v1.20: thread user seed_args through to the compiler.
+        kernel_dict["seed_args"] = dict(args) if args else {}
+        plan = move_compiler.compile(move, kernel_dict)
         result["compiled_plan"] = plan.to_dict()
         result["compiled_plan_executable"] = bool(plan.executable)
     except Exception as e:
@@ -285,6 +294,7 @@ async def apply_semantic_move(
     ctx: Context,
     move_id: str,
     mode: str = "improve",
+    args: Optional[dict] = None,
 ) -> dict:
     """Compile and optionally execute a semantic move against the current session.
 
@@ -296,6 +306,12 @@ async def apply_semantic_move(
       The agent should present the steps and ask "Shall I do it?"
     - "explore": compile and EXECUTE immediately, capturing before/after.
     - "observe" / "diagnose": compile only, never execute. Return the plan.
+
+    args (v1.20+): user-supplied seed parameters threaded into the kernel as
+    ``kernel["seed_args"]``. Required by routing / content / metadata moves —
+    e.g., ``apply_semantic_move("build_send_chain", mode="explore",
+    args={"return_track_index": 0, "device_chain": ["Echo", "Auto Filter"]})``.
+    Pre-v1.20 moves read only from ``session_info`` and ignore seed_args.
 
     Returns: CompiledPlan with concrete steps, summary, and execution status.
     """
@@ -312,6 +328,7 @@ async def apply_semantic_move(
         "session_info": session_info,
         "mode": mode,
         "capability_state": {},
+        "seed_args": dict(args) if args else {},
     }
 
     # Compile the move
