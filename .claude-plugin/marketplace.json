@@ -9,8 +9,8 @@
   "plugins": [
     {
       "name": "livepilot",
-      "description": "Agentic production system for Ableton Live 12 — 430 tools, 53 domains, 44 semantic moves, device atlas (1305 devices, 120 enriched, 7 indexes), Splice intelligence (gRPC + GraphQL describe-a-sound + preview + collections + presets), 9-band spectral perception auto-loaded via ensure_analyzer_on_master, Creative Director skill with Phase 1/3/5/6 contract, technique memory, neo-Riemannian harmony, Euclidean rhythm, species counterpoint, MIDI I/O",
-      "version": "1.21.1",
+      "description": "Agentic production system for Ableton Live 12 — 430 tools, 53 domains, 44 semantic moves, device atlas (5264 devices, 120 enriched, 7 indexes), Splice intelligence (gRPC + GraphQL describe-a-sound + preview + collections + presets), 9-band spectral perception auto-loaded via ensure_analyzer_on_master, Creative Director skill with Phase 1/3/5/6 contract, technique memory, neo-Riemannian harmony, Euclidean rhythm, species counterpoint, MIDI I/O",
+      "version": "1.21.2",
       "author": {
         "name": "Pilot Studio"
       },

@@ -1,5 +1,139 @@
 # Changelog
 
+## 1.21.2 — Second audit-response: atlas reconciliation + manual hygiene + sync_metadata expansion (April 24 2026)
+
+Second same-day audit-response patch. After v1.21.1 shipped, the repo
+owner ran another audit and surfaced one code bug (`AtlasManager`
+reported `version="unknown"` because the atlas JSON has `.version` at
+top level, not under `.meta.version`) plus four documentation drifts
+(atlas claims in 11 description fields, stale "32" analyzer counts in
+3 locations, reversibility overclaim in the manual, `.maxpat` source
+displaying `v1.17.5`), and the meta-observation that `sync_metadata.py`
+had been blind to the entire category of drift that keeps surfacing
+in audit rounds.
+
+This patch closes all five findings AND expands `sync_metadata`'s
+scope so future drift of the same classes fails CI instead of requiring
+another manual audit.
+
+### P2 — `AtlasManager.version` now reads top-level `.version`
+
+Pre-fix (`mcp_server/atlas/__init__.py:21`):
+
+```python
+self._meta = data.get("meta", {})
+# ...
+@property
+def version(self) -> str:
+    return self._meta.get("version", "unknown")
+```
+
+The shipped `device_atlas.json` has `.version = "2.0.0"` at top level,
+not nested under `.meta.version`. So `self._meta` was always `{}` and
+`.version` always returned `"unknown"`. Fixed by reading both locations
+with top-level winning; `.meta.version` preserved as fallback for any
+internal/dev atlas using the older schema. After fix:
+`AtlasManager.version` returns `"2.0.0"` on the shipped atlas.
+
+### P2 — Atlas description claims: 1305 devices → 5264, drop "641 pack-indexed"
+
+The "1305 devices" claim was false in every public surface (actual
+shipped JSON has `stats.total_devices = 5264`). The "641 pack-indexed"
+claim was meaningless — the shipped atlas has an empty `.packs` list;
+device-side pack count via `.devices[*].pack` field is 50 across 13
+unique pack names (not 641 or 655).
+
+Updated 11 surfaces: `README.md` (5 hits), `AGENTS.md`, `CLAUDE.md`,
+`package.json`, `server.json`, `manifest.json` (2 hits), `marketplace.json`,
+`Codex-plugin/plugin.json`, `claude-plugin/plugin.json`,
+`livepilot-core/SKILL.md`, `livepilot-core/references/overview.md` (2 hits).
+
+"120 enriched" kept — defensible as the YAML enrichment file count
+(120 files on disk). The `stats.enriched_devices` value (87) and the
+`.enriched=true` flag count (135) are two other valid definitions; the
+three-way divergence is a schema question for v1.22+ scope, not a
+drift fix here.
+
+### P2 — Manual analyzer-tool count 32 → 38
+
+`docs/manual/getting-started.md:256` and `livepilot/skills/livepilot-release/SKILL.md`
+(3 lines) still said "32 spectral/analyzer tools" despite the actual
+`@mcp.tool` count in `analyzer.py` being 38. Corrected.
+
+### P2 — `.maxpat` source label v1.17.5 → v1.21.2
+
+`m4l_device/LivePilot_Analyzer.maxpat:1611` had a stale visible version
+label `"text": "v1.17.5"`. The compiled `.amxd` had been binary-patched
+to the correct version across releases, but the source patch Max uses
+when someone opens/rebuilds the device never got updated. Fixed.
+
+### P3 — Manual reversibility language hedge
+
+`docs/manual/index.md:31` said "All 430 tools... reversible with undo"
+— the README was hedged in v1.21.1 but the manual missed. Corrected
+with matching language: Live-session mutations route through Ableton's
+undo stack; side effects outside the Live project (Splice downloads,
+memory/ledger writes, installer actions, atlas scans, filesystem writes)
+persist beyond undo.
+
+### `sync_metadata.py` expansion — converts this drift class into CI failures
+
+Added to close the audit-memory gap that made v1.21.0, v1.21.1, and
+now v1.21.2 each need a manual sweep:
+
+- **`check_lockfile_version(version)`** — asserts `package-lock.json`
+  root `.version` matches `package.json`. Would have caught the
+  lockfile-stuck-at-1.17.5 drift at CI time from pre-v1.18 onwards.
+- **`PROSE_CLAIM_FILES["semantic move"]`** — enforces every registered
+  "N semantic moves" claim matches `registry.count()` (currently 44).
+  Would have caught v1.21.0's "43 semantic moves" drift at CI time.
+- **`PROSE_CLAIM_FILES["analyzer tool"]`** — enforces "N analyzer tools"
+  claims match `@mcp.tool` count in `analyzer.py` (currently 38).
+  Catches plain-form drift; "spectral/analyzer tools" slashed variants
+  bypass the current `check_prose_claim` regex's optional-word prefix
+  (noted in an inline comment — left for a future patch to broaden).
+
+`sync_metadata --check` banner now reports 2 new counts:
+`moves=44, analyzer_tools=38` alongside the previous 6.
+
+### Deferred to v1.22
+
+- **`sync_metadata.py` atlas-stats check** — catching drift in
+  "5264 devices" or "87 enriched" claims requires either a noun-specific
+  regex (generic "device" is too broad — false-positives on every
+  historical "5 devices" mention) or a different check strategy.
+  Worth doing but nontrivial.
+- **`check_prose_claim` regex broadening** to catch slashed compounds
+  like "spectral/analyzer tools". Current regex's `(?:[A-Za-z]+\s+)?`
+  prefix misses `spectral/` because the slash breaks the character class.
+- **Atlas JSON schema decision** — whether `stats.enriched_devices`,
+  `.enriched=true` flag count, or YAML file count is THE canonical
+  "enriched" number. Picking one + renaming fields ends the three-way
+  ambiguity.
+
+### Credits
+
+Second external audit by the repo owner, performed ~30 min after
+v1.21.1 shipped. Same-day patch #2 ships ~2 hours after audit receipt
+(matches the v1.20.1 / v1.21.1 same-day-hotfix precedent — this is the
+third such same-day patch in 48 hours).
+
+### Scope stats
+
+- 1 code fix (`mcp_server/atlas/__init__.py` — `AtlasManager` reads
+  top-level `.version`)
+- 1 code expansion (`scripts/sync_metadata.py` — 3 new checks:
+  move_count, analyzer_tool_count, lockfile_version)
+- 4 doc corrections (atlas claims across 11 files + analyzer count in
+  4 files + reversibility hedge + .maxpat label)
+- 15 version-string sites + `.amxd` binary patch (2 bytes) +
+  package-lock.json (2 fields) bumped 1.21.1 → 1.21.2
+- Test suite: 3124 passed, 1 skipped (unchanged — this is a
+  no-regression patch; the AtlasManager fix makes a previously-
+  untested code path produce the right answer).
+
+---
+
 ## 1.21.1 — Audit-response patch: experiment-commit safety + doc hygiene + lockfile (April 24 2026)
 
 Small patch release responding to an external audit of v1.21.0 performed
