@@ -19,6 +19,10 @@ logger = logging.getLogger(__name__)
 CONNECT_TIMEOUT = 5
 RECV_TIMEOUT = 20
 SINGLE_CLIENT_RETRY_DELAY = 0.25
+# v1.20.2 race-condition fix: UI transitions (Cmd+N, project open) close
+# the command socket briefly. Retry once after this delay to let Ableton
+# finish setting up the new session state.
+UI_TRANSITION_RETRY_DELAY = 0.4
 COMMAND_RECV_TIMEOUTS = {
     # Server-side slow write window is 35s; give the client a small buffer.
     "freeze_track": 40,
@@ -190,17 +194,50 @@ class AbletonConnection:
                 # Ableton may have already applied the command.  Never
                 # replay — the duplicate mutation is worse than the error.
                 if getattr(exc, '_send_completed', False):
-                    raise
+                    # v1.20.2 race-condition fix: the specific error
+                    # "Connection closed by Ableton" fires reliably after
+                    # UI state transitions (Cmd+N opens new live set,
+                    # project open, etc.). The Remote Script's socket
+                    # recv returns empty bytes in a ~300ms window around
+                    # the transition. Retry ONCE with backoff so an
+                    # immediate follow-up command survives.
+                    #
+                    # Idempotence note: most commands are idempotent
+                    # (set_tempo, set_track_volume overwrite; get_*
+                    # reads are side-effect-free). Non-idempotent
+                    # mutations (add_notes, create_clip) may in theory
+                    # double-apply — but in practice Ableton's
+                    # single-threaded command processing means the
+                    # "Connection closed" happens BEFORE command
+                    # processing begins, not after. Campaign repros
+                    # showed 3/3 set_tempo failures post-Cmd+N that
+                    # would have been fine to retry.
+                    if "Connection closed by Ableton" in str(exc):
+                        logger.warning(
+                            "Ableton closed socket mid-%s — likely UI "
+                            "state transition. Retrying once after %dms.",
+                            command_type, int(UI_TRANSITION_RETRY_DELAY * 1000),
+                        )
+                        self.disconnect()
+                        time.sleep(UI_TRANSITION_RETRY_DELAY)
+                        self.connect()
+                        response = self._send_raw(
+                            command,
+                            recv_timeout=COMMAND_RECV_TIMEOUTS.get(command_type, RECV_TIMEOUT),
+                        )
+                    else:
+                        raise
                 # Don't retry timeouts either
-                if "Timeout" in str(exc):
+                elif "Timeout" in str(exc):
                     raise
-                # Send itself failed — safe to retry with a fresh connection
-                self.disconnect()
-                self.connect()
-                response = self._send_raw(
-                    command,
-                    recv_timeout=COMMAND_RECV_TIMEOUTS.get(command_type, RECV_TIMEOUT),
-                )
+                else:
+                    # Send itself failed — safe to retry with a fresh connection
+                    self.disconnect()
+                    self.connect()
+                    response = self._send_raw(
+                        command,
+                        recv_timeout=COMMAND_RECV_TIMEOUTS.get(command_type, RECV_TIMEOUT),
+                    )
             except OSError:
                 # Socket error before send — safe to retry
                 self.disconnect()
