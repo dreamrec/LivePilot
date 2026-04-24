@@ -366,6 +366,10 @@ async def apply_semantic_move(
         }
         if getattr(step, "backend", None):
             d["backend"] = step.backend
+        # v1.20.2 (BUG #3 fix): propagate optional flag so the router
+        # can skip-and-continue on soft failures (e.g., analyzer pre-reads).
+        if getattr(step, "optional", False):
+            d["optional"] = True
         return d
 
     step_dicts = [_step_to_dict(step) for step in plan.steps]

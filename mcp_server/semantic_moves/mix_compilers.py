@@ -101,12 +101,17 @@ def _compile_tighten_low_end(move: SemanticMove, kernel: dict) -> CompiledPlan:
     bass = bass_tracks[0]
     idx = bass["index"]
 
-    # Step 1: Read spectrum
+    # Step 1: Read spectrum (optional — soft-gated on analyzer availability).
+    # BUG #3 fix (v1.20.2): if the analyzer isn't loaded on master, this
+    # step fails — but the downstream bass-volume change is independent
+    # and should still run. optional=True lets the router skip and
+    # continue instead of halting the plan.
     steps.append(CompiledStep(
         tool="get_master_spectrum",
         params={},
-        description="Read current spectral balance",
+        description="Read current spectral balance (optional — analyzer-gated)",
         verify_after=False,
+        optional=True,
     ))
 
     # Step 2: Reduce bass volume slightly
@@ -302,11 +307,14 @@ def _compile_make_kick_bass_lock(move: SemanticMove, kernel: dict) -> CompiledPl
     if not kick_tracks:
         warnings.append("No kick/drum track found — reference track missing")
 
+    # Optional pre-read — soft-gated on analyzer availability.
+    # BUG #3 fix (v1.20.2): see tighten_low_end for the same pattern.
     steps.append(CompiledStep(
         tool="get_master_spectrum",
         params={},
-        description="Read current sub/low balance before carving",
+        description="Read current sub/low balance before carving (optional — analyzer-gated)",
         verify_after=False,
+        optional=True,
     ))
 
     if bass_tracks:

@@ -29,6 +29,12 @@ class CompiledStep:
     # dispatch time — safe because test_move_annotations enforces every
     # registered move's steps map to a known backend.
     backend: Optional[str] = None
+    # v1.20.2 (BUG #3 fix): when True and the step fails at execution, the
+    # router logs a warning and CONTINUES to subsequent steps instead of
+    # halting the plan. Use for soft dependencies like analyzer-only
+    # pre-reads — downstream mutation steps should still run if the
+    # analyzer isn't loaded on master.
+    optional: bool = False
 
     def to_dict(self) -> dict:
         d = {
@@ -39,6 +45,8 @@ class CompiledStep:
         }
         if self.backend:
             d["backend"] = self.backend
+        if self.optional:
+            d["optional"] = True
         return d
 
 

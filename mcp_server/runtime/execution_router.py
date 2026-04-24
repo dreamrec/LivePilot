@@ -312,6 +312,10 @@ async def execute_plan_steps_async(
         raw_params = step.get("params") or step.get("args", {}) or {}
         step_id = step.get("step_id")
         declared_backend = step.get("backend")
+        # v1.20.2 (BUG #3 fix): optional steps whose failure should NOT
+        # halt the plan. Used for soft pre-reads like get_master_spectrum
+        # that depend on the analyzer being loaded.
+        is_optional = bool(step.get("optional", False))
 
         if not tool:
             results.append(ExecutionResult(
@@ -360,6 +364,18 @@ async def execute_plan_steps_async(
                 )
 
         if not result.ok and stop_on_failure:
+            if is_optional:
+                # Optional step failed — log a warning but CONTINUE to
+                # subsequent steps. Per BUG #3 fix (v1.20.2): analyzer pre-
+                # reads and other soft dependencies shouldn't halt the
+                # plan's actual mutation work.
+                import logging as _logging
+                _logging.getLogger(__name__).warning(
+                    "execute_plan_steps_async: optional step %r failed "
+                    "(%s); continuing to next step.",
+                    tool, result.error,
+                )
+                continue
             break
 
     return results
