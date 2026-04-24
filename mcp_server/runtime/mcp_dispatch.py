@@ -133,6 +133,11 @@ async def _add_session_memory(params: dict, ctx: Any = None) -> dict:
     return await _call(add_session_memory, ctx, params)
 
 
+async def _add_drum_rack_pad(params: dict, ctx: Any = None) -> dict:
+    from ..tools.analyzer import add_drum_rack_pad
+    return await _call(add_drum_rack_pad, ctx, params)
+
+
 def build_mcp_dispatch_registry() -> dict[str, Callable]:
     """Return the canonical registry of MCP-only tools for plan execution.
 
@@ -161,4 +166,6 @@ def build_mcp_dispatch_registry() -> dict[str, Callable]:
         # v1.20 — session memory writes for remove_device audit + director
         # escape-hatch tech_debt logging.
         "add_session_memory": _add_session_memory,
+        # v1.20 — drum rack pad construction (async orchestrator).
+        "add_drum_rack_pad": _add_drum_rack_pad,
     }

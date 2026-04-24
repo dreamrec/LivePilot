@@ -58,6 +58,11 @@ MCP_TOOLS: frozenset[str] = frozenset({
     # No TCP round-trip. Used by remove_device to audit destructive ops + by
     # the director's escape-hatch tech_debt logging.
     "add_session_memory",
+    # Drum-rack pad construction (v1.20) — async orchestrator in
+    # mcp_server/tools/analyzer.py:775 that composes insert_rack_chain +
+    # set_drum_chain_note + insert_device + replace_sample_native. Used by
+    # the create_drum_rack_pad semantic move.
+    "add_drum_rack_pad",
 })
 
 
