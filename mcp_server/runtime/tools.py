@@ -215,6 +215,13 @@ def get_session_kernel(
     session_mem: list = []
     kernel_warnings: list[str] = []
 
+    # store_purpose: audit_readonly
+    # The world-model kernel builder surfaces ledger state (total moves,
+    # memory candidates, last_move, recent_moves) as diagnostic data for
+    # downstream consumers. Not an anti-repetition reader — it's a
+    # kernel-assembly surface; consumers that want recency should either
+    # call SessionLedger.get_recent_moves directly (annotated as
+    # anti_repetition) or use get_action_ledger_summary.
     try:
         from .action_ledger import SessionLedger
         ledger = ctx.lifespan_context.get("action_ledger")

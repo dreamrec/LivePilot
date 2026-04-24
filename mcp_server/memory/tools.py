@@ -55,6 +55,10 @@ def record_anti_preference(
 @mcp.tool()
 def get_promotion_candidates(ctx: Context, limit: int = 10) -> dict:
     """Check the session ledger for entries eligible for memory promotion."""
+    # store_purpose: audit_readonly
+    # Reads the ledger to find entries already flagged as
+    # memory-promotion candidates — an audit/export surface, NOT an
+    # anti-repetition recency read.
     ledger = ctx.lifespan_context.get("action_ledger")
     if ledger is None:
         return {"candidates": [], "count": 0, "note": "no session ledger active"}
@@ -75,6 +79,12 @@ def get_promotion_candidates(ctx: Context, limit: int = 10) -> dict:
 # ── Session Memory ──────────────────────────────────────────────────
 
 
+# store_purpose: mcp_tool_definition
+# get_session_memory is the MCP tool that surfaces session-scoped
+# ephemeral observations/decisions. It is NOT the action ledger and
+# NOT the persistent technique library — use the right tool for
+# recency (SessionLedger.get_recent_moves / get_action_ledger_summary)
+# or for learned techniques (memory_list).
 @mcp.tool()
 def get_session_memory(
     ctx: Context, limit: int = 10, category: str = ""

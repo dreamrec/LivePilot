@@ -148,6 +148,10 @@ def _get_active_constraints():
 
 def _get_ledger_entries(ctx: Context) -> list[dict]:
     """Get recent action ledger entries as dicts."""
+    # store_purpose: anti_repetition
+    # Wonder Mode's rescue trigger reads recent_moves to feed the
+    # stuckness detector — classic recency signal, NOT the persistent
+    # technique library. Correct store: SessionLedger.get_recent_moves.
     try:
         from ..runtime.action_ledger import SessionLedger
         ledger: SessionLedger = ctx.lifespan_context.setdefault(

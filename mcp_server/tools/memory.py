@@ -150,6 +150,13 @@ def _generate_replay_steps(technique: dict) -> list[str]:
     return ["Replay the technique from the stored payload"]
 
 
+# store_purpose: mcp_tool_definition
+# memory_list is the MCP tool for browsing the persistent technique
+# library (memory_learn-populated). Callers that use its output for
+# anti-repetition recency have the v1.20 store-confusion BUG: correct
+# pattern is SessionLedger.get_recent_moves or get_action_ledger_summary.
+# The test tests/test_ledger_readers.py::TestAntiRepetitionUsesLedgerNotMemoryList
+# enforces this invariant across the codebase.
 @mcp.tool()
 def memory_list(
     ctx: Context,

@@ -27,6 +27,10 @@ def _get_action_history(ctx: Context) -> list[dict]:
     repeated undos, local-tweaking, loop-without-structure detection.
     Falls back to empty list when no ledger data exists (graceful degradation).
     """
+    # store_purpose: anti_repetition
+    # Stuckness detection reads recent_moves to spot repeated undos,
+    # local-tweaking loops, and loop-without-structure patterns.
+    # Recency signal — NOT the persistent technique library.
     try:
         from ..runtime.action_ledger import SessionLedger
         ledger = ctx.lifespan_context.get("action_ledger")

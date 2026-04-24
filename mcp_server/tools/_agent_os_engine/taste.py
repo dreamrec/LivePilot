@@ -14,6 +14,12 @@ from typing import Any, Optional
 from .models import QUALITY_DIMENSIONS, _clamp
 
 
+# store_purpose: technique_library
+# analyze_outcome_history consumes payloads from the persistent
+# technique library (memory_list(type="outcome")) — NOT recency data.
+# Taste-inference work reads accumulated outcome records, unlike
+# anti-repetition which reads SessionLedger.get_recent_moves.
+
 # ── Outcome Memory Analysis (Round 1) ────────────────────────────────
 def analyze_outcome_history(outcomes: list[dict]) -> dict:
     """Analyze accumulated outcome memories to identify user taste patterns.

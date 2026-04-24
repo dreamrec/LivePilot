@@ -139,6 +139,12 @@ def _fetch_session_data(ctx: Context) -> dict:
     except Exception as exc:
         logger.debug("_fetch_session_data failed: %s", exc)
 
+    # store_purpose: anti_repetition
+    # song_brain's _fetch_session_data surfaces recent moves into the
+    # brain's context so section analysis can detect repeated work
+    # patterns. Recency signal — NOT the persistent technique library.
+    # Correct store: SessionLedger.get_recent_moves (v1.20 director SKILL
+    # previously pointed at memory_list for this, which was wrong).
     # Recent moves — from session-scoped action ledger
     try:
         from ..runtime.action_ledger import SessionLedger

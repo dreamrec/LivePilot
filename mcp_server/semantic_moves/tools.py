@@ -397,11 +397,14 @@ async def apply_semantic_move(
     success_count = sum(1 for s in executed_steps if s["ok"])
     failure_count = sum(1 for s in executed_steps if not s["ok"])
 
-    # v1.20: write the executed move to the SessionLedger so
-    # get_last_move / memory_list / anti-repetition-rules can see it
-    # WITHOUT requiring the director to call add_session_memory
-    # manually. Best-effort — a ledger write failure must not fail
-    # the overall move.
+    # store_purpose: writer
+    # v1.20: apply_semantic_move is the canonical semantic-moves writer
+    # to the SessionLedger. Downstream anti-repetition / stuckness /
+    # song-brain readers (annotated store_purpose: anti_repetition) consume
+    # entries this block writes. commit_experiment (v1.21) mirrors this
+    # pattern with a "composer|experiment" engine tag instead of
+    # "semantic_moves". Best-effort — a ledger write failure must not
+    # fail the overall move.
     ledger_entry_id: Optional[str] = None
     try:
         from ..runtime.action_ledger import SessionLedger
