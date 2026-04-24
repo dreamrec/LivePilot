@@ -173,6 +173,23 @@ _WIRE_FORMAT: dict[str, dict[str, object]] = {
         # MCP tool signature: (track_index, device_index=0, beats=4)
         "required_keys": {"track_index"},
     },
+
+    # v1.21 — configure_record_readiness emissions. The Remote Script
+    # handlers (tracks.py:263 + transport.py:183) read specific keys
+    # that differ from the MCP tool's ergonomic kwargs; pin both the
+    # required set AND the forbidden-alias mapping.
+    "set_track_arm": {
+        # handler: track_index = int(params["track_index"]);
+        # arm = bool(params["arm"]) — NOT "armed"
+        "required_keys": {"track_index", "arm"},
+        "forbidden_aliases": {"armed": "arm"},
+    },
+    "set_exclusive_arm": {
+        # handler: song.exclusive_arm = bool(params["enabled"])
+        # Global mode toggle — no track_index.
+        "required_keys": {"enabled"},
+        "forbidden_aliases": {"track_index": "enabled"},
+    },
 }
 
 
@@ -278,6 +295,12 @@ _ALL_MOVE_SCENARIOS: list[tuple[str, dict]] = [
     ("sample_break_layer",      {"file_path": "/tmp/test_sample.wav"}),
     ("sample_resample_destroy", {"file_path": "/tmp/test_sample.wav"}),
     ("sample_one_shot_accent",  {"file_path": "/tmp/test_sample.wav"}),
+
+    # ── v1.21 new moves ───────────────────────────────────────────────────
+    # configure_record_readiness — performance family. Exercises the
+    # non-exclusive single-step path. The exclusive-mode 2-step variant
+    # is pinned separately in tests/test_performance_moves.py.
+    ("configure_record_readiness", {"track_index": 0, "armed": True, "exclusive": False}),
 ]
 
 

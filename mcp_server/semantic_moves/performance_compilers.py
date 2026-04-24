@@ -200,9 +200,136 @@ def _compile_emergency_simplify(move: SemanticMove, kernel: dict) -> CompiledPla
     )
 
 
+def _compile_configure_record_readiness(move: SemanticMove, kernel: dict) -> CompiledPlan:
+    """Compile configure_record_readiness.
+
+    seed_args:
+      track_index: int   — required; must be >= 0 (return tracks can't be armed)
+      armed: bool        — required
+      exclusive: bool    — optional, default False
+
+    Steps:
+      exclusive=True + armed=True
+          → [set_exclusive_arm(enabled=True),
+             set_track_arm(track_index, arm=True)]
+          — Ableton's exclusive-arm mode auto-disarms other regular tracks
+            when one gets armed.
+      else
+          → [set_track_arm(track_index, arm=armed)]
+
+    Wire-format discipline: emit `arm` (not `armed`) and `enabled`. The
+    remote_command backend bypasses the MCP tool rename layer, so the
+    Remote Script handlers see exactly what the compiler emitted.
+    See remote_script/LivePilot/tracks.py:263 (set_track_arm reads
+    params["arm"]) and transport.py:183 (set_exclusive_arm reads
+    params["enabled"]).
+    """
+    args = kernel.get("seed_args") or {}
+    track_index = args.get("track_index")
+    armed = args.get("armed")
+    exclusive = args.get("exclusive", False)
+
+    # Required-seed-args
+    if track_index is None or armed is None:
+        return CompiledPlan(
+            move_id=move.move_id,
+            intent=move.intent,
+            summary="missing required seed_args",
+            warnings=[
+                "configure_record_readiness requires seed_args.track_index "
+                "(int) and seed_args.armed (bool). Example: "
+                "apply_semantic_move(\"configure_record_readiness\", "
+                "mode=\"explore\", args={\"track_index\": 0, \"armed\": True})"
+            ],
+        )
+    if not isinstance(track_index, int):
+        return CompiledPlan(
+            move_id=move.move_id, intent=move.intent,
+            summary="invalid track_index type",
+            warnings=[f"track_index must be int, got {type(track_index).__name__}"],
+        )
+    if not isinstance(armed, bool):
+        return CompiledPlan(
+            move_id=move.move_id, intent=move.intent,
+            summary="invalid armed type",
+            warnings=[f"armed must be bool, got {type(armed).__name__}"],
+        )
+    if not isinstance(exclusive, bool):
+        return CompiledPlan(
+            move_id=move.move_id, intent=move.intent,
+            summary="invalid exclusive type",
+            warnings=[f"exclusive must be bool, got {type(exclusive).__name__}"],
+        )
+
+    # Contradiction: exclusive requires armed
+    if exclusive and not armed:
+        return CompiledPlan(
+            move_id=move.move_id, intent=move.intent,
+            summary="contradictory exclusive+armed",
+            warnings=[
+                "exclusive=True requires armed=True (the point of exclusive "
+                "is to become the single armed track); to disarm individually "
+                "call configure_record_readiness with exclusive=False"
+            ],
+        )
+
+    # Return-track constraint (Ableton's handler rejects negative indices)
+    if track_index < 0:
+        return CompiledPlan(
+            move_id=move.move_id, intent=move.intent,
+            summary="return tracks cannot be armed",
+            warnings=[
+                f"Cannot arm a return track (track_index={track_index}). "
+                "Ableton's set_track_arm handler rejects negative indices "
+                "(remote_script/LivePilot/tracks.py:261). Provide a regular "
+                "track index (>= 0)."
+            ],
+        )
+
+    steps: list[CompiledStep] = []
+    if exclusive and armed:
+        # 2-step plan: enable global exclusive mode + arm target.
+        # Ableton disarms other regular tracks because exclusive is on.
+        steps.append(CompiledStep(
+            tool="set_exclusive_arm",
+            params={"enabled": True},
+            description="Enable exclusive-arm mode (only one track armed at a time)",
+            backend="remote_command",
+            verify_after=False,
+        ))
+        steps.append(CompiledStep(
+            tool="set_track_arm",
+            params={"track_index": track_index, "arm": True},
+            description=(
+                f"Arm track {track_index} "
+                "(exclusive mode — other regular tracks auto-disarm)"
+            ),
+            backend="remote_command",
+        ))
+        summary = f"Exclusive-arm track {track_index}"
+    else:
+        steps.append(CompiledStep(
+            tool="set_track_arm",
+            params={"track_index": track_index, "arm": armed},
+            description=f"{'Arm' if armed else 'Disarm'} track {track_index}",
+            backend="remote_command",
+        ))
+        summary = f"{'Arm' if armed else 'Disarm'} track {track_index}"
+
+    return CompiledPlan(
+        move_id=move.move_id,
+        intent=move.intent,
+        steps=steps,
+        risk_level=move.risk_level,
+        summary=summary,
+        requires_approval=False,  # Performance moves execute immediately
+    )
+
+
 # ── Register ────────────────────────────────────────────────────────────────
 
 register_compiler("recover_energy", _compile_recover_energy)
 register_compiler("decompress_tension", _compile_decompress_tension)
 register_compiler("safe_spotlight", _compile_safe_spotlight)
 register_compiler("emergency_simplify", _compile_emergency_simplify)
+register_compiler("configure_record_readiness", _compile_configure_record_readiness)

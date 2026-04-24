@@ -76,6 +76,49 @@ EMERGENCY_SIMPLIFY = SemanticMove(
     ],
 )
 
+# v1.21: configure_record_readiness — closes the tech_debt entry from
+# v1.20 live test 6 (raw set_track_arm without a semantic-move wrapper).
+# seed_args: {track_index: int, armed: bool, exclusive?: bool = False}.
+# Note: `armed` here is the *ergonomic* seed_arg name — the compiler
+# translates it to the wire-format key `arm` per remote_script/LivePilot/
+# tracks.py:263. See _compile_configure_record_readiness.
+CONFIGURE_RECORD_READINESS = SemanticMove(
+    move_id="configure_record_readiness",
+    family="performance",
+    intent=(
+        "Arm or disarm a track for recording. When exclusive=True, enables "
+        "Ableton's exclusive-arm mode so only the target track stays armed "
+        "(other regular tracks auto-disarm) — the standard one-take setup."
+    ),
+    targets={},
+    protect={"signal_integrity": 0.7},
+    risk_level="low",
+    required_capabilities=["session"],
+    plan_template=[
+        # Informational — compiler builds concrete steps from seed_args.
+        {
+            "tool": "set_track_arm",
+            "params": {"description": "Arm or disarm the target track"},
+            "description": "Toggle track arm",
+            "backend": "remote_command",
+        },
+    ],
+    verification_plan=[
+        {
+            "tool": "get_track_info",
+            "check": "track's arm field matches requested value",
+            "backend": "remote_command",
+        },
+    ],
+)
+
+
 # Register all performance moves
-for _move in [RECOVER_ENERGY, DECOMPRESS_TENSION, SAFE_SPOTLIGHT, EMERGENCY_SIMPLIFY]:
+for _move in [
+    RECOVER_ENERGY,
+    DECOMPRESS_TENSION,
+    SAFE_SPOTLIGHT,
+    EMERGENCY_SIMPLIFY,
+    CONFIGURE_RECORD_READINESS,  # v1.21
+]:
     register(_move)

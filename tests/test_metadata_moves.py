@@ -260,10 +260,14 @@ def test_metadata_family_compilers_registered():
 def test_total_move_count_hits_v1_20_target():
     """All v1.20 moves registered. The plan's §1 says 9, but its §3 + §2
     decision table enumerate 10 (3 routing + 2 device-mutation + 2 content +
-    3 metadata). The enumerated contracts are authoritative."""
+    3 metadata). The enumerated contracts are authoritative.
+
+    v1.21 adds 1 performance move (configure_record_readiness): 44 total.
+    """
     from mcp_server.semantic_moves import registry
-    assert registry.count() == 43, (
-        f"expected 43 moves post-v1.20 (33 baseline + 10); got {registry.count()}"
+    assert registry.count() == 44, (
+        f"expected 44 moves post-v1.21 (33 baseline + 10 v1.20 + 1 v1.21); "
+        f"got {registry.count()}"
     )
 
 
