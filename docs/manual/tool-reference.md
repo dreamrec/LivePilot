@@ -1,6 +1,6 @@
 # Tool Reference
 
-LivePilot gives you 430 tools that control every part of Ableton Live 12. You don't call these tools directly -- you describe what you want in plain language, and the AI picks the right tools behind the scenes. But knowing what's available helps you ask better questions and understand what's happening when the AI works on your session.
+LivePilot gives you 433 tools that control every part of Ableton Live 12. You don't call these tools directly -- you describe what you want in plain language, and the AI picks the right tools behind the scenes. But knowing what's available helps you ask better questions and understand what's happening when the AI works on your session.
 
 This chapter covers every tool, grouped by what it does. Each entry tells you the tool name, what it does in practice, what parameters it accepts, and when you'd want it.
 
@@ -3222,6 +3222,48 @@ Force the atlas to re-read `device_atlas.json` from disk. Useful after an out-of
 
 ---
 
+### `extension_atlas_search`
+
+**[v1.23.0+]** Search user-local atlas overlays installed under `~/.livepilot/atlas-overlays/`. Use this for content from extension namespaces (e.g., `elektron`, `prophet`) — NOT for the main Ableton device atlas (use `atlas_search` for that).
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `query` | string | *(required)* | Case-insensitive substring; matches against `entity_id` (highest weight), `name`, `tags`/`artists`, `description` (lowest weight). |
+| `namespace` | string | `""` | Restrict to one namespace. Empty = search all. |
+| `entity_type` | string | `""` | Restrict to one entity_type (`signature_chain`, `machine`, `aesthetic_lineage`, `technique`). Empty = search all. |
+| `limit` | int | 10 | Maximum results. |
+
+Returns `{ query, namespace, entity_type, count, results: [...] }`.
+
+**When to use:** After installing a community-authored extension pack, surface signature chains / machines / techniques from that namespace. The bundled atlas is for Ableton-only content — extensions cover hardware (Elektron, Prophet, etc.) and artist-specific recipes.
+
+---
+
+### `extension_atlas_get`
+
+**[v1.23.0+]** Fetch a single overlay entry by namespace + entity_id, returning the full entry including its YAML body.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `namespace` | string | *(required)* | Overlay namespace (e.g., `"elektron"`). |
+| `entity_id` | string | *(required)* | Entry id within the namespace. |
+
+Returns the full entry dict, or `{ error, suggestion }` if not found. Includes any `requires_firmware` field — surface this to the user before recommending the entry.
+
+---
+
+### `extension_atlas_list`
+
+**[v1.23.0+]** Enumerate user-local overlay namespaces and their entity_type counts.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `namespace` | string | `""` | Return entity_types in just this namespace. Empty = list all namespaces. |
+
+Returns: with no namespace, `{ namespaces, counts }`; with a namespace, `{ namespace, entity_types }`.
+
+---
+
 ## Sample Engine & Splice
 
 LivePilot's sample system is a 3-source intelligence layer — Splice catalog (via local gRPC to the desktop app, plus HTTPS to `surfaces-graphql.splice.com` for describe + variations), Ableton browser, and filesystem. The describe-a-sound + variations tools were captured + wired 2026-04-22 via mitmproxy against Splice desktop v5.4.9.
@@ -3397,7 +3439,7 @@ Lightweight health check — parameter_count sanity (≤1 parameter = probably d
 
 ## More tools
 
-This chapter covers the most-used tools. The complete list of all 430 tools across 53 domains — including all intelligence-engine tools, creative-constraints, preview-studio, wonder-mode, memory, song-brain, transition/reference/translation engines — is auto-generated at **[Tool Catalog](tool-catalog.md)** from the running MCP server.
+This chapter covers the most-used tools. The complete list of all 433 tools across 53 domains — including all intelligence-engine tools, creative-constraints, preview-studio, wonder-mode, memory, song-brain, transition/reference/translation engines — is auto-generated at **[Tool Catalog](tool-catalog.md)** from the running MCP server.
 
 See also:
 - **[The Intelligence Layer](intelligence.md)** — how the engines connect

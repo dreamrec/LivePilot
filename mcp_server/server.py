@@ -497,6 +497,35 @@ _assert_tool_registry_accessible()
 _patch_tool_schemas()
 
 
+# ─────────────────────────────────────────────────────────────────────────
+# v1.23.0: User-local atlas overlay boot hook.
+#
+# Loads YAMLs from ~/.livepilot/atlas-overlays/<namespace>/ into the
+# module-level OverlayIndex singleton. The 3 extension_atlas_* tools
+# registered above resolve the singleton at REQUEST time (via the
+# get_overlay_index() accessor), so this load can happen after their
+# registration without ordering issues.
+#
+# Failures are logged but never abort boot — server starts even if the
+# user has no overlays installed or has malformed YAMLs.
+# Spec: docs/superpowers/specs/2026-04-25-user-local-extensions-design.md §6.1
+# ─────────────────────────────────────────────────────────────────────────
+try:
+    from .atlas.overlays import load_overlays
+    _overlay_idx_at_boot = load_overlays()
+    _overlay_count = len(_overlay_idx_at_boot.all_entries())
+    if _overlay_count:
+        logger.info(
+            f"User-local overlays loaded: {_overlay_count} entries across "
+            f"namespaces {_overlay_idx_at_boot.list_namespaces()}"
+        )
+    else:
+        logger.debug("User-local overlays: none installed at "
+                     "~/.livepilot/atlas-overlays/")
+except Exception as e:
+    logger.warning(f"User-local overlay load failed (non-fatal, server continues): {e}")
+
+
 def main():
     """Run the MCP server over stdio."""
     mcp.run(transport="stdio")

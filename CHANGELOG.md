@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.23.0 — 2026-04-25
+
+### Added
+- **User-local atlas overlay mechanism** for extending the atlas with namespaced YAML content from `~/.livepilot/atlas-overlays/<namespace>/` (custom hardware libraries, signature chains, technique recipes). Survives npm updates. Generalizes the v1.22.0 user-scan pattern from "atlas data" to "any user-local namespace."
+- 3 new MCP tools (430 → 433):
+  - `extension_atlas_search(query, namespace?, entity_type?, limit?)` — weighted substring search across overlay entries
+  - `extension_atlas_get(namespace, entity_id)` — fetch a single overlay entry with full body (including `requires_firmware` if present)
+  - `extension_atlas_list(namespace?)` — enumerate namespaces + entity_type counts
+- New file: `mcp_server/atlas/overlays.py` — `OverlayEntry` dataclass, `OverlayIndex` class, `load_overlays()`, lazy path resolver, module-level singleton.
+- New doc: `docs/EXTENSION_API.md` — public API contract for extension authors.
+
+### Behavior
+- Atlas overlays load at server boot from `~/.livepilot/atlas-overlays/`. Non-fatal — server continues if missing or malformed.
+- Loader uses `yaml.safe_load` only (rejects Python tags). Per-file parse failures log a WARN and skip the file; per-entry validation failures log a WARN and skip the entry; duplicate `(namespace, entity_type, entity_id)` last-loaded wins with a WARN.
+- For `entity_type: signature_chain`, `tags` and `artists` are required (search ranker depends on them). Other entity types treat these as optional.
+- `entity_id` and `entity_type` are str-coerced to defend against YAML scalar values like `entity_id: 42`.
+
+### Notes for extension authors
+- The contract (`OverlayEntry` field names, `extension_atlas_*` tool API) is stable from v1.23.0 forward.
+- Tool-name collisions: FastMCP enforces first-registered-wins. Bundled tools always beat extensions.
+- Phase 2 (user-local Python extensions via `register(mcp)`) lands in a future minor version.
+
+Spec: `docs/superpowers/specs/2026-04-25-user-local-extensions-design.md` (gitignored, design-time artifact)
+Plan: `docs/superpowers/plans/2026-04-25-phase-1a-atlas-overlays-plan.md` (gitignored, implementation tracker)
+
 ## 1.22.1 — Bundled enrichment coverage gate (April 25 2026)
 
 Closes the one item carried from v1.22.0's atlas-separation work: a

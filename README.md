@@ -17,7 +17,7 @@
 
 <p align="center">
   An agentic production system for Ableton Live 12.<br>
-  430 tools. 53 domains. Device atlas. Plan-aware Splice integration. Auto-composition. Spectral perception. Technique memory. Drum-rack pad builder. Live dead-device detection.
+  433 tools. 53 domains. Device atlas. Plan-aware Splice integration. Auto-composition. Spectral perception. Technique memory. Drum-rack pad builder. Live dead-device detection.
 </p>
 
 <br>
@@ -82,7 +82,7 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 │         └─────────────────┼──────────────────┘                       │
 │                           ▼                                          │
 │                  ┌─────────────────┐                                  │
-│                  │   430 MCP Tools  │                                  │
+│                  │   433 MCP Tools  │                                  │
 │                  │   53 domains     │                                  │
 │                  └────────┬────────┘                                  │
 │                           │                                          │
@@ -123,7 +123,7 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 
 ## The Intelligence Layer
 
-12 engines sit on top of the 430 tools. They give the AI musical judgment, not just musical execution.
+12 engines sit on top of the 433 tools. They give the AI musical judgment, not just musical execution.
 
 ### SongBrain — What the Song Is
 
@@ -175,7 +175,7 @@ Every engine follows: **measure before → act → measure after → compare**. 
 
 ## Tools
 
-430 tools across 53 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
+433 tools across 53 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
 
 <br>
 
@@ -230,7 +230,7 @@ WARP ─────────── get / add / move / remove markers
 
 <br>
 
-### Device Atlas — 10 tools
+### Device Atlas — 13 tools
 
 The atlas is an in-memory indexed database of Ableton's entire device library.
 
@@ -254,7 +254,12 @@ atlas_techniques_for_device    Reverse-lookup: what techniques reference this de
 atlas_pack_info                Inspect a single Ableton pack — devices + enrichment coverage
 scan_full_library              Scan what's actually installed on this machine
 reload_atlas                   Hot-reload the atlas after adding enrichments
+extension_atlas_search         [v1.23.0+] Search user-local atlas overlays
+extension_atlas_get            [v1.23.0+] Fetch a single overlay entry by namespace
+extension_atlas_list           [v1.23.0+] Enumerate overlay namespaces + entity_type counts
 ```
+
+**v1.23.0 — User-local extensions:** Drop YAML files at `~/.livepilot/atlas-overlays/<namespace>/` to extend the atlas with custom hardware libraries, signature chains, or technique recipes — survives npm updates. See [`docs/EXTENSION_API.md`](docs/EXTENSION_API.md).
 
 <br>
 
@@ -391,7 +396,7 @@ The V2 intelligence layer. These tools analyze, diagnose, plan, evaluate, and le
 | Creative Constraints | 5 | constraint activation, reference-inspired variants |
 | Preview Studio | 5 | variant creation, preview rendering, comparison, commit |
 
-> **[View all 430 tools →](docs/manual/tool-catalog.md)**
+> **[View all 433 tools →](docs/manual/tool-catalog.md)**
 
 <br>
 
@@ -618,7 +623,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for architecture details, code guidelines
 
 | Document | What's inside |
 |----------|---------------|
-| [Manual](docs/manual/index.md) | Complete reference: architecture, all 430 tools, workflows |
+| [Manual](docs/manual/index.md) | Complete reference: architecture, all 433 tools, workflows |
 | [Intelligence Layer](docs/manual/intelligence.md) | How the 12 engines connect — conductor, moves, preview, evaluation |
 | [Device Atlas](docs/manual/device-atlas.md) | 5264 devices indexed — search, suggest, chain building |
 | [Samples & Slicing](docs/manual/samples.md) | 3-source search, fitness critics, slice workflows |

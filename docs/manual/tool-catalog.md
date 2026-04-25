@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog (Generated)
 
-430 tools across 53 domains.
+433 tools across 53 domains.
 
 > Auto-generated from `mcp.list_tools()`. Do not hand-edit.
 > Regenerate: `python3 scripts/generate_tool_catalog.py`
@@ -34,7 +34,7 @@
 | `classify_simpler_slices` | Classify each Simpler slice as KICK / SNARE / HAT / ghost via FFT analysis. |
 | `compressor_set_sidechain` | Configure a Compressor's sidechain INPUT ROUTING (BUG-A3). |
 | `crop_simpler` | Crop a Simpler's sample to the currently active region. |
-| `ensure_analyzer_on_master` | Idempotent pre-flight: load LivePilot_Analyzer on master if missing (v1.20.3). |
+| `ensure_analyzer_on_master` | Idempotent pre-flight: load LivePilot_Analyzer on master if missing. |
 | `get_automation_state` | Get automation state for all parameters on a device. |
 | `get_chroma` | Get 12 pitch class energies from FluCoMa for real-time chord detection. |
 | `get_clip_file_path` | Get the audio file path of a clip on disk. |
@@ -90,7 +90,7 @@
 | `toggle_cue_point` | Set or delete a cue point at the current playback position. |
 | `transpose_arrangement_notes` | Transpose notes in an arrangement clip by semitones (positive=up, negative=down). |
 
-## Atlas (10)
+## Atlas (13)
 
 | Tool | Description |
 |------|-------------|
@@ -102,6 +102,9 @@
 | `atlas_search` | Search the device atlas for instruments, effects, kits, or plugins. |
 | `atlas_suggest` | Suggest devices for a production intent. |
 | `atlas_techniques_for_device` | Reverse-lookup: what techniques / principles reference this device? |
+| `extension_atlas_get` | Fetch a single overlay entry by namespace + entity_id. |
+| `extension_atlas_list` | Enumerate user-local overlay namespaces and their entity_type counts. |
+| `extension_atlas_search` | Search user-local atlas overlays under ~/.livepilot/atlas-overlays/. |
 | `reload_atlas` | Force the atlas to re-read device_atlas.json from disk. |
 | `scan_full_library` | Scan the full Ableton browser and rebuild the device atlas. |
 
@@ -187,7 +190,7 @@
 | Tool | Description |
 |------|-------------|
 | `check_brief_compliance` | Check whether an intended tool call complies with the active creative brief. |
-| `compile_hybrid_brief` | Merge 2+ concept packets into a single hybrid brief (e.g., "Basic Channel meets Dilla swing"). |
+| `compile_hybrid_brief` | Merge 2+ concept packets into a single hybrid brief (v1.19 Item B). |
 
 ## Device Forge (3)
 
@@ -330,7 +333,7 @@
 
 | Tool | Description |
 |------|-------------|
-| `add_session_memory` | Add an ephemeral session memory entry (observation, hypothesis, decision, issue). |
+| `add_session_memory` | Add an ephemeral session memory entry. |
 | `explain_taste_inference` | Explain why the system thinks the user prefers certain approaches. |
 | `get_anti_preferences` | Return all recorded anti-preferences — dimensions the user has repeatedly disliked. |
 | `get_promotion_candidates` | Check the session ledger for entries eligible for memory promotion. |
@@ -703,4 +706,4 @@
 | `rank_wonder_variants` | Rank wonder-mode variants by taste + identity + novelty + coherence. |
 
 ---
-*Generated from 428 registered tools.*
+*Generated from 433 registered tools.*
