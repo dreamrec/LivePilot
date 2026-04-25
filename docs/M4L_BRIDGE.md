@@ -102,6 +102,7 @@ Commands are sent WITHOUT a leading `/` in the OSC address. This is critical —
 | `get_clip_file_path` | track_idx, clip_idx | Audio file path on disk for a clip |
 | `replace_simpler_sample` | track_idx, device_idx, file_path | Replace loaded sample in Simpler |
 | `get_simpler_slices` | track_idx, device_idx | Slice points from Simpler's sample child |
+| `get_simpler_file_path` | track_idx, device_idx | Audio file path on disk for a Simpler's loaded sample (v1.23.3+; **forward-compat fallback only** — primary path is the Remote Script TCP handler of the same name, which reads `device.sample.file_path` via Python LOM. The execution router classifies this name as `remote_command` first; the bridge case is only used if the Remote Script handler is unavailable) |
 | `crop_simpler` | track_idx, device_idx | Crop sample to active region |
 | `reverse_simpler` | track_idx, device_idx | Reverse sample |
 | `warp_simpler` | track_idx, device_idx, beats | Warp sample to N beats |
