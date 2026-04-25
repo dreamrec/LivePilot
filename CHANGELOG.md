@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.23.1 — 2026-04-25
+
+### Fixed
+- `extension_atlas_search` multi-word queries returned 0 hits because the search did literal-substring matching. `"sophie ponyboy"` failed to match `"SOPHIE — Ponyboy kick"` because of the em-dash separator. Now: query is tokenized on whitespace, each token must match somewhere (AND semantics), per-token scores sum for ranking. Single-token queries collapse to the original behavior — fully backwards-compatible.
+
+### Tests
+- 3 new tests covering multi-token AND, em-dash separator handling, per-token score aggregation.
+
 ## v1.23.0 — 2026-04-25
 
 ### Added
