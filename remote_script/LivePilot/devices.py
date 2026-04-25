@@ -618,11 +618,20 @@ def insert_rack_chain(song, params):
         song.end_undo_step()
 
     chain_count = len(list(device.chains))
+    # BUG-2026-04-25: callers (notably add_drum_rack_pad) expect
+    # `chain_index` in the response so they can target the new chain in
+    # subsequent set_drum_chain_note + insert_device calls. Without it,
+    # the caller falls back to chain_index=0 and overwrites/clobbers the
+    # first chain. For position=-1 (append), the new chain lives at
+    # chain_count - 1; for explicit position N (0-indexed), the new
+    # chain lives at N (insert_chain shifts later chains right).
+    new_chain_index = position if 0 <= position < chain_count else chain_count - 1
     result = {
         "inserted": True,
         "track_index": track_index,
         "device_index": device_index,
         "chain_count": chain_count,
+        "chain_index": new_chain_index,
     }
     if assigned_note is not None:
         result["assigned_pad_note"] = assigned_note
