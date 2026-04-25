@@ -114,13 +114,13 @@ All 433 tools across 53 domains, in source-truth per-domain counts:
 | Diagnostics | 3 | Device/session health verification, test-note fire-and-forget |
 | Evaluation | 1 | Before/after evaluation with structured scoring |
 
-### Creative Intelligence (Layer 3 — 161 tools, ~20 engines)
+### Creative Intelligence (Layer 3 — 164 tools, ~20 engines)
 
 | Domain | # | Scope |
 |--------|:-:|-------|
 | Sample Engine | 23 | Multi-source search (Splice gRPC + browser + filesystem), Splice catalog hunt, downloads, previews, pack info, collections, presets, describe-a-sound (LIVE), variations (LIVE), http-diagnose (v1.17+) |
 | Hook Hunter | 9 | Hook detection, salience scoring, neglect detection, phrase impact |
-| Atlas | 10 | Search 5264 devices, suggest by intent, chain building, comparison, library scan, `atlas_pack_info`, `atlas_describe_chain` (free-text), `atlas_techniques_for_device` (reverse-lookup) — all v1.17+ |
+| Atlas | 13 | Search 5264 devices, suggest by intent, chain building, comparison, library scan, `atlas_pack_info`, `atlas_describe_chain` (free-text), `atlas_techniques_for_device` (reverse-lookup) — all v1.17+; plus `extension_atlas_search` / `extension_atlas_get` / `extension_atlas_list` for user-local overlays (v1.23.0+) |
 | Agent OS | 8 | Session kernel, action ledger, capability state, routing, goal vectors, taste |
 | Session Continuity | 7 | Creative threads, turn resolution, session story, anti-preferences |
 | Musical Intelligence | 6 | Phrase arc, impact scoring, comparison, rendering, grid analysis, snapshot |

@@ -230,7 +230,7 @@ WARP ─────────── get / add / move / remove markers
 
 <br>
 
-### Device Atlas — 10 tools
+### Device Atlas — 13 tools
 
 The atlas is an in-memory indexed database of Ableton's entire device library.
 
@@ -254,7 +254,12 @@ atlas_techniques_for_device    Reverse-lookup: what techniques reference this de
 atlas_pack_info                Inspect a single Ableton pack — devices + enrichment coverage
 scan_full_library              Scan what's actually installed on this machine
 reload_atlas                   Hot-reload the atlas after adding enrichments
+extension_atlas_search         [v1.23.0+] Search user-local atlas overlays
+extension_atlas_get            [v1.23.0+] Fetch a single overlay entry by namespace
+extension_atlas_list           [v1.23.0+] Enumerate overlay namespaces + entity_type counts
 ```
+
+**v1.23.0 — User-local extensions:** Drop YAML files at `~/.livepilot/atlas-overlays/<namespace>/` to extend the atlas with custom hardware libraries, signature chains, or technique recipes — survives npm updates. See [`docs/EXTENSION_API.md`](docs/EXTENSION_API.md).
 
 <br>
 
