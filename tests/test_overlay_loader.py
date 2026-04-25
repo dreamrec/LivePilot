@@ -340,3 +340,73 @@ def test_load_overlays_coerces_entity_id_and_type_to_str(tmp_path):
     # Downstream sanity: search must not raise AttributeError
     results = idx.search("answer")
     assert len(results) == 1
+
+
+def test_overlay_index_search_multi_token_and_semantics():
+    """Per spec §5.1 + v1.23.1 fix: multi-word query requires ALL tokens to match
+    somewhere. Defends against the v1.23.0 bug where 'sophie ponyboy' returned
+    0 hits because the literal substring 'sophie ponyboy' wasn't anywhere
+    (the entry name is 'SOPHIE — Ponyboy kick' with em-dash separator)."""
+    from mcp_server.atlas.overlays import OverlayIndex
+    idx = OverlayIndex()
+    # Entry that has both tokens in different fields
+    idx.add(_mk_entry(
+        entity_id="sophie_ponyboy_kick",
+        name="SOPHIE — Ponyboy kick (3-track Monomachine recipe)",
+        tags=["kick", "sophie", "ponyboy"],
+        artists=["sophie_xeon"],
+    ))
+    # Entry that has only one of the two tokens
+    idx.add(_mk_entry(
+        entity_id="other_sophie",
+        name="SOPHIE — bubble pop",
+        tags=["bubble", "sophie"],
+        artists=["sophie_xeon"],
+    ))
+    # Entry with neither
+    idx.add(_mk_entry(
+        entity_id="unrelated",
+        name="some other thing",
+        tags=["foo"],
+    ))
+
+    # Multi-word query: AND semantics — only the entry with BOTH tokens matches
+    results = idx.search("sophie ponyboy")
+    assert len(results) == 1
+    assert results[0].entity_id == "sophie_ponyboy_kick"
+
+
+def test_overlay_index_search_em_dash_in_name():
+    """Em-dash, en-dash, and other Unicode punctuation between words must NOT
+    block a multi-token query. Whitespace tokenization sidesteps the entire
+    'literal substring with separator' problem."""
+    from mcp_server.atlas.overlays import OverlayIndex
+    idx = OverlayIndex()
+    idx.add(_mk_entry(entity_id="a", name="SOPHIE — Ponyboy kick"))   # em-dash
+    idx.add(_mk_entry(entity_id="b", name="SOPHIE – Bubble pop"))     # en-dash
+    idx.add(_mk_entry(entity_id="c", name="SOPHIE - Lemonade"))       # hyphen-minus
+
+    # All three should match "sophie" alone
+    assert len(idx.search("sophie")) == 3
+    # All three should match the multi-token query — separator type irrelevant
+    assert len(idx.search("sophie ponyboy")) == 1
+    assert len(idx.search("sophie bubble")) == 1
+    assert len(idx.search("sophie lemonade")) == 1
+
+
+def test_overlay_index_search_token_score_aggregates():
+    """Multi-token scoring sums per-token scores, so an entry that matches
+    BOTH tokens in high-weight fields beats one that matches both in
+    low-weight fields."""
+    from mcp_server.atlas.overlays import OverlayIndex
+    idx = OverlayIndex()
+    # Entry A: both tokens in name (high weight, +100 each → +200 total)
+    idx.add(_mk_entry(entity_id="a", name="kick mechanical thing"))
+    # Entry B: both tokens in description (low weight, +10 each → +20 total)
+    idx.add(_mk_entry(entity_id="b", name="other",
+                      description="kick the can mechanical sound"))
+
+    results = idx.search("kick mechanical")
+    assert len(results) == 2
+    assert results[0].entity_id == "a"  # higher score wins
+    assert results[1].entity_id == "b"

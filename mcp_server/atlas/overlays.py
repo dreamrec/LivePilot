@@ -91,13 +91,19 @@ class OverlayIndex:
     def search(self, query: str, namespace: Optional[str] = None,
                entity_type: Optional[str] = None,
                limit: int = 10) -> list[OverlayEntry]:
-        """Weighted substring search.
+        """Weighted substring search with whitespace-tokenized AND semantics.
 
-        Scores per entry:
-          +1000 if query == entity_id (case-insensitive exact)
+        The query is split on whitespace into tokens. Each token is scored
+        against each entry independently:
+          +1000 if token == entity_id (case-insensitive exact match)
           +100  per substring hit in name
           +50   per substring hit in tag or artist
           +10   per substring hit in description
+
+        An entry matches only if EVERY token scores > 0 somewhere (AND
+        semantics — prevents 'sophie ponyboy' from matching unrelated
+        entries that contain only one of the two words). The entry's
+        final score is the sum across all tokens.
 
         Sorts by descending score, then by entity_id for stable ties.
         Filters by namespace and/or entity_type if provided.
@@ -106,6 +112,9 @@ class OverlayIndex:
         q = (query or "").strip().lower()
         if not q:
             return []
+        tokens = q.split()
+        if not tokens:
+            return []
 
         scored: list[tuple[int, str, OverlayEntry]] = []
         for entry in self._entries.values():
@@ -113,21 +122,33 @@ class OverlayIndex:
                 continue
             if entity_type is not None and entry.entity_type != entity_type:
                 continue
-            score = 0
-            if entry.entity_id.lower() == q:
-                score += 1000
-            if q in entry.name.lower():
-                score += 100
-            for tag in entry.tags:
-                if q in str(tag).lower():
-                    score += 50
-            for artist in entry.artists:
-                if q in str(artist).lower():
-                    score += 50
-            if q in entry.description.lower():
-                score += 10
-            if score > 0:
-                scored.append((score, entry.entity_id, entry))
+
+            name_lower = entry.name.lower()
+            entity_id_lower = entry.entity_id.lower()
+            description_lower = entry.description.lower()
+            tags_lower = [str(t).lower() for t in entry.tags]
+            artists_lower = [str(a).lower() for a in entry.artists]
+
+            token_scores = []
+            for tok in tokens:
+                s = 0
+                if entity_id_lower == tok:
+                    s += 1000
+                if tok in name_lower:
+                    s += 100
+                for tag in tags_lower:
+                    if tok in tag:
+                        s += 50
+                for artist in artists_lower:
+                    if tok in artist:
+                        s += 50
+                if tok in description_lower:
+                    s += 10
+                token_scores.append(s)
+
+            # AND semantics — every token must match somewhere
+            if all(s > 0 for s in token_scores):
+                scored.append((sum(token_scores), entry.entity_id, entry))
 
         scored.sort(key=lambda triple: (-triple[0], triple[1]))
         return [entry for (_, _, entry) in scored[:max(0, limit)]]
