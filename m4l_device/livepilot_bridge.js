@@ -34,7 +34,7 @@ outlets = 2; // 0: to udpsend (responses), 1: to buffer~/status
 // Single source of truth for the bridge version — bumped alongside the
 // rest of the release manifest. Surfaced in the UI via messnamed("livepilot_version", ...)
 // so the frozen .amxd visibly reports which build it was last exported from.
-var VERSION = "1.23.0";
+var VERSION = "1.23.2";
 
 // ── State ──────────────────────────────────────────────────────────────────
 

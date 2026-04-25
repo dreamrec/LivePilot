@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "livepilot",
   "display_name": "LivePilot \u2014 AI for Ableton Live",
-  "version": "1.23.1",
+  "version": "1.23.2",
   "description": "Agentic production system for Ableton Live 12. Make beats, mix tracks, design sounds, and arrange songs with 433 AI-powered tools across 53 domains.",
   "long_description": "LivePilot is an agentic production system for Ableton Live 12. 433 tools across 53 domains \u2014 device atlas (5264 devices, 120 enriched), sample intelligence (Splice gRPC + GraphQL + browser + filesystem), auto-composition, spectral perception, technique memory, 44 semantic moves across 7 families, and 12 creative engines.\n\n**What it does:**\n- Creates MIDI clips with notes, chords, and rhythms\n- Loads instruments and effects via Device Atlas (5264 devices indexed 7 ways)\n- Searches Splice's full catalog (not just downloaded samples) with credit-safe downloads and natural-language describe-a-sound\n- Plans compositions from text prompts with genre-aware layering\n- Slices samples with intent-based MIDI generation\n- Mixes with volume, panning, sends, and automation\n- Analyzes your mix with real-time 9-band spectral data (M4L bridge, auto-loaded)\n- Applies semantic moves like 'tighten the low end' or 'make kick and bass lock' that compile into tool sequences with risk levels\n- Diagnoses stuck sessions and generates creative rescue variants (Wonder Mode)\n- Remembers your production style across sessions via the Taste Graph\n\n**How it works:**\nLivePilot installs a Remote Script in Ableton that communicates with the AI over a local TCP connection. Everything runs on your machine \u2014 no audio leaves your computer.",
   "author": {

@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.23.2 — 2026-04-25
+
+### Fixed
+- M4L bridge `.amxd` ping version now matches the release version. v1.23.1 shipped with the frozen `LivePilot_Analyzer.amxd` still embedding `"version": "1.23.0"` (the m4l_device files weren't bumped during the v1.23.1 patch), which tripped the `amxd-freeze-drift` CI guard introduced after past releases lost to the same drift. In-place binary patch at offsets 32653 + 6691677 (same byte count, file size unchanged at 6,754,576 bytes), plus source bumps in `livepilot_bridge.js` (`var VERSION`) and `LivePilot_Analyzer.maxpat` (UI label) so the next freeze starts in sync.
+
+### Notes
+- Bridge functionality is unchanged from v1.23.1. This is a metadata-only patch: end users who looked at the bridge UI in v1.23.1 saw "1.23.0" — that's now corrected.
+- All distribution channels (npm, GitHub release MCPB, marketplace mirror) are re-published from this commit.
+
 ## v1.23.1 — 2026-04-25
 
 ### Fixed
