@@ -69,6 +69,7 @@ docs/specs/
 docs/superpowers/
 docs/v2-master-spec/
 docs/*.md
+!docs/EXTENSION_API.md
 .git-backup-full/
 
 # Worktrees
