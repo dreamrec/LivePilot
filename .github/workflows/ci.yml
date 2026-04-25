@@ -54,13 +54,23 @@ jobs:
         run: |
           VERSION=$(python -c "import sys; sys.path.insert(0,'.'); from mcp_server import __version__; print(__version__)")
           echo "Repo version: $VERSION"
-          if ! strings m4l_device/LivePilot_Analyzer.amxd | grep -q "\"version\": \"$VERSION\""; then
-            echo "::error::LivePilot_Analyzer.amxd does NOT contain the current version ($VERSION)."
-            echo "::error::This means the frozen .amxd is out of sync with the JS source."
-            echo "::error::Open m4l_device/LivePilot_Analyzer.maxpat in Max, File -> Freeze, save."
+          # v1.23.3: grep the source-of-truth `var VERSION = "X.Y.Z"` literal
+          # which is always emitted by Max during freeze, instead of the legacy
+          # JSON form `"version": "X.Y.Z"`. The legacy form was the runtime
+          # ping response value back when bridge.js hardcoded version strings;
+          # since the v1.20-era refactor to `"version": VERSION`, the JSON
+          # literal only appeared via post-export binary-patch. The
+          # `var VERSION` form is in bridge.js source and survives every
+          # Max freeze — no patching needed.
+          if ! strings m4l_device/LivePilot_Analyzer.amxd | grep -qE "var VERSION[[:space:]]*=[[:space:]]*\"$VERSION\""; then
+            echo "::error::LivePilot_Analyzer.amxd does NOT embed 'var VERSION = \"$VERSION\"'."
+            echo "::error::Bridge.js source and .amxd freeze are out of sync."
+            echo "::error::Fix: bump 'var VERSION' in m4l_device/livepilot_bridge.js,"
+            echo "::error::sync to '~/Documents/Max 9/Max for Live Devices/LivePilot_Analyzer Project/code/livepilot_bridge.js',"
+            echo "::error::open m4l_device/LivePilot_Analyzer.maxpat in Max, Cmd-S to re-export."
             exit 1
           fi
-          echo ".amxd embeds version $VERSION"
+          echo ".amxd embeds 'var VERSION = \"$VERSION\"' — source/freeze in sync."
 
   js-entrypoint:
     runs-on: ubuntu-latest

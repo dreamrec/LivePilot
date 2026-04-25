@@ -122,6 +122,13 @@ REMOTE_COMMANDS: frozenset[str] = frozenset({
     "ping",
     # Live 12.4+ native Simpler sample replacement (Collaborative tier)
     "replace_sample_native",
+    # v1.23.3: read Simpler.sample.file_path directly via Python LOM —
+    # primary path for classify_simpler_slices' auto-resolution. Beats
+    # the M4L bridge round-trip (which had a chunked-response correlation
+    # issue in live testing). The bridge case `get_simpler_file_path`
+    # remains as a forward-compat fallback in case Remote Script is
+    # somehow stale.
+    "get_simpler_file_path",
 })
 
 # M4L bridge commands — routed through TCP but handled by livepilot_bridge.js
@@ -130,6 +137,9 @@ BRIDGE_COMMANDS: frozenset[str] = frozenset({
     "get_params", "get_hidden_params", "get_auto_state", "walk_rack",
     "get_chains_deep", "get_track_cpu", "get_selected", "get_key",
     "get_clip_file_path", "replace_simpler_sample", "get_simpler_slices",
+    "get_simpler_file_path",  # v1.23.3 — closes the v1.12 follow-up that
+                              # left classify_simpler_slices unable to
+                              # auto-resolve the Simpler's sample path
     "crop_simpler", "reverse_simpler", "warp_simpler",
     "get_warp_markers", "add_warp_marker", "move_warp_marker",
     "remove_warp_marker", "capture_audio", "capture_stop",

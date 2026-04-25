@@ -1018,10 +1018,11 @@ async def classify_simpler_slices(
 
     Parameters:
       track_index, device_index: the Simpler to analyze
-      file_path: (optional) explicit WAV path. If omitted, attempts
-        lookup via the bridge. Bridge-native resolution is limited in
-        v1.11 — when the sample lives in the Core Library, pass the
-        absolute path explicitly.
+      file_path: (optional) explicit WAV path. If omitted, the bridge
+        resolves it automatically via ``get_simpler_file_path``
+        (v1.23.3+). Pass explicitly only when running against an .amxd
+        freeze that predates the case (returns the bridge error string
+        in that case so the caller knows to re-freeze).
 
     Returns: dict with ``slices`` list. Each slice entry has:
       index, frame, seconds, midi_pitch (36+index), label, peak, rms,
@@ -1045,25 +1046,54 @@ async def classify_simpler_slices(
     if enriched is None:
         return {"error": "Bridge returned no slice data"}
 
-    # 2. Resolve file path
+    # 2. Resolve file path via Remote Script TCP path (v1.23.3+ — closes
+    # the v1.12 follow-up). Reads ``device.sample.file_path`` directly
+    # via Python LOM, more reliable than the M4L bridge UDP round-trip
+    # (which surfaced a chunked-response correlation issue under live
+    # testing). The bridge case `get_simpler_file_path` is still
+    # registered as a forward-compat fallback for environments where
+    # Remote Script is unavailable.
     wav_path = file_path
+    resolve_error: str | None = None
     if not wav_path:
-        try:
-            file_info = await bridge.send_command(
-                "get_simpler_file_path", track_index, device_index
-            )
-            if isinstance(file_info, dict):
-                wav_path = file_info.get("file_path")
-        except Exception:  # noqa: BLE001 — bridge command may not exist yet
-            wav_path = None
+        ableton = ctx.request_context.lifespan_context.get("ableton")
+        if ableton is not None:
+            try:
+                rs_resp = ableton.send_command(
+                    "get_simpler_file_path",
+                    {"track_index": track_index, "device_index": device_index},
+                )
+                if isinstance(rs_resp, dict):
+                    wav_path = rs_resp.get("file_path")
+                    resolve_error = rs_resp.get("error")
+            except Exception as exc:  # noqa: BLE001
+                resolve_error = f"remote_script unreachable: {exc}"
+                wav_path = None
+        else:
+            resolve_error = "no ableton TCP connection"
+
+        # Fallback: try the M4L bridge if Remote Script didn't yield a path.
+        # Useful if a stale Remote Script install lacks the new handler
+        # (the user can call reload_handlers to refresh without restart).
+        if not wav_path:
+            try:
+                bridge_resp = await bridge.send_command(
+                    "get_simpler_file_path", track_index, device_index
+                )
+                if isinstance(bridge_resp, dict):
+                    bridge_path = bridge_resp.get("file_path")
+                    if bridge_path:
+                        wav_path = bridge_path
+                        resolve_error = None
+            except Exception:  # noqa: BLE001 — defensive
+                pass
 
     if not wav_path:
         return {
             **enriched,
             "error": (
-                "No file_path available — pass file_path= explicitly. "
-                "Bridge-based lookup for Simpler sample paths is a v1.12 "
-                "follow-up."
+                resolve_error
+                or "No file_path available — pass file_path= explicitly."
             ),
         }
 

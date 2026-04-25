@@ -1,5 +1,36 @@
 # Changelog
 
+## v1.23.3 — 2026-04-25
+
+### Fixed
+- **`classify_simpler_slices` now classifies slices when `file_path` is omitted (the v1.12 follow-up, finally closed).** The tool's docstring promotes "Always run this before programming drum patterns on a sliced break", but the file_path lookup had been a no-op since v1.11 — wrapped in `try/except` with the comment *"Bridge command may not exist yet"* and a fallback error message *"v1.12 follow-up"*. End-to-end verification against Ableton 12.4 + a Splice sliced break ("ff_mch_122_drum_loop_first_perc.wav"): all 23 slices get correct `label` (KICK/SNARE/HAT/ghost) + spectral breakdown, no manual `file_path` argument needed.
+- **Pivot from M4L bridge to Remote Script TCP** for the file-path lookup. The bridge round-trip surfaced a chunked-response correlation issue under live testing (the second successive `bridge.send_command` returned the *previous* command's payload). The Remote Script handler reads `device.sample.file_path` directly via Live's Python LOM — no UDP packets, no chunk reassembly, no ambiguity. Implementation:
+  - `remote_script/LivePilot/simpler_sample.py` — adds `@register("get_simpler_file_path")` handler. Resolves the SimplerDevice (with Drum Rack chain support via optional `chain_index` / `nested_device_index`), reads `device.sample.file_path`, returns `{file_path, track_index, device_index, name, ...}`.
+  - `mcp_server/runtime/remote_commands.py` — registers `get_simpler_file_path` in `REMOTE_COMMANDS` (TCP path, primary). The pre-existing entry in `BRIDGE_COMMANDS` stays for forward-compat — `execution_router.classify_step` puts REMOTE_COMMANDS first, so plans route TCP, but the bridge case is still callable as a fallback.
+  - `mcp_server/tools/analyzer.py::classify_simpler_slices` — Remote Script TCP call is primary; M4L bridge `bridge.send_command("get_simpler_file_path", …)` is the fallback path. Surfaces the Remote Script's specific error verbatim (e.g. "Simpler.sample.file_path is empty — sample may be embedded") instead of the generic v1.12 message.
+  - `m4l_device/livepilot_bridge.js` — `case "get_simpler_file_path"` + `cmd_get_simpler_file_path()` remain in the .amxd freeze for the fallback path.
+- **ff29381 (carried forward)**: `insert_rack_chain` returns `chain_index` so `add_drum_rack_pad` no longer clobbers chain 0 on the second pad. Live-verified against an empty Drum Rack on Ableton 12.4 — three sequential `insert_rack_chain` calls (`chain_index=0`, then `1`, then `0` with `chain_count=3` after position-0 insert).
+
+### Improved
+- **CI freshness gate is now source-of-truth-aligned.** The `amxd-freeze-drift` job in `.github/workflows/ci.yml` previously grepped for `"version": "X.Y.Z"` (the runtime ping JSON form), which only landed in the .amxd via post-export binary patching. Since the v1.20-era refactor to `"version": VERSION` (variable reference), every release needed manual byte-patching to satisfy this gate. Now greps for `var VERSION = "X.Y.Z"` — the source-of-truth declaration in `bridge.js` that always survives a Max freeze. No more binary-patching hack required for plain version bumps.
+
+### Bridge surface
+- 31 → 32 cases (`get_simpler_file_path` added — used as forward-compat fallback only; primary path is Remote Script TCP).
+- ⚠️ Re-freeze required for the .amxd. New freeze at `m4l_device/LivePilot_Analyzer.amxd` (md5 changed) — distributed to `~/Music/Ableton/User Library/Presets/Audio Effects/Max Audio Effect/` and `~/Documents/Max 9/Library/`. Workflow memory `feedback_amxd_edit_via_maxpat.md` updated to clarify the project-folder JS (`~/Documents/Max 9/Max for Live Devices/<DeviceName> Project/code/livepilot_bridge.js`) is the authoritative path Max freezes from — NOT the user search path `~/Documents/Max 9/Code/`.
+
+### Remote Script
+- 191 → 193 handlers. `+1` for `get_simpler_file_path` (this release). The other +1 came from a prior session's reload-handler registration count.
+
+### Tests
+- `test_bugfixes_2026_04_25.py` (locks the `chain_index` contract from ff29381) — passes.
+- `test_analyzer_tools.py::test_classify_simpler_slices_returns_error_when_no_file_path` — updated to reflect the v1.23.3 error contract: when both Remote Script and bridge fall back, the Remote Script's specific error (e.g. "Simpler.sample.file_path is empty") is surfaced verbatim.
+- Full suite: 3180 passed, 1 skipped, 0 failed.
+
+### Live-test verification log (Ableton 12.4)
+- `classify_simpler_slices(track=4, device=0)` on a 23-slice WAV drum break with no `file_path` argument → returns full classification (KICK/HAT/ghost labels + spectral % per slice). ✓
+- `classify_simpler_slices` with explicit `file_path` argument → bypasses lookup, classifies normally. ✓
+- `insert_rack_chain` end-to-end on empty Drum Rack → `chain_index` derivation correct in all 3 branches (append-on-empty, append-on-N, position-0-on-N). ✓
+
 ## v1.23.2 — 2026-04-25
 
 ### Fixed

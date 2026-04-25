@@ -34,7 +34,7 @@ outlets = 2; // 0: to udpsend (responses), 1: to buffer~/status
 // Single source of truth for the bridge version — bumped alongside the
 // rest of the release manifest. Surfaced in the UI via messnamed("livepilot_version", ...)
 // so the frozen .amxd visibly reports which build it was last exported from.
-var VERSION = "1.23.2";
+var VERSION = "1.23.3";
 
 // ── State ──────────────────────────────────────────────────────────────────
 
@@ -141,6 +141,9 @@ function dispatch(cmd, args) {
             break;
         case "get_simpler_slices":
             cmd_get_simpler_slices(args);
+            break;
+        case "get_simpler_file_path":
+            cmd_get_simpler_file_path(args);
             break;
         case "crop_simpler":
             cmd_simpler_action(args, "crop");
@@ -973,6 +976,41 @@ function cmd_get_simpler_slices(args) {
         "slice_count": slices.length,
         "slices": slices
     });
+}
+
+function cmd_get_simpler_file_path(args) {
+    // Resolves the absolute file path of a Simpler's loaded sample.
+    // Mirrors cmd_get_clip_file_path's shape so analyzer.py can route both
+    // through the same response handler. Closes the v1.12 follow-up that
+    // left classify_simpler_slices unable to do its primary job
+    // (returning slice geometry without classification labels) when
+    // file_path wasn't passed explicitly.
+    var track_idx = parseInt(args[0]);
+    var device_idx = parseInt(args[1]);
+    var path = build_device_path(track_idx, device_idx);
+
+    cursor_a.goto(path);
+    if (cursor_a.get("class_name").toString() !== "OriginalSimpler") {
+        send_response({"error": "Not a Simpler device"});
+        return;
+    }
+
+    try {
+        cursor_b.goto(path + " sample");
+        var sample_path = cursor_b.get("file_path").toString();
+        if (!sample_path || sample_path === "0") {
+            send_response({"error": "Simpler has no sample loaded"});
+            return;
+        }
+        send_response({
+            "track": track_idx,
+            "device": device_idx,
+            "file_path": _to_posix_path(sample_path),
+            "name": cursor_a.get("name").toString()
+        });
+    } catch(e) {
+        send_response({"error": "Failed to read Simpler sample path: " + e.message});
+    }
 }
 
 function cmd_simpler_action(args, action) {

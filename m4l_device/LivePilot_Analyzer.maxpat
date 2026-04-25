@@ -1608,7 +1608,7 @@
 				"box": {
 					"id": "obj-version-label",
 					"maxclass": "comment",
-					"text": "v1.23.2",
+					"text": "v1.23.3",
 					"numinlets": 1,
 					"numoutlets": 0,
 					"patching_rect": [

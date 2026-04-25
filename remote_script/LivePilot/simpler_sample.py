@@ -184,3 +184,101 @@ def replace_sample_native(song, params):
         "method": "native_12_4",
         "live_version": version_string(),
     }
+
+
+@register("get_simpler_file_path")
+def get_simpler_file_path(song, params):
+    """Read the absolute file path of a Simpler's currently-loaded sample.
+
+    Closes the v1.12 follow-up that left ``classify_simpler_slices`` unable
+    to auto-resolve the WAV path: previously the call routed through the
+    M4L bridge ``get_simpler_file_path`` case (added in v1.23.3 JS) but
+    Live's M4L UDP response correlation produced wrong-data on the second
+    successive bridge call (a chunked-response edge case under
+    investigation in the bridge wire protocol). The Remote Script reads
+    ``device.sample.file_path`` directly via Python LOM — no UDP, no Max
+    JS, no chunk reassembly, no ambiguity.
+
+    params dict keys:
+        track_index (int): 0-based index into song.tracks.
+        device_index (int): 0-based index into track.devices.
+        chain_index (int|None): optional, for nested Drum Rack chains.
+        nested_device_index (int|None): optional, position inside the chain.
+
+    Returns on success:
+        file_path (str): absolute filesystem path of the loaded sample.
+        track_index, device_index, chain_index, nested_device_index: echoed.
+        name (str): Simpler device name (typically the sample filename).
+
+    Returns on error:
+        error (str): human-readable message.
+        code (str): STATE_ERROR | INDEX_ERROR | INVALID_PARAM.
+    """
+    try:
+        track_index = int(params["track_index"])
+        device_index = int(params["device_index"])
+    except (KeyError, TypeError, ValueError) as exc:
+        return {
+            "error": "Invalid params: " + str(exc),
+            "code": "INVALID_PARAM",
+        }
+
+    chain_index = params.get("chain_index")
+    nested_device_index = params.get("nested_device_index")
+    if chain_index is not None:
+        try:
+            chain_index = int(chain_index)
+        except (TypeError, ValueError):
+            return {
+                "error": "chain_index must be an integer if provided",
+                "code": "INVALID_PARAM",
+            }
+    if nested_device_index is not None:
+        try:
+            nested_device_index = int(nested_device_index)
+        except (TypeError, ValueError):
+            return {
+                "error": "nested_device_index must be an integer if provided",
+                "code": "INVALID_PARAM",
+            }
+
+    device, err = _resolve_simpler_device(
+        song, track_index, device_index, chain_index, nested_device_index,
+    )
+    if err is not None:
+        return err
+
+    class_name = getattr(device, "class_name", "")
+    if class_name != "OriginalSimpler":
+        return {
+            "error": "Device at resolved path is " + class_name + ", not Simpler",
+            "code": "INVALID_PARAM",
+        }
+
+    sample = getattr(device, "sample", None)
+    if sample is None:
+        return {
+            "error": "Simpler has no sample loaded (device.sample is None)",
+            "code": "STATE_ERROR",
+        }
+
+    file_path = getattr(sample, "file_path", None)
+    if not file_path:
+        return {
+            "error": (
+                "Simpler.sample.file_path is empty — sample may be embedded "
+                "in the Set or otherwise lacks a filesystem path."
+            ),
+            "code": "STATE_ERROR",
+        }
+
+    name = getattr(device, "name", "")
+
+    return {
+        "file_path": str(file_path),
+        "track_index": track_index,
+        "device_index": device_index,
+        "chain_index": chain_index,
+        "nested_device_index": nested_device_index,
+        "name": str(name),
+    }

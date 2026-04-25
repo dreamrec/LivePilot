@@ -329,7 +329,13 @@ def test_classify_simpler_slices_returns_error_on_corrupt_wav(tmp_path):
 
 
 def test_classify_simpler_slices_returns_error_when_no_file_path():
-    """When the bridge can't resolve a path and no file_path is passed, surface a clear error."""
+    """When neither Remote Script nor bridge can resolve a path, surface a clear error.
+
+    v1.23.3 path order: try Remote Script `get_simpler_file_path` first (Python
+    LOM direct read), fall back to M4L bridge case if Remote Script doesn't
+    yield a path. If both fail, surface the Remote Script error (more
+    informative than the silent-bridge failure mode).
+    """
     from unittest.mock import AsyncMock, MagicMock, patch
 
     from mcp_server.tools.analyzer import classify_simpler_slices
@@ -344,12 +350,23 @@ def test_classify_simpler_slices_returns_error_when_no_file_path():
     }
 
     bridge = MagicMock()
-    # First call returns slices, second call raises (bridge has no file_path support)
+    # Bridge: 1st call returns slices (the get_simpler_slices step), 2nd call
+    # is the bridge fallback for file_path lookup which we make raise.
     bridge.send_command = AsyncMock(
         side_effect=[slice_response, Exception("no such command")]
     )
 
+    # Remote Script TCP mock: returns an error dict (Simpler has no sample),
+    # which triggers the bridge fallback. The fallback also fails, so the
+    # Remote Script error message is what gets surfaced.
+    ableton = MagicMock()
+    ableton.send_command = MagicMock(
+        return_value={"error": "Simpler.sample.file_path is empty", "code": "STATE_ERROR"}
+    )
+
     ctx = MagicMock()
+    ctx.request_context.lifespan_context.get = MagicMock(return_value=ableton)
+
     with patch("mcp_server.tools.analyzer._get_m4l", return_value=bridge), patch(
         "mcp_server.tools.analyzer._get_spectral", return_value={"analyzer": True}
     ), patch("mcp_server.tools.analyzer._require_analyzer"):
@@ -360,7 +377,9 @@ def test_classify_simpler_slices_returns_error_when_no_file_path():
         )
 
     assert "error" in result
-    assert "file_path" in result["error"]
+    # The Remote Script error message is surfaced when the bridge fallback
+    # also can't resolve a path.
+    assert "Simpler.sample.file_path is empty" in result["error"]
     # Slices still present (enriched with midi_pitch) for inspection
     assert "slices" in result
     assert result["slices"][0]["midi_pitch"] == 36

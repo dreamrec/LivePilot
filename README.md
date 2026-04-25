@@ -103,7 +103,7 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 
 **MCP Server** (`mcp_server/`) — Python FastMCP server. Validates inputs, routes commands to the Remote Script over TCP, manages the M4L bridge, runs the atlas, sample engine, composer, and all intelligence engines. This is what your AI client connects to.
 
-**M4L Bridge** (`m4l_device/`) — Optional Max for Live Audio Effect on the master track. Provides deep LOM access through Max's LiveAPI that the ControlSurface API can't reach. UDP 9880 (M4L to server) carries spectral data and LiveAPI responses. OSC 9881 (server to M4L) sends commands. The 38 spectral/analyzer tools strictly require the bridge; device and sample tools that call the bridge also have graceful fallbacks, so core functionality works without it. Backed by 31 bridge commands for hidden parameters, Simpler internals, warp markers, display values, and Simpler warp / Compressor sidechain writes that live on child objects Python can't reach.
+**M4L Bridge** (`m4l_device/`) — Optional Max for Live Audio Effect on the master track. Provides deep LOM access through Max's LiveAPI that the ControlSurface API can't reach. UDP 9880 (M4L to server) carries spectral data and LiveAPI responses. OSC 9881 (server to M4L) sends commands. The 38 spectral/analyzer tools strictly require the bridge; device and sample tools that call the bridge also have graceful fallbacks, so core functionality works without it. Backed by 32 bridge commands for hidden parameters, Simpler internals, warp markers, display values, and Simpler warp / Compressor sidechain writes that live on child objects Python can't reach.
 
 **Device Atlas** (`mcp_server/atlas/`) — In-memory indexed JSON database. 5264 devices with browser URIs (bundled baseline), 120 enriched with YAML sonic intelligence profiles (mood, genre, texture, recommended chains). 7 indexes: by_id, by_name, by_uri, by_category, by_tag, by_genre, by_pack. Reverse-index `device_techniques_index.json` powers `atlas_techniques_for_device` (146 cross-references across 58 devices). The AI never hallucinates a device name or preset — it always resolves against the atlas first. **v1.22.0+**: run `scan_full_library` after install to index YOUR packs + User Library + plugins into `~/.livepilot/atlas/device_atlas.json` — your personal atlas overrides the baseline and survives npm updates.
 
@@ -202,7 +202,7 @@ Every engine follows: **measure before → act → measure after → compare**. 
 
 <br>
 
-### M4L Bridge — 38 analyzer tools `[optional]`, 31 bridge commands
+### M4L Bridge — 38 analyzer tools `[optional]`, 32 bridge commands
 
 The M4L Analyzer sits on the master track. UDP 9880 carries spectral data to the server. OSC 9881 sends commands back. The `ensure_analyzer_on_master` pre-flight (v1.20.3) loads the analyzer idempotently on first use — call it once at session start and forget about it.
 
