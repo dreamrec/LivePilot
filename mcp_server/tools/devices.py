@@ -252,24 +252,40 @@ def set_device_parameter(
 
     track_index: 0+ for regular tracks, -1/-2/... for return tracks (A/B/...), -1000 for master.
 
-    ⚠️ PARAMETER RANGES ARE NOT ALWAYS 0-1 (BUG-B4 / B9):
+    ⚠️ PARAMETER RANGES ARE NOT ALWAYS 0-1 (BUG-B4 / B9 / 2026-04-26#2):
       Ableton devices use MIXED units depending on the parameter. Always
       read the `value_string` in the response (and the `min`/`max` from
       get_device_parameters) before assuming 0-1 semantics:
 
-        - Auto Filter `Frequency`:      20-135 index (NOT normalized)
+        - Auto Filter `Frequency`:        20-135 index (NOT normalized)
         - Auto Filter Legacy `LFO Amount`: 0-30 absolute (displays as %)
-        - Auto Filter `Resonance`:      0-1.25 on legacy, 0-1 on AutoFilter2
-        - Auto Filter `Env. Modulation`: -127..+127 on legacy
-        - Compressor I, Dynamic Tube, Vocoder: pre-2010 units
-        - EQ Three `Frequency Hi/Lo`:    50Hz-15kHz absolute
-        - Wavetable `Osc 1 Pos`:         0-1 normalized ✓
+        - Auto Filter `Resonance`:        0-1.25 on legacy, 0-1 on AutoFilter2
+        - Auto Filter `Env. Modulation`:  -127..+127 on legacy
+        - Compressor I (legacy):          pre-2010 units (Threshold dB direct)
+        - **Compressor 2 (modern, default)**: 0-1 NORMALIZED.
+          `Threshold 0.85 ≈ 0 dB`, `Ratio 0.75 = 4:1`, `Release 0.16 = 30 ms`.
+          Setting Threshold to a dB value like -22 will fail. Compute
+          normalized: `(dB + 50) / 50` for typical dB→0-1 mapping, OR
+          read the param's value_string after a probe write.
+        - **Saturator** `Drive`, `Output`, `Threshold`, `Color *`: 0-1
+          NORMALIZED (Drive 0.5 ≈ 0 dB, Drive 0.6 ≈ +7 dB).
+        - Dynamic Tube, Vocoder:          pre-2010 units
+        - EQ Three `Frequency Hi/Lo`:     50Hz-15kHz absolute
+        - Wavetable `Osc 1 Pos`:          0-1 normalized ✓
         - Drift / Analog / Operator macros: 0-1 normalized ✓
+        - Pedal `Output`:                 -20..+20 dB direct
+        - Pedal `Bass / Mid / Treble`:    -1..+1 direct
 
       The `value_string` field in the response is the SOURCE OF TRUTH
       for what the user sees. Automation recipes that assume 0-1 will
       clamp on legacy devices. When in doubt, call
       get_device_parameters first to inspect min/max/is_quantized.
+
+    Error enrichment (BUG-2026-04-26#2): if the Remote Script rejects
+    the value as out-of-range, this wrapper fetches the parameter's
+    actual min/max/value_string and re-raises with that context inline.
+    Saves a follow-up get_device_parameters round-trip in the agent
+    loop after every miss.
     """
     _validate_track_index(track_index)
     _validate_device_index(device_index)
@@ -286,7 +302,52 @@ def set_device_parameter(
         params["parameter_name"] = parameter_name
     if parameter_index is not None:
         params["parameter_index"] = parameter_index
-    return _get_ableton(ctx).send_command("set_device_parameter", params)
+    try:
+        return _get_ableton(ctx).send_command("set_device_parameter", params)
+    except Exception as exc:
+        # BUG-2026-04-26#2: enrich out-of-range errors with the actual
+        # min/max/value_string from get_device_parameters so the caller
+        # doesn't need a follow-up probe to learn the unit semantics.
+        # Best-effort — if the enrichment fetch itself fails, re-raise
+        # the original exception untouched.
+        msg = str(exc)
+        looks_like_range_error = (
+            "Invalid value" in msg
+            or "STATE_ERROR" in msg
+            or "out of range" in msg.lower()
+        )
+        if not looks_like_range_error:
+            raise
+        try:
+            param_info = _get_ableton(ctx).send_command(
+                "get_device_parameters",
+                {"track_index": track_index, "device_index": device_index},
+            )
+        except Exception:
+            raise exc
+        params_list = (param_info or {}).get("parameters") if isinstance(param_info, dict) else None
+        if not isinstance(params_list, list):
+            raise exc
+        target = None
+        for p in params_list:
+            if not isinstance(p, dict):
+                continue
+            if parameter_name is not None and p.get("name") == parameter_name:
+                target = p
+                break
+            if parameter_index is not None and p.get("index") == parameter_index:
+                target = p
+                break
+        if target is None:
+            raise exc
+        raise ValueError(
+            f"set_device_parameter rejected value={value} for "
+            f"'{target.get('name')}' (index={target.get('index')}). "
+            f"Accepts min={target.get('min')}, max={target.get('max')}, "
+            f"is_quantized={target.get('is_quantized')}. "
+            f"Current value={target.get('value')} ({target.get('value_string')!r}). "
+            f"Original error: {exc}"
+        ) from exc
 
 
 def _normalize_batch_entry(entry: dict) -> dict:

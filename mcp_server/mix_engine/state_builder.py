@@ -24,6 +24,47 @@ from .models import (
 # Roles considered "anchor" — should be prominent in the mix.
 _ANCHOR_ROLES = frozenset({"kick", "bass", "vocal", "lead", "drums"})
 
+# BUG-2026-04-26#5: track-name substrings that explicitly mark a track
+# as SUPPORT, even when its role-name maps to an anchor role. Without
+# this filter, a track named "VOX-GHOST" infers role=vocal and gets
+# auto-classified as an anchor, which then triggers `anchor_too_weak`
+# from the balance critic for any volume below the session average —
+# a guaranteed false positive on every ghost / wisp / texture layer.
+#
+# Substring-based (case-insensitive). Add new hints conservatively —
+# any new entry de-promotes a previously-anchor track silently.
+_NON_ANCHOR_NAME_HINTS = (
+    "ghost",   # VOX-GHOST, ghost-snare
+    "wisp",    # vocal-wisp
+    "fx",      # fx-bus, fx-rain
+    "atmos",   # ATMOS, atmosphere
+    "atmosphere",
+    "rain",    # rain-bed
+    "texture",
+    "drone",   # drone-bed
+    "shimmer",
+    "wash",    # reverb-wash, vocal-wash
+    "ambient", # ambient-pad
+    "sublayer",
+    "sub-layer",
+    "sub_layer",
+    "ghosting",
+    "back",    # back-vox, back-pad (background layers)
+)
+
+
+def _name_signals_non_anchor(track_name: str) -> bool:
+    """Return True when the track name marks this layer as SUPPORT.
+
+    Used in build_balance_state to exclude false anchors from the
+    balance critic's `anchor_too_weak` signal. See BUG-2026-04-26#5.
+    """
+    if not track_name:
+        return False
+    name_lower = track_name.lower()
+    return any(hint in name_lower for hint in _NON_ANCHOR_NAME_HINTS)
+
+
 # Frequency bands where masking is most problematic.
 _MASKING_BANDS = ("sub", "low", "low_mid", "mid", "high_mid", "presence", "high")
 
@@ -77,7 +118,9 @@ def build_balance_state(
         )
         states.append(ts)
 
-        if role in _ANCHOR_ROLES:
+        # BUG-2026-04-26#5: don't flag explicit support layers as anchors
+        # even when their role inference returns an anchor-class role.
+        if role in _ANCHOR_ROLES and not _name_signals_non_anchor(name):
             anchor_indices.append(idx)
 
         if not ts.mute:
