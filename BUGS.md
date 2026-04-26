@@ -1696,6 +1696,124 @@ masking — `get_display_values` is strictly better and already exists.
 
 ---
 
+## G. 2026-04-26 production session bugs
+
+Bugs surfaced during a 70 BPM production session on 2026-04-26. All
+five fixes shipped together in `tests/test_bugfixes_2026_04_26.py`.
+
+### BUG-2026-04-26#1 · `🟢 fixed` · `verify_all_devices_health` falsely reports "no_devices_on_track"
+
+**Reproducer:** Call `verify_all_devices_health(skip_audio_tracks=True, skip_empty_tracks=True)` on a session with 9 MIDI tracks each carrying a Simpler / Operator / Drone Tapes preset:
+```json
+{"ok":true,"tracks_tested":0,"alive":[],"dead":[],
+ "skipped":[{"track_index":0,"track_name":"KICK","reason":"no_devices_on_track"}, ...]}
+```
+All 9 tracks skipped — every one wrongly flagged as having no devices.
+
+**Root cause:** Two field-name mismatches against what `get_session_info` actually returns:
+1. **Audio detection broken**: `t.get("is_audio_track") or t.get("type") == "audio"` looks for non-existent fields. The session_info payload has `has_midi_input` / `has_audio_input` instead, so audio detection silently always evaluated `False`. (Effect: audio tracks fell through to the empty-tracks check.)
+2. **Empty detection broken**: `t.get("devices") or []` always returned `[]` because the session_info payload doesn't include per-track device arrays — only `get_track_info` does.
+
+**Fix landed:** `mcp_server/tools/analyzer.py::verify_all_devices_health` now (a) uses `has_midi_input` / `has_audio_input` for audio detection, (b) round-trips `get_track_info` per track when `skip_empty_tracks=True` to read the actual devices array. Test: `test_bug26_verify_all_devices_health_uses_per_track_devices`, `test_bug26_verify_all_devices_health_audio_detection`.
+
+**Impact:** the session-wide silent-track detector is functional again. The cost is one extra `get_track_info` round-trip per non-audio track when empty-skip is enabled — acceptable for a diagnostic tool.
+
+---
+
+### BUG-2026-04-26#2 · `🟢 fixed` · `set_device_parameter` error message lacks min/max + docstring missing modern devices
+
+**Reproducer:** `set_device_parameter(track_index=0, device_index=1, parameter_name="Drive", value=6)` on a Saturator returns:
+```
+[STATE_ERROR] Invalid value. Check the parameters range with min/max
+(while running 'set_device_parameter')
+```
+No min/max in the error. Caller has to spend a follow-up `get_device_parameters` round-trip to learn the actual range.
+
+Same with Compressor 2 (the default `find_and_load_device("Compressor")` returns in Live 12.4) — its `Threshold`, `Ratio`, `Release` are all 0-1 normalized despite the docstring listing only Compressor I as "pre-2010 units". Callers reading the docstring assumed Compressor 2 used absolute dB and got rejected.
+
+**Root cause:**
+1. The Remote Script's generic STATE_ERROR is unhelpful — it has the param's min/max but doesn't surface them.
+2. The docstring's example list under "PARAMETER RANGES ARE NOT ALWAYS 0-1" omits Compressor 2 and Saturator (both 0-1 normalized) — exactly the modern devices most callers reach for first.
+
+**Fix landed:**
+1. `mcp_server/tools/devices.py::set_device_parameter` now wraps the send_command in a try/except. On a range-shaped error, it fetches `get_device_parameters` and re-raises a `ValueError` with the param's `min`, `max`, `is_quantized`, current `value`, and `value_string` inline. Non-range errors pass through untouched.
+2. Docstring extended with explicit Compressor 2, Saturator, and Pedal entries — including the dB→0-1 mapping for Compressor 2's Threshold (`(dB + 50) / 50`).
+
+Tests: `test_bug26_set_device_parameter_enriches_range_error`, `test_bug26_set_device_parameter_passes_through_non_range_errors`, `test_bug26_set_device_parameter_docstring_includes_modern_devices`.
+
+**Impact:** out-of-range errors now surface enough information to fix the call without a probe round-trip. The agent loop saves ~1 round-trip per miss.
+
+---
+
+### BUG-2026-04-26#3 · `🟢 fixed` · `create_midi_track` / `create_audio_track` accept only `color`, not `color_index`
+
+**Reproducer:** Parallel batch with 4 calls
+```python
+create_midi_track(name="A", color_index=14)
+create_midi_track(name="B", color_index=52)
+create_midi_track(name="C", color_index=17)
+create_midi_track(name="D", color_index=59)
+```
+All 4 fail simultaneously with:
+```
+1 validation error for call[create_midi_track]
+color_index
+  Unexpected keyword argument [type=unexpected_keyword_argument, input_value=14, input_type=int]
+```
+The kwarg name was `color`, but the sibling tool `set_track_color` uses `color_index`. Callers writing parallel batches consistently picked the wrong name and lost the entire batch.
+
+**Root cause:** API naming inconsistency — three closely-related tools used two different names for the same Ableton color palette index.
+
+**Fix landed:** `mcp_server/tools/tracks.py::create_midi_track` and `create_audio_track` now accept BOTH `color` and `color_index` as kwargs (aliases). The shared helper `_resolve_color_alias` rejects the conflict case (both passed with different values) and forwards the resolved value. Tests: `test_bug26_create_midi_track_accepts_color_index`, `test_bug26_create_audio_track_accepts_color_index`, `test_bug26_create_midi_track_color_alias_conflict_raises`, `test_bug26_create_midi_track_color_alias_agreement_ok`.
+
+**Impact:** parallel-batch track creation no longer punishes the caller for picking the "wrong" name. Backward-compatible for existing `color=N` callers.
+
+---
+
+### BUG-2026-04-26#4 · `🟢 fixed` · `get_capability_state` reports `analyzer_offline` immediately after `ensure_analyzer_on_master` returns `loaded`
+
+**Reproducer:** Same parallel batch:
+```python
+ensure_analyzer_on_master()      # returns {"status":"loaded","is_last_on_master":true}
+get_capability_state()           # returns {"analyzer":{"available":false,
+                                  #   "reasons":["analyzer_offline"]}}
+```
+The two reads disagree. `ensure_analyzer_on_master` confirms the .amxd is on master, but capability_state still says offline.
+
+**Root cause:** `CapabilityDomain.available` collapses two distinct conditions into one bit:
+1. The .amxd is on the master (device installed)
+2. A fresh audio frame has been captured
+
+Right after loading the .amxd, condition 1 is True but condition 2 is still False because the analyzer hasn't streamed a frame yet. The reason string `analyzer_offline` made it sound like the device wasn't there at all.
+
+**Fix landed:** `mcp_server/runtime/capability_state.py::CapabilityDomain` now has a separate `device_loaded: Optional[bool]` field. The analyzer domain's `available` still requires both device-loaded AND fresh data, but `device_loaded` independently exposes the .amxd presence. The `analyzer_stale` reason was renamed to `analyzer_warming_up` for clarity — distinguishes cold-start from genuine staleness. Other domains (memory, web, session_access) auto-mirror their `available` to `device_loaded` via `__post_init__` so existing consumers don't need to special-case `None`.
+
+Tests: `test_bug26_capability_state_analyzer_device_loaded_when_warming`, `test_bug26_capability_state_analyzer_device_loaded_false_when_offline`, `test_bug26_capability_state_non_analyzer_domains_default_device_loaded`.
+
+**Impact:** callers can now answer "is the .amxd installed?" independently of "is fresh data available?". The previous race condition disappears: `device_loaded=True, available=False, reasons=['analyzer_warming_up']` is the correct state immediately after a load.
+
+---
+
+### BUG-2026-04-26#5 · `🟢 fixed` · `analyze_mix` flags `VOX-GHOST` as `anchor_too_weak`
+
+**Reproducer:** Session with a track named `VOX-GHOST` at volume 0.22 (intentionally a quiet ghost-wisp support layer). `analyze_mix` returns:
+```json
+{"issues":[{"issue_type":"anchor_too_weak","severity":0.58,
+  "affected_tracks":[7],
+  "evidence":"Anchor track 'VOX-GHOST' (role=vocal) at volume 0.22, average is 0.53"}]}
+```
+False positive every time — the name "GHOST" explicitly signals support, not anchor. Same call also flagged 4 drum tracks named `KICK / SNARE / HAT / PERC` as a "drum role conflict" — but the names disambiguate intent (each drum on its own track is a deliberate per-element-routing pattern).
+
+**Root cause:** The role classifier (`infer_track_role` in `mcp_server/tools/_agent_os_engine/world_model.py`) returns `"vocal"` for any track whose name contains "vocal" / "vox" / "voice". Then `mcp_server/mix_engine/state_builder.py::build_balance_state` adds any track whose role is in `_ANCHOR_ROLES = {"kick", "bass", "vocal", "lead", "drums"}` to `anchor_tracks`. There's no semantic distinction between a "lead vocal" and a "vocal-wisp / vocal-wash / vox-ghost".
+
+**Fix landed:** `mcp_server/mix_engine/state_builder.py` adds `_NON_ANCHOR_NAME_HINTS = ("ghost", "wisp", "fx", "atmos", "rain", "texture", "drone", "shimmer", "wash", "ambient", "back", ...)`. Helper `_name_signals_non_anchor(track_name)` does case-insensitive substring match. The anchor-classification line now reads `if role in _ANCHOR_ROLES and not _name_signals_non_anchor(name): anchor_indices.append(idx)`. Real anchor tracks (KICK / Bass / Lead Vocal) are unaffected.
+
+Tests: `test_bug26_balance_state_excludes_ghost_named_tracks_from_anchors`, `test_bug26_balance_state_excludes_atmos_drone_fx_named_tracks`, `test_bug26_balance_state_real_anchors_still_anchored`.
+
+**Impact:** the balance critic no longer false-positives on the support-layer name conventions every electronic producer uses (-ghost, -wisp, -wash, -atmos, fx-, back-). Cuts a class of "ignore this warning every time" noise.
+
+---
+
 ## How to use this file across sessions
 
 New session startup:

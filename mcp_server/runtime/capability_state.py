@@ -18,7 +18,21 @@ from typing import Optional
 
 @dataclass
 class CapabilityDomain:
-    """A single capability domain's runtime status."""
+    """A single capability domain's runtime status.
+
+    BUG-2026-04-26#4: ``available`` collapses two distinct conditions
+    into one bit (device installed AND data fresh). Callers that wanted
+    "is the analyzer .amxd loaded?" had no way to ask without conflating
+    it with "has the analyzer captured fresh data yet?". The
+    ``device_loaded`` field separates these concerns:
+
+      - ``device_loaded``: True when the optional .amxd / external
+        dependency exists. Independent of data freshness. Defaults to
+        ``available`` when the domain has no installable component
+        (session_access / memory / web / research).
+      - ``available``: True when the domain is ready for use end-to-end
+        (device_loaded AND fresh data, where applicable).
+    """
 
     name: str
     available: bool
@@ -26,10 +40,16 @@ class CapabilityDomain:
     freshness_ms: Optional[int] = None
     mode: str = "unavailable"
     reasons: list[str] = field(default_factory=list)
+    device_loaded: Optional[bool] = None
 
     def __post_init__(self) -> None:
         if not 0.0 <= self.confidence <= 1.0:
             raise ValueError(f"confidence must be 0.0–1.0, got {self.confidence}")
+        # Default device_loaded to mirror `available` for domains that
+        # don't have a separate installable component (memory, web, etc.).
+        # Domains that DO have one (analyzer, flucoma) override explicitly.
+        if self.device_loaded is None:
+            self.device_loaded = self.available
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -119,18 +139,27 @@ def build_capability_state(
     )
 
     # ── analyzer ────────────────────────────────────────────────────
+    # BUG-2026-04-26#4: ``available`` requires both device-loaded AND
+    # fresh data. The new ``device_loaded`` field exposes the .amxd
+    # presence separately, so "I just loaded the analyzer, why does
+    # capability_state still say offline?" can be answered correctly:
+    # device_loaded=True, available=False, reasons=['analyzer_warming_up'].
     analyzer_reasons: list[str] = []
     if not analyzer_ok:
         analyzer_reasons.append("analyzer_offline")
     elif not analyzer_fresh:
-        analyzer_reasons.append("analyzer_stale")
+        # Pre-fix this said `analyzer_stale` even immediately after the
+        # device finished loading. ``analyzer_warming_up`` is more
+        # accurate when the device is present but hasn't streamed a
+        # frame yet — distinguishes cold-start from genuine staleness.
+        analyzer_reasons.append("analyzer_warming_up")
     analyzer_available = analyzer_ok and analyzer_fresh
     if analyzer_available:
         analyzer_conf = 0.9
         analyzer_mode = "measured"
     elif analyzer_ok:
         analyzer_conf = 0.4
-        analyzer_mode = "stale"
+        analyzer_mode = "warming_up"
     else:
         analyzer_conf = 0.0
         analyzer_mode = "unavailable"
@@ -140,6 +169,7 @@ def build_capability_state(
         confidence=analyzer_conf,
         mode=analyzer_mode,
         reasons=analyzer_reasons,
+        device_loaded=analyzer_ok,
     )
 
     # ── memory ──────────────────────────────────────────────────────
@@ -182,6 +212,7 @@ def build_capability_state(
         confidence=0.9 if flucoma_ok else 0.0,
         mode="available" if flucoma_ok else "unavailable",
         reasons=flucoma_reasons,
+        device_loaded=flucoma_ok,
     )
 
     # ── research (composite) ────────────────────────────────────────

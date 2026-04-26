@@ -163,14 +163,43 @@ def _find_name_collisions(ctx: Context, name: str) -> list[int]:
     return matches
 
 
+def _resolve_color_alias(
+    color: Optional[int],
+    color_index: Optional[int],
+) -> Optional[int]:
+    """BUG-2026-04-26#3: accept both `color` and `color_index` keywords.
+
+    The track-creation tools used `color` while `set_track_color` used
+    `color_index`. Callers writing parallel tool batches (create + paint
+    in one shot) consistently picked the wrong name and lost a whole
+    parallel batch to the validation error. This helper accepts either,
+    rejects the conflict case, and returns the resolved value.
+    """
+    if color is not None and color_index is not None:
+        if color != color_index:
+            raise ValueError(
+                "Pass either 'color' or 'color_index', not both with "
+                f"different values (got color={color}, color_index={color_index})"
+            )
+        return color
+    if color is not None:
+        return color
+    return color_index
+
+
 @mcp.tool()
 def create_midi_track(
     ctx: Context,
     index: int = -1,
     name: Optional[str] = None,
     color: Optional[int] = None,
+    color_index: Optional[int] = None,
 ) -> dict:
     """Create a new MIDI track. index=-1 appends at end.
+
+    `color` and `color_index` are accepted interchangeably (BUG-2026-04-26#3).
+    Both reference Ableton's 0-69 color palette. Pass either; passing
+    both with different values is rejected.
 
     Response (v1.20.2+): when `name` is provided, the response carries
     a ``name_collision`` bool and ``existing_tracks_with_same_name``
@@ -178,6 +207,8 @@ def create_midi_track(
     match duplicate names and apply mix changes twice — check the
     warning before proceeding with mix moves on the new track's role.
     """
+    color = _resolve_color_alias(color, color_index)
+
     collisions: list[int] = []
     if name is not None and name.strip():
         collisions = _find_name_collisions(ctx, name)
@@ -205,12 +236,18 @@ def create_audio_track(
     index: int = -1,
     name: Optional[str] = None,
     color: Optional[int] = None,
+    color_index: Optional[int] = None,
 ) -> dict:
     """Create a new audio track. index=-1 appends at end.
+
+    `color` and `color_index` are accepted interchangeably (BUG-2026-04-26#3).
+    See create_midi_track for full semantics.
 
     Response (v1.20.2+): ``name_collision`` + ``existing_tracks_with_same_name``
     same as create_midi_track — see BUG #5 rationale there.
     """
+    color = _resolve_color_alias(color, color_index)
+
     collisions: list[int] = []
     if name is not None and name.strip():
         collisions = _find_name_collisions(ctx, name)

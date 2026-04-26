@@ -1681,16 +1681,44 @@ async def verify_all_devices_health(
         tname = t.get("name", f"Track {tid}")
         if tid is None:
             continue
-        is_audio = bool(t.get("is_audio_track") or t.get("type") == "audio")
+
+        # BUG-2026-04-26#1: detect audio tracks via has_midi_input /
+        # has_audio_input fields that get_session_info actually returns.
+        # Pre-fix the code looked for `is_audio_track` / `type` fields which
+        # don't exist on the session_info payload, so audio detection
+        # silently always evaluated False and ALL tracks fell through to
+        # the empty-tracks check below.
+        has_midi = bool(t.get("has_midi_input"))
+        has_audio = bool(t.get("has_audio_input"))
+        is_audio = has_audio and not has_midi
         if skip_audio_tracks and is_audio:
             skipped.append({"track_index": tid, "track_name": tname,
                             "reason": "audio_track_no_midi_input"})
             continue
-        devices = t.get("devices") or []
-        if skip_empty_tracks and not devices:
-            skipped.append({"track_index": tid, "track_name": tname,
-                            "reason": "no_devices_on_track"})
-            continue
+
+        # BUG-2026-04-26#1: get_session_info does NOT include per-track
+        # `devices` arrays — only get_track_info does. Pre-fix,
+        # `t.get("devices") or []` always returned [], so every MIDI track
+        # was flagged "no_devices_on_track" even when a Simpler / Operator
+        # / synth was loaded. Round-trip per track is the price of correct
+        # detection; the alternative (extending get_session_info to embed
+        # devices) would change a hot-path payload size for every caller.
+        if skip_empty_tracks:
+            try:
+                track_info = ableton.send_command(
+                    "get_track_info", {"track_index": tid},
+                )
+            except Exception:
+                track_info = None
+            devices = (
+                (track_info or {}).get("devices") or []
+                if isinstance(track_info, dict)
+                else []
+            )
+            if not devices:
+                skipped.append({"track_index": tid, "track_name": tname,
+                                "reason": "no_devices_on_track"})
+                continue
 
         # Run the per-track health check.
         result = await verify_device_health(
