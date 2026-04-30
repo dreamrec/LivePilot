@@ -608,19 +608,25 @@ def demo_story(
         primary_uname = primary_device.get("user_name") or ""
         nonzero = _count_nonzero_macros(devices)
 
+        # BUG-E5: when user_name is empty AND primary device is a Group/Rack
+        # device, primary_cls reads as "InstrumentGroupDevice" /
+        # "AudioEffectGroupDevice" — useless prose like "InstrumentGroupDevice
+        # chosen as harmonic spine". Fall back to track name first, then class.
+        primary_label = primary_uname or t_name or primary_cls or "<unknown>"
+
         if t_type == "ReturnTrack":
             prod_decision = (
-                f"{primary_cls} shared return — applies uniformly across all sends."
+                f"{primary_label} shared return — applies uniformly across all sends."
             )
         elif role == "harmonic-foundation":
             prod_decision = (
-                f"{primary_uname or primary_cls} chosen as harmonic spine; "
+                f"{primary_label} chosen as harmonic spine; "
                 f"{nonzero} macro(s) committed to specific values, "
                 "suggesting deliberate timbral targeting."
             )
         elif role == "rhythmic-driver":
             prod_decision = (
-                f"Drum rack '{primary_uname or primary_cls}' provides rhythmic drive. "
+                f"Drum rack '{primary_label}' provides rhythmic drive. "
                 f"{nonzero} non-default macro values indicate custom tuning."
             )
         elif role == "texture":

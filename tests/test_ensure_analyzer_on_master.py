@@ -123,6 +123,12 @@ class TestEnsureAnalyzerOnMaster:
             load_error=ValueError("Device 'LivePilot_Analyzer' not found in browser"),
         )
         monkeypatch.setattr(analyzer_mod, "_load_analyzer_impl", ctx._fake_find)
+        # BUG-T#1: pin the path check to False so this test exercises the
+        # genuinely-not-installed path regardless of dev-machine state.
+        monkeypatch.setattr(
+            analyzer_mod, "_analyzer_amxd_installed_at_user_library",
+            lambda: False,
+        )
 
         result = analyzer_mod.ensure_analyzer_on_master(ctx)
 
@@ -206,3 +212,51 @@ class TestEnsureAnalyzerOnMaster:
         assert load_call_count == 1, (
             f"expected exactly 1 load attempt across 2 calls, got {load_call_count}"
         )
+
+
+class TestColdBrowserCacheDisambiguation:
+    """BUG-T#1: cold User Library browser cache on first Live boot can make
+    find_and_load_device exceed recv_timeout. Before the fix, the catch-block
+    surfaced ``install_required`` even though the .amxd was at the canonical
+    path — sending the agent into a reinstall loop. The fix uses a filesystem
+    check to disambiguate ``cache_cold`` from genuinely-not-installed."""
+
+    def test_cache_cold_when_amxd_present_on_disk(self, monkeypatch):
+        """Load failure + .amxd present at User Library path → cache_cold."""
+        from mcp_server.tools import analyzer as analyzer_mod
+
+        ctx, calls = _make_ctx(
+            master_devices=[],
+            load_error=Exception("Timeout waiting for response from Ableton (20s)"),
+        )
+        monkeypatch.setattr(analyzer_mod, "_load_analyzer_impl", ctx._fake_find)
+        monkeypatch.setattr(
+            analyzer_mod, "_analyzer_amxd_installed_at_user_library",
+            lambda: True,
+        )
+
+        result = analyzer_mod.ensure_analyzer_on_master(ctx)
+
+        assert result["status"] == "cache_cold"
+        assert "Retry" in result.get("hint", "") or "retry" in result.get("hint", "")
+        # Critically: must NOT tell the agent to reinstall
+        assert "install_m4l_device" not in result.get("hint", "")
+
+    def test_install_required_when_amxd_missing_on_disk(self, monkeypatch):
+        """Load failure + .amxd absent at User Library path → install_required."""
+        from mcp_server.tools import analyzer as analyzer_mod
+
+        ctx, calls = _make_ctx(
+            master_devices=[],
+            load_error=ValueError("Device 'LivePilot_Analyzer' not found in browser"),
+        )
+        monkeypatch.setattr(analyzer_mod, "_load_analyzer_impl", ctx._fake_find)
+        monkeypatch.setattr(
+            analyzer_mod, "_analyzer_amxd_installed_at_user_library",
+            lambda: False,
+        )
+
+        result = analyzer_mod.ensure_analyzer_on_master(ctx)
+
+        assert result["status"] == "install_required"
+        assert "install_m4l_device" in result.get("hint", "")

@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.23.6 — 2026-04-30
+
+### Fixed
+
+- **`ensure_analyzer_on_master` cold-start disambiguation.** On a fresh Live boot the User Library browser cache is uncached, and `find_and_load_device("LivePilot_Analyzer")` can exceed the 20s recv timeout while BFS-ing the user library tree. The previous catch-block surfaced `status="install_required"` even though the .amxd is sitting at the canonical install path — sending the agent into a reinstall loop. New `_analyzer_amxd_installed_at_user_library()` filesystem check disambiguates: when the .amxd is present at `~/Music/Ableton/User Library/Presets/Audio Effects/Max Audio Effect/`, the tool now returns `status="cache_cold"` with a retry hint instead. Genuine missing-.amxd path still returns `install_required` correctly. (`mcp_server/tools/analyzer.py`)
+- **`set_compressor_sidechain` diagnostic depth.** When `_find_sidechain_surface` returns None on Compressor2 (Live 12.3.6+), the raised error now includes `class=...` + `canonical_parent.class=...` + a widened child-attribute walk (`input_routings`, `routing_inputs` added to the probe). Lets the next live failure leave a tighter trail so the actual Compressor2 LOM shape can be confirmed in one round trip rather than a separate probe session. No behavior change for legacy Compressor (I) or the two known Compressor2 hypotheses. (`remote_script/LivePilot/mixing.py`)
+- **`atlas_demo_story` production_decision class-name leak.** `harmonic-foundation` and `rhythmic-driver` role branches fell back to `primary_cls` when `user_name` was empty — producing useless prose like "InstrumentGroupDevice chosen as harmonic spine." Both branches now use `primary_uname or t_name or primary_cls`, matching the texture-role fallback that was already correct. (`mcp_server/atlas/demo_story.py`)
+- **`atlas_extract_chain` Macro N labeling on M4L devices.** The rack-device path already resolved producer-named macros via `resolve_preset_for_device`, but the M4L (.amxd) device path emitted raw `Macro N`. Now both paths cross-reference the preset sidecar — PitchLoop89's "Spectral Stretch" gets the proper name instead of "Macro 2" so `set_device_parameter` resolves at execution time. (`mcp_server/atlas/extract_chain.py`)
+- **Bundled atlas stats refresh.** `stats.enriched_devices` was stale at `87` (from a v1.21.x scan); the actual `enriched=True` flag count had grown to `135`. Recounted in place. No tool consumes the field with semantically-different behavior, but the stale stat had drifted past the soft-warn threshold's intent. (`mcp_server/atlas/device_atlas.json`)
+
+### Docs / drift
+
+- **`docs/M4L_BRIDGE.md`**: amxd ping reference and bridge-cmd count corrected — was `version: "1.23.1"` and "30 commands" from prior releases; now `1.23.6` and `32`.
+- **`livepilot/skills/livepilot-core/references/genre-vocabularies.md`**: added Synthwave / Retrowave / Outrun entry to match the 15-genre claim in CLAUDE.md/AGENTS.md (file had 14; the YAML packet at `concepts/genres/synthwave.yaml` had been the source-of-truth for v1.18+).
+
+### Tests
+
+- `tests/test_ensure_analyzer_on_master.py` — 2 new tests under `TestColdBrowserCacheDisambiguation` covering the cache-cold branch (`.amxd` present → cache_cold) and the install-required branch (`.amxd` absent → install_required). Existing `test_returns_install_required_when_device_not_in_browser` updated to monkeypatch the new path-check helper so it exercises the genuinely-not-installed path regardless of dev-machine state.
+- Total: **3409 passing**, 1 skipped, 0 failed (up from 3407 in v1.23.5).
+
+### Audit notes
+
+A full read-only audit pass against `BUGS.md` + `BUGS_TESTING_2026-04-30.md` confirmed that 14 of the bugs documented in those files were already fixed in v1.23.4's `bugfixes-2026-04-26` commit batch but never marked closed in the testing doc. No-ops here, but worth noting that the 38-bug list in the testing file is now ~5 genuinely-open items.
+
 ## v1.23.5 — 2026-04-30
 
 ### Fixed (Remote Script reliability — credit: PR #35 reporter)

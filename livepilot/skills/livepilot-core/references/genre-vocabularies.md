@@ -338,6 +338,32 @@ Sonic.
 
 ---
 
+## Synthwave / Retrowave / Outrun
+**Tempo / time:** 85-115 BPM, 4/4 with mid-tempo groove. Vaporwave aliased here
+(slower, more detuned, more sample-flip-heavy).
+**Kick:** Analog-leaning, gated reverb signature. Not subby — sits in low-mid.
+**Bass:** Warm analog, Juno/Moog flavor, slight portamento, sub-tail short.
+**Percussion:** Gated snare reverb (the 80s hallmark), simple hi-hat patterns,
+linear drum programming.
+**Harmonic:** 80s polysynth chords (suspended, minor 7th, add9), arpeggiated
+16th-note sequences, minor-key progressions with dramatic key changes.
+**Texture:** Chorus-Ensemble on leads, gated reverb on snare, analog-tape
+character on the master. Warmth over crispness.
+**Reach for:**
+- Instruments: Poli (Juno-style detuned chord), Analog, Drift (warm pads),
+  Wavetable (supersaw lead)
+- FX: Chorus-Ensemble (mandatory on leads), Gated Delay (80s gated-snare
+  aesthetic), Arpeggiator (16th-note sequences), Echo
+- Packs: Synth Essentials, Performance Pack (Arpeggiator), Core Library
+**Avoid:** Modern dance production, aggressive compression, digital-only chains,
+bright/harsh synthesis, complex polyrhythm.
+**Canonical artists:** Com Truise, Tycho, Kavinsky, Mitch Murder, FM-84, Power
+Glove, Lazerhawk.
+**Key techniques:** `"Juno-style detuned chord"` (poli), `"Warm synthwave pad"`
+(drift), `"Supersaw trance lead"` (wavetable), `"Gated reverb snare"` (echo).
+
+---
+
 ## How to use this file
 
 When asked for a specific genre:

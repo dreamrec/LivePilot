@@ -2003,6 +2003,31 @@ def _load_analyzer_impl(ctx, track_index: int, device_name: str,
     )
 
 
+def _analyzer_amxd_installed_at_user_library() -> bool:
+    """BUG-T#1: distinguish cold-browser-cache from genuinely-not-installed.
+
+    On a fresh Live boot the User Library browser tree is uncached, and
+    find_and_load_device can exceed the recv_timeout while doing the deep
+    BFS for ``LivePilot_Analyzer.amxd``. The catch-block then surfaces
+    ``install_required`` even though the .amxd is sitting at the canonical
+    install path. This helper does a cheap filesystem check so the caller
+    can return ``cache_cold`` (retry hint) instead of misleading the agent
+    into a reinstall loop.
+
+    Returns True iff a file named ``LivePilot_Analyzer.amxd`` exists under
+    the User Library Max Audio Effect directory.
+    """
+    from pathlib import Path
+    try:
+        path = (Path.home()
+                / "Music" / "Ableton" / "User Library"
+                / "Presets" / "Audio Effects" / "Max Audio Effect"
+                / f"{_ANALYZER_DEVICE_NAME}.amxd")
+        return path.is_file()
+    except Exception:
+        return False
+
+
 @mcp.tool()
 def ensure_analyzer_on_master(ctx: Context) -> dict:
     """Idempotent pre-flight: load LivePilot_Analyzer on master if missing.
@@ -2077,8 +2102,28 @@ def ensure_analyzer_on_master(ctx: Context) -> dict:
             allow_duplicate=False,
         )
     except Exception as exc:
-        # Typical path: device not in browser (user hasn't installed via
-        # install_m4l_device yet).
+        # BUG-T#1: distinguish two failure modes that look identical here:
+        #   (a) genuinely not installed — install_m4l_device path is right
+        #   (b) installed but Ableton's browser cache is cold (first call
+        #       after Live boot can exceed recv_timeout while BFS-ing the
+        #       User Library tree). In (b), pointing the agent at
+        #       install_m4l_device is wrong — the file is already there.
+        if _analyzer_amxd_installed_at_user_library():
+            return {
+                "status": "cache_cold",
+                "error": str(exc),
+                "hint": (
+                    "LivePilot_Analyzer.amxd is installed at "
+                    "~/Music/Ableton/User Library/Presets/Audio Effects/"
+                    "Max Audio Effect/, but the browser search timed out — "
+                    "Ableton's User Library cache is typically cold on the "
+                    "first call after a fresh Live boot. Retry "
+                    "ensure_analyzer_on_master once; the second call usually "
+                    "completes in <1s. If it keeps timing out, click any "
+                    "User Library entry in Ableton's browser to warm the "
+                    "cache, then retry."
+                ),
+            }
         return {
             "status": "install_required",
             "error": str(exc),

@@ -492,18 +492,33 @@ def _emit_execution_steps(
             "device_index": device_index,
         })
         if fidelity != "structure-only" and macros:
+            # BUG-E2#1 (M4L path): producer-named macros on devices like
+            # PitchLoop89 ("Spectral Stretch") get raw "Macro N" labels here
+            # unless we cross-reference the preset sidecar — same as the rack
+            # path at line ~395. Without name resolution, set_device_parameter
+            # by name silently NOT-FOUNDs at execution time.
+            m4l_macro_names: dict[int, str] = {}
+            if uname and pack_name:
+                m4l_match = resolve_preset_for_device(pack_name, cls, uname)
+                m4l_macro_names = m4l_match.get("macro_names") or {}
             macro_subset = (
                 _get_nonzero_macros(macros)
                 if fidelity == "exact"
                 else _top_k_macros_by_deviation(macros, k=5)
             )
             for m in macro_subset:
+                resolved_name = m4l_macro_names.get(m["index"]) or f"Macro {m['index'] + 1}"
+                source_tag = (
+                    "als-parse+adg-parse"
+                    if resolved_name != f"Macro {m['index'] + 1}"
+                    else "als-parse"
+                )
                 steps.append({
                     "action": "set_device_parameter",
                     "device_index": device_index,
-                    "parameter_name": f"Macro {m['index'] + 1}",
+                    "parameter_name": resolved_name,
                     "value": round(_safe_float(m.get("value", "0")), 2),
-                    "comment": f"M4L macro {m['index'] + 1} [SOURCE: als-parse]",
+                    "comment": f"M4L macro {m['index'] + 1} [SOURCE: {source_tag}]",
                 })
         return steps, warnings
 

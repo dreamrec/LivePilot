@@ -371,11 +371,17 @@ def _find_sidechain_surface(device):
 
 
 def _collect_routing_diagnostic(device):
-    """Return a CSV of routing/sidechain attrs on device + likely children.
+    """Return a structured trail of routing/sidechain attrs on device + likely children.
 
     Used as a breadcrumb in the error message when _find_sidechain_surface
     returns None, so the first failing call tells us what the current Live
     build actually exposes without a separate probe session.
+
+    BUG-A3 v2 (2026-04-30): the diagnostic now includes class_name and the
+    canonical_parent class so the next live-probe operator can immediately
+    tell whether they're looking at a Compressor / Compressor2 / something
+    else. Also widens the child-name search to include Live 12.x patterns
+    (input_routings, routing_inputs).
     """
     def _attrs(obj, prefix):
         try:
@@ -388,8 +394,23 @@ def _collect_routing_diagnostic(device):
             return []
         return [prefix + n for n in names]
 
+    parts = []
+    try:
+        parts.append("class=%s" % device.class_name)
+    except Exception:
+        pass
+    try:
+        cp = getattr(device, "canonical_parent", None)
+        if cp is not None:
+            parts.append("canonical_parent.class=%s" % type(cp).__name__)
+    except Exception:
+        pass
+
     found = list(_attrs(device, "device."))
-    for child_name in ("sidechain_input", "input", "sidechain", "routing"):
+    # Probe widened in v2 to include Live 12.x patterns. Order is
+    # least-to-most exotic so legacy shapes take precedence.
+    for child_name in ("sidechain_input", "input", "sidechain", "routing",
+                       "input_routings", "routing_inputs"):
         try:
             child = getattr(device, child_name, None)
         except Exception:
@@ -397,7 +418,12 @@ def _collect_routing_diagnostic(device):
         if child is None:
             continue
         found.extend(_attrs(child, "device.%s." % child_name))
-    return ", ".join(found) if found else "<none>"
+
+    if found:
+        parts.append("attrs=[%s]" % ", ".join(found))
+    else:
+        parts.append("attrs=<none>")
+    return " | ".join(parts) if parts else "<none>"
 
 
 @register("set_compressor_sidechain")

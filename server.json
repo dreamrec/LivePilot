@@ -6,7 +6,7 @@
     "url": "https://github.com/dreamrec/LivePilot",
     "source": "github"
   },
-  "version": "1.23.5",
+  "version": "1.23.6",
   "packages": [
     {
       "registryType": "npm",
