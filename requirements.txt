@@ -12,7 +12,7 @@ mutagen>=1.47.0
 # Without these, SpliceGRPCClient silently disables itself and search_samples
 # falls back to the SQLite sounds.db which only returns locally downloaded
 # samples (see docs/2026-04-14-bugs-discovered.md — P0-2).
-grpcio>=1.60.0
+grpcio>=1.80.0
 protobuf>=7.34.1
 
 # Development / testing (not required for runtime)
