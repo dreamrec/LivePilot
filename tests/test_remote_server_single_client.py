@@ -78,7 +78,12 @@ def test_second_client_gets_explicit_state_error():
     second = None
     try:
         server.start()
-        assert _wait_until(lambda: server._server_socket is not None)
+        # Wait until bind() has completed — socket is assigned before bind(),
+        # so port==0 means bind hasn't run yet; connecting to port 0 → EADDRNOTAVAIL.
+        assert _wait_until(
+            lambda: server._server_socket is not None
+            and server._server_socket.getsockname()[1] != 0
+        )
         # Use the actual bound address (may be IPv4 or IPv6 depending on OS)
         host, port = server._server_socket.getsockname()[:2]
         if host == "" or host == "0.0.0.0" or host == "::":
