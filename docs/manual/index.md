@@ -1,13 +1,13 @@
 # LivePilot Manual
 
 An agentic production system for Ableton Live 12.
-433 tools. 53 domains. Device atlas. Sample intelligence. Auto-composition. Spectral perception. Technique memory. Creative intelligence.
+453 tools. 54 domains. Device atlas. Sample intelligence. Auto-composition. Spectral perception. Technique memory. Creative intelligence.
 
 ---
 
 ## What LivePilot Is
 
-LivePilot is not a tool collection with an AI wrapper. It is a **production system** — three perception layers feed into 433 tools, which are orchestrated by a dozen creative engines that understand song identity, learn your taste, diagnose session problems, and generate real musical options.
+LivePilot is not a tool collection with an AI wrapper. It is a **production system** — three perception layers feed into 453 tools, which are orchestrated by a dozen creative engines that understand song identity, learn your taste, diagnose session problems, and generate real musical options.
 
 The difference: a tool collection executes "set volume to -6dB." LivePilot understands that turning down the drums might kill the groove that defines the track, suggests three genuinely different ways to create space instead, lets you preview each one, and remembers which approach you preferred.
 
@@ -20,19 +20,25 @@ AI Client  ──MCP──►  FastMCP Server  ──TCP/9878──►  Remote S
                         (validates)                    (executes on main thread)
                             │
                             ├── Device Atlas (5264 devices, 120 enriched, 7 indexes)
+                            ├── User Corpus (~/.livepilot/atlas-overlays/)   [v1.23.4+]
+                            │      ├── user/         your detected plugins
+                            │      ├── m4l-devices/  your .amxd library
+                            │      ├── packs/        factory + your packs
+                            │      └── elektron/     hardware overlays
                             ├── M4L Analyzer ──UDP/OSC──► LivePilot_Analyzer.amxd
                             └── Technique Memory (~/.livepilot/memory/)
 ```
 
 The **atlas** resolves device names and browser URIs — the AI never hallucinates a preset. 641 devices are indexed by pack (Core Library + explicit-pack assignments) so "what's in Drone Lab?" is an instant lookup. Reverse-index `device_techniques_index.json` cross-references 146 techniques across 58 devices (the `atlas_techniques_for_device` tool).
+The **user corpus** (v1.23.4+) extends the atlas with whatever's installed on YOUR machine — third-party plugins, custom Max devices, your `.adg` racks. Loaded by every reasoning tool with a 50/50 result-budget split alongside the factory atlas, so "sound like Burial" can route to *your* CHOWTapeModel + Splice PHOTEK pack instead of just Ableton's stock saturator. See [User Corpus Guide](../USER_CORPUS_GUIDE.md).
 The **analyzer** feeds back spectral data from the master bus so the AI hears its own changes — **9 frequency bands** (sub_low / sub / low / low_mid / mid / high_mid / high / presence / air); the sub_low band (20-60 Hz) separates kick fundamental from DC rumble. From v1.20.3 the analyzer is auto-loaded via `ensure_analyzer_on_master` — the Creative Director skill calls this at the top of every turn's Phase 1 ground read.
 The **memory** persists production decisions across sessions as searchable, replayable data structures.
 
-All 433 tools execute as deterministic LOM calls on Ableton's main thread. Live-session mutations (clips, devices, mixer, arrangement) route through Ableton's undo stack; side effects that touch state outside the Live project — Splice downloads, memory/ledger writes, installer actions, atlas scans, filesystem writes — persist beyond undo.
+All 453 tools execute as deterministic LOM calls on Ableton's main thread. Live-session mutations (clips, devices, mixer, arrangement) route through Ableton's undo stack; side effects that touch state outside the Live project — Splice downloads, memory/ledger writes, installer actions, atlas scans, filesystem writes — persist beyond undo.
 
 ---
 
-## The Three Layers
+## The Four Layers
 
 ### Layer 1: Deterministic Tools
 
@@ -73,11 +79,54 @@ Sits on top of the tools and perception, adding musical judgment. This is what m
 - **Transition / Reference / Translation Engines** score transitions, distill principles from reference tracks, translate across domains
 - **Evaluation Loop** enforces measure-before, act, measure-after discipline on every creative move
 
+### Layer 4: Personal Library Awareness `[v1.23.4+]`
+
+The first three layers operate on Ableton's shipped library. Layer 4 makes the brain aware of *your specific machine* — every third-party plugin, every Max for Live device, every custom rack you've saved.
+
+**Why this layer exists.** Most music AI tools have a fixed knowledge cutoff. LivePilot's first three layers give it generalized musical judgment, but until v1.23.4 they could only reach for Ableton-shipped gear. If you spent $500 on Valhalla plugins, $200 on a Cem Olcay MIDI suite, and built a personal library of `.adg` racks, none of that was visible to the brain. Same query → same Ableton-stock recommendation, regardless of what's actually on your hard drive.
+
+**What it does.** The User Corpus runs a 4-phase pipeline (DETECT → CANONICALIZE → RESEARCH → SYNTHESIZE) that turns the contents of your filesystem into AI-queryable knowledge:
+
+| Phase | Tool | What it produces |
+|-------|------|------------------|
+| 1. Detect | `corpus_detect_plugins` | Inventory of installed VST3/AU/AUv3/VST2/AAX/CLAP/LV2 plugins. Path-walks `/Library/Audio/Plug-Ins/{VST3,Components}` + runs `auval -a` for AUv3/Mac Catalyst coverage |
+| 2. Canonicalize | `corpus_canonicalize_plugins` | Dedupes by vendor+name, prefers VST3 over AU, strips vendor suffix variants ("Valhalla DSP, LLC" = "Valhalladsp" = "Valhalla DSP") |
+| 2.5. Cluster | `corpus_cluster_plugins` | Groups by vendor for batched research dispatch — vendors with ≥2 plugins share one WebSearch |
+| 3. Research | `corpus_research_targets` | Emits a structured WebSearch task packet the agent fulfills |
+| 4. Synthesize | `corpus_emit_synthesis_briefs` | Sonnet-subagent dispatch — writes per-plugin `identity.yaml` with sonic_fingerprint / reach_for / avoid / key_techniques / parameter_glossary / genre_affinity / producer_anchors |
+
+**How it integrates with the brain.** The output overlays land at `~/.livepilot/atlas-overlays/<namespace>/` across four namespaces (`user/` for plugins, `m4l-devices/` for Max devices, `packs/` for factory + custom packs, `elektron/` for hardware). Every reasoning tool — `atlas_search`, `atlas_chain_suggest`, `atlas_macro_fingerprint`, `atlas_describe_chain` — consults the overlay alongside the factory atlas with a 50/50 result-budget split. Each result is tagged `source: factory_atlas | user_overlay:<namespace>`, so the agent always knows whether a recommendation is Ableton stock or yours.
+
+**The versatility argument in one example.** A new user asks "make me a J Dilla beat":
+
+| Without User Corpus | With User Corpus |
+|---|---|
+| Operator FM marimba (default preset) | Koala Sampler (your SP-404 emulator) |
+| Live's stock Drum Rack samples | Splice PHOTEK Vol.1 pack you bought |
+| Saturator (Tape mode) for warmth | CHOWTapeModel (your peer-reviewed tape model) |
+| Operator-based bass (default) | Moog Model D (your subby analog bass) |
+
+Same query, different brain. The closer the brain matches *your* library, the more useful every recommendation becomes.
+
+**Quick start.** From any MCP client:
+
+```
+corpus_setup_wizard           # one-shot — runs the full pipeline
+# OR fine-grained:
+corpus_detect_plugins use_auval=true
+corpus_canonicalize_plugins
+corpus_cluster_plugins
+corpus_research_targets
+corpus_emit_synthesis_briefs
+```
+
+See the full [User Corpus Guide](../USER_CORPUS_GUIDE.md) for end-to-end walkthrough, [Plugin Knowledge Engine doc](../PLUGIN_KNOWLEDGE_ENGINE.md) for engine internals, and [Extension API](../EXTENSION_API.md) for the overlay file format.
+
 ---
 
 ## Domain Map
 
-All 433 tools across 53 domains, in source-truth per-domain counts:
+All 453 tools across 54 domains, in source-truth per-domain counts:
 
 ### Core Ableton Control (Layer 1 — 218 tools)
 
@@ -146,6 +195,12 @@ All 433 tools across 53 domains, in source-truth per-domain counts:
 | Planner | 2 | Gesture planning, arrangement planning |
 | Translation Engine | 2 | Cross-domain translation, issue detection |
 
+### Personal Library Awareness (Layer 4 — 14 tools) `[v1.23.4+]`
+
+| Domain | # | Scope |
+|--------|:-:|-------|
+| User Corpus | 14 | Plugin Knowledge Engine 4-phase pipeline. `corpus_setup_wizard`, `corpus_init`, `corpus_status`, `corpus_list_scanners`, `corpus_add_source`, `corpus_remove_source`, `corpus_scan` (file-level), `corpus_detect_plugins` (auval-aware), `corpus_canonicalize_plugins` (VST3-preferred dedup), `corpus_cluster_plugins` (vendor-batched research), `corpus_trim_plugin_identity` (deprioritization), `corpus_discover_manuals`, `corpus_research_targets`, `corpus_emit_synthesis_briefs` |
+
 ---
 
 ## Chapters
@@ -156,6 +211,9 @@ All 433 tools across 53 domains, in source-truth per-domain counts:
 |---------|---------------|
 | [The Intelligence Layer](intelligence.md) | How the engines connect — conductor, kernel, moves, preview, evaluation |
 | [Device Atlas](device-atlas.md) | 5264 devices indexed — search, suggest, chain building, comparison, pack browsing |
+| [User Corpus Guide](../USER_CORPUS_GUIDE.md) `[v1.23.4+]` | Build a personal atlas from your plugins, racks, Max devices, samples — same MCP tools as factory atlas |
+| [Plugin Knowledge Engine](../PLUGIN_KNOWLEDGE_ENGINE.md) `[v1.23.4+]` | 4-phase detect → canonicalize → research → synthesize pipeline, AUv3 detection via auval, VST3-preferred dedup |
+| [Extension API](../EXTENSION_API.md) | Drop YAML overlays at `~/.livepilot/atlas-overlays/<namespace>/` — survives npm updates |
 | [Samples & Slicing](samples.md) | 3-source search, Splice describe-a-sound, variations, fitness critics |
 | [Automation](automation.md) | 16 curve types, 15 recipes, spectral suggestions, two-phase arrangement-record workaround |
 | [Composition & Arrangement](composition.md) | Composer, section analysis, arrangement planning with sample roles |

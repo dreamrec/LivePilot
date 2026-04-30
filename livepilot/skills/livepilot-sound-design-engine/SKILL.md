@@ -7,6 +7,50 @@ description: This skill should be used when the user asks to "design a sound", "
 
 The sound design engine analyzes synth patches, identifies timbral weaknesses, and iteratively refines them through a measured critic loop. Every change is evaluated against the before state.
 
+## Atlas-first reflex (v1.23.x+, MANDATORY before any creative move)
+
+Before producing ANY creative response, query the user's atlas overlays. The corpus contains 337 entries across 3 namespaces, plus 3,917 parameter-level JSON sidecars — far richer than anything inferable from training data alone.
+
+**Query order:**
+
+1. **`extension_atlas_search(namespace="packs", query=<intent>)`** — pack identity, signature workflows, hidden gems, anti-patterns, notable presets with macro deep-data, demo projects
+2. **`extension_atlas_search(namespace="packs", query=<intent>, entity_type="cross_pack_workflow")`** — multi-pack signature recipes (15 entries: dub-techno spectral drone bed, BoC decayed pad, Mica Levi orchestral dread, etc.)
+3. **`extension_atlas_search(namespace="m4l-devices", query=<sonic descriptor>)`** — M4L instrument/effect/midi-effect device catalog (155 entries)
+4. **`atlas_search(...)`** — bundled atlas (Core Library, fallback)
+
+**Multi-grain traversal:**
+
+When an aesthetic-level query lands a pack-level result, AUTO-DRILL: pack → its `notable_presets` → those preset macro states → load via `load_browser_item`. Don't stop at "I found a relevant pack" — drill to the actual preset/parameter level the user can immediately use.
+
+```python
+# Example — agent received "design a BoC pad — sublime, decayed, harmonic warmth"
+hit = extension_atlas_search(namespace="packs", query="BoC sublime decayed pad harmonic warmth")
+# → boc_decayed_pad cross-pack-workflow + inspired_by_nature pack
+
+workflow = extension_atlas_get("packs", "boc_decayed_pad")
+# → reveals signal flow + which notable_presets to start from
+
+drone_lab = extension_atlas_get("packs", "drone_lab")
+# → notable_presets reveals Razor Wire Drone with macros Filter Control=108, Movement=53...
+
+# Now propose the patch with concrete preset names + macro starting values, not vague descriptions
+```
+
+**When the user mentions a producer or pack by name:**
+
+- "BoC sublime pad" → atlas hit: `boc_decayed_pad` cross-pack-workflow + `inspired_by_nature` pack
+- "Henke spectral chain" → atlas hit: `pitchloop89` + `granulator_iii` + 2 Henke cross-pack workflows
+- "Mica Levi orchestral dread" → atlas hit: `mica_levi_orchestral_dread` workflow + the orchestral suite packs
+- "Drone Lab" → atlas hit: `drone_lab` pack + 4 Drone Lab demo_project entries
+
+The atlas knows the user's installed library at parameter depth. **Producer-anchor queries land specific moves, not vague descriptions.**
+
+**Anti-pattern surfacing:**
+
+Every pack entry has an `anti_patterns` body field listing "don't reach for this when X." Surface the relevant anti-pattern when proposing a move so the user knows the move's domain. (E.g. "Drone Lab is sustain-only — don't use for percussive content.")
+
+**For deliberately rule-breaking creative requests** ("eclectic", "ignore the limits", "weird combo", "mix incompatible aesthetics"): switch to **Eclectic Mode** — the dedicated rule-breaker skill at `livepilot-eclectic` (private). Anti-patterns become prompt tension rather than guardrails. See that skill's reasoning loop.
+
 ## The Sound Design Critic Loop
 
 ### Step 1 — Build Patch Model

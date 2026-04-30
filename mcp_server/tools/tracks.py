@@ -346,12 +346,12 @@ def set_track_solo(ctx: Context, track_index: int, solo: bool) -> dict:
 
 
 @mcp.tool()
-def set_track_arm(ctx: Context, track_index: int, armed: bool) -> dict:
+def set_track_arm(ctx: Context, track_index: int, arm: bool) -> dict:
     """Arm or disarm a track for recording."""
     _validate_track_index(track_index)
     return _get_ableton(ctx).send_command("set_track_arm", {
         "track_index": track_index,
-        "arm": armed,
+        "arm": arm,
     })
 
 

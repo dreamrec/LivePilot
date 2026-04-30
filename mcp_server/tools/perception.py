@@ -93,7 +93,11 @@ def analyze_loudness(
     file_path: str,
     detail: str = "summary",
 ) -> dict[str, Any]:
-    """Analyze the integrated loudness of an audio file (offline — no Ableton needed).
+    """Analyze the integrated loudness of an audio file (OFFLINE — needs a rendered file).
+
+    ⚠ This tool reads a file on disk. It does NOT connect to Ableton.
+    For live session monitoring while a track is playing, use
+    analyze_loudness_live() instead — no file needed.
 
     Computes integrated LUFS (EBU R128), true peak, RMS, crest factor,
     loudness range (LRA), and streaming platform compliance.

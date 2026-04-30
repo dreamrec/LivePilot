@@ -48,8 +48,13 @@ def _navigate_path(browser, path):
     if not parts:
         raise ValueError("Path cannot be empty")
 
-    # First part must be a category name
-    first = parts[0].lower()
+    # First part must be a category name (normalise common aliases first)
+    _path_aliases = {
+        "effects": "audio_effects", "fx": "audio_effects",
+        "audio_fx": "audio_effects", "audiofx": "audio_effects",
+        "midi_fx": "midi_effects", "midifx": "midi_effects",
+    }
+    first = _path_aliases.get(parts[0].lower(), parts[0].lower())
     if first not in categories:
         raise ValueError(
             "Unknown category '%s'. Available: %s"

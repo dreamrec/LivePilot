@@ -173,4 +173,4 @@ routing is transparent.
 - Link Audio (tempo-sync sharing between Live sets) — tracked as a
   future Collaborative-tier feature.
 - Stem Separation v2 — tracked as a future Collaborative-tier feature.
-Neither is available in the 1.23.3 release — still pending.
+Neither is available in the 1.23.4 release — still pending.

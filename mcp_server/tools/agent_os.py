@@ -231,20 +231,26 @@ def build_world_model(ctx: Context) -> dict:
 @mcp.tool()
 def evaluate_move(
     ctx: Context,
-    goal_vector: dict | str,
-    before_snapshot: dict | str,
-    after_snapshot: dict | str,
+    goal_vector: Optional[dict | str] = None,
+    before_snapshot: Optional[dict | str] = None,
+    after_snapshot: Optional[dict | str] = None,
+    description: Optional[str] = None,
 ) -> dict:
     """Evaluate whether a production move improved the mix toward the goal.
 
-    Takes before/after sonic snapshots and the active GoalVector.
-    Returns a score and keep/undo recommendation.
+    Two call modes:
 
-    Snapshots should contain: spectrum (9-band dict sub_low → air, or
-    8-band from pre-v1.16 .amxd builds), rms, peak. Get these from
-    get_master_spectrum + get_master_rms before and after making changes.
+    **Structured** (full numeric scoring): supply goal_vector + before_snapshot
+    + after_snapshot. Snapshots must contain spectrum (9-band dict sub_low → air)
+    + rms + peak — capture via get_master_spectrum + get_master_rms before and
+    after the move. Returns a numeric score and keep/undo recommendation.
 
-    Hard rules enforce undo when:
+    **Description-only** (quick log, no snapshots needed): supply only
+    ``description``. Returns {evaluated: false, logged: true} — move is recorded
+    as a session event but no numeric score is computed. Useful for mid-session
+    bookkeeping when you haven't pre-captured snapshots.
+
+    Hard rules (structured mode only) enforce undo when:
     - No measurable improvement (delta <= 0)
     - Protected dimension dropped below its threshold or by > 0.15
     - Total score < 0.40
@@ -255,6 +261,24 @@ def evaluate_move(
     Returns consecutive_undo_hint=true when keep_change=false — the agent
     should track consecutive undos and switch to observe mode after 3.
     """
+    # Description-only (quick-log) mode — no snapshots available
+    if goal_vector is None and before_snapshot is None and after_snapshot is None:
+        if description:
+            return {
+                "evaluated": False,
+                "logged": True,
+                "description": description,
+                "note": (
+                    "No snapshots supplied — move logged but not scored. "
+                    "For numeric evaluation capture get_master_spectrum + "
+                    "get_master_rms before and after the move."
+                ),
+            }
+        raise ValueError(
+            "Provide either goal_vector + before_snapshot + after_snapshot "
+            "for full evaluation, or description for quick logging."
+        )
+
     gv_dict = _parse_json_param(goal_vector, "goal_vector")
     before = _parse_json_param(before_snapshot, "before_snapshot")
     after = _parse_json_param(after_snapshot, "after_snapshot")

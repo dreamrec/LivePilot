@@ -307,6 +307,7 @@ from .sample_engine import tools as sample_engine_tools        # noqa: F401, E40
 from .atlas import tools as atlas_tools                        # noqa: F401, E402
 from .composer import tools as composer_tools                  # noqa: F401, E402
 from .synthesis_brain import tools as synthesis_brain_tools    # noqa: F401, E402
+from .user_corpus import tools as user_corpus_tools            # noqa: F401, E402
 from .tools import diagnostics   # noqa: F401, E402
 from .tools import miditool       # noqa: F401, E402
 
@@ -425,6 +426,26 @@ def _get_all_tools():
     return []
 
 
+def _read_expected_tool_count() -> int | None:
+    """Read the expected tool count from tests/test_tools_contract.py."""
+    import re
+    from pathlib import Path
+    try:
+        contract_path = (
+            Path(__file__).resolve().parents[1]
+            / "tests" / "test_tools_contract.py"
+        )
+        if not contract_path.exists():
+            return None
+        match = re.search(
+            r"assert len\(tools\) == (\d+)",
+            contract_path.read_text(encoding="utf-8"),
+        )
+        return int(match.group(1)) if match else None
+    except Exception:  # noqa: BLE001 — must not block startup
+        return None
+
+
 def _assert_tool_registry_accessible() -> None:
     """Loudly fail startup if the FastMCP registry probe returns nothing.
 
@@ -434,31 +455,15 @@ def _assert_tool_registry_accessible() -> None:
     with 324 tools but no string-to-number coercion — a subtle, hard-to-
     diagnose class of failure we've paid for once already.
 
-    Reads the expected count from ``tests/test_tools_contract.py`` (same
-    source of truth sync_metadata.py uses), so no second magic number.
+    Note: only the "registry accessible at all" guard runs at module load.
+    The exact-count check moved to ``_assert_expected_tool_count()`` and
+    runs from main() — at module-load time, circular imports between
+    server.py and tool modules can leave the count temporarily under-
+    reported (a tool module being imported directly by a test or another
+    consumer triggers server.py's self-test before the importing module's
+    own ``@mcp.tool()`` decorators have fired). See BUG fix in v1.23.4.
     """
-    import re
     import sys
-
-    try:
-        contract_src = (
-            (__file__.rsplit("/", 2)[0] + "/tests/test_tools_contract.py")
-            if "__file__" in globals() else None
-        )
-        # Prefer an absolute path via Path for reliability:
-        from pathlib import Path
-        contract_path = Path(__file__).resolve().parents[1] / "tests" / "test_tools_contract.py"
-        expected = None
-        if contract_path.exists():
-            match = re.search(
-                r"assert len\(tools\) == (\d+)",
-                contract_path.read_text(encoding="utf-8"),
-            )
-            if match:
-                expected = int(match.group(1))
-    except Exception:  # noqa: BLE001 — self-test must not block startup
-        expected = None
-
     actual = len(_get_all_tools())
     if actual == 0:
         # Registry probe returned empty — this is the regression the test guards.
@@ -470,7 +475,19 @@ def _assert_tool_registry_accessible() -> None:
             "(fastmcp>=3.0.0,<3.3.0) matches the installed version.",
             file=sys.stderr,
         )
-        return
+
+
+def _assert_expected_tool_count() -> None:
+    """Verify the registered tool count matches the contract.
+
+    Run from ``main()`` after all tool-module imports have completed. Avoids
+    the false-positive that fires when a tool module is imported directly
+    (which triggers server.py's self-test mid-import, before the importer's
+    own decorators have run).
+    """
+    import sys
+    expected = _read_expected_tool_count()
+    actual = len(_get_all_tools())
     if expected is not None and actual != expected:
         print(
             f"LivePilot: STARTUP SELF-TEST WARNING — _get_all_tools() "
@@ -528,6 +545,10 @@ except Exception as e:
 
 def main():
     """Run the MCP server over stdio."""
+    # Verify tool count matches the contract — runs here (not at module load)
+    # so all tool-module imports have completed regardless of the import path
+    # that brought server.py in. See _assert_tool_registry_accessible() docstring.
+    _assert_expected_tool_count()
     mcp.run(transport="stdio")
 
 if __name__ == "__main__":

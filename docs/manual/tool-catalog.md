@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog (Generated)
 
-433 tools across 53 domains.
+453 tools across 54 domains.
 
 > Auto-generated from `mcp.list_tools()`. Do not hand-edit.
 > Regenerate: `python3 scripts/generate_tool_catalog.py`
@@ -27,7 +27,7 @@
 |------|-------------|
 | `add_drum_rack_pad` | Add a new pad (chain) to a Drum Rack and load a sample into it. |
 | `add_warp_marker` | Add a warp marker to an audio clip at the specified beat position. |
-| `analyze_loudness_live` | Analyze the currently-playing master output's loudness over a window. |
+| `analyze_loudness_live` | Analyze the currently-playing master output's loudness over a window (LIVE). |
 | `capture_audio` | Capture audio from Ableton Live to a WAV file on disk. |
 | `capture_stop` | Stop an in-progress audio capture early. |
 | `check_flucoma` | Check if FluCoMa is installed and sending data. |
@@ -90,18 +90,24 @@
 | `toggle_cue_point` | Set or delete a cue point at the current playback position. |
 | `transpose_arrangement_notes` | Transpose notes in an arrangement clip by semitones (positive=up, negative=down). |
 
-## Atlas (13)
+## Atlas (19)
 
 | Tool | Description |
 |------|-------------|
 | `atlas_chain_suggest` | Suggest a full device chain for a track role. |
 | `atlas_compare` | Compare two devices — strengths, weaknesses, and recommendation for a role. |
+| `atlas_cross_pack_chain` | Execute a cross-pack signature recipe step-by-step (Pack-Atlas Phase F). |
+| `atlas_demo_story` | Generate a track-by-track narrative + production-sequence for a demo .als (Pack-Atlas Phase E). |
 | `atlas_describe_chain` | Free-text describe-a-chain: "a granular pad that sounds like Tim Hecker" |
 | `atlas_device_info` | Get complete atlas knowledge about a device — parameters, recipes, pairings, gotchas. |
+| `atlas_extract_chain` | Rebuild a specific demo track's device chain as an executable plan (Pack-Atlas Phase E). |
+| `atlas_macro_fingerprint` | Find presets with similar macro state to the source — 'more like this' search. |
+| `atlas_pack_aware_compose` | Bootstrap a project with pack-coherent track selection given an aesthetic brief (Pack-Atlas Phase F). |
 | `atlas_pack_info` | Inspect a single Ableton pack — device list + enrichment coverage. |
 | `atlas_search` | Search the device atlas for instruments, effects, kits, or plugins. |
 | `atlas_suggest` | Suggest devices for a production intent. |
 | `atlas_techniques_for_device` | Reverse-lookup: what techniques / principles reference this device? |
+| `atlas_transplant` | Adapt a structure from one musical context to another (Pack-Atlas Phase C). |
 | `extension_atlas_get` | Fetch a single overlay entry by namespace + entity_id. |
 | `extension_atlas_list` | Enumerate user-local overlay namespaces and their entity_type counts. |
 | `extension_atlas_search` | Search user-local atlas overlays under ~/.livepilot/atlas-overlays/. |
@@ -432,7 +438,7 @@
 
 | Tool | Description |
 |------|-------------|
-| `analyze_loudness` | Analyze the integrated loudness of an audio file (offline — no Ableton needed). |
+| `analyze_loudness` | Analyze the integrated loudness of an audio file (OFFLINE — needs a rendered file). |
 | `analyze_spectrum_offline` | Analyze the frequency spectrum of an audio file (offline — no Ableton needed). |
 | `compare_to_reference` | Compare a mix to a reference track (offline — no Ableton needed). |
 | `read_audio_metadata` | Read metadata from an audio file (offline — no Ableton needed). |
@@ -697,6 +703,25 @@
 | `toggle_metronome` | Enable or disable the metronome click. |
 | `undo` | Undo the last action in Ableton. |
 
+## User Corpus (14)
+
+| Tool | Description |
+|------|-------------|
+| `corpus_add_source` | Register a new scan source in the user manifest. |
+| `corpus_canonicalize_plugins` | Dedupe the plugin inventory by canonical vendor + name; prefer VST3 as |
+| `corpus_cluster_plugins` | Group canonical plugins by vendor; return a cluster manifest the agent |
+| `corpus_detect_plugins` | Phase 2.1 + 2.2 — detect installed VST3 / AU / VST2 / AAX / LV2 plugins |
+| `corpus_discover_manuals` | Phase 2.3 + 2.4 — find local manual files for a detected plugin and |
+| `corpus_emit_synthesis_briefs` | Phase 4 — emit sonnet-subagent briefs for plugin identity synthesis. |
+| `corpus_init` | Initialize the user-corpus output directory + manifest.yaml. |
+| `corpus_list_scanners` | Enumerate registered scanner types and their supported file extensions. |
+| `corpus_remove_source` | Remove a source from the manifest. |
+| `corpus_research_targets` | Phase 3 — emit a structured WebSearch task packet for the agent to fulfill. |
+| `corpus_scan` | Run scans on the user corpus. |
+| `corpus_setup_wizard` | First-run setup — survey the user's filesystem for sensible scan candidates |
+| `corpus_status` | Report manifest contents + freshness for each source. |
+| `corpus_trim_plugin_identity` | Slim a plugin's identity.yaml to the lean overlay-required shape. |
+
 ## Wonder Mode (3)
 
 | Tool | Description |
@@ -706,4 +731,4 @@
 | `rank_wonder_variants` | Rank wonder-mode variants by taste + identity + novelty + coherence. |
 
 ---
-*Generated from 433 registered tools.*
+*Generated from 453 registered tools.*

@@ -1,4 +1,4 @@
-# LivePilot v1.23.3 — Ableton Live 12
+# LivePilot v1.23.4 — Ableton Live 12
 
 ## Project
 - **Repo:** This directory (LivePilot)
@@ -30,7 +30,7 @@
 ## Key Rules
 - ALL Live Object Model (LOM) calls must execute on Ableton's main thread via schedule_message queue
 - Live 12 minimum — use modern note API (add_new_notes, get_notes_extended, apply_note_modifications)
-- 433 tools across 53 domains: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, analyzer, automation, theory, generative, harmony, midi_io, perception, agent_os, composition, motif, research, planner, project_brain, runtime, evaluation, mix_engine, sound_design, transition_engine, reference_engine, translation_engine, performance_engine, song_brain, preview_studio, hook_hunter, stuckness_detector, wonder_mode, session_continuity, creative_constraints, device_forge, sample_engine, atlas, composer, experiment, musical_intelligence, semantic_moves, diagnostics, follow_actions, grooves, scales, take_lanes, miditool, synthesis_brain, creative_director
+- 453 tools across 54 domains: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, analyzer, automation, theory, generative, harmony, midi_io, perception, agent_os, composition, motif, research, planner, project_brain, runtime, evaluation, mix_engine, sound_design, transition_engine, reference_engine, translation_engine, performance_engine, song_brain, preview_studio, hook_hunter, stuckness_detector, wonder_mode, session_continuity, creative_constraints, device_forge, sample_engine, atlas, composer, experiment, musical_intelligence, semantic_moves, diagnostics, follow_actions, grooves, scales, take_lanes, miditool, synthesis_brain, creative_director, user_corpus
 - JSON over TCP, newline-delimited, port 9878
 - Structured errors with codes: INDEX_ERROR, NOT_FOUND, INVALID_PARAM, STATE_ERROR, TIMEOUT, INTERNAL
 - **LivePilot_Analyzer must be LAST on master** — always after ALL effects (EQ, Compressor, Utility) so it reads the final output, not pre-effect signal
@@ -74,7 +74,7 @@ cat .claude-plugin/marketplace.json | python3 -c "import json,sys; print(json.lo
 Expected output: the new version string. If the mirror is stale (happened silently across v1.18.0-v1.18.3 — panel stuck at "1.17.5 installed"), Claude Code's plugin panel will show the old version and `Update` button points at a stale target. The mirror is a git clone that Claude Code fetches from but does NOT auto-pull. Hard-reset is safe — nothing writes to it locally.
 
 ## Tool Count
-Currently 433 tools (up from 430 in v1.22.x — added 3 extension_atlas_* tools in v1.23.0; up from 403 in v1.15.0-beta originally). If adding/removing tools, update: README.md, package.json description, livepilot/.Codex-plugin/plugin.json, livepilot/.claude-plugin/plugin.json, server.json, livepilot/skills/livepilot-core/SKILL.md, livepilot/skills/livepilot-core/references/overview.md, CLAUDE.md, CHANGELOG.md, tests/test_tools_contract.py, docs/manual/index.md, docs/manual/tool-reference.md
+Currently 453 tools (up from 437 in Phase F — added atlas_pack_aware_compose + atlas_cross_pack_chain; up from 434 in Phase C — added atlas_transplant; up from 433 in v1.23.3 — added atlas_macro_fingerprint in v1.23.4; up from 430 in v1.22.x — added 3 extension_atlas_* tools in v1.23.0; up from 403 in v1.15.0-beta originally). If adding/removing tools, update: README.md, package.json description, livepilot/.Codex-plugin/plugin.json, livepilot/.claude-plugin/plugin.json, server.json, livepilot/skills/livepilot-core/SKILL.md, livepilot/skills/livepilot-core/references/overview.md, CLAUDE.md, CHANGELOG.md, tests/test_tools_contract.py, docs/manual/index.md, docs/manual/tool-reference.md
 
 ## Splice plan-aware model (v1.15.0-beta)
 Sample downloads now use plan-aware gating (`mcp_server/splice_client/client.py::decide_download`):
@@ -86,4 +86,219 @@ Sample downloads now use plan-aware gating (`mcp_server/splice_client/client.py:
 New Splice MCP tools: `splice_preview_sample` (zero-cost audition via `PreviewURL`), `splice_list_collections` / `splice_search_in_collection` / `splice_add_to_collection` / `splice_remove_from_collection` / `splice_create_collection` (taste-scoped search via user's Likes/bass/keys folders), `splice_list_presets` / `splice_preset_info` / `splice_download_preset` (purchased instrument presets), `splice_pack_info`.
 
 ## Domain Count
-Currently 53 domains. A domain = the subdirectory under `mcp_server/` (or file under `mcp_server/tools/`) that contains `@mcp.tool()`. Source of truth is the module layout — no hand-maintained list. If adding/removing domains, update: README.md, package.json, manifest.json, CLAUDE.md, AGENTS.md, .claude-plugin/marketplace.json, livepilot/.claude-plugin/plugin.json, livepilot/.Codex-plugin/plugin.json, livepilot/skills/livepilot-core/SKILL.md, livepilot/skills/livepilot-core/references/overview.md, livepilot/skills/livepilot-release/SKILL.md, docs/manual/index.md, docs/manual/tool-catalog.md, docs/manual/tool-catalog-generated.md, tests/test_tools_contract.py. Run `python scripts/sync_metadata.py --check` to enforce count + inline list (or `--fix` for mechanical fixes).
+Currently 54 domains. A domain = the subdirectory under `mcp_server/` (or file under `mcp_server/tools/`) that contains `@mcp.tool()`. Source of truth is the module layout — no hand-maintained list. If adding/removing domains, update: README.md, package.json, manifest.json, CLAUDE.md, AGENTS.md, .claude-plugin/marketplace.json, livepilot/.claude-plugin/plugin.json, livepilot/.Codex-plugin/plugin.json, livepilot/skills/livepilot-core/SKILL.md, livepilot/skills/livepilot-core/references/overview.md, livepilot/skills/livepilot-release/SKILL.md, docs/manual/index.md, docs/manual/tool-catalog.md, docs/manual/tool-catalog-generated.md, tests/test_tools_contract.py. Run `python scripts/sync_metadata.py --check` to enforce count + inline list (or `--fix` for mechanical fixes).
+
+---
+
+# LivePilot — Behavioral Rules (always loaded, binding)
+
+These rules are derived from feedback memories at
+`~/.claude/projects/-Users-visansilviugeorge-Desktop-DREAM-AI-LivePilot/memory/feedback_*.md`.
+Each rule corresponds to a specific incident the user had to correct manually —
+they are not suggestions.
+
+## §1 — Default Preset Energy is Forbidden
+
+**Hard rule** (from `feedback_stop_loading_default_presets.md`): never reach for
+Analog/Poli/Drift as a default for bass/pad/lead unless the user explicitly asked
+for "analog subtractive". They read as "generic AI synth" and have been rejected
+multiple times.
+
+**Library hunting order BEFORE choosing any instrument:**
+1. `search_browser(path="sounds", name_filter="<role>")` — factory `.adg` curated chains
+2. `atlas_search(query="<sonic description>", category="instruments")` — scored matches
+3. `search_browser(path="instruments", name_filter="<name>")` — named synths
+4. Factory packs on disk (`~/Music/Ableton/Factory Packs/`) — Granulator III, Drone Lab,
+   PitchLoop89, Inspired by Nature, etc.
+
+For "alive" sounds prefer **sample-based / physical-modeling / granular** sources
+over subtractive synthesis.
+
+**Pad-specific:** Poli and Meld are M4L opaque devices the sound-design critic
+can't analyze. Avoid them for that structural reason — you can't tune what you
+can't measure.
+
+## §2 — Sound Design = Instrument Programming, NOT Effects Chains
+
+**From `feedback_sound_design_instrument_level.md`:** when the user asks for
+"more sound design" or "fresher sound design", **OPEN THE INSTRUMENT FIRST**
+and program these parameters BEFORE adding any audio effect:
+
+**Simpler/Sampler:** `Pe < Env` + `Pe Decay` (pitch envelope), `Fe < Env` +
+`Fe Attack` + `Fe Decay` (filter envelope), `Detune`, `Spread`, `S Start` +
+modulation, LFO routing (`Pitch < LFO`, `Filt < LFO`, `Vol < LFO`,
+`Pan < LFO`, `Pan < Rnd`), `Fade In`/`Fade Out`.
+
+**Synth (Drift/Wavetable/Operator/Analog):** oscillator shape/position/sync/FM,
+modulation matrix (env→osc, LFO→filter, vel→vol, keytrack), filter envelope
+amount + decay shape, unison count + spread + detune, per-voice random.
+
+**Signal:** "warmer/brighter/crunchier" → effect. "more characterful / more
+alive / more YOU" → instrument parameters. Effects come AFTER the source is
+sculpted.
+
+## §3 — Analysis Before Action (Never write a value you haven't read)
+
+- Before `set_device_parameter` → `get_device_parameters` first.
+- Before mixing moves → `analyze_mix` / `get_mix_issues` / `get_masking_report`.
+- Before slice programming on a sliced break → spectral classification per
+  slice (`get_simpler_slices` + solo-trigger `get_master_spectrum` OR offline
+  numpy spectral analysis on the source WAV). Never assume "slice 0 = kick".
+  See `feedback_analyze_slices_before_programming.md` for the canonical
+  classification thresholds.
+- Before arrangement moves → `analyze_phrase_arc` / `get_section_outcomes` /
+  `analyze_composition`.
+- After `load_browser_item` → `get_track_info(track_index)` and verify
+  `devices[0].name` matches the expected filename stem
+  (`feedback_load_browser_item_is_source_of_truth.md` — the bootstrap-and-replace
+  flow has a silent failure mode where the wrong sample loads).
+
+## §4 — Modulation > Static (no static layers)
+
+For any creative move that benefits from movement (basically all of them), prefer:
+
+- **Automation curves**: `set_clip_automation`, `generate_automation_curve`,
+  `apply_automation_recipe`, `set_arrangement_automation`
+- **Modulation matrix**: wavetable mod targets, drift mod matrix (3 sources ×
+  multiple destinations — every pad should have ≥1 routing), rack macro mod
+- **Follow actions**: clip-level + scene-level
+- **Euclidean rhythms**: `generate_euclidean_rhythm`, `layer_euclidean_rhythms`
+
+Static MIDI at default velocity ≈ "didn't try". Every melodic/harmonic layer
+should have AT LEAST one parameter moving over time (subtle pitch bend on key
+notes, filter cutoff sweep, LFO on detune, envelope mod for evolving timbre,
+volume-per-phrase, send automation on key moments).
+
+## §5 — Layer-by-Layer Precision Standard
+
+**From `feedback_layer_by_layer_precision.md`:** apply the depth of the
+2026-04-25 hi-hat critique to **every** layer of every production. Per-layer
+checklist before declaring it done:
+
+1. **Timbre via spectrum** — solo + `get_master_spectrum`. Hat = AIR + PRESENCE
+   should dominate (mid-dominant = wrong sample). Snare = MID body +
+   PRESENCE/HIGH. Kick = SUB_LOW + MID click. Bass = SUB + LOW + LOW_MID.
+2. **Sequence critique** — swing % (50% = robotic; 55-65% for groove),
+   humanization (vel ±5, timing ±2-3%, no two notes byte-identical), ghost
+   notes (16ths at vel 25-45), bar-by-bar variation, micro-timing pocket,
+   dynamic shape, fills (bar 4 ≠ bars 1-3), note duration variation.
+3. **Stereo image** — width via Spread/Unison, per-note pan automation where
+   appropriate. Bass mono. Pad wide. Hocket layers panned hard L/R.
+4. **Compounding on master** — un-soloed, do the layer's frequencies fight
+   others (masking)? Same sub as kick = mud. Same air as cymbals = shrill.
+5. **Automation/modulation** — see §4. Mandatory.
+6. **Synth parameter knowledge** — read the device-knowledge reference BEFORE
+   setting params. Do NOT guess parameter ranges. Always read `value_string`
+   after a set to verify the actual value matches intent.
+7. **Sample audition** — never grab "Hihat Closed 5" because it's the 5th in
+   the list. Audition by spectrum (solo + spectrum read) before committing.
+8. **Effects chain on individual tracks** — not just sends. EQ to shape,
+   Saturator for character, Compressor for glue, Chorus/Delay for depth.
+
+## §6 — Creative Director Path for Open-Ended Requests
+
+When the user says **"make it interesting" / "develop this" / "mutate" /
+"take it somewhere" / "more interesting" / "less generic" / "sound like X"**:
+
+→ **INVOKE the `livepilot:livepilot-creative-director` skill.** It exists
+exactly for this. Don't roll your own generic production move.
+
+For "sound like X": read `livepilot/skills/livepilot-core/references/
+artist-vocabularies.md` (~25 producers mapped to `sonic_fingerprint` /
+`reach_for` / `avoid` / `key_techniques`) and `genre-vocabularies.md` (15
+genres) BEFORE device selection.
+
+## §7 — Production Workflow Standard (anti-patterns)
+
+**From `feedback_workflow_standard.md`:** four chronic anti-patterns to break.
+
+1. **Research broadly and continuously** — Ableton blog
+   (`ableton.com/en/blog/tags/techniques/sound-design/`), artist features,
+   forums, tutorial channels (Andrew Huang, Multiplier, Red Means Recording).
+   Sweep the producer landscape, don't fixate on Caribou/Burial. Use
+   `WebSearch`/`WebFetch` as a regular reflex.
+2. **No repeated-preset defaults** — maintain a "USED THIS SESSION" mental
+   list. For each role, pick something NOT used in recent sessions. Inspired
+   by Nature pack (Pluck, Tree Tone, Drone Lab, Vector FM/Grain, Bouncy Notes,
+   Frame), Tension, Granulator III, Electric, Drum Synths, Sampler, Collision —
+   under-used.
+3. **No layer accumulation with low volume** — 5–6 GREAT layers prominent >
+   12 mediocre layers buried. If a layer needs to be at 0.15-0.25 volume, the
+   answer is DELETE IT, not bury it.
+4. **Vocals are the chronic weak point** — never "good enough" vocals. Either
+   GREAT or DELETED. Real techniques: granular vocal cloud (Granulator III on
+   long sustained vocal), vocoder + synth carrier, chopped phrase macro-edits,
+   pitched vocal chops, stutter+reverse+glitch, resonator+vocoder cross-synth,
+   layered vocal samples for chord harmonization (not pitch-shift one).
+5. **Active feedback loop, not waterfall** — build ONE LAYER, ask for feedback,
+   iterate, then move on. Don't batch 20 changes and re-fire the scene.
+6. **Slow down** — quality > speed. A 4-bar loop done RIGHT > 64-bar
+   arrangement done generic.
+
+## §8 — Aesthetic-Register Match (genre ≠ emotion)
+
+**From `feedback_pad_aesthetic_register.md`:** when the user references a
+producer/genre but in the same breath asks for a clean emotional register
+("sublime", "romantic", "dreamy"), match the **emotion** over the
+**genre-accuracy gear chain**.
+
+Example: "BoC" + "sublime romantic pad" → Isolée-school clean lush chain
+(Drift + Chorus-Ensemble + Reverb), NOT BoC's actual cassette-as-preamp
+(Vinyl Distortion + Erosion). The tape character kills the romantic feel.
+
+## §9 — End-of-Session Verification
+
+Before declaring done, run the depth audit:
+
+- `analyze_mix` on master
+- `analyze_loudness` (or `analyze_loudness_live`)
+- `analyze_sound_design` (if synth work touched)
+- `analyze_phrase_arc` (if arrangement work)
+- `get_session_diagnostics`
+- `evaluate_move` on the last significant change
+
+A good session has analyzed itself. Ship the audit alongside the build.
+
+## §10 — Research First (>=2 failed attempts)
+
+Mirror of TDPilot CLAUDE.md §2. After 2 failed attempts on the same problem,
+PIVOT to research:
+
+1. `atlas_search` / `atlas_chain_suggest` / `atlas_techniques_for_device`
+2. `search_browser` / `splice_describe_sound` / `splice_search_in_collection`
+3. `WebSearch` / `WebFetch` for forum threads, artist interviews, technique demos
+4. `mcp__plugin_context7_context7__query-docs` for any external library
+
+Don't iterate blind past 2.
+
+## §11 — End-of-Turn Discipline
+
+End-of-turn summary: 1–2 sentences. What changed and what's next. The
+transcript shows the diff. Do not re-explain every layer touched.
+
+## §12 — Public Artifacts Stay Generic
+
+**From `feedback_no_theme_in_public_artifacts.md`:** creative themes
+(artist names, genre vocabularies, sonic descriptors) and the user's
+prompt text NEVER go into artifacts pushed to a public remote.
+
+**Banned in:** PR titles/bodies, commit messages (subject AND body),
+`BUGS.md`, `CHANGELOG.md`, `README.md`, public docs, branch names if
+shared, release notes.
+
+**OK:** BPM, date (`YYYY-MM-DD`), time signature, tool/file/line counts,
+generic role names ("kick"/"snare"/"vocal"/"atmos"), bug numbers,
+technical artifact names (function names, parameter names).
+
+**Banned content:** artist names from
+`livepilot/skills/livepilot-core/references/artist-vocabularies.md`,
+genre names from `genre-vocabularies.md`, sonic descriptors that imply
+theme ("Memphis cowbell", "BoC sing-weep"), the user's literal prompt
+text, sample lyrics / MC chants.
+
+**Replacement template:** `<BPM> BPM production session, <YYYY-MM-DD>`.
+
+**Retroactive cleanup if already pushed:** `gh pr edit <num>` to redact
+title/body, soft-reset + recommit + `git push --force-with-lease` to
+redact commit messages, push corrected `BUGS.md`/`CHANGELOG.md`. Verify
+on GitHub web UI.

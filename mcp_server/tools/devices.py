@@ -489,14 +489,17 @@ def batch_set_parameters(
     ctx: Context,
     track_index: int,
     device_index: int,
-    parameters: Any,
+    parameters: Any = None,
+    operations: Any = None,
 ) -> dict:
     """Set multiple device parameters in one call.
 
-    parameters: JSON array of objects. Each entry uses exactly one of:
+    parameters (or operations): JSON array of objects. Each entry uses exactly one of:
       - {"parameter_index": N, "value": V}        (preferred, aligned with set_device_parameter)
       - {"parameter_name": "Dry/Wet", "value": V} (preferred)
       - {"name_or_index": X, "value": V}          (legacy, still accepted)
+
+    ``operations`` is accepted as an alias for ``parameters`` (either works).
 
     track_index: 0+ for regular tracks, -1/-2/... for return tracks (A/B/...), -1000 for master.
 
@@ -510,7 +513,10 @@ def batch_set_parameters(
     """
     _validate_track_index(track_index)
     _validate_device_index(device_index)
-    parameters_list = _ensure_list(parameters)
+    effective = parameters if parameters is not None else operations
+    if effective is None:
+        raise ValueError("parameters (or operations) list cannot be empty")
+    parameters_list = _ensure_list(effective)
     if not parameters_list:
         raise ValueError("parameters list cannot be empty")
     normalized = [_normalize_batch_entry(e) for e in parameters_list]

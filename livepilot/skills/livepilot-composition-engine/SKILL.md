@@ -7,6 +7,50 @@ description: Compositional analysis, transition planning, and translation checki
 
 The composition engine operates three sub-engines: compositional analysis (structure and motifs), transition planning (section-to-section flow), and translation checking (how the mix survives different playback systems). It also provides form-level tools for emotional arc and arrangement planning.
 
+## Atlas-first reflex (v1.23.x+, MANDATORY before any creative move)
+
+Before producing ANY creative response, query the user's atlas overlays. The corpus contains 337 entries across 3 namespaces, plus 3,917 parameter-level JSON sidecars — far richer than anything inferable from training data alone.
+
+**Query order:**
+
+1. **`extension_atlas_search(namespace="packs", query=<intent>)`** — pack identity, signature workflows, hidden gems, anti-patterns, notable presets with macro deep-data, demo projects
+2. **`extension_atlas_search(namespace="packs", query=<intent>, entity_type="cross_pack_workflow")`** — multi-pack signature recipes (15 entries: dub-techno spectral drone bed, BoC decayed pad, Mica Levi orchestral dread, etc.)
+3. **`extension_atlas_search(namespace="m4l-devices", query=<sonic descriptor>)`** — M4L instrument/effect/midi-effect device catalog (155 entries)
+4. **`atlas_search(...)`** — bundled atlas (Core Library, fallback)
+
+**Multi-grain traversal:**
+
+When an aesthetic-level query lands a pack-level result, AUTO-DRILL: pack → its `notable_presets` → those preset macro states → load via `load_browser_item`. Don't stop at "I found a relevant pack" — drill to the actual preset/parameter level the user can immediately use.
+
+```python
+# Example — agent received "evolving polyrhythmic ambient at 120 BPM, build the section arc"
+hit = extension_atlas_search(namespace="packs", query="evolving polyrhythmic ambient generative")
+# → midi_tools_by_philip_meyer + drone_lab + cross-pack workflows for generative form
+
+workflow = extension_atlas_get("packs", "dub_techno_spectral_drone_bed")
+# → reveals signal_flow: HDG → PitchLoop89 cross-feedback → Convolution Reverb
+
+drone_lab = extension_atlas_get("packs", "drone_lab")
+# → notable_presets reveals Razor Wire Drone with macros Filter Control=108, Movement=53...
+
+# Now plan the section/transition with concrete preset names + macro values, not vague descriptions
+```
+
+**When the user mentions a producer or pack by name:**
+
+- "BoC sublime pad" → atlas hit: `boc_decayed_pad` cross-pack-workflow + `inspired_by_nature` pack
+- "Henke spectral chain" → atlas hit: `pitchloop89` + `granulator_iii` + 2 Henke cross-pack workflows
+- "Mica Levi orchestral dread" → atlas hit: `mica_levi_orchestral_dread` workflow + the orchestral suite packs
+- "Drone Lab" → atlas hit: `drone_lab` pack + 4 Drone Lab demo_project entries
+
+The atlas knows the user's installed library at parameter depth. **Producer-anchor queries land specific moves, not vague descriptions.**
+
+**Anti-pattern surfacing:**
+
+Every pack entry has an `anti_patterns` body field listing "don't reach for this when X." Surface the relevant anti-pattern when proposing a move so the user knows the move's domain. (E.g. "Drone Lab is sustain-only — don't use for percussive content.")
+
+**For deliberately rule-breaking creative requests** ("eclectic", "ignore the limits", "weird combo", "mix incompatible aesthetics"): switch to **Eclectic Mode** — the dedicated rule-breaker skill at `livepilot-eclectic` (private). Anti-patterns become prompt tension rather than guardrails. See that skill's reasoning loop.
+
 ## Composition Sub-Engine
 
 Analyze and transform the structural elements of a track.

@@ -1,8 +1,10 @@
-# LivePilot v1.23.3 — Architecture & Tool Reference
+# LivePilot v1.23.4 — Architecture & Tool Reference
 
-Agentic production system for Ableton Live 12. 433 tools across 53 domains. Device atlas (5264 devices, 120 enriched, 47 with aesthetic-tagged `signature_techniques`), spectral perception (M4L analyzer with 9-band FFT — sub_low / sub / low / low_mid / mid / high_mid / high / presence / air), technique memory, automation intelligence (16 curve types, 15 recipes), music theory (Krumhansl-Schmuckler, species counterpoint), generative algorithms (Euclidean rhythm, tintinnabuli, phase shift, additive process), neo-Riemannian harmony (PRL transforms, Tonnetz), MIDI file I/O, **LIVE Splice describe-a-sound + variations via captured GraphQL endpoints (v1.17)**, drum-rack pad-by-pad construction, live dead-device detection via meter sampling, role-aware Simpler defaults, session-record arrangement-automation workaround.
+Agentic production system for Ableton Live 12. 453 tools across 54 domains. Device atlas (5264 devices, 120 enriched, 47 with aesthetic-tagged `signature_techniques`), spectral perception (M4L analyzer with 9-band FFT — sub_low / sub / low / low_mid / mid / high_mid / high / presence / air), technique memory, automation intelligence (16 curve types, 15 recipes), music theory (Krumhansl-Schmuckler, species counterpoint), generative algorithms (Euclidean rhythm, tintinnabuli, phase shift, additive process), neo-Riemannian harmony (PRL transforms, Tonnetz), MIDI file I/O, **LIVE Splice describe-a-sound + variations via captured GraphQL endpoints (v1.17)**, drum-rack pad-by-pad construction, live dead-device detection via meter sampling, role-aware Simpler defaults, session-record arrangement-automation workaround.
 
 **Concept surface (v1.17):** `artist-vocabularies.md` and `genre-vocabularies.md` in `references/` provide structured translation from the LLM's training (producers like Villalobos, Hawtin, Basic Channel, Gas, Basinski, Hecker, Aphex, Dilla, Burial, Henke; genres like microhouse, dub_techno, ambient, idm) into LivePilot's device surface. New MCP tools `atlas_describe_chain` (free-text → chain proposal) and `atlas_techniques_for_device` (reverse-lookup: 146 technique cross-references across 58 devices).
+
+**Pack-Atlas Phases C–E (v1.23.4):** Four new corpus-action tools backed by 104 demo .als sidecars + 3,813 preset sidecars. `atlas_macro_fingerprint` — "more like this" search by macro-state similarity. `atlas_transplant` — structural translation (BPM/scale/aesthetic adaptation with PRESERVE/SCALE/REMAP/REPLACE decisions). `atlas_demo_story` — track-by-track narrative + production-sequence inference + learning path for any of the 104 demos. `atlas_extract_chain` — dry-run device-chain extraction plan for any demo track (exact/approximate/structure-only fidelity modes).
 
 **Creative Director (v1.18):** new `livepilot-creative-director` skill enforces divergence on creative intent — three plans across distinct `move.family` values, critics deferred until after selection, `get_anti_preferences` read before generation. Concept packets become structured YAML (`references/concepts/artists/*.yaml`, `references/concepts/genres/*.yaml` — 28 artists + 14 genres). Device affordances added (`references/affordances/devices/*.yaml` — 20 devices with `subtle / moderate / aggressive` parameter ranges, chain `pairings`, and `remeasure` queues). Evaluation vocabulary extended with Family B artistic dimensions (style_fit, distinctiveness, motif_coherence, section_contrast, restraint) and a 5-verdict taxonomy (safe_win, bold_win, interesting_failure, identity_break, generic_fallback). Zero new Python.
 
@@ -36,7 +38,7 @@ A flat tool list lets the AI press buttons. LivePilot's three layers give it con
 
 This turns "set EQ band 3 to -4 dB" into "cut 400 Hz by 4 dB, then read the spectrum to confirm the mud is actually reduced."
 
-## The 433 Tools — What Each One Does
+## The 453 Tools — What Each One Does
 
 ### Transport (12) — Playback, tempo, global state, diagnostics
 

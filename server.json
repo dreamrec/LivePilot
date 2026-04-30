@@ -1,12 +1,12 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.dreamrec/livepilot",
-  "description": "433-tool agentic MCP production system for Ableton Live 12 \u2014 53 domains, 44 semantic moves, device atlas (5264 devices), Splice intelligence (gRPC + GraphQL), 9-band spectral perception auto-loaded, Creative Director skill, technique memory, 12 creative engines",
+  "description": "453-tool agentic MCP production system for Ableton Live 12 \u2014 53 domains, 44 semantic moves, device atlas (5264 devices), Splice intelligence (gRPC + GraphQL), 9-band spectral perception auto-loaded, Creative Director skill, technique memory, 12 creative engines",
   "repository": {
     "url": "https://github.com/dreamrec/LivePilot",
     "source": "github"
   },
-  "version": "1.23.3",
+  "version": "1.23.4",
   "packages": [
     {
       "registryType": "npm",

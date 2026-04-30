@@ -60,6 +60,9 @@ _SKIP_NAMES = {
     "assert", "raise", "pass", "break", "continue", "with", "as",
     "from", "try", "except", "finally", "yield", "lambda", "not",
     "and", "or", "in", "is", "True", "False", "None",
+    # Claude Code built-in tools (referenced by skills but not MCP-registered)
+    "WebSearch", "WebFetch", "Agent", "Task", "Read", "Write", "Edit",
+    "Bash", "Glob", "Grep", "TodoWrite", "ToolSearch",
 }
 
 

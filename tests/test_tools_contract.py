@@ -1,4 +1,4 @@
-"""Verify all 433 MCP tools are registered across 53 domains."""
+"""Verify all 453 MCP tools are registered across 54 domains."""
 
 import asyncio
 import sys
@@ -631,7 +631,7 @@ def test_control_surfaces_tools_registered():
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 433, f"Expected 433 tools, got {len(tools)}"
+    assert len(tools) == 453, f"Expected 453 tools, got {len(tools)}"
 
 
 def test_synthesis_brain_tools_registered():

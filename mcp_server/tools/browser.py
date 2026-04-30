@@ -96,6 +96,21 @@ def get_browser_items(
     return result
 
 
+_BROWSER_PATH_ALIASES: dict[str, str] = {
+    "effects": "audio_effects",
+    "fx": "audio_effects",
+    "audio_fx": "audio_effects",
+    "audiofx": "audio_effects",
+    "midi_fx": "midi_effects",
+    "midifx": "midi_effects",
+}
+
+
+def _normalize_browser_path(path: str) -> str:
+    """Normalise common path aliases to their canonical browser category name."""
+    return _BROWSER_PATH_ALIASES.get(path.strip().lower(), path)
+
+
 @mcp.tool()
 def search_browser(
     ctx: Context,
@@ -114,7 +129,10 @@ def search_browser(
 
     path:         top-level category to search under. Valid categories:
                   instruments, audio_effects, midi_effects, sounds, drums,
-                  samples, packs, user_library, plugins, max_for_live, clips
+                  samples, packs, user_library, plugins, max_for_live, clips.
+                  Common aliases are normalised automatically:
+                  "effects" / "fx" → "audio_effects"
+                  "midi_fx"        → "midi_effects"
     name_filter:  case-insensitive substring filter on item name
     query:        alias for name_filter (accepts either)
     max_depth:    how deep to recurse into subfolders (default 8)
@@ -122,6 +140,7 @@ def search_browser(
     """
     if not path.strip():
         raise ValueError("Path cannot be empty")
+    path = _normalize_browser_path(path)
     if max_depth < 1:
         raise ValueError("max_depth must be >= 1")
     if max_results < 1:

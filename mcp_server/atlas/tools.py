@@ -36,34 +36,92 @@ def _get_atlas():
 def atlas_search(ctx: Context, query: str, category: str = "all", limit: int = 10) -> dict:
     """Search the device atlas for instruments, effects, kits, or plugins.
 
+    Searches BOTH:
+      1. The bundled factory atlas (5,264 devices across 33 packs)
+      2. The user-local overlay corpus (~/.livepilot/atlas-overlays/) — including
+         user-scanned Max devices, racks, plugin presets, and AI-synthesized
+         plugin identity yamls. This is the wiring that lets LivePilot reason
+         over the user's PERSONAL library, not just Ableton's defaults.
+
     query:    natural language search — name, sonic character, use case, or genre
-              Examples: "warm analog bass", "reverb", "808 kit", "granular"
+              Examples: "warm analog bass", "reverb", "808 kit", "granular",
+                        "my arpeggiator", "the polyrhythmic sequencer in my user library"
     category: filter by category (all, instruments, audio_effects, midi_effects,
-              max_for_live, drum_kits, plugins)
-    limit:    max results (default 10)
+              max_for_live, drum_kits, plugins). For user-corpus content, pass
+              "all" — overlay entity_types are surfaced regardless of category.
+    limit:    max combined results (default 10). Per-source limits are split
+              proportionally; factory + user content interleave by score.
     """
     atlas = _get_atlas()
-    if atlas is None:
-        return {"error": "Atlas not loaded. Run scan_full_library first.", "results": []}
+    factory_results = []
+    if atlas is not None:
+        factory_results = atlas.search(query, category=category, limit=limit)
 
-    results = atlas.search(query, category=category, limit=limit)
+    # Also search user-local overlay namespaces (v1.23.6+). All non-bundled
+    # namespaces (user, m4l-devices, elektron, etc.) get queried — the overlay
+    # system stores everything from corpus_scan + corpus_emit_synthesis_briefs +
+    # the v1.23.0 extension overlays here.
+    overlay_results = []
+    try:
+        from .overlays import get_overlay_index
+        idx = get_overlay_index()
+        # Search all non-`packs` namespaces; `packs` is already in the bundled atlas
+        for ns in idx.list_namespaces():
+            if ns == "packs":
+                continue
+            overlay_results.extend(idx.search(query, namespace=ns, limit=limit))
+    except Exception:  # noqa: BLE001 — never fail atlas_search over an overlay glitch
+        pass
+
+    # Allocate the result budget so the user corpus actually surfaces alongside
+    # the factory atlas — split limit roughly 50/50 when both sources have hits.
+    # If only one source has results, it gets the full limit.
+    has_factory = len(factory_results) > 0
+    has_overlay = len(overlay_results) > 0
+    if has_factory and has_overlay:
+        factory_budget = (limit + 1) // 2   # rounds up — factory gets the extra slot
+        overlay_budget = limit // 2
+    elif has_factory:
+        factory_budget = limit
+        overlay_budget = 0
+    else:
+        factory_budget = 0
+        overlay_budget = limit
+
+    results: list[dict] = [
+        {
+            "id": r["device"].get("id", ""),
+            "name": r["device"].get("name", ""),
+            "uri": r["device"].get("uri", ""),
+            "category": r["device"].get("category", ""),
+            "sonic_description": r["device"].get("sonic_description", "")[:120],
+            "character_tags": r["device"].get("character_tags", [])[:5],
+            "enriched": r["device"].get("enriched", False),
+            "score": r.get("score", 0),
+            "source": "factory_atlas",
+        }
+        for r in factory_results[:factory_budget]
+    ]
+    for entry in overlay_results[:overlay_budget]:
+        results.append({
+            "id": entry.entity_id,
+            "name": entry.name,
+            "uri": "",  # overlay entries don't have Live browser URIs — caller resolves via search_browser
+            "category": entry.entity_type,
+            "sonic_description": (entry.description or "")[:120],
+            "character_tags": list(entry.tags)[:5],
+            "enriched": True,
+            "score": 0,  # overlay search has its own ranking; surfaced with no factory-comparable score
+            "source": f"user_overlay:{entry.namespace}",
+        })
+
     return {
         "query": query,
         "category": category,
         "count": len(results),
-        "results": [
-            {
-                "id": r["device"].get("id", ""),
-                "name": r["device"].get("name", ""),
-                "uri": r["device"].get("uri", ""),
-                "category": r["device"].get("category", ""),
-                "sonic_description": r["device"].get("sonic_description", "")[:120],
-                "character_tags": r["device"].get("character_tags", [])[:5],
-                "enriched": r["device"].get("enriched", False),
-                "score": r.get("score", 0),
-            }
-            for r in results
-        ],
+        "factory_count": len(factory_results),
+        "overlay_count": len(overlay_results),
+        "results": results,
     }
 
 
@@ -124,6 +182,10 @@ def atlas_suggest(
 def atlas_chain_suggest(ctx: Context, role: str, genre: str = "") -> dict:
     """Suggest a full device chain for a track role.
 
+    Searches BOTH the bundled factory atlas AND user-local overlay namespaces
+    (e.g., m4l-devices, elektron, user). User-corpus devices (PEACH, Particle-Reverb,
+    te.drone, etc.) are surfaced when their tags match the role+genre keywords.
+
     role:  the musical role — "bass", "lead", "pad", "drums", "percussion", "texture"
     genre: target genre for style-appropriate choices
     """
@@ -131,7 +193,42 @@ def atlas_chain_suggest(ctx: Context, role: str, genre: str = "") -> dict:
     if atlas is None:
         return {"error": "Atlas not loaded. Run scan_full_library first."}
 
-    return atlas.chain_suggest(role, genre=genre)
+    factory_result = atlas.chain_suggest(role, genre=genre)
+
+    # Also search user-local overlay namespaces for devices that match this role+genre.
+    # Merge any hits as additional overlay_suggestions on top of the factory chain.
+    overlay_suggestions = []
+    try:
+        from .overlays import get_overlay_index
+        idx = get_overlay_index()
+        # Build a query from role + genre keywords
+        query_parts = [role]
+        if genre:
+            query_parts.append(genre)
+        query = " ".join(query_parts)
+
+        for ns in idx.list_namespaces():
+            if ns == "packs":
+                continue
+            hits = idx.search(query, namespace=ns, limit=5)
+            for entry in hits:
+                overlay_suggestions.append({
+                    "namespace": entry.namespace,
+                    "entity_id": entry.entity_id,
+                    "name": entry.name,
+                    "description": (entry.description or "")[:120],
+                    "tags": list(entry.tags)[:5],
+                    "source": f"user_overlay:{entry.namespace}",
+                    "note": "Load via search_browser or extension_atlas_get; no Live URI.",
+                })
+    except Exception:  # noqa: BLE001 — never fail chain_suggest over an overlay glitch
+        pass
+
+    result = dict(factory_result)
+    result["overlay_suggestions"] = overlay_suggestions
+    result["factory_count"] = len(factory_result.get("chain", []))
+    result["overlay_count"] = len(overlay_suggestions)
+    return result
 
 
 @mcp.tool()
@@ -264,7 +361,15 @@ def atlas_describe_chain(
         if not (t in seen or seen.add(t))
     ]
 
-    # ── Build per-role suggestions via atlas.suggest ─────────────
+    # ── Build per-role suggestions via atlas.suggest + overlay search ─
+    # Load overlay index once for all role iterations (graceful no-op on failure)
+    _overlay_idx = None
+    try:
+        from .overlays import get_overlay_index
+        _overlay_idx = get_overlay_index()
+    except Exception:  # noqa: BLE001
+        pass
+
     per_role_suggestions = []
     for role in detected_roles:
         # Build an intent string that combines role + aesthetic cues
@@ -277,19 +382,44 @@ def atlas_describe_chain(
             energy="medium",
             limit=int(limit_per_role),
         )
+        factory_suggestions = [
+            {
+                "device_id": r["device"].get("id", ""),
+                "device_name": r["device"].get("name", ""),
+                "uri": r["device"].get("uri", ""),
+                "rationale": r.get("rationale", ""),
+                "recipe": r.get("recipe"),
+                "source": "factory_atlas",
+            }
+            for r in results
+        ]
+
+        # Query overlay namespaces for matching user-corpus devices
+        overlay_hits = []
+        if _overlay_idx is not None:
+            try:
+                for ns in _overlay_idx.list_namespaces():
+                    if ns == "packs":
+                        continue
+                    hits = _overlay_idx.search(intent, namespace=ns, limit=limit_per_role)
+                    for entry in hits:
+                        overlay_hits.append({
+                            "device_id": entry.entity_id,
+                            "device_name": entry.name,
+                            "uri": "",
+                            "rationale": (entry.description or "")[:120],
+                            "recipe": None,
+                            "source": f"user_overlay:{entry.namespace}",
+                        })
+            except Exception:  # noqa: BLE001
+                pass
+
         per_role_suggestions.append({
             "role": role,
             "intent_used": intent,
-            "suggestions": [
-                {
-                    "device_id": r["device"].get("id", ""),
-                    "device_name": r["device"].get("name", ""),
-                    "uri": r["device"].get("uri", ""),
-                    "rationale": r.get("rationale", ""),
-                    "recipe": r.get("recipe"),
-                }
-                for r in results
-            ],
+            "suggestions": factory_suggestions + overlay_hits,
+            "factory_count": len(factory_suggestions),
+            "overlay_count": len(overlay_hits),
         })
 
     # ── Propose a simple chain from the highest-ranked suggestions ─
@@ -686,3 +816,843 @@ def extension_atlas_list(ctx: Context, namespace: str = "") -> dict:
         "namespaces": idx.list_namespaces(),
         "counts": idx.stats(),
     }
+
+
+@mcp.tool()
+def atlas_macro_fingerprint(
+    ctx: Context,
+    source_pack_slug: str = "",
+    source_preset_path: str = "",
+    source_live_track: int = -1,
+    source_live_device: int = -1,
+    rack_class_filter: str = "",
+    pack_filter: list = None,
+    top_k: int = 8,
+    min_named_macros: int = 3,
+    similarity_threshold: float = 0.4,
+) -> dict:
+    """Find presets with similar macro state to the source — 'more like this' search.
+
+    Source must be a known corpus preset (via source_pack_slug + source_preset_path).
+    Live-device source via source_live_track/source_live_device is stubbed and returns
+    an error; only the corpus path works currently (as of v1.23.4).
+
+    Similarity is computed as:
+      0.6 × macro-name-overlap-ratio  (synonym-aware: 'Filter Control' ≈ 'Filter Cutoff')
+    + 0.4 × (1 − mean value distance)
+
+    Parameters
+    ----------
+    source_pack_slug     : Pack directory name, e.g. "drone-lab".
+    source_preset_path   : Sidecar filename stem, e.g.
+                           "instruments_laboratory_razor-wire-drone".
+                           Use underscores for directory separators (matches
+                           the sidecar naming convention from als_deep_parse.py).
+    source_live_track    : Track index in the live session (0-based). Used only
+                           when source_pack_slug is empty.
+    source_live_device   : Device index on that track. Used only when
+                           source_pack_slug is empty.
+    rack_class_filter    : Filter candidates by rack class. One of:
+                           "InstrumentGroupDevice", "AudioEffectGroupDevice",
+                           "DrumGroupDevice", "MidiEffectGroupDevice".
+                           Empty string = all classes.
+    pack_filter          : Optional list of pack slugs to restrict the candidate
+                           scan (e.g. ["drone-lab", "mood-reel"]).
+    top_k                : Maximum number of matches to return (default 8).
+    min_named_macros     : Require source to have at least this many
+                           producer-named macros; also applied to candidates.
+                           Below this floor the fingerprint is too weak to be
+                           useful (default 3).
+    similarity_threshold : Drop matches below this score (default 0.4).
+
+    Returns
+    -------
+    {
+        "source": {
+            "pack_slug": str,
+            "preset_path": str,
+            "rack_class": str,
+            "macros_named": [{"index", "name", "value"}, ...],
+            "fingerprint_strength": "strong" | "moderate" | "weak"
+        },
+        "matches": [
+            {
+                "pack_slug": str,
+                "preset_path": str,
+                "preset_name": str,
+                "rack_class": str,
+                "similarity_score": float,
+                "matching_macros": [{"name_overlap", "value_distance", ...}, ...],
+                "rationale": str
+            },
+            ...
+        ],
+        "sources": ["adg-parse: N sidecars across M packs"]
+    }
+
+    Citation tags: [SOURCE: adg-parse] for all preset data, [SOURCE: agent-inference]
+    for rationale prose.
+    """
+    # BUG-EDGE#1: coerce string args that MCP may pass as strings
+    try:
+        top_k = int(top_k) if top_k is not None else 8
+    except (ValueError, TypeError):
+        top_k = 8
+    try:
+        min_named_macros = int(min_named_macros) if min_named_macros is not None else 3
+    except (ValueError, TypeError):
+        min_named_macros = 3
+    try:
+        similarity_threshold = float(similarity_threshold) if similarity_threshold is not None else 0.4
+    except (ValueError, TypeError):
+        similarity_threshold = 0.4
+
+    from .macro_fingerprint import (
+        _extract_fingerprint,
+        _compute_similarity,
+        _generate_rationale,
+        _fingerprint_strength,
+        _load_preset_sidecar,
+        _iter_all_preset_sidecars,
+        PRESET_PARSES_ROOT,
+    )
+    import json as _json
+    from pathlib import Path as _Path
+
+    # User-corpus rack sidecar root: ~/.livepilot/atlas-overlays/user/racks/_parses/<id>.json
+    USER_RACK_PARSES_ROOT = _Path.home() / ".livepilot" / "atlas-overlays" / "user" / "racks" / "_parses"
+
+    def _load_user_rack_sidecar(entity_id: str) -> dict | None:
+        """Load a user-corpus rack sidecar by entity_id. Returns None if absent."""
+        p = USER_RACK_PARSES_ROOT / f"{entity_id}.json"
+        if not p.exists():
+            return None
+        try:
+            return _json.loads(p.read_text())
+        except (OSError, _json.JSONDecodeError):
+            return None
+
+    def _iter_user_rack_sidecars():
+        """Yield (namespace_slug, preset_path_slug, sidecar_dict) for user rack parses."""
+        if not USER_RACK_PARSES_ROOT.exists():
+            return
+        for sidecar_path in sorted(USER_RACK_PARSES_ROOT.glob("*.json")):
+            try:
+                sidecar = _json.loads(sidecar_path.read_text())
+            except (OSError, _json.JSONDecodeError):
+                continue
+            yield "user", sidecar_path.stem, sidecar
+
+    # Overlay namespace IDs that pack_filter may contain — separate from pack slugs.
+    # We'll resolve these to the user-rack sidecar iterator instead of the factory iterator.
+    _OVERLAY_NAMESPACE_IDS = {"user", "m4l-devices", "elektron"}
+
+    # ── 1. Resolve source fingerprint ─────────────────────────────────────────
+
+    source_sidecar: dict | None = None
+    source_pack_resolved = source_pack_slug
+    source_path_resolved = source_preset_path
+
+    if source_pack_slug and source_preset_path:
+        # Check if source_pack_slug is an overlay namespace (user rack corpus)
+        if source_pack_slug in _OVERLAY_NAMESPACE_IDS:
+            source_sidecar = _load_user_rack_sidecar(source_preset_path)
+            if source_sidecar is None:
+                slug_attempt = source_preset_path.replace("/", "_")
+                source_sidecar = _load_user_rack_sidecar(slug_attempt)
+                if source_sidecar is not None:
+                    source_path_resolved = slug_attempt
+            if source_sidecar is None:
+                available = (
+                    [p.stem for p in sorted(USER_RACK_PARSES_ROOT.glob("*.json"))[:10]]
+                    if USER_RACK_PARSES_ROOT.exists()
+                    else []
+                )
+                return {
+                    "error": (
+                        f"User-corpus rack sidecar not found: {source_pack_slug}/{source_preset_path}.json. "
+                        f"Expected under {USER_RACK_PARSES_ROOT}."
+                    ),
+                    "available_user_rack_sidecars": available,
+                    "hint": "Run corpus_scan to generate user-corpus rack sidecars.",
+                }
+        else:
+            # Corpus path: load from bundled _preset_parses
+            source_sidecar = _load_preset_sidecar(source_pack_slug, source_preset_path)
+            if source_sidecar is None:
+                # Try converting "/" separators to "_"
+                slug_attempt = source_preset_path.replace("/", "_")
+                source_sidecar = _load_preset_sidecar(source_pack_slug, slug_attempt)
+                if source_sidecar is not None:
+                    source_path_resolved = slug_attempt
+            if source_sidecar is None:
+                return {
+                    "error": (
+                        f"Sidecar not found: {source_pack_slug}/{source_preset_path}.json. "
+                        "Check that the pack slug and preset path match the _preset_parses "
+                        "directory layout. Use underscores as separators, e.g. "
+                        "'instruments_laboratory_razor-wire-drone'."
+                    ),
+                    "hint": (
+                        f"Available files in {source_pack_slug}: "
+                        + ", ".join(
+                            p.stem
+                            for p in sorted(
+                                (PRESET_PARSES_ROOT / source_pack_slug).glob("*.json")
+                            )[:10]
+                        )
+                        if (PRESET_PARSES_ROOT / source_pack_slug).is_dir()
+                        else "pack directory not found"
+                    ),
+                }
+
+    elif source_live_track >= 0 and source_live_device >= 0:
+        # TODO(Phase D follow-up): live-Live path — reads macro names/values from
+        # a running Ableton session via the get_device_parameters MCP tool.
+        # Not implemented in this release; corpus path is fully operational.
+        return {
+            "error": (
+                "Live-device source path is not yet implemented (Phase D follow-up). "
+                "Please use source_pack_slug + source_preset_path to query from the "
+                "corpus instead."
+            ),
+            "hint": (
+                "To use a live device as the source, save the rack as a .adg preset "
+                "via Ableton's browser and re-run als_deep_parse.py to generate a "
+                "sidecar, then reference it by pack_slug + preset_path."
+            ),
+        }
+    else:
+        return {
+            "error": (
+                "Provide either (source_pack_slug + source_preset_path) for corpus "
+                "lookup, or (source_live_track + source_live_device) for a live "
+                "device source."
+            )
+        }
+
+    # ── 2. Build source fingerprint ───────────────────────────────────────────
+
+    source_fp = _extract_fingerprint(source_sidecar)
+    n_named_source = len(source_fp)
+
+    if n_named_source < min_named_macros:
+        named_display = [
+            m for m in source_sidecar.get("macros", [])
+            if m.get("name", "") and not m["name"].startswith("Macro ")
+        ]
+        return {
+            "error": (
+                f"Source preset has only {n_named_source} producer-named macro(s) "
+                f"(min_named_macros={min_named_macros}). "
+                "Fingerprint is too weak for reliable matching."
+            ),
+            "source_named_macros": [m["name"] for m in named_display],
+            "suggestion": (
+                "Lower min_named_macros, or choose a source preset with more "
+                "producer-named macros."
+            ),
+        }
+
+    # ── 3. Scan candidates ────────────────────────────────────────────────────
+
+    pack_whitelist = set(pack_filter) if pack_filter else None
+
+    # Split pack_whitelist into overlay namespaces vs. bundled pack slugs so
+    # pack_filter=["user"] scans user rack sidecars, not bundled _preset_parses.
+    overlay_whitelist = (
+        {ns for ns in pack_whitelist if ns in _OVERLAY_NAMESPACE_IDS}
+        if pack_whitelist else None
+    )
+    bundled_whitelist = (
+        {slug for slug in pack_whitelist if slug not in _OVERLAY_NAMESPACE_IDS}
+        if pack_whitelist else None
+    )
+
+    candidates_scanned = 0
+    packs_seen: set[str] = set()
+    scored: list[tuple[float, str, str, dict, list[dict]]] = []
+
+    # Decide which iterators to run based on pack_filter contents:
+    # - No filter → run both bundled + user-rack
+    # - Filter with only overlay namespaces → run only user-rack
+    # - Filter with only bundled slugs → run only bundled
+    # - Mixed → run both, each filtered to its respective whitelist
+    run_bundled = (pack_whitelist is None) or bool(bundled_whitelist)
+    run_user_racks = (pack_whitelist is None) or bool(overlay_whitelist)
+
+    def _scan_candidates(iterator):
+        nonlocal candidates_scanned
+        for cand_pack, cand_slug, cand_sidecar in iterator:
+            # Skip the source itself
+            if (cand_pack == source_pack_resolved
+                    and cand_slug == source_path_resolved):
+                continue
+
+            # Rack class filter
+            if rack_class_filter:
+                if cand_sidecar.get("rack_class", "") != rack_class_filter:
+                    continue
+
+            # Candidate must also have enough named macros
+            cand_fp = _extract_fingerprint(cand_sidecar)
+            if len(cand_fp) < min_named_macros:
+                continue
+
+            candidates_scanned += 1
+            packs_seen.add(cand_pack)
+
+            score, matched = _compute_similarity(source_fp, cand_fp)
+            if score >= similarity_threshold:
+                scored.append((score, cand_pack, cand_slug, cand_sidecar, matched))
+
+    if run_bundled:
+        def _bundled_iter():
+            for cand_pack, cand_slug, cand_sidecar in _iter_all_preset_sidecars():
+                if bundled_whitelist and cand_pack not in bundled_whitelist:
+                    continue
+                yield cand_pack, cand_slug, cand_sidecar
+        _scan_candidates(_bundled_iter())
+
+    if run_user_racks:
+        try:
+            _scan_candidates(_iter_user_rack_sidecars())
+        except Exception:  # noqa: BLE001 — never fail over a missing user-rack corpus
+            pass
+
+    # Sort descending by score
+    scored.sort(key=lambda x: x[0], reverse=True)
+    top = scored[:top_k]
+
+    # ── 4. Format matches ─────────────────────────────────────────────────────
+
+    matches_out = []
+    for score, cand_pack, cand_slug, cand_sidecar, matched in top:
+        rationale = _generate_rationale(
+            source_pack=source_pack_resolved,
+            source_name=source_sidecar.get("name", ""),
+            cand_pack=cand_pack,
+            cand_name=cand_sidecar.get("name", ""),
+            matching_macros=matched,
+        )
+        matches_out.append({
+            "pack_slug": cand_pack,
+            "preset_path": cand_slug,
+            "preset_name": cand_sidecar.get("name", ""),
+            "rack_class": cand_sidecar.get("rack_class", ""),
+            "similarity_score": score,
+            "matching_macros": matched[:5],  # show up to 5; see total_matching_macros for full count
+            "total_matching_macros": len(matched),
+            "rationale": rationale,  # [SOURCE: agent-inference]
+        })
+
+    # ── 5. Format source block ────────────────────────────────────────────────
+
+    source_macros_named = [
+        {
+            "index": m.get("index"),
+            "name": m.get("name"),
+            "value": m.get("value"),
+        }
+        for m in source_sidecar.get("macros", [])
+        if m.get("name", "") and not m["name"].startswith("Macro ")
+    ]
+
+    overlay_count = sum(
+        1 for _, cand_pack, _slug, _sd, _m in top
+        if cand_pack in _OVERLAY_NAMESPACE_IDS
+    )
+    factory_match_count = len(matches_out) - overlay_count
+
+    return {
+        "source": {
+            "pack_slug": source_pack_resolved,
+            "preset_path": source_path_resolved,
+            "rack_class": source_sidecar.get("rack_class", ""),
+            "macros_named": source_macros_named,
+            "fingerprint_strength": _fingerprint_strength(n_named_source),
+        },
+        "matches": matches_out,
+        "candidates_scanned": candidates_scanned,
+        "factory_count": factory_match_count,
+        "overlay_count": overlay_count,
+        "sources": [
+            f"adg-parse: {candidates_scanned} candidate sidecars across "
+            f"{len(packs_seen)} packs/namespaces [SOURCE: adg-parse]",
+            f"user-corpus: {'checked' if run_user_racks else 'skipped'} "
+            f"(~/.livepilot/atlas-overlays/user/racks/_parses/)",
+        ],
+    }
+
+
+@mcp.tool()
+def atlas_transplant(
+    ctx: Context,
+    source_namespace: str,
+    source_entity_id: str,
+    source_track_or_preset: str = "",
+    target_bpm: float = 0.0,
+    target_scale_root: int = -1,
+    target_scale_name: str = "",
+    target_aesthetic: str = "",
+    preserve_macro_ratios: bool = True,
+    preserve_pitch_intervals: bool = True,
+    explanation_depth: str = "standard",
+) -> dict:
+    """Adapt a structure from one musical context to another (Pack-Atlas Phase C).
+
+    Takes a demo project, preset chain, or workflow recipe from the Pack-Atlas
+    corpus and translates it to a new musical context (different BPM, scale,
+    aesthetic register).  Returns a structured plan with executable tool calls
+    — agent applies the plan via load_browser_item, set_device_parameter,
+    set_clip_pitch, etc.  No Live connection required; all data from local
+    JSON sidecars.
+
+    Parameters
+    ----------
+    source_namespace : str
+        Namespace to look up the source entity.  Use "packs" for demo projects
+        and Factory Pack presets; "m4l-devices" for M4L vendor devices;
+        "elektron" for Elektron signature chains.
+
+    source_entity_id : str
+        Entity identifier.  For demo projects use the form "pack-slug__demo-slug"
+        or "pack_slug__demo_slug" (hyphens and underscores are normalised).
+        Examples: "drone_lab__earth", "drone-lab__emergent-planes",
+        "mood-reel__mood-reel-demo".
+        For pack presets (with source_track_or_preset): use the pack slug,
+        e.g. "drone_lab".
+
+    source_track_or_preset : str, optional
+        Sub-selector within a demo or pack.  For pack presets: the preset
+        file path slug such as "instruments_laboratory_razor-wire-drone"
+        (underscores or hyphens both accepted).  Omit when targeting the
+        whole demo project.
+
+    target_bpm : float, optional
+        Target BPM.  Pass 0.0 to keep source BPM.
+
+    target_scale_root : int, optional
+        Target scale root note as MIDI pitch-class (0=C, 1=C#, … 11=B).
+        Pass -1 to keep source root.
+
+    target_scale_name : str, optional
+        Target scale mode name.  Supported: "Major", "Minor", "Dorian",
+        "Phrygian", "Mixolydian", "Lydian", "Locrian".  Empty string = keep
+        source mode.
+
+    target_aesthetic : str, optional
+        Free-text aesthetic descriptor.  Used to detect aesthetic-incompatible
+        devices and drive REPLACE decisions.  Examples: "mood-reel cinematic",
+        "inspired_by_nature tree_tone", "lo-fi dusty tape", "clean orchestral".
+
+    preserve_macro_ratios : bool, default True
+        When True, non-default macro values from the source are carried forward
+        as normalised ratios [0-1] even when the target has different raw ranges.
+
+    preserve_pitch_intervals : bool, default True
+        When True, pitch interval relationships within each voice are preserved
+        and only a global transposition is applied (scale shift stays parallel).
+
+    explanation_depth : str, default "standard"
+        Controls verbosity of the reasoning_artifact field.
+        "terse"    — 1-2 sentence summary.
+        "standard" — 1 paragraph with key decisions enumerated.
+        "verbose"  — full per-decision narrative with producer-vocabulary
+                     anchors where applicable.
+
+    Returns
+    -------
+    dict with keys:
+        source           — source musical context (bpm, scale, tracks_summary)
+        target           — target context (bpm, scale, aesthetic)
+        translation_plan — list of per-element decisions with executable_steps
+        reasoning_artifact — prose explanation of the plan
+        warnings         — list of caution strings (BPM ratio, missing sidecars)
+        sources          — citation list with [SOURCE: als-parse | adg-parse |
+                           agent-inference] tags
+
+    Example
+    -------
+    atlas_transplant(
+        source_namespace="packs",
+        source_entity_id="drone_lab__earth",
+        target_bpm=130,
+        target_scale_root=5,   # F
+        target_scale_name="Minor",
+        target_aesthetic="mood-reel cinematic",
+        explanation_depth="standard"
+    )
+    """
+    from .transplant import transplant as _transplant
+
+    # Normalise optional params — FastMCP passes typed defaults
+
+    # BUG-EDGE#4: target_bpm may arrive as a string (e.g. "130.0") when the MCP
+    # client serialises the value.  Cast to float BEFORE the > 0 comparison to
+    # avoid TypeError: '>' not supported between instances of 'str' and 'int'.
+    resolved_bpm = None
+    if target_bpm:
+        try:
+            fbpm = float(target_bpm)
+            if fbpm > 0:
+                resolved_bpm = fbpm
+        except (ValueError, TypeError):
+            pass  # invalid string — treat as unset
+
+    # BUG-EDGE#7: out-of-range root (e.g. 99) must be rejected; -1 is the
+    # "keep source" sentinel and resolves to None (not passed to inner function).
+    if target_scale_root is not None and not (0 <= target_scale_root <= 11):
+        if target_scale_root != -1:
+            return {
+                "error": (
+                    f"target_scale_root={target_scale_root} is out of range. "
+                    "Valid values: 0–11 (pitch-class, C=0 … B=11), or -1 to keep source root."
+                ),
+                "status": "error",
+            }
+        resolved_root = None  # -1 sentinel → keep source
+    else:
+        resolved_root = int(target_scale_root) if target_scale_root is not None and target_scale_root >= 0 else None
+
+    return _transplant(
+        source_namespace=source_namespace,
+        source_entity_id=source_entity_id,
+        source_track_or_preset=source_track_or_preset,
+        target_bpm=resolved_bpm,
+        target_scale_root=resolved_root,
+        target_scale_name=target_scale_name,
+        target_aesthetic=target_aesthetic,
+        preserve_macro_ratios=preserve_macro_ratios,
+        preserve_pitch_intervals=preserve_pitch_intervals,
+        explanation_depth=explanation_depth,
+    )
+
+
+@mcp.tool()
+def atlas_demo_story(
+    ctx: Context,
+    demo_entity_id: str,
+    focus_tracks: list = None,
+    detail_level: str = "standard",
+) -> dict:
+    """Generate a track-by-track narrative + production-sequence for a demo .als (Pack-Atlas Phase E).
+
+    Turns the 104 parsed demo files into interactive learning artifacts.  Reads
+    from local JSON sidecars — no Live connection required.
+
+    Parameters
+    ----------
+    demo_entity_id : str
+        Entity ID for the demo.  Use the form "pack_slug__demo_slug" or the
+        hyphenated variant — both are normalised.
+        Examples: "drone_lab__earth", "drone-lab__emergent-planes",
+        "mood_reel__the_killer_awaits_gmin_135_bpm".
+
+    focus_tracks : list of str, optional
+        Narrow the track_breakdown to only these track names (exact or fuzzy
+        matched).  Pass None (default) to include all tracks.
+
+    detail_level : str, default "standard"
+        Controls narrative verbosity.
+        "terse"    — 2-3 sentence summary.
+        "standard" — 1 paragraph narrative + structured breakdown.
+        "verbose"  — full markdown narrative with producer-vocabulary anchors,
+                     track architecture table, production sequence, learning path.
+
+    Returns
+    -------
+    dict with keys:
+        demo              — {entity_id, name, bpm, scale, track_count, scene_count}
+        narrative         — prose synthesis of the demo [SOURCE: als-parse,
+                            agent-inference]
+        track_breakdown   — list of per-track dicts:
+                            {name, type, role, device_chain_summary,
+                             macro_signature, production_decision, narrative_role}
+        production_sequence_inference  — ordered list of inferred creation steps
+        suggested_learning_path        — solo-each-then-add sequence for study
+        sources           — citation list with [SOURCE: als-parse | agent-inference]
+        error             — (only on failure) error message
+
+    Track roles:
+        "harmonic-foundation" — primary instrument/melodic source
+        "rhythmic-driver"     — drum rack or percussion-named track
+        "texture"             — additional instrument layers
+        "spatial-glue"        — return tracks with reverb/delay
+        "fx-bus"              — group/return tracks with bus processing
+        "decoration"          — audio sources or effects-only layers
+
+    Example
+    -------
+    atlas_demo_story(
+        demo_entity_id="drone_lab__earth",
+        detail_level="verbose"
+    )
+    """
+    from .demo_story import demo_story as _demo_story
+    return _demo_story(
+        demo_entity_id=demo_entity_id,
+        focus_tracks=list(focus_tracks) if focus_tracks else None,
+        detail_level=detail_level,
+    )
+
+
+@mcp.tool()
+def atlas_extract_chain(
+    ctx: Context,
+    demo_entity_id: str,
+    track_name: str,
+    target_track_index: int = -1,
+    parameter_fidelity: str = "exact",
+) -> dict:
+    """Rebuild a specific demo track's device chain as an executable plan (Pack-Atlas Phase E).
+
+    Reads from local JSON sidecars — no Live connection required for planning.
+    Always returns a dry-run plan (executed: false).  Execute the plan manually
+    via the listed MCP tool calls (load_browser_item, insert_device,
+    set_device_parameter) or pass target_track_index >= 0 to target an existing
+    track in the returned plan.
+
+    Parameters
+    ----------
+    demo_entity_id : str
+        Entity ID for the demo, e.g. "drone_lab__emergent_planes".
+
+    track_name : str
+        Name of the track to extract.  Fuzzy matched (case-insensitive substring,
+        token match).  Example: "Mindless Self-Encounters", "Pioneer Drone",
+        "mindless" (partial match accepted).
+
+    target_track_index : int, default -1
+        Target track in the current project.  -1 = plan includes a new-track
+        creation step.  >= 0 = plan targets the existing track at that index.
+        (Phase E ships dry-run only — use the plan to drive manual execution.)
+
+    parameter_fidelity : str, default "exact"
+        Controls how many parameters are included in set_device_parameter steps.
+        "exact"          — emit set_device_parameter for every non-default macro
+        "approximate"    — top 5 macros by deviation from zero (most production-
+                           meaningful committed values)
+        "structure-only" — chain topology only; no parameter steps
+
+    Returns
+    -------
+    dict with keys:
+        source         — {demo, track, track_type, device_count, device_chain}
+                         device_chain: [{class, user_name, chain_depth, macros?}]
+        execution_plan — list of action dicts.  Action types:
+                         "create_midi_track" | "create_audio_track" |
+                         "target_existing_track" |
+                         "load_browser_item" | "insert_device" |
+                         "set_device_parameter" | "manual_rebuild"
+        executed       — always False (Phase E is dry-run only)
+        parameter_fidelity — echoed back
+        warnings       — list of caution strings (unknown classes, unnamed racks)
+        sources        — citation list
+        error          — (only on failure) error message with available_tracks
+
+    Citation tags: [SOURCE: als-parse] for sidecar data, [SOURCE: agent-inference]
+    for step generation logic.
+
+    Example
+    -------
+    atlas_extract_chain(
+        demo_entity_id="drone_lab__emergent_planes",
+        track_name="Mindless Self-Encounters",
+        target_track_index=-1,
+        parameter_fidelity="approximate"
+    )
+    """
+    from .extract_chain import extract_chain as _extract_chain
+    return _extract_chain(
+        demo_entity_id=demo_entity_id,
+        track_name=track_name,
+        target_track_index=target_track_index,
+        parameter_fidelity=parameter_fidelity,
+    )
+
+
+@mcp.tool()
+def atlas_pack_aware_compose(
+    ctx: Context,
+    aesthetic_brief: str,
+    target_bpm: float = 0.0,
+    target_scale: str = "",
+    track_count: int = 6,
+    pack_diversity: str = "coherent",
+) -> dict:
+    """Bootstrap a project with pack-coherent track selection given an aesthetic brief (Pack-Atlas Phase F).
+
+    Parses the aesthetic brief against the artist/genre vocabulary files and the pack
+    atlas overlay, builds a pack cohort (which Factory Packs best serve this brief),
+    selects real presets from the corpus for each track role via macro-fingerprint
+    similarity, and returns a full executable plan.
+
+    Parameters
+    ----------
+    aesthetic_brief : str
+        Free-text aesthetic description.
+        Examples: "dub-techno spectral drone bed monolake henke",
+                  "BoC pastoral decayed pad", "footwork breakcore",
+                  "orchestral dread Mica Levi".
+
+    target_bpm : float, optional
+        Target project BPM. Pass 0.0 to omit.
+
+    target_scale : str, optional
+        Target scale string, e.g. "Cmin", "Fmaj", "Fmin". Pass "" to omit.
+
+    track_count : int, default 6
+        Number of tracks to propose.
+
+    pack_diversity : str, default "coherent"
+        "coherent"  — all tracks from packs aligned to the brief's aesthetic.
+        "eclectic"  — deliberately spans conflicting aesthetics (Eclectic Mode
+                      reasoning: picks packs whose anti_patterns conflict,
+                      explains tension_resolution in reasoning_artifact).
+
+    Returns
+    -------
+    dict with keys:
+        brief_analysis : {
+            primary_aesthetic: str,
+            secondary_aesthetics: list[str],
+            anchor_producers: list[str],
+            anchor_genres: list[str],
+            pack_cohort: list[str]  # Factory Pack slugs
+        }
+        track_proposal : list of {
+            track_name: str,
+            role: str,                # e.g. "harmonic-foundation"
+            preset: str,              # "pack-slug/preset-path-slug"
+            preset_name: str,
+            rationale: str            # [SOURCE: adg-parse | agent-inference]
+        }
+        suggested_routing : list[str]  # routing hints + cross-pack workflow refs
+        executable_steps  : list[dict] # create_track + load_browser_item + set_device_parameter
+        sources           : list[str]  # citation list
+        reasoning_artifact: dict       # only present in eclectic mode
+
+    Citation tags: [SOURCE: adg-parse] for corpus preset data,
+    [SOURCE: artist-vocabularies.md] / [SOURCE: genre-vocabularies.md] for
+    vocabulary lookups, [SOURCE: cross_pack_workflow.yaml] for routing hints,
+    [SOURCE: agent-inference] for role/step generation.
+
+    Integrations (Phase F uses C+D+E):
+    - Phase D: _extract_fingerprint + _fingerprint_strength for preset selection
+    - Phase E: _emit_execution_steps step structure for executable plan
+    - Phase C: transplant aesthetic-replace rules (via target_scale/customize_aesthetic)
+
+    Example
+    -------
+    atlas_pack_aware_compose(
+        aesthetic_brief="dub-techno spectral drone bed monolake",
+        target_bpm=130,
+        track_count=4
+    )
+    """
+    from .pack_aware_compose import pack_aware_compose as _pack_aware_compose, _coerce_float, _coerce_int
+
+    # BUG-EDGE#2/#3: coerce before the > 0 comparison to avoid TypeError on string inputs
+    _bpm = _coerce_float(target_bpm, 0.0)
+    resolved_bpm = _bpm if _bpm and _bpm > 0 else None
+    _track_count = _coerce_int(track_count, 6)
+    return _pack_aware_compose(
+        aesthetic_brief=aesthetic_brief,
+        target_bpm=resolved_bpm,
+        target_scale=target_scale,
+        track_count=_track_count,
+        pack_diversity=pack_diversity,
+    )
+
+
+@mcp.tool()
+def atlas_cross_pack_chain(
+    ctx: Context,
+    workflow_entity_id: str,
+    target_track_index: int = -1,
+    customize_aesthetic: dict = None,
+) -> dict:
+    """Execute a cross-pack signature recipe step-by-step (Pack-Atlas Phase F).
+
+    Reads a cross_pack_workflow entry from the Pack-Atlas overlay, parses its
+    signal_flow body into structured actions, and returns a dry-run execution log.
+    All 15 cross-pack workflow recipes are supported.
+
+    Parameters
+    ----------
+    workflow_entity_id : str
+        Entity ID of the workflow. Use underscores or hyphens interchangeably.
+        Examples:
+          "dub_techno_spectral_drone_bed"   (HDG → PitchLoop89 → ConvReverb → AutoFilter)
+          "boc_decayed_pad"                  (Tree Tone → Bad Speaker → Echo → Reverb)
+          "mica_levi_orchestral_dread"       (Strings → Bass Clarinet → AutoPan → ConvReverb)
+          "henke_full_granular_chain"
+          "footwork_breakcore_drum_chain"
+        Use atlas_cross_pack_chain(workflow_entity_id="") with an invalid ID to
+        see the list of available workflows in the error.available_workflows field.
+
+    target_track_index : int, default -1
+        -1 = dry run. All steps returned with result: "dry-run".
+        >= 0 = plan targets an existing track at that index (still dry-run in Phase F;
+               live execution gated on Remote Script connection).
+
+    customize_aesthetic : dict, optional
+        Optional aesthetic-shift parameters. Supported keys:
+        - "target_scale": str — insert set_song_scale step (e.g. "Fmin")
+        - "target_bpm": float — insert set_tempo step
+        - "transpose_semitones": float — shift numeric pitch parameter values
+
+    Returns
+    -------
+    dict with keys:
+        workflow : {
+            entity_id: str,
+            name: str,
+            packs_used: list[str],
+            description: str,
+            when_to_reach: str,
+            gotcha: str
+        }
+        executed_steps : list of {
+            step: int,
+            action: str,          # load_browser_item | insert_device |
+                                  # set_device_parameter | fire_clip |
+                                  # set_track_send | manual_step |
+                                  # set_song_scale | set_tempo
+            device_name: str?,
+            parameter_name: str?,
+            value: float?,
+            raw_text: str,        # original signal_flow line
+            result: "dry-run",
+            target_track_index: int?  # only when target_track_index >= 0
+        }
+        warnings : list[str]     # gotcha + avoid text from workflow YAML
+        sources  : list[str]     # citation list
+        error    : str           # only on failure; also has available_workflows
+
+    Signal-flow verb → action mapping:
+      "load" / "open" / "import"   → load_browser_item
+      "insert" / "add"             → insert_device
+      "set" / "tweak" / "configure"→ set_device_parameter
+      "fire" / "play" / "trigger"  → fire_clip
+      "chain" / "route" / "→"      → set_track_send
+      anything else                → manual_step
+
+    Citation tags: [SOURCE: cross_pack_workflow.yaml] for workflow YAML data,
+    [SOURCE: agent-inference] for parsing logic.
+
+    Example
+    -------
+    atlas_cross_pack_chain(
+        workflow_entity_id="dub_techno_spectral_drone_bed",
+        target_track_index=-1
+    )
+    """
+    from .cross_pack_chain import cross_pack_chain as _cross_pack_chain
+
+    return _cross_pack_chain(
+        workflow_entity_id=workflow_entity_id,
+        target_track_index=target_track_index,
+        customize_aesthetic=customize_aesthetic or {},
+    )

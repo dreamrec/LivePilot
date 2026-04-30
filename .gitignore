@@ -60,6 +60,14 @@ livepilot/skills/livepilot-core/references/device-atlas/plugins-synths.md
 livepilot/skills/livepilot-core/references/device-atlas/utility-and-workflow.md
 livepilot/skills/livepilot-core/references/device-atlas/samples-and-irs.md
 livepilot/skills/livepilot-core/references/device-atlas/presets-by-vibe.md
+# M4L vendor catalog + depth-pass findings live in livepilot-dreamrec-extensions/
+livepilot/skills/livepilot-devices/references/m4l-vendor/
+livepilot/skills/livepilot-devices/references/m4l-depth-pass-findings.md
+livepilot/skills/livepilot-devices/references/m4l-depth-pass-resume.md
+livepilot/skills/livepilot-devices/references/m4l-library-deep.md
+livepilot/skills/livepilot-devices/references/m4l-master-reference.md
+livepilot/skills/livepilot-devices/references/m4l-technique-map.md
+private/
 .mcp.json
 
 # Internal dev docs (keep locally, not on GitHub)
@@ -70,6 +78,10 @@ docs/superpowers/
 docs/v2-master-spec/
 docs/*.md
 !docs/EXTENSION_API.md
+!docs/USER_CORPUS_GUIDE.md
+!docs/PLUGIN_KNOWLEDGE_ENGINE.md
+!docs/M4L_BRIDGE.md
+!docs/MAX_FREEZE_WORKFLOW.md
 .git-backup-full/
 
 # Worktrees
@@ -79,3 +91,21 @@ m4l_device/externals/
 
 # Splice API capture — reverse-engineered endpoints, local research only
 docs/research/splice-api-capture/
+
+# Internal test-session journals — capture artist names + producer themes
+# that violate §12 (Public Artifacts Stay Generic). Keep local only.
+BUGS_TESTING_*.md
+BUGS_LIVE_*.md
+
+# User corpus output (defense in depth — output normally lives at ~/.livepilot/
+# atlas-overlays/user/ which is outside the repo, but if a future invocation
+# writes into a path inside the repo by accident, these patterns guarantee it
+# never gets committed)
+.livepilot/
+atlas-overlays/user/
+**/_inventory.json
+**/_canonical.json
+**/_clusters.json
+**/identity.yaml
+corpus_output/
+user_corpus_output/

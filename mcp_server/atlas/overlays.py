@@ -11,6 +11,7 @@ Per spec: docs/superpowers/specs/2026-04-25-user-local-extensions-design.md
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -18,6 +19,87 @@ from typing import Optional
 import yaml
 
 logger = logging.getLogger(__name__)
+
+
+# ─── Tokenizer (used by OverlayIndex.search) ─────────────────────────────────
+# Producer-style queries use natural language with hyphenated phrases
+# ("Kraftwerk-style bass"), apostrophes ("J Dilla's vibe"), and stylistic
+# suffix words that pad meaning ("style", "vibe", "tone", "mood"). The
+# whitespace-only split + AND-match used to reject those queries because:
+#   - "kraftwerk-style" (one token) wouldn't substring-match "kraftwerk" (in
+#     the artist tag);
+#   - "vibe" (always present in producer queries) would never match any
+#     indexed field, so the AND-clause failed.
+#
+# Fix: tokenize on whitespace + hyphens + apostrophes, drop stop words +
+# stylistic suffix words, drop tokens shorter than 3 chars (single letters
+# substring-match everything → noise). Score logic is unchanged.
+
+# Words that carry no content for music-search queries.
+_STOP_WORDS = frozenset({
+    # articles + determiners
+    "a", "an", "the", "this", "that", "these", "those",
+    # prepositions
+    "of", "in", "on", "with", "for", "to", "at", "by", "from", "as", "into",
+    # possessives + pronouns
+    "my", "your", "his", "her", "its", "our", "their", "i", "we", "you",
+    # stylistic / vibe-coded suffixes — always present in producer queries
+    "style", "styled", "sound", "sounding", "vibe", "vibes", "tone", "toned",
+    "mood", "moody", "era", "school", "esque", "like", "kind", "type",
+    "feel", "feels", "feeling",
+    # generic verbs
+    "is", "was", "are", "were", "has", "have", "had", "get", "gets", "make",
+    "makes", "making", "want", "need", "give",
+    # common modifiers
+    "very", "really", "kinda", "sorta", "more", "less", "some", "any", "all",
+    "just", "only", "also", "too",
+    # music-specific noise
+    "track", "song", "audio", "music", "musical",
+})
+
+
+def _tokenize(query: str) -> list[str]:
+    """Tokenize a search query for OverlayIndex.search.
+
+    - Split on whitespace + hyphens + apostrophes + slashes.
+    - Lowercase.
+    - Drop stop words.
+    - Drop tokens < 3 chars (single-letter tokens substring-match every
+      field — pure noise; 2-char tokens are still mostly noise except a few
+      domain terms like "fm" / "eq" — see _PRESERVED_SHORT_TOKENS).
+
+    Returns a deduplicated list (insertion order preserved).
+    """
+    if not query:
+        return []
+    raw = re.split(r"[\s\-'’/]+", query.lower())
+    seen: dict[str, None] = {}
+    for tok in raw:
+        if not tok:
+            continue
+        if tok in _STOP_WORDS:
+            continue
+        if len(tok) < 3 and tok not in _PRESERVED_SHORT_TOKENS:
+            continue
+        if tok not in seen:
+            seen[tok] = None
+    return list(seen.keys())
+
+
+# A small whitelist of music-domain 2-char terms worth keeping as tokens.
+_PRESERVED_SHORT_TOKENS = frozenset({
+    "fm",   # frequency modulation
+    "am",   # amplitude modulation
+    "eq",   # equalizer
+    "lo",   # lo-fi (after stripping "fi" via stop words it's still a useful tag substring)
+    "hi",   # hi-fi / hi-hat
+    "ot",   # rare but appears in tag suffixes
+    "808", "303", "707", "909", "606",   # iconic drum machines
+    "tr",   # often appears in tags like "tr-808"
+    "dx",   # DX7 et al
+    "cs",   # CS-80
+    "vc",   # Vocoder shortform
+})
 
 
 @dataclass
@@ -108,11 +190,16 @@ class OverlayIndex:
         Sorts by descending score, then by entity_id for stable ties.
         Filters by namespace and/or entity_type if provided.
         Empty query returns empty list.
+
+        Tokenization (v1.23.7+): see module-level _tokenize() — splits on
+        whitespace + hyphens + apostrophes; drops stop words + stylistic
+        suffixes ("style", "vibe", "mood") so producer-vocabulary queries
+        like "Kraftwerk-style bass" or "J Dilla SP-404 vibe" route to the
+        right plugins instead of getting AND-rejected by noise tokens.
         """
-        q = (query or "").strip().lower()
-        if not q:
+        if not query:
             return []
-        tokens = q.split()
+        tokens = _tokenize(query)
         if not tokens:
             return []
 
@@ -243,6 +330,11 @@ def load_overlays(root: Optional[Path] = None,
         namespace = ns_dir.name
         for yaml_path in sorted(list(ns_dir.rglob("*.yaml")) +
                                 list(ns_dir.rglob("*.yml"))):
+            # Convention: filenames starting with "_" or "manifest.yaml"
+            # are internal config / cache files, not knowledge entries.
+            # The user_corpus pipeline writes its manifest + sidecars there.
+            if yaml_path.name.startswith("_") or yaml_path.name == "manifest.yaml":
+                continue
             try:
                 with yaml_path.open("r") as f:
                     parsed = yaml.safe_load(f)

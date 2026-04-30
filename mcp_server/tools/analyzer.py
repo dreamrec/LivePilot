@@ -1776,7 +1776,10 @@ async def analyze_loudness_live(
     window_sec: float = 10.0,
     sample_interval_ms: int = 200,
 ) -> dict:
-    """Analyze the currently-playing master output's loudness over a window.
+    """Analyze the currently-playing master output's loudness over a window (LIVE).
+
+    Use this tool during a session — no rendered file needed.
+    For offline analysis of an exported audio file use analyze_loudness() instead.
 
     BUG-2026-04-22#8 fix — the offline `analyze_loudness` requires a
     rendered file. This tool samples the LivePilot analyzer's realtime
