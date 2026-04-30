@@ -13,8 +13,29 @@ Sidecar reality notes (from Phase C appendix + Phase E inspection):
   - Demo macros have NO name field (only index + value)
 """
 
+import pathlib
+
 import pytest
 from mcp_server.atlas.demo_story import demo_story
+
+
+# Skip the whole module if the demo-sidecar corpus isn't present.
+# Demo sidecars are parsed from licensed Ableton Factory Packs and live at
+# ~/.livepilot/atlas-overlays/packs/_demo_parses/ — they are user-local content,
+# not committed to the repo. CI runners don't have them, so the entire module
+# skips gracefully there. Local dev (where the user has parsed their own packs)
+# gets full coverage.
+DEMO_PARSES_ROOT = (
+    pathlib.Path.home()
+    / ".livepilot"
+    / "atlas-overlays"
+    / "packs"
+    / "_demo_parses"
+)
+pytestmark = pytest.mark.skipif(
+    not DEMO_PARSES_ROOT.exists() or not any(DEMO_PARSES_ROOT.iterdir()),
+    reason="Demo sidecar corpus not present at ~/.livepilot/atlas-overlays/packs/_demo_parses/",
+)
 
 
 class TestDemoStoryDronelabEarth:

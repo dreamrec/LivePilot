@@ -22,12 +22,33 @@ Sidecar reality notes (from Phase E inspection 2026-04-27):
     the Mindless Self-Encounters device).  See Phase E appendix for deviation note.
 """
 
+import pathlib
+
 import pytest
 from mcp_server.atlas.extract_chain import (
     extract_chain,
     _emit_execution_steps,
     _find_track_by_name,
     _top_k_macros_by_deviation,
+)
+
+
+# Skip the whole module if the demo-sidecar corpus isn't present.
+# Demo sidecars are parsed from licensed Ableton Factory Packs and live at
+# ~/.livepilot/atlas-overlays/packs/_demo_parses/ — they are user-local content,
+# not committed to the repo. CI runners don't have them, so the entire module
+# skips gracefully there. Local dev (where the user has parsed their own packs)
+# gets full coverage.
+DEMO_PARSES_ROOT = (
+    pathlib.Path.home()
+    / ".livepilot"
+    / "atlas-overlays"
+    / "packs"
+    / "_demo_parses"
+)
+pytestmark = pytest.mark.skipif(
+    not DEMO_PARSES_ROOT.exists() or not any(DEMO_PARSES_ROOT.iterdir()),
+    reason="Demo sidecar corpus not present at ~/.livepilot/atlas-overlays/packs/_demo_parses/",
 )
 
 
