@@ -69,7 +69,20 @@ class _FakeControlSurface:
         return object()
 
 
-def test_second_client_gets_explicit_state_error():
+def test_second_client_replaces_stale_connection():
+    """A new connection kicks the stale one and becomes active.
+
+    LivePilot is single-client by design, but rejecting concurrent
+    connections (the previous behavior) had a footgun: when the MCP
+    server restarted uncleanly, the Remote Script's recv() loop didn't
+    notice the disconnect for up to a second. During that window, the
+    legitimate reconnect attempt got rejected with STATE_ERROR — often
+    requiring an Ableton restart to recover.
+
+    The kick-stale-and-accept policy treats a new connection as proof
+    that the old one is dead, which is the right call given the
+    single-client architecture.
+    """
     server_mod = _load_server_module()
     cs = _FakeControlSurface()
     server = server_mod.LivePilotServer(cs, port=0)
@@ -78,33 +91,56 @@ def test_second_client_gets_explicit_state_error():
     second = None
     try:
         server.start()
-        # Wait until bind() has completed — socket is assigned before bind(),
-        # so port==0 means bind hasn't run yet; connecting to port 0 → EADDRNOTAVAIL.
         assert _wait_until(
             lambda: server._server_socket is not None
             and server._server_socket.getsockname()[1] != 0
         )
-        # Use the actual bound address (may be IPv4 or IPv6 depending on OS)
         host, port = server._server_socket.getsockname()[:2]
         if host == "" or host == "0.0.0.0" or host == "::":
             host = "127.0.0.1"
 
         first = socket.create_connection((host, port), timeout=2.0)
         assert _wait_until(lambda: server._client_connected)
+        first_socket_at_connect = server._current_client
 
+        # Open a second connection — this should kick the first.
         second = socket.create_connection((host, port), timeout=2.0)
-        second.settimeout(2.0)
-        payload = second.recv(4096).decode("utf-8").strip()
-        response = json.loads(payload)
 
-        assert response["ok"] is False
-        assert response["error"]["code"] == "STATE_ERROR"
-        assert "already connected" in response["error"]["message"]
+        # The first socket should now be the kicked one — confirm by
+        # observing that the server's _current_client reference flipped
+        # to the new socket (different object identity).
+        assert _wait_until(
+            lambda: server._current_client is not None
+            and server._current_client is not first_socket_at_connect
+        ), "expected _current_client to be replaced by the new connection"
+
+        # The first socket's recv() should now return EOF (b'') because
+        # the server closed it from the accept loop.
+        first.settimeout(2.0)
+        try:
+            data = first.recv(4096)
+        except OSError:
+            data = b""
+        assert data == b"", "first client should observe EOF after being replaced"
+
+        # And the new connection should NOT receive a STATE_ERROR (no
+        # rejection JSON appears on the wire).
+        second.settimeout(0.5)
+        try:
+            leftover = second.recv(4096)
+        except (socket.timeout, OSError):
+            leftover = b""
+        assert leftover == b"", (
+            "second client should not receive a STATE_ERROR rejection — "
+            f"got {leftover!r}"
+        )
     finally:
         if first is not None:
-            first.close()
+            try: first.close()
+            except OSError: pass
         if second is not None:
-            second.close()
+            try: second.close()
+            except OSError: pass
         server.stop()
 
 

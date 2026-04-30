@@ -11,16 +11,26 @@ def get_session_info(song, params):
     """Return comprehensive session state."""
     tracks_info = []
     for i, track in enumerate(song.tracks):
-        tracks_info.append({
+        track_data = {
             "index": i,
             "name": track.name,
             "color_index": track.color_index,
-            "has_midi_input": track.has_midi_input,
-            "has_audio_input": track.has_audio_input,
             "mute": track.mute,
             "solo": track.solo,
-            "arm": track.arm,
-        })
+        }
+        # Group tracks (and any Return tracks that leak into song.tracks)
+        # don't expose `arm` / `has_midi_input` / `has_audio_input`. The
+        # Live Object Model raises a RuntimeError on access — and crucially
+        # `hasattr()` returns True regardless, so we must use try/except.
+        try:
+            track_data["arm"] = track.arm
+            track_data["has_midi_input"] = track.has_midi_input
+            track_data["has_audio_input"] = track.has_audio_input
+        except Exception:
+            track_data["arm"] = None
+            track_data["has_midi_input"] = None
+            track_data["has_audio_input"] = None
+        tracks_info.append(track_data)
 
     return_tracks_info = []
     for i, track in enumerate(song.return_tracks):

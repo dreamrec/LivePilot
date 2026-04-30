@@ -86,6 +86,12 @@ class LivePilotServer(object):
         self._command_queue = queue.Queue()
         self._client_lock = threading.Lock()
         self._client_connected = False
+        # Track the active client socket so we can close it from the accept
+        # loop when a new connection arrives. See _server_loop's kick-stale
+        # flow — without this, an unclean MCP-server restart leaves the
+        # Remote Script in a state where new connections get rejected until
+        # the old socket times out (often requiring an Ableton restart).
+        self._current_client = None
 
     # ── Public API ───────────────────────────────────────────────────────
 
@@ -138,30 +144,35 @@ class LivePilotServer(object):
         while self._running:
             try:
                 client, addr = self._server_socket.accept()
+                # Single-client design: a new connection means the previous one
+                # is dead. Close the stale socket and join its thread (outside
+                # the lock so the thread's finally block can acquire it), then
+                # accept the new connection. Without this, the server could
+                # reject reconnections for up to 1s after an unclean MCP-server
+                # restart — the old recv() loop hadn't yet observed EOF.
+                stale_thread = None
+                stale_client = None
                 with self._client_lock:
-                    if self._client_connected:
-                        # Reject concurrent clients with an explicit message
-                        self._log("Rejected client from %s:%d (another client is connected)" % addr)
-                        try:
-                            reject = json.dumps({
-                                "id": "system",
-                                "ok": False,
-                                "error": {
-                                    "code": "STATE_ERROR",
-                                    "message": "Another client is already connected. "
-                                               "LivePilot accepts one client at a time. "
-                                               "Disconnect the current client first."
-                                }
-                            }) + "\n"
-                            client.sendall(reject.encode("utf-8"))
-                        except OSError:
-                            pass
-                        try:
-                            client.close()
-                        except OSError:
-                            pass
-                        continue
+                    if self._client_connected and self._current_client is not None:
+                        stale_client = self._current_client
+                        stale_thread = self._client_thread
+                        self._log(
+                            "Replacing stale client with new connection from %s:%d" % addr
+                        )
+                if stale_client is not None:
+                    try:
+                        stale_client.close()
+                    except OSError:
+                        pass
+                if stale_thread is not None and stale_thread.is_alive():
+                    # 2s is generous — the old recv() unblocks the moment we
+                    # close the socket above, then the thread's finally block
+                    # acquires the lock, resets _client_connected, and exits.
+                    stale_thread.join(timeout=2)
+
+                with self._client_lock:
                     self._client_connected = True
+                    self._current_client = client
                     self._client_thread = threading.Thread(
                         target=self._run_client_session,
                         args=(client, addr),
@@ -194,6 +205,11 @@ class LivePilotServer(object):
                 pass
             with self._client_lock:
                 self._client_connected = False
+                # Only clear _current_client if it still points at us — the
+                # accept loop may have already replaced us with a new client
+                # (in which case _current_client is the new socket).
+                if self._current_client is client:
+                    self._current_client = None
             self._log("Client disconnected")
 
     def _handle_client(self, client):
