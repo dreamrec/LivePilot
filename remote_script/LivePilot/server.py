@@ -86,6 +86,7 @@ class LivePilotServer(object):
         self._command_queue = queue.Queue()
         self._client_lock = threading.Lock()
         self._client_connected = False
+        self._current_client = None  # reference to active client socket
 
     # ── Public API ───────────────────────────────────────────────────────
 
@@ -139,29 +140,25 @@ class LivePilotServer(object):
             try:
                 client, addr = self._server_socket.accept()
                 with self._client_lock:
-                    if self._client_connected:
-                        # Reject concurrent clients with an explicit message
-                        self._log("Rejected client from %s:%d (another client is connected)" % addr)
+                    if self._client_connected and self._current_client is not None:
+                        # Kick the stale client — new connection replaces the old one.
+                        # This handles the common case where the MCP server restarted
+                        # but the Remote Script hasn't detected the TCP disconnect yet.
+                        self._log("Kicking stale client to accept new connection from %s:%d" % addr)
                         try:
-                            reject = json.dumps({
-                                "id": "system",
-                                "ok": False,
-                                "error": {
-                                    "code": "STATE_ERROR",
-                                    "message": "Another client is already connected. "
-                                               "LivePilot accepts one client at a time. "
-                                               "Disconnect the current client first."
-                                }
-                            }) + "\n"
-                            client.sendall(reject.encode("utf-8"))
+                            self._current_client.close()
                         except OSError:
                             pass
-                        try:
-                            client.close()
-                        except OSError:
-                            pass
-                        continue
+                        # Wait briefly for the old client thread to clean up
+                        old_thread = self._client_thread
+                    else:
+                        old_thread = None
+                # Wait OUTSIDE the lock so the old thread's finally block can acquire it
+                if old_thread is not None:
+                    old_thread.join(timeout=2)
+                with self._client_lock:
                     self._client_connected = True
+                    self._current_client = client
                     self._client_thread = threading.Thread(
                         target=self._run_client_session,
                         args=(client, addr),
@@ -194,6 +191,7 @@ class LivePilotServer(object):
                 pass
             with self._client_lock:
                 self._client_connected = False
+                self._current_client = None
             self._log("Client disconnected")
 
     def _handle_client(self, client):
