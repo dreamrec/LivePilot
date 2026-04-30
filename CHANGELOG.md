@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.23.5 — 2026-04-30
+
+### Fixed (Remote Script reliability — credit: PR #35 reporter)
+
+Two production-blocking bugs in the Remote Script that ship into the Ableton process. Reported by @juancarlosaxtro-hash in [PR #35](https://github.com/dreamrec/LivePilot/pull/35); reimplemented cleanly here with regression tests because the originally-submitted patch contained Python indentation errors that broke `transport.py` parse.
+
+- **TCP server now replaces stale clients instead of rejecting new connections.** Previously, when the MCP server restarted uncleanly (e.g. user relaunched Claude Desktop), the Remote Script's `recv()` loop didn't notice the disconnect for up to a second. During that window, the legitimate reconnect attempt was rejected with `STATE_ERROR("Another client is already connected")` — often requiring a full Ableton restart to recover. New behavior: when the accept loop sees a new connection while one is "active", it closes the stale socket from the accept loop, joins the old client thread (with 2 s timeout, OUTSIDE the lock so the thread's `finally` block can acquire it), then accepts the new connection. Single-client architecture means a new connection is proof the old one is dead. New `_current_client` field tracks the active socket so the accept loop can kick it; the `_run_client_session` finally only nulls `_current_client` if it still points at the closing client (the accept loop may have already replaced it). (`remote_script/LivePilot/server.py`)
+- **`get_session_info` no longer crashes on Group tracks.** `song.tracks` includes Group tracks, which raise a `RuntimeError` on `arm` / `has_midi_input` / `has_audio_input` access. `hasattr()` returns `True` regardless because Live's LOM doesn't use `AttributeError` — only try/except on the actual access works. Without the guard, any session with a Group track failed the entire session-info call with *"Main and Return Tracks have no 'Arm' state!"* Surgical try/except around the three LOM-fragile properties only; other fields (`name`, `color_index`, `mute`, `solo`) populate normally; the fragile ones return `None` on Group tracks. (`remote_script/LivePilot/transport.py`)
+
+### Tests
+- `tests/test_remote_server_single_client.py` — rewrote `test_second_client_gets_explicit_state_error` → `test_second_client_replaces_stale_connection` for the new kick-stale semantics.
+- `tests/test_remote_transport_group_tracks.py` — new file, 4 tests covering normal-track baseline, mixed Group+normal sessions, all-Group edge case, and non-fragile-field preservation. Hermetic loader stubs the Ableton-only `Live` module + `version_detect` helpers; autouse fixture restores `sys.modules` to prevent test pollution.
+- Total: **3407 passing**, 1 skipped, 0 failed (up from 3403 in v1.23.4).
+
+### CI green check
+- All 9 jobs green on commit `4aec8e6` (run `25174868624`): metadata-drift, js-entrypoint, amxd-freeze-drift, python-tests × {macos, ubuntu, windows} × {3.11, 3.12}.
+
 ## v1.23.4 — 2026-04-30
 
 ### Fixed (2026-04-30 live-test wave — 38 bugs surfaced, 36 fixed, 2 deferred to v1.23.5)
