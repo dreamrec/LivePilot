@@ -76,6 +76,8 @@ docs/research/
 docs/specs/
 docs/superpowers/
 docs/v2-master-spec/
+docs/strategy/
+docs/archive/
 docs/*.md
 !docs/EXTENSION_API.md
 !docs/USER_CORPUS_GUIDE.md
