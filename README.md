@@ -54,23 +54,23 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 
 ## Two Ways to Talk to LivePilot
 
-LivePilot is **not a "sound like X" plagiarism machine.** It is a precision control surface that accepts two equally first-class command modes — pick whichever is faster for the idea in your head:
+Pick whichever is faster for the idea in your head — both reach the same 453-tool surface.
 
 ### Route A — Artist / aesthetic shorthand
 
 > *"Sound like J Dilla."* &nbsp; *"Make this feel more like Burial."* &nbsp; *"BoC-style pads."*
 
-The Concept Surface (`artist-vocabularies.md` + `genre-vocabularies.md`) maps ~25 producers and 15 genres to concrete `reach_for` / `avoid` / `key_techniques` lists. An artist name becomes a queryable label for a cluster of techniques — not a copy command. Useful when you know the aesthetic but not the parameters, or when "Burial" is faster to type than the half-paragraph that describes Burial's reverb/sidechain/pitch-bend chain.
+The Concept Surface (`artist-vocabularies.md` + `genre-vocabularies.md`) maps ~25 producers and 15 genres to concrete `reach_for` / `avoid` / `key_techniques` lists. An artist name becomes a queryable label for a cluster of techniques. Useful when you know the aesthetic but not the parameters, or when one word is faster than the half-paragraph of reverb / sidechain / pitch-bend settings it implies.
 
 ### Route B — Direct musical intent
 
 > *"Humanize the drum loop: 62% swing on the 16th hats, snare landing 4 ms ahead of the 2 and 4 for forward push, ghost snares filling every off-16th at velocity 25–40, kick locked to the grid, and add ±2 ms timing jitter to everything except the kick. EQ a 3 dB notch at 380 Hz on the snare to pull it back from the bass."*
 
-The full Live Object Model is exposed. You can specify swing percentages, micro-timing offsets in milliseconds, dB cuts/boosts, frequency ranges, modulation depths, envelope shapes, send levels, automation curves, scale degrees, voice leading — anything the LOM exposes plus the 44 semantic moves on top. No artist required.
+The full Live Object Model is exposed. Swing percentages, micro-timing offsets in milliseconds, dB cuts, frequency ranges, modulation depths, envelope shapes, send levels, automation curves, scale degrees, voice leading — anything the LOM allows, plus the 44 semantic moves on top.
 
-### Why both exist
+### Mixing the routes
 
-The artist route is **shorthand**. The intent route is **surgical**. They reach the same 453-tool surface — the artist vocabulary is a convenience layer over the intent layer, not a substitute. Many producers prefer Route B because it forces you to name what you actually want, and the result is unambiguously yours. Route A stays available for when "evoke X" is the fastest signal — but every artist tag is implemented as a transparent set of moves you could have asked for directly.
+Most sessions do both. Lead with shorthand to anchor the aesthetic, then refine with millisecond-precision intent once the shape is roughed in. Every artist tag resolves to moves you can also call directly — the shorthand is a convenience layer over the same parameters you reach with Route B.
 
 <br>
 
