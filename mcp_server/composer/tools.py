@@ -211,13 +211,15 @@ async def compose(
     mode: str = "full",
     bars: int = 4,
     target_scene: Optional[int] = None,
+    seed_scene_index: int = 0,
     max_credits: int = 50,
     dry_run: bool = False,
     reference: Optional[str] = None,
 ) -> dict:
-    """Plan, brief, or execute a multi-layer composition from a text prompt.
+    """Plan, brief, or execute a multi-layer composition from a text prompt
+    or an existing seed loop.
 
-    Two modes:
+    Three modes:
 
     ``mode="full"`` (default) — plan-only. Parses prompt into genre/mood/
     tempo/key, plans layers using role templates, returns an executable
@@ -240,19 +242,38 @@ async def compose(
         tracks, load instruments, populate clips with the agent's notes,
         fire scene.
 
+    ``mode="develop"`` — extend an existing 8-bar loop into a fuller
+        arrangement. Reads the seed at seed_scene_index (default 0),
+        builds a brief with identity + vocabulary, returns it. Agent
+        designs the variant set, calls develop_apply.
+
     prompt: "dark minimal techno 128bpm" / "downtempo lo-fi Cm" / "trap"
-    mode: "full" | "fast"
+    mode: "full" | "fast" | "develop"
     bars: clip length in bars (fast mode only — default 4)
     target_scene: scene index to populate (full mode legacy param; fast
                   mode now lets the agent pick via compose_fast_apply)
+    seed_scene_index: scene to read as the seed (develop mode only,
+                      default 0)
     max_credits: max Splice credits budget for full-mode plans (default 50)
     dry_run: full-mode only — skip credit checks
 
     Fast mode returns: a brief dict with creative context. Call
     compose_fast_apply with your designed plan to actually create tracks.
+    Develop mode returns: a brief dict with seed_state + design_targets.
+    Call develop_apply with your designed variant plan.
     Full mode returns the existing plan dict.
     """
     intent = parse_prompt(prompt)
+
+    if mode == "develop":
+        from .develop.seed_introspector import introspect_seed
+        from .develop.brief_builder import build_develop_brief
+        seed = introspect_seed(ctx, scene_index=seed_scene_index)
+        if seed.get("error"):
+            return {"status": "error", "error": seed["error"], "phase": "introspect_seed"}
+        brief = build_develop_brief(ctx, seed, prompt_directive=prompt or None)
+        brief["prompt"] = prompt
+        return brief
 
     if mode == "fast":
         brief = _build_fast_brief(
@@ -833,3 +854,61 @@ async def compose_full_apply(
     abort the walk — full-mode plans are tolerant of partial failure.
     """
     return await apply_full_plan(ctx, plan_response, warp_strategy=warp_strategy)
+
+
+# ── v1.24 develop mode ─────────────────────────────────────────────
+
+
+@mcp.tool()
+async def analyze_loop_for_extension(
+    ctx: Context,
+    scene_index: int = 0,
+) -> dict:
+    """Read-only analyzer for develop mode — returns SeedState for a scene.
+
+    Inspects the scene's clips, classifies each track as sample_trigger
+    or midi_riff, infers role from track name, and reports key/tempo/
+    time signature. The agent uses this BEFORE calling compose(mode='develop')
+    to verify the loop is extendable, OR as a standalone diagnostic.
+
+    Returns: dict per mcp_server.composer.develop.seed_introspector.introspect_seed.
+    No writes to the session.
+    """
+    from .develop.seed_introspector import introspect_seed
+    return introspect_seed(ctx, scene_index=scene_index)
+
+
+@mcp.tool()
+async def develop_apply(
+    ctx: Context,
+    plan: dict,
+) -> dict:
+    """Phase-3 develop mode: server-side execute the agent's variant plan.
+
+    Receives a plan with the agent-designed variant set:
+        {
+          "scope": "develop",
+          "clip_length_beats": float (default 4.0),
+          "tempo": float (optional override),
+          "variants": [
+            {
+              "track_index": int,
+              "scene_index": int,
+              "name": str,
+              "notes": [{"pitch": int, "start_time": float, "duration": float,
+                         "velocity": int}, ...]
+              "sample_uri": str (optional — for sample-trigger swaps)
+            },
+            ...
+          ]
+        }
+
+    The agent decides variant count, names, scenes, MIDI per call — no
+    fixed taxonomy. Empty notes list creates an empty clip (drum-dropout
+    pattern).
+
+    Returns: status, clips_created, scenes_populated, sample_swaps,
+    preflight result, postflight result, errors list.
+    """
+    from .develop.apply import apply_develop_plan
+    return await apply_develop_plan(ctx, plan)

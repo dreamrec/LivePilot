@@ -631,7 +631,7 @@ def test_control_surfaces_tools_registered():
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 457, f"Expected 457 tools, got {len(tools)}"
+    assert len(tools) == 459, f"Expected 459 tools, got {len(tools)}"
 
 
 def test_audit_tools_registered():
