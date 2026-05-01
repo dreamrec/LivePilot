@@ -44,6 +44,11 @@ import re
 from typing import Any, Optional
 
 from ..prompt_parser import CompositionIntent
+from .tier_classification import (
+    classify_instrument,
+    TIER_C_NEEDS_PRESET,
+    ROLE_SEARCH_TERMS,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -276,13 +281,25 @@ def get_role_candidates(
 
     out: list[dict] = []
     for dev in viable[:top_n]:
+        instrument_name = dev.get("name") or ""
+        tier = classify_instrument(instrument_name)
+        # Defensively skip Tier-C bare instruments here too.
+        # (The primary Tier-C guard is in _is_tier_c_bare; this catches any
+        # that slipped past is_viable_instrument_uri due to missing name.)
+        if tier == "C_needs_preset":
+            continue
         out.append({
             "uri": dev.get("uri") or "",
-            "name": dev.get("name") or "",
+            "name": instrument_name,
             "tags": dev.get("character_tags") or dev.get("tags") or [],
             "pack": dev.get("pack") or "",
             "genre_affinity": dev.get("genre_affinity") or dev.get("genres") or {},
             "source": dev.get("__source", "atlas"),
+            # v1.24 tier field — A_sample_ready or B_audible_default
+            # (None/unknown instruments default to B_audible_default so they
+            # remain in the brief; the agent can still pick them if they slip
+            # through viability checks).
+            "tier": tier if tier in ("A_sample_ready", "B_audible_default") else "B_audible_default",
         })
     return out
 
@@ -1246,6 +1263,11 @@ def build_creative_brief(
             "   loaded in the session — the candidate list ALREADY has them filtered\n"
             "   out, so just pick from `instruments_by_role[role]` confidently. If\n"
             "   the list looks short for a role, that's because we're forcing variety.\n"
+            "   **TIER A vs B distinction**: Each candidate in `instruments_by_role[role]`\n"
+            "   carries a `tier` field. Tier-A candidates ('A_sample_ready') load with\n"
+            "   sound on note-on. Tier-B candidates ('B_audible_default') also produce\n"
+            "   sound by default. Both are safe to pick. There is no Tier-C in the brief\n"
+            "   — those are filtered out before the brief reaches you.\n"
             "5. **TIER-1: Fire each search in `recommended_searches` BEFORE designing\n"
             "   that role.** Each entry gives you a (tool, query) pair — call the named\n"
             "   Ableton Knowledge MCP tool. Most queries hit the Live manual or video\n"
