@@ -1814,6 +1814,298 @@ Tests: `test_bug26_balance_state_excludes_ghost_named_tracks_from_anchors`, `tes
 
 ---
 
+---
+
+## H. 2026-05-01 full-mode chop-strategy session bugs
+
+Bugs surfaced testing the new `compose_full_apply(warp_strategy="chop")`
+path on a fresh 122 BPM project. Three of these (#13–#16) were directly
+caused by the Splice resolver / role-fit scorer / planner-emit pipeline
+when layers got dropped as unresolved. #14 is a bridge-handshake race in
+the new pre-flight code.
+
+### BUG-FULL-MODE-13 · `🟢 fixed` · `_build_splice_filters` applies key+chord_type to drums/percussion/fx, narrowing Splice to zero matches
+
+**Reproducer:** `compose("...", mode="full")` on any prompt with a key
+(e.g. `key="Am"`) emitted this filter dict for the drums layer:
+```json
+{"chord_type": "minor", "key": "a", "bpm_min": 117, "bpm_max": 127, "sample_type": "loop"}
+```
+Splice's drum samples don't carry pitch metadata in the catalog, so the
+catalog-level `chord_type=minor, key=a` filter eliminates ALL drums →
+zero hits → `(None, "unresolved")` → drums layer dropped from plan.
+Same for percussion and fx-loop roles.
+
+**Root cause:** `mcp_server/composer/layer_planner.py::_build_splice_filters`
+applied `key` + `chord_type` unconditionally when `intent.key` was set,
+without checking whether the role was tonal.
+
+**Fix (landed):**
+- Added `_NON_TONAL_ROLES = frozenset({"drums", "percussion", "fx"})`
+- In `_build_splice_filters`, gate the `key` + `chord_type` block on
+  `is_tonal = role_lower not in _NON_TONAL_ROLES`
+- Tonal roles (bass/lead/pad/vocal/texture) keep the full filter set
+- Tests added: `test_drums_layer_gets_no_key_or_chord_type_filter`,
+  `test_tonal_layers_keep_key_and_chord_type_filter`,
+  `test_texture_keeps_key_filter_for_tonal_textures`
+- **Verified live**: drum loop `SO_MSIC_120_drum_loop_red.wav` resolved
+  successfully on the same prompt that previously dropped drums.
+
+
+### BUG-FULL-MODE-14 · `🔴 open` · Bridge race in `compose_full_apply` pre-flight — `reconnect_bridge` returns before UDP listener registers
+
+**Reproducer:** Fresh `compose_full_apply()` call on a fresh project. The
+pre-flight `_apply_full_plan` code does:
+```python
+ensure_analyzer_on_master(ctx)        # loads analyzer
+await reconnect_bridge(ctx)           # supposedly binds UDP 9880
+fresh_actions.append("bridge_connected")
+# ... plan walk begins ...
+await load_sample_to_simpler(...)     # FAILS: "UDP bridge is not connected"
+```
+Pre-flight reports `bridge_connected` but the very next step that
+requires the bridge fails with "LivePilot Analyzer is loaded on the
+master track, but its UDP bridge is not connected".
+
+**Suspected cause:** `reconnect_bridge` returns immediately after
+calling `bridge.connect()` but the M4L JS listener on the analyzer
+device runs in Max's main thread and may take 100-500ms to actually
+register the UDP listener. The async return doesn't wait for confirmation.
+
+**Suggested fix:** Replace fire-and-forget reconnect with a real
+handshake — after `reconnect_bridge`, ping the bridge with a tight
+retry loop (e.g. `bridge.send_command("ping", timeout=0.5)` retried
+up to 3-5 times with 200ms gaps) before returning success.
+
+**Workaround (manual):** After the failure, call
+`reconnect_bridge` a second time and re-fire `load_sample_to_simpler`.
+Usually succeeds on retry.
+
+
+### BUG-FULL-MODE-15 · `🔴 open` · Planner emits stale track indices when layers drop as unresolved → `INDEX_ERROR` cascade
+
+**Reproducer:** When 2 of 5 layers drop as unresolved (e.g. bass + lead),
+the remaining 3 layers (drums, pad, texture) still emit their
+**original** track indices in `create_midi_track(index=N)` steps:
+```json
+{"tool": "create_midi_track", "params": {"index": 0}, "role": "drums"}    # OK
+{"tool": "create_midi_track", "params": {"index": 3}, "role": "pad"}      # FAILS
+{"tool": "create_midi_track", "params": {"index": 4}, "role": "texture"}  # FAILS
+```
+After drums creates track 0, the session has 1 track. `create_midi_track(index=3)`
+errors with `INDEX_ERROR Track index 3 out of range (0..1)`. All
+subsequent steps for pad + texture cascade to failure.
+
+**Root cause:** `mcp_server/composer/engine.py` builds the plan in two
+passes:
+1. Build the layers list (some get filtered out as unresolved during
+   sample resolution)
+2. Generate steps with track indices based on each layer's **original**
+   position in `_select_roles()` output
+
+When unresolved layers are dropped between passes 1 and 2, the
+remaining layers' indices are stale (non-contiguous: 0, 3, 4 instead
+of 0, 1, 2).
+
+**Suggested fix:** After unresolved layers are filtered out, re-number
+the surviving layers' track indices contiguously from 0. The
+arrangement clip references and `$from_step` IDs stay layer-scoped so
+they don't need updating; only the `create_midi_track(index=N)` and
+the per-layer `track_index` arguments need compaction.
+
+
+### BUG-FULL-MODE-16 · `🔴 open` · `_score_candidate` over-rejects `synth_bass_*.wav` in bass slot
+
+**Reproducer:** `compose("...", mode="full")` with a bass layer. Splice
+returns candidates like `synth_bass_oneshot_Am.wav`. The role-fit
+scorer in `mcp_server/composer/sample_resolver.py::_score_candidate`
+runs:
+```
+role: "bass", filename: "synth_bass_oneshot_am"
+- "bass" literally in name → +3.0
+- _primary_role_of returns "synth" (first role-word token)
+- _role_matches("synth", "bass") → False (synth is in lead's hint set, not bass's)
+- Penalty: -5.0
+- Net: -2.0 → REJECTED
+```
+
+This rejects every Splice "synth bass" candidate even though they're
+legitimately bass samples. Result: bass + lead layers drop as
+unresolved on prompts that ask for synth-character bass, causing the
+cascading planner failure (BUG-FULL-MODE-15).
+
+**Root cause:** The `-5.0` primary-role-mismatch penalty was added to
+prevent Piano-as-Bass-slot collisions (BUG-FULL-MODE-10), but it's too
+aggressive when the role word IS literally in the filename.
+
+**Suggested fix:** Soften the primary-mismatch penalty when the role
+word is present in the filename. Three reasonable options:
+1. Set the penalty to 0 when `role in name` (role-word presence
+   overrides first-token classification)
+2. Reduce penalty from -5.0 to -2.0 when role word is in name
+3. Use a smarter scan (look at ALL tokens, not just the first one) to
+   identify primary role
+
+Option 1 is the cleanest if we trust the role-word literal as
+authoritative. Option 2 keeps soft preference for first-token-matches
+while not hard-rejecting role-word-matches. Tests should verify the
+Piano-as-Bass case still gets rejected after the fix.
+
+
+### BUG-FULL-MODE-17 · `🔴 open` · `compose_full_apply` tracks require manual arm-button toggle in Ableton's UI before audio plays
+
+**Reproducer:** Run `compose_full_apply()` end-to-end on a fresh
+project. Tracks are created, MIDI source clips populated, arrangement
+clips placed, and `start_playback` fires. The transport rolls but
+**no audio comes out** until the user manually toggles each track's
+arm button in the Ableton UI — at which point the arrangement clips
+start producing sound on the next pass.
+
+`compose_fast_apply` builds tracks the same way (same
+`create_midi_track` Remote Script handler) and does NOT have this
+problem — its tracks play arrangement clips immediately without manual
+arming. So the divergence is in some post-creation step `full` emits
+(or omits) that `fast` does not.
+
+**Suspected cause(s)** — investigate in order:
+1. `track.current_monitoring_state` left at **Auto (1)** instead of
+   **In (0)**. With Auto monitoring on an unarmed MIDI track,
+   arrangement-clip MIDI may be gated through the input monitor path
+   in some Live 12 builds. Fast mode may set this implicitly via a
+   later step.
+2. `track.arm` itself — though arm should NOT be required for
+   arrangement playback on a MIDI track with content. If full-mode
+   plans are setting `arm=True` somewhere and the property is then
+   getting silently reverted, that's a Remote Script bug to chase.
+3. Per-track "back-to-arranger" / session-override flag: if
+   `compose_full_apply` leaves a track in a session-override state
+   (red triangle in Ableton UI), arrangement clips on that track are
+   muted until back-to-arranger is invoked. `compose_fast_apply` may
+   call `back_to_arranger` somewhere full-mode doesn't.
+
+**Diagnostic plan:**
+- Build with both modes on the same prompt
+- After each `_apply_*_plan` returns, dump per-track state via
+  `get_track_info` for: `arm`, `current_monitoring_state`,
+  `back_to_arranger` flag, `mute`, `solo`
+- Diff the two snapshots — the property that differs is the culprit
+
+**Suggested fix:** Whatever the divergent property is, set it
+explicitly in `compose_full_apply` after `create_midi_track`
+succeeds — most likely a `set_track_input_monitoring(state="In")`
+step appended per layer, or a single global `back_to_arranger` after
+all tracks are populated.
+
+**Workaround (manual):** After `compose_full_apply` returns, click
+each track's arm button in Ableton's Arrangement view, OR call
+`back_to_arranger` MCP tool. Audio plays from the next playback start.
+
+
+### BUG-FULL-MODE-18 · `🔴 open` · Composition mode emits flat single-pattern arrangements — every section is identical loop multiplication
+
+**Reproducer:** `compose("...", mode="full")` on any prompt.
+`mcp_server/composer/engine.py` around line 246 generates ONE source
+clip per role with a single trigger note (pitch 60, full clip
+length), then emits N `create_arrangement_clip(loop_length=4)` steps
+that tile that single clip across every section it touches:
+
+```python
+# engine.py:235  — ONE source clip per layer, ONE trigger note
+SOURCE_SLOT = 0; SOURCE_BEATS = 4.0
+... add_notes(notes=[{pitch: 60, start_time: 0, duration: 4, velocity: 100}])
+
+# engine.py:277  — every section gets the same source slot, tiled
+for section in active_sections:
+    create_arrangement_clip(clip_slot_index=SOURCE_SLOT, loop_length=SOURCE_BEATS)
+```
+
+Result: every section (intro / build / drop / breakdown / outro)
+plays the **same 4-beat loop** repeated. No per-section variation,
+no velocity automation, no fills, no drop/comeback contrast, no
+sample swaps for sample-trigger layers (drums/pad/texture). This is
+not arrangement — it is pattern multiplication.
+
+**Comparison to `compose_fast_apply`:** Fast mode delegates per-
+section MIDI design to the LLM in a two-phase creative flow, so each
+section gets its own notes / velocities / variations. Full mode is
+mechanically inferior in this dimension despite being the supposed
+"rich" composition path.
+
+**Root cause — missing data model:** The `Layer` dataclass has no
+representation for per-section variants. `_emit_steps_for_layer`
+loops over sections but always references `SOURCE_SLOT = 0`. There
+is no slot-2 build pattern, slot-3 fill, etc. — and no per-section
+mapping from section_name → variant_id.
+
+**Suggested architectural fix (data model first):** Three options to
+weigh during brainstorm:
+- **Option A — Multiple source-clip slots per layer.** Layer gains a
+  `variants: dict[str, NoteList]` field (keys: `main`, `build`,
+  `fill`, `breakdown`). Engine emits one source clip per variant
+  (slots 0..N), then per-section `create_arrangement_clip` references
+  `clip_slot_index = variant_for_section(section_name)`. Most
+  Ableton-idiomatic; user can audition variants in Session view.
+- **Option B — Single source clip + per-section MIDI envelope
+  automation.** Keep one source clip but layer velocity / filter /
+  pitch envelopes that differ across sections via
+  `set_arrangement_automation`. Cheap on track count but doesn't
+  solve sample-swap need (drums can't swap their underlying sample
+  via automation).
+- **Option C — Section-specific note arrays inline in plan.** Plan
+  contains `section_notes: dict[section_name, list[NoteDict]]` and
+  engine emits `add_notes(track_index=N, clip_index=section_idx)`
+  per section as full arrangement clips, no source-clip reuse. More
+  arrangement clips but no per-section view-state in Session.
+
+Option A is the leading candidate because it (a) carries sample-
+swap support natively (each variant slot can be loaded with a
+different sample for drums/pad/texture layers), (b) stays
+deterministic across `compose()` calls, (c) keeps Session view
+useful for auditioning variants. Option B alone fails the sample-
+swap requirement.
+
+**Section-aware variation must include:**
+- Bass: octave-jumps in Build sections, root-only in Breakdown
+- Drums: sparser hits in Breakdown, fills at section endings
+  (last 2 bars), per-section sample swaps allowed
+- Pad / texture: filter-cutoff opening across Build, closing in
+  Breakdown
+- Velocity: rising profile across Build, dropping across Breakdown
+- Section-end fills: bar `bars-1` to `bars-0` of any section ≥8
+  bars long should diverge from the main pattern
+
+**Implementation surface:** ~150 lines across
+`mcp_server/composer/engine.py` (variant emission + per-section
+mapping) and `mcp_server/composer/layer_planner.py` (variant
+generation per role). Tests must verify (a) at least 2 distinct
+clip slots per non-static layer, (b) per-section
+`clip_slot_index` is not constant across all sections, (c) drum-
+layer variant slots can carry different sample paths.
+
+**Sequencing:** This is the priority blocker — full-mode output is
+not useful as an arrangement engine until #18 is fixed. Address
+before #17, #16, #15, #14.
+
+
+### Cross-cutting impact
+
+Open bugs in this section compound. Updated priority order after
+2026-05-01 live test:
+
+1. **#18 (flat single-pattern arrangements)** — blocks any meaningful
+   demo of full mode. Architectural data-model change.
+2. **#17 (manual arm required)** — once #18 produces real
+   arrangements, audio still won't play without UI intervention.
+   Likely a single property fix.
+3. **#16 (`synth_bass_*` over-rejection)** — unblocks bass + lead
+   resolution.
+4. **#15 (stale track indices on layer drop)** — eliminates index
+   cascade when ANY layer drops.
+5. **#14 (bridge handshake race)** — eliminates intermittent
+   first-load failure after pre-flight.
+
+---
+
 ## How to use this file across sessions
 
 New session startup:

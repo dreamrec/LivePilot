@@ -45,6 +45,24 @@ class LayerSpec:
 
 # ── Role Templates ─────────────────────────────────────────────────
 # role → default config used to build LayerSpec
+#
+# 2026-05-01 unit-fix pass (six bugs surfaced by live full-mode test):
+#   - EQ Eight `1 Filter Type A` is an int 0-7 enum (1 = "High Pass 12dB"),
+#     NOT the string "highpass".
+#   - EQ Eight `1 Frequency A` is 0-1 normalized log-scale, NOT Hz direct.
+#     30 Hz ≈ 0.143, 200 Hz ≈ 0.30 (verified via live `value_string` probe).
+#   - Compressor (Compressor2 — modern default) `Threshold` and `Ratio` are
+#     0-1 normalized. Threshold 0.85 ≈ 0 dB, 0.70 ≈ -12 dB. Ratio 0.75 = 4:1.
+#   - Saturator `Drive` is 0-1 normalized. Drive 0.6 ≈ +7 dB.
+#   - Chorus-Ensemble's rate parameter is `Rate`, NOT `Rate 1`.
+#   - Grain Delay's wet-mix parameter is `DryWet` (no slash); only Reverb
+#     uses `Dry/Wet`.
+#   - Auto Filter `Frequency` is also 0-1 normalized on AutoFilter2; left
+#     params={} where this conflict arose (matches fast.py convention).
+#
+# Reference: fast.py's GENRE_CREATIVE_GUIDANCE.effect_chain_hints (lines
+# 436-456) already uses the correct normalized convention. This table is
+# the older planner; bringing it in line.
 
 _ROLE_TEMPLATES: dict[str, dict] = {
     "drums": {
@@ -52,8 +70,8 @@ _ROLE_TEMPLATES: dict[str, dict] = {
         "sample_type": "loop",
         "technique_id": "slice_and_sequence",
         "processing": [
-            {"name": "EQ Eight", "params": {"1 Filter Type A": "highpass", "1 Frequency A": 30.0}},
-            {"name": "Compressor", "params": {"Threshold": -12.0, "Ratio": 4.0}},
+            {"name": "EQ Eight", "params": {"1 Filter Type A": 1, "1 Frequency A": 0.143}},
+            {"name": "Compressor", "params": {"Threshold": 0.70, "Ratio": 0.75}},
         ],
         "volume_db": -3.0,
         "pan": 0.0,
@@ -64,8 +82,8 @@ _ROLE_TEMPLATES: dict[str, dict] = {
         "sample_type": "oneshot",
         "technique_id": "key_matched_layer",
         "processing": [
-            {"name": "Saturator", "params": {"Drive": 6.0}},
-            {"name": "EQ Eight", "params": {"1 Filter Type A": "highpass", "1 Frequency A": 30.0}},
+            {"name": "Saturator", "params": {"Drive": 0.6}},
+            {"name": "EQ Eight", "params": {"1 Filter Type A": 1, "1 Frequency A": 0.143}},
         ],
         "volume_db": -5.0,
         "pan": 0.0,
@@ -76,7 +94,9 @@ _ROLE_TEMPLATES: dict[str, dict] = {
         "sample_type": "loop",
         "technique_id": "counterpoint_from_chops",
         "processing": [
-            {"name": "Auto Filter", "params": {"Frequency": 2000.0, "Resonance": 0.3}},
+            # AutoFilter2 Frequency is 0-1 normalized log; leave defaults
+            # (matches fast.py convention — see fast.py line 449).
+            {"name": "Auto Filter", "params": {}},
             {"name": "Delay", "params": {"Feedback": 0.35}},
         ],
         "volume_db": -6.0,
@@ -88,8 +108,9 @@ _ROLE_TEMPLATES: dict[str, dict] = {
         "sample_type": "loop",
         "technique_id": "extreme_stretch",
         "processing": [
-            {"name": "Reverb", "params": {"Decay Time": 4.0, "Dry/Wet": 0.6}},
-            {"name": "Chorus-Ensemble", "params": {"Rate 1": 0.5}},
+            # Reverb Decay Time is 0-1 normalized log; 0.55 ≈ 4.6s (live-verified).
+            {"name": "Reverb", "params": {"Decay Time": 0.55, "Dry/Wet": 0.6}},
+            {"name": "Chorus-Ensemble", "params": {"Rate": 0.5}},
         ],
         "volume_db": -10.0,
         "pan": 0.0,
@@ -100,8 +121,10 @@ _ROLE_TEMPLATES: dict[str, dict] = {
         "sample_type": "loop",
         "technique_id": "granular_scatter",
         "processing": [
-            {"name": "Grain Delay", "params": {"Frequency": 1000.0, "Dry/Wet": 0.5}},
-            {"name": "Reverb", "params": {"Decay Time": 6.0, "Dry/Wet": 0.7}},
+            # Grain Delay's wet param is named "DryWet" (no slash), distinct
+            # from Reverb's "Dry/Wet". Frequency is 0-1 normalized.
+            {"name": "Grain Delay", "params": {"Frequency": 0.5, "DryWet": 0.5}},
+            {"name": "Reverb", "params": {"Decay Time": 0.62, "Dry/Wet": 0.7}},
         ],
         "volume_db": -15.0,
         "pan": 0.0,
@@ -112,8 +135,8 @@ _ROLE_TEMPLATES: dict[str, dict] = {
         "sample_type": "loop",
         "technique_id": "vocal_chop_rhythm",
         "processing": [
-            {"name": "Auto Filter", "params": {"Frequency": 3000.0}},
-            {"name": "Reverb", "params": {"Decay Time": 2.5, "Dry/Wet": 0.4}},
+            {"name": "Auto Filter", "params": {}},
+            {"name": "Reverb", "params": {"Decay Time": 0.45, "Dry/Wet": 0.4}},
         ],
         "volume_db": -8.0,
         "pan": 0.0,
@@ -124,8 +147,8 @@ _ROLE_TEMPLATES: dict[str, dict] = {
         "sample_type": "loop",
         "technique_id": "ghost_note_texture",
         "processing": [
-            {"name": "EQ Eight", "params": {"1 Filter Type A": "highpass", "1 Frequency A": 200.0}},
-            {"name": "Compressor", "params": {"Threshold": -15.0, "Ratio": 3.0}},
+            {"name": "EQ Eight", "params": {"1 Filter Type A": 1, "1 Frequency A": 0.30}},
+            {"name": "Compressor", "params": {"Threshold": 0.66, "Ratio": 0.65}},
         ],
         "volume_db": -12.0,
         "pan": 0.0,
@@ -255,15 +278,60 @@ def _build_search_query(template: str, intent: CompositionIntent) -> str:
     ).strip()
 
 
+# BUG-FULL-MODE-9 (2026-05-01) — per-role instrument category for Splice
+# server-side filtering. Splice's gRPC `SearchSampleRequest.Instrument`
+# field supports values like "bass", "drum", "synth", "piano", "vocal",
+# "guitar", "pad", "fx". Without this, a query of "electro bass Am
+# oneshot" lexically matches `Piano_OneShot_PianoPhrase_Am.wav` because
+# the filename contains "OneShot" + "Am" — the bass slot got a piano.
+# Setting `instrument` makes Splice filter at the catalog level.
+#
+# When omitted (e.g. drums where any drum sub-category is fine, or
+# texture where we want creative latitude), Splice falls back to its
+# normal text+tag scoring.
+_ROLE_INSTRUMENT: dict[str, str] = {
+    "bass": "bass",
+    "lead": "synth",
+    "pad": "synth",
+    "vocal": "vocal",
+    "percussion": "drum",
+    # drums: omit — drum loops aren't classified as a single Instrument
+    # texture: omit — too freeform; we want any-instrument FX/textures
+    # fx: omit — same reasoning
+}
+
+# BUG-FULL-MODE-13 (2026-05-01) — non-tonal roles must NOT receive
+# `key` or `chord_type` filters. Splice's drum/percussion/fx samples
+# don't carry pitch metadata, so applying `chord_type=minor, key=a`
+# narrows the catalog to ZERO matches, returning unresolved. Excluding
+# these roles from the key filter lets the BPM + sample_type filters
+# still narrow appropriately while drum samples can actually match.
+_NON_TONAL_ROLES: frozenset[str] = frozenset({"drums", "percussion", "fx"})
+
+
 def _build_splice_filters(
     intent: CompositionIntent,
     sample_type: str,
+    role: str = "",
 ) -> dict:
-    """Build Splice filter dict from intent."""
-    filters: dict = {}
+    """Build Splice filter dict from intent + role.
 
-    # Key → Splice format (lowercase root, separate chord_type)
-    if intent.key:
+    `role` (added 2026-05-01 BUG-FULL-MODE-9): when set, an `instrument`
+    field is added per `_ROLE_INSTRUMENT` so Splice filters at the
+    server side instead of relying on text matching.
+
+    `role` also gates the key/chord_type filters (BUG-FULL-MODE-13):
+    drums/percussion/fx don't carry pitch metadata in Splice's catalog,
+    so applying `chord_type=minor, key=a` to those roles narrows the
+    catalog to ZERO matches → unresolved. Tonal roles (bass/lead/pad/
+    vocal/texture) keep the full filter set.
+    """
+    filters: dict = {}
+    role_lower = (role or "").lower()
+    is_tonal = role_lower not in _NON_TONAL_ROLES
+
+    # Key → Splice format (lowercase root, separate chord_type) — tonal roles only.
+    if intent.key and is_tonal:
         key = intent.key
         if key.endswith("m") and len(key) >= 2:
             root = key[:-1].lower()
@@ -273,7 +341,7 @@ def _build_splice_filters(
             filters["chord_type"] = "major"
         filters["key"] = root
 
-    # BPM range (+-5)
+    # BPM range (+-5) — applies to every role
     if intent.tempo:
         filters["bpm_min"] = max(1, intent.tempo - 5)
         filters["bpm_max"] = intent.tempo + 5
@@ -283,6 +351,11 @@ def _build_splice_filters(
 
     if sample_type:
         filters["sample_type"] = sample_type
+
+    # Instrument category — server-side filter at Splice
+    instrument = _ROLE_INSTRUMENT.get(role_lower)
+    if instrument:
+        filters["instrument"] = instrument
 
     return filters
 
@@ -346,8 +419,9 @@ def plan_layers(intent: CompositionIntent) -> list[LayerSpec]:
         if intent.descriptors:
             query += " " + " ".join(intent.descriptors[:2])
 
-        # Build Splice filters
-        splice_filters = _build_splice_filters(intent, template["sample_type"])
+        # Build Splice filters (pass `role` so per-role instrument category
+        # gets server-side filtering — BUG-FULL-MODE-9).
+        splice_filters = _build_splice_filters(intent, template["sample_type"], role=role)
 
         # Determine which sections this role appears in
         role_sections: list[str] = []

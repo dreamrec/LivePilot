@@ -218,6 +218,7 @@ class SpliceGRPCClient:
         tags: Optional[list[str]] = None,
         genre: str = "",
         sample_type: str = "",
+        instrument: str = "",
         sort: str = "",
         per_page: int = 20,
         page: int = 1,
@@ -230,6 +231,11 @@ class SpliceGRPCClient:
         `collection_uuid` scopes search to a single user collection
         (e.g. "Likes", "bass") — pure taste signal when present.
         `file_hash` is a direct lookup for a single sample.
+        `instrument` filters by Splice's instrument category — examples
+        the gRPC schema accepts include "bass", "drum", "synth",
+        "piano", "vocal", "fx", "guitar", "pad". Crucial for full-mode
+        composition where role-correctness matters more than text-match
+        on free-form query strings (BUG-FULL-MODE-9, 2026-05-01).
         """
         if not self.connected:
             return SpliceSearchResult()
@@ -248,6 +254,7 @@ class SpliceGRPCClient:
                 BPMMax=bpm_max,
                 Tags=tags or [],
                 Genre=genre,
+                Instrument=instrument,
                 SampleType=sample_type,
                 SortFn=sort,
                 PerPage=per_page,

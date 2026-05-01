@@ -243,18 +243,29 @@ def _arrangement_steps(
         "role": layer.role,
     })
 
-    # 2. Single trigger note at beat 0 — C3 (MIDI 60), 1 beat duration.
-    #    Simpler plays the full sample from this note; shorter durations
-    #    are fine because Simpler doesn't gate on note-off in classic mode.
+    # 2. Single trigger note at beat 0 — C3 (MIDI 60), spanning the full
+    #    clip length (BUG-FULL-MODE-6, 2026-05-01).
+    #
+    #    Earlier comment claimed "Simpler doesn't gate on note-off in classic
+    #    mode", but that's wrong: with Simpler's default Ve Mode=None
+    #    (standard ADSR), note-off DOES trigger release. A 1-beat note in a
+    #    4-beat clip means only the first beat of the loop plays, then 3
+    #    beats of silence, then retrigger on the next clip iteration —
+    #    audibly choppy/short. Spanning the full clip length keeps the
+    #    sample playing continuously through each iteration.
+    #
+    #    NB: do NOT extend by adding 0.001 to overlap the loop boundary —
+    #    Live's clip looping handles edge-of-clip retriggering cleanly when
+    #    duration == clip_length.
     steps.append({
         "tool": "add_notes",
         "params": {
             "track_index": track_index,
             "clip_index": SOURCE_SLOT,
             "notes": [{
-                "pitch": 60,           # C3
+                "pitch": 60,                # C3
                 "start_time": 0.0,
-                "duration": 1.0,       # 1 beat
+                "duration": SOURCE_BEATS,   # full clip length (4 beats)
                 "velocity": 100,
             }],
         },

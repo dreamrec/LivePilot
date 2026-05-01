@@ -210,15 +210,41 @@ async def _splice_resolve(
     """Query Splice for the layer. Returns (path, source) or (None, 'unresolved').
 
     Tries local hits first (free), then remote downloads (1 credit each,
-    respecting the hard floor). Stops on first success.
+    respecting the hard floor).
+
+    BUG-FULL-MODE-9 (2026-05-01): forwards `layer.splice_filters` to the
+    server-side search (key, chord_type, BPM range, genre, sample_type,
+    instrument). Pre-fix this passed only `query` + `per_page`, which made
+    Splice degrade to text-matching on the search-query string — leading
+    to e.g. `Piano_OneShot_PianoPhrase_Am.wav` winning the bass slot
+    because the filename contains "OneShot" + "Am".
+
+    BUG-FULL-MODE-10 (2026-05-01): scores Splice candidates by role-fit
+    using the same `_score_candidate` heuristic applied to filesystem
+    results. Required because Splice's server-side scoring still doesn't
+    know which result is best for THIS role — a "synth" instrument filter
+    on the lead slot can return both vocals and pad samples; the
+    role-fit score sorts them. Candidates with score ≤ 0 are skipped.
     """
     if splice_client is None or not getattr(splice_client, "connected", False):
         return None, "unresolved"
 
+    # BUG-FULL-MODE-9: forward the per-layer filter dict that the planner
+    # already built (key, chord_type, bpm_min/max, genre, sample_type,
+    # instrument). Pre-fix this was silently dropped — Splice never
+    # received any filtering criteria beyond the free-text query.
+    f = layer.splice_filters or {}
     try:
         result = await splice_client.search_samples(
             query=layer.search_query,
-            per_page=5,
+            key=f.get("key", ""),
+            chord_type=f.get("chord_type", ""),
+            bpm_min=int(f.get("bpm_min", 0)),
+            bpm_max=int(f.get("bpm_max", 0)),
+            genre=f.get("genre", ""),
+            sample_type=f.get("sample_type", ""),
+            instrument=f.get("instrument", ""),
+            per_page=10,  # bumped from 5 to give scorer more options
         )
     except Exception as exc:
         logger.debug("_splice_resolve failed: %s", exc)
@@ -227,14 +253,52 @@ async def _splice_resolve(
     if not samples:
         return None, "unresolved"
 
-    # 1. Prefer already-local Splice hits (zero credit spend)
+    # BUG-FULL-MODE-10: score every candidate by role-fit using filename
+    # heuristics. Score against Splice's `filename` field (authoritative
+    # metadata — usually the original asset name with role hints baked in
+    # like "Piano_OneShot_PianoPhrase_Am.wav"), NOT against `local_path`
+    # which is the cached file location and can be an arbitrary hash or
+    # bootstrap name like "splice_local.wav". When filename is empty,
+    # fall back to local_path so we don't drop legitimately-cached hits.
+    query_tempos = _extract_query_tempos(layer.search_query)
+
+    def _scoring_path(sample) -> Optional[Path]:
+        fn = getattr(sample, "filename", "") or getattr(sample, "name", "") or ""
+        if fn:
+            return Path(fn)
+        lp = getattr(sample, "local_path", "") or ""
+        if lp:
+            return Path(lp)
+        return None
+
+    scored: list[tuple[float, object]] = []
     for sample in samples:
+        path = _scoring_path(sample)
+        if path is None:
+            continue
+        score = _score_candidate(path, layer, query_tempos)
+        scored.append((score, sample))
+
+    # Sort high-to-low; samples with score ≤ 0 are ambiguous (no role
+    # signal) — keep them as fallback but prefer scoring positives first.
+    scored.sort(key=lambda t: t[0], reverse=True)
+
+    # 1. Prefer already-local Splice hits (zero credit spend), in score order.
+    for score, sample in scored:
+        if score <= 0:
+            continue  # fail-fast on negative-scored (wrong-role) matches
         lp = getattr(sample, "local_path", "") or ""
         if lp and Path(lp).exists():
+            logger.debug(
+                "_splice_resolve: local hit '%s' for role=%s score=%.1f",
+                lp, layer.role, score,
+            )
             return lp, "splice_local"
 
-    # 2. Remote download — respect the credit hard floor
-    for sample in samples:
+    # 2. Remote download — respect the credit hard floor, score order.
+    for score, sample in scored:
+        if score <= 0:
+            continue  # don't download wrong-role candidates
         if getattr(sample, "local_path", ""):
             continue  # already handled above
         file_hash = getattr(sample, "file_hash", "")
@@ -246,6 +310,10 @@ async def _splice_resolve(
                 break  # credit floor hit — stop trying, don't try next sample
             downloaded = await splice_client.download_sample(file_hash)
             if downloaded and Path(downloaded).exists():
+                logger.debug(
+                    "_splice_resolve: downloaded '%s' for role=%s score=%.1f",
+                    downloaded, layer.role, score,
+                )
                 return downloaded, "splice_remote"
         except Exception as exc:
             logger.debug("_splice_resolve failed: %s", exc)
