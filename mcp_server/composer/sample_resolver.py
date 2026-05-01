@@ -142,7 +142,12 @@ def _score_candidate(path: Path, layer: LayerSpec, query_tempos: set[str]) -> fl
         if _role_matches(primary, role):
             score += 1.5  # bonus: filename is "about" this layer's role
         else:
-            score -= 5.0  # heavy penalty: filename is about a different role
+            # v1.24 BUG-FULL-MODE-16 fix: when role word is literally in the
+            # filename, the role-word presence is authoritative — soften the
+            # primary-mismatch penalty so synth_bass_* is not hard-rejected.
+            role_in_name = role and role in name
+            mismatch_penalty = 2.0 if role_in_name else 5.0
+            score -= mismatch_penalty  # penalty: filename is about a different role
 
     # 3. Role-adjacent hint words in filename
     hints = _ROLE_HINTS.get(role, frozenset())

@@ -563,3 +563,53 @@ def test_splice_client_search_samples_accepts_instrument_kwarg():
     )
     # Default should be empty string (don't filter unless explicitly set)
     assert sig.parameters["instrument"].default == ""
+
+
+# ── BUG-FULL-MODE-16 regression tests ──────────────────────────────
+
+
+def test_synth_bass_filename_accepted_for_bass_role():
+    """BUG-FULL-MODE-16: synth_bass_*.wav must NOT be hard-rejected for bass.
+
+    Before fix: filename contains both "synth" (primary token) and "bass"
+    (role word). The -5.0 primary-mismatch penalty overwhelmed the +3.0
+    role-word bonus, netting -2.0 (rejected).
+
+    After fix: when the role word is in the name, the primary-mismatch
+    penalty is softened to -2.0, giving net +1.0 (accepted).
+    """
+    from pathlib import Path
+    from mcp_server.composer.sample_resolver import _score_candidate
+    from mcp_server.composer.full.layer_planner import LayerSpec
+
+    layer = LayerSpec(role="bass", search_query="bass synth oneshot")
+    path = Path("synth_bass_oneshot_Am.wav")
+    score = _score_candidate(path, layer, set())
+
+    # Score must be NON-NEGATIVE for synth_bass_* on bass role
+    assert score >= 0.0, (
+        f"BUG-FULL-MODE-16 regression: synth_bass_oneshot_Am.wav scored "
+        f"{score} for bass role (expected >= 0.0)"
+    )
+
+
+def test_piano_filename_still_rejected_for_bass_role():
+    """Regression guard: Piano_chord_Cm.wav must STILL score negative for bass.
+
+    The fix only softens the penalty when the role word is in the filename.
+    Piano (no "bass" in name) keeps the full -5.0 penalty.
+    """
+    from pathlib import Path
+    from mcp_server.composer.sample_resolver import _score_candidate
+    from mcp_server.composer.full.layer_planner import LayerSpec
+
+    layer = LayerSpec(role="bass", search_query="bass sub 808 oneshot")
+    path = Path("lead_chord_Cm.wav")
+    score = _score_candidate(path, layer, set())
+
+    # Score must remain NEGATIVE for Piano-as-Bass
+    assert score < 0.0, (
+        f"BUG-FULL-MODE-10 regression: lead_chord_Cm.wav scored {score} "
+        f"for bass role (expected < 0.0 — primary-mismatch penalty must apply "
+        f"when role word NOT in filename)"
+    )

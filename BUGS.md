@@ -1914,7 +1914,7 @@ they don't need updating; only the `create_midi_track(index=N)` and
 the per-layer `track_index` arguments need compaction.
 
 
-### BUG-FULL-MODE-16 · `🔴 open` · `_score_candidate` over-rejects `synth_bass_*.wav` in bass slot
+### BUG-FULL-MODE-16 · `🟢 fixed (v1.24)` · `_score_candidate` over-rejects `synth_bass_*.wav` in bass slot
 
 **Reproducer:** `compose("...", mode="full")` with a bass layer. Splice
 returns candidates like `synth_bass_oneshot_Am.wav`. The role-fit
@@ -1950,6 +1950,8 @@ Option 1 is the cleanest if we trust the role-word literal as
 authoritative. Option 2 keeps soft preference for first-token-matches
 while not hard-rejecting role-word-matches. Tests should verify the
 Piano-as-Bass case still gets rejected after the fix.
+
+**Fix landed:** v1.24 — softened primary-mismatch penalty from -5.0 to -2.0 when role word is in filename. Piano-as-Bass case still rejected (full -5.0 applies).
 
 
 ### BUG-FULL-MODE-17 · `🔴 open` · `compose_full_apply` tracks require manual arm-button toggle in Ableton's UI before audio plays
