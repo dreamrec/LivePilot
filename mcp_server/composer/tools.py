@@ -282,30 +282,16 @@ async def compose(
         brief["prompt"] = prompt
         return brief
 
-    # mode == "full" — preserve original behavior
-    splice_client = ctx.lifespan_context.get("splice_client") if hasattr(ctx, "lifespan_context") else None
-    search_roots = _get_search_roots(ctx)
-
-    max_credits, credits_remaining, warnings = await _credit_safety_prelude(splice_client, max_credits)
-
-    result = await _engine.compose(
-        intent,
-        dry_run=dry_run,
-        max_credits=max_credits,
-        search_roots=search_roots,
-        splice_client=splice_client,
-    )
-    result.warnings.extend(warnings)
-
-    output = result.to_dict()
-    output["prompt"] = prompt
-    output["mode"] = "full"
-
-    if credits_remaining is not None:
-        output["credits_remaining"] = credits_remaining
-        output["credits_budget"] = max_credits
-
-    return output
+    # mode == "full" — v1.24 LLM-creative two-phase flow
+    # Phase 1: return a FullBrief vocabulary so the agent can design form +
+    # variants + events. Phase 3: agent submits the designed plan to
+    # compose_full_apply → apply_full_plan_v2.
+    # The old deterministic engine path (step_plan) is deprecated
+    # (BUG-FULL-MODE-18: flat single-pattern arrangements).
+    from .full.brief_builder import build_full_brief
+    brief = build_full_brief(ctx, prompt=prompt, seed_state=None)
+    brief["prompt"] = prompt
+    return brief
 
 
 @mcp.tool()
@@ -803,57 +789,27 @@ from .full.apply import (  # noqa: E402
 @mcp.tool()
 async def compose_full_apply(
     ctx: Context,
-    plan_response: dict,
-    warp_strategy: str = "always",
+    plan: dict,
 ) -> dict:
-    """Server-side execution helper for ``compose(mode="full")`` plans.
+    """Phase-3 of full mode (v1.24 LLM-creative): execute the agent-designed plan.
 
-    Pass the full output dict from a prior ``compose(prompt, mode="full")``
-    call and this tool walks every step in the plan: creates tracks,
-    loads Splice samples (with the same post-load hygiene fast mode uses —
-    Volume=0, Ve Mode active, Classic playback, warp on for loops),
-    inserts effects, sets parameters (with `$from_step` device-index
-    resolution baked in), creates source clips with trigger notes, and
-    builds the section-by-section arrangement.
+    compose(mode="full") returns a FullBrief with genre/artist vocabulary,
+    the 42-event structural lexicon, and atlas instrument candidates. The
+    agent reads the brief, designs the song's form (section sequence, bar
+    counts, drop placement, variant per track per section), and submits
+    that designed plan here.
 
-    `warp_strategy` (BUG-FULL-MODE-12, 2026-05-01) controls whether
-    Splice loops snap to the project tempo:
+    See mcp_server.composer.full.apply.apply_full_plan_v2 for the full
+    plan shape. Required fields: form (list of section dicts), tracks
+    (list of track specs with variants + arrangement_clips).
 
-      - ``"always"`` (default) — every loop warps to project tempo.
-        Production-safe: a 90-bpm drum loop in a 122-bpm project will
-        play in tempo via Simpler's Beats warp algorithm.
-
-      - ``"smart"`` — tonal layers (pad/bass/lead/vocal) always warp;
-        drum/perc loops are left UN-warped when source/project ratio
-        lands on a magic polyrhythmic value (0.5, 0.667, 0.75, 0.8,
-        1.25, 1.333, 1.5, 2.0) within ±2%. The 90→122 case scores 0.738
-        which is within tolerance of 0.75 (3:4 cross-rhythm) → un-warped
-        → produces the J Dilla / Madlib intentional-tempo-mismatch
-        chopping where each clip iteration retriggers the source loop
-        from the start, creating off-grid stutter rhythms.
-
-      - ``"chop"`` — never warp anything (full creative chopping mode).
-
-    Pre-flight (BUG-FULL-MODE-4): loads the LivePilot Analyzer on master,
-    detects fresh-project default tracks, deletes them down to one
-    survivor before the plan starts creating tracks at indices 0+.
-
-    Post-flight (BUG-FULL-MODE-5): prunes the leftover default-track
-    survivor if it remained empty after the plan finished.
-
-    Plan-side bug-fix (2026-05-01) — the planner's effect-param table at
-    `mcp_server/composer/layer_planner.py::_ROLE_TEMPLATES` was emitting
-    legacy-Compressor / dB-direct values that fail on modern Compressor 2
-    + Saturator + EQ Eight (which all use 0-1 normalized params). That
-    table has been corrected to match `fast.py`'s convention. As a result,
-    full-mode plans now apply cleanly without unit-conversion gymnastics.
-
-    Returns: per-step outcomes (with the original `step_id` / `description`
-    preserved for diagnostics), pre-flight + post-flight action logs,
-    total wall time. Failed steps are reported individually but do not
-    abort the walk — full-mode plans are tolerant of partial failure.
+    Replaces the deterministic engine path (BUG-FULL-MODE-18 fix):
+    the old flow tiled one source clip across all sections; the new flow
+    emits one source clip per variant so each section can have a genuinely
+    different pattern.
     """
-    return await apply_full_plan(ctx, plan_response, warp_strategy=warp_strategy)
+    from .full.apply import apply_full_plan_v2
+    return await apply_full_plan_v2(ctx, plan)
 
 
 # ── v1.24 develop mode ─────────────────────────────────────────────

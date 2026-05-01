@@ -201,7 +201,18 @@ async def apply_full_plan(
     plan_response: dict,
     warp_strategy: str = "always",
 ) -> dict:
-    """Phase-3 full mode: server-side execute the planner's tool sequence.
+    """DEPRECATED in v1.24 — use apply_full_plan_v2 instead.
+
+    The old deterministic engine path (compose → step_plan → apply_full_plan)
+    was prone to flat single-pattern arrangements (BUG-FULL-MODE-18). v1.24
+    replaces it with an LLM-creative two-phase flow:
+    compose(mode="full") → brief → agent designs plan → compose_full_apply
+    → apply_full_plan_v2.
+
+    This function is preserved for any test that exercises the old shape but
+    new code should not call it.
+
+    Phase-3 full mode: server-side execute the planner's tool sequence.
 
     Pre-flight handles the same fresh-project cleanup fast mode does
     (BUG-FULL-MODE-4): detects default tracks, deletes them down to one
@@ -471,4 +482,289 @@ async def apply_full_plan(
             f"{len(final_cleanup_actions)} cleanup action(s), "
             f"{postflight_result.get('tracks_set', 0)} tracks monitoring=In"
         ),
+    }
+
+
+# ── v1.24 LLM-creative two-phase flow ─────────────────────────────
+
+
+def _validate_v2_plan(plan: dict) -> str | None:
+    """Return error message if plan is invalid, else None."""
+    if not isinstance(plan, dict):
+        return "plan must be a dict"
+    if plan.get("scope") not in (None, "full"):
+        return f"plan scope must be 'full' (got {plan.get('scope')!r})"
+    form = plan.get("form")
+    if not isinstance(form, list) or len(form) == 0:
+        return "plan.form must be a non-empty list of section descriptors"
+    tracks = plan.get("tracks")
+    if not isinstance(tracks, list) or len(tracks) == 0:
+        return "plan.tracks must be a non-empty list"
+    for ti, t in enumerate(tracks):
+        if not isinstance(t, dict):
+            return f"tracks[{ti}] must be a dict"
+        variants = t.get("variants", [])
+        if not isinstance(variants, list):
+            return f"tracks[{ti}].variants must be a list"
+        for vi, v in enumerate(variants):
+            if not isinstance(v, dict):
+                return f"tracks[{ti}].variants[{vi}] must be a dict"
+            if "id" not in v:
+                return f"tracks[{ti}].variants[{vi}] missing 'id'"
+        arr_clips = t.get("arrangement_clips", [])
+        if not isinstance(arr_clips, list):
+            return f"tracks[{ti}].arrangement_clips must be a list"
+        variant_ids = {v["id"] for v in variants}
+        for ci, ac in enumerate(arr_clips):
+            if "variant_id" in ac and ac["variant_id"] not in variant_ids:
+                return (
+                    f"tracks[{ti}].arrangement_clips[{ci}] references unknown "
+                    f"variant_id {ac['variant_id']!r} (known: {sorted(variant_ids)})"
+                )
+    return None
+
+
+async def apply_full_plan_v2(ctx: Context, plan: dict) -> dict:
+    """Apply an agent-designed full-mode plan to the live session.
+
+    The agent designs form + variants + events from the brief returned by
+    compose(mode="full"); this function validates + executes. Replaces the
+    deterministic engine path that was prone to flat single-pattern
+    arrangements (BUG-FULL-MODE-18).
+
+    Plan shape:
+    {
+      "scope": "full",          # optional, must be "full" if present
+      "tempo": 128.0,           # optional — applied if differs from session
+      "key": "Am",              # optional — passed to set_song_scale
+      "form": [                 # REQUIRED — list of section descriptors
+        {"name": "intro", "start_bar": 0, "bars": 16},
+        {"name": "main",  "start_bar": 16, "bars": 32},
+        ...
+      ],
+      "tracks": [               # REQUIRED — list of track specs
+        {
+          "role": "bass",
+          "track_index": 1,     # OPTIONAL — reuse existing; create new if absent
+          "instrument": {"uri": "atlas://...", "params": {}},  # OPTIONAL
+          "variants": [         # list of source clip definitions
+            {"id": "main_v", "notes": [...]},
+            {"id": "build",  "notes": [...]},
+          ],
+          "arrangement_clips": [
+            {"section_index": 0, "variant_id": "main_v", "loop_length": 4.0},
+            ...
+          ],
+        },
+        ...
+      ],
+      "events": [...],          # Phase 4 structural events — accepted, not applied in Phase 3
+    }
+
+    Returns:
+      {
+        "status": "ok" | "partial" | "error",
+        "tracks_created": int,
+        "variants_created": int,
+        "arrangement_clips_created": int,
+        "events_applied": int,
+        "preflight": dict,
+        "postflight": dict,
+        "errors": list[dict],
+        "duration_ms": int,
+      }
+    """
+    started = time.time()
+
+    err = _validate_v2_plan(plan)
+    if err:
+        return {"status": "error", "error": err, "phase": "validate"}
+
+    ableton = ctx.lifespan_context.get("ableton") if hasattr(ctx, "lifespan_context") else None
+    if ableton is None:
+        return {"status": "error", "error": "ableton client not available", "phase": "setup"}
+
+    # ── Build Applier from develop stubs ──────────────────────────────
+    from ..develop.apply import (
+        _ensure_analyzer_stub,
+        _reconnect_bridge_stub,
+        _bridge_ping_stub,
+        _back_to_arranger,
+    )
+
+    async def _set_track_input_monitoring(c, *, track_index, state):
+        ab = c.lifespan_context.get("ableton") if hasattr(c, "lifespan_context") else None
+        if ab is None:
+            return {"ok": False}
+        try:
+            return ab.send_command(
+                "set_track_input_monitoring",
+                {"track_index": track_index, "state": state},
+            )
+        except Exception:
+            return {"ok": False}
+
+    applier = Applier(
+        ensure_analyzer_fn=_ensure_analyzer_stub,
+        reconnect_bridge_fn=_reconnect_bridge_stub,
+        bridge_ping_fn=_bridge_ping_stub,
+        set_track_input_monitoring_fn=_set_track_input_monitoring,
+        back_to_arranger_fn=_back_to_arranger,
+        handshake_max_attempts=3,
+        handshake_gap_seconds=0.2,
+    )
+
+    preflight_result = await applier.preflight(ctx)
+
+    # ── Tempo + key application ───────────────────────────────────────
+    plan_tempo = plan.get("tempo")
+    plan_key = plan.get("key")
+    if plan_tempo is not None:
+        try:
+            session = ableton.send_command("get_session_info", {})
+            current_tempo = float(session.get("tempo", 0.0))
+            if abs(current_tempo - float(plan_tempo)) > 0.01:
+                ableton.send_command("set_tempo", {"tempo": float(plan_tempo)})
+        except Exception as exc:
+            logger.warning("apply_full_v2: tempo set failed: %s", exc)
+    if plan_key:
+        try:
+            ableton.send_command("set_song_scale", {"root_note": plan_key})
+        except Exception as exc:
+            logger.debug("apply_full_v2: set_song_scale skipped: %s", exc)
+
+    form = plan["form"]
+    tracks_created = 0
+    variants_created = 0
+    arrangement_clips_created = 0
+    events_applied = 0
+    errors: list[dict] = []
+    applied_track_indices: list[int] = []
+
+    for ti, track_spec in enumerate(plan["tracks"]):
+        # Resolve track_index — create new if not provided
+        track_index = track_spec.get("track_index")
+        if track_index is None:
+            try:
+                result = ableton.send_command(
+                    "create_midi_track",
+                    {"index": -1, "name": track_spec.get("role", "")},
+                )
+                track_index = int(result.get("track_index", -1))
+                if track_index >= 0:
+                    tracks_created += 1
+                    applied_track_indices.append(track_index)
+            except Exception as exc:
+                errors.append({"track_index": ti, "phase": "create_track", "reason": str(exc)})
+                continue
+        else:
+            track_index = int(track_index)
+
+        # Optional instrument load
+        instrument = track_spec.get("instrument") or {}
+        if instrument.get("uri"):
+            try:
+                ableton.send_command(
+                    "load_browser_item",
+                    {"track_index": track_index, "uri": instrument["uri"]},
+                )
+            except Exception as exc:
+                errors.append({
+                    "track_index": track_index,
+                    "phase": "load_instrument",
+                    "reason": str(exc),
+                })
+
+        # Variants → session source clips (slots 0..N)
+        variant_id_to_slot: dict[str, int] = {}
+        for vi, variant in enumerate(track_spec.get("variants", [])):
+            slot = vi
+            variant_id_to_slot[variant["id"]] = slot
+            try:
+                ableton.send_command("create_clip", {
+                    "track_index": track_index,
+                    "clip_index": slot,
+                    "length": 4.0,
+                })
+                if variant.get("notes"):
+                    ableton.send_command("add_notes", {
+                        "track_index": track_index,
+                        "clip_index": slot,
+                        "notes": variant["notes"],
+                    })
+                ableton.send_command("set_clip_name", {
+                    "track_index": track_index,
+                    "clip_index": slot,
+                    "name": variant["id"],
+                })
+                variants_created += 1
+            except Exception as exc:
+                errors.append({
+                    "track_index": track_index,
+                    "phase": f"variant_{variant['id']}",
+                    "reason": str(exc),
+                })
+
+        # Arrangement clips
+        for ac in track_spec.get("arrangement_clips", []):
+            section_index = ac.get("section_index")
+            if section_index is None or section_index >= len(form):
+                errors.append({
+                    "track_index": track_index,
+                    "phase": "arrangement_clip",
+                    "reason": f"invalid section_index {section_index}",
+                })
+                continue
+            section = form[section_index]
+            variant_id = ac.get("variant_id")
+            slot = variant_id_to_slot.get(variant_id)
+            if slot is None:
+                errors.append({
+                    "track_index": track_index,
+                    "phase": "arrangement_clip",
+                    "reason": f"unknown variant_id {variant_id!r}",
+                })
+                continue
+            start_bar = float(section["start_bar"])
+            bars = float(section["bars"])
+            loop_length = float(ac.get("loop_length", 4.0))
+            try:
+                ableton.send_command("create_arrangement_clip", {
+                    "track_index": track_index,
+                    "clip_slot_index": slot,
+                    "start_time": start_bar * 4.0,  # bars → beats at 4/4
+                    "length": bars * 4.0,
+                    "loop_length": loop_length,
+                })
+                arrangement_clips_created += 1
+            except Exception as exc:
+                errors.append({
+                    "track_index": track_index,
+                    "phase": "arrangement_clip",
+                    "reason": str(exc),
+                })
+
+    # Events — Phase 4 will populate real apply paths; Phase 3 stubs this
+    for _event in plan.get("events", []):
+        pass  # Phase 3 no-op — events accepted but not applied
+
+    # Postflight — sets monitoring=In on new tracks + back_to_arranger
+    postflight_result = await applier.postflight(
+        ctx,
+        applied_track_indices=applied_track_indices,
+    )
+
+    ok_count = variants_created + arrangement_clips_created
+    status = "ok" if not errors else ("partial" if ok_count > 0 else "error")
+
+    return {
+        "status": status,
+        "tracks_created": tracks_created,
+        "variants_created": variants_created,
+        "arrangement_clips_created": arrangement_clips_created,
+        "events_applied": events_applied,
+        "preflight": preflight_result,
+        "postflight": postflight_result,
+        "errors": errors,
+        "duration_ms": int((time.time() - started) * 1000),
     }
