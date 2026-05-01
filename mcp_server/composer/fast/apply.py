@@ -8,11 +8,12 @@ import time
 from fastmcp import Context
 
 from .. import fast as fast_compose
+from ..framework.applier import Applier
 
 logger = logging.getLogger(__name__)
 
 
-def apply_fast_plan(
+async def apply_fast_plan(
     ctx: Context,
     plan: dict,
 ) -> dict:
@@ -44,6 +45,48 @@ def apply_fast_plan(
     layers = plan.get("layers") or []
     if not layers:
         return {"error": "plan.layers is empty — nothing to apply", "phase": "apply"}
+
+    # ── Pre-flight: bridge handshake (BUG-FULL-MODE-14 parity) ────────
+    # Fast mode doesn't use the bridge directly, but running preflight
+    # ensures the bridge is warm for any tools that run afterward in the
+    # same session. Non-fatal: if bridge isn't available, we log and continue
+    # since the fast-mode layer loop uses only direct TCP commands.
+    try:
+        from ...tools.analyzer import (
+            ensure_analyzer_on_master as _ensure_analyzer,
+            reconnect_bridge as _reconnect_bridge,
+        )
+        from ...tools._analyzer_engine.context import _get_m4l
+
+        async def _ensure_analyzer_async(c):
+            return _ensure_analyzer(c)
+
+        async def _reconnect_bridge_async(c):
+            resp = await _reconnect_bridge(c)
+            # reconnect_bridge returns {"ok": True} on success; normalize to
+            # {"connected": True} so Applier.preflight can use a unified key.
+            if isinstance(resp, dict) and resp.get("ok"):
+                resp = dict(resp)
+                resp["connected"] = True
+            return resp
+
+        async def _bridge_ping_async(c):
+            bridge = _get_m4l(c)
+            return await bridge.send_command("ping", timeout=0.5)
+
+        applier = Applier(
+            ensure_analyzer_fn=_ensure_analyzer_async,
+            reconnect_bridge_fn=_reconnect_bridge_async,
+            bridge_ping_fn=_bridge_ping_async,
+        )
+        preflight_result = await applier.preflight(ctx)
+        if not preflight_result.get("bridge_connected"):
+            logger.debug(
+                "fast apply: bridge not ready (attempts=%d) — continuing without bridge",
+                preflight_result.get("handshake_attempts", 0),
+            )
+    except Exception as exc:
+        logger.debug("fast apply: preflight failed (bridge unavailable): %s", exc)
 
     # Pre-flight: where do new tracks go, and which scene?
     session = ableton.send_command("get_session_info", {})

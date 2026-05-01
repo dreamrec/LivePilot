@@ -526,12 +526,12 @@ class _FakeAbletonFullWithBridge(_FakeAbletonFull):
 
 
 def test_apply_full_plan_calls_reconnect_bridge_in_preflight(monkeypatch):
-    """BUG-FULL-MODE-7: pre-flight loads the analyzer but doesn't wait
-    for the M4L UDP listener to register. Calling reconnect_bridge
-    after analyzer load ensures the bridge is alive before plan walk
-    reaches load_sample_to_simpler steps."""
+    """BUG-FULL-MODE-7 + BUG-FULL-MODE-14: pre-flight loads the analyzer,
+    calls reconnect_bridge, then pings the bridge with retry logic to ensure
+    the M4L JS listener has bound its UDP socket before the plan walk begins."""
     from mcp_server.composer.tools import _apply_full_plan
     import mcp_server.tools.analyzer as analyzer_module
+    import mcp_server.tools._analyzer_engine.context as context_module
 
     # Track whether reconnect_bridge was called
     called: dict[str, bool] = {"reconnect": False}
@@ -544,8 +544,14 @@ def test_apply_full_plan_calls_reconnect_bridge_in_preflight(monkeypatch):
     def fake_ensure_analyzer(ctx):
         return {"status": "loaded", "device_index": 0}
 
+    # Mock _get_m4l to return a fake bridge that responds to ping
+    class _FakeBridge:
+        async def send_command(self, cmd, *args, **kwargs):
+            return {"pong": True}
+
     monkeypatch.setattr(analyzer_module, "reconnect_bridge", fake_reconnect)
     monkeypatch.setattr(analyzer_module, "ensure_analyzer_on_master", fake_ensure_analyzer)
+    monkeypatch.setattr(context_module, "_get_m4l", lambda ctx: _FakeBridge())
 
     fake = _FakeAbletonFull(fresh_default_track_count=0)
     ctx = _FakeCtxFull(fake)

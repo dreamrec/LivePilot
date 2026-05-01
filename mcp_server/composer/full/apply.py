@@ -8,6 +8,8 @@ import time
 
 from fastmcp import Context
 
+from ..framework.applier import Applier
+
 logger = logging.getLogger(__name__)
 
 # Magic ratios for "smart" mode — common polyrhythmic + half/double-time
@@ -209,6 +211,14 @@ async def apply_full_plan(
     walk, deletes the leftover default track if it's still empty
     (BUG-FULL-MODE-5).
 
+    BUG-FULL-MODE-14 fix: bridge handshake uses Applier's retry loop
+    (up to 3 attempts with 200ms gaps) so load_sample_to_simpler doesn't
+    race against the M4L JS listener still binding its UDP socket.
+
+    BUG-FULL-MODE-17 fix: Applier.postflight() sets monitoring=In on
+    every newly-created track and calls back_to_arranger so arrangement
+    clips play without requiring manual arm-button toggle.
+
     `warp_strategy` (BUG-FULL-MODE-12, 2026-05-01) controls per-step
     Simpler warping behavior:
       - "always" (default): every loop warps to project tempo
@@ -228,37 +238,63 @@ async def apply_full_plan(
     if not plan_steps:
         return {"error": "plan.plan is empty — nothing to apply", "phase": "apply"}
 
-    # ── Pre-flight (Item 4) ─────────────────────────────────────────
-    # Mirror fast mode's fresh-project cleanup: load analyzer, detect
-    # default tracks, delete all-but-one (Ableton requires ≥1 track).
+    # ── Pre-flight: Applier handles analyzer load + bridge handshake ────
+    # Fixes BUG-FULL-MODE-14 (bridge race): the Applier's retry loop pings
+    # the bridge with up to 3 attempts / 200ms gap so the M4L JS listener
+    # has time to bind its UDP socket before load_sample_to_simpler runs.
     fresh_actions: list[str] = []
 
-    # 1. Ensure analyzer on master so load_sample_to_simpler can succeed
-    try:
-        from ...tools.analyzer import ensure_analyzer_on_master as _ensure_analyzer
-        analyzer_resp = _ensure_analyzer(ctx)
-        if analyzer_resp.get("status") in ("loaded", "already_loaded"):
-            fresh_actions.append("analyzer_loaded_on_master")
-    except Exception as exc:
-        logger.debug("full apply: ensure_analyzer_on_master failed: %s", exc)
+    from ...tools.analyzer import (
+        ensure_analyzer_on_master as _ensure_analyzer,
+        reconnect_bridge as _reconnect_bridge,
+    )
+    from ...tools._analyzer_engine.context import _get_m4l
+    from ...tools.arrangement import back_to_arranger as _back_to_arranger
+    from ...tools.tracks import set_track_input_monitoring as _set_track_input_monitoring
 
-    # 1b. Reconnect M4L UDP bridge (BUG-FULL-MODE-7, 2026-05-01).
-    # When the analyzer was just freshly loaded by step 1, its M4L UDP
-    # listener may not have registered yet — load_sample_to_simpler's
-    # bridge-driven steps (replace_sample, hygiene) will fail with
-    # "bridge is not connected" until the listener bootstraps. Forcing a
-    # reconnect_bridge call here ensures the bridge is alive before the
-    # plan walk reaches any sample-loading steps. Idempotent: returns
-    # "already connected" when the bridge is healthy.
-    try:
-        from ...tools.analyzer import reconnect_bridge as _reconnect_bridge_fn
-        bridge_resp = await _reconnect_bridge_fn(ctx)
-        if bridge_resp.get("ok"):
-            fresh_actions.append("bridge_connected")
-    except Exception as exc:
-        logger.debug("full apply: reconnect_bridge failed: %s", exc)
+    async def _ensure_analyzer_async(c):
+        return _ensure_analyzer(c)
 
-    # 2. Detect + clean default tracks
+    async def _reconnect_bridge_async(c):
+        resp = await _reconnect_bridge(c)
+        # reconnect_bridge returns {"ok": True} on success; normalize to
+        # {"connected": True} so Applier.preflight can use a unified key.
+        if isinstance(resp, dict) and resp.get("ok"):
+            resp = dict(resp)
+            resp["connected"] = True
+        return resp
+
+    async def _bridge_ping_async(c):
+        bridge = _get_m4l(c)
+        return await bridge.send_command("ping", timeout=0.5)
+
+    async def _set_monitoring_async(c, *, track_index, state):
+        return _set_track_input_monitoring(c, track_index=track_index, state=state)
+
+    async def _back_to_arranger_async(c):
+        return _back_to_arranger(c)
+
+    applier = Applier(
+        ensure_analyzer_fn=_ensure_analyzer_async,
+        reconnect_bridge_fn=_reconnect_bridge_async,
+        bridge_ping_fn=_bridge_ping_async,
+        set_track_input_monitoring_fn=_set_monitoring_async,
+        back_to_arranger_fn=_back_to_arranger_async,
+    )
+
+    preflight_result = await applier.preflight(ctx)
+    if preflight_result.get("analyzer_status") in ("loaded", "already_loaded"):
+        fresh_actions.append("analyzer_loaded_on_master")
+    if preflight_result.get("bridge_connected"):
+        fresh_actions.append("bridge_connected")
+    else:
+        logger.debug(
+            "full apply: bridge handshake failed after %d attempt(s): %s",
+            preflight_result.get("handshake_attempts", 0),
+            preflight_result.get("handshake_error", "unknown"),
+        )
+
+    # ── Detect + clean default tracks ──────────────────────────────────
     session = ableton.send_command("get_session_info", {})
     starting_track_count = int(session.get("track_count", 0))
 
@@ -287,10 +323,12 @@ async def apply_full_plan(
             if deleted:
                 fresh_actions.append(f"deleted_{deleted}_default_tracks_preflight")
 
-    # ── Walk plan steps ────────────────────────────────────────────
+    # ── Walk plan steps ────────────────────────────────────────────────
     step_results: dict[str, dict] = {}
     step_outcomes: list[dict] = []
     failed_count = 0
+    # Track indices of newly-created tracks for postflight monitoring fix
+    created_track_indices: list[int] = []
 
     for i, step in enumerate(plan_steps):
         tool_name = (step.get("tool") or "").strip()
@@ -340,6 +378,13 @@ async def apply_full_plan(
                 from ...tools.analyzer import load_sample_to_simpler as _load_sample
                 # The MCP tool is async — await it with the resolved kwargs.
                 result = await _load_sample(ctx, **resolved_params)
+            elif tool_name in ("create_midi_track", "create_audio_track"):
+                # Track the index so postflight can set monitoring on them
+                result = ableton.send_command(tool_name, resolved_params) or {}
+                if ok and isinstance(result, dict):
+                    track_idx = result.get("track_index")
+                    if track_idx is not None:
+                        created_track_indices.append(int(track_idx))
             elif tool_name in _FULL_PLAN_TCP_TOOLS:
                 # Direct Remote-Script TCP command
                 result = ableton.send_command(tool_name, resolved_params) or {}
@@ -366,7 +411,7 @@ async def apply_full_plan(
             "error": err_msg,
         })
 
-    # ── Post-flight cleanup (Item 5) ───────────────────────────────
+    # ── Post-flight cleanup (Item 5) ───────────────────────────────────
     # BUG-FULL-MODE-8 (2026-05-01): the original implementation only
     # checked tracks[0] for a default-name leftover. That worked for
     # fast mode where new tracks are appended at the end (so the
@@ -403,6 +448,11 @@ async def apply_full_plan(
     except Exception as exc:
         logger.debug("full apply: post-session read failed: %s", exc)
 
+    # ── Applier post-flight: monitoring + back_to_arranger ────────────
+    # Fixes BUG-FULL-MODE-17: set current_monitoring_state=In on every
+    # newly-created track so arrangement clips play without manual toggle.
+    postflight_result = await applier.postflight(ctx, applied_track_indices=created_track_indices)
+
     duration_ms = int((time.time() - started) * 1000)
     return {
         "phase": "apply",
@@ -412,11 +462,13 @@ async def apply_full_plan(
         "step_outcomes": step_outcomes,
         "fresh_project_actions": fresh_actions,
         "final_cleanup_actions": final_cleanup_actions,
+        "postflight": postflight_result,
         "duration_ms": duration_ms,
         "summary": (
             f"{len(step_outcomes)} steps walked, "
             f"{failed_count} failed, "
             f"{len(fresh_actions)} pre-flight action(s), "
-            f"{len(final_cleanup_actions)} cleanup action(s)"
+            f"{len(final_cleanup_actions)} cleanup action(s), "
+            f"{postflight_result.get('tracks_set', 0)} tracks monitoring=In"
         ),
     }

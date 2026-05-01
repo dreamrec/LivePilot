@@ -11,6 +11,7 @@ orchestrator is verified live (no mocking the Ableton TCP).
 
 from __future__ import annotations
 
+import asyncio
 import random
 
 from mcp_server.composer import fast
@@ -1608,7 +1609,7 @@ def test_apply_fast_plan_inserts_effects_with_params():
         "scene_index": 0,
         "bars": 4,
     }
-    result = _apply_fast_plan(ctx, plan)
+    result = asyncio.run(_apply_fast_plan(ctx, plan))
 
     insert_calls = [c for c in fake.calls if c[0] == "insert_device"]
     assert len(insert_calls) == 2, f"expected 2 insert_device calls, got {len(insert_calls)}"
@@ -1647,7 +1648,7 @@ def test_apply_fast_plan_resolves_send_by_return_name():
         "scene_index": 0,
         "bars": 4,
     }
-    result = _apply_fast_plan(ctx, plan)
+    result = asyncio.run(_apply_fast_plan(ctx, plan))
 
     send_calls = [c for c in fake.calls if c[0] == "set_track_send"]
     assert len(send_calls) == 2
@@ -1677,7 +1678,7 @@ def test_apply_fast_plan_send_fails_softly_when_return_missing():
         "scene_index": 0,
         "bars": 4,
     }
-    result = _apply_fast_plan(ctx, plan)
+    result = asyncio.run(_apply_fast_plan(ctx, plan))
 
     # Layer itself should still succeed
     layer = result["layers"][0]
@@ -1713,7 +1714,7 @@ def test_apply_fast_plan_send_index_takes_precedence_over_return_name():
         "scene_index": 0,
         "bars": 4,
     }
-    _apply_fast_plan(ctx, plan)
+    asyncio.run(_apply_fast_plan(ctx, plan))
 
     send_calls = [c for c in fake.calls if c[0] == "set_track_send"]
     assert len(send_calls) == 1
@@ -1740,7 +1741,7 @@ def test_apply_fast_plan_summary_counts_effects_and_sends():
         "scene_index": 0,
         "bars": 4,
     }
-    result = _apply_fast_plan(ctx, plan)
+    result = asyncio.run(_apply_fast_plan(ctx, plan))
     assert "effects loaded" in result["summary"]
     assert "sends set" in result["summary"]
     assert result["effects_loaded"] == 1
@@ -1765,7 +1766,7 @@ def test_apply_fast_plan_no_effects_no_sends_still_works():
         "scene_index": 0,
         "bars": 4,
     }
-    result = _apply_fast_plan(ctx, plan)
+    result = asyncio.run(_apply_fast_plan(ctx, plan))
     assert result["effects_loaded"] == 0
     assert result["sends_set"] == 0
     assert result["tracks_created"] == 1

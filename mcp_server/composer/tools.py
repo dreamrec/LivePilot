@@ -288,7 +288,7 @@ async def compose(
 
 
 @mcp.tool()
-def compose_fast_apply(ctx: Context, plan: dict) -> dict:
+async def compose_fast_apply(ctx: Context, plan: dict) -> dict:
     """Phase-3 of the LLM-creative fast mode (2026-05-01).
 
     Receives a complete layer plan designed by the agent (informed by
@@ -349,7 +349,7 @@ def compose_fast_apply(ctx: Context, plan: dict) -> dict:
     provenance: what producer-voice snippet from which Ableton tutorial
     informed each layer's design.
     """
-    return apply_fast_plan(ctx, plan)
+    return await apply_fast_plan(ctx, plan)
 
 
 @mcp.tool()
