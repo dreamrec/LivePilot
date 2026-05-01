@@ -911,7 +911,13 @@ async def apply_full_plan_v2(ctx: Context, plan: dict) -> dict:
                     "reason": str(exc),
                 })
 
-        # Arrangement clips
+        # Arrangement clips — Phase 4 Task 23 (BUG-FULL-MODE-23):
+        # Use create_native_arrangement_clip (Live 12.1.10+ API) instead of
+        # create_arrangement_clip (which duplicates a session clip and tiles).
+        # Old flow produced N tiny clips per section (32 × 4-beat duplicates
+        # for a 16-bar section). New flow creates ONE long native arrangement
+        # clip per section, writes variant notes into it, then sets an internal
+        # loop region so the pattern repeats inside the section length.
         for ac in track_spec.get("arrangement_clips", []):
             section_index = ac.get("section_index")
             if section_index is None or section_index >= len(form):
@@ -923,61 +929,93 @@ async def apply_full_plan_v2(ctx: Context, plan: dict) -> dict:
                 continue
             section = form[section_index]
             variant_id = ac.get("variant_id")
-            slot = variant_id_to_slot.get(variant_id)
-            if slot is None:
+
+            # Look up the variant's notes for the new flow.
+            # (The session-view source clips created earlier are kept for
+            # auditioning — they are NOT referenced here. The arrangement is
+            # now self-contained via add_arrangement_notes.)
+            variant_notes = next(
+                (v.get("notes", []) for v in track_spec.get("variants", []) if v.get("id") == variant_id),
+                None,
+            )
+            if variant_notes is None:
                 errors.append({
                     "track_index": track_index,
                     "phase": "arrangement_clip",
                     "reason": f"unknown variant_id {variant_id!r}",
                 })
                 continue
+
             start_bar = float(section["start_bar"])
             bars = float(section["bars"])
             section_length_beats = bars * 4.0
+            section_start_beats = start_bar * 4.0
 
-            # Phase 4 Task 22 fix (live test BUG-FULL-MODE-20):
-            # Don't pass loop_length to Remote Script when it equals the
-            # source-clip length. When loop_length IS passed, Remote Script
-            # tiles SEPARATE arrangement clips at each loop_length interval
-            # rather than creating ONE long arrangement clip with internal
-            # looping. Symptom: 32 tiny 4-beat clips per section instead of
-            # one 64-beat clip looping the 4-beat source 16x.
-            #
-            # Per the create_arrangement_clip docstring: "Defaults to the
-            # source clip's length." — omitting gets the right behavior
-            # (one continuous clip with internal looping).
-            #
-            # Detect source clip length from the variant's notes — if the
-            # agent's loop_length equals (or exceeds) the natural source
-            # length, omit it from the Remote Script call.
-            variant_notes = next(
-                (v.get("notes", []) for v in track_spec.get("variants", []) if v.get("id") == variant_id),
-                [],
-            )
+            # Compute source pattern length from notes (snap up to nearest bar).
             source_length_beats = max(
                 (float(n.get("start_time", 0)) + float(n.get("duration", 0)) for n in variant_notes),
                 default=4.0,
             )
-            # Snap source length to nearest bar boundary if it's just shy
-            # (notes ending mid-bar shouldn't truncate the loop region).
             source_length_beats = max(4.0, ((source_length_beats + 3.99) // 4) * 4)
 
-            arr_args = {
-                "track_index": track_index,
-                "clip_slot_index": slot,
-                "start_time": start_bar * 4.0,  # bars → beats at 4/4
-                "length": section_length_beats,
-            }
-            explicit_loop_length = ac.get("loop_length")
-            if explicit_loop_length is not None:
-                ll = float(explicit_loop_length)
-                # Only pass when STRICTLY LESS than source length AND less
-                # than section length — that's the only case where Remote
-                # Script's tile-at-interval behavior is desired.
-                if ll < source_length_beats and ll < section_length_beats:
-                    arr_args["loop_length"] = ll
+            # NEW FLOW: create ONE native arrangement clip spanning the full
+            # section. Replaces create_arrangement_clip (session-clip duplication).
             try:
-                ableton.send_command("create_arrangement_clip", arr_args)
+                native_resp = ableton.send_command("create_native_arrangement_clip", {
+                    "track_index": track_index,
+                    "start_time": section_start_beats,
+                    "length": section_length_beats,
+                    "name": variant_id or section.get("name", ""),
+                })
+                if not isinstance(native_resp, dict):
+                    errors.append({
+                        "track_index": track_index,
+                        "phase": "arrangement_clip",
+                        "reason": "create_native_arrangement_clip returned non-dict",
+                    })
+                    continue
+                new_clip_index = native_resp.get("clip_index")
+                if new_clip_index is None:
+                    errors.append({
+                        "track_index": track_index,
+                        "phase": "arrangement_clip",
+                        "reason": "create_native_arrangement_clip didn't return clip_index",
+                    })
+                    continue
+
+                # Write the variant's notes into the native clip (relative to
+                # clip start — same coordinate space the agent used).
+                if variant_notes:
+                    try:
+                        ableton.send_command("add_arrangement_notes", {
+                            "track_index": track_index,
+                            "clip_index": new_clip_index,
+                            "notes": variant_notes,
+                        })
+                    except Exception as exc:
+                        errors.append({
+                            "track_index": track_index,
+                            "phase": "arrangement_notes",
+                            "reason": str(exc),
+                        })
+
+                # Set internal loop region so the pattern repeats within the
+                # full section length (e.g. a 4-beat kick loops 16× in a 64-beat
+                # verse section without requiring 64 beats of notes).
+                try:
+                    ableton.send_command("set_clip_loop", {
+                        "track_index": track_index,
+                        "clip_index": new_clip_index,
+                        "enabled": True,
+                        "loop_start": 0.0,
+                        "loop_end": source_length_beats,
+                    })
+                except Exception as exc:
+                    logger.debug(
+                        "apply_full_v2: set_clip_loop failed for track %s clip %s: %s",
+                        track_index, new_clip_index, exc,
+                    )
+
                 arrangement_clips_created += 1
             except Exception as exc:
                 errors.append({

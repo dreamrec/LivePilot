@@ -34,6 +34,22 @@ def _mock_ctx_recording():
             return {"notes_added": len(args.get("notes", []))}
         if cmd == "create_arrangement_clip":
             return {"track_index": args["track_index"], "start_time": args["start_time"]}
+        if cmd == "create_native_arrangement_clip":
+            ci = getattr(ableton, "_next_arr_clip_index", 0)
+            ableton._next_arr_clip_index = ci + 1
+            return {
+                "track_index": args["track_index"],
+                "clip_index": ci,
+                "start_time": args["start_time"],
+                "length": args["length"],
+                "name": args.get("name", ""),
+                "has_envelope_support": True,
+                "native": True,
+            }
+        if cmd == "add_arrangement_notes":
+            return {"notes_added": len(args.get("notes", []))}
+        if cmd == "set_clip_loop":
+            return {"ok": True}
         if cmd == "set_clip_name":
             return {"name": args["name"]}
         if cmd == "set_arrangement_clip_name":
@@ -127,9 +143,10 @@ async def test_creates_track_then_variants_then_arrangement_clips():
     cmds = [c[0] for c in ctx.lifespan_context["ableton"]._calls]
     track_idx = cmds.index("create_midi_track")
     create_clip_count = cmds.count("create_clip")
-    arr_clip_count = cmds.count("create_arrangement_clip")
+    # Phase 4 Task 23: native arrangement clips (not session-clip duplication)
+    arr_clip_count = cmds.count("create_native_arrangement_clip")
     assert create_clip_count == 2  # 2 variants → 2 source clips in session view
-    assert arr_clip_count == 2  # 2 arrangement clips placed
+    assert arr_clip_count == 2  # 2 native arrangement clips placed
 
 
 # ── multiple variants per track (BUG-FULL-MODE-18 regression guard) ──
@@ -320,6 +337,22 @@ def _mock_ctx_recording_with_insert_device():
             return {"notes_added": len(args.get("notes", []))}
         if cmd == "create_arrangement_clip":
             return {"track_index": args["track_index"], "start_time": args["start_time"]}
+        if cmd == "create_native_arrangement_clip":
+            ci = getattr(ableton, "_next_arr_clip_index", 0)
+            ableton._next_arr_clip_index = ci + 1
+            return {
+                "track_index": args["track_index"],
+                "clip_index": ci,
+                "start_time": args["start_time"],
+                "length": args["length"],
+                "name": args.get("name", ""),
+                "has_envelope_support": True,
+                "native": True,
+            }
+        if cmd == "add_arrangement_notes":
+            return {"notes_added": len(args.get("notes", []))}
+        if cmd == "set_clip_loop":
+            return {"ok": True}
         if cmd == "set_clip_name":
             return {"name": args.get("name", "")}
         if cmd == "set_arrangement_clip_name":
@@ -481,6 +514,22 @@ async def test_full_apply_v2_analysis_failure_does_not_break_apply():
             return {"notes_added": len(args.get("notes", []))}
         if cmd == "create_arrangement_clip":
             return {"track_index": args["track_index"]}
+        if cmd == "create_native_arrangement_clip":
+            ci = getattr(ableton, "_next_arr_clip_index", 0)
+            ableton._next_arr_clip_index = ci + 1
+            return {
+                "track_index": args["track_index"],
+                "clip_index": ci,
+                "start_time": args["start_time"],
+                "length": args["length"],
+                "name": args.get("name", ""),
+                "has_envelope_support": True,
+                "native": True,
+            }
+        if cmd == "add_arrangement_notes":
+            return {"notes_added": len(args.get("notes", []))}
+        if cmd == "set_clip_loop":
+            return {"ok": True}
         if cmd == "set_clip_name":
             return {"name": ""}
         if cmd == "set_arrangement_clip_name":

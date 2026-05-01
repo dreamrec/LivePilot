@@ -316,6 +316,22 @@ class _FakeAbletonFull:
             return {"added": len(params.get("notes") or [])}
         if name == "create_arrangement_clip":
             return {"clip_count": 1}
+        if name == "create_native_arrangement_clip":
+            ci = getattr(self, "_next_arr_clip_index", 0)
+            self._next_arr_clip_index = ci + 1
+            return {
+                "track_index": params.get("track_index", 0),
+                "clip_index": ci,
+                "start_time": params.get("start_time", 0),
+                "length": params.get("length", 4),
+                "name": params.get("name", ""),
+                "has_envelope_support": True,
+                "native": True,
+            }
+        if name == "add_arrangement_notes":
+            return {"notes_added": len(params.get("notes", []))}
+        if name == "set_clip_loop":
+            return {"ok": True}
         return {}
 
 
