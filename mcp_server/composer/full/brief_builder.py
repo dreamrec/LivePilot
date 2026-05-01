@@ -30,6 +30,7 @@ from ..develop.brief_builder import (
     extract_artist_refs,
     detect_research_hooks,
 )
+from ..framework.knowledge_pack import KnowledgePack
 
 
 # ── design targets ─────────────────────────────────────────────────
@@ -121,23 +122,22 @@ def build_full_brief(
     artist_refs = extract_artist_refs(prompt or "")
     research_hooks = detect_research_hooks(prompt or "")
 
-    # Phase 4 stubs
-    genre_context: dict = {}  # populated by KnowledgePack with descriptive genre data
-    artist_context: dict = {name: {} for name in artist_refs}  # populated by KnowledgePack
-    event_lexicon: list = []  # populated by KnowledgePack with the 42-event registry
-    atlas_candidates_per_role: dict = {}  # populated by KnowledgePack via atlas_search
-    manual_snippets: dict = {}  # populated by KnowledgePack via search_live_manual
+    # Build knowledge pack — populates genre_context, artist_context, event_lexicon
+    if artist_refs:
+        intent_dict["artists"] = artist_refs
+    kp = KnowledgePack()
+    knowledge = kp.build(intent_dict, mode="full")
 
     return {
         "mode": "full",
         "tempo": tempo,
         "key": key,
         "parsed_intent": intent_dict,
-        "genre_context": genre_context,
-        "artist_context": artist_context,
-        "event_lexicon": event_lexicon,
-        "atlas_candidates_per_role": atlas_candidates_per_role,
-        "manual_snippets": manual_snippets,
+        "genre_context": knowledge["genre_context"],
+        "artist_context": knowledge["artist_context"],
+        "event_lexicon": knowledge["event_lexicon"],
+        "atlas_candidates_per_role": knowledge["atlas_candidates_per_role"],
+        "manual_snippets": knowledge["manual_snippets"],
         "seed_state": seed_state,
         "research_hooks": research_hooks,
         "design_targets": _DESIGN_TARGETS,
