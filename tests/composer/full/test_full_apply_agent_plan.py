@@ -403,3 +403,118 @@ async def test_full_apply_v2_no_effects_field_no_inserts():
     cmds = [c[0] for c in ctx.lifespan_context["ableton"]._calls]
     assert cmds.count("insert_device") == 0  # no effects requested
     assert result["status"] == "ok"
+
+
+# ── Phase 4 Task 20: analysis hook integration ─────────────────────
+
+
+@pytest.mark.asyncio
+async def test_full_apply_v2_per_layer_analysis_in_result():
+    """Each layer in the result dict has an `analysis` field — even when
+    static analysis isn't applicable, the field exists with a status code."""
+    ctx = _mock_ctx_recording()
+    plan = {
+        "scope": "full",
+        "form": [{"name": "intro", "start_bar": 0, "bars": 4}],
+        "tracks": [{
+            "role": "bass",
+            "instrument": {"uri": "query:Synths#Operator"},
+            "variants": [{"id": "v1", "notes": [{"pitch": 45, "start_time": 0, "duration": 1, "velocity": 100}]}],
+            "arrangement_clips": [{"section_index": 0, "variant_id": "v1", "loop_length": 4}],
+        }],
+        "events": [],
+    }
+    result = await apply_full_plan_v2(ctx, plan)
+    # Per-layer analysis is reported in the result.tracks list (or per_layer dict)
+    layer_analyses = result.get("layer_analysis") or []
+    assert isinstance(layer_analyses, list)
+    assert len(layer_analyses) == 1
+    layer_a = layer_analyses[0]
+    assert "track_index" in layer_a
+    assert "role" in layer_a
+    assert "analysis" in layer_a
+    # Analysis should at minimum carry a status field — "ok", "skipped", or "error"
+    assert "status" in layer_a["analysis"]
+
+
+@pytest.mark.asyncio
+async def test_full_apply_v2_mix_analysis_at_end():
+    """Result dict has a `mix_analysis` field with master-level analyzer data
+    + masking report. Both fields exist even if analyzer isn't loaded
+    (status='skipped')."""
+    ctx = _mock_ctx_recording()
+    plan = {
+        "scope": "full",
+        "form": [{"name": "intro", "start_bar": 0, "bars": 4}],
+        "tracks": [{
+            "role": "bass",
+            "instrument": {"uri": "query:Synths#Operator"},
+            "variants": [{"id": "v1", "notes": []}],
+            "arrangement_clips": [{"section_index": 0, "variant_id": "v1", "loop_length": 4}],
+        }],
+        "events": [],
+    }
+    result = await apply_full_plan_v2(ctx, plan)
+    assert "mix_analysis" in result
+    assert "status" in result["mix_analysis"]
+    # Whether ok/skipped/error, the field shape is consistent
+
+
+@pytest.mark.asyncio
+async def test_full_apply_v2_analysis_failure_does_not_break_apply():
+    """When an analysis tool errors, the apply still succeeds — analysis is
+    best-effort, non-fatal."""
+    ableton = MagicMock()
+    ableton._calls = []
+    ableton._track_count = 0
+    def send_command(cmd, args):
+        ableton._calls.append((cmd, args))
+        if cmd == "get_session_info":
+            return {"tempo": 120.0, "track_count": ableton._track_count, "scene_count": 8, "tracks": []}
+        if cmd == "create_midi_track":
+            ti = ableton._track_count
+            ableton._track_count += 1
+            return {"index": ti}
+        if cmd == "create_clip":
+            return {"track_index": args["track_index"], "clip_index": args["clip_index"]}
+        if cmd == "add_notes":
+            return {"notes_added": len(args.get("notes", []))}
+        if cmd == "create_arrangement_clip":
+            return {"track_index": args["track_index"]}
+        if cmd == "set_clip_name":
+            return {"name": ""}
+        if cmd == "set_arrangement_clip_name":
+            return {"name": ""}
+        if cmd == "load_browser_item":
+            return {"loaded": True}
+        if cmd == "analyze_sample":
+            raise RuntimeError("simulated analyzer failure")
+        if cmd == "analyze_synth_patch":
+            raise RuntimeError("simulated analyzer failure")
+        if cmd == "analyze_mix":
+            raise RuntimeError("simulated analyzer failure")
+        if cmd == "get_masking_report":
+            raise RuntimeError("simulated analyzer failure")
+        return {"ok": True}
+    ableton.send_command = send_command
+    ctx = MagicMock()
+    ctx.lifespan_context = {"ableton": ableton}
+
+    plan = {
+        "scope": "full",
+        "form": [{"name": "intro", "start_bar": 0, "bars": 4}],
+        "tracks": [{
+            "role": "bass",
+            "instrument": {"uri": "query:Synths#Operator"},
+            "variants": [{"id": "v1", "notes": []}],
+            "arrangement_clips": [{"section_index": 0, "variant_id": "v1", "loop_length": 4}],
+        }],
+        "events": [],
+    }
+    result = await apply_full_plan_v2(ctx, plan)
+    # Apply still succeeds despite analyzer failures
+    assert result["status"] == "ok"
+    # Analysis fields exist with error status
+    layer_a = result["layer_analysis"][0]
+    assert layer_a["analysis"]["status"] in ("error", "skipped")
+    assert result["mix_analysis"]["status"] in ("error", "skipped")

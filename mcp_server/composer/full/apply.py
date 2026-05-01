@@ -672,6 +672,7 @@ async def apply_full_plan_v2(ctx: Context, plan: dict) -> dict:
     sends_set = 0
     errors: list[dict] = []
     applied_track_indices: list[int] = []
+    layer_analyses: list[dict] = []  # Phase 4 Task 20: per-layer analysis results
 
     for ti, track_spec in enumerate(plan["tracks"]):
         # Resolve track_index — create new if not provided
@@ -803,6 +804,66 @@ async def apply_full_plan_v2(ctx: Context, plan: dict) -> dict:
                     "reason": str(exc),
                 })
 
+        # Phase 4 Task 20: per-layer static analysis (best-effort, non-fatal).
+        # Goal: give the agent acoustic characteristics of the loaded sound so
+        # it can reason about fit. ONLY static analysis here (no playback);
+        # active solo-trigger analysis is Scope B / v1.25.
+        # Analysis is routed through ableton.send_command so it is intercepted
+        # by the same mock contract as all other commands (testable, consistent).
+        role = track_spec.get("role", "")
+        instrument_uri = (track_spec.get("instrument") or {}).get("uri", "")
+        layer_analysis: dict = {"status": "skipped", "reason": "no analyzer applicable"}
+        try:
+            if instrument_uri.startswith(("query:Synths#", "query:Sounds#")):
+                # Synth / preset — analyze the patch
+                try:
+                    patch_result = ableton.send_command(
+                        "analyze_synth_patch",
+                        {"track_index": track_index, "device_index": 0},
+                    )
+                    if isinstance(patch_result, dict) and not patch_result.get("error"):
+                        layer_analysis = {"status": "ok", "kind": "synth", "data": patch_result}
+                    else:
+                        layer_analysis = {
+                            "status": "skipped",
+                            "kind": "synth",
+                            "reason": str(
+                                patch_result.get("error") if isinstance(patch_result, dict) else patch_result
+                            ),
+                        }
+                except Exception as exc:
+                    layer_analysis = {"status": "error", "kind": "synth", "reason": str(exc)}
+            elif instrument_uri.startswith(("query:Drums#", "query:Samples#")) or \
+                 any(instrument_uri.lower().endswith(ext) for ext in (".aif", ".wav", ".mp3", ".flac")):
+                # Sample-based — analyze via track reference (no file_path needed)
+                try:
+                    sample_result = ableton.send_command(
+                        "analyze_sample",
+                        {"track_index": track_index, "clip_index": 0},
+                    )
+                    if isinstance(sample_result, dict) and not sample_result.get("error"):
+                        layer_analysis = {"status": "ok", "kind": "sample", "data": sample_result}
+                    else:
+                        layer_analysis = {
+                            "status": "skipped",
+                            "kind": "sample",
+                            "reason": str(
+                                sample_result.get("error") if isinstance(sample_result, dict) else sample_result
+                            ),
+                        }
+                except Exception as exc:
+                    layer_analysis = {"status": "error", "kind": "sample", "reason": str(exc)}
+            # else: Drum Rack containers, plain URIs, or no instrument — leave as "skipped"
+        except Exception as exc:
+            layer_analysis = {"status": "error", "reason": str(exc)}
+
+        layer_analyses.append({
+            "track_index": track_index,
+            "role": role,
+            "uri": instrument_uri,
+            "analysis": layer_analysis,
+        })
+
         # Variants → session source clips (slots 0..N)
         variant_id_to_slot: dict[str, int] = {}
         for vi, variant in enumerate(track_spec.get("variants", [])):
@@ -876,6 +937,33 @@ async def apply_full_plan_v2(ctx: Context, plan: dict) -> dict:
     for _event in plan.get("events", []):
         pass  # Phase 3 no-op — events accepted but not applied
 
+    # Phase 4 Task 20: mix-level analysis post-apply. Master-spectrum view +
+    # cross-layer masking detection. Best-effort, non-fatal — same pattern as
+    # per-layer analysis. Runs AFTER all tracks are loaded so it sees the full
+    # session state.
+    mix_analysis: dict = {"status": "skipped", "reason": "not run"}
+    try:
+        mix_result = ableton.send_command("analyze_mix", {})
+        if isinstance(mix_result, dict) and not mix_result.get("error"):
+            try:
+                masking_result = ableton.send_command("get_masking_report", {})
+            except Exception as mask_exc:
+                masking_result = {"error": str(mask_exc)}
+            mix_analysis = {
+                "status": "ok",
+                "mix": mix_result,
+                "masking": masking_result if isinstance(masking_result, dict) else None,
+            }
+        else:
+            mix_analysis = {
+                "status": "skipped",
+                "reason": str(
+                    mix_result.get("error") if isinstance(mix_result, dict) else mix_result
+                ),
+            }
+    except Exception as exc:
+        mix_analysis = {"status": "error", "reason": str(exc)}
+
     # Postflight — sets monitoring=In on new tracks + back_to_arranger
     postflight_result = await applier.postflight(
         ctx,
@@ -894,6 +982,8 @@ async def apply_full_plan_v2(ctx: Context, plan: dict) -> dict:
         "effects_loaded": effects_loaded,
         "sends_set": sends_set,
         "fresh_cleanup_actions": fresh_cleanup_actions,
+        "layer_analysis": layer_analyses,       # Phase 4 Task 20: per-layer static analysis
+        "mix_analysis": mix_analysis,           # Phase 4 Task 20: mix-level masking + balance
         "preflight": preflight_result,
         "postflight": postflight_result,
         "errors": errors,
