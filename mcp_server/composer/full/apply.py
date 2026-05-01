@@ -712,6 +712,23 @@ async def apply_full_plan_v2(ctx: Context, plan: dict) -> dict:
                     "reason": str(exc),
                 })
 
+        # Phase 4 Task 21: drum-role auto-repair (parity with fast mode).
+        # load_browser_item's role='drum' silently fails to apply Vol=0/Snap=Off/root=C1
+        # when the track context has effects/sends. Re-apply deterministically post-load.
+        # Volume=0, Snap=Off, Transpose=+24 compensates for Simpler default C3=60 root
+        # vs drum-rack convention C1=36. Device-class-aware: drum synths (DS Kick etc)
+        # don't have Snap/Transpose, so only Volume gets set there.
+        from ..fast.apply import _is_drum_role, _apply_drum_role_repair
+        track_role = track_spec.get("role", "")
+        if _is_drum_role(track_role):
+            try:
+                _apply_drum_role_repair(ableton, track_index, device_index=0)
+            except Exception as exc:
+                logger.debug(
+                    "apply_full_v2: drum_role_repair failed for track %s: %s",
+                    track_index, exc,
+                )
+
         # Phase 4 Task 19: per-layer effects (parity with fast mode)
         # Insert each native device AFTER the instrument load and BEFORE clip
         # creation so the chain is correct from the start.
@@ -963,6 +980,25 @@ async def apply_full_plan_v2(ctx: Context, plan: dict) -> dict:
             }
     except Exception as exc:
         mix_analysis = {"status": "error", "reason": str(exc)}
+
+    # Phase 4 Task 21: postflight default-track cleanup.
+    # The preflight cleanup keeps ≥1 default track (Ableton's minimum). Now
+    # that compose tracks exist, the leftover default(s) can be safely deleted.
+    try:
+        from ..fast.brief_builder import is_default_track_name as _is_default_track_name
+        session_post = ableton.send_command("get_session_info", {})
+        leftover_defaults = sorted(
+            [t["index"] for t in session_post.get("tracks", []) if _is_default_track_name(t.get("name", ""))],
+            reverse=True,
+        )
+        for idx in leftover_defaults:
+            try:
+                ableton.send_command("delete_track", {"track_index": idx})
+                fresh_cleanup_actions.append(f"postflight_deleted_default_track_{idx}")
+            except Exception as exc:
+                logger.debug("apply_full_v2: postflight delete_track(%s) failed: %s", idx, exc)
+    except Exception as exc:
+        logger.debug("apply_full_v2: postflight cleanup skipped: %s", exc)
 
     # Postflight — sets monitoring=In on new tracks + back_to_arranger
     postflight_result = await applier.postflight(
