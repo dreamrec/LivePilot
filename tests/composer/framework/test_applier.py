@@ -102,12 +102,15 @@ async def test_applier_postflight_sets_monitoring_and_returns_to_arranger():
     )
     result = await applier.postflight(ctx, applied_track_indices=[0, 1, 2])
 
-    # set_monitoring called per track with state=0 (In)
+    # BUG-FIX (post-live-test): state=1 (Auto, the default for new tracks).
+    # state=0 was "In" — wrong; left tracks "hot" (always passing input
+    # through). Auto is correct: lets arrangement clips play, no input
+    # passthrough. The actual fix for "manual arm required" is back_to_arranger.
     assert set_monitoring.await_count == 3
     set_monitoring.assert_has_awaits([
-        call(ctx, track_index=0, state=0),
-        call(ctx, track_index=1, state=0),
-        call(ctx, track_index=2, state=0),
+        call(ctx, track_index=0, state=1),
+        call(ctx, track_index=1, state=1),
+        call(ctx, track_index=2, state=1),
     ])
     # back_to_arranger called once after monitoring set
     back_to_arranger.assert_awaited_once_with(ctx)

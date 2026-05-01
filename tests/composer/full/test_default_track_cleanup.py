@@ -93,10 +93,24 @@ async def test_full_apply_v2_no_cleanup_on_non_fresh_project():
         {"index": 1, "name": "MyBass", "color_index": 2, "mute": False},
     ]
 
+    # BUG-FIX (post-live-test): user-named tracks with CONTENT (clips or
+    # instruments) must be preserved. The zombie-detection should ONLY
+    # delete empty tracks (no clips, no instruments) regardless of name.
+    # This test makes both user-named tracks NON-empty by giving them
+    # an instrument device.
     def send_command(cmd, args):
         ableton._calls.append((cmd, args))
         if cmd == "get_session_info":
             return {"tempo": 120.0, "track_count": ableton._track_count, "scene_count": 8, "tracks": ableton._tracks}
+        if cmd == "get_track_info":
+            # Tracks 0 and 1 (MyKick, MyBass) have an instrument loaded — NOT empty zombies
+            ti = args["track_index"]
+            if ti in (0, 1):
+                return {
+                    "devices": [{"class_name": "OriginalSimpler", "type": 1}],
+                    "clip_slots": [{"has_clip": False}] * 8,
+                }
+            return {"devices": [], "clip_slots": []}
         if cmd == "create_midi_track":
             ti = ableton._track_count
             ableton._track_count += 1
@@ -132,5 +146,7 @@ async def test_full_apply_v2_no_cleanup_on_non_fresh_project():
     }
     result = await apply_full_plan_v2(ctx, plan)
     cmds = [c[0] for c in ctx.lifespan_context["ableton"]._calls]
-    assert cmds.count("delete_track") == 0, "Should not delete user-named tracks"
+    # User-named tracks WITH content (instrument loaded) are preserved.
+    # Only true zombies (empty + no devices) get cleaned by zombie-detection.
+    assert cmds.count("delete_track") == 0, "User-named tracks WITH content should not be deleted"
     assert result["status"] == "ok"

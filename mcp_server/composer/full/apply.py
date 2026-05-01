@@ -933,15 +933,51 @@ async def apply_full_plan_v2(ctx: Context, plan: dict) -> dict:
                 continue
             start_bar = float(section["start_bar"])
             bars = float(section["bars"])
-            loop_length = float(ac.get("loop_length", 4.0))
+            section_length_beats = bars * 4.0
+
+            # Phase 4 Task 22 fix (live test BUG-FULL-MODE-20):
+            # Don't pass loop_length to Remote Script when it equals the
+            # source-clip length. When loop_length IS passed, Remote Script
+            # tiles SEPARATE arrangement clips at each loop_length interval
+            # rather than creating ONE long arrangement clip with internal
+            # looping. Symptom: 32 tiny 4-beat clips per section instead of
+            # one 64-beat clip looping the 4-beat source 16x.
+            #
+            # Per the create_arrangement_clip docstring: "Defaults to the
+            # source clip's length." — omitting gets the right behavior
+            # (one continuous clip with internal looping).
+            #
+            # Detect source clip length from the variant's notes — if the
+            # agent's loop_length equals (or exceeds) the natural source
+            # length, omit it from the Remote Script call.
+            variant_notes = next(
+                (v.get("notes", []) for v in track_spec.get("variants", []) if v.get("id") == variant_id),
+                [],
+            )
+            source_length_beats = max(
+                (float(n.get("start_time", 0)) + float(n.get("duration", 0)) for n in variant_notes),
+                default=4.0,
+            )
+            # Snap source length to nearest bar boundary if it's just shy
+            # (notes ending mid-bar shouldn't truncate the loop region).
+            source_length_beats = max(4.0, ((source_length_beats + 3.99) // 4) * 4)
+
+            arr_args = {
+                "track_index": track_index,
+                "clip_slot_index": slot,
+                "start_time": start_bar * 4.0,  # bars → beats at 4/4
+                "length": section_length_beats,
+            }
+            explicit_loop_length = ac.get("loop_length")
+            if explicit_loop_length is not None:
+                ll = float(explicit_loop_length)
+                # Only pass when STRICTLY LESS than source length AND less
+                # than section length — that's the only case where Remote
+                # Script's tile-at-interval behavior is desired.
+                if ll < source_length_beats and ll < section_length_beats:
+                    arr_args["loop_length"] = ll
             try:
-                ableton.send_command("create_arrangement_clip", {
-                    "track_index": track_index,
-                    "clip_slot_index": slot,
-                    "start_time": start_bar * 4.0,  # bars → beats at 4/4
-                    "length": bars * 4.0,
-                    "loop_length": loop_length,
-                })
+                ableton.send_command("create_arrangement_clip", arr_args)
                 arrangement_clips_created += 1
             except Exception as exc:
                 errors.append({
@@ -981,20 +1017,58 @@ async def apply_full_plan_v2(ctx: Context, plan: dict) -> dict:
     except Exception as exc:
         mix_analysis = {"status": "error", "reason": str(exc)}
 
-    # Phase 4 Task 21: postflight default-track cleanup.
+    # Phase 4 Task 21: postflight default-track + zombie cleanup.
     # The preflight cleanup keeps ≥1 default track (Ableton's minimum). Now
     # that compose tracks exist, the leftover default(s) can be safely deleted.
+    #
+    # BUG-FIX (post-live test): also delete TRUE ZOMBIE tracks — empty MIDI
+    # tracks (no clips, no instrument) regardless of name. The previous
+    # implementation only deleted "default-named" tracks (1-MIDI etc.), so
+    # a leftover from a previous compose run named "kick" / "bass" / etc.
+    # would survive cleanup.
     try:
         from ..fast.brief_builder import is_default_track_name as _is_default_track_name
         session_post = ableton.send_command("get_session_info", {})
-        leftover_defaults = sorted(
-            [t["index"] for t in session_post.get("tracks", []) if _is_default_track_name(t.get("name", ""))],
-            reverse=True,
-        )
-        for idx in leftover_defaults:
+        all_tracks = session_post.get("tracks", [])
+        # Skip tracks we just created — only target leftover/zombie tracks
+        compose_track_indices = set(applied_track_indices)
+
+        candidate_indices: list[int] = []
+        for t in all_tracks:
+            idx = t.get("index", -1)
+            if idx in compose_track_indices:
+                continue
+            name = t.get("name", "")
+            # Default-named (1-MIDI, 2-MIDI, etc.) — always delete
+            if _is_default_track_name(name):
+                candidate_indices.append(idx)
+                continue
+            # Zombie detection: track has NO clips AND NO instrument.
+            # Indicates a leftover from a previous compose run that the
+            # default-name detector missed.
+            try:
+                track_info = ableton.send_command("get_track_info", {"track_index": idx})
+                devices = track_info.get("devices", []) or []
+                clip_slots = track_info.get("clip_slots", []) or []
+                has_instrument = any(
+                    d.get("type") == 1 or  # type=1 is instrument category in Live's LOM
+                    d.get("class_name", "") in (
+                        "OriginalSimpler", "DrumGroupDevice", "InstrumentGroupDevice",
+                        "DrumCell", "InstrumentImpulse", "MxDeviceInstrument",
+                    )
+                    for d in devices
+                )
+                has_clips = any(slot.get("has_clip") for slot in clip_slots)
+                if not has_instrument and not has_clips:
+                    candidate_indices.append(idx)
+            except Exception as exc:
+                logger.debug("apply_full_v2: zombie-detect get_track_info(%s) failed: %s", idx, exc)
+
+        # Delete in reverse-index order so indices stay stable
+        for idx in sorted(candidate_indices, reverse=True):
             try:
                 ableton.send_command("delete_track", {"track_index": idx})
-                fresh_cleanup_actions.append(f"postflight_deleted_default_track_{idx}")
+                fresh_cleanup_actions.append(f"postflight_deleted_track_{idx}")
             except Exception as exc:
                 logger.debug("apply_full_v2: postflight delete_track(%s) failed: %s", idx, exc)
     except Exception as exc:

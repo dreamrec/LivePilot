@@ -119,13 +119,19 @@ class Applier:
         ctx: Any,
         applied_track_indices: list[int],
     ) -> dict:
-        """Set monitoring=In on each newly-created track, then back_to_arranger.
+        """Set monitoring=Auto on each newly-created track, then back_to_arranger.
 
-        Fixes BUG-FULL-MODE-17: tracks created by compose_full_apply
-        required manual arm-button toggle before arrangement clips would
-        play audio. Setting current_monitoring_state to "In" (state code 0)
-        is the missing step. back_to_arranger ensures the session-vs-
-        arrangement override flag is cleared.
+        BUG-FIX (post-Phase-4-Task-4 live test): the original BUG-FULL-MODE-17
+        fix set monitoring to state=0 ("In"), which is WRONG. State codes:
+            0 = In   (always pass input through — leaves track "hot")
+            1 = Auto (monitor when armed + recording — DEFAULT for new tracks)
+            2 = Off  (never monitor)
+
+        New tracks default to Auto (1) and arrangement clips already play
+        correctly with Auto. The actual fix for "manual arm required" is
+        back_to_arranger alone — clearing the session-vs-arrangement
+        override flag. We set state=Auto here defensively in case any
+        other code path moved monitoring away from default.
 
         applied_track_indices: list of track indices that were created
         during this apply pass. Empty list (e.g. develop mode writing
@@ -136,8 +142,9 @@ class Applier:
         if self._set_track_input_monitoring_fn is not None:
             for track_index in applied_track_indices:
                 try:
+                    # state=1 (Auto) — the default for new tracks. NOT 0 (In).
                     await self._set_track_input_monitoring_fn(
-                        ctx, track_index=track_index, state=0
+                        ctx, track_index=track_index, state=1
                     )
                     tracks_set += 1
                 except Exception as exc:
