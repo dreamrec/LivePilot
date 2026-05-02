@@ -1,4 +1,4 @@
-"""Verify all 457 MCP tools are registered (audit_layer + compose_fast_apply + consult_ableton_knowledge + compose_full_apply added in guardrail rollout)."""
+"""Verify all 459 MCP tools are registered (v1.24 compose framework: full mode rebuild + Applier framework — 6 net new tools since v1.23.x)."""
 
 import asyncio
 import sys
