@@ -57,9 +57,23 @@ class AtlasManager:
             if dev_category:
                 self._by_category.setdefault(dev_category, []).append(dev)
 
-            # Tag index
-            for tag in dev.get("tags", []):
-                self._by_tag.setdefault(tag.lower(), []).append(dev)
+            # Tag index — pull from BOTH legacy "tags" AND enriched
+            # "character_tags". BUG-P (caught 2026-05-01 live demo): the
+            # bundled factory atlas uses character_tags exclusively, so
+            # _by_tag was empty across the board, breaking every tag-based
+            # role picker. Reading both fields makes the index actually
+            # populated for normal user atlases.
+            seen_tags = set()
+            for tag in dev.get("tags", []) or []:
+                tag_lower = str(tag).lower()
+                if tag_lower not in seen_tags:
+                    seen_tags.add(tag_lower)
+                    self._by_tag.setdefault(tag_lower, []).append(dev)
+            for tag in dev.get("character_tags", []) or []:
+                tag_lower = str(tag).lower()
+                if tag_lower not in seen_tags:
+                    seen_tags.add(tag_lower)
+                    self._by_tag.setdefault(tag_lower, []).append(dev)
 
             # Genre index (primary + secondary)
             for genre in dev.get("genres", {}).get("primary", []):

@@ -1,5 +1,42 @@
 # Changelog
 
+## v1.24.0 — 2026-05-02
+
+Compose framework rebuild — fast / full / develop modes share an Applier substrate; full mode is a clean-room rewrite around an LLM-creative two-phase brief flow (LLM provides FORM, framework provides VOCABULARY).
+
+### Added — compose framework
+
+- **`mcp_server/composer/framework/applier.py`** — shared pre-flight + post-flight skeleton. `preflight()` loads analyzer, reconnects bridge, retries handshake up to 3× with 200ms gaps (fixes the M4L UDP-bind race that previously left "bridge not connected" failures on the first instrument-load call). `postflight()` sets monitoring=Auto on every newly-created track and calls `back_to_arranger`. Functions are dependency-injected so each mode's apply.py wires its own analyzer/bridge funcs.
+- **`mcp_server/composer/framework/knowledge_pack.py`** — `event_lexicon` (42 structural events across 7 categories: drum_density, harmonic, texture, vocal, rhythm_feel, tension, fx_gesture), `genre_context` loader (parses `livepilot/skills/livepilot-core/references/genre-vocabularies.md`, 15 genres), `artist_context` loader (parses `artist-vocabularies.md`, ~25 producers). `atlas_candidates_per_role` is scaffolded but **left as empty stub** — see v1.25 plan.
+- **`mcp_server/composer/full/apply.py::apply_full_plan_v2`** — full-mode rebuild. Takes an LLM-authored plan with `form` (sections), `tracks` (instruments + variants + arrangement_clips), `events`. Per-section variants prevent the BUG-FULL-MODE-18 flat tile. Native arrangement clip flow via `create_native_arrangement_clip` + `add_arrangement_notes` + `set_clip_loop` produces a single arrangement clip per section instead of 32 tiny tiles (BUG-FULL-MODE-23).
+- **`mcp_server/composer/develop/`** — develop mode (extend an existing 8-bar loop). `seed_introspector.py` classifies tracks by name + content; `brief_builder.py` pulls artist references from the user prompt + research hooks; `apply.py` writes per-track variants without disturbing the seed.
+- **`mcp_server/composer/fast/brief_builder.py`** — fast-mode brief authoring with tier classification (Tier-A curated > Tier-B audible default > Tier-C never). Hunt order: `search_browser(path="sounds")` first to surface curated `.adg` chains, then atlas, then bare instruments only as last resort. Bans bare-melodic Tier-B when curated alternatives exist (§1 violation prevention).
+
+### Fixed — live-test wave
+
+- **BUG-FULL-MODE-14: bridge UDP race** — `apply_full_plan` returned success on `bridge.connect()` but the M4L JS listener takes 100-500ms to bind the UDP socket; next bridge call ("UDP bridge is not connected"). Fixed in `Applier.preflight` with handshake retry loop.
+- **BUG-FULL-MODE-17: monitoring=In on all tracks** — Phase 4 Task 4 set monitoring `state=0` ("In", always passes input) instead of `state=1` ("Auto", default). Live screenshot showed every track armed-red. Fixed: state=1 in `Applier.postflight`.
+- **BUG-FULL-MODE-18: flat tiling instead of per-section variants** — full mode reused one MIDI variant for the whole arrangement. Fixed: per-section `variant_id` in plan + per-section variant resolution in apply.
+- **BUG-FULL-MODE-19: `track_index` vs `index` field** — `apply_full_plan_v2` read `result["track_index"]` from `create_midi_track`, but the Remote Script returns `result["index"]`. Same bug class as the v1.23.x `parameter_name` vs `name_or_index` fix.
+- **BUG-FULL-MODE-20: zombie/leftover tracks from previous sessions** — postflight only deleted default-named tracks (`1-MIDI`, `2-Audio`). Now also deletes tracks with no clips AND no instrument device (true-empty zombies) regardless of name.
+- **BUG-FULL-MODE-21: drum-pitch super-low** — Simpler default root C3=60, drum clips firing at MIDI 36 = 24 semitones below native pitch. Drum-role repair (Volume=0, Snap=Off, Transpose=+24) was already in fast mode; now ported to full mode for parity. (`composer/fast/apply._apply_drum_role_repair` is imported by full mode.)
+- **BUG-FULL-MODE-22: arrangement clip length wrong** — fixed alongside BUG-FULL-MODE-23.
+- **BUG-FULL-MODE-23: 32-tile arrangement** — `create_arrangement_clip` duplicated the session clip every `loop_length` beats, producing a tile-grid arrangement. Switched to `create_native_arrangement_clip` + `add_arrangement_notes` + `set_clip_loop` for native arrangement clip authoring; one clip per section, looped to fill section length.
+
+### Known gaps (deferred to v1.25)
+
+- **`KnowledgePack.atlas_candidates_per_role` is empty stub** — agent still falls through to `search_browser` filename matching instead of consulting the indexed atlas. Ranking + truncation per role needs careful design (1-2 days). Documented as **BUG-FULL-MODE-24** and is the headline feature of v1.25.
+- **Reasoning loop (Scope B)** — full mode currently does best-effort `analyze_mix`/`analyze_loudness`/`analyze_sound_design` calls but doesn't iterate on findings. v1.25 wires an analyze→adjust→re-analyze loop with a budget.
+- **Drum craft + bass craft sophistication passes** — full mode produces correct but generic drum/bass programming. v1.25 lifts these to "poweruser" depth (per-bar variation, sidechain wiring, ghost notes, swing curves, sub/mid/click frequency separation).
+- **`verify_track_audible` MCP tool** — Phase 4 Task 18c, deferred.
+
+### Tool count
+- Net delta: **453 → 459** (+6: compose framework expansion).
+
+### Tests
+- `tests/composer/` — 184 passing across fast / full / develop / framework subdirectories.
+- `tests/test_tools_contract.py` — 459 tools verified.
+
 ## v1.23.6 — 2026-04-30
 
 ### Fixed

@@ -573,6 +573,7 @@ async def replace_simpler_sample(
     file_path: str,
     chain_index: Optional[int] = None,
     nested_device_index: Optional[int] = None,
+    warp_loops: bool = True,
 ) -> dict:
     """Load an audio file into a Simpler device by absolute file path.
 
@@ -618,7 +619,8 @@ async def replace_simpler_sample(
     )
     if native is not None:
         hygiene = await _simpler_post_load_hygiene(
-            bridge, ableton, track_index, device_index, file_path
+            bridge, ableton, track_index, device_index, file_path,
+            warp_loops=warp_loops,
         )
         if not hygiene.get("verified"):
             return hygiene
@@ -642,7 +644,8 @@ async def replace_simpler_sample(
         }
 
     hygiene = await _simpler_post_load_hygiene(
-        bridge, ableton, track_index, device_index, file_path
+        bridge, ableton, track_index, device_index, file_path,
+        warp_loops=warp_loops,
     )
     if not hygiene.get("verified"):
         return hygiene
@@ -660,6 +663,7 @@ async def load_sample_to_simpler(
     track_index: int,
     file_path: str,
     device_index: int = 0,
+    warp_loops: bool = True,
 ) -> dict:
     """Load an audio file into a NEW Simpler device on a track.
 
@@ -703,7 +707,8 @@ async def load_sample_to_simpler(
             )
             if native is not None:
                 hygiene = await _simpler_post_load_hygiene(
-                    bridge, ableton, track_index, actual_device_index, file_path
+                    bridge, ableton, track_index, actual_device_index, file_path,
+                    warp_loops=warp_loops,
                 )
                 if not hygiene.get("verified"):
                     return hygiene
@@ -759,7 +764,8 @@ async def load_sample_to_simpler(
 
     # Step 4: Verify by reading back the device name (P0-1 guard)
     hygiene = await _simpler_post_load_hygiene(
-        bridge, ableton, track_index, actual_device_index, file_path
+        bridge, ableton, track_index, actual_device_index, file_path,
+        warp_loops=warp_loops,
     )
     if not hygiene.get("verified"):
         return hygiene

@@ -1,4 +1,4 @@
-"""Verify all 453 MCP tools are registered across 54 domains."""
+"""Verify all 459 MCP tools are registered (v1.24 compose framework: full mode rebuild + Applier framework — 6 net new tools since v1.23.x)."""
 
 import asyncio
 import sys
@@ -631,7 +631,47 @@ def test_control_surfaces_tools_registered():
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 453, f"Expected 453 tools, got {len(tools)}"
+    assert len(tools) == 459, f"Expected 459 tools, got {len(tools)}"
+
+
+def test_audit_tools_registered():
+    """audit_layer aggregates the 8 §5 layer-precision checks into one call."""
+    names = _get_tool_names()
+    expected = {"audit_layer"}
+    missing = expected - names
+    assert not missing, f"Missing audit tools: {missing}"
+
+
+def test_compose_fast_apply_registered():
+    """compose_fast_apply is the Phase-3 of the LLM-creative fast mode
+    (added 2026-05-01 redesign). Together with compose(mode="fast")
+    forming the brief→design→apply two-phase flow."""
+    names = _get_tool_names()
+    expected = {"compose_fast_apply"}
+    missing = expected - names
+    assert not missing, f"Missing compose_fast_apply tool: {missing}"
+
+
+def test_compose_full_apply_registered():
+    """compose_full_apply walks a full-mode plan server-side with
+    $from_step resolution + pre-flight (analyzer + cleanup) + post-flight
+    (leftover default-track cleanup). Eliminates the 60-step manual walk
+    the agent had to do previously (added 2026-05-01)."""
+    names = _get_tool_names()
+    expected = {"compose_full_apply"}
+    missing = expected - names
+    assert not missing, f"Missing compose_full_apply tool: {missing}"
+
+
+def test_consult_ableton_knowledge_registered():
+    """consult_ableton_knowledge is the Tier-3 Ableton Knowledge consultation
+    tool (added 2026-05-01 alongside Tier-1 technique attribution + Tier-2
+    reference-artist mode). Returns a structured search plan + synthesis
+    template the agent fires against the Ableton Knowledge MCP tools."""
+    names = _get_tool_names()
+    expected = {"consult_ableton_knowledge"}
+    missing = expected - names
+    assert not missing, f"Missing consult_ableton_knowledge tool: {missing}"
 
 
 def test_synthesis_brain_tools_registered():

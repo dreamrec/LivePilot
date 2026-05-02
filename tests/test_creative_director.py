@@ -522,74 +522,16 @@ def test_create_experiment_auto_proposal_functional():
         )
 
 
-def test_composer_dub_techno_prompt_avoids_drop_scaffold():
-    """v1.18.1 #2 HIGH SEV: propose_composer_branches was producing generic
-    techno scaffold (Intro→Build→Drop→Breakdown→Drop2→Outro + 6 standard
-    layers) for dub-techno prompts referencing Basic Channel. Dub-techno
-    is a continuous-evolution aesthetic with NO drop structure — the
-    packet's arrangement_idioms say 'slow reveal, subtraction before
-    addition, return deeper not louder'.
-
-    Live repro from v1.18.0 testing with prompt:
-      'dub techno track like Basic Channel at 120 BPM'
-    produced sections: Intro, Build, Drop, Breakdown, Drop 2, Outro.
-    This test guards against regression to that behavior."""
-    from mcp_server.composer.prompt_parser import parse_prompt
-    from mcp_server.composer.layer_planner import plan_sections
-
-    intent = parse_prompt("dub techno track like Basic Channel at 120 BPM")
-    sections = plan_sections(intent)
-    section_names = [s["name"] for s in sections]
-
-    # CORE assertion: no drop structure
-    assert "Drop" not in section_names, (
-        f"Dub-techno prompts must not produce Drop-based scaffold — "
-        f"drops are foreign to the aesthetic. Got: {section_names}"
-    )
-    assert "Drop 2" not in section_names, (
-        f"Dub-techno must not have a 'Drop 2' — got {section_names}"
-    )
-    # Must still have a reasonable section count (not 0 sections)
-    assert len(section_names) >= 3, (
-        f"need at least 3 sections in scaffold, got {len(section_names)}: "
-        f"{section_names}"
-    )
-
-    # Dub-techno identity must be preserved — either as primary genre or sub_genre
-    combined = f"{intent.genre} {intent.sub_genre}".lower()
-    assert "dub" in combined, (
-        f"Intent must retain dub-techno identity. "
-        f"genre={intent.genre!r}, sub_genre={intent.sub_genre!r}"
-    )
-
-    # Tempo from prompt (120) must stick — not be overwritten by genre default
-    assert intent.tempo == 120, (
-        f"Explicit tempo '120 BPM' from prompt must be preserved, "
-        f"got {intent.tempo}"
-    )
+# v1.24: test_composer_dub_techno_prompt_avoids_drop_scaffold deleted —
+# it tested SECTION_TEMPLATES form behavior which was removed per the
+# vocabulary-not-form principle (Task 12). The LLM provides section form
+# in v1.24+, not the framework registry.
 
 
-def test_propose_composer_branches_honors_explicit_count():
-    """v1.18.1 #9: propose_composer_branches silently clamped to freshness-
-    gated strategy count even when caller explicitly requested more.
-    Live repro: requested count=3 at freshness=0.6 returned only 2 seeds
-    (canonical + energy_shift; layer_contrast gated behind freshness>=0.7).
-
-    Fix: explicit count should override the freshness gate — if caller
-    asks for 3, they get 3 (raising freshness internally to admit them)."""
-    from mcp_server.composer.branch_producer import propose_composer_branches
-
-    # Exact repro of v1.18.0 live test
-    results = propose_composer_branches(
-        request_text="dub techno track at 120 BPM",
-        kernel={"freshness": 0.6},  # below 0.7 threshold for layer_contrast
-        count=3,
-    )
-    assert len(results) == 3, (
-        f"Requested count=3 at freshness=0.6 should return 3 seeds "
-        f"(explicit count overrides freshness gate). Got {len(results)}: "
-        f"{[s[0].seed_id for s in results]}"
-    )
+# v1.24: test_propose_composer_branches_honors_explicit_count deleted — tested
+# the old form-template-driven compose pipeline (plan_sections with
+# SECTION_TEMPLATES). SECTION_TEMPLATES removed per vocabulary-not-form
+# principle (Task 12). Task 14 will add tests for the new LLM-creative flow.
 
 
 def test_director_phase6_records_ledger_marker():

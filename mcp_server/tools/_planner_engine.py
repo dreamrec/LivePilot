@@ -26,64 +26,10 @@ from ._composition_engine import (
 )
 
 
-# ── Section Templates ────────────────────────────────────────────────
-
-# Prototypical section sequences by style. Each entry:
-# (section_type, energy_target, density_target, typical_bars)
-STYLE_TEMPLATES: dict[str, list[tuple[SectionType, float, float, int]]] = {
-    "electronic": [
-        (SectionType.INTRO, 0.2, 0.2, 16),
-        (SectionType.VERSE, 0.5, 0.5, 16),
-        (SectionType.BUILD, 0.6, 0.6, 8),
-        (SectionType.DROP, 0.9, 0.9, 16),
-        (SectionType.BREAKDOWN, 0.3, 0.3, 8),
-        (SectionType.BUILD, 0.7, 0.7, 8),
-        (SectionType.DROP, 1.0, 1.0, 16),
-        (SectionType.OUTRO, 0.2, 0.2, 16),
-    ],
-    "hiphop": [
-        (SectionType.INTRO, 0.3, 0.3, 8),
-        (SectionType.VERSE, 0.6, 0.6, 16),
-        (SectionType.CHORUS, 0.8, 0.8, 8),
-        (SectionType.VERSE, 0.6, 0.6, 16),
-        (SectionType.CHORUS, 0.8, 0.8, 8),
-        (SectionType.BRIDGE, 0.5, 0.4, 8),
-        (SectionType.CHORUS, 0.9, 0.9, 8),
-        (SectionType.OUTRO, 0.3, 0.3, 8),
-    ],
-    "pop": [
-        (SectionType.INTRO, 0.3, 0.3, 8),
-        (SectionType.VERSE, 0.5, 0.5, 16),
-        (SectionType.PRE_CHORUS, 0.6, 0.6, 8),
-        (SectionType.CHORUS, 0.8, 0.8, 8),
-        (SectionType.VERSE, 0.5, 0.5, 16),
-        (SectionType.PRE_CHORUS, 0.6, 0.6, 8),
-        (SectionType.CHORUS, 0.9, 0.9, 8),
-        (SectionType.BRIDGE, 0.4, 0.4, 8),
-        (SectionType.CHORUS, 1.0, 1.0, 8),
-        (SectionType.OUTRO, 0.3, 0.3, 8),
-    ],
-    "ambient": [
-        (SectionType.INTRO, 0.1, 0.1, 32),
-        (SectionType.VERSE, 0.3, 0.3, 32),
-        (SectionType.VERSE, 0.5, 0.5, 32),
-        (SectionType.BREAKDOWN, 0.2, 0.2, 16),
-        (SectionType.VERSE, 0.4, 0.4, 32),
-        (SectionType.OUTRO, 0.1, 0.1, 32),
-    ],
-    "techno": [
-        (SectionType.INTRO, 0.3, 0.3, 16),
-        (SectionType.VERSE, 0.6, 0.6, 32),
-        (SectionType.BUILD, 0.7, 0.7, 8),
-        (SectionType.DROP, 1.0, 1.0, 32),
-        (SectionType.BREAKDOWN, 0.3, 0.3, 16),
-        (SectionType.BUILD, 0.8, 0.8, 8),
-        (SectionType.DROP, 1.0, 1.0, 32),
-        (SectionType.OUTRO, 0.3, 0.3, 16),
-    ],
-}
-
-VALID_STYLES = frozenset(STYLE_TEMPLATES.keys())
+# v1.24: STYLE_TEMPLATES removed per vocabulary-not-form principle (Task 12).
+# The framework provides VOCABULARY (descriptive). The LLM provides FORM
+# (creative). Genre form templates (section sequences, bar counts, drop
+# placements) belong in the LLM's training data + WebSearch fallback, NOT here.
 
 
 # ── Loop Identity ────────────────────────────────────────────────────
@@ -226,18 +172,34 @@ def plan_arrangement_from_loop(
     loop_identity: LoopIdentity,
     target_duration_bars: int = 128,
     style: str = "electronic",
+    section_template: Optional[list[tuple["SectionType", float, float, int]]] = None,
 ) -> ArrangementPlan:
     """Transform a loop identity into a full arrangement blueprint.
 
-    1. Select section template based on style
+    # DEPRECATED in v1.24 — full mode is now LLM-creative. This function may
+    # remain functional but should not be relied on for v1.24+ flows.
+    # v1.24: STYLE_TEMPLATES removed per vocabulary-not-form principle (Task 12).
+    # Callers must supply section_template explicitly; the built-in registry is gone.
+
+    1. Use caller-supplied section_template (required in v1.24+)
     2. Scale section lengths to target duration
     3. Plan element reveal order (what enters/exits when)
     4. Suggest gesture automation for transitions
-    """
-    if style not in STYLE_TEMPLATES:
-        raise ValueError(f"Unknown style '{style}'. Valid: {sorted(VALID_STYLES)}")
 
-    template = STYLE_TEMPLATES[style]
+    Args:
+        section_template: List of (SectionType, energy_target, density_target,
+            bars) tuples. The LLM or caller is responsible for providing this
+            based on the genre/mood context. MUST start with INTRO and end with
+            OUTRO by convention.
+    """
+    if section_template is None:
+        raise ValueError(
+            "section_template is required in v1.24+. "
+            "STYLE_TEMPLATES was removed — the LLM provides form, not the framework. "
+            "Pass an explicit section_template list."
+        )
+
+    template = section_template
 
     # 1. Scale sections to target duration
     template_bars = sum(s[3] for s in template)

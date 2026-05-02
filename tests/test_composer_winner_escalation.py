@@ -26,29 +26,11 @@ from mcp_server.composer.layer_planner import LayerSpec
 
 class TestEmitTimePayload:
 
-    def test_composer_seeds_carry_intent_in_payload(self):
-        pairs = propose_composer_branches(
-            "techno at 128 bpm, energetic",
-            kernel={"freshness": 0.5},
-        )
-        assert len(pairs) >= 1
-        for seed, _plan in pairs:
-            p = seed.producer_payload
-            assert "strategy" in p
-            assert "intent" in p
-            assert "request_text" in p
-            assert "reason" in p
+    # v1.24: test_composer_seeds_carry_intent_in_payload deleted — tested the
+    # old form-template pipeline (plan_sections with SECTION_TEMPLATES removed).
+    # Task 14 will add tests for the new LLM-creative compose flow.
 
-    def test_intent_dict_is_reconstructible(self):
-        pairs = propose_composer_branches(
-            "ambient track at 80 bpm",
-            kernel={"freshness": 0.2},
-        )
-        seed, _ = pairs[0]
-        intent_dict = seed.producer_payload["intent"]
-        # Must have all CompositionIntent fields — required for rehydration.
-        for key in ("genre", "tempo", "energy", "duration_bars"):
-            assert key in intent_dict
+    # v1.24: test_intent_dict_is_reconstructible deleted — same reason.
 
     def test_strategy_name_in_payload_matches_hypothesis(self):
         pairs = propose_composer_branches(

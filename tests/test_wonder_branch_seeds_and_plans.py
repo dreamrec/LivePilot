@@ -96,19 +96,10 @@ class TestSynthesisWiring:
 
 class TestComposerWiring:
 
-    def test_composer_request_produces_composer_seeds(self):
-        seeds, plans = generate_branch_seeds_and_plans(
-            "xyzzy",
-            composer_request="build me a techno loop at 128",
-            composer_count=2,
-            max_seeds=5,
-        )
-        comp_seeds = [s for s in seeds if s.source == "composer"]
-        assert len(comp_seeds) >= 1
-        for s in comp_seeds:
-            # Plans may be attached (scaffolding plans) or absent (analytical).
-            if s.seed_id in plans:
-                assert "steps" in plans[s.seed_id]
+    # v1.24: test_composer_request_produces_composer_seeds deleted — tested the
+    # old form-template-driven compose pipeline (plan_sections with SECTION_TEMPLATES).
+    # SECTION_TEMPLATES removed per vocabulary-not-form principle (Task 12).
+    # Task 14 will add tests for the new LLM-creative compose flow.
 
     def test_no_composer_request_skips_composer_path(self):
         seeds, _ = generate_branch_seeds_and_plans(

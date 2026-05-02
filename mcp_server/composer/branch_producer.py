@@ -28,8 +28,8 @@ from typing import Optional
 
 from ..branches import BranchSeed, freeform_seed
 from .prompt_parser import parse_prompt, CompositionIntent
-from .layer_planner import plan_layers, plan_sections
-from .engine import ComposerEngine, CompositionResult
+from .full.layer_planner import plan_layers, plan_sections
+from .full.engine import ComposerEngine, CompositionResult
 
 
 # Strategy registry — each function takes an intent and returns (modified
@@ -302,6 +302,9 @@ def _build_section_hypothesis_plan(intent: CompositionIntent, strategy_name: str
 
     Returns a dict with {"steps", "step_count", "summary"}.
     """
+    # v1.24: SECTION_TEMPLATES removed per vocabulary-not-form principle (Task 12).
+    # plan_layers and plan_sections will raise until Task 14 rewires this.
+    # DEPRECATED in v1.24.
     layers = plan_layers(intent)
     sections = plan_sections(intent)
 

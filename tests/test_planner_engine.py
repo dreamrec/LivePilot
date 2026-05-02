@@ -10,8 +10,6 @@ from mcp_server.tools._planner_engine import (
     ArrangementPlan,
     LoopIdentity,
     SectionPlan,
-    STYLE_TEMPLATES,
-    VALID_STYLES,
     analyze_loop_identity,
     plan_arrangement_from_loop,
 )
@@ -21,6 +19,22 @@ from mcp_server.tools._composition_engine import (
     SectionNode,
     SectionType,
 )
+
+
+# ── Minimal section template for tests ──────────────────────────────
+# v1.24: STYLE_TEMPLATES removed — callers supply templates. Tests use this
+# minimal fixture instead of a built-in registry. Shape: (SectionType, energy,
+# density, bars). The LLM provides real form in production.
+_ELECTRONIC_FIXTURE: list[tuple] = [
+    (SectionType.INTRO, 0.2, 0.2, 16),
+    (SectionType.VERSE, 0.5, 0.5, 16),
+    (SectionType.BUILD, 0.6, 0.6, 8),
+    (SectionType.DROP, 0.9, 0.9, 16),
+    (SectionType.BREAKDOWN, 0.3, 0.3, 8),
+    (SectionType.BUILD, 0.7, 0.7, 8),
+    (SectionType.DROP, 1.0, 1.0, 16),
+    (SectionType.OUTRO, 0.2, 0.2, 16),
+]
 
 
 # ── Test Helpers ─────────────────────────────────────────────────────
@@ -102,30 +116,34 @@ class TestAnalyzeLoopIdentity:
 
 
 class TestPlanArrangement:
+    # v1.24: STYLE_TEMPLATES removed — tests supply section_template explicitly.
+    # test_all_styles_valid and test_invalid_style_raises deleted (tested a
+    # deleted concept). Remaining tests use _ELECTRONIC_FIXTURE.
+
     def test_basic_electronic_plan(self):
         loop = _make_loop_identity()
-        plan = plan_arrangement_from_loop(loop, target_duration_bars=128, style="electronic")
+        plan = plan_arrangement_from_loop(
+            loop, target_duration_bars=128, style="electronic",
+            section_template=_ELECTRONIC_FIXTURE,
+        )
 
         assert isinstance(plan, ArrangementPlan)
         assert plan.style == "electronic"
         assert len(plan.sections) > 0
         assert plan.total_bars > 0
 
-    def test_all_styles_valid(self):
+    def test_no_template_raises(self):
+        """Without section_template, the function raises — the registry is gone."""
         loop = _make_loop_identity()
-        for style in VALID_STYLES:
-            plan = plan_arrangement_from_loop(loop, target_duration_bars=64, style=style)
-            assert plan.style == style
-            assert len(plan.sections) > 0
-
-    def test_invalid_style_raises(self):
-        loop = _make_loop_identity()
-        with pytest.raises(ValueError, match="Unknown style"):
-            plan_arrangement_from_loop(loop, style="jazz_fusion_prog")
+        with pytest.raises(ValueError, match="section_template is required"):
+            plan_arrangement_from_loop(loop, style="electronic")
 
     def test_sections_are_contiguous(self):
         loop = _make_loop_identity()
-        plan = plan_arrangement_from_loop(loop, target_duration_bars=128)
+        plan = plan_arrangement_from_loop(
+            loop, target_duration_bars=128,
+            section_template=_ELECTRONIC_FIXTURE,
+        )
 
         for i in range(1, len(plan.sections)):
             prev = plan.sections[i - 1]
@@ -136,7 +154,10 @@ class TestPlanArrangement:
 
     def test_sections_have_bar_multiples_of_4(self):
         loop = _make_loop_identity()
-        plan = plan_arrangement_from_loop(loop, target_duration_bars=128)
+        plan = plan_arrangement_from_loop(
+            loop, target_duration_bars=128,
+            section_template=_ELECTRONIC_FIXTURE,
+        )
 
         for section in plan.sections:
             length = section.length_bars()
@@ -144,7 +165,10 @@ class TestPlanArrangement:
 
     def test_reveal_order_exists(self):
         loop = _make_loop_identity()
-        plan = plan_arrangement_from_loop(loop, target_duration_bars=128)
+        plan = plan_arrangement_from_loop(
+            loop, target_duration_bars=128,
+            section_template=_ELECTRONIC_FIXTURE,
+        )
 
         assert len(plan.reveal_order) > 0
         # Every track from the loop should appear in reveal order
@@ -157,7 +181,10 @@ class TestPlanArrangement:
 
     def test_gesture_plan_at_transitions(self):
         loop = _make_loop_identity()
-        plan = plan_arrangement_from_loop(loop, target_duration_bars=128)
+        plan = plan_arrangement_from_loop(
+            loop, target_duration_bars=128,
+            section_template=_ELECTRONIC_FIXTURE,
+        )
 
         # Should have gesture suggestions for transitions
         assert len(plan.gesture_plan) == len(plan.sections) - 1
@@ -168,7 +195,10 @@ class TestPlanArrangement:
 
     def test_breakdown_strips_elements(self):
         loop = _make_loop_identity()
-        plan = plan_arrangement_from_loop(loop, target_duration_bars=128, style="electronic")
+        plan = plan_arrangement_from_loop(
+            loop, target_duration_bars=128, style="electronic",
+            section_template=_ELECTRONIC_FIXTURE,
+        )
 
         breakdowns = [s for s in plan.sections if s.section_type == SectionType.BREAKDOWN]
         if breakdowns:
@@ -181,8 +211,14 @@ class TestPlanArrangement:
 
     def test_scaling_to_target_duration(self):
         loop = _make_loop_identity()
-        short = plan_arrangement_from_loop(loop, target_duration_bars=64)
-        long = plan_arrangement_from_loop(loop, target_duration_bars=256)
+        short = plan_arrangement_from_loop(
+            loop, target_duration_bars=64,
+            section_template=_ELECTRONIC_FIXTURE,
+        )
+        long = plan_arrangement_from_loop(
+            loop, target_duration_bars=256,
+            section_template=_ELECTRONIC_FIXTURE,
+        )
 
         assert long.total_bars > short.total_bars
 
@@ -197,7 +233,10 @@ class TestPlanArrangement:
             density=0.2,
             estimated_bars=8,
         )
-        plan = plan_arrangement_from_loop(empty_loop, target_duration_bars=64)
+        plan = plan_arrangement_from_loop(
+            empty_loop, target_duration_bars=64,
+            section_template=_ELECTRONIC_FIXTURE,
+        )
         # Should note missing foreground and rhythm
         assert any("foreground" in n.lower() for n in plan.notes)
         assert any("rhythm" in n.lower() for n in plan.notes)
@@ -253,21 +292,6 @@ class TestArrangementPlan:
         assert d["notes"] == ["test note"]
 
 
-# ── Style Templates ──────────────────────────────────────────────────
-
-
-class TestStyleTemplates:
-    def test_all_templates_have_intro_and_outro(self):
-        for style, template in STYLE_TEMPLATES.items():
-            types = [t[0] for t in template]
-            assert types[0] == SectionType.INTRO, f"{style} doesn't start with INTRO"
-            assert types[-1] == SectionType.OUTRO, f"{style} doesn't end with OUTRO"
-
-    def test_all_templates_have_energy_arc(self):
-        for style, template in STYLE_TEMPLATES.items():
-            energies = [t[1] for t in template]
-            energy_range = max(energies) - min(energies)
-            assert energy_range >= 0.4, f"{style} has flat energy arc ({energy_range:.2f})"
-
-    def test_valid_styles_matches_templates(self):
-        assert VALID_STYLES == frozenset(STYLE_TEMPLATES.keys())
+# v1.24: TestStyleTemplates deleted — STYLE_TEMPLATES removed per
+# vocabulary-not-form principle (Task 12). The LLM provides form, not the
+# framework. Regression guards live in tests/composer/full/test_no_form_templates.py.
