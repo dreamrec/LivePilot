@@ -1,6 +1,6 @@
 # Tool Reference
 
-LivePilot gives you 459 tools that control every part of Ableton Live 12. You don't call these tools directly -- you describe what you want in plain language, and the AI picks the right tools behind the scenes. But knowing what's available helps you ask better questions and understand what's happening when the AI works on your session.
+LivePilot gives you 462 tools that control every part of Ableton Live 12. You don't call these tools directly -- you describe what you want in plain language, and the AI picks the right tools behind the scenes. But knowing what's available helps you ask better questions and understand what's happening when the AI works on your session.
 
 This chapter covers every tool, grouped by what it does. Each entry tells you the tool name, what it does in practice, what parameters it accepts, and when you'd want it.
 
@@ -3222,6 +3222,50 @@ Force the atlas to re-read `device_atlas.json` from disk. Useful after an out-of
 
 ---
 
+### `atlas_explore`
+
+**[v1.25.0+]** Refined per-role candidate query callable mid-design. Wraps `AtlasResolver.resolve_for_role` with corpus-deep ranking signals: tag/genre match, signature_techniques mood overlap, curated `.adg` boost, recent positive preference, §1 banned-default penalty for melodic roles, opaque-M4L pad penalty, anti-repeat penalty, and caller avoid-list. Returns 3-5 ranked candidates with reasoning trails and a cohort_hint.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `role` | string | *(required)* | Instrument role (e.g., `"bass"`, `"pad"`, `"lead"`). |
+| `mood` | string | *(required)* | Mood descriptor for ranking. |
+| `genre` | string | *(required)* | Genre for tag/genre match scoring. |
+| `artists` | list[str] | `[]` | Optional artist references for character alignment. |
+| `n` | int | 5 | Number of candidates to return (3–10). |
+| `avoid_uris` | list[str] | `[]` | URIs already in the current plan — penalized. |
+| `cohort_constraint` | string | `""` | Restrict to a specific pack or cohort. |
+
+**When to use:** During compose plan design when you need a ranked shortlist for a specific role. Call BEFORE committing to a URI — use `atlas_explore` instead of `atlas_search` when you have a role+mood+genre context.
+
+---
+
+### `atlas_audition`
+
+**[v1.25.0+]** Full sidecar dump for a single URI — character_tags, signature_techniques (joined from `device_techniques_index.json`), producer-curated macro names (joined via `preset_resolver`), and curated `.adg` paths.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `uri` | string | *(required)* | Atlas URI of the device/preset to inspect. |
+
+**When to use:** When a candidate's tags alone aren't enough to decide. Call `atlas_audition` on the top 1-2 candidates from `atlas_explore` before committing. Especially useful for verifying `signature_techniques` alignment and macro names.
+
+---
+
+### `atlas_substitute`
+
+**[v1.25.0+]** Anti-tag-driven swap — finds replacement candidates after `analyze_sound_design` or `analyze_mix` flags an issue with the current device. Substring-matches `anti_tag` against the 11-key inversion map (bright/harsh/aggressive/sparse/thin/muddy/clean/dark/warm/static/generic) to derive excluded_tags + preferred_tags, filters role-mate candidates, and ranks survivors.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `current_uri` | string | *(required)* | URI of the device to replace. |
+| `anti_tag` | string | *(required)* | Problem tag from analyzer output (e.g., `"harsh"`, `"muddy"`, `"generic"`). |
+| `n` | int | 3 | Number of replacement candidates to return. |
+
+**When to use:** After an analysis tool flags a problem with a device's character (e.g., "too harsh", "too generic"). Call with the flagged tag to get role-aware replacements that avoid the problem characteristic.
+
+---
+
 ### `extension_atlas_search`
 
 **[v1.23.0+]** Search user-local atlas overlays installed under `~/.livepilot/atlas-overlays/`. Use this for content from extension namespaces (e.g., `elektron`, `prophet`) — NOT for the main Ableton device atlas (use `atlas_search` for that).
@@ -3439,7 +3483,7 @@ Lightweight health check — parameter_count sanity (≤1 parameter = probably d
 
 ## More tools
 
-This chapter covers the most-used tools. The complete list of all 459 tools across 55 domains — including all intelligence-engine tools, creative-constraints, preview-studio, wonder-mode, memory, song-brain, transition/reference/translation engines — is auto-generated at **[Tool Catalog](tool-catalog.md)** from the running MCP server.
+This chapter covers the most-used tools. The complete list of all 462 tools across 55 domains — including all intelligence-engine tools, creative-constraints, preview-studio, wonder-mode, memory, song-brain, transition/reference/translation engines — is auto-generated at **[Tool Catalog](tool-catalog.md)** from the running MCP server.
 
 See also:
 - **[The Intelligence Layer](intelligence.md)** — how the engines connect

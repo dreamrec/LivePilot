@@ -46,12 +46,62 @@ _DESIGN_TARGETS = (
     "the song. Use the event_lexicon as a vocabulary of named structural "
     "moves to schedule at chosen phrase boundaries. For niche style references "
     "in research_hooks, run WebSearch to ground your form choices in the "
-    "actual conventions of that subgenre. Submit your design as a plan to "
-    "compose_full_apply with: per-track variant clips at chosen scene slots, "
-    "per-section arrangement_clip placements referencing those variants, "
-    "and structural events scheduled at phrase boundaries. The form is YOUR "
-    "creative product — vocabularies tell you what techno or BoC sound like, "
-    "they do not tell you the bar count of an intro."
+    "actual conventions of that subgenre.\n\n"
+    "INSTRUMENT SELECTION (v1.25 hybrid knowledge surface — MANDATED FOUR-SOURCE SEARCH):\n"
+    "The brief's `atlas_anchors` is ONE source. Before committing any role pick "
+    "you MUST also query the other three sources below. Factory-atlas-only picks "
+    "have repeatedly missed canonical user-curated instruments (e.g., the 808 Trap "
+    "Selector Rack from Trap Drums by Sound Oracle pack lives in the packs overlay, "
+    "not the factory tag index). Always union BEFORE deciding.\n\n"
+    "Source 1 — Factory atlas (already surfaced in atlas_anchors). Three tools:\n"
+    "  • atlas_audition(uri) — full sidecar dump for a chosen URI: character "
+    "tags, signature_techniques, producer-curated macro values, related demos. "
+    "Call this BEFORE committing to a candidate when its tags alone aren't "
+    "enough to know if it fits the section.\n"
+    "  • atlas_explore(role, mood, genre, artists?) — refined per-role query "
+    "when an anchor doesn't fit the section's purpose, or when you need siblings "
+    "of a role pick. Returns 3-5 ranked candidates with reasoning trails.\n"
+    "  • atlas_substitute(current_uri, anti_tag) — anti-tag-driven swap to use "
+    "AFTER analyze_sound_design or analyze_mix flags an issue (\"too bright\", "
+    "\"too aggressive\", \"too sparse\", \"muddy\", \"static\", \"generic\"). "
+    "Returns 3 alternatives that explicitly avoid the unwanted property.\n\n"
+    "Source 2 — User corpus (mandatory union — ~/.livepilot/atlas-overlays/):\n"
+    "  • extension_atlas_search(query=\"<role>\", limit=10) — searches all four "
+    "overlay namespaces: `packs` (Ableton factory packs with hidden_gems, "
+    "notable_presets, signature_workflows fields), `m4l-devices` (curated M4L "
+    "device knowledge), `user.*` (your scanned .amxd / plugin / preset library), "
+    "`elektron` (hardware-mirror chains). Producer-curated rack instruments "
+    "(808 Trap Selector Rack, Harmonic Drone Generator, etc.) live here, NOT "
+    "in the factory tag index. Always run this query alongside atlas_explore.\n"
+    "  • extension_atlas_search(query=\"<role-or-aesthetic>\", entity_type=\"demo_project\") — "
+    "GROUND-TRUTH ROLE→URI MAPPING. The packs namespace contains 100+ analyzed "
+    "demo .als project parses; each carries actual track-by-track instrument "
+    "URIs proven on real Ableton-shipped demos. For 808 bass, query "
+    "`demo_project` to find which pack-included .als demos use 808 bass and "
+    "what URI they loaded — the highest-confidence source for any role.\n"
+    "  • extension_atlas_get(namespace, entity_id) — full body of a chosen entry "
+    "including hidden_gems and signature_workflows fields the search summary trims.\n\n"
+    "Source 3 — Anthropic Ableton Knowledge MCP (mcp__Ableton_Knowledge__*):\n"
+    "  • search_transcripts(query) — Ableton's official tutorial video transcripts; "
+    "ground-truth pedagogy on how producers actually use the device.\n"
+    "  • search_live_manual(query) — live manual snippets for any device or feature.\n"
+    "  • search_knowledge_base(query) — broader Ableton knowledge base.\n"
+    "  • search_videos(query) — official tutorial video metadata.\n"
+    "  Run these for the ROLE term (e.g., \"808 bass\", \"sidechain compression\") "
+    "and for any artist/genre reference in the prompt to ground your design choices.\n\n"
+    "FOUR-SOURCE SEARCH PROTOCOL per role:\n"
+    "  1. Read atlas_anchors[role] (Source 1 starting point).\n"
+    "  2. Call atlas_explore(role, mood, genre, artists) (Source 1 ranked alts).\n"
+    "  3. Call extension_atlas_search(query=role) and extension_atlas_search(query=role, "
+    "entity_type=\"demo_project\") (Source 2 user corpus + ground-truth demos).\n"
+    "  4. Call mcp__Ableton_Knowledge__search_transcripts(query=role) for context (Source 3).\n"
+    "  5. Union results, score against brief's mood/aesthetic, then commit.\n\n"
+    "The framework's job was to surface the corpus. The picks are yours. "
+    "Submit your design as a plan to compose_full_apply with: per-track variant "
+    "clips at chosen scene slots, per-section arrangement_clip placements "
+    "referencing those variants, and structural events scheduled at phrase "
+    "boundaries. The form is YOUR creative product — vocabularies tell you "
+    "what techno or BoC sound like, they do not tell you the bar count of an intro."
 )
 
 
@@ -122,11 +172,21 @@ def build_full_brief(
     artist_refs = extract_artist_refs(prompt or "")
     research_hooks = detect_research_hooks(prompt or "")
 
-    # Build knowledge pack — populates genre_context, artist_context, event_lexicon
+    # Build knowledge pack — populates genre_context, artist_context, event_lexicon,
+    # AND v1.25 atlas_anchors when atlas + brief_text are available.
     if artist_refs:
         intent_dict["artists"] = artist_refs
     kp = KnowledgePack()
-    knowledge = kp.build(intent_dict, mode="full")
+    atlas_obj = _safe_get_atlas(ctx)
+    ableton_obj = _safe_get_ableton(ctx)
+    knowledge = kp.build(
+        intent_dict,
+        mode="full",
+        atlas=atlas_obj,
+        ableton=ableton_obj,
+        ctx=ctx,
+        brief_text=prompt or "",
+    )
 
     return {
         "mode": "full",
@@ -137,8 +197,31 @@ def build_full_brief(
         "artist_context": knowledge["artist_context"],
         "event_lexicon": knowledge["event_lexicon"],
         "atlas_candidates_per_role": knowledge["atlas_candidates_per_role"],
+        "atlas_anchors": knowledge.get("atlas_anchors"),
         "manual_snippets": knowledge["manual_snippets"],
         "seed_state": seed_state,
         "research_hooks": research_hooks,
         "design_targets": _DESIGN_TARGETS,
     }
+
+
+# ── Lifespan-context helpers ───────────────────────────────────────
+
+
+def _safe_get_atlas(ctx: Any) -> Optional[Any]:
+    """Best-effort atlas fetch. Returns None on any failure."""
+    try:
+        from ...atlas import get_atlas
+        return get_atlas()
+    except Exception:
+        return None
+
+
+def _safe_get_ableton(ctx: Any) -> Optional[Any]:
+    """Best-effort ableton-client fetch from lifespan_context. None on miss."""
+    try:
+        if ctx is not None and hasattr(ctx, "lifespan_context"):
+            return ctx.lifespan_context.get("ableton")
+    except Exception:
+        pass
+    return None

@@ -1,4 +1,4 @@
-# LivePilot v1.24.0 — Ableton Live 12
+# LivePilot v1.25.0 — Ableton Live 12
 
 ## Project
 - **Repo:** This directory (LivePilot)
@@ -30,7 +30,7 @@
 ## Key Rules
 - ALL Live Object Model (LOM) calls must execute on Ableton's main thread via schedule_message queue
 - Live 12 minimum — use modern note API (add_new_notes, get_notes_extended, apply_note_modifications)
-- 459 tools across 55 domains: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, analyzer, automation, theory, generative, harmony, midi_io, perception, agent_os, composition, motif, research, planner, project_brain, runtime, evaluation, mix_engine, sound_design, transition_engine, reference_engine, translation_engine, performance_engine, song_brain, preview_studio, hook_hunter, stuckness_detector, wonder_mode, session_continuity, creative_constraints, device_forge, sample_engine, atlas, composer, experiment, musical_intelligence, semantic_moves, diagnostics, follow_actions, grooves, scales, take_lanes, miditool, synthesis_brain, creative_director, user_corpus, audit
+- 462 tools across 55 domains: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, analyzer, automation, theory, generative, harmony, midi_io, perception, agent_os, composition, motif, research, planner, project_brain, runtime, evaluation, mix_engine, sound_design, transition_engine, reference_engine, translation_engine, performance_engine, song_brain, preview_studio, hook_hunter, stuckness_detector, wonder_mode, session_continuity, creative_constraints, device_forge, sample_engine, atlas, composer, experiment, musical_intelligence, semantic_moves, diagnostics, follow_actions, grooves, scales, take_lanes, miditool, synthesis_brain, creative_director, user_corpus, audit
 - JSON over TCP, newline-delimited, port 9878
 - Structured errors with codes: INDEX_ERROR, NOT_FOUND, INVALID_PARAM, STATE_ERROR, TIMEOUT, INTERNAL
 - **LivePilot_Analyzer must be LAST on master** — always after ALL effects (EQ, Compressor, Utility) so it reads the final output, not pre-effect signal
@@ -74,7 +74,7 @@ cat .claude-plugin/marketplace.json | python3 -c "import json,sys; print(json.lo
 Expected output: the new version string. If the mirror is stale (happened silently across v1.18.0-v1.18.3 — panel stuck at "1.17.5 installed"), Claude Code's plugin panel will show the old version and `Update` button points at a stale target. The mirror is a git clone that Claude Code fetches from but does NOT auto-pull. Hard-reset is safe — nothing writes to it locally.
 
 ## Tool Count
-Currently 459 tools (up from 453 in v1.23.6 — v1.24 compose framework rebuild: Applier preflight/postflight + KnowledgePack scaffolding + per-mode brief builders; up from 437 in Phase F — added atlas_pack_aware_compose + atlas_cross_pack_chain; up from 434 in Phase C — added atlas_transplant; up from 433 in v1.23.3 — added atlas_macro_fingerprint in v1.23.4; up from 430 in v1.22.x — added 3 extension_atlas_* tools in v1.23.0; up from 403 in v1.15.0-beta originally). If adding/removing tools, update: README.md, package.json description, livepilot/.Codex-plugin/plugin.json, livepilot/.claude-plugin/plugin.json, server.json, livepilot/skills/livepilot-core/SKILL.md, livepilot/skills/livepilot-core/references/overview.md, CLAUDE.md, CHANGELOG.md, tests/test_tools_contract.py, docs/manual/index.md, docs/manual/tool-reference.md
+Currently 462 tools (up from 459 in v1.25.0 — v1.25 hybrid knowledge surface: +3 atlas tools (atlas_explore, atlas_audition, atlas_substitute); up from 453 in v1.23.6 — v1.24 compose framework rebuild: Applier preflight/postflight + KnowledgePack scaffolding + per-mode brief builders; up from 437 in Phase F — added atlas_pack_aware_compose + atlas_cross_pack_chain; up from 434 in Phase C — added atlas_transplant; up from 433 in v1.23.3 — added atlas_macro_fingerprint in v1.23.4; up from 430 in v1.22.x — added 3 extension_atlas_* tools in v1.23.0; up from 403 in v1.15.0-beta originally). If adding/removing tools, update: README.md, package.json description, livepilot/.Codex-plugin/plugin.json, livepilot/.claude-plugin/plugin.json, server.json, livepilot/skills/livepilot-core/SKILL.md, livepilot/skills/livepilot-core/references/overview.md, CLAUDE.md, CHANGELOG.md, tests/test_tools_contract.py, docs/manual/index.md, docs/manual/tool-reference.md
 
 ## Splice plan-aware model (v1.15.0-beta)
 Sample downloads now use plan-aware gating (`mcp_server/splice_client/client.py::decide_download`):

@@ -1,4 +1,4 @@
-"""Verify all 459 MCP tools are registered (v1.24 compose framework: full mode rebuild + Applier framework — 6 net new tools since v1.23.x)."""
+"""Verify all 462 MCP tools are registered (v1.25 hybrid knowledge surface: +3 atlas tools since v1.25.0)."""
 
 import asyncio
 import sys
@@ -631,7 +631,7 @@ def test_control_surfaces_tools_registered():
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 459, f"Expected 459 tools, got {len(tools)}"
+    assert len(tools) == 462, f"Expected 462 tools, got {len(tools)}"
 
 
 def test_audit_tools_registered():
@@ -996,6 +996,10 @@ def test_atlas_tools_registered():
         "atlas_chain_suggest",
         "atlas_compare",
         "scan_full_library",
+        # v1.25 hybrid knowledge surface
+        "atlas_explore",
+        "atlas_audition",
+        "atlas_substitute",
     }
     missing = expected - names
     assert not missing, f"Missing atlas tools: {missing}"

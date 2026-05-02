@@ -1,5 +1,75 @@
 # Changelog
 
+## v1.25.0 — 2026-05-02
+
+Hybrid Knowledge Surface — closes the gap between "compose runs successfully" and "compose makes thoughtful production decisions" by giving the agent three layers of atlas-corpus access during plan design instead of one-shot pre-resolution.
+
+### Added — three new MCP tools
+
+- **`atlas_explore(role, mood, genre, artists?, n=5, avoid_uris?, cohort_constraint?)`** — refined per-role candidate query callable mid-design. Wraps `AtlasResolver.resolve_for_role` with corpus-deep ranking signals: tag/genre match base, signature_techniques mood overlap (+0.20), curated `.adg` boost (+0.10), recent positive preference (+0.10), §1 banned-default penalty for melodic roles (−0.50), opaque-M4L pad penalty (−0.30), §7 #2 anti-repeat (−0.15), caller avoid-list (−0.30). Returns 3-5 ranked candidates with reasoning trails and a cohort_hint inferred from result frequency.
+- **`atlas_audition(uri)`** — full sidecar dump for a single URI: character_tags, signature_techniques (joined from `device_techniques_index.json`), producer-curated macro names (joined via `preset_resolver`), curated `.adg` paths, related demos placeholder. Use BEFORE committing to a candidate when its tags alone aren't enough.
+- **`atlas_substitute(current_uri, anti_tag, n=3)`** — anti-tag-driven swap for after analyze_sound_design or analyze_mix flags an issue. Substring-matches anti_tag against the 11-key map (bright/harsh/aggressive/sparse/thin/muddy/clean/dark/warm/static/generic) to derive (excluded_tags, preferred_tags), filters role-mate candidates that don't carry excluded character_tags, ranks the survivors with preferred_tags as mood boost.
+
+### Added — framework
+
+- **`mcp_server/composer/framework/atlas_resolver.py`** — `AtlasResolver` class with `resolve_anchors()` (Layer A: cohort + role-anchored URIs at brief-build time, wraps `atlas_pack_aware_compose` with coarse→fine role mapping) and `resolve_for_role()` (Layer B: per-role ranked candidates with cohort_constraint + excluded_uris). `AtlasCandidate` and `AtlasAnchors` dataclasses define the shared shape. Memory-rule constants `BANNED_DEFAULT_MELODIC` and `OPAQUE_M4L_FOR_PAD` are exported.
+- **`mcp_server/atlas/explore_tools.py`** — pure-Python implementations for the three new MCP tools, including `_ANTI_TAG_MAP` (11-key inversion table) and `_load_device_techniques_index()` lazy loader.
+
+### Changed — KnowledgePack + brief
+
+- `KnowledgePack.build()` accepts `atlas`, `ableton`, `ctx`, `brief_text` kwargs. When `mode="full"` AND `atlas` AND `brief_text` are provided, populates `atlas_anchors` (best-effort — silently `None` on any failure path).
+- `build_full_brief` now threads the atlas object through. The brief carries `atlas_anchors` alongside the existing fields.
+- `_DESIGN_TARGETS` text in `full/brief_builder.py` updated to teach the LLM about the three new tools and when to call each.
+
+### Tests
+
+- `tests/composer/framework/test_atlas_resolver.py` — 17 cases covering ranking math (8), `resolve_for_role` (6), candidate shape (1), `resolve_anchors` integration with mocked `pack_aware_compose` (2).
+- `tests/atlas/test_explore_tools.py` — 20 cases covering `atlas_explore` (6), `atlas_audition` (5), `_resolve_anti_tags` (3), `atlas_substitute` (6).
+- `tests/test_tools_contract.py` — count assertion updated 459 → 462; atlas tool registry expects the three new names.
+
+### Tool count
+
+- Net delta: **459 → 462** (+3: atlas_explore, atlas_audition, atlas_substitute).
+
+### Changed — `resolve_for_role` four-source union
+
+- **`AtlasResolver.resolve_for_role()`** previously queried only the bundled atlas tag index (`self._atlas._by_tag`). User-curated rack instruments and pack overlays were structurally invisible to the agent's design-time queries.
+- Two-pass overlay union added via new helper `_gather_from_overlays()`:
+  - **Pass A** — explicit `entity_type="demo_project"` query against the `packs` namespace. Demo-project entries (analyzed `.als` parses with `track_names` + `parent_pack` + `device_class_counts`) are the highest-confidence per-role anchors. Each survivor receives a **+0.15 score boost** with reasoning trail entry `"demo_project ground-truth (+0.15)"`.
+  - **Pass B** — full overlay search with no namespace filter. Captures `packs/pack`, `packs/cross_pack_workflow`, `m4l-devices/*`, `user.*`, `elektron/*` entries that share role tags.
+- New helper `_overlay_entry_to_device()` synthesizes `overlay://<namespace>/<entity_id>` URIs so overlay candidates render in the same shape as factory atlas candidates. Agents resolve to a loadable URI via `extension_atlas_get(namespace, entity_id)` afterward.
+- Best-effort: import or runtime failure of the overlay backend silently returns an empty list rather than raising — matches the existing `resolve_anchors` failure semantics.
+
+### Changed — `_DESIGN_TARGETS` four-source search mandate
+
+- Brief text in `mcp_server/composer/full/brief_builder.py::_DESIGN_TARGETS` rewritten to explicitly require the agent to UNION four sources before committing any role pick:
+  1. **Source 1 — Factory atlas** (already in `atlas_anchors`): `atlas_explore` / `atlas_audition` / `atlas_substitute`.
+  2. **Source 2 — User corpus** (mandatory): `extension_atlas_search(query=role)` and `extension_atlas_search(query=role, entity_type="demo_project")` for ground-truth role→URI mappings, plus `extension_atlas_get(namespace, entity_id)` for full-body inspection.
+  3. **Source 3 — Anthropic Ableton Knowledge MCP**: `mcp__Ableton_Knowledge__search_transcripts` / `search_live_manual` / `search_knowledge_base` / `search_videos` for tutorial-grade context.
+  4. **Five-step protocol** documented per role: read anchor → atlas_explore → extension_atlas_search (corpus + demo_project) → Ableton_Knowledge search → union, score, commit.
+- Production motivation: factory-atlas-only selection consistently missed canonical user-curated rack instruments (e.g., the `808 Trap Selector Rack.adg` from the Trap Drums by Sound Oracle pack lives in the packs overlay, not the factory tag index).
+
+### Fixed — `load_browser_item(role="drum")` post-load defaults
+
+Two compounding bugs in `mcp_server/tools/browser.py` made `role="drum"` a no-op since v1.20:
+
+- **Wrong parameter name** — `_SIMPLER_ROLE_DEFAULTS["drum"]` set `"Sample Pitch Coarse"` to 36, but that parameter does NOT exist on `OriginalSimpler`. The `set_device_parameter` call raised `Parameter 'Sample Pitch Coarse' not found`, was swallowed by the per-param try/except, and silently lost. Replaced with `("Transpose", 24)` (range −48..+48 semitones); +24 compensates for Simpler's default sample root C3 vs the drum-pad MIDI convention C1. Melodic and texture roles updated to `("Transpose", 0)` (no shift — C3 default matches their input range).
+- **Device-detection logic never triggered** — wrapper checked `result.get("device_index")` and `result.get("class_name")` from the load response, but the underlying TCP `load_browser_item` command returns only `{loaded, name, device_count}`. Both fields were always `None`/`""`, the `Simpler in device_class` check failed, and the entire role-defaults branch was skipped on every call. Fixed: post-load probe via `get_device_info(track_index, device_index=0)` to read class + name, treating chain-head as the canonical instrument slot Live places fresh instruments at.
+- Same broken parameter name was also patched in `mcp_server/tools/_analyzer_engine/sample.py::_simpler_post_load_hygiene`. Auto-detect-drum-root-note now translates `drum_root → Transpose = 60 − drum_root`, clamped to ±48 semitones.
+- Response now carries `role`, `role_defaults_applied: [{parameter, value|skipped}…]`, and `device_class` so callers can verify the four defaults landed.
+
+### Added — M4L instrument post-load hygiene
+
+- New `_M4L_INSTRUMENT_HYGIENE` dict in `mcp_server/tools/browser.py` maps a device-name substring to a list of `(parameter_name, value)` tames. Runs **unconditionally** (not gated on `role`) post-load, after Simpler role defaults.
+- Initial entry: `Harmonic Drone Generator` (Drone Lab pack) — sets `Latch=0` (off), `Volume=-40` (≈ −20 dB display, vs default ≈ −6 dB), `Density=40` (40 %, vs default 80 %). Without these tames every fresh HDG load slammed an 8-voice drone at full volume the moment any MIDI note hit it. The `Latch` issue compounded by keeping that note ringing forever even after the MIDI source released.
+- Response now carries `m4l_hygiene: {device_name, applied: [{parameter, value|skipped}…]}` when a hygiene entry matches. One match per load (`break` after first hit).
+
+### Tests
+
+- `tests/test_next_steps_2026_04_22.py::test_role_defaults_reasonable_for_drum_role` — assertion updated to `Transpose == 24`; regression guard `"Sample Pitch Coarse" not in drum` prevents the broken param name from ever reappearing.
+- `tests/test_next_steps_2026_04_22.py::test_role_defaults_reasonable_for_melodic_role` — assertion updated to `Transpose == 0` plus the same regression guard.
+- All four role-defaults tests pass against the new `_SIMPLER_ROLE_DEFAULTS` shape.
+
 ## v1.24.0 — 2026-05-02
 
 Compose framework rebuild — fast / full / develop modes share an Applier substrate; full mode is a clean-room rewrite around an LLM-creative two-phase brief flow (LLM provides FORM, framework provides VOCABULARY).

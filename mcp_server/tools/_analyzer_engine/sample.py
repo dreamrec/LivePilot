@@ -258,12 +258,21 @@ async def _simpler_post_load_hygiene(
     # Step 4: auto-detect drum root note from filename (BUG-2026-04-22#18).
     # Only applied for one-shots — warped loops keep Live's default root
     # because their root note is irrelevant at loop playback speeds.
+    #
+    # 2026-05-02 — fixed param name: was "Sample Pitch Coarse" (doesn't exist
+    # on OriginalSimpler — silently failed). Correct param is "Transpose"
+    # (semitone offset from C3=60). Convert detected drum root → Transpose:
+    # Transpose = 60 - drum_root. Example: drum_root=36 (C1) → Transpose=+24,
+    # so triggering MIDI 36 plays the sample at original recorded pitch.
     drum_root = None
     if not is_loop:
         drum_root = _detect_drum_root_note(file_path)
         if drum_root is not None:
+            transpose_value = 60 - int(drum_root)
+            # Clamp to Simpler's Transpose range (-48..+48 semitones)
+            transpose_value = max(-48, min(48, transpose_value))
             hygiene_params.append(
-                {"name_or_index": "Sample Pitch Coarse", "value": drum_root}
+                {"name_or_index": "Transpose", "value": transpose_value}
             )
 
     try:

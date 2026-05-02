@@ -158,28 +158,57 @@ def search_browser(
     return _get_ableton(ctx).send_command("search_browser", params)
 
 
-# Role-aware Simpler defaults — BUG-2026-04-22 #17 + #18.
+# M4L instrument post-load hygiene — 2026-05-02.
+# Some Max-for-Live instruments load with defaults that immediately produce loud
+# unwanted output (Harmonic Drone Generator from Drone Lab is the canonical
+# example: Latch on + Density 80% + Volume −6 dB + all 8 voices active = a wall
+# of sustained drone the moment any MIDI note touches it). Apply tames here so
+# the device is workable on first load. Each entry maps a device-name match
+# (substring) to a list of (parameter_name, value) pairs.
+#
+# Detection runs UNCONDITIONALLY (not gated on `role` like _SIMPLER_ROLE_DEFAULTS)
+# because these M4L instruments are typically loaded without a role parameter.
+_M4L_INSTRUMENT_HYGIENE: dict[str, list[tuple[str, float]]] = {
+    "Harmonic Drone Generator": [
+        ("Latch", 0),       # Off — prevents indefinite note sustain after one trigger
+        ("Volume", -40),    # ≈ -20 dB display (default is -18 / -6 dB which is too loud)
+        ("Density", 40),    # 40% (default 80% is too dense for a background bed)
+    ],
+}
+
+
+# Role-aware Simpler defaults — BUG-2026-04-22 #17 + #18, plus 2026-05-02 fix.
 # Each role maps to a list of (parameter_name, value) pairs applied after
 # load via set_device_parameter. Trigger Mode polarity per BUG #9:
-# 0 = Trigger (one-shot), 1 = Gate (held). Volume in dB. Root in MIDI pitch.
+# 0 = Trigger (one-shot), 1 = Gate (held). Volume in dB. Transpose in semitones.
+#
+# 2026-05-02 — fixed pitch-shift bug:
+# Earlier versions used "Sample Pitch Coarse" param name, which DOES NOT EXIST
+# on OriginalSimpler — the call silently raised and was swallowed. Result: every
+# drum-role Simpler played 24 semitones below original pitch ("super low" sound)
+# because the Simpler's default sample root is C3 (60), but drum convention sends
+# MIDI 36 (C1). The correct parameter is "Transpose" (range -48..+48 semitones);
+# +24 compensates for the C3-vs-C1 mismatch so drum samples play at original
+# recorded pitch when MIDI 36 is sent. Melodic/texture roles use Transpose=0
+# because their default playback range centers on C3 (60) — no compensation needed.
 _SIMPLER_ROLE_DEFAULTS = {
     "drum": [
         ("Snap", 0),
         ("Volume", 0.0),
         ("Trigger Mode", 0),  # Trigger / one-shot
-        ("Sample Pitch Coarse", 36),  # C1, matches drum-pad convention
+        ("Transpose", 24),    # Compensate C3-default → C1-drum-convention root
     ],
     "melodic": [
         ("Snap", 1),
         ("Volume", 0.0),
         ("Trigger Mode", 1),  # Gate / held
-        ("Sample Pitch Coarse", 60),  # C3
+        ("Transpose", 0),     # C3 default — melodic input range
     ],
     "texture": [
         ("Snap", 0),
         ("Volume", -6.0),
         ("Trigger Mode", 1),  # Gate
-        ("Sample Pitch Coarse", 60),  # C3
+        ("Transpose", 0),     # C3 default — sustained-input range
     ],
 }
 
@@ -238,26 +267,80 @@ def load_browser_item(
         "uri": uri,
     })
 
-    # Post-load: apply role-aware defaults if the loaded device is a Simpler.
-    if role and isinstance(result, dict) and not result.get("error"):
-        device_index = result.get("device_index")
-        device_class = str(result.get("class_name") or result.get("device_name") or "")
-        if device_index is not None and "Simpler" in device_class:
-            applied = []
-            for name, value in _SIMPLER_ROLE_DEFAULTS[role]:
+    # Post-load: probe the loaded device once, then apply two layers of hygiene.
+    #
+    # 2026-05-02 — fixed device-detection bug. The TCP load_browser_item command
+    # returns {loaded, name, device_count} with NO device_index and NO class_name,
+    # so the previous detection (`result.get("device_index")` / `result.get("class_name")`)
+    # always failed and the role-defaults branch was never entered. Resolution:
+    # treat newly-loaded sample-on-empty-track as device_index=0 (Live places the
+    # instrument at chain head) and verify class + name via get_device_info.
+    #
+    # Layer 1 (gated on `role`): Simpler role-aware defaults — Snap/Volume/
+    # Trigger Mode/Transpose for drum/melodic/texture roles.
+    # Layer 2 (unconditional): M4L instrument hygiene — name-matched tames for
+    # known problem devices (Harmonic Drone Generator's Latch + loud defaults).
+    device_index_resolved: Optional[int] = None
+    device_class = ""
+    device_name_loaded = ""
+    if isinstance(result, dict) and result.get("loaded") and not result.get("error"):
+        device_index_resolved = result.get("device_index")
+        try:
+            probe = ableton.send_command("get_device_info", {
+                "track_index": track_index,
+                "device_index": 0,
+            })
+            device_class = str(probe.get("class_name", "") or "")
+            device_name_loaded = str(probe.get("name", "") or result.get("name", "") or "")
+            if device_index_resolved is None:
+                device_index_resolved = 0
+        except Exception:
+            pass
+
+    # Layer 1 — Simpler role-aware defaults
+    if role and device_index_resolved is not None and "Simpler" in device_class:
+        applied = []
+        for name, value in _SIMPLER_ROLE_DEFAULTS[role]:
+            try:
+                ableton.send_command("set_device_parameter", {
+                    "track_index": track_index,
+                    "device_index": int(device_index_resolved),
+                    "parameter_name": name,
+                    "value": value,
+                })
+                applied.append({"parameter": name, "value": value})
+            except Exception as exc:
+                # Don't fail the whole load if one default doesn't apply
+                # (parameter name might not exist on every Simpler variant).
+                applied.append({"parameter": name, "skipped": str(exc)})
+        result["role"] = role
+        result["role_defaults_applied"] = applied
+        result["device_class"] = device_class
+
+    # Layer 2 — M4L instrument hygiene (unconditional, name-matched).
+    # Detects Harmonic Drone Generator and other known problem M4L instruments
+    # by name substring, applies tame defaults to prevent loud-on-load surprises.
+    if device_index_resolved is not None and device_name_loaded:
+        for hygiene_name, params in _M4L_INSTRUMENT_HYGIENE.items():
+            if hygiene_name not in device_name_loaded:
+                continue
+            applied_hygiene = []
+            for name, value in params:
                 try:
                     ableton.send_command("set_device_parameter", {
                         "track_index": track_index,
-                        "device_index": int(device_index),
+                        "device_index": int(device_index_resolved),
                         "parameter_name": name,
                         "value": value,
                     })
-                    applied.append({"parameter": name, "value": value})
+                    applied_hygiene.append({"parameter": name, "value": value})
                 except Exception as exc:
-                    # Don't fail the whole load if one default doesn't apply
-                    # (parameter name might not exist on every Simpler variant).
-                    applied.append({"parameter": name, "skipped": str(exc)})
-            result["role"] = role
-            result["role_defaults_applied"] = applied
+                    applied_hygiene.append({"parameter": name, "skipped": str(exc)})
+            result["m4l_hygiene"] = {
+                "device_name": hygiene_name,
+                "applied": applied_hygiene,
+            }
+            result.setdefault("device_class", device_class)
+            break  # one hygiene match per load
 
     return result

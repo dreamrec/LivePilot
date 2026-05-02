@@ -104,19 +104,32 @@ def test_load_browser_item_rejects_unknown_role():
 
 
 def test_role_defaults_reasonable_for_drum_role():
-    """Drum role must set Snap=0 (playback fix) and root=C1 (pad convention)."""
+    """Drum role must set Snap=0 (playback fix) and Transpose=+24 (C3→C1 root compensation).
+
+    2026-05-02 fix: previously asserted "Sample Pitch Coarse"=36, but that param
+    doesn't exist on OriginalSimpler. The correct param is "Transpose" with value
+    +24 semitones (compensates for Simpler's default C3=60 root vs drum-pad
+    convention C1=36). Without this, drum samples play 24 semitones below
+    original pitch when MIDI 36 is triggered ("super low" sound on every drum).
+    """
     from mcp_server.tools.browser import _SIMPLER_ROLE_DEFAULTS
     drum = dict(_SIMPLER_ROLE_DEFAULTS["drum"])
     assert drum["Snap"] == 0
-    assert drum["Sample Pitch Coarse"] == 36
+    assert drum["Transpose"] == 24
     assert drum["Trigger Mode"] == 0  # Trigger (per BUG-#9 polarity note)
+    # Regression guard — the broken param name MUST NOT reappear
+    assert "Sample Pitch Coarse" not in drum, (
+        "regression: 'Sample Pitch Coarse' is not a real OriginalSimpler param "
+        "and silently fails; use 'Transpose' instead"
+    )
 
 
 def test_role_defaults_reasonable_for_melodic_role():
     from mcp_server.tools.browser import _SIMPLER_ROLE_DEFAULTS
     melodic = dict(_SIMPLER_ROLE_DEFAULTS["melodic"])
     assert melodic["Trigger Mode"] == 1  # Gate — held
-    assert melodic["Sample Pitch Coarse"] == 60  # C3
+    assert melodic["Transpose"] == 0  # No shift — C3 default matches melodic input range
+    assert "Sample Pitch Coarse" not in melodic  # Regression guard
 
 
 # ── Fix #19: verify_device_health tool ─────────────────────────────────

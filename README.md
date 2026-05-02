@@ -17,7 +17,7 @@
 
 <p align="center">
   An agentic production system for Ableton Live 12.<br>
-  459 tools. 55 domains. Device atlas. Plan-aware Splice integration. Auto-composition. Spectral perception. Technique memory. Drum-rack pad builder. Live dead-device detection.
+  462 tools. 55 domains. Device atlas. Plan-aware Splice integration. Auto-composition. Spectral perception. Technique memory. Drum-rack pad builder. Live dead-device detection.
 </p>
 
 <br>
@@ -59,7 +59,7 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 
 ## Two Ways to Talk to LivePilot
 
-Pick whichever is faster for the idea in your head — both reach the same 459-tool surface.
+Pick whichever is faster for the idea in your head — both reach the same 462-tool surface.
 
 ### Route A — Artist / aesthetic shorthand
 
@@ -112,7 +112,7 @@ Most sessions do both. Lead with shorthand to anchor the aesthetic, then refine 
 │         └─────────────────┼──────────────────┘                       │
 │                           ▼                                          │
 │                  ┌─────────────────┐                                  │
-│                  │   459 MCP Tools  │                                  │
+│                  │   462 MCP Tools  │                                  │
 │                  │   55 domains     │                                  │
 │                  └────────┬────────┘                                  │
 │                           │                                          │
@@ -153,7 +153,7 @@ Most sessions do both. Lead with shorthand to anchor the aesthetic, then refine 
 
 ## The Intelligence Layer
 
-12 engines sit on top of the 459 tools. They give the AI musical judgment, not just musical execution.
+12 engines sit on top of the 462 tools. They give the AI musical judgment, not just musical execution.
 
 ### SongBrain — What the Song Is
 
@@ -205,7 +205,7 @@ Every engine follows: **measure before → act → measure after → compare**. 
 
 ## Tools
 
-459 tools across 55 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
+462 tools across 55 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
 
 <br>
 
@@ -430,7 +430,7 @@ LivePilot reads Splice's local SQLite database to search your downloaded samples
 
 <br>
 
-### Composer — three modes (v1.24.0)
+### Composer — three modes (v1.25.0)
 
 Prompt-to-plan auto-composition engine. Three modes share a common Applier substrate (preflight: bridge handshake retry + analyzer load; postflight: monitoring=Auto on new tracks + back_to_arranger). All modes return executable plans — the agent executes each step, it does not run autonomously.
 
@@ -485,14 +485,14 @@ Extends an existing 8-bar loop without disturbing the seed material.
 - Writes per-track variants and new supporting layers alongside the seed
 - Invoke with: *"Develop this loop"* or *"Extend what's here into a longer idea"*
 
-#### KnowledgePack scaffolding (v1.24.0)
+#### KnowledgePack scaffolding (v1.25.0)
 
 All three modes share a `KnowledgePack` that provides structured creative context at runtime:
 
 - `event_lexicon` — 42 structural events across 7 categories (drum density, harmonic, texture, vocal, rhythm feel, tension, fx gesture)
 - `genre_context` — parses the 15-genre `genre-vocabularies.md` at load time
 - `artist_context` — parses the ~25-producer `artist-vocabularies.md` at load time
-- `atlas_candidates_per_role` — **stubbed in v1.24.0**, will be populated in v1.25
+- `atlas_candidates_per_role` — **stubbed in v1.25.0**, will be populated in v1.25
 
 #### Core composer tools
 
@@ -540,7 +540,7 @@ The V2 intelligence layer. These tools analyze, diagnose, plan, evaluate, and le
 | Creative Constraints | 5 | constraint activation, reference-inspired variants |
 | Preview Studio | 5 | variant creation, preview rendering, comparison, commit |
 
-> **[View all 459 tools →](docs/manual/tool-catalog.md)**
+> **[View all 462 tools →](docs/manual/tool-catalog.md)**
 
 <br>
 
@@ -767,7 +767,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for architecture details, code guidelines
 
 | Document | What's inside |
 |----------|---------------|
-| [Manual](docs/manual/index.md) | Complete reference: architecture, all 459 tools, workflows |
+| [Manual](docs/manual/index.md) | Complete reference: architecture, all 462 tools, workflows |
 | [Intelligence Layer](docs/manual/intelligence.md) | How the 12 engines connect — conductor, moves, preview, evaluation |
 | [Device Atlas](docs/manual/device-atlas.md) | 5264 devices indexed — search, suggest, chain building |
 | [Samples & Slicing](docs/manual/samples.md) | 3-source search, fitness critics, slice workflows |

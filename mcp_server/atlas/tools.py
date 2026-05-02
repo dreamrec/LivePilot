@@ -1656,3 +1656,164 @@ def atlas_cross_pack_chain(
         target_track_index=target_track_index,
         customize_aesthetic=customize_aesthetic or {},
     )
+
+
+# ── v1.25 Hybrid Knowledge Surface ─────────────────────────────────
+
+
+@mcp.tool()
+def atlas_explore(
+    ctx: Context,
+    role: str,
+    mood: str = "",
+    genre: str = "",
+    artists: list[str] | None = None,
+    n: int = 5,
+    avoid_uris: list[str] | None = None,
+    cohort_constraint: list[str] | None = None,
+) -> dict:
+    """v1.25 — Refined per-role atlas candidate query (hybrid surface Layer B).
+
+    Use during compose-full plan design when the brief's `atlas_anchors`
+    don't fit the section's purpose, or when you need siblings of a role
+    pick that the resolver hasn't surfaced yet.
+
+    Each candidate carries a reasoning trail describing WHY it matches
+    (signature_technique mood overlap, curated .adg presence, taste profile,
+    §1 banned-default penalty, anti-repeat penalty). Pick the one whose
+    reasoning best matches the section's intent.
+
+    Parameters
+    ----------
+    role : str
+        Brief role: "kick", "snare", "hat", "perc", "bass", "lead", "pad",
+        "atmos", "vocal_chop", "fx", "spectral".
+    mood : str, optional
+        Free-text mood — token-matched against signature_techniques for boost.
+        Examples: "spectral warped", "warm dusty", "dreamy sublime".
+    genre : str, optional
+        Genre slug used for genre_affinity boost. Examples: "dub_techno", "ambient".
+    artists : list[str], optional
+        Producer references. Currently used as vocab passthrough; ranking
+        integration is v1.25.x.
+    n : int, default 5
+        Maximum candidates to return.
+    avoid_uris : list[str], optional
+        URIs to exclude (already-used picks within this session/plan).
+    cohort_constraint : list[str], optional
+        If provided, return ONLY candidates whose pack is in this list.
+
+    Returns
+    -------
+    {
+      candidates: list[AtlasCandidate dict],
+      cohort_hint: str | None,  # most-frequent pack across results
+      reasoning: str,
+    }
+
+    Each candidate dict has: uri, name, source, score, character_tags,
+    signature_techniques, in_pack, has_curated_adg, reasoning.
+    """
+    from . import get_atlas
+    try:
+        atlas = get_atlas()
+    except FileNotFoundError:
+        atlas = None
+    from .explore_tools import explore as _explore
+    return _explore(
+        atlas=atlas,
+        role=role,
+        mood=mood,
+        genre=genre,
+        artists=artists,
+        n=n,
+        avoid_uris=avoid_uris,
+        cohort_constraint=cohort_constraint,
+    )
+
+
+@mcp.tool()
+def atlas_audition(ctx: Context, uri: str) -> dict:
+    """v1.25 — Full sidecar dump for one atlas URI (hybrid surface Layer B).
+
+    Joins the device record with `device_techniques_index.json`
+    (signature_techniques) and `preset_resolver` (curated .adg sidecar +
+    producer-assigned macro names). Use BEFORE committing to a candidate
+    when its character_tags alone aren't enough to know if it fits.
+
+    Parameters
+    ----------
+    uri : str
+        Atlas URI (e.g. "atlas://pitchloop89") OR device name OR device id.
+
+    Returns
+    -------
+    {
+      uri, name, id, pack, category,
+      character_tags: list[str],
+      signature_techniques: list[{technique, description, aesthetic, kind}],
+      producer_macros: list[{index, name, source_preset}],
+      curated_adg_paths: list[str],
+      enriched: bool,
+      related_demos: list,  # placeholder for v1.25.x reverse-index
+    }
+    """
+    from . import get_atlas
+    try:
+        atlas = get_atlas()
+    except FileNotFoundError:
+        atlas = None
+    from .explore_tools import audition as _audition
+    return _audition(atlas=atlas, uri=uri)
+
+
+@mcp.tool()
+def atlas_substitute(
+    ctx: Context,
+    current_uri: str,
+    anti_tag: str,
+    n: int = 3,
+) -> dict:
+    """v1.25 — Anti-tag-driven swap for a chosen candidate (hybrid surface Layer B).
+
+    Use AFTER `analyze_sound_design` or `analyze_mix` flags an issue with
+    a layer you've loaded. The `anti_tag` is a free-text descriptor of
+    what you want LESS of: "too bright", "too aggressive", "too sparse",
+    "muddy", "static", "generic" — substring-matched against the anti-tag
+    map (see _ANTI_TAG_MAP for the full key list).
+
+    Returns up to N alternatives that share the current device's role tag
+    but do NOT carry any of the excluded character_tags.
+
+    Parameters
+    ----------
+    current_uri : str
+        URI of the layer you want to swap out.
+    anti_tag : str
+        Descriptor of the unwanted property (substring-matched).
+    n : int, default 3
+        Maximum alternatives to return.
+
+    Returns
+    -------
+    {
+      current_uri, current_name, anti_tag,
+      excluded_tags: list[str],   # what was filtered out
+      preferred_tags: list[str],  # what got boosted
+      alternatives: list[AtlasCandidate dict],
+      reasoning: str,
+    }
+
+    Errors
+    ------
+    Returns {error, supported_anti_tags} when `anti_tag` doesn't substring-
+    match any key in the anti-tag map. Returns {error, current_uri} when
+    `current_uri` isn't found in the atlas.
+    """
+    from . import get_atlas
+    try:
+        atlas = get_atlas()
+    except FileNotFoundError:
+        atlas = None
+    from .explore_tools import substitute as _substitute
+    return _substitute(atlas=atlas, current_uri=current_uri, anti_tag=anti_tag, n=n)
