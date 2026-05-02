@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog (Generated)
 
-453 tools across 54 domains.
+459 tools across 55 domains.
 
 > Auto-generated from `mcp.list_tools()`. Do not hand-edit.
 > Regenerate: `python3 scripts/generate_tool_catalog.py`
@@ -114,6 +114,12 @@
 | `reload_atlas` | Force the atlas to re-read device_atlas.json from disk. |
 | `scan_full_library` | Scan the full Ableton browser and rebuild the device atlas. |
 
+## Audit (1)
+
+| Tool | Description |
+|------|-------------|
+| `audit_layer` | Run the §5 layer-precision audit on a single track in one call. |
+
 ## Automation (9)
 
 | Tool | Description |
@@ -158,12 +164,17 @@
 | `set_clip_warp_mode` | Set warp mode for an audio clip (0=Beats, 1=Tones, 2=Texture, 3=Re-Pitch, 4=Complex, 6=Complex Pro). |
 | `stop_clip` | Stop a playing clip. |
 
-## Composer (4)
+## Composer (9)
 
 | Tool | Description |
 |------|-------------|
+| `analyze_loop_for_extension` | Read-only analyzer for develop mode — returns SeedState for a scene. |
 | `augment_with_samples` | Plan sample-based layers to add to the existing session. |
-| `compose` | Plan a full multi-layer composition from a text prompt. |
+| `compose` | Plan, brief, or execute a multi-layer composition from a text prompt |
+| `compose_fast_apply` | Phase-3 of the LLM-creative fast mode (2026-05-01). |
+| `compose_full_apply` | Phase-3 of full mode (v1.24 LLM-creative): execute the agent-designed plan. |
+| `consult_ableton_knowledge` | Tier-3: Ableton Knowledge consultation orchestrator. |
+| `develop_apply` | Phase-3 develop mode: server-side execute the agent's variant plan. |
 | `get_composition_plan` | Preview what compose would do without executing or spending credits. |
 | `propose_composer_branches` | Emit N distinct compositional hypotheses for a single prompt (PR5/v2). |
 
@@ -731,4 +742,4 @@
 | `rank_wonder_variants` | Rank wonder-mode variants by taste + identity + novelty + coherence. |
 
 ---
-*Generated from 453 registered tools.*
+*Generated from 459 registered tools.*

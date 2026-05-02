@@ -1,7 +1,7 @@
 # LivePilot Manual
 
 An agentic production system for Ableton Live 12.
-459 tools. 54 domains. Device atlas. Sample intelligence. Auto-composition. Spectral perception. Technique memory. Creative intelligence.
+459 tools. 55 domains. Device atlas. Sample intelligence. Auto-composition. Spectral perception. Technique memory. Creative intelligence.
 
 ---
 
@@ -126,7 +126,7 @@ See the full [User Corpus Guide](../USER_CORPUS_GUIDE.md) for end-to-end walkthr
 
 ## Domain Map
 
-All 459 tools across 54 domains, in source-truth per-domain counts:
+All 459 tools across 55 domains, in source-truth per-domain counts:
 
 ### Core Ableton Control (Layer 1 — 218 tools)
 

@@ -17,7 +17,7 @@
 
 <p align="center">
   An agentic production system for Ableton Live 12.<br>
-  459 tools. 54 domains. Device atlas. Plan-aware Splice integration. Auto-composition. Spectral perception. Technique memory. Drum-rack pad builder. Live dead-device detection.
+  459 tools. 55 domains. Device atlas. Plan-aware Splice integration. Auto-composition. Spectral perception. Technique memory. Drum-rack pad builder. Live dead-device detection.
 </p>
 
 <br>
@@ -113,7 +113,7 @@ Most sessions do both. Lead with shorthand to anchor the aesthetic, then refine 
 │                           ▼                                          │
 │                  ┌─────────────────┐                                  │
 │                  │   459 MCP Tools  │                                  │
-│                  │   54 domains     │                                  │
+│                  │   55 domains     │                                  │
 │                  └────────┬────────┘                                  │
 │                           │                                          │
 │           Remote Script ──┤── TCP 9878                                │
@@ -205,7 +205,7 @@ Every engine follows: **measure before → act → measure after → compare**. 
 
 ## Tools
 
-459 tools across 54 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
+459 tools across 55 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
 
 <br>
 
