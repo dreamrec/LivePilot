@@ -29,6 +29,11 @@
 > Side effects that touch state outside the Live project — Splice downloads, memory/ledger writes,
 > installer actions, atlas scans, filesystem writes — persist beyond undo.
 
+> [!WARNING]
+> LivePilot is actively in development. Tools, behavior, and APIs change frequently between versions.
+> Pin to a specific version for stable work. Known gaps and in-progress features are documented in
+> each release's CHANGELOG entry.
+
 <br>
 
 ---
@@ -425,9 +430,9 @@ LivePilot reads Splice's local SQLite database to search your downloaded samples
 
 <br>
 
-### Composer — 3 tools
+### Composer — three modes (v1.24.0)
 
-Prompt-to-plan auto-composition engine.
+Prompt-to-plan auto-composition engine. Three modes share a common Applier substrate (preflight: bridge handshake retry + analyzer load; postflight: monitoring=Auto on new tracks + back_to_arranger). All modes return executable plans — the agent executes each step, it does not run autonomously.
 
 ```
 "dark minimal techno 128bpm with industrial textures and ghostly vocals"
@@ -451,10 +456,51 @@ Prompt-to-plan auto-composition engine.
 └─────────────────┘
 ```
 
-- 4 genre defaults: house, techno, trap, ambient (unknown genres fall back to a neutral plan)
-- Returns step-by-step plans — the agent executes each tool call in sequence
-- `compose` — plan a multi-layer composition from text prompt
-- `augment_with_samples` — plan sample-based layers for existing session
+#### fast mode — `compose_fast_apply`
+
+Quick loop sketch. Single scene in session view. Intended for roughing out ideas quickly.
+
+- Hunt order: curated `.adg` chains from the browser first, atlas devices second, bare instruments only as last resort
+- Drum-role pitch repair included (Simpler default root vs. MIDI 36 offset)
+- 4 genre defaults: house, techno, trap, ambient (unknown genres fall back to a neutral layer plan)
+- Invoke with: *"Make me a [genre] loop at [tempo] BPM"*
+
+#### full mode — `compose_full_apply`
+
+Full track with song form: intro, verse, hook, breakdown, outro. Uses a two-phase LLM-creative brief flow — the LLM authors the form (sections, track list, per-section variants); the framework supplies the vocabulary (device hunt order, MIDI generation rules, arrangement conventions).
+
+- Per-section MIDI variants prevent repeated tiles across the arrangement
+- Native arrangement clips via `create_native_arrangement_clip` (one clip per section, looped to fill section length)
+- Zombie-track cleanup in postflight (removes tracks with no clips and no instrument device)
+- Drum-role pitch repair ported from fast mode
+- **Known gap (v1.25):** `KnowledgePack.atlas_candidates_per_role` is an empty stub — the agent currently falls through to `search_browser` filename matching instead of consulting the indexed atlas. This is BUG-FULL-MODE-24 and is the headline feature of v1.25.
+- Invoke with: *"Write a full [genre] track at [tempo] BPM"* or *"Build a full arrangement"*
+
+#### develop mode — `develop_apply`
+
+Extends an existing 8-bar loop without disturbing the seed material.
+
+- Introspects the existing session (classifies tracks by name and content)
+- Pulls artist and stylistic references from the user prompt
+- Writes per-track variants and new supporting layers alongside the seed
+- Invoke with: *"Develop this loop"* or *"Extend what's here into a longer idea"*
+
+#### KnowledgePack scaffolding (v1.24.0)
+
+All three modes share a `KnowledgePack` that provides structured creative context at runtime:
+
+- `event_lexicon` — 42 structural events across 7 categories (drum density, harmonic, texture, vocal, rhythm feel, tension, fx gesture)
+- `genre_context` — parses the 15-genre `genre-vocabularies.md` at load time
+- `artist_context` — parses the ~25-producer `artist-vocabularies.md` at load time
+- `atlas_candidates_per_role` — **stubbed in v1.24.0**, will be populated in v1.25
+
+#### Core composer tools
+
+- `compose` — plan a multi-layer composition from text prompt (entry point, mode-agnostic)
+- `compose_fast_apply` — execute fast mode directly
+- `compose_full_apply` — execute full mode directly
+- `develop_apply` — execute develop mode directly
+- `augment_with_samples` — plan sample-based layers for an existing session
 - `get_composition_plan` — dry-run preview (see the plan without credit checks)
 
 <br>
