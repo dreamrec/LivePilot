@@ -71,10 +71,15 @@ Current: **55 domains**: transport, tracks, clips, notes, devices, scenes, mixin
 
 ## 5. GitHub
 
-- [ ] Repo description matches current tool count and features
+- [ ] Repo description matches current tool count and features (`gh repo edit dreamrec/LivePilot --description "..."`)
 - [ ] Topics are current (should include: ai, mcp, ableton, livepilot, max-for-live, audio-analysis)
 - [ ] Latest release matches current version (`gh release list`)
 - [ ] Release notes are current
+- [ ] **NEW VERSION shows `Latest` flag in `gh release list`** — not just `Draft`. If a tag was deleted-then-recreated during release recovery (e.g., to move the tag to a fix commit), GitHub silently demotes the attached release to Draft AND clears its Latest flag. The release object survives (asset + body preserved) but the public-facing "what's the latest version" badge stays on the prior release. Fix in one call:
+      ```bash
+      gh release edit v${VERSION} --draft=false --latest
+      ```
+      This trap caught v1.18.0-era recovery and the v1.25.0 .amxd-freeze fix recovery. **Always re-verify after a tag-recreate flow.**
 
 ## 6. Plugin Cache
 
