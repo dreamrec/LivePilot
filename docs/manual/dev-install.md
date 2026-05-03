@@ -35,6 +35,36 @@ LivePilot targets Python 3.11+ (matches CI). If `python3 --version` reports
 3.10 or earlier, install a newer Python before creating the venv — the
 FastMCP server uses PEP 604 union syntax that won't parse on older runtimes.
 
+### Two known-benign installation gotchas
+
+1. **`grpcio-tools 1.80.0 requires protobuf<7.0.0` warning.** pip prints a
+   resolver conflict because grpcio-tools (a stub-regeneration tool, not used
+   at runtime) hasn't released protobuf-7 support yet — latest as of 2026-05
+   is 1.80.0. The warning only fires if `grpcio-tools` is already in the
+   environment. **Safe to ignore** — runtime grpcio + the pre-generated Splice
+   stubs work fine with protobuf 7.x and the 3838-test suite passes. See the
+   in-line comment block in `requirements.txt` for the regeneration workaround
+   if you ever need to touch `.proto` files.
+
+2. **`.venv/bin/pytest` shebang has a stale absolute path.** When pip installs
+   a script entry point on macOS, it bakes the venv's Python path into the
+   binary's shebang. If you later move or rename the project tree (e.g.,
+   `~/Desktop/LivePilot` → `~/Desktop/DREAM AI/LivePilot`), the shebang still
+   points at the old path and `.venv/bin/pytest` fails immediately with a
+   "no such file" error. **Fix:** rebuild the venv from the project root —
+   never run `python3 -m venv .venv` from inside `.venv/bin/` itself, that
+   creates a nested venv and `pip install -r requirements.txt` will resolve
+   the path-with-spaces incorrectly:
+   ```bash
+   deactivate 2>/dev/null
+   cd "/path/to/LivePilot"   # quoted if path contains spaces
+   rm -rf .venv
+   python3 -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt
+   head -1 .venv/bin/pytest  # verify shebang points at the right Python
+   ```
+
 ## 2. Install the Remote Script from your checkout
 
 ```bash

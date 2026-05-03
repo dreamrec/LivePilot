@@ -15,6 +15,27 @@ mutagen>=1.47.0
 grpcio>=1.80.0
 protobuf>=7.34.1
 
+# Known benign warning during install:
+#   ERROR: pip's dependency resolver does not currently take into account
+#   all the packages that are installed. This behaviour is the source of
+#   the following dependency conflicts.
+#   grpcio-tools 1.80.0 requires protobuf<7.0.0,>=6.31.1, but you have
+#   protobuf 7.34.1 which is incompatible.
+#
+# This is an UPSTREAM GAP — grpcio-tools has not yet shipped a protobuf-7
+# compatible release (latest as of 2026-05 is 1.80.0, pinned to protobuf 6.x).
+# The warning fires only if grpcio-tools is installed in the same env.
+#
+# LivePilot does NOT use grpcio-tools at runtime — it's a stub-regeneration
+# tool only. The pre-generated Splice gRPC stubs in mcp_server/splice_client/
+# are wire-compatible with protobuf 7.x runtime, and our 3838-test suite
+# passes against protobuf 7.34.1. Safe to ignore the warning.
+#
+# If you actually need to regenerate gRPC stubs (rare — only when
+# Splice's .proto definitions change), use a SEPARATE venv pinned to
+# protobuf<7 + grpcio-tools==1.80.0 just for the regen step, then return
+# to this requirements.txt for runtime.
+
 # Development / testing (not required for runtime)
 # pip install pytest pytest-asyncio
 
