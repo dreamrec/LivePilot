@@ -32,6 +32,50 @@ def _get_atlas():
         return None
 
 
+# Truncation cap for sonic_description in atlas_search results.
+# Widened 120 → 400 chars on 2026-05-08 after a Granulator III load
+# silently produced no audio: the original 120-char cap truncated mid-
+# sentence at "Three playback modes — Classic (2 overlapping grains per
+# stereo cha…", hiding the next sentence's "Real-time audio capture
+# samples any source" which directly answered "do I need a sample?".
+# 400 chars covers the complete first paragraph of every enriched
+# device description we ship; full text remains accessible via
+# atlas_device_info.
+_ATLAS_SEARCH_DESCRIPTION_CHAR_CAP: int = 400
+
+
+def _surface_enriched_fields(device: dict) -> dict:
+    """Pull discoverability-critical fields from an enriched atlas entry.
+
+    These fields appear in `livepilot/atlas/enrichments/.../*.yaml` and are
+    essential for an agent to make a good load decision WITHOUT a follow-up
+    atlas_device_info round-trip. The canonical bug this prevents: loading
+    Granulator III without seeing `self_contained: false`, then programming
+    grain params on an instrument that has no sample to grain → silence.
+    """
+    out: dict = {}
+    if "self_contained" in device:
+        out["self_contained"] = device["self_contained"]
+    if "synthesis_type" in device:
+        out["synthesis_type"] = device["synthesis_type"]
+    if "complexity" in device:
+        out["complexity"] = device["complexity"]
+    use_cases = device.get("use_cases")
+    if use_cases:
+        out["use_cases"] = list(use_cases)[:6]
+    techniques = device.get("signature_techniques") or []
+    if techniques:
+        first = techniques[0] if isinstance(techniques[0], dict) else {}
+        out["signature_techniques_count"] = len(techniques)
+        hint = first.get("description") or first.get("name") or ""
+        out["first_technique_hint"] = str(hint).strip()[:240]
+    gotchas = device.get("gotchas") or []
+    if gotchas:
+        out["gotchas_count"] = len(gotchas)
+        out["first_gotcha"] = str(gotchas[0])[:240]
+    return out
+
+
 @mcp.tool()
 def atlas_search(ctx: Context, query: str, category: str = "all", limit: int = 10) -> dict:
     """Search the device atlas for instruments, effects, kits, or plugins.
@@ -88,27 +132,34 @@ def atlas_search(ctx: Context, query: str, category: str = "all", limit: int = 1
         factory_budget = 0
         overlay_budget = limit
 
-    results: list[dict] = [
-        {
-            "id": r["device"].get("id", ""),
-            "name": r["device"].get("name", ""),
-            "uri": r["device"].get("uri", ""),
-            "category": r["device"].get("category", ""),
-            "sonic_description": r["device"].get("sonic_description", "")[:120],
-            "character_tags": r["device"].get("character_tags", [])[:5],
-            "enriched": r["device"].get("enriched", False),
+    results: list[dict] = []
+    for r in factory_results[:factory_budget]:
+        dev = r["device"]
+        enriched = bool(dev.get("enriched", False))
+        entry_dict: dict = {
+            "id": dev.get("id", ""),
+            "name": dev.get("name", ""),
+            "uri": dev.get("uri", ""),
+            "category": dev.get("category", ""),
+            "sonic_description": dev.get("sonic_description", "")[:_ATLAS_SEARCH_DESCRIPTION_CHAR_CAP],
+            "character_tags": dev.get("character_tags", [])[:5],
+            "enriched": enriched,
             "score": r.get("score", 0),
             "source": "factory_atlas",
         }
-        for r in factory_results[:factory_budget]
-    ]
+        if enriched:
+            # Bring discoverability-critical fields up from the YAML so the
+            # agent doesn't need a second atlas_device_info round-trip just
+            # to find out e.g. that Granulator III isn't self-contained.
+            entry_dict.update(_surface_enriched_fields(dev))
+        results.append(entry_dict)
     for entry in overlay_results[:overlay_budget]:
         results.append({
             "id": entry.entity_id,
             "name": entry.name,
             "uri": "",  # overlay entries don't have Live browser URIs — caller resolves via search_browser
             "category": entry.entity_type,
-            "sonic_description": (entry.description or "")[:120],
+            "sonic_description": (entry.description or "")[:_ATLAS_SEARCH_DESCRIPTION_CHAR_CAP],
             "character_tags": list(entry.tags)[:5],
             "enriched": True,
             "score": 0,  # overlay search has its own ranking; surfaced with no factory-comparable score

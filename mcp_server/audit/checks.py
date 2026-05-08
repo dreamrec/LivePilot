@@ -285,8 +285,23 @@ def check_masking(track_index: int, masking_report: dict | None) -> dict:
 # ── §5.5 Modulation/automation (mandatory by §4) ────────────────────
 
 _INSTRUMENT_CLASSES = frozenset({
-    "Drift", "Wavetable", "Operator", "Analog", "Poli", "Meld",
+    "Drift", "Wavetable", "Operator",
+    # Live's actual runtime class names diverge from user-facing brand names.
+    # Verified live 2026-05-08 via load_browser_item:
+    #   "Analog"  user → "UltraAnalog"        class
+    #   "Meld"    user → "InstrumentMeld"     class
+    #   "Poli"    user → "MxDeviceInstrument" class (M4L wrapper)
+    # The user-facing strings ("Analog", "Poli", "Meld") never appear as
+    # class_name in Live's output — they were aspirational but unmatched.
+    # Keep them as no-ops in case future Live versions change the taxonomy
+    # back, but the runtime class names below are what actually fires.
+    "Analog", "Poli", "Meld",
+    "UltraAnalog", "InstrumentMeld", "MxDeviceInstrument",
     "Tension", "Collision", "Electric",
+    # Electric's actual runtime class is LoungeLizard (verified live 2026-05-08
+    # while building the two-step session — Track 3 'Stabs' loaded with
+    # query:Synths#Electric showed first_device_class='LoungeLizard').
+    "LoungeLizard",
     # Sampler family — Live exposes multiple class names depending on
     # device generation. OriginalSimpler is the legacy Simpler core,
     # MultiSampler is the Sampler core. Verified against live sessions
@@ -397,6 +412,128 @@ _SUSPICIOUS_AT_ZERO: tuple[str, ...] = (
     "unison",
 )
 
+# Drift's defaults trip up the suspicious-at-zero approach because the
+# synth ships with sensible non-zero values for the params we'd otherwise
+# flag (Spread=0.10, Strength=0.05, Mod Matrix Amt 1=0.97, etc.). The
+# user-engagement signals that DO move on programming are bipolar
+# parameters at center (0.5 = no effect) and a small set of factory
+# defaults. Verified against bare-default Drift loaded via load_browser_item
+# 2026-05-08.
+_DRIFT_FACTORY_FINGERPRINT: dict[str, float] = {
+    # bipolar center = no effect
+    "pitch mod amt 1": 0.5,
+    "pitch mod amt 2": 0.5,
+    "mod matrix amt 2": 0.5,
+    "mod matrix amt 3": 0.5,
+    "vel > vol": 0.5,
+    # near-zero factory values
+    "spread": 0.10,
+    "strength": 0.05,
+    "drift": 0.07,
+    "thickness": 0.0,
+    # high-amplitude factory values
+    "lp mod amt 1": 0.97,
+    "lp mod amt 2": 0.78,
+    "lfo amt": 1.0,
+}
+# Tolerance for "user touched this param" — if any shaping param deviates
+# from factory by more than this, treat it as engagement evidence.
+_DRIFT_FACTORY_EPSILON: float = 0.04
+
+
+def _drift_engagement_score(params: list[dict]) -> tuple[int, list[str]]:
+    """Count Drift shaping params that DEVIATE from factory defaults.
+
+    Returns (deviation_count, list_of_deviated_param_names).
+    """
+    deviations: list[str] = []
+    for p in params or []:
+        name = (p.get("name") or "").lower().strip()
+        if name in _DRIFT_FACTORY_FINGERPRINT:
+            factory = _DRIFT_FACTORY_FINGERPRINT[name]
+            try:
+                value = float(p.get("value", 0.0))
+            except (TypeError, ValueError):
+                continue
+            if abs(value - factory) > _DRIFT_FACTORY_EPSILON:
+                deviations.append(p.get("name", "?"))
+    return len(deviations), deviations
+
+
+def _check_drift_params(role: str, instrument: dict) -> dict:
+    """Drift-specific §2 detection via factory-fingerprint deviation count.
+
+    Drift's bipolar defaults (Mod Matrix Amt at 0.5, Vel>Vol at 0.5,
+    Pitch Mod Amt at 0.5) plus low-amplitude factory values (Spread=0.10,
+    Strength=0.05) escape the generic _SUSPICIOUS_AT_ZERO heuristic.
+    Compare against a hand-captured factory fingerprint instead.
+    """
+    params = instrument.get("parameters", []) or []
+    deviation_count, deviated = _drift_engagement_score(params)
+    fingerprint_size = len(_DRIFT_FACTORY_FINGERPRINT)
+
+    if role in ("kick", "snare", "hat", "perc"):
+        return {
+            "severity": "pass",
+            "summary": f"Drift: simple-role ({role}) — engagement check skipped",
+            "issues": [],
+            "evidence": {
+                "instrument_class": "Drift",
+                "drift_engagement_deviations": deviation_count,
+                "fingerprint_size": fingerprint_size,
+                "suppressed_for_role": role,
+            },
+        }
+
+    if role in ("pad", "lead", "bass") and deviation_count == 0:
+        return {
+            "severity": "fail",
+            "summary": f"Drift: bare-default — 0 of {fingerprint_size} shaping params engaged",
+            "issues": [{
+                "code": "unprogrammed_instrument",
+                "detail": (
+                    "§2 violation: bare-default Drift on melodic-role track. "
+                    "ZERO shaping params deviated from factory. Open Drift, "
+                    "engage at least one of: pitch envelope (Pitch Mod Amt), "
+                    "filter envelope (LP Mod Amt), velocity routing (Vel > Vol), "
+                    "mod matrix (Mod Matrix Amt 2/3), or oscillator character "
+                    "(Spread / Strength / Thickness / Drift)."
+                ),
+            }],
+            "evidence": {
+                "instrument_class": "Drift",
+                "drift_engagement_deviations": deviation_count,
+                "fingerprint_size": fingerprint_size,
+                "deviated_params": deviated,
+            },
+        }
+
+    severity = "pass" if deviation_count >= 2 else "warn" if deviation_count == 1 else "warn"
+    if role in ("pad", "lead", "bass"):
+        return {
+            "severity": severity,
+            "summary": f"Drift: {deviation_count}/{fingerprint_size} shaping params engaged",
+            "issues": [],
+            "evidence": {
+                "instrument_class": "Drift",
+                "drift_engagement_deviations": deviation_count,
+                "fingerprint_size": fingerprint_size,
+                "deviated_params": deviated,
+            },
+        }
+    # Other roles (vox/atmos/lead/etc.): just report engagement, no opinion
+    return {
+        "severity": "pass",
+        "summary": f"Drift: {deviation_count}/{fingerprint_size} shaping params engaged ({role})",
+        "issues": [],
+        "evidence": {
+            "instrument_class": "Drift",
+            "drift_engagement_deviations": deviation_count,
+            "fingerprint_size": fingerprint_size,
+            "deviated_params": deviated,
+        },
+    }
+
 
 def check_params(role: str, devices: list[dict]) -> dict:
     """§5.6 + §2 — instrument programming, not just defaults."""
@@ -419,6 +556,13 @@ def check_params(role: str, devices: list[dict]) -> dict:
             "evidence": {"first_device_class": devices[0].get("class_name")},
         }
     cls = instrument.get("class_name", "")
+
+    # Drift escapes the generic suspicious-at-zero heuristic — its defaults
+    # are non-zero (Spread=0.10, etc.) and bipolar (Vel>Vol=0.5). Use a
+    # synth-specific factory-fingerprint instead.
+    if cls == "Drift":
+        return _check_drift_params(role, instrument)
+
     params = instrument.get("parameters", []) or []
     by_name = {(p.get("name") or "").lower(): float(p.get("value", 0.0)) for p in params}
     untouched: list[str] = []
@@ -532,11 +676,28 @@ def check_samples(role: str, devices: list[dict], slice_classifications: list[di
 # ── §5.8 Effects chain coverage ─────────────────────────────────────
 
 _EFFECT_CATEGORIES: dict[str, tuple[str, ...]] = {
-    "eq": ("EQ Eight", "EQ Three", "Channel EQ"),
-    "compressor": ("Compressor", "Glue Compressor", "Compressor 2", "Multiband Dynamics"),
-    "saturation": ("Saturator", "Overdrive", "Pedal", "Drive", "Roar"),
-    "spatial": ("Reverb", "Hybrid Reverb", "Echo", "Delay", "Chorus-Ensemble", "Chorus"),
-    "filter": ("Auto Filter",),
+    # Each entry must include both the user-facing display names AND Live's
+    # actual runtime class_name (verified live 2026-05-08). The audit reads
+    # device.class_name, not device.name, so missing class_names cause
+    # silent false-negative coverage reports.
+    "eq": ("EQ Eight", "Eq8", "EQ Three", "Eq3", "Channel EQ"),
+    "compressor": (
+        "Compressor", "Compressor2",  # legacy + modern class names
+        "Glue Compressor", "GlueCompressor",
+        "Compressor 2",                # display variant
+        "Multiband Dynamics", "MultibandDynamics",
+    ),
+    "saturation": (
+        "Saturator", "Overdrive", "Pedal", "Drive", "Roar",
+        # M4L wrappers — Drive, Roar are M4L: class_name = MxDeviceAudioEffect
+        # Skipped intentionally — too generic for class-name detection
+    ),
+    "spatial": (
+        "Reverb", "Hybrid Reverb", "HybridReverb",
+        "Echo", "Delay", "PingPongDelay",
+        "Chorus-Ensemble", "Chorus2", "Chorus",
+    ),
+    "filter": ("Auto Filter", "AutoFilter", "AutoFilter2"),
 }
 
 

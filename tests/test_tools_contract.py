@@ -1,4 +1,4 @@
-"""Verify all 462 MCP tools are registered (v1.25 hybrid knowledge surface: +3 atlas tools since v1.25.0)."""
+"""Verify all 465 MCP tools are registered (Phase 2c grader: +3 grader tools since v1.25.0)."""
 
 import asyncio
 import sys
@@ -631,7 +631,15 @@ def test_control_surfaces_tools_registered():
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 462, f"Expected 462 tools, got {len(tools)}"
+    assert len(tools) == 465, f"Expected 465 tools, got {len(tools)}"
+
+
+def test_grader_tools_registered():
+    """Phase 2c: grader tools wrapping the rubric framework."""
+    names = _get_tool_names()
+    expected = {"grader_list_rubrics", "grader_evaluate", "grader_evaluate_all"}
+    missing = expected - names
+    assert not missing, f"Missing grader tools: {missing}"
 
 
 def test_audit_tools_registered():

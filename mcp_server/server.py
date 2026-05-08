@@ -309,6 +309,7 @@ from .composer import tools as composer_tools                  # noqa: F401, E40
 from .synthesis_brain import tools as synthesis_brain_tools    # noqa: F401, E402
 from .user_corpus import tools as user_corpus_tools            # noqa: F401, E402
 from .audit import tools as audit_tools                        # noqa: F401, E402
+from .grader import tools as grader_tools                      # noqa: F401, E402
 from .tools import diagnostics   # noqa: F401, E402
 from .tools import miditool       # noqa: F401, E402
 

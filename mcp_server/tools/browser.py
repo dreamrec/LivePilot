@@ -30,6 +30,64 @@ def _validate_track_index(track_index: int):
         )
 
 
+def _atlas_preflight_for_load(device_name: str) -> Optional[dict]:
+    """Atlas-aware preflight check for a freshly-loaded device.
+
+    Returns a dict with `self_contained: false` warning when the loaded
+    device is in the enriched atlas AND declares it requires a source
+    sample / capture. Returns None for self-contained devices, devices
+    not in the atlas, or atlas lookup failures.
+
+    Added 2026-05-08 after a Granulator III load silently produced no
+    audio: instrument loaded fine, grain params programmed, BUT no sample
+    in the source slot → silence. The atlas YAML for Granulator III has
+    `self_contained: false` and signature_techniques all start with "Load
+    a sample → ..." but neither was surfaced at load time. This preflight
+    closes that gap by reading the atlas immediately after load and
+    surfacing the requirement in the load response.
+    """
+    if not device_name:
+        return None
+    try:
+        from ..atlas import get_atlas
+        atlas = get_atlas()
+    except Exception:
+        return None
+    if atlas is None:
+        return None
+    try:
+        entry = atlas.lookup(device_name)
+    except Exception:
+        return None
+    if not entry or not entry.get("enriched"):
+        return None
+    if entry.get("self_contained") is not False:
+        return None  # self-contained or unspecified — no warning needed
+
+    techniques = entry.get("signature_techniques") or []
+    first_hint = ""
+    if techniques and isinstance(techniques[0], dict):
+        first_hint = (
+            techniques[0].get("description")
+            or techniques[0].get("name")
+            or ""
+        )
+
+    return {
+        "self_contained": False,
+        "device_id": entry.get("id"),
+        "warning": (
+            f"{device_name} is not self-contained — it requires a source "
+            "sample or real-time audio capture to produce sound. The "
+            "instrument is loaded but will be silent until a sample is "
+            "added. Either drag audio onto its waveform display, OR load "
+            "a Sounds preset chain via search_browser(path='sounds', "
+            f"name_filter='{device_name}') that ships with a sample baked in."
+        ),
+        "first_technique_hint": str(first_hint).strip()[:240],
+    }
+
+
 @mcp.tool()
 def get_browser_tree(ctx: Context, category_type: str = "all") -> dict:
     """Get an overview of browser categories and their children."""
@@ -296,6 +354,16 @@ def load_browser_item(
                 device_index_resolved = 0
         except Exception:
             pass
+
+    # Layer 0 — atlas-aware preflight. Surface a follow-up hint when the
+    # loaded device declares self_contained=false in its atlas enrichment
+    # YAML (granular samplers, sample players). Prevents the silent-
+    # Granulator-III failure mode where the instrument loads, params get
+    # programmed, but no audio source has been added.
+    if device_name_loaded:
+        preflight = _atlas_preflight_for_load(device_name_loaded)
+        if preflight is not None:
+            result["atlas_preflight"] = preflight
 
     # Layer 1 — Simpler role-aware defaults
     if role and device_index_resolved is not None and "Simpler" in device_class:

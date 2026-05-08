@@ -10,6 +10,106 @@ from __future__ import annotations
 from mcp_server.audit import checks
 
 
+def _drift_factory_params() -> list[dict]:
+    """Bare-default Drift factory fingerprint, captured live 2026-05-08."""
+    return [
+        {"name": "Pitch Mod Amt 1", "value": 0.5},
+        {"name": "Pitch Mod Amt 2", "value": 0.5},
+        {"name": "Mod Matrix Amt 2", "value": 0.5},
+        {"name": "Mod Matrix Amt 3", "value": 0.5},
+        {"name": "Vel > Vol", "value": 0.5},
+        {"name": "Spread", "value": 0.10},
+        {"name": "Strength", "value": 0.05},
+        {"name": "Drift", "value": 0.07},
+        {"name": "Thickness", "value": 0.0},
+        {"name": "LP Mod Amt 1", "value": 0.97},
+        {"name": "LP Mod Amt 2", "value": 0.78},
+        {"name": "LFO Amt", "value": 1.0},
+    ]
+
+
+# ── §2 Drift factory-fingerprint detection ──────────────────────────
+
+
+def test_drift_engagement_score_zero_on_factory():
+    count, deviated = checks._drift_engagement_score(_drift_factory_params())
+    assert count == 0
+    assert deviated == []
+
+
+def test_drift_engagement_score_counts_deviations():
+    params = _drift_factory_params()
+    # Move two fingerprint params away from factory
+    params[0]["value"] = 0.8   # Pitch Mod Amt 1: 0.5 → 0.8 (deviated)
+    params[5]["value"] = 0.5   # Spread: 0.10 → 0.5 (deviated)
+    count, deviated = checks._drift_engagement_score(params)
+    assert count == 2
+    assert "Pitch Mod Amt 1" in deviated
+    assert "Spread" in deviated
+
+
+def test_check_params_drift_pad_bare_default_fails():
+    devices = [{"class_name": "Drift", "name": "Drift", "parameters": _drift_factory_params()}]
+    result = checks.check_params("pad", devices)
+    assert result["severity"] == "fail"
+    assert result["issues"][0]["code"] == "unprogrammed_instrument"
+    assert "ZERO shaping params" in result["issues"][0]["detail"]
+
+
+def test_check_params_drift_lead_bare_default_fails():
+    devices = [{"class_name": "Drift", "name": "Drift", "parameters": _drift_factory_params()}]
+    result = checks.check_params("lead", devices)
+    assert result["severity"] == "fail"
+
+
+def test_check_params_drift_bass_bare_default_fails():
+    devices = [{"class_name": "Drift", "name": "Drift", "parameters": _drift_factory_params()}]
+    result = checks.check_params("bass", devices)
+    assert result["severity"] == "fail"
+
+
+def test_check_params_drift_drum_role_passes_regardless():
+    devices = [{"class_name": "Drift", "name": "Drift", "parameters": _drift_factory_params()}]
+    result = checks.check_params("kick", devices)
+    assert result["severity"] == "pass"
+    assert result["evidence"]["suppressed_for_role"] == "kick"
+
+
+def test_check_params_drift_with_one_deviation_warns_on_pad():
+    """One engaged shaping param is below the engagement threshold."""
+    params = _drift_factory_params()
+    params[0]["value"] = 0.8  # Pitch Mod Amt 1 engaged
+    devices = [{"class_name": "Drift", "name": "Drift", "parameters": params}]
+    result = checks.check_params("pad", devices)
+    assert result["severity"] == "warn"
+    assert result["evidence"]["drift_engagement_deviations"] == 1
+
+
+def test_check_params_drift_with_two_deviations_passes_on_pad():
+    """Two engaged shaping params indicates the user has programmed."""
+    params = _drift_factory_params()
+    params[0]["value"] = 0.7
+    params[5]["value"] = 0.5
+    devices = [{"class_name": "Drift", "name": "Drift", "parameters": params}]
+    result = checks.check_params("pad", devices)
+    assert result["severity"] == "pass"
+    assert result["evidence"]["drift_engagement_deviations"] == 2
+
+
+def test_check_params_drift_preset_with_modulation_deviations_passes():
+    """A real preset will deviate on multiple fingerprint params."""
+    params = _drift_factory_params()
+    # Simulate a preset: filter envelope and pitch envelope both engaged + spread + velocity routing
+    params[0]["value"] = 0.65   # Pitch Mod Amt 1
+    params[4]["value"] = 0.7    # Vel > Vol
+    params[5]["value"] = 0.4    # Spread
+    devices = [{"class_name": "Drift", "name": "BoC Wash", "parameters": params}]
+    result = checks.check_params("pad", devices)
+    assert result["severity"] == "pass"
+    assert result["evidence"]["drift_engagement_deviations"] == 3
+
+
+
 # ── Role inference ───────────────────────────────────────────────────
 
 
@@ -180,15 +280,10 @@ def test_modulation_passes_with_automation_only():
 
 
 def test_params_flags_unprogrammed_pad_synth():
+    """Bare-default Drift on pad → fail via factory fingerprint."""
     devices = [{
         "class_name": "Drift",
-        "parameters": [
-            {"name": "Fe < Env", "value": 0.0},
-            {"name": "Pe < Env", "value": 0.0},
-            {"name": "Spread", "value": 0.0},
-            {"name": "Detune", "value": 0.0},
-            {"name": "Volume", "value": -6.0},
-        ],
+        "parameters": _drift_factory_params(),
     }]
     result = checks.check_params("pad", devices)
     assert result["severity"] == "fail"
@@ -397,17 +492,10 @@ def test_params_suppresses_default_warn_for_hat():
 
 
 def test_params_still_strict_for_pad_with_simple_devices():
-    """Pad with all defaults SHOULD still fail — pads are not simple-by-design."""
+    """Pad with bare-default Drift fingerprint → still fails (factory fingerprint)."""
     devices = [{
         "class_name": "Drift",
-        "parameters": [
-            {"name": "Spread", "value": 0.0},
-            {"name": "Detune", "value": 0.0},
-            {"name": "Pe < Env", "value": 0.0},
-            {"name": "Pe On", "value": 1.0},
-            {"name": "Fe < Env", "value": 0.0},
-            {"name": "Fe On", "value": 1.0},
-        ],
+        "parameters": _drift_factory_params(),
     }]
     result = checks.check_params("pad", devices)
     assert result["severity"] == "fail"

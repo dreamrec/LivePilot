@@ -30,7 +30,7 @@
 ## Key Rules
 - ALL Live Object Model (LOM) calls must execute on Ableton's main thread via schedule_message queue
 - Live 12 minimum — use modern note API (add_new_notes, get_notes_extended, apply_note_modifications)
-- 462 tools across 55 domains: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, analyzer, automation, theory, generative, harmony, midi_io, perception, agent_os, composition, motif, research, planner, project_brain, runtime, evaluation, mix_engine, sound_design, transition_engine, reference_engine, translation_engine, performance_engine, song_brain, preview_studio, hook_hunter, stuckness_detector, wonder_mode, session_continuity, creative_constraints, device_forge, sample_engine, atlas, composer, experiment, musical_intelligence, semantic_moves, diagnostics, follow_actions, grooves, scales, take_lanes, miditool, synthesis_brain, creative_director, user_corpus, audit
+- 465 tools across 55 domains: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, analyzer, automation, theory, generative, harmony, midi_io, perception, agent_os, composition, motif, research, planner, project_brain, runtime, evaluation, mix_engine, sound_design, transition_engine, reference_engine, translation_engine, performance_engine, song_brain, preview_studio, hook_hunter, stuckness_detector, wonder_mode, session_continuity, creative_constraints, device_forge, sample_engine, atlas, composer, experiment, musical_intelligence, semantic_moves, diagnostics, follow_actions, grooves, scales, take_lanes, miditool, synthesis_brain, creative_director, user_corpus, audit
 - JSON over TCP, newline-delimited, port 9878
 - Structured errors with codes: INDEX_ERROR, NOT_FOUND, INVALID_PARAM, STATE_ERROR, TIMEOUT, INTERNAL
 - **LivePilot_Analyzer must be LAST on master** — always after ALL effects (EQ, Compressor, Utility) so it reads the final output, not pre-effect signal
@@ -74,7 +74,7 @@ cat .claude-plugin/marketplace.json | python3 -c "import json,sys; print(json.lo
 Expected output: the new version string. If the mirror is stale (happened silently across v1.18.0-v1.18.3 — panel stuck at "1.17.5 installed"), Claude Code's plugin panel will show the old version and `Update` button points at a stale target. The mirror is a git clone that Claude Code fetches from but does NOT auto-pull. Hard-reset is safe — nothing writes to it locally.
 
 ## Tool Count
-Currently 462 tools (up from 459 in v1.25.0 — v1.25 hybrid knowledge surface: +3 atlas tools (atlas_explore, atlas_audition, atlas_substitute); up from 453 in v1.23.6 — v1.24 compose framework rebuild: Applier preflight/postflight + KnowledgePack scaffolding + per-mode brief builders; up from 437 in Phase F — added atlas_pack_aware_compose + atlas_cross_pack_chain; up from 434 in Phase C — added atlas_transplant; up from 433 in v1.23.3 — added atlas_macro_fingerprint in v1.23.4; up from 430 in v1.22.x — added 3 extension_atlas_* tools in v1.23.0; up from 403 in v1.15.0-beta originally). If adding/removing tools, update: README.md, package.json description, livepilot/.Codex-plugin/plugin.json, livepilot/.claude-plugin/plugin.json, server.json, livepilot/skills/livepilot-core/SKILL.md, livepilot/skills/livepilot-core/references/overview.md, CLAUDE.md, CHANGELOG.md, tests/test_tools_contract.py, docs/manual/index.md, docs/manual/tool-reference.md
+Currently 465 tools (up from 462 in v1.25.0 — v1.26 rubric grader system: +3 grader tools (grader_list_rubrics, grader_evaluate, grader_evaluate_all); up from 459 in v1.24.x — v1.25 hybrid knowledge surface: +3 atlas tools (atlas_explore, atlas_audition, atlas_substitute); up from 453 in v1.23.6 — v1.24 compose framework rebuild: Applier preflight/postflight + KnowledgePack scaffolding + per-mode brief builders; up from 437 in Phase F — added atlas_pack_aware_compose + atlas_cross_pack_chain; up from 434 in Phase C — added atlas_transplant; up from 433 in v1.23.3 — added atlas_macro_fingerprint in v1.23.4; up from 430 in v1.22.x — added 3 extension_atlas_* tools in v1.23.0; up from 403 in v1.15.0-beta originally). If adding/removing tools, update: README.md, package.json description, livepilot/.Codex-plugin/plugin.json, livepilot/.claude-plugin/plugin.json, server.json, livepilot/skills/livepilot-core/SKILL.md, livepilot/skills/livepilot-core/references/overview.md, CLAUDE.md, CHANGELOG.md, tests/test_tools_contract.py, docs/manual/index.md, docs/manual/tool-reference.md
 
 ## Splice plan-aware model (v1.15.0-beta)
 Sample downloads now use plan-aware gating (`mcp_server/splice_client/client.py::decide_download`):
@@ -258,6 +258,66 @@ Before declaring done, run the depth audit:
 - `evaluate_move` on the last significant change
 
 A good session has analyzed itself. Ship the audit alongside the build.
+
+## §9c — Arrangement Build Finalization (loop / cursor / orange button)
+
+**From `feedback_arrangement_build_finalize_state.md`:** when the user
+asks to build a track in arrangement mode, the build is NOT complete
+until ALL FOUR are true:
+
+1. **Loop covers the whole arrangement.** `loop=true`, `loop_start=0`,
+   `loop_length=<beat where last clip ends>` (NOT Live's padded
+   `song_length` which has trailing silence).
+2. **Cursor at beat 0.** `current_song_time` must read 0.
+3. **Tracks released from session-override** — the orange "▶═"
+   Back-to-Arrangement button must be INACTIVE. Call `back_to_arranger`.
+   While that button is lit, session clips override arrangement
+   playback — pressing Play won't play the arrangement.
+4. **No leftover playing/triggered session clips.** `stop_all_clips`
+   BEFORE `back_to_arranger` — otherwise override re-asserts.
+
+Canonical one-call: `force_arrangement(beat_time=0, loop_start=0,
+loop_length=<content_end>, play=false)` does steps 1-4 atomically.
+Prefer it.
+
+**Smoke test before saying "hit Play":** call `start_playback`, brief
+wait, read `current_song_time`. It must have incremented from 0
+(proves arrangement is actually playing from start, not stuck on
+session override). Then `stop_playback` + `jump_to_time(0)` so the
+user starts from bar 1.
+
+If user reports "playback starts mid-song" or "the orange button is
+lit": run the canonical sequence again and verify with the smoke test.
+
+## §9b — Kill Orphan LivePilot Processes (don't ask the user)
+
+**From `feedback_kill_orphan_livepilot_processes.md`:** when any LivePilot
+tool errors with `UDP port 9880 still in use (PID X)` or `Another client
+is already connected` (TCP 9878), the held port belongs to a STALE
+orphan from a prior session. The session the user is prompting you from
+IS the active session. **Take the kill action yourself — do not ask the
+user to close it.**
+
+Procedure:
+
+1. Parse the PID from the error message (LivePilot tools include it).
+2. Verify it's a LivePilot process (path contains `LivePilot` or process
+   is `python3 -m mcp_server` / `node bin/livepilot.js`):
+   `ps -p <PID> -o pid,command` and `lsof -nP -iUDP:9880`.
+3. `kill <PID>`, then verify with `lsof -nP -iUDP:9880`. Escalate to
+   `kill -9 <PID>` only if SIGTERM doesn't release within 1s.
+4. Call `reconnect_bridge` MCP tool. Expect
+   `{"ok": true, "message": "Bridge reconnected on UDP 9880"}`.
+5. Same logic for TCP 9878 (Remote Script socket): check via
+   `lsof -nP -iTCP:9878 -sTCP:LISTEN`.
+
+**Do NOT kill** Ableton itself, the user's terminal/IDE, or any
+non-LivePilot process. If the holder is genuinely something else,
+then ask the user.
+
+**Pre-flight reflex:** if `get_capability_state` returns `analyzer_offline`
+on a fresh turn, run `lsof -nP -iUDP:9880` once before the first analyzer
+tool call — kill any orphan upfront rather than waiting for the error.
 
 ## §10 — Research First (>=2 failed attempts)
 

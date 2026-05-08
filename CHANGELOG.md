@@ -1,5 +1,61 @@
 # Changelog
 
+## v1.26.0 — 2026-05-09
+
+Rubric grader system + atlas-aware load preflight + Drift factory-fingerprint detection. Closes a chronic-regression class: anti-pattern violations of CLAUDE.md §1/§2/§4/§5/§7.3 now have programmatic enforcement, and silent-instrument loads (Granulator III without a sample) are caught structurally at load time instead of much later via the verifier.
+
+### Added — three new MCP tools
+
+- **`grader_list_rubrics()`** — names of registered rubrics + light/heavy classification. Five rubrics ship: `layer_accumulation` (§7.3), `default_preset_check` (§1), `modulation_presence` (§4), `layer_precision` (§5), `sound_design_depth` (§2).
+- **`grader_evaluate(rubric_id, heavy=False, include_brief=True, include_masking=True)`** — runs a single rubric across the current session. Light state (~3s) covers role/volume/banned-default checks. Heavy state (~6s) adds per-clip notes + per-clip automation + wavetable mod-matrix + session masking report — required for §5 sequence/modulation/masking criteria. Returns structured per-criterion verdict + actionable revision_brief markdown.
+- **`grader_evaluate_all(heavy=True, include_brief=True, include_masking=True)`** — runs ALL rubrics in one call against shared state. ~5× cheaper than calling `grader_evaluate` per rubric because state-fetching is the dominant cost. Returns per-rubric verdicts + combined_brief.
+
+### Added — Drift factory-fingerprint detection
+
+- `audit/checks._check_drift_params` and `_drift_engagement_score` — captures Drift's 12-param factory fingerprint (Pitch Mod Amt 1/2 = 0.5, Mod Matrix Amt 2/3 = 0.5, Vel > Vol = 0.5, Spread = 0.10, Strength = 0.05, Drift = 0.07, Thickness = 0.0, LP Mod Amt 1 = 0.97, LP Mod Amt 2 = 0.78, LFO Amt = 1.0). Counts deviations from factory > 0.04 epsilon. Zero deviations on a melodic-role track → `unprogrammed_instrument` fail. Closes the §2 detection gap where Drift's bipolar defaults escaped the generic `_SUSPICIOUS_AT_ZERO` heuristic.
+
+### Added — atlas-aware load preflight
+
+- **`atlas_search`** now surfaces 8 discoverability-critical fields when `enriched=true`: `self_contained`, `synthesis_type`, `complexity`, `use_cases`, `signature_techniques_count`, `first_technique_hint`, `gotchas_count`, `first_gotcha`. Truncation widened 120 → 400 chars. Closes the silent-Granulator-III bug class — the agent now sees `self_contained: false` immediately in search results without a follow-up `atlas_device_info` round-trip.
+- **`load_browser_item`** now appends `atlas_preflight` to the response when the loaded device is enriched AND declares `self_contained: false`. Includes a structured warning + the actionable hint to load a Sounds preset chain that ships with a sample baked in. Granular samplers (Granulator III, Vector Grain) are caught at load time instead of leaving the agent with a silent instrument.
+
+### Added — `mcp_server/audit/state.py` shared module
+
+Hoists `safe_call`, `fetch_notes_for_clips`, `has_clip_automation`, `count_wavetable_routings` from `audit/tools.py` and `grader/tools.py` into one shared module. Removes the duplication that crept in during Phase 2c-β. Now a third caller can import directly without re-copy.
+
+### Changed — instrument + effect class taxonomy
+
+`audit/checks._INSTRUMENT_CLASSES` and `_EFFECT_CATEGORIES` now include Live's actual runtime class names alongside user-facing brand names. Captured live 2026-05-08:
+
+| User-facing | Runtime class_name |
+|---|---|
+| Analog | `UltraAnalog` |
+| Meld | `InstrumentMeld` |
+| Poli | `MxDeviceInstrument` (M4L wrapper) |
+| Electric | `LoungeLizard` |
+| EQ Eight | `Eq8` |
+| Compressor / Compressor 2 | `Compressor2` |
+| Auto Filter | `AutoFilter2` |
+| Glue Compressor | `GlueCompressor` |
+| Multiband Dynamics | `MultibandDynamics` |
+
+§1 banned-default detection now uses `(class_name, name)` fingerprint tuples — catches Drift, UltraAnalog (Analog), InstrumentMeld (Meld), MxDeviceInstrument-Poli (M4L wrapper). Pre-1.26 the flat-set approach only caught Drift.
+
+### Tests
+
+- 8 new test files: `test_grader_layer_accumulation.py`, `test_grader_default_preset_check.py`, `test_grader_modulation_presence.py`, `test_grader_layer_precision.py`, `test_grader_sound_design_depth.py`, `test_audit_state.py`, `test_atlas_search_field_surfacing.py`, `test_browser_atlas_preflight.py`. ~110 new tests covering rubric criteria, false-positive guards, Drift fingerprint, atlas preflight, shared helpers.
+- Updated `test_audit_layer.py` (Drift fingerprint + real-class fixtures) and `test_tools_contract.py` (count 462 → 465 + grader tools registered).
+- 237 tests pass for the grader + audit + browser preflight surfaces.
+
+### CLAUDE.md additions
+
+- §9b — Kill orphan LivePilot processes (don't ask the user). When a tool errors with `UDP 9880 still in use` or `Another client is already connected`, the active session takes the kill action.
+- §9c — Arrangement build finalization. Loop covers full content, cursor at 0, orange button inactive, no leftover session clips. Canonical one-call: `force_arrangement(beat_time=0, loop_start=0, loop_length=<content_end>, play=false)`.
+
+### Live test (this release's evidence)
+
+A 5-layer 130 BPM two-step session built end-to-end exercising all five rubrics, including a 5/4 fill bar, French disco filter sidechain, and a granular drone pad. Multi-violation stress test progressed 0/12 → 8/13 (62%) → 11/12 (92%) → 12/12 (100%) catch rate as fixes landed. The Granulator III silent-instrument bug surfaced during this session and triggered the atlas_search/load_browser_item preflight fix that's now part of this release.
+
 ## v1.25.0 — 2026-05-02
 
 Hybrid Knowledge Surface — closes the gap between "compose runs successfully" and "compose makes thoughtful production decisions" by giving the agent three layers of atlas-corpus access during plan design instead of one-shot pre-resolution.
