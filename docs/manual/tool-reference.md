@@ -3483,7 +3483,7 @@ Lightweight health check — parameter_count sanity (≤1 parameter = probably d
 
 ## More tools
 
-This chapter covers the most-used tools. The complete list of all 465 tools across 55 domains — including all intelligence-engine tools, creative-constraints, preview-studio, wonder-mode, memory, song-brain, transition/reference/translation engines — is auto-generated at **[Tool Catalog](tool-catalog.md)** from the running MCP server.
+This chapter covers the most-used tools. The complete list of all 465 tools across 56 domains — including all intelligence-engine tools, creative-constraints, preview-studio, wonder-mode, memory, song-brain, transition/reference/translation engines — is auto-generated at **[Tool Catalog](tool-catalog.md)** from the running MCP server.
 
 See also:
 - **[The Intelligence Layer](intelligence.md)** — how the engines connect

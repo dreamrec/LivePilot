@@ -1,4 +1,4 @@
-# LivePilot v1.25.0 — Ableton Live 12
+# LivePilot v1.26.0 — Ableton Live 12
 
 ## Project
 - **Repo:** This directory (LivePilot)
@@ -30,7 +30,7 @@
 ## Key Rules
 - ALL Live Object Model (LOM) calls must execute on Ableton's main thread via schedule_message queue
 - Live 12 minimum — use modern note API (add_new_notes, get_notes_extended, apply_note_modifications)
-- 465 tools across 55 domains: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, analyzer, automation, theory, generative, harmony, midi_io, perception, agent_os, composition, motif, research, planner, project_brain, runtime, evaluation, mix_engine, sound_design, transition_engine, reference_engine, translation_engine, performance_engine, song_brain, preview_studio, hook_hunter, stuckness_detector, wonder_mode, session_continuity, creative_constraints, device_forge, sample_engine, atlas, composer, experiment, musical_intelligence, semantic_moves, diagnostics, follow_actions, grooves, scales, take_lanes, miditool, synthesis_brain, creative_director, user_corpus, audit
+- 465 tools across 56 domains: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, analyzer, automation, theory, generative, harmony, midi_io, perception, agent_os, composition, motif, research, planner, project_brain, runtime, evaluation, mix_engine, sound_design, transition_engine, reference_engine, translation_engine, performance_engine, song_brain, preview_studio, hook_hunter, stuckness_detector, wonder_mode, session_continuity, creative_constraints, device_forge, sample_engine, atlas, composer, experiment, musical_intelligence, semantic_moves, diagnostics, follow_actions, grooves, scales, take_lanes, miditool, synthesis_brain, creative_director, user_corpus, audit, grader
 - JSON over TCP, newline-delimited, port 9878
 - Structured errors with codes: INDEX_ERROR, NOT_FOUND, INVALID_PARAM, STATE_ERROR, TIMEOUT, INTERNAL
 - **LivePilot_Analyzer must be LAST on master** — always after ALL effects (EQ, Compressor, Utility) so it reads the final output, not pre-effect signal
@@ -86,7 +86,7 @@ Sample downloads now use plan-aware gating (`mcp_server/splice_client/client.py:
 New Splice MCP tools: `splice_preview_sample` (zero-cost audition via `PreviewURL`), `splice_list_collections` / `splice_search_in_collection` / `splice_add_to_collection` / `splice_remove_from_collection` / `splice_create_collection` (taste-scoped search via user's Likes/bass/keys folders), `splice_list_presets` / `splice_preset_info` / `splice_download_preset` (purchased instrument presets), `splice_pack_info`.
 
 ## Domain Count
-Currently 55 domains. A domain = the subdirectory under `mcp_server/` (or file under `mcp_server/tools/`) that contains `@mcp.tool()`. Source of truth is the module layout — no hand-maintained list. If adding/removing domains, update: README.md, package.json, manifest.json, CLAUDE.md, AGENTS.md, .claude-plugin/marketplace.json, livepilot/.claude-plugin/plugin.json, livepilot/.Codex-plugin/plugin.json, livepilot/skills/livepilot-core/SKILL.md, livepilot/skills/livepilot-core/references/overview.md, livepilot/skills/livepilot-release/SKILL.md, docs/manual/index.md, docs/manual/tool-catalog.md, docs/manual/tool-catalog-generated.md, tests/test_tools_contract.py. Run `python scripts/sync_metadata.py --check` to enforce count + inline list (or `--fix` for mechanical fixes).
+Currently 56 domains. A domain = the subdirectory under `mcp_server/` (or file under `mcp_server/tools/`) that contains `@mcp.tool()`. Source of truth is the module layout — no hand-maintained list. If adding/removing domains, update: README.md, package.json, manifest.json, CLAUDE.md, AGENTS.md, .claude-plugin/marketplace.json, livepilot/.claude-plugin/plugin.json, livepilot/.Codex-plugin/plugin.json, livepilot/skills/livepilot-core/SKILL.md, livepilot/skills/livepilot-core/references/overview.md, livepilot/skills/livepilot-release/SKILL.md, docs/manual/index.md, docs/manual/tool-catalog.md, docs/manual/tool-catalog-generated.md, tests/test_tools_contract.py. Run `python scripts/sync_metadata.py --check` to enforce count + inline list (or `--fix` for mechanical fixes).
 
 ---
 
