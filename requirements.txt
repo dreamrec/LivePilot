@@ -1,5 +1,5 @@
 # LivePilot MCP Server dependencies
-numpy>=2.4.4
+numpy>=2.4.6
 fastmcp>=3.2.4,<3.3.0  # pinned upper bound — _get_all_tools() accesses private internals
 midiutil>=1.2.1
 pretty_midi>=0.2.11
