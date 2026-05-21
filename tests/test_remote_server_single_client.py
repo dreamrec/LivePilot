@@ -47,10 +47,17 @@ def _load_server_module():
 
 
 def _wait_until(predicate, timeout=2.0):
+    # OSError catch handles Windows WSAEINVAL (WinError 10022) raised by
+    # getsockname() on a socket whose bind() hasn't completed yet — a
+    # transient state we want to treat as "not ready yet, keep polling"
+    # rather than letting it surface as a test failure.
     deadline = time.time() + timeout
     while time.time() < deadline:
-        if predicate():
-            return True
+        try:
+            if predicate():
+                return True
+        except OSError:
+            pass
         time.sleep(0.05)
     return False
 
