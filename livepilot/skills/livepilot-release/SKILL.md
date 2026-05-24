@@ -21,10 +21,10 @@ Run this checklist EVERY time the user says "update everything", "push", "releas
 - [ ] `CLAUDE.md` → header line
 - [ ] `livepilot/skills/livepilot-core/references/overview.md` → header line
 - [ ] `CHANGELOG.md` → latest version header
-- [ ] `docs/social-banner.html` → version display
+- [ ] `docs/assets/banner-dark.svg` and `docs/assets/banner-light.svg` → current tool/domain display
 - [ ] `docs/M4L_BRIDGE.md` → ping response example
 
-**How to check:** `grep -rn "1\.[0-9]\.[0-9]" package.json server.json livepilot/.Codex-plugin/plugin.json livepilot/.claude-plugin/plugin.json .claude-plugin/marketplace.json mcp_server/__init__.py remote_script/LivePilot/__init__.py m4l_device/livepilot_bridge.js CHANGELOG.md CLAUDE.md livepilot/skills/livepilot-core/references/overview.md docs/social-banner.html docs/M4L_BRIDGE.md`
+**How to check:** `grep -rn "1\.[0-9]\.[0-9]" package.json server.json livepilot/.Codex-plugin/plugin.json livepilot/.claude-plugin/plugin.json .claude-plugin/marketplace.json mcp_server/__init__.py remote_script/LivePilot/__init__.py m4l_device/livepilot_bridge.js CHANGELOG.md CLAUDE.md livepilot/skills/livepilot-core/references/overview.md docs/M4L_BRIDGE.md`
 
 ## 2. Tool Count (must ALL match)
 
@@ -53,7 +53,7 @@ Files that reference tool count:
       but you should never need to call it directly — `--fix` invokes it at the end of the chain
       after the count bumps so the catalog stays coherent with the live `mcp.list_tools()` registry)
 - [ ] `docs/M4L_BRIDGE.md` — bridge copy (avoid hard numeric core/bridge split — use "38 spectral tools require bridge")
-- [ ] `docs/social-banner.html`
+- [ ] `docs/assets/banner-dark.svg` and `docs/assets/banner-light.svg`
 - [ ] `tests/test_tools_contract.py` → expected total count
 - [ ] `tests/test_skill_contracts.py` → catalog sync test passes
 
@@ -91,8 +91,7 @@ Current: **56 domains**: transport, tracks, clips, notes, devices, scenes, mixin
 
 ## 7. Social/Promotional Assets
 
-- [ ] `docs/social-banner.html` — tool count, version, domain list
-- [ ] `docs/social-banner.png` — regenerated from HTML (must match)
+- [ ] `docs/assets/banner-dark.svg` and `docs/assets/banner-light.svg` — tool count and domain list
 - [ ] GitHub repo social preview image (Settings > Social preview)
 
 ## 8. Documentation Content

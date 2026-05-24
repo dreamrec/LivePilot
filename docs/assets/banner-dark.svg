@@ -29,7 +29,7 @@
   <rect x="200" y="150" width="400" height="0.5" fill="url(#accent)"/>
 
   <!-- Stats -->
-  <text x="285" y="175" text-anchor="middle" font-family="'SF Mono', 'Fira Code', monospace" font-size="9" font-weight="600" letter-spacing="2" fill="#555555">178 TOOLS</text>
-  <text x="400" y="175" text-anchor="middle" font-family="'SF Mono', 'Fira Code', monospace" font-size="9" font-weight="600" letter-spacing="2" fill="#555555">17 DOMAINS</text>
+  <text x="285" y="175" text-anchor="middle" font-family="'SF Mono', 'Fira Code', monospace" font-size="9" font-weight="600" letter-spacing="2" fill="#555555">465 TOOLS</text>
+  <text x="400" y="175" text-anchor="middle" font-family="'SF Mono', 'Fira Code', monospace" font-size="9" font-weight="600" letter-spacing="2" fill="#555555">56 DOMAINS</text>
   <text x="520" y="175" text-anchor="middle" font-family="'SF Mono', 'Fira Code', monospace" font-size="9" font-weight="600" letter-spacing="2" fill="#555555">3 LAYERS</text>
 </svg>

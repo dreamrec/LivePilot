@@ -13,6 +13,7 @@ Patch release for installer/release hygiene and live execution correctness.
 - `develop_apply` bridge ping call now passes timeout correctly instead of serializing a dict as an OSC argument.
 - Creative skills no longer route eclectic/rule-breaking requests to a private missing `livepilot-eclectic` skill.
 - Metadata/docs refreshed for 56 domains, 465 tools, and 44 semantic moves.
+- Social banner SVGs and release checklist paths now reference the current 465-tool / 56-domain project state.
 
 ### Added
 
