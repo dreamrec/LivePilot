@@ -64,7 +64,7 @@ async def _bridge_ping_stub(ctx: Any) -> dict:
         bridge = ctx.lifespan_context.get("m4l_bridge")
     if bridge is None:
         raise RuntimeError("bridge not available")
-    return await bridge.send_command("ping", {"timeout": 0.5})
+    return await bridge.send_command("ping", timeout=0.5)
 
 
 async def _back_to_arranger(ctx: Any) -> dict:

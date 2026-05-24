@@ -60,6 +60,67 @@ WRITE_COMMANDS = frozenset([
     "clear_clip_automation",
 ])
 
+# Future-safe write detection. WRITE_COMMANDS remains the explicit allow-list
+# for older handlers and readability; the prefix classifier catches newer
+# mutating handlers so they still receive the write timeout and settle delay.
+READ_COMMAND_PREFIXES = ("get_", "list_", "scan_")
+READ_ONLY_COMMANDS = frozenset([
+    "ping",
+    "reload_handlers",
+])
+WRITE_COMMAND_PREFIXES = (
+    "add_",
+    "apply_",
+    "arrangement_automation_",
+    "assign_",
+    "back_to_",
+    "capture_",
+    "cleanup_",
+    "clear_",
+    "continue_",
+    "copy_",
+    "create_",
+    "delete_",
+    "duplicate_",
+    "find_and_load_",
+    "fire_",
+    "flatten_",
+    "force_",
+    "freeze_",
+    "import_",
+    "insert_",
+    "jump_",
+    "load_",
+    "modify_",
+    "move_",
+    "nudge_",
+    "quantize_",
+    "randomize_",
+    "recall_",
+    "remove_",
+    "replace_",
+    "reset_",
+    "set_",
+    "start_",
+    "stop_",
+    "store_",
+    "tap_",
+    "toggle_",
+    "transpose_",
+)
+
+
+def is_write_command(command_type):
+    """Return True if a command is expected to mutate Live state."""
+    if command_type in WRITE_COMMANDS:
+        return True
+    if command_type in READ_ONLY_COMMANDS:
+        return False
+    if command_type.startswith(READ_COMMAND_PREFIXES):
+        return False
+    return command_type.startswith(WRITE_COMMAND_PREFIXES)
+
+
 # Commands that need longer timeouts (e.g., freeze renders audio)
 SLOW_WRITE_COMMANDS = frozenset([
     "freeze_track",
@@ -277,7 +338,7 @@ class LivePilotServer(object):
         cmd_type = command.get("type", "")
 
         # Determine timeout based on read vs write vs slow write
-        is_write = cmd_type in WRITE_COMMANDS
+        is_write = is_write_command(cmd_type)
         if cmd_type in SLOW_WRITE_COMMANDS:
             timeout = 35
         elif is_write:
@@ -343,7 +404,7 @@ class LivePilotServer(object):
             return
 
         cmd_type = command.get("type", "")
-        is_write = cmd_type in WRITE_COMMANDS
+        is_write = is_write_command(cmd_type)
 
         try:
             song = self._cs.song()

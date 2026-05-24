@@ -25,10 +25,15 @@ m4l_device/*.pre-*-backup
 
 # Local-only toggles
 .mcp.json.disabled
+.codex/
 
 # Environment
 .env
 .env.*
+
+# Two-tier CONTEXT pattern: public CONTEXT.md ships, CONTEXT-local.md
+# carries session-specific paths and personal notes.
+CONTEXT-local.md
 
 # OS
 .DS_Store

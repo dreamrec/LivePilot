@@ -1014,6 +1014,11 @@ class M4LBridge:
                 while len(s_bytes) % 4 != 0:
                     s_bytes += b'\x00'
                 arg_data += s_bytes
+            else:
+                raise TypeError(
+                    "OSC argument for %s must be int, float, or str, got %s"
+                    % (address, type(arg).__name__)
+                )
 
         tag_bytes = type_tags.encode('ascii') + b'\x00'
         while len(tag_bytes) % 4 != 0:

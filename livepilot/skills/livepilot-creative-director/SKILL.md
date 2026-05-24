@@ -60,7 +60,7 @@ The atlas knows the user's installed library at parameter depth. **Producer-anch
 
 Every pack entry has an `anti_patterns` body field listing "don't reach for this when X." Surface the relevant anti-pattern when proposing a move so the user knows the move's domain. (E.g. "Drone Lab is sustain-only — don't use for percussive content.")
 
-**For deliberately rule-breaking creative requests** ("eclectic", "ignore the limits", "weird combo", "mix incompatible aesthetics"): switch to **Eclectic Mode** — the dedicated rule-breaker skill at `livepilot-eclectic` (private). Anti-patterns become prompt tension rather than guardrails. See that skill's reasoning loop.
+**For deliberately rule-breaking creative requests** ("eclectic", "ignore the limits", "weird combo", "mix incompatible aesthetics"): stay in this skill and enter **Eclectic Mode**. Anti-patterns become prompt tension rather than guardrails: preserve hard safety rules and protected user constraints, but deliberately pair one normally-avoided element with one identity-preserving element. Do not route to a private or missing skill.
 
 ## Why This Exists
 
@@ -68,7 +68,7 @@ The agent repeats patterns when divergence is optional and convergence
 is default. This skill inverts the defaults for creative intent:
 
 - Wonder / experiment branching becomes REQUIRED, not rescue-only
-- `get_anti_preferences` and recent `memory_list` are READ before generating
+- `get_anti_preferences`, `get_action_ledger_summary(limit=10)`, and `get_last_move` are READ before generating
 - Three plans must differ by `move.family` (not by parameter values)
 - Mix / sound-design critics wait until AFTER selection
 - Concept packets (`artist-vocabularies.md` / `genre-vocabularies.md`)
@@ -176,7 +176,7 @@ The `sample` family lives in `mcp_server/sample_engine/moves.py` (not
 `sample_texture_layer`, `sample_vocal_ghost`, `sample_break_layer`,
 `sample_resample_destroy`, `sample_one_shot_accent`.
 
-**Family vs. dimension.** Families are code-level (six values from the
+**Family vs. dimension.** Families are code-level (seven values from the
 registry). Dimensions are musical (four values: structural / rhythmic /
 timbral / spatial). A plan has exactly one dominant family AND one
 dominant dimension — they are orthogonal. A rhythmic plan's family is
@@ -227,10 +227,8 @@ populates the action ledger automatically — no manual
 `add_session_memory(move_executed)` required. Anti-repetition
 (Phase 3) reads the ledger via `get_last_move` and
 `get_action_ledger_summary`; as long as the dispatched plan used
-`apply_semantic_move`, the family/target signature is captured for
-the next turn's recency check. `commit_experiment` is the other
-default; automatic ledger write for it is tracked as tech_debt in
-v1.20 and closes in a follow-up minor release.
+`apply_semantic_move` or `commit_experiment`, the family/target
+signature is captured for the next turn's recency check.
 
 Pick the right one:
 
@@ -323,7 +321,7 @@ Using the hatch requires ALL THREE, in this order:
 2. `add_session_memory(category="move_executed", content="...")` —
    one-line ledger entry covering family + target + brief identity.
    Without this, the next creative turn's anti-repetition read goes
-   blind (get_last_move / memory_list see nothing).
+   blind (`get_last_move` / `get_action_ledger_summary` see nothing).
 3. `add_session_memory(category="tech_debt", content="no semantic_move
    for <pattern>", ...)` — tracking log that says "a semantic move
    should exist for this." The content should name the pattern
@@ -354,7 +352,7 @@ shortcut.
 **State-inference fallback is DEPRECATED** (see
 `references/anti-repetition-rules.md` §v1.20 update). Pre-v1.20, the
 director used "scan loaded devices + non-default mixer values to
-guess recent moves" when `memory_list` came back empty. With
+guess recent moves" when the recency read came back empty. With
 `apply_semantic_move` as default, that heuristic routes around the
 real ledger and can double-count. Keep it documented ONLY for the
 escape-hatch case where both memory entries were accidentally dropped.
@@ -384,7 +382,7 @@ family + context.
 ## Anti-Repetition Protocol
 
 Before Phase 3 generation, compute the family distribution over the
-last 10 kept moves (`memory_list(limit=10)`). Apply the recency
+last 10 kept moves (`get_action_ledger_summary(limit=10)`). Apply the recency
 threshold table from `references/anti-repetition-rules.md`:
 
 | Recency count for one family | Rule |

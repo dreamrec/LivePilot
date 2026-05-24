@@ -151,6 +151,40 @@ def test_second_client_replaces_stale_connection():
         server.stop()
 
 
+def test_write_command_classifier_catches_newer_mutating_handlers():
+    """New mutating handlers should get write timeout/settle behavior.
+
+    This guards the Remote Script against stale WRITE_COMMANDS drift as new
+    handlers are added in later domains.
+    """
+    server_mod = _load_server_module()
+
+    for command in (
+        "insert_device",
+        "insert_rack_chain",
+        "set_song_scale",
+        "set_clip_pitch",
+        "set_groove_params",
+        "assign_clip_groove",
+        "create_native_arrangement_clip",
+        "replace_sample_native",
+        "arrangement_automation_via_session_record_start",
+        "arrangement_automation_via_session_record_complete",
+        "cleanup_test_note",
+    ):
+        assert server_mod.is_write_command(command), command
+
+    for command in (
+        "get_session_info",
+        "get_simpler_file_path",
+        "list_available_scales",
+        "scan_browser_deep",
+        "ping",
+        "reload_handlers",
+    ):
+        assert not server_mod.is_write_command(command), command
+
+
 def test_schedule_message_disconnect_sends_state_error():
     server_mod = _load_server_module()
 

@@ -70,6 +70,8 @@ def test_every_adapter_imports_cleanly():
         "mcp_server.tools.motif",
         "mcp_server.tools.research",
         "mcp_server.mix_engine.tools",
+        "mcp_server.sample_engine.tools",
+        "mcp_server.synthesis_brain.tools",
         "mcp_server.device_forge.tools",
     ):
         importlib.import_module(modpath)
@@ -85,7 +87,10 @@ def test_read_only_tools_not_in_mcp_tools_except_analysis():
     """
     overlap = MCP_TOOLS & READ_ONLY_TOOLS
     expected = {
+        "analyze_sample",
+        "analyze_synth_patch",
         "analyze_mix",
+        "get_masking_report",
         "get_master_spectrum",
         "get_emotional_arc",
         "get_motif_graph",

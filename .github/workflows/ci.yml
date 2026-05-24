@@ -88,6 +88,8 @@ jobs:
           npm pack --dry-run 2>&1 | tee /dev/stderr | grep -q "livepilot_bridge.js"
           npm pack --dry-run 2>&1 | grep -q "LivePilot_Analyzer.amxd"
           npm pack --dry-run 2>&1 | grep -q "remote_script/LivePilot/__init__.py"
+          npm pack --dry-run 2>&1 | grep -q "livepilot/skills/livepilot-core/SKILL.md"
+          npm pack --dry-run 2>&1 | grep -q "livepilot/.Codex-plugin/plugin.json"
       - name: Verify npm pack excludes dirty/local files
         # Prevents shipping local-only artifacts like .mcp.json.disabled (with
         # absolute workstation paths), pre-freeze backups, swap files, or
@@ -96,5 +98,9 @@ jobs:
           npm pack --dry-run 2>&1 | tee pack.log
           if grep -E '\.(disabled|backup|bak|swp|orig)$|\.pre-|\.DS_Store' pack.log; then
             echo "::error::npm pack contains dirty/local artifacts. Exclude them via the \"files\" allowlist in package.json or .npmignore."
+            exit 1
+          fi
+          if grep -E 'plugins-synths\.md|synths-m4l\.md|utility-and-workflow\.md|samples-and-irs\.md|presets-by-vibe\.md|m4l-vendor|m4l-depth-pass|m4l-library-deep|m4l-master-reference|m4l-technique-map' pack.log; then
+            echo "::error::npm pack contains personal/user atlas files. Keep these gitignored files out of the npm payload."
             exit 1
           fi

@@ -432,6 +432,7 @@ PROSE_CLAIM_FILES = {
 DOMAIN_COUNT_FILES = [
     "README.md",
     "package.json",
+    "server.json",
     "manifest.json",
     "CLAUDE.md",
     "AGENTS.md",

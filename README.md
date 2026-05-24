@@ -51,7 +51,7 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 | **Sample Engine** | Three-source sample intelligence — Ableton's browser, your filesystem, and Splice's catalog (plan-aware: Ableton Live plan uses daily quota, Sounds+/Creator uses credits, free samples bypass both). 6 fitness critics. 29 processing techniques. Collections, presets, preview-URL audition, LIVE Describe-a-Sound + Variations via Splice GraphQL |
 | **Spectral Perception** | Real-time ears via M4L — 9-band FFT (with sub_low split at 20-60 Hz for kick fundamentals), RMS/peak metering, Krumhansl-Schmuckler key detection, pitch tracking, FluCoMa mel/chroma/onset. Auto-loaded via `ensure_analyzer_on_master` (v1.20.3) — no more silently-degraded mix moves from forgotten analyzer |
 | **Technique Memory** | Persistent library of production decisions. Save a beat pattern, device chain, or mix template. Recall by mood, genre, or texture across sessions |
-| **Creative Intelligence** | 12 engines on top of the tools: SongBrain, Taste Graph, Wonder Mode, Mix/Sound-Design/Transition/Reference/Translation engines, Hook Hunter, Stuckness Detector, Session Continuity, Preview Studio. **44 semantic moves** (v1.21) — musical intents like "tighten the low end" or "make kick and bass lock" that compile into tool sequences with risk levels and target dimensions |
+| **Creative Intelligence** | 12 engines on top of the tools: SongBrain, Taste Graph, Wonder Mode, Mix/Sound-Design/Transition/Reference/Translation engines, Hook Hunter, Stuckness Detector, Session Continuity, Preview Studio. **44 semantic moves** (v1.26) — musical intents like "tighten the low end" or "make kick and bass lock" that compile into tool sequences with risk levels and target dimensions |
 
 <br>
 

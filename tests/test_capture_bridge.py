@@ -386,6 +386,15 @@ def test_build_osc_base64_encodes_unicode_string_args():
     assert decoded == original
 
 
+def test_build_osc_rejects_unsupported_argument_types():
+    cache = SpectralCache()
+    receiver = SpectralReceiver(cache)
+    bridge = M4LBridge(cache, receiver)
+
+    with pytest.raises(TypeError, match="must be int, float, or str"):
+        bridge._build_osc("ping", ({"timeout": 0.5},))
+
+
 def test_capture_complete_normalizes_max_style_file_path():
     loop = asyncio.new_event_loop()
     try:

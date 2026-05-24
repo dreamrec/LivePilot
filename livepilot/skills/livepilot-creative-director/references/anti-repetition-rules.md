@@ -9,7 +9,7 @@ always "what I did last time."
 
 ### v1.20 update: DEPRECATED in favor of the semantic-move ledger
 
-The detection mechanisms below (`get_last_move`, `memory_list`) see
+The detection mechanisms below (`get_last_move`, `get_action_ledger_summary`) see
 every move executed through `apply_semantic_move` or
 `commit_experiment`. As of v1.20, the director SKILL.md Phase 6
 defaults to these two tools — the pre-v1.20 "raw tools + manual
@@ -18,8 +18,9 @@ when no semantic move covers the pattern (see
 `phase-6-execution.md` §escape-hatch policy).
 
 **Expected state:** the ledger is populated for every committed
-creative move. `get_last_move` returns the most recent; `memory_list`
-returns the recent window. No inference needed.
+creative move. `get_last_move` returns the most recent;
+`get_action_ledger_summary(limit=10)` returns the recent window. No
+inference needed.
 
 **State-inference is DEPRECATED** — kept below for the narrow case
 where:
@@ -37,8 +38,9 @@ which inflates recency scores and over-penalizes families.
 
 ### The heuristic (retained for emergency-only use)
 
-**Only when ALL of: `get_last_move()=={}`, `memory_list(limit=10)` is
-empty, AND you have visual evidence Phase 6 ran via escape hatch
+**Only when ALL of: `get_last_move()=={}`,
+`get_action_ledger_summary(limit=10)` returns no recent moves, AND you
+have visual evidence Phase 6 ran via escape hatch
 without logs.** Compare the current session state (track count,
 return track device chains, clip slot contents) against a naive
 "blank session" baseline. Any non-default device loadout or non-empty

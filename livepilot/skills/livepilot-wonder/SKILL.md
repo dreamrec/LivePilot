@@ -55,7 +55,7 @@ The atlas knows the user's installed library at parameter depth. **Producer-anch
 
 Every pack entry has an `anti_patterns` body field listing "don't reach for this when X." Surface the relevant anti-pattern when proposing a move so the user knows the move's domain. (E.g. "Drone Lab is sustain-only — don't use for percussive content.")
 
-**For deliberately rule-breaking creative requests** ("eclectic", "ignore the limits", "weird combo", "mix incompatible aesthetics"): switch to **Eclectic Mode** — the dedicated rule-breaker skill at `livepilot-eclectic` (private). Anti-patterns become prompt tension rather than guardrails. See that skill's reasoning loop.
+**For deliberately rule-breaking creative requests** ("eclectic", "ignore the limits", "weird combo", "mix incompatible aesthetics"): enter **Eclectic Mode** inside Wonder. Anti-patterns become prompt tension rather than guardrails: keep hard safety and protected-user constraints, then generate variants that intentionally combine one normally-avoided source with one identity-preserving source. Do not route to a private or missing skill.
 
 ## When to Trigger
 

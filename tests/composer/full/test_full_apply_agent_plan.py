@@ -547,7 +547,18 @@ async def test_full_apply_v2_analysis_failure_does_not_break_apply():
         return {"ok": True}
     ableton.send_command = send_command
     ctx = MagicMock()
-    ctx.lifespan_context = {"ableton": ableton}
+    async def fail_analysis(_params, ctx=None):
+        raise RuntimeError("simulated analyzer failure")
+
+    ctx.lifespan_context = {
+        "ableton": ableton,
+        "mcp_dispatch": {
+            "analyze_sample": fail_analysis,
+            "analyze_synth_patch": fail_analysis,
+            "analyze_mix": fail_analysis,
+            "get_masking_report": fail_analysis,
+        },
+    }
 
     plan = {
         "scope": "full",

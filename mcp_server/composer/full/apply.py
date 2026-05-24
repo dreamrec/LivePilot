@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import re as _re
+import inspect
 import time
 
 from fastmcp import Context
@@ -90,6 +91,28 @@ def _is_meaningful_ratio(
 _TONAL_ROLES_ALWAYS_WARP: frozenset[str] = frozenset({
     "pad", "bass", "lead", "vocal", "texture", "fx",
 })
+
+
+async def _call_mcp_analysis_tool(ctx: Context, tool: str, params: dict) -> dict:
+    """Dispatch analyzer/intelligence tools through the MCP registry.
+
+    These tools are Python MCP tools, not Remote Script TCP handlers. Keeping
+    full-mode analysis on the registry path prevents creative plans from
+    passing tests against mocks and then failing in Live as unknown commands.
+    """
+    lifespan = getattr(ctx, "lifespan_context", {}) or {}
+    registry = lifespan.get("mcp_dispatch")
+    if registry is None:
+        from ...runtime.mcp_dispatch import build_mcp_dispatch_registry
+        registry = build_mcp_dispatch_registry()
+
+    fn = registry.get(tool) if registry else None
+    if fn is None:
+        return {"error": f"MCP analysis tool '{tool}' is not registered"}
+
+    call = fn(params, ctx=ctx)
+    result = await call if inspect.isawaitable(call) else call
+    return result if isinstance(result, dict) else {"result": result}
 
 
 def _decide_warp_loops(
@@ -825,8 +848,9 @@ async def apply_full_plan_v2(ctx: Context, plan: dict) -> dict:
         # Goal: give the agent acoustic characteristics of the loaded sound so
         # it can reason about fit. ONLY static analysis here (no playback);
         # active solo-trigger analysis is Scope B / v1.25.
-        # Analysis is routed through ableton.send_command so it is intercepted
-        # by the same mock contract as all other commands (testable, consistent).
+        # Analysis is MCP-side intelligence, not a Remote Script TCP command.
+        # Route through the MCP dispatch registry so live execution matches
+        # the same boundary the async plan router uses.
         role = track_spec.get("role", "")
         instrument_uri = (track_spec.get("instrument") or {}).get("uri", "")
         layer_analysis: dict = {"status": "skipped", "reason": "no analyzer applicable"}
@@ -834,7 +858,8 @@ async def apply_full_plan_v2(ctx: Context, plan: dict) -> dict:
             if instrument_uri.startswith(("query:Synths#", "query:Sounds#")):
                 # Synth / preset — analyze the patch
                 try:
-                    patch_result = ableton.send_command(
+                    patch_result = await _call_mcp_analysis_tool(
+                        ctx,
                         "analyze_synth_patch",
                         {"track_index": track_index, "device_index": 0},
                     )
@@ -854,7 +879,8 @@ async def apply_full_plan_v2(ctx: Context, plan: dict) -> dict:
                  any(instrument_uri.lower().endswith(ext) for ext in (".aif", ".wav", ".mp3", ".flac")):
                 # Sample-based — analyze via track reference (no file_path needed)
                 try:
-                    sample_result = ableton.send_command(
+                    sample_result = await _call_mcp_analysis_tool(
+                        ctx,
                         "analyze_sample",
                         {"track_index": track_index, "clip_index": 0},
                     )
@@ -1034,10 +1060,10 @@ async def apply_full_plan_v2(ctx: Context, plan: dict) -> dict:
     # session state.
     mix_analysis: dict = {"status": "skipped", "reason": "not run"}
     try:
-        mix_result = ableton.send_command("analyze_mix", {})
+        mix_result = await _call_mcp_analysis_tool(ctx, "analyze_mix", {})
         if isinstance(mix_result, dict) and not mix_result.get("error"):
             try:
-                masking_result = ableton.send_command("get_masking_report", {})
+                masking_result = await _call_mcp_analysis_tool(ctx, "get_masking_report", {})
             except Exception as mask_exc:
                 masking_result = {"error": str(mask_exc)}
             mix_analysis = {

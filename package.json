@@ -1,8 +1,8 @@
 {
   "name": "livepilot",
-  "version": "1.26.0",
+  "version": "1.26.1",
   "mcpName": "io.github.dreamrec/livepilot",
-  "description": "Agentic production system for Ableton Live 12 \u2014 465 tools, 56 domains, 44 semantic moves. Device atlas (5264 devices, 120 enriched, 7 indexes), Splice intelligence (gRPC + GraphQL describe-a-sound + preview + collections + presets), 9-band spectral perception auto-loaded via ensure_analyzer_on_master, Creative Director skill, technique memory, 12 creative intelligence engines",
+  "description": "Agentic production system for Ableton Live 12 — 465 tools, 56 domains, 44 semantic moves. Device atlas (5264 devices, 120 enriched, 7 indexes), Splice intelligence (gRPC + GraphQL describe-a-sound + preview + collections + presets), 9-band spectral perception auto-loaded via ensure_analyzer_on_master, Creative Director skill, technique memory, 12 creative intelligence engines",
   "author": "Pilot Studio",
   "license": "BSL-1.1",
   "type": "commonjs",
@@ -47,6 +47,7 @@
   "files": [
     "bin/**/*.js",
     "installer/**/*.js",
+    "livepilot/**",
     "mcp_server/**/*.py",
     "mcp_server/**/*.json",
     "mcp_server/**/*.yaml",
@@ -56,6 +57,9 @@
     "m4l_device/LivePilot_Analyzer.amxd",
     "m4l_device/LivePilot_Analyzer.adv",
     "m4l_device/livepilot_bridge.js",
+    "m4l_device/LivePilot_Elektron.amxd",
+    "m4l_device/LivePilot_Elektron.maxpat",
+    "m4l_device/livepilot_elektron_bridge.js",
     "m4l_device/BUILD_GUIDE.md",
     "requirements.txt",
     "README.md",
@@ -64,6 +68,17 @@
     "server.json",
     "!**/__pycache__/**",
     "!**/*.pyc",
-    "!**/.DS_Store"
+    "!**/.DS_Store",
+    "!livepilot/skills/livepilot-core/references/device-atlas/synths-m4l.md",
+    "!livepilot/skills/livepilot-core/references/device-atlas/plugins-synths.md",
+    "!livepilot/skills/livepilot-core/references/device-atlas/utility-and-workflow.md",
+    "!livepilot/skills/livepilot-core/references/device-atlas/samples-and-irs.md",
+    "!livepilot/skills/livepilot-core/references/device-atlas/presets-by-vibe.md",
+    "!livepilot/skills/livepilot-devices/references/m4l-vendor/**",
+    "!livepilot/skills/livepilot-devices/references/m4l-depth-pass-findings.md",
+    "!livepilot/skills/livepilot-devices/references/m4l-depth-pass-resume.md",
+    "!livepilot/skills/livepilot-devices/references/m4l-library-deep.md",
+    "!livepilot/skills/livepilot-devices/references/m4l-master-reference.md",
+    "!livepilot/skills/livepilot-devices/references/m4l-technique-map.md"
   ]
 }

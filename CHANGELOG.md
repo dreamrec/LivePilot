@@ -1,5 +1,28 @@
 # Changelog
 
+## v1.26.1 — 2026-05-24
+
+Patch release for installer/release hygiene and live execution correctness.
+
+### Fixed
+
+- Codex plugin installer now copies the full plugin payload into Codex's local plugin cache, writes the lowercase `.codex-plugin` manifest mirror, and prunes stale cache versions.
+- Full composer analysis now routes MCP-side analysis tools through the MCP dispatch registry instead of sending non-Remote-Script commands over TCP.
+- Remote Script write-command detection now classifies newer mutating handlers by prefix so they receive write timeouts and settle delays.
+- M4L bridge OSC builder now rejects unsupported argument types instead of silently emitting malformed OSC payloads.
+- `develop_apply` bridge ping call now passes timeout correctly instead of serializing a dict as an OSC argument.
+- Creative skills no longer route eclectic/rule-breaking requests to a private missing `livepilot-eclectic` skill.
+- Metadata/docs refreshed for 56 domains, 465 tools, and 44 semantic moves.
+
+### Added
+
+- Public `CONTEXT.md` with repo vocabulary and architecture decisions.
+- Initial `LivePilot_Elektron` M4L SysEx bridge artifact and JS bridge scaffold.
+
+### Tests
+
+- Added contract coverage for Codex cache installation, MCP dispatch adapters, Remote Script command registry drift, write-command classification, OSC argument validation, and stale skill references.
+
 ## v1.26.0 — 2026-05-09
 
 Rubric grader system + atlas-aware load preflight + Drift factory-fingerprint detection. Closes a chronic-regression class: anti-pattern violations of CLAUDE.md §1/§2/§4/§5/§7.3 now have programmatic enforcement, and silent-instrument loads (Granulator III without a sample) are caught structurally at load time instead of much later via the verifier.

@@ -60,9 +60,24 @@ async def _apply_gesture_template(params: dict, ctx: Any = None) -> dict:
     return await _call(apply_gesture_template, ctx, params)
 
 
+async def _analyze_sample(params: dict, ctx: Any = None) -> dict:
+    from ..sample_engine.tools import analyze_sample
+    return await _call(analyze_sample, ctx, params)
+
+
+async def _analyze_synth_patch(params: dict, ctx: Any = None) -> dict:
+    from ..synthesis_brain.tools import analyze_synth_patch
+    return await _call(analyze_synth_patch, ctx, params)
+
+
 async def _analyze_mix(params: dict, ctx: Any = None) -> dict:
     from ..mix_engine.tools import analyze_mix
     return await _call(analyze_mix, ctx, params)
+
+
+async def _get_masking_report(params: dict, ctx: Any = None) -> dict:
+    from ..mix_engine.tools import get_masking_report
+    return await _call(get_masking_report, ctx, params)
 
 
 async def _get_master_spectrum(params: dict, ctx: Any = None) -> dict:
@@ -151,7 +166,10 @@ def build_mcp_dispatch_registry() -> dict[str, Callable]:
         "load_sample_to_simpler": _load_sample_to_simpler,
         "apply_automation_shape": _apply_automation_shape,
         "apply_gesture_template": _apply_gesture_template,
+        "analyze_sample": _analyze_sample,
+        "analyze_synth_patch": _analyze_synth_patch,
         "analyze_mix": _analyze_mix,
+        "get_masking_report": _get_masking_report,
         "get_master_spectrum": _get_master_spectrum,
         "get_emotional_arc": _get_emotional_arc,
         "get_motif_graph": _get_motif_graph,

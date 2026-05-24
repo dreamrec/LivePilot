@@ -44,7 +44,7 @@ Never invent an eighth family at the director level.
 
 **Discovery:** always call `list_semantic_moves(domain=<family>)` at
 runtime to enumerate — do not hardcode move IDs. Families are stable;
-the move catalog grows. As of v1.18.0 the runtime returns 33 moves
+the move catalog grows. As of v1.26.0 the runtime returns 44 moves
 across all 7 domains.
 
 **Why the director never invents an eighth `rhythmic` family:** the
@@ -166,7 +166,7 @@ With two locks: only 2 dimensions left — ship 2 plans, not 3 (honesty rule).
 
 ### Mix excluded by recency — family-collision risk
 
-When the recency rule excludes `mix` (≥ 5 of 10 in `memory_list`), the
+When the recency rule excludes `mix` (≥ 5 of 10 in `get_action_ledger_summary(limit=10)`), the
 natural fallback plans often collapse into two `arrangement`-family
 plans — one structural (insert a breakdown) and one rhythmic (clip
 groove + probability edits). Both are honest `arrangement` with

@@ -104,3 +104,30 @@ def test_tool_catalog_matches_live_registry():
     assert not missing, (
         f"Tool catalog missing {len(missing)} tools: {', '.join(missing)}"
     )
+
+
+def test_skill_references_resolve_to_shipped_skills():
+    """Standalone livepilot-* skill references must name shipped skills.
+
+    This catches docs that route agents into private or stale skills. Path
+    fragments like ``livepilot-core/references/...`` are intentionally
+    ignored because they refer to files inside a skill, not a skill load.
+    """
+    shipped = {
+        p.parent.name
+        for p in (ROOT / "livepilot" / "skills").glob("*/SKILL.md")
+    }
+    refs: list[str] = []
+    pattern = re.compile(r"(?<![/\w.-])(livepilot-[a-z0-9-]+)(?![/\w.-])")
+
+    for md_path in sorted((ROOT / "livepilot" / "skills").rglob("*.md")):
+        text = md_path.read_text(encoding="utf-8")
+        for match in pattern.finditer(text):
+            skill_name = match.group(1)
+            if skill_name not in shipped:
+                line = text[: match.start()].count("\n") + 1
+                refs.append(
+                    f"{md_path.relative_to(ROOT)}:{line}: {skill_name}"
+                )
+
+    assert not refs, "Unknown LivePilot skill references:\n" + "\n".join(refs)

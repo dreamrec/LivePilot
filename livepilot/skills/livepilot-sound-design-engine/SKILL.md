@@ -49,7 +49,7 @@ The atlas knows the user's installed library at parameter depth. **Producer-anch
 
 Every pack entry has an `anti_patterns` body field listing "don't reach for this when X." Surface the relevant anti-pattern when proposing a move so the user knows the move's domain. (E.g. "Drone Lab is sustain-only — don't use for percussive content.")
 
-**For deliberately rule-breaking creative requests** ("eclectic", "ignore the limits", "weird combo", "mix incompatible aesthetics"): switch to **Eclectic Mode** — the dedicated rule-breaker skill at `livepilot-eclectic` (private). Anti-patterns become prompt tension rather than guardrails. See that skill's reasoning loop.
+**For deliberately rule-breaking creative requests** ("eclectic", "ignore the limits", "weird combo", "mix incompatible aesthetics"): enter **Eclectic Mode** inside this sound-design loop. Anti-patterns become prompt tension rather than guardrails: keep hard safety and protected-user constraints, then pair one normally-avoided source or processor with one identity-preserving anchor. Do not route to a private or missing skill.
 
 ## The Sound Design Critic Loop
 

@@ -83,6 +83,8 @@ REMOTE_COMMANDS: frozenset[str] = frozenset({
     "capture_midi", "start_recording", "stop_recording",
     "get_cue_points", "jump_to_cue", "toggle_cue_point",
     "back_to_arranger", "force_arrangement",
+    "arrangement_automation_via_session_record_start",
+    "arrangement_automation_via_session_record_complete",
     # scales — Song + per-clip scale awareness (Live 12.0+)
     "get_song_scale", "set_song_scale", "set_song_scale_mode",
     "list_available_scales",
