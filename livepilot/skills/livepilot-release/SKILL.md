@@ -29,7 +29,7 @@ Run this checklist EVERY time the user says "update everything", "push", "releas
 ## 2. Tool Count (must ALL match)
 
 Current: **465 tools across 56 domains**.
-Spectral/analyzer (bridge-only): **38**. All others: **292** (work without bridge, some with graceful fallbacks). Backed by 32 bridge commands.
+Spectral/analyzer (bridge-only): **38**. The remaining tool surface works without the bridge or degrades gracefully. Backed by 32 bridge commands.
 
 Verify: `grep -rc "@mcp.tool" mcp_server/tools/ | grep -v ":0" | awk -F: '{sum+=$2} END{print sum}'`
 
@@ -64,7 +64,7 @@ Files that reference tool count:
 Current: **56 domains**: transport, tracks, clips, notes, devices, scenes, mixing, browser, arrangement, memory, analyzer, automation, theory, generative, harmony, midi_io, perception, agent_os, composition, motif, research, planner, project_brain, runtime, evaluation, mix_engine, sound_design, transition_engine, reference_engine, translation_engine, performance_engine, song_brain, preview_studio, hook_hunter, stuckness_detector, wonder_mode, session_continuity, creative_constraints, device_forge, sample_engine, atlas, composer, experiment, musical_intelligence, semantic_moves, diagnostics, follow_actions, grooves, scales, take_lanes, miditool, synthesis_brain, creative_director, user_corpus, audit, grader.
 
 - [ ] All files that mention domain count say "56 domains"
-- [ ] Domain lists include ALL 45 (especially newer domains — they're the most often omitted)
+- [ ] Domain lists include ALL 56 (especially newer domains — they're the most often omitted)
 
 ## 4. npm Registry
 

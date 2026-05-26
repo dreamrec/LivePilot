@@ -346,6 +346,7 @@ PROSE_CLAIM_FILES = {
         "files": [
             "README.md",
             "CLAUDE.md",
+            "livepilot/skills/livepilot-core/SKILL.md",
             "livepilot/skills/livepilot-core/references/overview.md",
             # v1.21.3 audit-response #3: manual pages were blind-spots
             # for this check because they weren't listed here. That let

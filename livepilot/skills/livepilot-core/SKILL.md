@@ -7,7 +7,7 @@ description: Core discipline for LivePilot — agentic production system for Abl
 
 Agentic production system for Ableton Live 12. 465 tools across 56 domains, three layers:
 
-- **Device Atlas** — 5264 devices indexed (135 enriched with sonic intelligence, 683 drum kits). Consult `atlas_search` or `atlas_suggest` before loading any device. Never guess a device name.
+- **Device Atlas** — 5264 devices indexed (120 enriched with sonic intelligence, 683 drum kits). Consult `atlas_search` or `atlas_suggest` before loading any device. Never guess a device name.
 - **M4L Analyzer** — Real-time audio analysis on the master bus (9-band spectrum sub_low → air, RMS/peak, key detection). Optional — all core tools work without it.
 - **Technique Memory** — Persistent storage for production decisions. Consult `memory_recall` before creative tasks to understand user taste.
 
@@ -18,7 +18,7 @@ Agentic production system for Ableton Live 12. 465 tools across 56 domains, thre
 3. **Use `undo` liberally** — mention it to users when doing destructive ops
 4. **One operation at a time** — verify between steps
 5. **Track indices are 0-based** — negative for return tracks (-1=A, -2=B), -1000 for master
-6. **NEVER invent device/preset names** — always `search_browser` first, use exact `uri` from results. Exception: `find_and_load_device` for built-in effects only ("Reverb", "Delay", "Compressor", "EQ Eight", "Saturator", "Utility")
+6. **NEVER invent device/preset names** — consult `atlas_search` or `atlas_suggest` first, then use `search_browser` and load the exact `uri` from results. Exception: `find_and_load_device` for built-in effects only ("Reverb", "Delay", "Compressor", "EQ Eight", "Saturator", "Utility")
 7. **Color indices 0-69** — Ableton's fixed palette
 8. **Volume 0.0-1.0, pan -1.0 to 1.0** — normalized, not dB
 9. **Tempo range 20-999 BPM**
@@ -76,7 +76,7 @@ Report ALL errors to the user immediately. Common failure modes:
 - **M4L bridge timeout** — device may be busy or removed → retry or skip analyzer features
 - **Connection timeout** — Ableton unresponsive → check if session is heavy
 - **Volume reset on scene fire** — Ableton restores mixer state when firing scenes. Always re-apply `set_track_volume`/`set_track_pan` after `fire_scene` if your mix settings differ from what was stored in the clips
-- **M4L Analyzer not connected** — if `get_master_spectrum` errors with "Analyzer not detected", auto-load it: `find_and_load_device(track_index=-1000, device_name="LivePilot_Analyzer")`. If it errors with "UDP bridge not connected", try `reconnect_bridge` first
+- **M4L Analyzer not connected** — if `get_master_spectrum` errors with "Analyzer not detected", call `ensure_analyzer_on_master`. If it returns `install_required`, call `install_m4l_device(source_path="<repo>/m4l_device/LivePilot_Analyzer.amxd")` and retry. If it errors with "UDP bridge not connected", try `reconnect_bridge` first
 - **Another client connected** — Remote Script only accepts one TCP client on port 9878. If you see this error, the MCP server is already connected. Use MCP tools instead of raw TCP
 
 ## Technique Memory
@@ -176,8 +176,8 @@ Use when the user has a concrete, specific request ("tighten the low end", "make
 2. **`get_session_kernel`** — build the unified turn snapshot
 3. **`propose_next_best_move`** — get ranked semantic move suggestions (taste-aware)
 4. **`preview_semantic_move`** — see what a move will do before committing
-5. **`apply_semantic_move`** — compile and execute the move
-6. **Evaluate** — use the appropriate evaluator to check the result
+5. **`apply_semantic_move(mode="improve")`** — compile the move and return the concrete plan for approval; after approval, execute the returned steps individually
+6. **Evaluate** — use the appropriate evaluator after the approved steps actually run
 
 ### Flow B — Exploratory (branch-native, for creative search)
 Use when the user wants options, variants, or is stuck ("surprise me", "try some things", "I don't know what I want", "make it more like X"). **Flow B is also correct when `route_request` returns `workflow_mode="creative_search"`.**
@@ -198,7 +198,7 @@ Use when the user wants options, variants, or is stuck ("surprise me", "try some
 **Rule of thumb**: if the user asked for a specific fix, Flow A. If they asked "what would you do?" or mentioned feel/vibe without parameters, Flow B.
 
 ### Semantic Moves
-High-level musical intents that compile to deterministic tool sequences. 7 families (44 moves as of v1.26.1):
+High-level musical intents that compile to deterministic tool sequences. 7 families (44 moves as of v1.26.2):
 - **mix** — `tighten_low_end`, `widen_stereo`, `make_punchier`, `darken_without_losing_width`, `reduce_repetition_fatigue`, `make_kick_bass_lock`, `reduce_foreground_competition`
 - **arrangement** — `refresh_repeated_section`, plus structural moves defined alongside mix
 - **transition** — `create_buildup_tension`, `smooth_scene_handoff`, `increase_contrast_before_payoff`, `bridge_sections`, `increase_forward_motion`, `open_chorus`, `create_breakdown`

@@ -12,7 +12,9 @@ Run the universal evaluation loop on recent production changes.
    - `read_only` — session disconnected
 
 2. **Ensure analyzer** — if mode is `judgment_only`, try to get full perception:
-   - `find_and_load_device(track_index=-1000, device_name="LivePilot_Analyzer")`
+   - `ensure_analyzer_on_master`
+   - If it returns `install_required`, call `install_m4l_device(source_path="<repo>/m4l_device/LivePilot_Analyzer.amxd")` and retry
+   - If it warns that the analyzer is not last on master, report that spectral evidence is untrusted until repaired
    - Wait 2s, then `get_master_spectrum` to test the bridge
    - If bridge disconnected: `reconnect_bridge`
    - If still unavailable: proceed with `judgment_only` but tell the user

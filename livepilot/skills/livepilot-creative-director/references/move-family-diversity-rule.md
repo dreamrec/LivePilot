@@ -44,7 +44,7 @@ Never invent an eighth family at the director level.
 
 **Discovery:** always call `list_semantic_moves(domain=<family>)` at
 runtime to enumerate — do not hardcode move IDs. Families are stable;
-the move catalog grows. As of v1.26.1 the runtime returns 44 moves
+the move catalog grows. As of v1.26.2 the runtime returns 44 moves
 across all 7 domains.
 
 **Why the director never invents an eighth `rhythmic` family:** the

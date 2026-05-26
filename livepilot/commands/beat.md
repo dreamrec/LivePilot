@@ -11,8 +11,8 @@ If the user asks for a **fresh start** (new track, clean slate, start from scrat
 
 1. **Read the session** — `get_session_info` to see what exists
 2. **Delete all existing tracks** — loop through all tracks with `delete_track`, starting from the highest index down to 0 (deleting from the top prevents index shifts)
-3. **Load the M4L Analyzer on master** — `find_and_load_device(track_index=-1000, device_name="LivePilot_Analyzer")`. This enables real-time spectral analysis, RMS metering, and key detection for the entire session. If it fails, try `search_browser(path="max_for_live", name_filter="LivePilot")` to find the URI and load manually.
-4. **Set up master chain** — load Glue Compressor + EQ Eight + Utility on master for bus processing
+3. **Set up master chain** — load Glue Compressor + EQ Eight + Utility on master for bus processing
+4. **Ensure analyzer last** — call `ensure_analyzer_on_master`. This enables real-time spectral analysis, RMS metering, and key detection, and prevents the analyzer from measuring pre-master-chain audio. If it returns `install_required`, call `install_m4l_device(source_path="<repo>/m4l_device/LivePilot_Analyzer.amxd")` and retry. If it warns that the analyzer is not last on master, tell the user and do not trust spectral reads until it is moved after all effects.
 5. **Verify analyzer** — wait 2 seconds, then call `get_master_spectrum`. If it returns data, the bridge is connected. If it errors with "UDP bridge not connected", call `reconnect_bridge` to rebind.
 
 If the user is adding to an **existing project**, skip step 0 — just call `get_session_info` and work with what's there.
@@ -24,7 +24,7 @@ Genre, tempo range, mood, reference tracks.
 `set_tempo`, create tracks for drums/bass/harmony/melody with `create_midi_track`, name and color them.
 
 ## Step 3: Load instruments
-Use `search_browser` to find devices by name, `load_browser_item` or `find_and_load_device` to load them.
+Consult `atlas_search` or `atlas_suggest` first, then use `search_browser` to resolve the exact URI and `load_browser_item` to load it. Use `find_and_load_device` only for simple built-in effects named in the livepilot-core exception list.
 
 ## Step 4: Verify device health
 After loading, run `get_device_info` on each loaded device. A `parameter_count` of 0 or 1 on AU/VST plugins means the plugin failed to initialize (dead plugin). If detected:

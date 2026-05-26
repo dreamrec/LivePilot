@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.26.2 — 2026-05-27
+
+Patch release for Claude/Codex plugin instruction correctness and local install reliability.
+
+### Fixed
+
+- Claude/Codex plugin commands now use `ensure_analyzer_on_master` instead of direct master-track analyzer loading, preserving the invariant that `LivePilot_Analyzer` measures the final post-master-chain signal.
+- `/beat` now builds the master processing chain before ensuring the analyzer, preventing pre-effect spectral/RMS reads in fresh sessions.
+- V2 semantic-move guidance now matches runtime behavior: `apply_semantic_move(mode="improve")` compiles an approval-ready plan and does not execute until the returned steps are run.
+- Plugin device-loading guidance now routes through the Device Atlas first, then exact browser URI loading, with `find_and_load_device` reserved for simple built-in effects.
+- Release checklist stale claims were corrected: removed the obsolete non-analyzer subtotal and updated the domain-list reminder from 45 to 56 domains.
+- Producer-agent capability guidance now distinguishes stale/intermittent analyzer data (`measured_degraded`) from analyzer absence (`judgment_only`).
+
+### Tests
+
+- Added `tests/test_plugin_instruction_contracts.py` to prevent regressions in analyzer preflight guidance, semantic-move approval semantics, release-count claims, and core-skill enriched-device metadata coverage.
+
 ## v1.26.1 — 2026-05-24
 
 Patch release for installer/release hygiene and live execution correctness.

@@ -13,7 +13,7 @@ Guide the user through designing a sound using the V2 orchestration pipeline.
 ## Design Phase
 
 3. **Ask about target** — what character? (warm pad, aggressive bass, shimmering lead, etc.)
-4. **Choose instrument** — `search_browser` to find devices, `load_browser_item` to load
+4. **Choose instrument** — consult `atlas_search` or `atlas_suggest` for candidate devices, then use `search_browser` to resolve the exact URI and `load_browser_item` to load
 5. **Verify health** — `get_device_info` to confirm plugin initialized. Read `value_string` from `get_device_parameters` to understand actual units.
 6. **Shape sound** — `set_device_parameter` or `batch_set_parameters`. **ALWAYS read `value_string` in response** to confirm Hz/dB/% values make sense.
 7. **Verify after every change** — `get_track_meters(include_stereo=true)` — if stereo drops to 0, the effect killed the signal.
@@ -26,7 +26,7 @@ Guide the user through designing a sound using the V2 orchestration pipeline.
 
 ## Effects & Automation
 
-11. **Add effects** — load with `find_and_load_device(track_index, device_name)`. Verify health.
+11. **Add effects** — consult the atlas or relevant device-knowledge reference first. Load exact browser URIs with `load_browser_item`, or use `find_and_load_device` only for simple built-in effects named in the livepilot-core exception list. Verify health.
 12. **Organic movement** — `apply_automation_shape(curve_type="perlin")` for filter/send drift
 13. **Automation recipes** — `apply_automation_recipe` for breathing, vinyl_crackle, auto_pan. Verify after applying.
 

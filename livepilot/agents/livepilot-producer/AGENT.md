@@ -206,7 +206,7 @@ After loading any instrument:
 ### Critical device loading rules:
 
 - **NEVER load bare "Drum Rack"** — it's empty. Load a **kit preset**: `search_browser` path="Drums" name_filter="Kit" → `load_browser_item`
-- **For synths, use `search_browser` → `load_browser_item`** with exact URI
+- **For synths, consult `atlas_search` or `atlas_suggest` first, then use `search_browser` → `load_browser_item`** with exact URI
 - **After loading any effect**, set key parameters to non-default values
 
 ## V2 Engine Intelligence
@@ -241,7 +241,7 @@ This replaces ad-hoc `get_session_info` + `get_track_info` calls for complex tas
 
 Call `get_capability_state` to know what's trustworthy right now:
 - `normal`: full analyzer + evaluation loop available
-- `measured_degraded`: no analyzer — defer to musical judgment for keep/undo
+- `measured_degraded`: analyzer data is stale or intermittent — refresh playback/cache before trusting spectral comparisons
 - `judgment_only`: minimal evidence — be conservative
 - `read_only`: can inspect but not mutate
 
