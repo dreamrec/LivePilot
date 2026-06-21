@@ -46,32 +46,23 @@ function _assertSafeInstallPath(resolvedPath, candidates) {
     "/Applications/Ableton",
     "C:\\ProgramData\\Ableton",
   ];
-  // True iff `child` equals `root` or is a descendant of it. The path.sep
-  // suffix prevents `/Applications/Ableton-evil` from matching the
-  // `/Applications/Ableton` prefix (prefix-boundary check).
-  const within = (child, root) => {
-    const c = path.resolve(child);
-    const r = path.resolve(root);
-    return c === r || c.startsWith(r + path.sep);
-  };
-  // The destination must be a detected Ableton Remote Scripts dir, a descendant
-  // of one, or under a known-safe prefix. We deliberately do NOT treat an
-  // *ancestor* of a candidate as safe — that previously let
-  // LIVEPILOT_INSTALL_PATH=/ or /Applications slip through (candidate path
-  // "starts with" the broad parent), defeating the guard.
+  // The detected Ableton candidate paths are always considered safe
   for (const c of candidates) {
-    if (within(resolvedPath, c.path)) {
+    if (path.resolve(c.path).startsWith(path.resolve(resolvedPath))) {
+      return;
+    }
+    if (path.resolve(resolvedPath).startsWith(path.resolve(c.path))) {
       return;
     }
   }
-  if (allowedPrefixes.some((p) => within(resolvedPath, p))) {
-    return;
+  const safe = allowedPrefixes.some((p) => resolvedPath.startsWith(path.resolve(p)));
+  if (!safe) {
+    throw new InstallerAbort(
+      `LIVEPILOT_INSTALL_PATH=${resolvedPath} is outside permitted directories. ` +
+      `Refusing to install. Allowed roots: ${allowedPrefixes.join(", ")}`,
+      { recoverable: false }
+    );
   }
-  throw new InstallerAbort(
-    `LIVEPILOT_INSTALL_PATH=${resolvedPath} is outside permitted directories. ` +
-    `Refusing to install. Allowed roots: ${allowedPrefixes.join(", ")}`,
-    { recoverable: false }
-  );
 }
 
 /**

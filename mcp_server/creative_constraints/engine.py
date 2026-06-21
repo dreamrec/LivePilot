@@ -72,27 +72,8 @@ def validate_plan_against_constraints(
     session_info = session_info or {}
     violations: list[str] = []
     warnings: list[str] = []
-    unenforced: list[str] = []
 
     steps = plan.get("steps", [])
-
-    # Modes that carry no structural step-level rule (taste/heuristic only).
-    # They were previously skipped silently — surface them as warnings so a
-    # caller can't mistake "no violations" for "validated against this mode".
-    advisory_modes = {
-        "mood_shift_without_new_fx": (
-            "shift the mood with existing tools — adding effects is discouraged "
-            "but not auto-detected here"
-        ),
-        "make_it_stranger_but_keep_the_hook": (
-            "push novelty while preserving the hook — not enforceable from plan "
-            "steps alone"
-        ),
-        "club_translation_safe": (
-            "keep changes club/DJ-friendly — judged by mix/tempo character, not "
-            "individual steps"
-        ),
-    }
 
     for constraint in constraint_set.constraints:
         if constraint == "no_new_tracks":
@@ -115,37 +96,10 @@ def validate_plan_against_constraints(
                 if step.get("action", "") in mix_actions:
                     violations.append(f"Step modifies mix ({step['action']}) — violates arrangement_only")
 
-        elif constraint == "use_loaded_devices_only":
-            load_actions = {"load_browser_item", "insert_device", "find_and_load_device",
-                           "load_device_by_uri", "load_sample_to_simpler",
-                           "replace_simpler_sample", "insert_rack_chain"}
-            for step in steps:
-                if step.get("action", "") in load_actions:
-                    violations.append(
-                        f"Step loads a new device ({step['action']}) — violates use_loaded_devices_only"
-                    )
-
-        elif constraint == "performance_safe_creative":
-            unsafe_actions = {"create_midi_track", "create_audio_track", "create_return_track",
-                             "delete_track", "delete_device", "delete_clip", "delete_scene"}
-            for step in steps:
-                if step.get("action", "") in unsafe_actions:
-                    violations.append(
-                        f"Step is unsafe during live performance ({step['action']}) — "
-                        f"violates performance_safe_creative"
-                    )
-
-        elif constraint in advisory_modes:
-            unenforced.append(constraint)
-            warnings.append(
-                f"{constraint} is advisory: {advisory_modes[constraint]}"
-            )
-
     return {
         "valid": len(violations) == 0,
         "violations": violations,
         "warnings": warnings,
-        "unenforced_constraints": unenforced,
         "constraint_count": len(constraint_set.constraints),
     }
 

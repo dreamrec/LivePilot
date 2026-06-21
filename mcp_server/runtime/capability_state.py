@@ -118,12 +118,6 @@ def build_capability_state(
     memory_ok: bool = False,
     web_ok: bool = False,
     flucoma_ok: bool = False,
-    flucoma_device_loaded: Optional[bool] = None,
-    flucoma_reasons: Optional[list[str]] = None,
-    link_audio_mode: str = "manual_only",
-    link_audio_reasons: Optional[list[str]] = None,
-    stem_workflow_mode: str = "manual_only",
-    stem_workflow_reasons: Optional[list[str]] = None,
 ) -> CapabilityState:
     """Build a CapabilityState from simple boolean probes.
 
@@ -206,70 +200,20 @@ def build_capability_state(
     )
 
     # ── flucoma ──────────────────────────────────────────────────────
-    # Max/FluCoMa real-time streams. Emitted unconditionally so consumers
-    # can distinguish "not installed" from "installed but bridge/streams
-    # are currently unavailable".
-    resolved_flucoma_device_loaded = (
-        flucoma_ok if flucoma_device_loaded is None else flucoma_device_loaded
-    )
-    resolved_flucoma_reasons = list(flucoma_reasons or [])
-    if not flucoma_ok and not resolved_flucoma_reasons:
-        resolved_flucoma_reasons.append(
-            "flucoma_no_streams"
-            if resolved_flucoma_device_loaded
-            else "flucoma_not_installed"
-        )
+    # Optional DSP dependency.  In normal LivePilot use this is the Max
+    # FluCoMa stream from the M4L analyzer; a Python package probe may be
+    # used only as a fallback by callers.  Emitted unconditionally so
+    # consumers can distinguish "probed and missing" from "probe not run yet".
+    flucoma_reasons: list[str] = []
+    if not flucoma_ok:
+        flucoma_reasons.append("flucoma_not_installed")
     domains["flucoma"] = CapabilityDomain(
         name="flucoma",
         available=flucoma_ok,
-        confidence=0.9 if flucoma_ok else (0.2 if resolved_flucoma_device_loaded else 0.0),
+        confidence=0.9 if flucoma_ok else 0.0,
         mode="available" if flucoma_ok else "unavailable",
-        reasons=resolved_flucoma_reasons,
-        device_loaded=resolved_flucoma_device_loaded,
-    )
-
-    # ── link_audio ────────────────────────────────────────────────────
-    # Live 12.4 exposes Link Audio in the product UX, but LivePilot must
-    # not claim automation support from the version number alone. This
-    # domain only becomes available when runtime probing observes a stable
-    # readable/routable surface.
-    link_mode = link_audio_mode if session_ok else "unavailable"
-    link_reasons = list(link_audio_reasons or [])
-    if not link_reasons:
-        if not session_ok:
-            link_reasons.append("session_unavailable")
-        elif link_mode == "manual_only":
-            link_reasons.append("link_audio_unprobed")
-        elif link_mode == "unavailable":
-            link_reasons.append("link_audio_not_exposed")
-    link_available = link_mode in {"readable", "routable"}
-    domains["link_audio"] = CapabilityDomain(
-        name="link_audio",
-        available=link_available,
-        confidence=0.8 if link_available else (0.2 if session_ok else 0.0),
-        mode=link_mode,
-        reasons=link_reasons,
-    )
-
-    # ── stem_workflow ─────────────────────────────────────────────────
-    # Selected-time stem separation / merge are also probe-first. The
-    # safe default is manual_only; callable only after concrete evidence.
-    stem_mode = stem_workflow_mode if session_ok else "unavailable"
-    stem_reasons = list(stem_workflow_reasons or [])
-    if not stem_reasons:
-        if not session_ok:
-            stem_reasons.append("session_unavailable")
-        elif stem_mode == "manual_only":
-            stem_reasons.append("stem_workflow_unprobed")
-        elif stem_mode == "unavailable":
-            stem_reasons.append("stem_workflow_not_exposed")
-    stem_available = stem_mode == "callable"
-    domains["stem_workflow"] = CapabilityDomain(
-        name="stem_workflow",
-        available=stem_available,
-        confidence=0.8 if stem_available else (0.2 if session_ok else 0.0),
-        mode=stem_mode,
-        reasons=stem_reasons,
+        reasons=flucoma_reasons,
+        device_loaded=flucoma_ok,
     )
 
     # ── research (composite) ────────────────────────────────────────

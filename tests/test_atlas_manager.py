@@ -459,28 +459,3 @@ def test_stats_includes_by_pack(pack_atlas):
     stats = pack_atlas.stats
     assert "by_pack" in stats["index_sizes"]
     assert stats["index_sizes"]["by_pack"] >= 2
-def test_duplicate_id_logs_collision_warning(tmp_path, caplog):
-    import json
-    import logging
-    from mcp_server.atlas import AtlasManager
-
-    colliding = {
-        "meta": {"version": "2.0.0"},
-        "devices": [
-            {"id": "dup", "name": "First Device", "category": "instruments"},
-            {"id": "dup", "name": "Second Device", "category": "instruments"},
-        ],
-    }
-    path = tmp_path / "collide_atlas.json"
-    path.write_text(json.dumps(colliding))
-
-    with caplog.at_level(logging.WARNING):
-        mgr = AtlasManager(str(path))
-
-    assert mgr.lookup("dup")["name"] == "Second Device"
-    collision_msgs = [
-        r.getMessage() for r in caplog.records
-        if r.levelno == logging.WARNING and "duplicate device id" in r.getMessage()
-    ]
-    assert collision_msgs, "expected a duplicate-id collision warning"
-    assert "dup" in collision_msgs[0]

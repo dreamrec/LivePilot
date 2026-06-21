@@ -1,0 +1,325 @@
+section	action	shortcut
+41.1 Showing and Hiding Views	Toggle Full Screen Mode	Ctrl Cmd F
+41.1 Showing and Hiding Views	Toggle Second Window	Cmd Shift W
+41.1 Showing and Hiding Views	Toggle Session/Arrangement View	Tab
+41.1 Showing and Hiding Views	Toggle Between Device/Clip View	Shift Tab or F12
+41.1 Showing and Hiding Views	Toggle Device and Clip View	Option click view toggle
+41.1 Showing and Hiding Views	Toggle Hot-Swap Mode	Q
+41.1 Showing and Hiding Views	Toggle Drum Rack/Last Selected Pad	D
+41.1 Showing and Hiding Views	Hide/Show Info View	Shift ?
+41.1 Showing and Hiding Views	Hide/Show Video Window	Cmd Option V
+41.1 Showing and Hiding Views	Hide/Show Browser	Cmd Option B or Cmd Option 5
+41.1 Showing and Hiding Views	Hide/Show Overview	Cmd Option O
+41.1 Showing and Hiding Views	Hide/Show In/Out	Cmd Option I
+41.1 Showing and Hiding Views	Hide/Show Sends	Cmd Option S
+41.1 Showing and Hiding Views	Hide/Show Mixer	Cmd Option M
+41.1 Showing and Hiding Views	Hide/Show Clip View	Cmd Option 3
+41.1 Showing and Hiding Views	Hide/Show Device View	Cmd Option 4
+41.1 Showing and Hiding Views	Hide/Show the Groove Pool	Cmd Option 6
+41.1 Showing and Hiding Views	Hide/Show the Learn View	Cmd Option 7
+41.1 Showing and Hiding Views	Open the Settings	Cmd ,
+41.1 Showing and Hiding Views	Close Window/Dialog	Esc
+41.2 Keyboard Focus and Navigation	Move Focus to the Control Bar	Option 0
+41.2 Keyboard Focus and Navigation	Move Focus to the Session View	Option 1
+41.2 Keyboard Focus and Navigation	Move Focus to the Arrangement View	Option 2
+41.2 Keyboard Focus and Navigation	Move Focus to the Clip View	Option 3
+41.2 Keyboard Focus and Navigation	Move Focus to the Device View	Option 4
+41.2 Keyboard Focus and Navigation	Move Focus to the Browser	Option 5
+41.2 Keyboard Focus and Navigation	Move Focus to the Groove Pool	Option 6
+41.2 Keyboard Focus and Navigation	Move Focus to the Learn View	Option 7
+41.2 Keyboard Focus and Navigation	Move Focus to the Selected Clip Panel	Option 8
+41.2 Keyboard Focus and Navigation	Move Focus to the Clip Panels	Option Shift P
+41.2 Keyboard Focus and Navigation	Move to Next Focusable Control	Tab
+41.2 Keyboard Focus and Navigation	Move to Previous Focusable Control	Shift Tab
+41.2 Keyboard Focus and Navigation	Move to Next Neighbor of Current Control	Option Tab
+41.2 Keyboard Focus and Navigation	Move to Previous Neighbor of Current Control	Option Shift Tab
+41.3 Working with Sets and the Program	New Live Set	Cmd N
+41.3 Working with Sets and the Program	Open Live Set	Cmd O
+41.3 Working with Sets and the Program	Save Live Set	Cmd S
+41.3 Working with Sets and the Program	Save Live Set As…	Cmd Shift S
+41.3 Working with Sets and the Program	Quit Live	Cmd Q
+41.3 Working with Sets and the Program	Hide Live	Cmd H
+41.3 Working with Sets and the Program	Export Audio/Video	Cmd Shift R
+41.3 Working with Sets and the Program	Export MIDI File	Cmd Shift E
+41.4 Working with Devices and Plug-Ins	Group Devices	Cmd G
+41.4 Working with Devices and Plug-Ins	Ungroup Devices	Cmd Shift G
+41.4 Working with Devices and Plug-Ins	Activate/Deactivate All Devices in Group	Hold Option and click on device activator
+41.4 Working with Devices and Plug-Ins	Add Device(s) to Selection	Shift click
+41.4 Working with Devices and Plug-Ins	See List of Devices on a Track	right-click on Device View selector
+41.4 Working with Devices and Plug-Ins	Reset Parameter Value	Delete or double-click
+41.4 Working with Devices and Plug-Ins	Load Selected Device from Browser	Enter
+41.4 Working with Devices and Plug-Ins	Hot-Swap Selected Device	Q
+41.4 Working with Devices and Plug-Ins	Show/Hide Plug-In Window	Cmd Option P
+41.4 Working with Devices and Plug-Ins	Open Multiple Plug-in Panels with Show/Hide Plug-In Window Button	Cmd
+41.4 Working with Devices and Plug-Ins	Compare A/B: Switch Device State	P
+41.5 Editing	Cut	Cmd X
+41.5 Editing	Copy	Cmd C
+41.5 Editing	Paste	Cmd V
+41.5 Editing	Duplicate	Cmd D
+41.5 Editing	Delete	Delete
+41.5 Editing	Undo	Cmd Z
+41.5 Editing	Redo	Cmd Shift Z
+41.5 Editing	Rename	Cmd R
+41.5 Editing	Select All	Cmd A
+41.5 Editing	Select Multiple Items	Cmd click
+41.5 Editing	Select Multiple Items by First and Last Item	Shift click
+41.5 Editing	Move to Next Track/Scene When Renaming	Tab
+41.5 Editing	Ignore Grid Quantization When Dragging	Cmd
+41.5 Editing	Clips and Slots Across All Tracks	Shift
+41.5 Editing	Time Across All Tracks	Shift
+41.5 Editing	The Selected Part of the Envelope	Option
+41.6 Adjusting Values	Decrement/Increment	up and down arrow keys
+41.6 Adjusting Values	Decrement/Increment in Octaves or Fine Adjustments	Shift up and down arrow keys
+41.6 Adjusting Values	Finer Resolution When Dragging	Shift
+41.6 Adjusting Values	Return to Default	Delete
+41.6 Adjusting Values	Type In Value	0 … 9
+41.6 Adjusting Values	Go to Next Field (Bar/Beat/ 16th)	. ,
+41.6 Adjusting Values	Cancel Value Entry	Esc
+41.6 Adjusting Values	Confirm Value Entry	Enter
+41.7 Commands for Breakpoint Envelopes	Toggle Automation Mode	A
+41.7 Commands for Breakpoint Envelopes	Finer Resolution When Dragging	Shift
+41.7 Commands for Breakpoint Envelopes	Create Curved Automation Segment	Option
+41.7 Commands for Breakpoint Envelopes	Momentarily Toggle Fade Controls	F
+41.7 Commands for Breakpoint Envelopes	Delete Selected Breakpoint Envelope	Cmd Delete
+41.7 Commands for Breakpoint Envelopes	Ignore Grid Quantization When Dragging	Cmd
+41.8 Loop Brace and Start/End Markers	Set Start Marker	Cmd F9
+41.8 Loop Brace and Start/End Markers	Set Loop Brace Start Set Loop Brace End Set End Marker	Cmd F10 Cmd F11 Cmd F12
+41.8 Loop Brace and Start/End Markers	Move Start Marker to Position	Cmd click
+41.8 Loop Brace and Start/End Markers	Move End Marker to Position	Cmd Shift click
+41.8 Loop Brace and Start/End Markers	Nudge Loop Brace Left/Right	right and left arrow keys
+41.8 Loop Brace and Start/End Markers	Move Loop by Loop Length	up and down arrow keys
+41.8 Loop Brace and Start/End Markers	Halve/Double Loop Length	Cmd up and down arrow keys
+41.8 Loop Brace and Start/End Markers	Shorten/Lengthen Loop keys	Cmd right and left arrow keys
+41.8 Loop Brace and Start/End Markers	Select Material in Loop	Cmd Shift L
+41.9 Zooming, Display and Selections	Zoom In Window	Cmd +
+41.9 Zooming, Display and Selections	Zoom Out Window	Cmd -
+41.9 Zooming, Display and Selections	Zoom In Time Ruler	+
+41.9 Zooming, Display and Selections	Zoom Out Time Ruler	-
+41.9 Zooming, Display and Selections	Scroll Display to Follow Playback	Option Shift F
+41.9 Zooming, Display and Selections	Scroll Left/Right	Shift scroll
+41.9 Zooming, Display and Selections	Pan Left/Right of Selection	Cmd Option
+41.9 Zooming, Display and Selections	Add Items to a Selection	Shift click or drag
+41.9 Zooming, Display and Selections	Add Adjacent Clips/Tracks/ Scenes to Multi-Selection	Shift click
+41.9 Zooming, Display and Selections	Add Nonadjacent Clips/ Tracks/Scenes to a Multi- Selection	Cmd click
+41.10 Clip View Editor View Modes	Switch Between Sample/ Envelopes Tabs	Option Tab
+41.10 Clip View Editor View Modes	Switch Between Notes/ Envelopes/MPE Tabs	Option Tab
+41.10 Clip View Editor View Modes	Switch to Sample/Notes Tab	Option Shift 1
+41.10 Clip View Editor View Modes	Switch to Envelopes Tab	Option Shift 2
+41.10 Clip View Editor View Modes	Switch to MPE Tab	Option Shift 3
+41.11 Clip View Sample Editor	Quantize	Cmd U
+41.11 Clip View Sample Editor	Quantize Settings…	Cmd Shift U
+41.11 Clip View Sample Editor	Move Selected Warp Marker	right and left arrow keys
+41.11 Clip View Sample Editor	Select Warp Marker keys	Cmd right and left arrow keys
+41.11 Clip View Sample Editor	Scroll Display to Follow Playback	Option Shift F
+41.11 Clip View Sample Editor	Move Clip Region with Start Marker	Shift right and left arrow keys
+41.11 Clip View Sample Editor	Zoom to Clip Selection	Z
+41.11 Clip View Sample Editor	Zoom Back from Clip Selection	X
+41.11 Clip View Sample Editor	Insert Warp Marker	Cmd I
+41.11 Clip View Sample Editor	Delete Warp Marker	Delete
+41.11 Clip View Sample Editor	Insert Transient	Cmd Shift I
+41.11 Clip View Sample Editor	Delete Transient	Cmd Shift Delete
+41.11 Clip View Sample Editor	Fit Content to View Width	W
+41.11 Clip View Sample Editor	Fit Content to View Height	H
+41.12 Clip View MIDI Note Editor	Select All Notes	Cmd A
+41.12 Clip View MIDI Note Editor	Copy Notes	Option drag
+41.12 Clip View MIDI Note Editor	Chop Selected Notes on Grid or Split Notes at Time Selection Start/End	Cmd E
+41.12 Clip View MIDI Note Editor	Chop Notes in Increments of 1	Cmd E drag up/down
+41.12 Clip View MIDI Note Editor	Chop Notes in Increments of 2	Cmd Shift E drag up/down
+41.12 Clip View MIDI Note Editor	Split Notes at Exact Location	Hold E then click to split, drag to move
+41.12 Clip View MIDI Note Editor	Join Notes	Cmd J
+41.12 Clip View MIDI Note Editor	Fit Notes to Time Range	Cmd Option J
+41.12 Clip View MIDI Note Editor	Fit Content to View Width	W
+41.12 Clip View MIDI Note Editor	Fit Content to View Height	H
+41.12 Clip View MIDI Note Editor	Quantize	Cmd U
+41.12 Clip View MIDI Note Editor	Quantize Settings…	Cmd Shift U
+41.12 Clip View MIDI Note Editor	Scroll Editor Vertically	Page Up/Down keys
+41.12 Clip View MIDI Note Editor	Scroll Editor Vertically in Fine Increments	Shift Page Up/Down keys
+41.12 Clip View MIDI Note Editor	Scroll Editor Horizontally	Cmd Page Up/Down keys
+41.12 Clip View MIDI Note Editor	Change Velocity from MIDI Note Editor	Cmd drag
+41.12 Clip View MIDI Note Editor	Move Insert Marker to Beginning	Home or Function left arrow key
+41.12 Clip View MIDI Note Editor	Move Insert Marker to End Select Next/Previous Note	End or Function right arrow Option up and down arrow keys
+41.12 Clip View MIDI Note Editor	Select Next/Previous Note in Same Key Track	Option left and right arrow keys
+41.12 Clip View MIDI Note Editor	Scroll Display to Follow Playback	Option Shift F
+41.12 Clip View MIDI Note Editor	Move Clip Region with Start Marker	Shift right and left arrow keys
+41.12 Clip View MIDI Note Editor	Zoom to Clip Selection	Z
+41.12 Clip View MIDI Note Editor	Zoom Back from Clip Selection	X
+41.12 Clip View MIDI Note Editor	Zoom In/Out Horizontally	+ -
+41.12 Clip View MIDI Note Editor	Set Note Selection Velocity	Type a value between 0-127 and press Enter
+41.12 Clip View MIDI Note Editor	Adjust Note Selection Velocity	Cmd up and down arrow keys
+41.12 Clip View MIDI Note Editor	Adjust Note Selection Velocity	Cmd Shift up and down
+41.12 Clip View MIDI Note Editor	Deviation	arrow keys
+41.12 Clip View MIDI Note Editor	Adjust Note Selection Chance	Cmd Option up and down arrow keys
+41.12 Clip View MIDI Note Editor	Toggle Full-Size Clip View	Cmd Option E
+41.12 Clip View MIDI Note Editor	Group Notes (Play All)	Cmd G
+41.12 Clip View MIDI Note Editor	Ungroup Notes	Cmd Shift G
+41.12 Clip View MIDI Note Editor	Apply Current MIDI Tool Settings	Cmd Enter
+41.12 Clip View MIDI Note Editor	Invert Note Selection	Cmd Shift A
+41.12 Clip View MIDI Note Editor	Highlight Scale	K
+41.12 Clip View MIDI Note Editor	Split Arrangement Clip Based on Time Selection	Cmd Shift E
+41.12 Clip View MIDI Note Editor	Show/Hide MIDI Note Filters	Cmd Shift F
+41.13 Grid Snapping and Drawing	Toggle Draw Mode (Pitch Lock Off)	B
+41.13 Grid Snapping and Drawing	Narrow Grid	Cmd 1
+41.13 Grid Snapping and Drawing	Widen Grid	Cmd 2
+41.13 Grid Snapping and Drawing	Triplet Grid	Cmd 3
+41.13 Grid Snapping and Drawing	Snap to Grid	Cmd 4
+41.13 Grid Snapping and Drawing	Fixed/Zoom-Adaptive Grid	Cmd 5
+41.13 Grid Snapping and Drawing	Bypass Snapping While Dragging	Cmd
+41.14 Global Quantization	Sixteenth-Note Quantization	Cmd 6
+41.14 Global Quantization	Eighth-Note Quantization	Cmd 7
+41.14 Global Quantization	Quarter-Note Quantization	Cmd 8
+41.14 Global Quantization	1-Bar Quantization	Cmd 9
+41.14 Global Quantization	Quantization Off	Cmd 0
+41.15 Session View	Launch Selected Clip/Slot	Enter
+41.15 Session View	Select Neighboring Clip/Slot	arrow keys
+41.15 Session View	Select All Clips/Slots	Cmd A
+41.15 Session View	Copy Clips	Option drag
+41.15 Session View	Add/Remove Stop Button	Cmd E
+41.15 Session View	Stop Clips in Track with Slot Selection	Cmd Enter
+41.15 Session View	Insert MIDI clip	Cmd Shift M
+41.15 Session View	Insert Scene	Cmd I
+41.15 Session View	Insert Captured Scene	Cmd Shift I
+41.15 Session View	Move Up/Down Between Scenes (One at a Time)	up and down arrow keys
+41.15 Session View	Move Up/Down Between Scenes (Eight at a Time)	Page Up/Down keys
+41.15 Session View	Capture MIDI	Cmd Shift C
+41.15 Session View	Record to Session View	Cmd Shift F9
+41.15 Session View	Toggle Follow Actions for Selected Clips	Shift Enter
+41.15 Session View	Create Follow Action Chain	Cmd Shift Enter
+41.15 Session View	Move Selected Track Left/ Right keys	Cmd left and right arrow keys
+41.15 Session View	Move Nonadjacent Scenes	Cmd up and down arrow
+41.15 Session View	Without Collapsing	keys
+41.15 Session View	Drop Browser Clips as a Scene	Cmd
+41.15 Session View	Deactivate Selected Clip	0
+41.15 Session View	Jump to Highlighted Track Title Bar	Esc
+41.15 Session View	Jump to the First Track of the Current Scene	Home or Function left arrow key
+41.15 Session View	Jump to the Last Track of the Current Scene	End or Function right arrow key
+41.15 Session View	Jump to the Current Scene from the Last Track	End or Function right arrow key
+41.16 Arrangement View	Split Clip at Selection	Cmd E
+41.16 Arrangement View	Consolidate Selection into Clip	Cmd J
+41.16 Arrangement View	Crop Selected Clips	Cmd Shift J
+41.16 Arrangement View	Resize Clip When Insert	Enter left and right arrow
+41.16 Arrangement View	Marker is at Clip Edge	keys
+41.16 Arrangement View	Slide Waveform	Shift Option drag
+41.16 Arrangement View	Stretch Warped Clip	Shift drag in clip title bar
+41.16 Arrangement View	Select Time Within Clip	Shift Option drag in clip title bar
+41.16 Arrangement View	Create Fade/Crossfade	Cmd Option F
+41.16 Arrangement View	Delete Fades/Crossfades in Selected Clip(s)	Cmd Option Delete
+41.16 Arrangement View	Momentarily Toggle Fade Handles	F
+41.16 Arrangement View	Toggle Loop Brace	Cmd L
+41.16 Arrangement View	Adjust Loop Brace Length keys	Cmd left and right arrow keys
+41.16 Arrangement View	Select Loop Brace Contents	Cmd Shift L
+41.16 Arrangement View	Capture MIDI	Cmd Shift C
+41.16 Arrangement View	Insert Silence	Cmd I
+41.16 Arrangement View	Cut Time	Cmd Shift X
+41.16 Arrangement View	Paste Time	Cmd Shift V
+41.16 Arrangement View	Duplicate Time	Cmd Shift D
+41.16 Arrangement View	Delete Time	Cmd Shift Delete
+41.16 Arrangement View	Fold/Unfold Selected Tracks	U or left and right arrow keys
+41.16 Arrangement View	Unfold All Tracks	Option U
+41.16 Arrangement View	Adjust Height of Selected	Option + and Option
+41.16 Arrangement View	Tracks/Clips	-
+41.16 Arrangement View	Scroll Display to Follow Playback	Option Shift F
+41.16 Arrangement View	Scroll Display Left/Right of Selection	Cmd Option drag
+41.16 Arrangement View	Optimize Arrangement Height	H
+41.16 Arrangement View	Optimize Arrangement Width	W
+41.16 Arrangement View	Deactivate Selection	0
+41.16 Arrangement View	Nudge Selection Left/Right	right and left arrow keys
+41.16 Arrangement View	Reverse Audio Clip Selection	R
+41.16 Arrangement View	Zoom to Arrangement Time Selection	Z
+41.16 Arrangement View	Zoom Back from Arrangement Time Selection	X
+41.16 Arrangement View	Play from Insert Marker in Selected Clip	Option Space
+41.16 Arrangement View	Move Insert Marker to Playhead Position	Cmd Shift Space
+41.16 Arrangement View	Jump to Highlighted Track Title Bar	Esc
+41.16 Arrangement View	Move Focus to Mixer	Option Shift M
+41.17 Comping	Show Take Lanes	Cmd Option U
+41.17 Comping	Add Selected Take Lane Area to Main Track Lane	Enter
+41.17 Comping	Audition Selected Take Lane	T
+41.17 Comping	Add Take Lane	Shift Option T
+41.17 Comping	Duplicate Selected Take Lane	Cmd D
+41.17 Comping	Replace Main Take Clip with Next/Previous Take	Cmd up and down arrow keys
+41.18 Bounce to Audio	Bounce to New Track	Cmd B
+41.18 Bounce to Audio	Paste Bounced Audio	Cmd Option V
+41.19 Commands for Tracks	Insert Audio Track	Cmd T
+41.19 Commands for Tracks	Insert MIDI Track	Cmd Shift T
+41.19 Commands for Tracks	Insert Return Track	Cmd Option T
+41.19 Commands for Tracks	Rename Selected Track	Cmd R
+41.19 Commands for Tracks	Go to Next Track When Renaming	Tab
+41.19 Commands for Tracks	Group Selected Tracks	Cmd G
+41.19 Commands for Tracks	Ungroup Tracks	Cmd Shift G
+41.19 Commands for Tracks	Show Grouped Tracks	+
+41.19 Commands for Tracks	Hide Grouped Tracks	-
+41.19 Commands for Tracks	Collapse/Expand Grouped Tracks	U
+41.19 Commands for Tracks	Move Nonadjacent Tracks Without Collapsing	Cmd arrow keys
+41.19 Commands for Tracks	Arm Selected Tracks	C
+41.19 Commands for Tracks	Solo Selected Tracks	S
+41.19 Commands for Tracks	Add Device from Browser	Enter
+41.19 Commands for Tracks	Deactivate Selected Track	0
+41.19 Commands for Tracks	Freeze/Unfreeze Tracks	Cmd Option Shift F
+41.19 Commands for Tracks	Delete Track from Track Title Bar	Delete
+41.20 Transport	Play from Start Marker/Stop	Space
+41.20 Transport	Continue Play from Stop Point	Shift Space
+41.20 Transport	Stop Playback at End of Selection	Option Space
+41.20 Transport	Play Arrangement View Selection	Space
+41.20 Transport	Move Insert Marker to Beginning	Home or Function left arrow key
+41.20 Transport	Record	F9
+41.20 Transport	Arm Recording in Arrangement View	Shift F9
+41.20 Transport	Record to Session View	Cmd Shift F9
+41.20 Transport	Back to Arrangement	F10
+41.20 Transport	Activate/Deactivate Track 1…	F1 … F8
+41.20 Transport	Toggle Metronome	O
+41.21 Audio Engine	Turn Audio Engine On/Off	Cmd Option Shift E
+41.22 Browser	Scroll Down/Up	up and down arrow keys
+41.22 Browser	Hide/Show Browser	Cmd Option B
+41.22 Browser	Close/Open Folders	right and left arrow keys
+41.22 Browser	Load Selected Item from Browser	Enter
+41.22 Browser	Preview Selected File	Shift Enter or right arrow key
+41.22 Browser	Search in Browser	Cmd F
+41.22 Browser	Jump to Search Results	down arrow key or Enter
+41.22 Browser	Assign Color(s) to Selected Browser Item(s)	1 … 7
+41.22 Browser	Reset Assigned Color(s) for Selected Browser Item(s)	0
+41.22 Browser	Show Similar Files Using Similarity Search	Cmd Shift F
+41.22 Browser	Browser History Back	Cmd [
+41.22 Browser	Browser History Forward	Cmd ]
+41.22 Browser	Hide/Show Filter View	Cmd Option G
+41.22 Browser	Hide/Show Tag Editor	Cmd Shift E
+41.23 Similar Sample Swapping	Swap to Next Similar Sample	Cmd right arrow
+41.23 Similar Sample Swapping	Swap to Previous Similar Sample	Cmd left arrow
+41.23 Similar Sample Swapping	Save as Similarity Reference	Cmd up arrow
+41.23 Similar Sample Swapping	Return to Reference	Cmd down arrow
+41.23 Similar Sample Swapping	Temporarily Toggle Similar Sample Swap Controls in Drum Racks	Option
+41.24 Key/MIDI Map Mode and the Computer	Toggle MIDI Map Mode	Cmd M
+41.24 Key/MIDI Map Mode and the Computer	Toggle Key Map Mode	Cmd K
+41.24 Key/MIDI Map Mode and the Computer	Computer MIDI Keyboard	M
+41.24 Key/MIDI Map Mode and the Computer	Adjust Computer MIDI Keyboard Octave Range Up/ Down	X and Z keys
+41.24 Key/MIDI Map Mode and the Computer	Adjust Computer MIDI Keyboard Incoming Note Velocity Up/Down	C and V keys
+41.24 Key/MIDI Map Mode and the Computer	When the Computer MIDI Keyboard velocity ranges using the following keys: The Computer MIDI Keyboard Layout.	djust the octave and
+41.24 Key/MIDI Map Mode and the Computer	Single letter shortcuts can stil Shift , e.g., Shift S to solo a track.	board is active by adding
+41.25 Momentary Latching Shortcuts	Some shortcuts can be momentaril	own the shortcut key and
+41.25 Momentary Latching Shortcuts	briefly toggle the shortcut acti	UI will return to its previous state.
+41.25 Momentary Latching Shortcuts	Momentary latching becomes avail following shortcut keys can be momentarily latched: • A toggles Arrangement automation mode • B toggles Draw Mode • S toggles soloing the selected track • Z toggles zooming into the Arrangement selection	ey for about 500 ms. The
+41.25 Momentary Latching Shortcuts	• F1 through F8 toggle the • Tab toggles between Arrangement and Session View	or the first eight tracks
+41.25 Momentary Latching Shortcuts	If needed, momentary latching ca	t entry: -DisableHotKeyLatching
+41.26 General Keyboard Navigation and	You can navigate through most of The Navigate menu in Live’s menu	ing the computer keyboard. yboard focus to different
+41.26 General Keyboard Navigation and	areas of the UI, as well as opti commands can also be found in the Display & Input Settings.	n controls. Additional navigation
+41.26 General Keyboard Navigation and	When the Use Tab to Move Focus o following ways: • Tab moves to the next control • Shift Tab moves to the previous control	key can be used to navigate in the
+41.26 General Keyboard Navigation and	The Tab key can also be used to via these shortcuts:	sion and Arrangement mixers
+41.26 General Keyboard Navigation and	When Use Tab to Move Focus is of Arrangement View, as in previous Live versions.	l switch between Session and
+41.26 General Keyboard Navigation and	• Wrap Tab Navigation - When	ith Tab will not stop at the
+41.26 General Keyboard Navigation and	last control in a focused v	irst control. If the first control is
+41.26 General Keyboard Navigation and	• Move Clips with Arrow Keys	and lets you use the left and
+41.26 General Keyboard Navigation and	right arrow keys to move se	on in Arrangement View. This
+41.26 General Keyboard Navigation and	behavior can be switched of left arrow key collapses th collapses the time selection to the end point.	needed. When off, pressing the while pressing the right arrow key
+41.26 General Keyboard Navigation and	These shortcuts work regardless	option is active or not.
+41.26 General Keyboard Navigation and	given command. It is also possib	tween toggle states.
+41.26 General Keyboard Navigation and	Option Tab (Mac) and Ctrl	Shift Tab (Mac) or the up
+41.26 General Keyboard Navigation and	and down arrow keys when the cho	us is on the first control of any
+41.27 Editing Automation and Modulation	You can use the computer keyboar	ts in automation and
+41.27 Editing Automation and Modulation	modulation envelopes. For more i	the Editing Automation and
+41.27 Editing Automation and Modulation	Modulation Envelopes section in	ation chapter.
+41.28 Accessing Menus	On Mac, you can access individua	his opens a search field that
+41.28 Accessing Menus	will suggest menu entries as you down arrow keys and then press Enter to choose one.	d options by pressing the up and
+41.29 Using Live’s Context Menu	A context menu is available in d	ess to commonly used menu items
+41.29 Using Live’s Context Menu	and actions. To access the conte	ick (Mac) on the part of the
+41.29 Using Live’s Context Menu	interface where you would like t	context menu can also be
+41.29 Using Live’s Context Menu	You should change these options with care, as t also the general settings of the program.	the currently selected item but
+41.29 Using Live’s Context Menu	Some commands only appear in the context menu. the browser, special grid marker commands for d	options for working with led options for zoom-
+41.29 Using Live’s Context Menu	adaptive and fixed grid line width, copying and numerous device-specific commands.	nvelopes and oscillators, and

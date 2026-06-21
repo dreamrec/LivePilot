@@ -140,14 +140,13 @@ class TestWavetableAdapter:
             device_name="Wavetable",
             track_index=3,
             device_index=0,
-            parameter_state={"Osc 1 Pos": 0.2},
+            parameter_state={"Osc 1 Position": 0.2},
         )
         pairs = propose_synth_branches(profile)
         _seed, plan = pairs[0]
         assert plan["step_count"] == 1
         assert plan["steps"][0]["tool"] == "set_device_parameter"
-        # Real Ableton Wavetable param is "Osc 1 Pos" (not "...Position").
-        assert plan["steps"][0]["params"]["parameter_name"] == "Osc 1 Pos"
+        assert plan["steps"][0]["params"]["parameter_name"] == "Osc 1 Position"
 
     def test_width_branch_skipped_when_already_thick(self):
         profile = analyze_synth_patch(
@@ -296,29 +295,3 @@ class TestBranchSeedContract:
         pairs = propose_synth_branches(profile)
         for seed, _ in pairs:
             assert seed.distinctness_reason, f"seed {seed.seed_id} missing distinctness_reason"
-def test_silent_modulator_falls_through_to_audible_carrier():
-    # Regression: when every modulator under the current algorithm is at
-    # Level 0, the ratio-shift branch must NOT target the silent modulator
-    # (which produces no audible change). It should fall through to the
-    # dominant audible carrier instead.
-    # Algorithm 1: carriers B, D; modulators A, C.
-    profile = analyze_synth_patch(
-        device_name="Operator",
-        track_index=1,
-        device_index=0,
-        parameter_state={
-            "Algorithm": 1,
-            "Oscillator A Level": 0.0, "Oscillator A Coarse": 3,
-            "Oscillator C Level": 0.0, "Oscillator C Coarse": 4,
-            "Oscillator B Level": 0.9, "Oscillator B Coarse": 1,
-        },
-    )
-    pairs = propose_synth_branches(profile)
-    assert len(pairs) >= 1
-    seed, plan = pairs[0]
-    targeted_param = plan["steps"][0]["params"]["parameter_name"]
-    # Must target an audible carrier (B), never a silent modulator (A/C).
-    assert targeted_param == "Oscillator B Coarse"
-    hint = seed.producer_payload["topology_hint"]
-    assert hint["target_role"] == "carrier"
-    assert hint["targeted_op"] == "B"

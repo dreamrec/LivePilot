@@ -184,7 +184,26 @@ def fire_scene_clips(song, params):
 def stop_all_clips(song, params):
     """Stop all playing clips in the session."""
     song.stop_all_clips()
-    return {"stopped": True}
+    remaining = []
+    for ti, track in enumerate(song.tracks):
+        for si, slot in enumerate(track.clip_slots):
+            if slot.has_clip and slot.clip:
+                clip = slot.clip
+                if clip.is_playing or clip.is_triggered:
+                    try:
+                        clip.stop()
+                    except Exception:
+                        pass
+                    if clip.is_playing or clip.is_triggered:
+                        remaining.append({
+                            "track_index": ti,
+                            "track_name": track.name,
+                            "clip_index": si,
+                            "clip_name": clip.name,
+                            "is_playing": clip.is_playing,
+                            "is_triggered": clip.is_triggered,
+                        })
+    return {"stopped": True, "remaining_clips": remaining}
 
 
 @register("get_playing_clips")

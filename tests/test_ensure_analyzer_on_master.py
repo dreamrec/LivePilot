@@ -175,6 +175,28 @@ class TestEnsureAnalyzerOnMaster:
         # Warning text that surfaces the invariant
         assert "last" in result.get("warning", "").lower()
 
+    def test_single_generic_master_m4l_device_is_treated_as_loaded(self, monkeypatch):
+        """Freshly reloaded .amxd builds can briefly report as generic
+        'Max Audio Effect'. If it is the only active M4L device on master,
+        treat it as the analyzer instead of loading duplicates."""
+        from mcp_server.tools import analyzer as analyzer_mod
+
+        ctx, calls = _make_ctx(master_devices=[
+            {"index": 0, "name": "Max Audio Effect",
+             "class_name": "MxDeviceAudioEffect", "is_active": True},
+        ])
+        monkeypatch.setattr(analyzer_mod, "_load_analyzer_impl", ctx._fake_find)
+
+        result = analyzer_mod.ensure_analyzer_on_master(ctx)
+
+        assert result["status"] == "already_loaded"
+        assert result["device_index"] == 0
+        assert result["is_last_on_master"] is True
+        assert result["duplicate_count"] == 1
+        assert "generic 'Max Audio Effect'" in result.get("warning", "")
+        load_calls = [c for c in calls if c[0] == "_find_and_load_device"]
+        assert not load_calls, f"expected no load call, got {load_calls}"
+
     def test_is_idempotent(self, monkeypatch):
         """Calling twice in a row should return the same status both
         times without creating a second analyzer."""

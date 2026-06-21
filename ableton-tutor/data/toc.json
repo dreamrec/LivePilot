@@ -1,0 +1,6099 @@
+[
+  {
+    "section": "1",
+    "title": "Welcome to Live",
+    "page": 22,
+    "level": 1,
+    "chapter_file": "chapters/01-welcome-to-live.md"
+  },
+  {
+    "section": "1.1",
+    "title": "The Ableton Team Says: Thank You",
+    "page": 22,
+    "level": 2,
+    "chapter_file": "chapters/01-welcome-to-live.md"
+  },
+  {
+    "section": "2",
+    "title": "First Steps",
+    "page": 23,
+    "level": 1,
+    "chapter_file": "chapters/02-first-steps.md"
+  },
+  {
+    "section": "2.1",
+    "title": "Installation and Authorization",
+    "page": 23,
+    "level": 2,
+    "chapter_file": "chapters/02-first-steps.md"
+  },
+  {
+    "section": "2.2",
+    "title": "Learning About Live",
+    "page": 23,
+    "level": 2,
+    "chapter_file": "chapters/02-first-steps.md"
+  },
+  {
+    "section": "2.2.1",
+    "title": "Learn View",
+    "page": 23,
+    "level": 3,
+    "chapter_file": "chapters/02-first-steps.md"
+  },
+  {
+    "section": "2.2.2",
+    "title": "Info View",
+    "page": 28,
+    "level": 3,
+    "chapter_file": "chapters/02-first-steps.md"
+  },
+  {
+    "section": "2.2.3",
+    "title": "Other Learning Resources",
+    "page": 29,
+    "level": 3,
+    "chapter_file": "chapters/02-first-steps.md"
+  },
+  {
+    "section": "2.3",
+    "title": "Live’s Settings",
+    "page": 30,
+    "level": 2,
+    "chapter_file": "chapters/02-first-steps.md"
+  },
+  {
+    "section": "2.3.1",
+    "title": "Display & Input",
+    "page": 30,
+    "level": 3,
+    "chapter_file": "chapters/02-first-steps.md"
+  },
+  {
+    "section": "2.3.2",
+    "title": "Theme & Colors",
+    "page": 30,
+    "level": 3,
+    "chapter_file": "chapters/02-first-steps.md"
+  },
+  {
+    "section": "2.3.3",
+    "title": "Audio",
+    "page": 31,
+    "level": 3,
+    "chapter_file": "chapters/02-first-steps.md"
+  },
+  {
+    "section": "2.3.4",
+    "title": "Link",
+    "page": 31,
+    "level": 3,
+    "chapter_file": "chapters/02-first-steps.md"
+  },
+  {
+    "section": "2.3.5",
+    "title": "Tempo & MIDI",
+    "page": 31,
+    "level": 3,
+    "chapter_file": "chapters/02-first-steps.md"
+  },
+  {
+    "section": "2.3.6",
+    "title": "File & Folder",
+    "page": 32,
+    "level": 3,
+    "chapter_file": "chapters/02-first-steps.md"
+  },
+  {
+    "section": "2.3.7",
+    "title": "Library",
+    "page": 32,
+    "level": 3,
+    "chapter_file": "chapters/02-first-steps.md"
+  },
+  {
+    "section": "2.3.8",
+    "title": "Plug-Ins",
+    "page": 32,
+    "level": 3,
+    "chapter_file": "chapters/02-first-steps.md"
+  },
+  {
+    "section": "2.3.9",
+    "title": "Record, Warp & Launch",
+    "page": 32,
+    "level": 3,
+    "chapter_file": "chapters/02-first-steps.md"
+  },
+  {
+    "section": "2.3.10",
+    "title": "Licenses & Updates",
+    "page": 32,
+    "level": 3,
+    "chapter_file": "chapters/02-first-steps.md"
+  },
+  {
+    "section": "3",
+    "title": "Live Concepts",
+    "page": 33,
+    "level": 1,
+    "chapter_file": "chapters/03-live-concepts.md"
+  },
+  {
+    "section": "3.1",
+    "title": "The Control Bar",
+    "page": 33,
+    "level": 2,
+    "chapter_file": "chapters/03-live-concepts.md"
+  },
+  {
+    "section": "3.2",
+    "title": "The Status Bar",
+    "page": 34,
+    "level": 2,
+    "chapter_file": "chapters/03-live-concepts.md"
+  },
+  {
+    "section": "3.3",
+    "title": "The Browser",
+    "page": 35,
+    "level": 2,
+    "chapter_file": "chapters/03-live-concepts.md"
+  },
+  {
+    "section": "3.4",
+    "title": "Sound Similarity",
+    "page": 36,
+    "level": 2,
+    "chapter_file": "chapters/03-live-concepts.md"
+  },
+  {
+    "section": "3.5",
+    "title": "Live Sets",
+    "page": 38,
+    "level": 2,
+    "chapter_file": "chapters/03-live-concepts.md"
+  },
+  {
+    "section": "3.6",
+    "title": "Arrangement and Session",
+    "page": 38,
+    "level": 2,
+    "chapter_file": "chapters/03-live-concepts.md"
+  },
+  {
+    "section": "3.7",
+    "title": "Tracks",
+    "page": 40,
+    "level": 2,
+    "chapter_file": "chapters/03-live-concepts.md"
+  },
+  {
+    "section": "3.8",
+    "title": "Audio and MIDI",
+    "page": 43,
+    "level": 2,
+    "chapter_file": "chapters/03-live-concepts.md"
+  },
+  {
+    "section": "3.9",
+    "title": "Audio Clips and Samples",
+    "page": 44,
+    "level": 2,
+    "chapter_file": "chapters/03-live-concepts.md"
+  },
+  {
+    "section": "3.10",
+    "title": "MIDI Clips and MIDI Files",
+    "page": 45,
+    "level": 2,
+    "chapter_file": "chapters/03-live-concepts.md"
+  },
+  {
+    "section": "3.11",
+    "title": "Devices",
+    "page": 46,
+    "level": 2,
+    "chapter_file": "chapters/03-live-concepts.md"
+  },
+  {
+    "section": "3.12",
+    "title": "Clip and Device View",
+    "page": 48,
+    "level": 2,
+    "chapter_file": "chapters/03-live-concepts.md"
+  },
+  {
+    "section": "3.13",
+    "title": "Scale Awareness",
+    "page": 49,
+    "level": 2,
+    "chapter_file": "chapters/03-live-concepts.md"
+  },
+  {
+    "section": "3.14",
+    "title": "The Mixer",
+    "page": 51,
+    "level": 2,
+    "chapter_file": "chapters/03-live-concepts.md"
+  },
+  {
+    "section": "3.15",
+    "title": "Presets and Racks",
+    "page": 54,
+    "level": 2,
+    "chapter_file": "chapters/03-live-concepts.md"
+  },
+  {
+    "section": "3.16",
+    "title": "Routing",
+    "page": 54,
+    "level": 2,
+    "chapter_file": "chapters/03-live-concepts.md"
+  },
+  {
+    "section": "3.17",
+    "title": "Recording New Clips",
+    "page": 55,
+    "level": 2,
+    "chapter_file": "chapters/03-live-concepts.md"
+  },
+  {
+    "section": "3.18",
+    "title": "Automation Envelopes",
+    "page": 57,
+    "level": 2,
+    "chapter_file": "chapters/03-live-concepts.md"
+  },
+  {
+    "section": "3.19",
+    "title": "Clip Envelopes",
+    "page": 57,
+    "level": 2,
+    "chapter_file": "chapters/03-live-concepts.md"
+  },
+  {
+    "section": "3.20",
+    "title": "Undo History",
+    "page": 58,
+    "level": 2,
+    "chapter_file": "chapters/03-live-concepts.md"
+  },
+  {
+    "section": "3.21",
+    "title": "MIDI and Key Remote",
+    "page": 59,
+    "level": 2,
+    "chapter_file": "chapters/03-live-concepts.md"
+  },
+  {
+    "section": "3.22",
+    "title": "Saving and Exporting",
+    "page": 59,
+    "level": 2,
+    "chapter_file": "chapters/03-live-concepts.md"
+  },
+  {
+    "section": "4",
+    "title": "Working with the Browser",
+    "page": 61,
+    "level": 1,
+    "chapter_file": "chapters/04-working-with-the-browser.md"
+  },
+  {
+    "section": "4.1",
+    "title": "Content Pane",
+    "page": 63,
+    "level": 2,
+    "chapter_file": "chapters/04-working-with-the-browser.md"
+  },
+  {
+    "section": "4.2",
+    "title": "Search Bar",
+    "page": 64,
+    "level": 2,
+    "chapter_file": "chapters/04-working-with-the-browser.md"
+  },
+  {
+    "section": "4.2.1",
+    "title": "Saving Search Results as Custom Labels",
+    "page": 67,
+    "level": 3,
+    "chapter_file": "chapters/04-working-with-the-browser.md"
+  },
+  {
+    "section": "4.3",
+    "title": "Browser History",
+    "page": 70,
+    "level": 2,
+    "chapter_file": "chapters/04-working-with-the-browser.md"
+  },
+  {
+    "section": "4.4",
+    "title": "Filters and Tags",
+    "page": 71,
+    "level": 2,
+    "chapter_file": "chapters/04-working-with-the-browser.md"
+  },
+  {
+    "section": "4.4.1",
+    "title": "Filter Groups",
+    "page": 72,
+    "level": 3,
+    "chapter_file": "chapters/04-working-with-the-browser.md"
+  },
+  {
+    "section": "4.4.2",
+    "title": "Tags",
+    "page": 73,
+    "level": 3,
+    "chapter_file": "chapters/04-working-with-the-browser.md"
+  },
+  {
+    "section": "4.4.3",
+    "title": "Tag Editor",
+    "page": 74,
+    "level": 3,
+    "chapter_file": "chapters/04-working-with-the-browser.md"
+  },
+  {
+    "section": "4.4.4",
+    "title": "Quick Tags",
+    "page": 78,
+    "level": 3,
+    "chapter_file": "chapters/04-working-with-the-browser.md"
+  },
+  {
+    "section": "4.5",
+    "title": "Collections",
+    "page": 80,
+    "level": 2,
+    "chapter_file": "chapters/04-working-with-the-browser.md"
+  },
+  {
+    "section": "4.6",
+    "title": "Library",
+    "page": 82,
+    "level": 2,
+    "chapter_file": "chapters/04-working-with-the-browser.md"
+  },
+  {
+    "section": "4.7",
+    "title": "Places",
+    "page": 84,
+    "level": 2,
+    "chapter_file": "chapters/04-working-with-the-browser.md"
+  },
+  {
+    "section": "4.7.1",
+    "title": "Downloading and Installing Packs in the Browser",
+    "page": 85,
+    "level": 3,
+    "chapter_file": "chapters/04-working-with-the-browser.md"
+  },
+  {
+    "section": "4.7.2",
+    "title": "Pack Info",
+    "page": 89,
+    "level": 3,
+    "chapter_file": "chapters/04-working-with-the-browser.md"
+  },
+  {
+    "section": "4.7.3",
+    "title": "Splice",
+    "page": 90,
+    "level": 3,
+    "chapter_file": "chapters/04-working-with-the-browser.md"
+  },
+  {
+    "section": "4.7.4",
+    "title": "Using Ableton Cloud",
+    "page": 104,
+    "level": 3,
+    "chapter_file": "chapters/04-working-with-the-browser.md"
+  },
+  {
+    "section": "4.7.5",
+    "title": "Transferring Files from Push 3 in Standalone Mode",
+    "page": 106,
+    "level": 3,
+    "chapter_file": "chapters/04-working-with-the-browser.md"
+  },
+  {
+    "section": "4.7.6",
+    "title": "User Library",
+    "page": 109,
+    "level": 3,
+    "chapter_file": "chapters/04-working-with-the-browser.md"
+  },
+  {
+    "section": "4.7.7",
+    "title": "Current Project",
+    "page": 112,
+    "level": 3,
+    "chapter_file": "chapters/04-working-with-the-browser.md"
+  },
+  {
+    "section": "4.7.8",
+    "title": "User Folders",
+    "page": 114,
+    "level": 3,
+    "chapter_file": "chapters/04-working-with-the-browser.md"
+  },
+  {
+    "section": "4.8",
+    "title": "Navigating in the Browser",
+    "page": 116,
+    "level": 2,
+    "chapter_file": "chapters/04-working-with-the-browser.md"
+  },
+  {
+    "section": "4.9",
+    "title": "Previewing Files",
+    "page": 116,
+    "level": 2,
+    "chapter_file": "chapters/04-working-with-the-browser.md"
+  },
+  {
+    "section": "4.10",
+    "title": "Hot-Swap Mode",
+    "page": 119,
+    "level": 2,
+    "chapter_file": "chapters/04-working-with-the-browser.md"
+  },
+  {
+    "section": "4.11",
+    "title": "Adding Content from the Browser to a Live Set",
+    "page": 122,
+    "level": 2,
+    "chapter_file": "chapters/04-working-with-the-browser.md"
+  },
+  {
+    "section": "5",
+    "title": "Managing Files and Sets",
+    "page": 123,
+    "level": 1,
+    "chapter_file": "chapters/05-managing-files-and-sets.md"
+  },
+  {
+    "section": "5.1",
+    "title": "Sample Files",
+    "page": 123,
+    "level": 2,
+    "chapter_file": "chapters/05-managing-files-and-sets.md"
+  },
+  {
+    "section": "5.1.1",
+    "title": "The Decoding Cache",
+    "page": 123,
+    "level": 3,
+    "chapter_file": "chapters/05-managing-files-and-sets.md"
+  },
+  {
+    "section": "5.1.2",
+    "title": "Analysis Files (.asd)",
+    "page": 124,
+    "level": 3,
+    "chapter_file": "chapters/05-managing-files-and-sets.md"
+  },
+  {
+    "section": "5.1.3",
+    "title": "Exporting Audio and Video",
+    "page": 125,
+    "level": 3,
+    "chapter_file": "chapters/05-managing-files-and-sets.md"
+  },
+  {
+    "section": "5.2",
+    "title": "MIDI Files",
+    "page": 131,
+    "level": 2,
+    "chapter_file": "chapters/05-managing-files-and-sets.md"
+  },
+  {
+    "section": "5.2.1",
+    "title": "Exporting MIDI Files",
+    "page": 131,
+    "level": 3,
+    "chapter_file": "chapters/05-managing-files-and-sets.md"
+  },
+  {
+    "section": "5.3",
+    "title": "Live Clips",
+    "page": 132,
+    "level": 2,
+    "chapter_file": "chapters/05-managing-files-and-sets.md"
+  },
+  {
+    "section": "5.4",
+    "title": "Live Sets",
+    "page": 133,
+    "level": 2,
+    "chapter_file": "chapters/05-managing-files-and-sets.md"
+  },
+  {
+    "section": "5.4.1",
+    "title": "Creating, Opening and Saving Sets",
+    "page": 133,
+    "level": 3,
+    "chapter_file": "chapters/05-managing-files-and-sets.md"
+  },
+  {
+    "section": "5.4.2",
+    "title": "Merging Sets",
+    "page": 133,
+    "level": 3,
+    "chapter_file": "chapters/05-managing-files-and-sets.md"
+  },
+  {
+    "section": "5.4.3",
+    "title": "Exporting Session Clips as New Sets",
+    "page": 136,
+    "level": 3,
+    "chapter_file": "chapters/05-managing-files-and-sets.md"
+  },
+  {
+    "section": "5.4.4",
+    "title": "Template Sets",
+    "page": 136,
+    "level": 3,
+    "chapter_file": "chapters/05-managing-files-and-sets.md"
+  },
+  {
+    "section": "5.4.5",
+    "title": "Viewing and Changing a Live Set’s File References",
+    "page": 137,
+    "level": 3,
+    "chapter_file": "chapters/05-managing-files-and-sets.md"
+  },
+  {
+    "section": "5.5",
+    "title": "Live Projects",
+    "page": 139,
+    "level": 2,
+    "chapter_file": "chapters/05-managing-files-and-sets.md"
+  },
+  {
+    "section": "5.5.1",
+    "title": "Projects and Live Sets",
+    "page": 139,
+    "level": 3,
+    "chapter_file": "chapters/05-managing-files-and-sets.md"
+  },
+  {
+    "section": "5.5.2",
+    "title": "Projects and Presets",
+    "page": 143,
+    "level": 3,
+    "chapter_file": "chapters/05-managing-files-and-sets.md"
+  },
+  {
+    "section": "5.5.3",
+    "title": "Managing Files in a Project",
+    "page": 144,
+    "level": 3,
+    "chapter_file": "chapters/05-managing-files-and-sets.md"
+  },
+  {
+    "section": "5.6",
+    "title": "Locating Missing Files",
+    "page": 144,
+    "level": 2,
+    "chapter_file": "chapters/05-managing-files-and-sets.md"
+  },
+  {
+    "section": "5.6.1",
+    "title": "Manual Repair",
+    "page": 145,
+    "level": 3,
+    "chapter_file": "chapters/05-managing-files-and-sets.md"
+  },
+  {
+    "section": "5.6.2",
+    "title": "Automatic Repair",
+    "page": 145,
+    "level": 3,
+    "chapter_file": "chapters/05-managing-files-and-sets.md"
+  },
+  {
+    "section": "5.7",
+    "title": "Collecting External Files",
+    "page": 147,
+    "level": 2,
+    "chapter_file": "chapters/05-managing-files-and-sets.md"
+  },
+  {
+    "section": "5.7.1",
+    "title": "Collect Files on Export",
+    "page": 148,
+    "level": 3,
+    "chapter_file": "chapters/05-managing-files-and-sets.md"
+  },
+  {
+    "section": "5.8",
+    "title": "Aggregated Locating and Collecting",
+    "page": 149,
+    "level": 2,
+    "chapter_file": "chapters/05-managing-files-and-sets.md"
+  },
+  {
+    "section": "5.9",
+    "title": "Finding Unused Files",
+    "page": 149,
+    "level": 2,
+    "chapter_file": "chapters/05-managing-files-and-sets.md"
+  },
+  {
+    "section": "5.10",
+    "title": "Packing Projects into Packs",
+    "page": 150,
+    "level": 2,
+    "chapter_file": "chapters/05-managing-files-and-sets.md"
+  },
+  {
+    "section": "5.11",
+    "title": "File Management FAQs",
+    "page": 150,
+    "level": 2,
+    "chapter_file": "chapters/05-managing-files-and-sets.md"
+  },
+  {
+    "section": "5.11.1",
+    "title": "How Do I Create a Project?",
+    "page": 150,
+    "level": 3,
+    "chapter_file": "chapters/05-managing-files-and-sets.md"
+  },
+  {
+    "section": "5.11.2",
+    "title": "How Can I Save Presets Into My Current Project?",
+    "page": 150,
+    "level": 3,
+    "chapter_file": "chapters/05-managing-files-and-sets.md"
+  },
+  {
+    "section": "5.11.3",
+    "title": "Can I Work On Multiple Versions of a Set?",
+    "page": 150,
+    "level": 3,
+    "chapter_file": "chapters/05-managing-files-and-sets.md"
+  },
+  {
+    "section": "5.11.4",
+    "title": "Where Should I Save My Live Sets?",
+    "page": 151,
+    "level": 3,
+    "chapter_file": "chapters/05-managing-files-and-sets.md"
+  },
+  {
+    "section": "5.11.5",
+    "title": "Can I Use My Own Folder Structure Within a Project Folder?",
+    "page": 151,
+    "level": 3,
+    "chapter_file": "chapters/05-managing-files-and-sets.md"
+  },
+  {
+    "section": "6",
+    "title": "Arrangement View",
+    "page": 152,
+    "level": 1,
+    "chapter_file": "chapters/06-arrangement-view.md"
+  },
+  {
+    "section": "6.1",
+    "title": "Layout",
+    "page": 152,
+    "level": 2,
+    "chapter_file": "chapters/06-arrangement-view.md"
+  },
+  {
+    "section": "6.2",
+    "title": "Navigation and Zooming",
+    "page": 155,
+    "level": 2,
+    "chapter_file": "chapters/06-arrangement-view.md"
+  },
+  {
+    "section": "6.3",
+    "title": "Transport and Playback",
+    "page": 155,
+    "level": 2,
+    "chapter_file": "chapters/06-arrangement-view.md"
+  },
+  {
+    "section": "6.4",
+    "title": "Launching the Arrangement with Locators",
+    "page": 157,
+    "level": 2,
+    "chapter_file": "chapters/06-arrangement-view.md"
+  },
+  {
+    "section": "6.5",
+    "title": "Time Signature Changes",
+    "page": 159,
+    "level": 2,
+    "chapter_file": "chapters/06-arrangement-view.md"
+  },
+  {
+    "section": "6.6",
+    "title": "The Arrangement Loop",
+    "page": 161,
+    "level": 2,
+    "chapter_file": "chapters/06-arrangement-view.md"
+  },
+  {
+    "section": "6.7",
+    "title": "Moving and Resizing Clips",
+    "page": 162,
+    "level": 2,
+    "chapter_file": "chapters/06-arrangement-view.md"
+  },
+  {
+    "section": "6.8",
+    "title": "Audio Clip Fades and Crossfades",
+    "page": 164,
+    "level": 2,
+    "chapter_file": "chapters/06-arrangement-view.md"
+  },
+  {
+    "section": "6.9",
+    "title": "Selecting Clips and Time",
+    "page": 166,
+    "level": 2,
+    "chapter_file": "chapters/06-arrangement-view.md"
+  },
+  {
+    "section": "6.10",
+    "title": "Using the Editing Grid",
+    "page": 167,
+    "level": 2,
+    "chapter_file": "chapters/06-arrangement-view.md"
+  },
+  {
+    "section": "6.11",
+    "title": "Using the …Time Commands",
+    "page": 168,
+    "level": 2,
+    "chapter_file": "chapters/06-arrangement-view.md"
+  },
+  {
+    "section": "6.12",
+    "title": "Splitting Clips",
+    "page": 168,
+    "level": 2,
+    "chapter_file": "chapters/06-arrangement-view.md"
+  },
+  {
+    "section": "6.13",
+    "title": "Consolidating Clips",
+    "page": 169,
+    "level": 2,
+    "chapter_file": "chapters/06-arrangement-view.md"
+  },
+  {
+    "section": "6.14",
+    "title": "Linked-Track Editing",
+    "page": 170,
+    "level": 2,
+    "chapter_file": "chapters/06-arrangement-view.md"
+  },
+  {
+    "section": "6.14.1",
+    "title": "Linking and Unlinking Tracks",
+    "page": 170,
+    "level": 3,
+    "chapter_file": "chapters/06-arrangement-view.md"
+  },
+  {
+    "section": "6.14.2",
+    "title": "Editing Linked Tracks",
+    "page": 171,
+    "level": 3,
+    "chapter_file": "chapters/06-arrangement-view.md"
+  },
+  {
+    "section": "6.15",
+    "title": "The Mixer in Arrangement View",
+    "page": 172,
+    "level": 2,
+    "chapter_file": "chapters/06-arrangement-view.md"
+  },
+  {
+    "section": "7",
+    "title": "Session View",
+    "page": 174,
+    "level": 1,
+    "chapter_file": "chapters/07-session-view.md"
+  },
+  {
+    "section": "7.1",
+    "title": "Session View Clips",
+    "page": 175,
+    "level": 2,
+    "chapter_file": "chapters/07-session-view.md"
+  },
+  {
+    "section": "7.2",
+    "title": "Tracks and Scenes",
+    "page": 176,
+    "level": 2,
+    "chapter_file": "chapters/07-session-view.md"
+  },
+  {
+    "section": "7.2.1",
+    "title": "Editing Scene Tempo and Time Signature Values",
+    "page": 178,
+    "level": 3,
+    "chapter_file": "chapters/07-session-view.md"
+  },
+  {
+    "section": "7.2.2",
+    "title": "Scene View",
+    "page": 179,
+    "level": 3,
+    "chapter_file": "chapters/07-session-view.md"
+  },
+  {
+    "section": "7.3",
+    "title": "The Track Status Fields",
+    "page": 181,
+    "level": 2,
+    "chapter_file": "chapters/07-session-view.md"
+  },
+  {
+    "section": "7.4",
+    "title": "Setting Up the Session View Grid",
+    "page": 182,
+    "level": 2,
+    "chapter_file": "chapters/07-session-view.md"
+  },
+  {
+    "section": "7.4.1",
+    "title": "Select on Launch",
+    "page": 183,
+    "level": 3,
+    "chapter_file": "chapters/07-session-view.md"
+  },
+  {
+    "section": "7.4.2",
+    "title": "Removing Clip Stop Buttons",
+    "page": 183,
+    "level": 3,
+    "chapter_file": "chapters/07-session-view.md"
+  },
+  {
+    "section": "7.4.3",
+    "title": "Editing Scenes",
+    "page": 183,
+    "level": 3,
+    "chapter_file": "chapters/07-session-view.md"
+  },
+  {
+    "section": "7.5",
+    "title": "Recording Sessions into the Arrangement",
+    "page": 184,
+    "level": 2,
+    "chapter_file": "chapters/07-session-view.md"
+  },
+  {
+    "section": "8",
+    "title": "Clip View",
+    "page": 187,
+    "level": 1,
+    "chapter_file": "chapters/08-clip-view.md"
+  },
+  {
+    "section": "8.1",
+    "title": "Clip View Layout",
+    "page": 188,
+    "level": 2,
+    "chapter_file": "chapters/08-clip-view.md"
+  },
+  {
+    "section": "8.1.1",
+    "title": "Clip Title Bar",
+    "page": 189,
+    "level": 3,
+    "chapter_file": "chapters/08-clip-view.md"
+  },
+  {
+    "section": "8.1.2",
+    "title": "Clip Panels",
+    "page": 191,
+    "level": 3,
+    "chapter_file": "chapters/08-clip-view.md"
+  },
+  {
+    "section": "8.1.3",
+    "title": "Editor View Modes",
+    "page": 193,
+    "level": 3,
+    "chapter_file": "chapters/08-clip-view.md"
+  },
+  {
+    "section": "8.2",
+    "title": "Main Clip Properties Panel",
+    "page": 194,
+    "level": 2,
+    "chapter_file": "chapters/08-clip-view.md"
+  },
+  {
+    "section": "8.2.1",
+    "title": "Clip and Loop Region Settings",
+    "page": 195,
+    "level": 3,
+    "chapter_file": "chapters/08-clip-view.md"
+  },
+  {
+    "section": "8.2.2",
+    "title": "Clip Time Signature",
+    "page": 196,
+    "level": 3,
+    "chapter_file": "chapters/08-clip-view.md"
+  },
+  {
+    "section": "8.2.3",
+    "title": "Clip Groove",
+    "page": 197,
+    "level": 3,
+    "chapter_file": "chapters/08-clip-view.md"
+  },
+  {
+    "section": "8.2.4",
+    "title": "Clip Scale",
+    "page": 198,
+    "level": 3,
+    "chapter_file": "chapters/08-clip-view.md"
+  },
+  {
+    "section": "8.3",
+    "title": "Extended Clip Properties",
+    "page": 199,
+    "level": 2,
+    "chapter_file": "chapters/08-clip-view.md"
+  },
+  {
+    "section": "8.3.1",
+    "title": "Follow Action and Launch Controls",
+    "page": 200,
+    "level": 3,
+    "chapter_file": "chapters/08-clip-view.md"
+  },
+  {
+    "section": "8.3.2",
+    "title": "MIDI Clip Bank and Program Change Controls",
+    "page": 200,
+    "level": 3,
+    "chapter_file": "chapters/08-clip-view.md"
+  },
+  {
+    "section": "8.4",
+    "title": "Audio Utilities Panel",
+    "page": 201,
+    "level": 2,
+    "chapter_file": "chapters/08-clip-view.md"
+  },
+  {
+    "section": "8.4.1",
+    "title": "Warp Controls",
+    "page": 202,
+    "level": 3,
+    "chapter_file": "chapters/08-clip-view.md"
+  },
+  {
+    "section": "8.4.2",
+    "title": "Reversing Samples",
+    "page": 203,
+    "level": 3,
+    "chapter_file": "chapters/08-clip-view.md"
+  },
+  {
+    "section": "8.4.3",
+    "title": "Destructive Sample Editing",
+    "page": 205,
+    "level": 3,
+    "chapter_file": "chapters/08-clip-view.md"
+  },
+  {
+    "section": "8.4.4",
+    "title": "Clip Start and End Fades",
+    "page": 205,
+    "level": 3,
+    "chapter_file": "chapters/08-clip-view.md"
+  },
+  {
+    "section": "8.4.5",
+    "title": "Clip RAM Mode",
+    "page": 206,
+    "level": 3,
+    "chapter_file": "chapters/08-clip-view.md"
+  },
+  {
+    "section": "8.4.6",
+    "title": "High Quality Interpolation",
+    "page": 207,
+    "level": 3,
+    "chapter_file": "chapters/08-clip-view.md"
+  },
+  {
+    "section": "8.4.7",
+    "title": "Clip Gain and Pitch",
+    "page": 208,
+    "level": 3,
+    "chapter_file": "chapters/08-clip-view.md"
+  },
+  {
+    "section": "8.5",
+    "title": "Pitch and Time Utilities Panel",
+    "page": 209,
+    "level": 2,
+    "chapter_file": "chapters/08-clip-view.md"
+  },
+  {
+    "section": "8.5.1",
+    "title": "Pitch Tools",
+    "page": 210,
+    "level": 3,
+    "chapter_file": "chapters/08-clip-view.md"
+  },
+  {
+    "section": "8.5.2",
+    "title": "Time Tools",
+    "page": 211,
+    "level": 3,
+    "chapter_file": "chapters/08-clip-view.md"
+  },
+  {
+    "section": "8.6",
+    "title": "Transform and Generate Panels",
+    "page": 212,
+    "level": 2,
+    "chapter_file": "chapters/08-clip-view.md"
+  },
+  {
+    "section": "8.7",
+    "title": "Zooming and Scrolling in the Clip View’s Editor",
+    "page": 213,
+    "level": 2,
+    "chapter_file": "chapters/08-clip-view.md"
+  },
+  {
+    "section": "8.8",
+    "title": "Playing and Scrubbing Clips",
+    "page": 214,
+    "level": 2,
+    "chapter_file": "chapters/08-clip-view.md"
+  },
+  {
+    "section": "8.9",
+    "title": "Looping Clips",
+    "page": 215,
+    "level": 2,
+    "chapter_file": "chapters/08-clip-view.md"
+  },
+  {
+    "section": "8.10",
+    "title": "Clip View Sample Details",
+    "page": 217,
+    "level": 2,
+    "chapter_file": "chapters/08-clip-view.md"
+  },
+  {
+    "section": "8.11",
+    "title": "Cropping Clips",
+    "page": 218,
+    "level": 2,
+    "chapter_file": "chapters/08-clip-view.md"
+  },
+  {
+    "section": "8.12",
+    "title": "Replacing and Editing the Sample",
+    "page": 218,
+    "level": 2,
+    "chapter_file": "chapters/08-clip-view.md"
+  },
+  {
+    "section": "8.13",
+    "title": "Editing Clip Properties for Multiple Clips",
+    "page": 219,
+    "level": 2,
+    "chapter_file": "chapters/08-clip-view.md"
+  },
+  {
+    "section": "8.14",
+    "title": "Clip Defaults and Update Rate",
+    "page": 219,
+    "level": 2,
+    "chapter_file": "chapters/08-clip-view.md"
+  },
+  {
+    "section": "9",
+    "title": "Audio Clips, Tempo, and Warping",
+    "page": 221,
+    "level": 1,
+    "chapter_file": "chapters/09-audio-clips-tempo-and-warping.md"
+  },
+  {
+    "section": "9.1",
+    "title": "Tempo",
+    "page": 221,
+    "level": 2,
+    "chapter_file": "chapters/09-audio-clips-tempo-and-warping.md"
+  },
+  {
+    "section": "9.1.1",
+    "title": "Setting the Tempo",
+    "page": 221,
+    "level": 3,
+    "chapter_file": "chapters/09-audio-clips-tempo-and-warping.md"
+  },
+  {
+    "section": "9.1.2",
+    "title": "Tapping the Tempo",
+    "page": 222,
+    "level": 3,
+    "chapter_file": "chapters/09-audio-clips-tempo-and-warping.md"
+  },
+  {
+    "section": "9.1.3",
+    "title": "Nudging the Tempo",
+    "page": 223,
+    "level": 3,
+    "chapter_file": "chapters/09-audio-clips-tempo-and-warping.md"
+  },
+  {
+    "section": "9.1.4",
+    "title": "Clip Tempo Followers and Leaders",
+    "page": 223,
+    "level": 3,
+    "chapter_file": "chapters/09-audio-clips-tempo-and-warping.md"
+  },
+  {
+    "section": "9.2",
+    "title": "Warping",
+    "page": 225,
+    "level": 2,
+    "chapter_file": "chapters/09-audio-clips-tempo-and-warping.md"
+  },
+  {
+    "section": "9.2.1",
+    "title": "Warping Options in Settings",
+    "page": 226,
+    "level": 3,
+    "chapter_file": "chapters/09-audio-clips-tempo-and-warping.md"
+  },
+  {
+    "section": "9.2.2",
+    "title": "Importing Samples",
+    "page": 227,
+    "level": 3,
+    "chapter_file": "chapters/09-audio-clips-tempo-and-warping.md"
+  },
+  {
+    "section": "9.2.3",
+    "title": "Warp Markers",
+    "page": 227,
+    "level": 3,
+    "chapter_file": "chapters/09-audio-clips-tempo-and-warping.md"
+  },
+  {
+    "section": "9.2.4",
+    "title": "Warping Short Samples",
+    "page": 229,
+    "level": 3,
+    "chapter_file": "chapters/09-audio-clips-tempo-and-warping.md"
+  },
+  {
+    "section": "9.2.5",
+    "title": "Auto-Warping Long Samples",
+    "page": 231,
+    "level": 3,
+    "chapter_file": "chapters/09-audio-clips-tempo-and-warping.md"
+  },
+  {
+    "section": "9.2.6",
+    "title": "Manipulating Grooves",
+    "page": 235,
+    "level": 3,
+    "chapter_file": "chapters/09-audio-clips-tempo-and-warping.md"
+  },
+  {
+    "section": "9.2.7",
+    "title": "Quantizing Audio",
+    "page": 235,
+    "level": 3,
+    "chapter_file": "chapters/09-audio-clips-tempo-and-warping.md"
+  },
+  {
+    "section": "9.3",
+    "title": "Warp Modes",
+    "page": 236,
+    "level": 2,
+    "chapter_file": "chapters/09-audio-clips-tempo-and-warping.md"
+  },
+  {
+    "section": "9.3.1",
+    "title": "Beats Mode",
+    "page": 236,
+    "level": 3,
+    "chapter_file": "chapters/09-audio-clips-tempo-and-warping.md"
+  },
+  {
+    "section": "9.3.2",
+    "title": "Tones Mode",
+    "page": 237,
+    "level": 3,
+    "chapter_file": "chapters/09-audio-clips-tempo-and-warping.md"
+  },
+  {
+    "section": "9.3.3",
+    "title": "Texture Mode",
+    "page": 237,
+    "level": 3,
+    "chapter_file": "chapters/09-audio-clips-tempo-and-warping.md"
+  },
+  {
+    "section": "9.3.4",
+    "title": "Re-Pitch Mode",
+    "page": 238,
+    "level": 3,
+    "chapter_file": "chapters/09-audio-clips-tempo-and-warping.md"
+  },
+  {
+    "section": "9.3.5",
+    "title": "Complex and Complex Pro Mode",
+    "page": 238,
+    "level": 3,
+    "chapter_file": "chapters/09-audio-clips-tempo-and-warping.md"
+  },
+  {
+    "section": "10",
+    "title": "Editing MIDI",
+    "page": 239,
+    "level": 1,
+    "chapter_file": "chapters/10-editing-midi.md"
+  },
+  {
+    "section": "10.1",
+    "title": "The MIDI Note Editor Layout",
+    "page": 239,
+    "level": 2,
+    "chapter_file": "chapters/10-editing-midi.md"
+  },
+  {
+    "section": "10.2",
+    "title": "Zooming and Navigating in the MIDI Note Editor",
+    "page": 241,
+    "level": 2,
+    "chapter_file": "chapters/10-editing-midi.md"
+  },
+  {
+    "section": "10.2.1",
+    "title": "Grid Snapping",
+    "page": 243,
+    "level": 3,
+    "chapter_file": "chapters/10-editing-midi.md"
+  },
+  {
+    "section": "10.2.2",
+    "title": "Playback Options",
+    "page": 243,
+    "level": 3,
+    "chapter_file": "chapters/10-editing-midi.md"
+  },
+  {
+    "section": "10.3",
+    "title": "Creating a MIDI Clip",
+    "page": 244,
+    "level": 2,
+    "chapter_file": "chapters/10-editing-midi.md"
+  },
+  {
+    "section": "10.4",
+    "title": "Adding MIDI Notes",
+    "page": 244,
+    "level": 2,
+    "chapter_file": "chapters/10-editing-midi.md"
+  },
+  {
+    "section": "10.4.1",
+    "title": "Draw Mode",
+    "page": 244,
+    "level": 3,
+    "chapter_file": "chapters/10-editing-midi.md"
+  },
+  {
+    "section": "10.4.2",
+    "title": "Previewing Notes",
+    "page": 245,
+    "level": 3,
+    "chapter_file": "chapters/10-editing-midi.md"
+  },
+  {
+    "section": "10.5",
+    "title": "Editing MIDI Notes",
+    "page": 246,
+    "level": 2,
+    "chapter_file": "chapters/10-editing-midi.md"
+  },
+  {
+    "section": "10.5.1",
+    "title": "Non-Destructive Editing",
+    "page": 246,
+    "level": 3,
+    "chapter_file": "chapters/10-editing-midi.md"
+  },
+  {
+    "section": "10.5.2",
+    "title": "Selecting Notes and Timespan",
+    "page": 246,
+    "level": 3,
+    "chapter_file": "chapters/10-editing-midi.md"
+  },
+  {
+    "section": "10.5.3",
+    "title": "Find and Select Notes",
+    "page": 247,
+    "level": 3,
+    "chapter_file": "chapters/10-editing-midi.md"
+  },
+  {
+    "section": "10.5.4",
+    "title": "Moving Notes",
+    "page": 249,
+    "level": 3,
+    "chapter_file": "chapters/10-editing-midi.md"
+  },
+  {
+    "section": "10.5.5",
+    "title": "Changing Note Length",
+    "page": 249,
+    "level": 3,
+    "chapter_file": "chapters/10-editing-midi.md"
+  },
+  {
+    "section": "10.5.6",
+    "title": "MIDI Note Stretch",
+    "page": 251,
+    "level": 3,
+    "chapter_file": "chapters/10-editing-midi.md"
+  },
+  {
+    "section": "10.5.7",
+    "title": "Deactivating Notes",
+    "page": 251,
+    "level": 3,
+    "chapter_file": "chapters/10-editing-midi.md"
+  },
+  {
+    "section": "10.5.8",
+    "title": "Note Operations",
+    "page": 252,
+    "level": 3,
+    "chapter_file": "chapters/10-editing-midi.md"
+  },
+  {
+    "section": "10.5.9",
+    "title": "Pitch and Time Utilities",
+    "page": 255,
+    "level": 3,
+    "chapter_file": "chapters/10-editing-midi.md"
+  },
+  {
+    "section": "10.5.10",
+    "title": "MIDI Tools",
+    "page": 263,
+    "level": 3,
+    "chapter_file": "chapters/10-editing-midi.md"
+  },
+  {
+    "section": "10.5.11",
+    "title": "Quantizing Notes",
+    "page": 263,
+    "level": 3,
+    "chapter_file": "chapters/10-editing-midi.md"
+  },
+  {
+    "section": "10.5.12",
+    "title": "Editing Velocities",
+    "page": 264,
+    "level": 3,
+    "chapter_file": "chapters/10-editing-midi.md"
+  },
+  {
+    "section": "10.5.13",
+    "title": "Editing Probabilities",
+    "page": 269,
+    "level": 3,
+    "chapter_file": "chapters/10-editing-midi.md"
+  },
+  {
+    "section": "10.6",
+    "title": "Folding and Scales",
+    "page": 271,
+    "level": 2,
+    "chapter_file": "chapters/10-editing-midi.md"
+  },
+  {
+    "section": "10.7",
+    "title": "Editing MIDI Clips",
+    "page": 274,
+    "level": 2,
+    "chapter_file": "chapters/10-editing-midi.md"
+  },
+  {
+    "section": "10.7.1",
+    "title": "Cropping MIDI Clips",
+    "page": 274,
+    "level": 3,
+    "chapter_file": "chapters/10-editing-midi.md"
+  },
+  {
+    "section": "10.7.2",
+    "title": "The …Time Commands in the MIDI Note Editor",
+    "page": 275,
+    "level": 3,
+    "chapter_file": "chapters/10-editing-midi.md"
+  },
+  {
+    "section": "10.7.3",
+    "title": "Looping",
+    "page": 275,
+    "level": 3,
+    "chapter_file": "chapters/10-editing-midi.md"
+  },
+  {
+    "section": "10.8",
+    "title": "Multi-Clip Editing",
+    "page": 276,
+    "level": 2,
+    "chapter_file": "chapters/10-editing-midi.md"
+  },
+  {
+    "section": "10.8.1",
+    "title": "Focus Mode",
+    "page": 277,
+    "level": 3,
+    "chapter_file": "chapters/10-editing-midi.md"
+  },
+  {
+    "section": "10.8.2",
+    "title": "Multi-Clip Editing in the Session View",
+    "page": 279,
+    "level": 3,
+    "chapter_file": "chapters/10-editing-midi.md"
+  },
+  {
+    "section": "10.8.3",
+    "title": "Multi-Clip Editing in the Arrangement View",
+    "page": 279,
+    "level": 3,
+    "chapter_file": "chapters/10-editing-midi.md"
+  },
+  {
+    "section": "11",
+    "title": "MIDI Tools",
+    "page": 280,
+    "level": 1,
+    "chapter_file": "chapters/11-midi-tools.md"
+  },
+  {
+    "section": "11.1",
+    "title": "Using MIDI Tools",
+    "page": 280,
+    "level": 2,
+    "chapter_file": "chapters/11-midi-tools.md"
+  },
+  {
+    "section": "11.1.1",
+    "title": "Using Max for Live MIDI Tools",
+    "page": 283,
+    "level": 3,
+    "chapter_file": "chapters/11-midi-tools.md"
+  },
+  {
+    "section": "11.2",
+    "title": "Transformation Tools",
+    "page": 284,
+    "level": 2,
+    "chapter_file": "chapters/11-midi-tools.md"
+  },
+  {
+    "section": "11.2.1",
+    "title": "Arpeggiate",
+    "page": 284,
+    "level": 3,
+    "chapter_file": "chapters/11-midi-tools.md"
+  },
+  {
+    "section": "11.2.2",
+    "title": "Chop",
+    "page": 285,
+    "level": 3,
+    "chapter_file": "chapters/11-midi-tools.md"
+  },
+  {
+    "section": "11.2.3",
+    "title": "Connect",
+    "page": 287,
+    "level": 3,
+    "chapter_file": "chapters/11-midi-tools.md"
+  },
+  {
+    "section": "11.2.4",
+    "title": "Glissando",
+    "page": 289,
+    "level": 3,
+    "chapter_file": "chapters/11-midi-tools.md"
+  },
+  {
+    "section": "11.2.5",
+    "title": "LFO",
+    "page": 291,
+    "level": 3,
+    "chapter_file": "chapters/11-midi-tools.md"
+  },
+  {
+    "section": "11.2.6",
+    "title": "Ornament",
+    "page": 293,
+    "level": 3,
+    "chapter_file": "chapters/11-midi-tools.md"
+  },
+  {
+    "section": "11.2.7",
+    "title": "Quantize",
+    "page": 296,
+    "level": 3,
+    "chapter_file": "chapters/11-midi-tools.md"
+  },
+  {
+    "section": "11.2.8",
+    "title": "Recombine",
+    "page": 297,
+    "level": 3,
+    "chapter_file": "chapters/11-midi-tools.md"
+  },
+  {
+    "section": "11.2.9",
+    "title": "Span",
+    "page": 300,
+    "level": 3,
+    "chapter_file": "chapters/11-midi-tools.md"
+  },
+  {
+    "section": "11.2.10",
+    "title": "Strum",
+    "page": 302,
+    "level": 3,
+    "chapter_file": "chapters/11-midi-tools.md"
+  },
+  {
+    "section": "11.2.11",
+    "title": "Time Warp",
+    "page": 304,
+    "level": 3,
+    "chapter_file": "chapters/11-midi-tools.md"
+  },
+  {
+    "section": "11.2.12",
+    "title": "Velocity Shaper",
+    "page": 306,
+    "level": 3,
+    "chapter_file": "chapters/11-midi-tools.md"
+  },
+  {
+    "section": "11.3",
+    "title": "Generative Tools",
+    "page": 308,
+    "level": 2,
+    "chapter_file": "chapters/11-midi-tools.md"
+  },
+  {
+    "section": "11.3.1",
+    "title": "Rhythm",
+    "page": 308,
+    "level": 3,
+    "chapter_file": "chapters/11-midi-tools.md"
+  },
+  {
+    "section": "11.3.2",
+    "title": "Seed",
+    "page": 310,
+    "level": 3,
+    "chapter_file": "chapters/11-midi-tools.md"
+  },
+  {
+    "section": "11.3.3",
+    "title": "Shape",
+    "page": 311,
+    "level": 3,
+    "chapter_file": "chapters/11-midi-tools.md"
+  },
+  {
+    "section": "11.3.4",
+    "title": "Stacks",
+    "page": 313,
+    "level": 3,
+    "chapter_file": "chapters/11-midi-tools.md"
+  },
+  {
+    "section": "11.3.5",
+    "title": "Euclidean",
+    "page": 314,
+    "level": 3,
+    "chapter_file": "chapters/11-midi-tools.md"
+  },
+  {
+    "section": "12",
+    "title": "Editing MPE",
+    "page": 317,
+    "level": 1,
+    "chapter_file": "chapters/12-editing-mpe.md"
+  },
+  {
+    "section": "12.1",
+    "title": "Viewing MPE Data",
+    "page": 318,
+    "level": 2,
+    "chapter_file": "chapters/12-editing-mpe.md"
+  },
+  {
+    "section": "12.2",
+    "title": "Editing MPE Data",
+    "page": 319,
+    "level": 2,
+    "chapter_file": "chapters/12-editing-mpe.md"
+  },
+  {
+    "section": "12.3",
+    "title": "Drawing Envelopes",
+    "page": 322,
+    "level": 2,
+    "chapter_file": "chapters/12-editing-mpe.md"
+  },
+  {
+    "section": "12.4",
+    "title": "MPE in Live’s Devices and on Push 2",
+    "page": 323,
+    "level": 2,
+    "chapter_file": "chapters/12-editing-mpe.md"
+  },
+  {
+    "section": "12.5",
+    "title": "MPE in External Plug-ins",
+    "page": 323,
+    "level": 2,
+    "chapter_file": "chapters/12-editing-mpe.md"
+  },
+  {
+    "section": "12.6",
+    "title": "MPE/Multi-channel Settings",
+    "page": 323,
+    "level": 2,
+    "chapter_file": "chapters/12-editing-mpe.md"
+  },
+  {
+    "section": "12.6.1",
+    "title": "Accessing the MPE/Multi-channel Settings Dialog",
+    "page": 324,
+    "level": 3,
+    "chapter_file": "chapters/12-editing-mpe.md"
+  },
+  {
+    "section": "12.6.2",
+    "title": "The MPE/Multi-Channel Settings Dialog",
+    "page": 326,
+    "level": 3,
+    "chapter_file": "chapters/12-editing-mpe.md"
+  },
+  {
+    "section": "13",
+    "title": "Converting Audio to MIDI",
+    "page": 327,
+    "level": 1,
+    "chapter_file": "chapters/13-converting-audio-to-midi.md"
+  },
+  {
+    "section": "13.1",
+    "title": "Slice to New MIDI Track",
+    "page": 327,
+    "level": 2,
+    "chapter_file": "chapters/13-converting-audio-to-midi.md"
+  },
+  {
+    "section": "13.1.1",
+    "title": "Resequencing Slices",
+    "page": 329,
+    "level": 3,
+    "chapter_file": "chapters/13-converting-audio-to-midi.md"
+  },
+  {
+    "section": "13.1.2",
+    "title": "Using Effects on Slices",
+    "page": 329,
+    "level": 3,
+    "chapter_file": "chapters/13-converting-audio-to-midi.md"
+  },
+  {
+    "section": "13.2",
+    "title": "Convert Harmony to New MIDI Track",
+    "page": 330,
+    "level": 2,
+    "chapter_file": "chapters/13-converting-audio-to-midi.md"
+  },
+  {
+    "section": "13.3",
+    "title": "Convert Melody to New MIDI Track",
+    "page": 330,
+    "level": 2,
+    "chapter_file": "chapters/13-converting-audio-to-midi.md"
+  },
+  {
+    "section": "13.4",
+    "title": "Convert Drums to New MIDI Track",
+    "page": 331,
+    "level": 2,
+    "chapter_file": "chapters/13-converting-audio-to-midi.md"
+  },
+  {
+    "section": "13.5",
+    "title": "Optimizing for Better Conversion Quality",
+    "page": 331,
+    "level": 2,
+    "chapter_file": "chapters/13-converting-audio-to-midi.md"
+  },
+  {
+    "section": "14",
+    "title": "Using Grooves",
+    "page": 332,
+    "level": 1,
+    "chapter_file": "chapters/14-using-grooves.md"
+  },
+  {
+    "section": "14.1",
+    "title": "Groove Pool",
+    "page": 333,
+    "level": 2,
+    "chapter_file": "chapters/14-using-grooves.md"
+  },
+  {
+    "section": "14.1.1",
+    "title": "Adjusting Groove Parameters",
+    "page": 334,
+    "level": 3,
+    "chapter_file": "chapters/14-using-grooves.md"
+  },
+  {
+    "section": "14.1.2",
+    "title": "Committing Grooves",
+    "page": 335,
+    "level": 3,
+    "chapter_file": "chapters/14-using-grooves.md"
+  },
+  {
+    "section": "14.2",
+    "title": "Editing Grooves",
+    "page": 336,
+    "level": 2,
+    "chapter_file": "chapters/14-using-grooves.md"
+  },
+  {
+    "section": "14.2.1",
+    "title": "Extracting Grooves",
+    "page": 336,
+    "level": 3,
+    "chapter_file": "chapters/14-using-grooves.md"
+  },
+  {
+    "section": "14.3",
+    "title": "Groove Tips",
+    "page": 337,
+    "level": 2,
+    "chapter_file": "chapters/14-using-grooves.md"
+  },
+  {
+    "section": "14.3.1",
+    "title": "Grooving a Single Voice",
+    "page": 337,
+    "level": 3,
+    "chapter_file": "chapters/14-using-grooves.md"
+  },
+  {
+    "section": "14.3.2",
+    "title": "Non-Destructive Quantization",
+    "page": 337,
+    "level": 3,
+    "chapter_file": "chapters/14-using-grooves.md"
+  },
+  {
+    "section": "14.3.3",
+    "title": "Creating Texture With Randomization",
+    "page": 337,
+    "level": 3,
+    "chapter_file": "chapters/14-using-grooves.md"
+  },
+  {
+    "section": "15",
+    "title": "Using Tuning Systems",
+    "page": 338,
+    "level": 1,
+    "chapter_file": "chapters/15-using-tuning-systems.md"
+  },
+  {
+    "section": "15.1",
+    "title": "Loading a Tuning System",
+    "page": 340,
+    "level": 2,
+    "chapter_file": "chapters/15-using-tuning-systems.md"
+  },
+  {
+    "section": "15.2",
+    "title": "The Tuning Section",
+    "page": 343,
+    "level": 2,
+    "chapter_file": "chapters/15-using-tuning-systems.md"
+  },
+  {
+    "section": "15.3",
+    "title": "MIDI Track Options for Tuning Systems",
+    "page": 344,
+    "level": 2,
+    "chapter_file": "chapters/15-using-tuning-systems.md"
+  },
+  {
+    "section": "15.3.1",
+    "title": "Bypass Tuning",
+    "page": 344,
+    "level": 3,
+    "chapter_file": "chapters/15-using-tuning-systems.md"
+  },
+  {
+    "section": "15.3.2",
+    "title": "MIDI Controller Layouts",
+    "page": 345,
+    "level": 3,
+    "chapter_file": "chapters/15-using-tuning-systems.md"
+  },
+  {
+    "section": "15.4",
+    "title": "Learn More About Tuning Systems",
+    "page": 346,
+    "level": 2,
+    "chapter_file": "chapters/15-using-tuning-systems.md"
+  },
+  {
+    "section": "16",
+    "title": "Launching Clips",
+    "page": 347,
+    "level": 1,
+    "chapter_file": "chapters/16-launching-clips.md"
+  },
+  {
+    "section": "16.1",
+    "title": "The Launch Controls",
+    "page": 347,
+    "level": 2,
+    "chapter_file": "chapters/16-launching-clips.md"
+  },
+  {
+    "section": "16.2",
+    "title": "Launch Modes",
+    "page": 348,
+    "level": 2,
+    "chapter_file": "chapters/16-launching-clips.md"
+  },
+  {
+    "section": "16.3",
+    "title": "Legato Mode",
+    "page": 349,
+    "level": 2,
+    "chapter_file": "chapters/16-launching-clips.md"
+  },
+  {
+    "section": "16.4",
+    "title": "Clip Launch Quantization",
+    "page": 350,
+    "level": 2,
+    "chapter_file": "chapters/16-launching-clips.md"
+  },
+  {
+    "section": "16.5",
+    "title": "Velocity",
+    "page": 351,
+    "level": 2,
+    "chapter_file": "chapters/16-launching-clips.md"
+  },
+  {
+    "section": "16.6",
+    "title": "Clip Offset and Nudging",
+    "page": 351,
+    "level": 2,
+    "chapter_file": "chapters/16-launching-clips.md"
+  },
+  {
+    "section": "16.7",
+    "title": "Follow Actions",
+    "page": 353,
+    "level": 2,
+    "chapter_file": "chapters/16-launching-clips.md"
+  },
+  {
+    "section": "16.7.1",
+    "title": "Looping Parts of a Clip",
+    "page": 356,
+    "level": 3,
+    "chapter_file": "chapters/16-launching-clips.md"
+  },
+  {
+    "section": "16.7.2",
+    "title": "Creating Cycles",
+    "page": 357,
+    "level": 3,
+    "chapter_file": "chapters/16-launching-clips.md"
+  },
+  {
+    "section": "16.7.3",
+    "title": "Temporarily Looping Clips",
+    "page": 357,
+    "level": 3,
+    "chapter_file": "chapters/16-launching-clips.md"
+  },
+  {
+    "section": "16.7.4",
+    "title": "Adding Variations in Sync",
+    "page": 357,
+    "level": 3,
+    "chapter_file": "chapters/16-launching-clips.md"
+  },
+  {
+    "section": "16.7.5",
+    "title": "Mixing up Melodies and Beats",
+    "page": 358,
+    "level": 3,
+    "chapter_file": "chapters/16-launching-clips.md"
+  },
+  {
+    "section": "16.7.6",
+    "title": "Creating Nonrepetitive Structures",
+    "page": 358,
+    "level": 3,
+    "chapter_file": "chapters/16-launching-clips.md"
+  },
+  {
+    "section": "17",
+    "title": "Routing and I/O",
+    "page": 359,
+    "level": 1,
+    "chapter_file": "chapters/17-routing-and-i-o.md"
+  },
+  {
+    "section": "17.1",
+    "title": "Monitoring",
+    "page": 361,
+    "level": 2,
+    "chapter_file": "chapters/17-routing-and-i-o.md"
+  },
+  {
+    "section": "17.2",
+    "title": "External Audio In/Out",
+    "page": 362,
+    "level": 2,
+    "chapter_file": "chapters/17-routing-and-i-o.md"
+  },
+  {
+    "section": "17.2.1",
+    "title": "Mono/Stereo Conversions",
+    "page": 362,
+    "level": 3,
+    "chapter_file": "chapters/17-routing-and-i-o.md"
+  },
+  {
+    "section": "17.3",
+    "title": "External MIDI In/Out",
+    "page": 362,
+    "level": 2,
+    "chapter_file": "chapters/17-routing-and-i-o.md"
+  },
+  {
+    "section": "17.3.1",
+    "title": "MIDI Port Inputs and Outputs",
+    "page": 363,
+    "level": 3,
+    "chapter_file": "chapters/17-routing-and-i-o.md"
+  },
+  {
+    "section": "17.3.2",
+    "title": "Playing MIDI With the Computer Keyboard",
+    "page": 365,
+    "level": 3,
+    "chapter_file": "chapters/17-routing-and-i-o.md"
+  },
+  {
+    "section": "17.3.3",
+    "title": "Connecting External Synthesizers",
+    "page": 366,
+    "level": 3,
+    "chapter_file": "chapters/17-routing-and-i-o.md"
+  },
+  {
+    "section": "17.3.4",
+    "title": "MIDI In/Out Indicators",
+    "page": 366,
+    "level": 3,
+    "chapter_file": "chapters/17-routing-and-i-o.md"
+  },
+  {
+    "section": "17.4",
+    "title": "Resampling",
+    "page": 367,
+    "level": 2,
+    "chapter_file": "chapters/17-routing-and-i-o.md"
+  },
+  {
+    "section": "17.5",
+    "title": "Internal Routings",
+    "page": 367,
+    "level": 2,
+    "chapter_file": "chapters/17-routing-and-i-o.md"
+  },
+  {
+    "section": "17.5.1",
+    "title": "Internal Routing Points",
+    "page": 368,
+    "level": 3,
+    "chapter_file": "chapters/17-routing-and-i-o.md"
+  },
+  {
+    "section": "17.5.2",
+    "title": "Making Use of Internal Routing",
+    "page": 370,
+    "level": 3,
+    "chapter_file": "chapters/17-routing-and-i-o.md"
+  },
+  {
+    "section": "18",
+    "title": "Mixing",
+    "page": 381,
+    "level": 1,
+    "chapter_file": "chapters/18-mixing.md"
+  },
+  {
+    "section": "18.1",
+    "title": "The Live Mixer",
+    "page": 381,
+    "level": 2,
+    "chapter_file": "chapters/18-mixing.md"
+  },
+  {
+    "section": "18.1.1",
+    "title": "Additional Mixer Features",
+    "page": 384,
+    "level": 3,
+    "chapter_file": "chapters/18-mixing.md"
+  },
+  {
+    "section": "18.2",
+    "title": "Audio and MIDI Tracks",
+    "page": 385,
+    "level": 2,
+    "chapter_file": "chapters/18-mixing.md"
+  },
+  {
+    "section": "18.3",
+    "title": "Group Tracks",
+    "page": 386,
+    "level": 2,
+    "chapter_file": "chapters/18-mixing.md"
+  },
+  {
+    "section": "18.4",
+    "title": "Return Tracks and the Main track",
+    "page": 388,
+    "level": 2,
+    "chapter_file": "chapters/18-mixing.md"
+  },
+  {
+    "section": "18.5",
+    "title": "Using Live’s Crossfader",
+    "page": 390,
+    "level": 2,
+    "chapter_file": "chapters/18-mixing.md"
+  },
+  {
+    "section": "18.6",
+    "title": "Soloing and Cueing",
+    "page": 393,
+    "level": 2,
+    "chapter_file": "chapters/18-mixing.md"
+  },
+  {
+    "section": "18.7",
+    "title": "Track Delays",
+    "page": 395,
+    "level": 2,
+    "chapter_file": "chapters/18-mixing.md"
+  },
+  {
+    "section": "18.8",
+    "title": "Keep Monitoring Latency in Recording Track Toggles",
+    "page": 395,
+    "level": 2,
+    "chapter_file": "chapters/18-mixing.md"
+  },
+  {
+    "section": "18.9",
+    "title": "Performance Impact Track Indicators",
+    "page": 396,
+    "level": 2,
+    "chapter_file": "chapters/18-mixing.md"
+  },
+  {
+    "section": "19",
+    "title": "Recording New Clips",
+    "page": 397,
+    "level": 1,
+    "chapter_file": "chapters/19-recording-new-clips.md"
+  },
+  {
+    "section": "19.1",
+    "title": "Choosing an Input",
+    "page": 397,
+    "level": 2,
+    "chapter_file": "chapters/19-recording-new-clips.md"
+  },
+  {
+    "section": "19.2",
+    "title": "Arming (Record-Enabling) Tracks",
+    "page": 398,
+    "level": 2,
+    "chapter_file": "chapters/19-recording-new-clips.md"
+  },
+  {
+    "section": "19.3",
+    "title": "Recording",
+    "page": 398,
+    "level": 2,
+    "chapter_file": "chapters/19-recording-new-clips.md"
+  },
+  {
+    "section": "19.3.1",
+    "title": "Recording Into the Arrangement",
+    "page": 399,
+    "level": 3,
+    "chapter_file": "chapters/19-recording-new-clips.md"
+  },
+  {
+    "section": "19.3.2",
+    "title": "Recording Into Session Slots",
+    "page": 399,
+    "level": 3,
+    "chapter_file": "chapters/19-recording-new-clips.md"
+  },
+  {
+    "section": "19.3.3",
+    "title": "Overdub Recording MIDI Patterns",
+    "page": 401,
+    "level": 3,
+    "chapter_file": "chapters/19-recording-new-clips.md"
+  },
+  {
+    "section": "19.3.4",
+    "title": "MIDI Step Recording",
+    "page": 401,
+    "level": 3,
+    "chapter_file": "chapters/19-recording-new-clips.md"
+  },
+  {
+    "section": "19.4",
+    "title": "Recording in Sync",
+    "page": 402,
+    "level": 2,
+    "chapter_file": "chapters/19-recording-new-clips.md"
+  },
+  {
+    "section": "19.4.1",
+    "title": "Metronome Settings",
+    "page": 404,
+    "level": 3,
+    "chapter_file": "chapters/19-recording-new-clips.md"
+  },
+  {
+    "section": "19.5",
+    "title": "Recording Quantized MIDI Notes",
+    "page": 404,
+    "level": 2,
+    "chapter_file": "chapters/19-recording-new-clips.md"
+  },
+  {
+    "section": "19.6",
+    "title": "Recording with Count-in",
+    "page": 405,
+    "level": 2,
+    "chapter_file": "chapters/19-recording-new-clips.md"
+  },
+  {
+    "section": "19.7",
+    "title": "Setting up File Types",
+    "page": 405,
+    "level": 2,
+    "chapter_file": "chapters/19-recording-new-clips.md"
+  },
+  {
+    "section": "19.8",
+    "title": "Where are the Recorded Samples?",
+    "page": 405,
+    "level": 2,
+    "chapter_file": "chapters/19-recording-new-clips.md"
+  },
+  {
+    "section": "19.9",
+    "title": "Using Remote Control for Recording",
+    "page": 406,
+    "level": 2,
+    "chapter_file": "chapters/19-recording-new-clips.md"
+  },
+  {
+    "section": "19.10",
+    "title": "Capturing MIDI",
+    "page": 407,
+    "level": 2,
+    "chapter_file": "chapters/19-recording-new-clips.md"
+  },
+  {
+    "section": "19.10.1",
+    "title": "Starting a New Live Set",
+    "page": 408,
+    "level": 3,
+    "chapter_file": "chapters/19-recording-new-clips.md"
+  },
+  {
+    "section": "19.10.2",
+    "title": "Adding Material to an Existing Live Set",
+    "page": 409,
+    "level": 3,
+    "chapter_file": "chapters/19-recording-new-clips.md"
+  },
+  {
+    "section": "20",
+    "title": "Bounce to Audio",
+    "page": 410,
+    "level": 1,
+    "chapter_file": "chapters/20-bounce-to-audio.md"
+  },
+  {
+    "section": "20.1",
+    "title": "Bouncing Individual Tracks",
+    "page": 410,
+    "level": 2,
+    "chapter_file": "chapters/20-bounce-to-audio.md"
+  },
+  {
+    "section": "20.2",
+    "title": "Bouncing Group Tracks",
+    "page": 412,
+    "level": 2,
+    "chapter_file": "chapters/20-bounce-to-audio.md"
+  },
+  {
+    "section": "20.3",
+    "title": "Pasting Bounced Audio",
+    "page": 414,
+    "level": 2,
+    "chapter_file": "chapters/20-bounce-to-audio.md"
+  },
+  {
+    "section": "21",
+    "title": "Comping",
+    "page": 416,
+    "level": 1,
+    "chapter_file": "chapters/21-comping.md"
+  },
+  {
+    "section": "21.1",
+    "title": "Take Lanes",
+    "page": 416,
+    "level": 2,
+    "chapter_file": "chapters/21-comping.md"
+  },
+  {
+    "section": "21.2",
+    "title": "Inserting and Managing Take Lanes",
+    "page": 418,
+    "level": 2,
+    "chapter_file": "chapters/21-comping.md"
+  },
+  {
+    "section": "21.3",
+    "title": "Recording Takes",
+    "page": 418,
+    "level": 2,
+    "chapter_file": "chapters/21-comping.md"
+  },
+  {
+    "section": "21.4",
+    "title": "Inserting Samples",
+    "page": 419,
+    "level": 2,
+    "chapter_file": "chapters/21-comping.md"
+  },
+  {
+    "section": "21.5",
+    "title": "Auditioning Take Lanes",
+    "page": 419,
+    "level": 2,
+    "chapter_file": "chapters/21-comping.md"
+  },
+  {
+    "section": "21.6",
+    "title": "Creating a Comp",
+    "page": 420,
+    "level": 2,
+    "chapter_file": "chapters/21-comping.md"
+  },
+  {
+    "section": "21.7",
+    "title": "Source Highlights",
+    "page": 421,
+    "level": 2,
+    "chapter_file": "chapters/21-comping.md"
+  },
+  {
+    "section": "22",
+    "title": "Stem Separation",
+    "page": 422,
+    "level": 1,
+    "chapter_file": "chapters/22-stem-separation.md"
+  },
+  {
+    "section": "22.1",
+    "title": "How Stem Separation Works in Live",
+    "page": 422,
+    "level": 2,
+    "chapter_file": "chapters/22-stem-separation.md"
+  },
+  {
+    "section": "22.2",
+    "title": "Separating Audio Files and Clips",
+    "page": 422,
+    "level": 2,
+    "chapter_file": "chapters/22-stem-separation.md"
+  },
+  {
+    "section": "22.2.1",
+    "title": "Separation Speed vs. Quality",
+    "page": 428,
+    "level": 3,
+    "chapter_file": "chapters/22-stem-separation.md"
+  },
+  {
+    "section": "23",
+    "title": "Working with Instruments and Effects",
+    "page": 430,
+    "level": 1,
+    "chapter_file": "chapters/23-working-with-instruments-and-effects.md"
+  },
+  {
+    "section": "23.1",
+    "title": "Device View",
+    "page": 430,
+    "level": 2,
+    "chapter_file": "chapters/23-working-with-instruments-and-effects.md"
+  },
+  {
+    "section": "23.2",
+    "title": "Using Devices",
+    "page": 432,
+    "level": 2,
+    "chapter_file": "chapters/23-working-with-instruments-and-effects.md"
+  },
+  {
+    "section": "23.2.1",
+    "title": "Device Title Bar",
+    "page": 435,
+    "level": 3,
+    "chapter_file": "chapters/23-working-with-instruments-and-effects.md"
+  },
+  {
+    "section": "23.2.2",
+    "title": "Device A/B Comparison",
+    "page": 439,
+    "level": 3,
+    "chapter_file": "chapters/23-working-with-instruments-and-effects.md"
+  },
+  {
+    "section": "23.2.3",
+    "title": "Live Device Presets",
+    "page": 443,
+    "level": 3,
+    "chapter_file": "chapters/23-working-with-instruments-and-effects.md"
+  },
+  {
+    "section": "23.2.4",
+    "title": "Saving Presets",
+    "page": 445,
+    "level": 3,
+    "chapter_file": "chapters/23-working-with-instruments-and-effects.md"
+  },
+  {
+    "section": "23.2.5",
+    "title": "Default Presets",
+    "page": 445,
+    "level": 3,
+    "chapter_file": "chapters/23-working-with-instruments-and-effects.md"
+  },
+  {
+    "section": "23.3",
+    "title": "Using Plug-Ins",
+    "page": 448,
+    "level": 2,
+    "chapter_file": "chapters/23-working-with-instruments-and-effects.md"
+  },
+  {
+    "section": "23.3.1",
+    "title": "Plug-Ins in the Device View",
+    "page": 449,
+    "level": 3,
+    "chapter_file": "chapters/23-working-with-instruments-and-effects.md"
+  },
+  {
+    "section": "23.3.2",
+    "title": "Sidechain Parameters",
+    "page": 453,
+    "level": 3,
+    "chapter_file": "chapters/23-working-with-instruments-and-effects.md"
+  },
+  {
+    "section": "23.4",
+    "title": "VST Plug-Ins",
+    "page": 454,
+    "level": 2,
+    "chapter_file": "chapters/23-working-with-instruments-and-effects.md"
+  },
+  {
+    "section": "23.4.1",
+    "title": "The VST Plug-In Folder",
+    "page": 454,
+    "level": 3,
+    "chapter_file": "chapters/23-working-with-instruments-and-effects.md"
+  },
+  {
+    "section": "23.4.2",
+    "title": "VST Presets and Banks",
+    "page": 457,
+    "level": 3,
+    "chapter_file": "chapters/23-working-with-instruments-and-effects.md"
+  },
+  {
+    "section": "23.5",
+    "title": "Audio Units Plug-Ins",
+    "page": 458,
+    "level": 2,
+    "chapter_file": "chapters/23-working-with-instruments-and-effects.md"
+  },
+  {
+    "section": "23.6",
+    "title": "Device Delay Compensation",
+    "page": 459,
+    "level": 2,
+    "chapter_file": "chapters/23-working-with-instruments-and-effects.md"
+  },
+  {
+    "section": "24",
+    "title": "Instrument, Drum and Effect Racks",
+    "page": 461,
+    "level": 1,
+    "chapter_file": "chapters/24-instrument-drum-and-effect-racks.md"
+  },
+  {
+    "section": "24.1",
+    "title": "An Overview of Racks",
+    "page": 461,
+    "level": 2,
+    "chapter_file": "chapters/24-instrument-drum-and-effect-racks.md"
+  },
+  {
+    "section": "24.1.1",
+    "title": "Signal Flow and Parallel Device Chains",
+    "page": 461,
+    "level": 3,
+    "chapter_file": "chapters/24-instrument-drum-and-effect-racks.md"
+  },
+  {
+    "section": "24.1.2",
+    "title": "Macro Controls",
+    "page": 462,
+    "level": 3,
+    "chapter_file": "chapters/24-instrument-drum-and-effect-racks.md"
+  },
+  {
+    "section": "24.2",
+    "title": "Creating Racks",
+    "page": 463,
+    "level": 2,
+    "chapter_file": "chapters/24-instrument-drum-and-effect-racks.md"
+  },
+  {
+    "section": "24.3",
+    "title": "Looking at Racks",
+    "page": 464,
+    "level": 2,
+    "chapter_file": "chapters/24-instrument-drum-and-effect-racks.md"
+  },
+  {
+    "section": "24.4",
+    "title": "Chain List",
+    "page": 465,
+    "level": 2,
+    "chapter_file": "chapters/24-instrument-drum-and-effect-racks.md"
+  },
+  {
+    "section": "24.4.1",
+    "title": "Auto Select",
+    "page": 466,
+    "level": 3,
+    "chapter_file": "chapters/24-instrument-drum-and-effect-racks.md"
+  },
+  {
+    "section": "24.5",
+    "title": "Zones",
+    "page": 467,
+    "level": 2,
+    "chapter_file": "chapters/24-instrument-drum-and-effect-racks.md"
+  },
+  {
+    "section": "24.5.1",
+    "title": "Signal Flow through Zones",
+    "page": 467,
+    "level": 3,
+    "chapter_file": "chapters/24-instrument-drum-and-effect-racks.md"
+  },
+  {
+    "section": "24.5.2",
+    "title": "Key Zones",
+    "page": 468,
+    "level": 3,
+    "chapter_file": "chapters/24-instrument-drum-and-effect-racks.md"
+  },
+  {
+    "section": "24.5.3",
+    "title": "Velocity Zones",
+    "page": 468,
+    "level": 3,
+    "chapter_file": "chapters/24-instrument-drum-and-effect-racks.md"
+  },
+  {
+    "section": "24.5.4",
+    "title": "Chain Select Zones",
+    "page": 469,
+    "level": 3,
+    "chapter_file": "chapters/24-instrument-drum-and-effect-racks.md"
+  },
+  {
+    "section": "24.6",
+    "title": "Drum Racks",
+    "page": 471,
+    "level": 2,
+    "chapter_file": "chapters/24-instrument-drum-and-effect-racks.md"
+  },
+  {
+    "section": "24.6.1",
+    "title": "Pad View",
+    "page": 472,
+    "level": 3,
+    "chapter_file": "chapters/24-instrument-drum-and-effect-racks.md"
+  },
+  {
+    "section": "24.7",
+    "title": "Using the Macro Controls",
+    "page": 474,
+    "level": 2,
+    "chapter_file": "chapters/24-instrument-drum-and-effect-racks.md"
+  },
+  {
+    "section": "24.7.1",
+    "title": "Map Mode",
+    "page": 474,
+    "level": 3,
+    "chapter_file": "chapters/24-instrument-drum-and-effect-racks.md"
+  },
+  {
+    "section": "24.7.2",
+    "title": "Randomizing Macro Controls",
+    "page": 475,
+    "level": 3,
+    "chapter_file": "chapters/24-instrument-drum-and-effect-racks.md"
+  },
+  {
+    "section": "24.7.3",
+    "title": "Macro Control Variations",
+    "page": 477,
+    "level": 3,
+    "chapter_file": "chapters/24-instrument-drum-and-effect-racks.md"
+  },
+  {
+    "section": "24.8",
+    "title": "Mixing With Racks",
+    "page": 478,
+    "level": 2,
+    "chapter_file": "chapters/24-instrument-drum-and-effect-racks.md"
+  },
+  {
+    "section": "24.8.1",
+    "title": "Extracting Chains",
+    "page": 479,
+    "level": 3,
+    "chapter_file": "chapters/24-instrument-drum-and-effect-racks.md"
+  },
+  {
+    "section": "25",
+    "title": "Automation and Editing Envelopes",
+    "page": 481,
+    "level": 1,
+    "chapter_file": "chapters/25-automation-and-editing-envelopes.md"
+  },
+  {
+    "section": "25.1",
+    "title": "Recording Automation in Arrangement View",
+    "page": 481,
+    "level": 2,
+    "chapter_file": "chapters/25-automation-and-editing-envelopes.md"
+  },
+  {
+    "section": "25.2",
+    "title": "Recording Automation in Session View",
+    "page": 482,
+    "level": 2,
+    "chapter_file": "chapters/25-automation-and-editing-envelopes.md"
+  },
+  {
+    "section": "25.2.1",
+    "title": "Session Automation Recording Modes",
+    "page": 484,
+    "level": 3,
+    "chapter_file": "chapters/25-automation-and-editing-envelopes.md"
+  },
+  {
+    "section": "25.3",
+    "title": "Deleting Automation",
+    "page": 484,
+    "level": 2,
+    "chapter_file": "chapters/25-automation-and-editing-envelopes.md"
+  },
+  {
+    "section": "25.4",
+    "title": "Overriding Automation",
+    "page": 484,
+    "level": 2,
+    "chapter_file": "chapters/25-automation-and-editing-envelopes.md"
+  },
+  {
+    "section": "25.5",
+    "title": "Drawing and Editing Automation",
+    "page": 485,
+    "level": 2,
+    "chapter_file": "chapters/25-automation-and-editing-envelopes.md"
+  },
+  {
+    "section": "25.5.1",
+    "title": "Drawing Envelopes",
+    "page": 486,
+    "level": 3,
+    "chapter_file": "chapters/25-automation-and-editing-envelopes.md"
+  },
+  {
+    "section": "25.5.2",
+    "title": "Editing Breakpoints",
+    "page": 487,
+    "level": 3,
+    "chapter_file": "chapters/25-automation-and-editing-envelopes.md"
+  },
+  {
+    "section": "25.5.3",
+    "title": "Stretching and Skewing Envelopes",
+    "page": 489,
+    "level": 3,
+    "chapter_file": "chapters/25-automation-and-editing-envelopes.md"
+  },
+  {
+    "section": "25.5.4",
+    "title": "Simplifying Envelopes",
+    "page": 490,
+    "level": 3,
+    "chapter_file": "chapters/25-automation-and-editing-envelopes.md"
+  },
+  {
+    "section": "25.5.5",
+    "title": "Inserting Automation Shapes",
+    "page": 491,
+    "level": 3,
+    "chapter_file": "chapters/25-automation-and-editing-envelopes.md"
+  },
+  {
+    "section": "25.5.6",
+    "title": "Locking Envelopes",
+    "page": 492,
+    "level": 3,
+    "chapter_file": "chapters/25-automation-and-editing-envelopes.md"
+  },
+  {
+    "section": "25.5.7",
+    "title": "Edit Menu Commands",
+    "page": 492,
+    "level": 3,
+    "chapter_file": "chapters/25-automation-and-editing-envelopes.md"
+  },
+  {
+    "section": "25.5.8",
+    "title": "Editing the Tempo Automation",
+    "page": 492,
+    "level": 3,
+    "chapter_file": "chapters/25-automation-and-editing-envelopes.md"
+  },
+  {
+    "section": "26",
+    "title": "Clip Envelopes",
+    "page": 494,
+    "level": 1,
+    "chapter_file": "chapters/26-clip-envelopes.md"
+  },
+  {
+    "section": "26.1",
+    "title": "The Clip Envelope Editor",
+    "page": 494,
+    "level": 2,
+    "chapter_file": "chapters/26-clip-envelopes.md"
+  },
+  {
+    "section": "26.2",
+    "title": "Audio Clip Envelopes",
+    "page": 495,
+    "level": 2,
+    "chapter_file": "chapters/26-clip-envelopes.md"
+  },
+  {
+    "section": "26.2.1",
+    "title": "Clip Envelopes are Non-Destructive",
+    "page": 495,
+    "level": 3,
+    "chapter_file": "chapters/26-clip-envelopes.md"
+  },
+  {
+    "section": "26.2.2",
+    "title": "Changing Pitch and Tuning per Note",
+    "page": 495,
+    "level": 3,
+    "chapter_file": "chapters/26-clip-envelopes.md"
+  },
+  {
+    "section": "26.2.3",
+    "title": "Muting or Attenuating Notes in a Sample",
+    "page": 496,
+    "level": 3,
+    "chapter_file": "chapters/26-clip-envelopes.md"
+  },
+  {
+    "section": "26.2.4",
+    "title": "Scrambling Beats",
+    "page": 497,
+    "level": 3,
+    "chapter_file": "chapters/26-clip-envelopes.md"
+  },
+  {
+    "section": "26.2.5",
+    "title": "Using Clips as Templates",
+    "page": 498,
+    "level": 3,
+    "chapter_file": "chapters/26-clip-envelopes.md"
+  },
+  {
+    "section": "26.3",
+    "title": "Mixer and Device Clip Envelopes",
+    "page": 498,
+    "level": 2,
+    "chapter_file": "chapters/26-clip-envelopes.md"
+  },
+  {
+    "section": "26.3.1",
+    "title": "Modulating Mixer Volumes and Sends",
+    "page": 500,
+    "level": 3,
+    "chapter_file": "chapters/26-clip-envelopes.md"
+  },
+  {
+    "section": "26.3.2",
+    "title": "Modulating Pan",
+    "page": 501,
+    "level": 3,
+    "chapter_file": "chapters/26-clip-envelopes.md"
+  },
+  {
+    "section": "26.3.3",
+    "title": "Modulating Device Controls",
+    "page": 501,
+    "level": 3,
+    "chapter_file": "chapters/26-clip-envelopes.md"
+  },
+  {
+    "section": "26.4",
+    "title": "MIDI Controller Clip Envelopes",
+    "page": 502,
+    "level": 2,
+    "chapter_file": "chapters/26-clip-envelopes.md"
+  },
+  {
+    "section": "26.5",
+    "title": "Unlinking Clip Envelopes From Clips",
+    "page": 502,
+    "level": 2,
+    "chapter_file": "chapters/26-clip-envelopes.md"
+  },
+  {
+    "section": "26.5.1",
+    "title": "Programming a Fade-Out for a Live Set",
+    "page": 503,
+    "level": 3,
+    "chapter_file": "chapters/26-clip-envelopes.md"
+  },
+  {
+    "section": "26.5.2",
+    "title": "Creating Long Loops from Short Loops",
+    "page": 503,
+    "level": 3,
+    "chapter_file": "chapters/26-clip-envelopes.md"
+  },
+  {
+    "section": "26.5.3",
+    "title": "Imposing Rhythm Patterns onto Samples",
+    "page": 504,
+    "level": 3,
+    "chapter_file": "chapters/26-clip-envelopes.md"
+  },
+  {
+    "section": "26.5.4",
+    "title": "Clip Envelopes as LFOs",
+    "page": 504,
+    "level": 3,
+    "chapter_file": "chapters/26-clip-envelopes.md"
+  },
+  {
+    "section": "26.5.5",
+    "title": "Warping Linked Envelopes",
+    "page": 504,
+    "level": 3,
+    "chapter_file": "chapters/26-clip-envelopes.md"
+  },
+  {
+    "section": "27",
+    "title": "Working with Video",
+    "page": 506,
+    "level": 1,
+    "chapter_file": "chapters/27-working-with-video.md"
+  },
+  {
+    "section": "27.1",
+    "title": "Importing Video",
+    "page": 506,
+    "level": 2,
+    "chapter_file": "chapters/27-working-with-video.md"
+  },
+  {
+    "section": "27.2",
+    "title": "The Appearance of Video in Live",
+    "page": 506,
+    "level": 2,
+    "chapter_file": "chapters/27-working-with-video.md"
+  },
+  {
+    "section": "27.2.1",
+    "title": "Video Clips in the Arrangement View",
+    "page": 506,
+    "level": 3,
+    "chapter_file": "chapters/27-working-with-video.md"
+  },
+  {
+    "section": "27.2.2",
+    "title": "The Video Window",
+    "page": 507,
+    "level": 3,
+    "chapter_file": "chapters/27-working-with-video.md"
+  },
+  {
+    "section": "27.2.3",
+    "title": "Clip View",
+    "page": 508,
+    "level": 3,
+    "chapter_file": "chapters/27-working-with-video.md"
+  },
+  {
+    "section": "27.3",
+    "title": "Matching Sound to Video",
+    "page": 509,
+    "level": 2,
+    "chapter_file": "chapters/27-working-with-video.md"
+  },
+  {
+    "section": "27.4",
+    "title": "Video Trimming Tricks",
+    "page": 509,
+    "level": 2,
+    "chapter_file": "chapters/27-working-with-video.md"
+  },
+  {
+    "section": "28",
+    "title": "Live Audio Effect Reference",
+    "page": 512,
+    "level": 1,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.1",
+    "title": "Amp",
+    "page": 512,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.1.1",
+    "title": "Amp Tips",
+    "page": 513,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.2",
+    "title": "Auto Filter",
+    "page": 514,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.2.1",
+    "title": "Filter Types",
+    "page": 515,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.2.2",
+    "title": "Filter Display",
+    "page": 516,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.2.3",
+    "title": "LFO Controls",
+    "page": 517,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.2.4",
+    "title": "Envelope Follower Controls",
+    "page": 518,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.2.5",
+    "title": "Filter Drive and Circuits",
+    "page": 519,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.2.6",
+    "title": "Global Controls",
+    "page": 520,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.2.7",
+    "title": "Sidechain Parameters",
+    "page": 520,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.3",
+    "title": "Auto Pan-Tremolo",
+    "page": 522,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.4",
+    "title": "Auto Shift",
+    "page": 526,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.4.1",
+    "title": "Input Section",
+    "page": 527,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.4.2",
+    "title": "Quantizer Tab",
+    "page": 529,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.4.3",
+    "title": "MIDI Tab",
+    "page": 530,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.4.4",
+    "title": "LFO Tab",
+    "page": 531,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.4.5",
+    "title": "Pitch Section",
+    "page": 532,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.4.6",
+    "title": "Vibrato Section",
+    "page": 533,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.5",
+    "title": "Beat Repeat",
+    "page": 534,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.6",
+    "title": "Cabinet",
+    "page": 536,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.6.1",
+    "title": "Cabinet Tips",
+    "page": 537,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.7",
+    "title": "Channel EQ",
+    "page": 538,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.7.1",
+    "title": "Channel EQ Tips",
+    "page": 539,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.8",
+    "title": "Chorus-Ensemble",
+    "page": 540,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.8.1",
+    "title": "Chorus-Ensemble Tips",
+    "page": 543,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.9",
+    "title": "Compressor",
+    "page": 544,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.9.1",
+    "title": "Sidechain Parameters",
+    "page": 547,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.9.2",
+    "title": "Compressor Tips",
+    "page": 548,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.10",
+    "title": "Corpus",
+    "page": 549,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.10.1",
+    "title": "Resonator Parameters",
+    "page": 550,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.10.2",
+    "title": "LFO Section",
+    "page": 552,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.10.3",
+    "title": "Filter Section",
+    "page": 553,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.10.4",
+    "title": "Global Parameters",
+    "page": 554,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.10.5",
+    "title": "Sidechain Parameters",
+    "page": 554,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.11",
+    "title": "Delay",
+    "page": 555,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.11.1",
+    "title": "Context Menu Options for Delay",
+    "page": 558,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.11.2",
+    "title": "Delay Tips",
+    "page": 558,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.12",
+    "title": "Drum Buss",
+    "page": 559,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.13",
+    "title": "Dynamic Tube",
+    "page": 561,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.14",
+    "title": "Echo",
+    "page": 562,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.14.1",
+    "title": "Echo Tab",
+    "page": 563,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.14.2",
+    "title": "Modulation Tab",
+    "page": 564,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.14.3",
+    "title": "Character Tab",
+    "page": 564,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.14.4",
+    "title": "Global Controls",
+    "page": 565,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.15",
+    "title": "EQ Eight",
+    "page": 566,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.16",
+    "title": "EQ Three",
+    "page": 568,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.17",
+    "title": "Erosion",
+    "page": 569,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.18",
+    "title": "External Audio Effect",
+    "page": 570,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.19",
+    "title": "Filter Delay",
+    "page": 572,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.20",
+    "title": "Gate",
+    "page": 573,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.21",
+    "title": "Glue Compressor",
+    "page": 575,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.21.1",
+    "title": "Sidechain Parameters",
+    "page": 576,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.22",
+    "title": "Grain Delay",
+    "page": 578,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.23",
+    "title": "Hybrid Reverb",
+    "page": 579,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.23.1",
+    "title": "Signal Flow",
+    "page": 580,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.23.2",
+    "title": "Input Section",
+    "page": 580,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.23.3",
+    "title": "Convolution Reverb Engine",
+    "page": 581,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.23.4",
+    "title": "Algorithmic Reverb Engine",
+    "page": 582,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.23.5",
+    "title": "EQ Section",
+    "page": 585,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.23.6",
+    "title": "Output Section",
+    "page": 585,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.24",
+    "title": "Limiter",
+    "page": 586,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.25",
+    "title": "Looper",
+    "page": 588,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.25.1",
+    "title": "Feedback Routing",
+    "page": 591,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.26",
+    "title": "Multiband Dynamics",
+    "page": 592,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.26.1",
+    "title": "Dynamics Processing Theory",
+    "page": 592,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.26.2",
+    "title": "Interface and Controls",
+    "page": 593,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.26.3",
+    "title": "Sidechain Parameters",
+    "page": 595,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.26.4",
+    "title": "Multiband Dynamics Tips",
+    "page": 596,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.27",
+    "title": "Overdrive",
+    "page": 597,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.28",
+    "title": "Pedal",
+    "page": 598,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.28.1",
+    "title": "Pedal Tips",
+    "page": 599,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.29",
+    "title": "Phaser-Flanger",
+    "page": 601,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.30",
+    "title": "Redux",
+    "page": 604,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.30.1",
+    "title": "Downsampling",
+    "page": 605,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.30.2",
+    "title": "Bit Reduction",
+    "page": 605,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.31",
+    "title": "Resonators",
+    "page": 606,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.32",
+    "title": "Reverb",
+    "page": 607,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.32.1",
+    "title": "Input Filter",
+    "page": 608,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.32.2",
+    "title": "Early Reflections",
+    "page": 608,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.32.3",
+    "title": "Diffusion Network",
+    "page": 609,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.32.4",
+    "title": "Chorus",
+    "page": 609,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.32.5",
+    "title": "Global Settings",
+    "page": 610,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.32.6",
+    "title": "Output",
+    "page": 611,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.33",
+    "title": "Roar",
+    "page": 611,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.33.1",
+    "title": "Input Section",
+    "page": 612,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.33.2",
+    "title": "Gain Stage Section",
+    "page": 613,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.33.3",
+    "title": "Modulation Section",
+    "page": 615,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.33.4",
+    "title": "Feedback Section",
+    "page": 617,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.33.5",
+    "title": "Global Section",
+    "page": 618,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.33.6",
+    "title": "Sidechain Parameters",
+    "page": 619,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.34",
+    "title": "Saturator",
+    "page": 620,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.35",
+    "title": "Shifter",
+    "page": 623,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.35.1",
+    "title": "Tuning and Delay Section",
+    "page": 624,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.35.2",
+    "title": "LFO Section",
+    "page": 625,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.35.3",
+    "title": "Envelope Follower Section",
+    "page": 626,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.35.4",
+    "title": "Shifter Mode Section",
+    "page": 626,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.35.5",
+    "title": "Sidechain Parameters",
+    "page": 627,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.35.6",
+    "title": "Shifter Tips",
+    "page": 628,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.36",
+    "title": "Spectral Resonator",
+    "page": 628,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.36.1",
+    "title": "Pitch Mode Section",
+    "page": 629,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.36.2",
+    "title": "Frequency Section",
+    "page": 630,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.36.3",
+    "title": "Modulation Section",
+    "page": 631,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.36.4",
+    "title": "Spectrogram",
+    "page": 631,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.36.5",
+    "title": "Global Parameters",
+    "page": 632,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.36.6",
+    "title": "Spectral Resonator Tips",
+    "page": 633,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.37",
+    "title": "Spectral Time",
+    "page": 633,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.37.1",
+    "title": "Freezer Section",
+    "page": 634,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.37.2",
+    "title": "Delay Section",
+    "page": 635,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.37.3",
+    "title": "Resolution Section",
+    "page": 636,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.37.4",
+    "title": "Global Controls",
+    "page": 636,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.38",
+    "title": "Spectrum",
+    "page": 637,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.39",
+    "title": "Tuner",
+    "page": 638,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.39.1",
+    "title": "View Switches",
+    "page": 639,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.39.2",
+    "title": "Classic View",
+    "page": 639,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.39.3",
+    "title": "Histogram View",
+    "page": 641,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.39.4",
+    "title": "Note Spellings",
+    "page": 642,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.39.5",
+    "title": "Reference Slider",
+    "page": 643,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.40",
+    "title": "Utility",
+    "page": 644,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.41",
+    "title": "Vinyl Distortion",
+    "page": 646,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.42",
+    "title": "Vocoder",
+    "page": 647,
+    "level": 2,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "28.42.1",
+    "title": "Vocoder Tips",
+    "page": 649,
+    "level": 3,
+    "chapter_file": "chapters/28-live-audio-effect-reference.md"
+  },
+  {
+    "section": "29",
+    "title": "Live MIDI Effect Reference",
+    "page": 651,
+    "level": 1,
+    "chapter_file": "chapters/29-live-midi-effect-reference.md"
+  },
+  {
+    "section": "29.1",
+    "title": "Arpeggiator",
+    "page": 651,
+    "level": 2,
+    "chapter_file": "chapters/29-live-midi-effect-reference.md"
+  },
+  {
+    "section": "29.2",
+    "title": "CC Control",
+    "page": 654,
+    "level": 2,
+    "chapter_file": "chapters/29-live-midi-effect-reference.md"
+  },
+  {
+    "section": "29.3",
+    "title": "Chord",
+    "page": 655,
+    "level": 2,
+    "chapter_file": "chapters/29-live-midi-effect-reference.md"
+  },
+  {
+    "section": "29.4",
+    "title": "Note Length",
+    "page": 657,
+    "level": 2,
+    "chapter_file": "chapters/29-live-midi-effect-reference.md"
+  },
+  {
+    "section": "29.5",
+    "title": "Pitch",
+    "page": 658,
+    "level": 2,
+    "chapter_file": "chapters/29-live-midi-effect-reference.md"
+  },
+  {
+    "section": "29.6",
+    "title": "Random",
+    "page": 659,
+    "level": 2,
+    "chapter_file": "chapters/29-live-midi-effect-reference.md"
+  },
+  {
+    "section": "29.7",
+    "title": "Scale",
+    "page": 661,
+    "level": 2,
+    "chapter_file": "chapters/29-live-midi-effect-reference.md"
+  },
+  {
+    "section": "29.8",
+    "title": "Velocity",
+    "page": 662,
+    "level": 2,
+    "chapter_file": "chapters/29-live-midi-effect-reference.md"
+  },
+  {
+    "section": "30",
+    "title": "Live Instrument Reference",
+    "page": 664,
+    "level": 1,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.1",
+    "title": "Analog",
+    "page": 664,
+    "level": 2,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.1.1",
+    "title": "Architecture and Interface",
+    "page": 664,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.1.2",
+    "title": "Oscillators",
+    "page": 665,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.1.3",
+    "title": "Noise Generator",
+    "page": 667,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.1.4",
+    "title": "Filters",
+    "page": 667,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.1.5",
+    "title": "Amplifiers",
+    "page": 668,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.1.6",
+    "title": "Envelopes",
+    "page": 669,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.1.7",
+    "title": "LFOs",
+    "page": 670,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.1.8",
+    "title": "Global Parameters",
+    "page": 671,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.1.9",
+    "title": "MPE Sources",
+    "page": 672,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.2",
+    "title": "Collision",
+    "page": 673,
+    "level": 2,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.2.1",
+    "title": "Architecture and Interface",
+    "page": 673,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.2.2",
+    "title": "Mallet Section",
+    "page": 674,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.2.3",
+    "title": "Noise Section",
+    "page": 675,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.2.4",
+    "title": "Resonator Tabs",
+    "page": 676,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.2.5",
+    "title": "LFO Tab",
+    "page": 679,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.2.6",
+    "title": "MIDI/MPE Tab",
+    "page": 680,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.2.7",
+    "title": "Sound Design Tips",
+    "page": 681,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.3",
+    "title": "Drift",
+    "page": 682,
+    "level": 2,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.3.1",
+    "title": "Subtractive Synthesis",
+    "page": 682,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.3.2",
+    "title": "Oscillator Section",
+    "page": 683,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.3.3",
+    "title": "Filter Section",
+    "page": 685,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.3.4",
+    "title": "Envelopes Section",
+    "page": 686,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.3.5",
+    "title": "LFO Section",
+    "page": 687,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.3.6",
+    "title": "Mod Section",
+    "page": 688,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.3.7",
+    "title": "Global Section",
+    "page": 689,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.4",
+    "title": "Drum Sampler",
+    "page": 690,
+    "level": 2,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.4.1",
+    "title": "Sample Controls Section",
+    "page": 690,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.4.2",
+    "title": "Playback Effects Section",
+    "page": 692,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.4.3",
+    "title": "Filter Section",
+    "page": 694,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.4.4",
+    "title": "Global Section",
+    "page": 694,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.4.5",
+    "title": "Context Menu Options for Drum Sampler",
+    "page": 695,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.5",
+    "title": "Electric",
+    "page": 696,
+    "level": 2,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.5.1",
+    "title": "Architecture and Interface",
+    "page": 696,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.5.2",
+    "title": "Hammer Section",
+    "page": 697,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.5.3",
+    "title": "Fork Section",
+    "page": 698,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.5.4",
+    "title": "Damper/Pickup Section",
+    "page": 699,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.5.5",
+    "title": "Global Section",
+    "page": 700,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.6",
+    "title": "External Instrument",
+    "page": 701,
+    "level": 2,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.7",
+    "title": "Impulse",
+    "page": 703,
+    "level": 2,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.7.1",
+    "title": "Sample Slots",
+    "page": 703,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.7.2",
+    "title": "Start, Transpose and Stretch",
+    "page": 704,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.7.3",
+    "title": "Filter",
+    "page": 704,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.7.4",
+    "title": "Saturator and Envelope",
+    "page": 704,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.7.5",
+    "title": "Pan and Volume",
+    "page": 704,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.7.6",
+    "title": "Global Controls",
+    "page": 705,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.7.7",
+    "title": "Individual Outputs",
+    "page": 705,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.8",
+    "title": "Meld",
+    "page": 705,
+    "level": 2,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.8.1",
+    "title": "General Overview",
+    "page": 705,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.8.2",
+    "title": "Oscillators",
+    "page": 706,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.8.3",
+    "title": "Oscillator Macros",
+    "page": 707,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.8.4",
+    "title": "Envelopes Tab",
+    "page": 709,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.8.5",
+    "title": "LFOs Tab",
+    "page": 710,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.8.6",
+    "title": "Matrix Tab",
+    "page": 710,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.8.7",
+    "title": "MIDI and MPE Tabs",
+    "page": 711,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.8.8",
+    "title": "Settings Tab",
+    "page": 711,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.8.9",
+    "title": "Filters",
+    "page": 712,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.8.10",
+    "title": "Mix Section",
+    "page": 714,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.8.11",
+    "title": "Global Controls",
+    "page": 714,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.9",
+    "title": "Operator",
+    "page": 715,
+    "level": 2,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.9.1",
+    "title": "General Overview",
+    "page": 716,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.9.2",
+    "title": "Oscillator Section",
+    "page": 717,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.9.3",
+    "title": "LFO Section",
+    "page": 719,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.9.4",
+    "title": "Envelopes",
+    "page": 720,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.9.5",
+    "title": "Filter Section",
+    "page": 722,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.9.6",
+    "title": "Global Controls",
+    "page": 723,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.9.7",
+    "title": "Glide and Spread",
+    "page": 724,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.9.8",
+    "title": "Strategies for Saving CPU Power",
+    "page": 725,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.9.9",
+    "title": "Finally…",
+    "page": 725,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.9.10",
+    "title": "The Complete Parameter List",
+    "page": 725,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.10",
+    "title": "Sampler",
+    "page": 733,
+    "level": 2,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.10.1",
+    "title": "Getting Started with Sampler",
+    "page": 733,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.10.2",
+    "title": "Multisampling",
+    "page": 733,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.10.3",
+    "title": "Title Bar Options",
+    "page": 734,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.10.4",
+    "title": "Sampler’s Tabs",
+    "page": 735,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.10.5",
+    "title": "The Zone Tab",
+    "page": 735,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.10.6",
+    "title": "The Sample Tab",
+    "page": 741,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.10.7",
+    "title": "The Pitch/Osc Tab",
+    "page": 745,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.10.8",
+    "title": "The Filter/Global Tab",
+    "page": 747,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.10.9",
+    "title": "The Modulation Tab",
+    "page": 749,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.10.10",
+    "title": "The MIDI Tab",
+    "page": 750,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.10.11",
+    "title": "Importing Third-Party Multisamples",
+    "page": 751,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.11",
+    "title": "Simpler",
+    "page": 751,
+    "level": 2,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.11.1",
+    "title": "Playback Modes",
+    "page": 752,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.11.2",
+    "title": "Warp Controls",
+    "page": 756,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.11.3",
+    "title": "Filter",
+    "page": 757,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.11.4",
+    "title": "Envelopes",
+    "page": 758,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.11.5",
+    "title": "LFO",
+    "page": 759,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.11.6",
+    "title": "Global Parameters",
+    "page": 760,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.11.7",
+    "title": "Context Menu Options for Simpler",
+    "page": 761,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.11.8",
+    "title": "Strategies for Saving CPU Power",
+    "page": 761,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.12",
+    "title": "Tension",
+    "page": 762,
+    "level": 2,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.12.1",
+    "title": "Architecture and Interface",
+    "page": 762,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.12.2",
+    "title": "String Tab",
+    "page": 763,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.12.3",
+    "title": "Filter/Global Tab",
+    "page": 769,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.12.4",
+    "title": "Sound Design Tips",
+    "page": 773,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.13",
+    "title": "Wavetable",
+    "page": 774,
+    "level": 2,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.13.1",
+    "title": "Wavetable Synthesis",
+    "page": 774,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.13.2",
+    "title": "Oscillators",
+    "page": 774,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.13.3",
+    "title": "Sub Oscillator",
+    "page": 776,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.13.4",
+    "title": "Filters",
+    "page": 776,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.13.5",
+    "title": "Matrix Tab",
+    "page": 778,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.13.6",
+    "title": "Mod Sources Tab",
+    "page": 779,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.13.7",
+    "title": "MIDI Tab",
+    "page": 781,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.13.8",
+    "title": "Global and Unison Controls",
+    "page": 781,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "30.13.9",
+    "title": "Hi-Quality Mode",
+    "page": 783,
+    "level": 3,
+    "chapter_file": "chapters/30-live-instrument-reference.md"
+  },
+  {
+    "section": "31",
+    "title": "Max for Live",
+    "page": 784,
+    "level": 1,
+    "chapter_file": "chapters/31-max-for-live.md"
+  },
+  {
+    "section": "31.1",
+    "title": "Setting Up Max for Live",
+    "page": 784,
+    "level": 2,
+    "chapter_file": "chapters/31-max-for-live.md"
+  },
+  {
+    "section": "31.2",
+    "title": "Using Max for Live Devices",
+    "page": 785,
+    "level": 2,
+    "chapter_file": "chapters/31-max-for-live.md"
+  },
+  {
+    "section": "31.3",
+    "title": "Editing Max for Live Devices",
+    "page": 785,
+    "level": 2,
+    "chapter_file": "chapters/31-max-for-live.md"
+  },
+  {
+    "section": "31.4",
+    "title": "Building Max for Live MIDI Tools",
+    "page": 788,
+    "level": 2,
+    "chapter_file": "chapters/31-max-for-live.md"
+  },
+  {
+    "section": "31.5",
+    "title": "Max Dependencies",
+    "page": 789,
+    "level": 2,
+    "chapter_file": "chapters/31-max-for-live.md"
+  },
+  {
+    "section": "31.6",
+    "title": "Learning Max Programming",
+    "page": 789,
+    "level": 2,
+    "chapter_file": "chapters/31-max-for-live.md"
+  },
+  {
+    "section": "32",
+    "title": "Max for Live Devices",
+    "page": 790,
+    "level": 1,
+    "chapter_file": "chapters/32-max-for-live-devices.md"
+  },
+  {
+    "section": "32.1",
+    "title": "Max for Live Instruments",
+    "page": 791,
+    "level": 2,
+    "chapter_file": "chapters/32-max-for-live-devices.md"
+  },
+  {
+    "section": "32.1.1",
+    "title": "DS Clang",
+    "page": 791,
+    "level": 3,
+    "chapter_file": "chapters/32-max-for-live-devices.md"
+  },
+  {
+    "section": "32.1.2",
+    "title": "DS Clap",
+    "page": 792,
+    "level": 3,
+    "chapter_file": "chapters/32-max-for-live-devices.md"
+  },
+  {
+    "section": "32.1.3",
+    "title": "DS Cymbal",
+    "page": 793,
+    "level": 3,
+    "chapter_file": "chapters/32-max-for-live-devices.md"
+  },
+  {
+    "section": "32.1.4",
+    "title": "DS FM",
+    "page": 794,
+    "level": 3,
+    "chapter_file": "chapters/32-max-for-live-devices.md"
+  },
+  {
+    "section": "32.1.5",
+    "title": "DS HH",
+    "page": 795,
+    "level": 3,
+    "chapter_file": "chapters/32-max-for-live-devices.md"
+  },
+  {
+    "section": "32.1.6",
+    "title": "DS Kick",
+    "page": 796,
+    "level": 3,
+    "chapter_file": "chapters/32-max-for-live-devices.md"
+  },
+  {
+    "section": "32.1.7",
+    "title": "DS Snare",
+    "page": 797,
+    "level": 3,
+    "chapter_file": "chapters/32-max-for-live-devices.md"
+  },
+  {
+    "section": "32.1.8",
+    "title": "DS Tom",
+    "page": 798,
+    "level": 3,
+    "chapter_file": "chapters/32-max-for-live-devices.md"
+  },
+  {
+    "section": "32.2",
+    "title": "Max for Live Audio Effects",
+    "page": 799,
+    "level": 2,
+    "chapter_file": "chapters/32-max-for-live-devices.md"
+  },
+  {
+    "section": "32.2.1",
+    "title": "Align Delay",
+    "page": 799,
+    "level": 3,
+    "chapter_file": "chapters/32-max-for-live-devices.md"
+  },
+  {
+    "section": "32.2.2",
+    "title": "Envelope Follower",
+    "page": 800,
+    "level": 3,
+    "chapter_file": "chapters/32-max-for-live-devices.md"
+  },
+  {
+    "section": "32.2.3",
+    "title": "LFO",
+    "page": 803,
+    "level": 3,
+    "chapter_file": "chapters/32-max-for-live-devices.md"
+  },
+  {
+    "section": "32.2.4",
+    "title": "Shaper",
+    "page": 806,
+    "level": 3,
+    "chapter_file": "chapters/32-max-for-live-devices.md"
+  },
+  {
+    "section": "32.3",
+    "title": "Max for Live MIDI Effects",
+    "page": 808,
+    "level": 2,
+    "chapter_file": "chapters/32-max-for-live-devices.md"
+  },
+  {
+    "section": "32.3.1",
+    "title": "Envelope MIDI",
+    "page": 808,
+    "level": 3,
+    "chapter_file": "chapters/32-max-for-live-devices.md"
+  },
+  {
+    "section": "32.3.2",
+    "title": "Expression Control",
+    "page": 811,
+    "level": 3,
+    "chapter_file": "chapters/32-max-for-live-devices.md"
+  },
+  {
+    "section": "32.3.3",
+    "title": "MIDI Monitor",
+    "page": 813,
+    "level": 3,
+    "chapter_file": "chapters/32-max-for-live-devices.md"
+  },
+  {
+    "section": "32.3.4",
+    "title": "MPE Control",
+    "page": 815,
+    "level": 3,
+    "chapter_file": "chapters/32-max-for-live-devices.md"
+  },
+  {
+    "section": "32.3.5",
+    "title": "Note Echo",
+    "page": 821,
+    "level": 3,
+    "chapter_file": "chapters/32-max-for-live-devices.md"
+  },
+  {
+    "section": "32.3.6",
+    "title": "Shaper MIDI",
+    "page": 822,
+    "level": 3,
+    "chapter_file": "chapters/32-max-for-live-devices.md"
+  },
+  {
+    "section": "33",
+    "title": "MIDI and Key Remote Control",
+    "page": 825,
+    "level": 1,
+    "chapter_file": "chapters/33-midi-and-key-remote-control.md"
+  },
+  {
+    "section": "33.1",
+    "title": "MIDI Remote Control",
+    "page": 825,
+    "level": 2,
+    "chapter_file": "chapters/33-midi-and-key-remote-control.md"
+  },
+  {
+    "section": "33.1.1",
+    "title": "Natively Supported Control Surfaces",
+    "page": 826,
+    "level": 3,
+    "chapter_file": "chapters/33-midi-and-key-remote-control.md"
+  },
+  {
+    "section": "33.1.2",
+    "title": "Manual Control Surface Setup",
+    "page": 827,
+    "level": 3,
+    "chapter_file": "chapters/33-midi-and-key-remote-control.md"
+  },
+  {
+    "section": "33.1.3",
+    "title": "Takeover Mode",
+    "page": 828,
+    "level": 3,
+    "chapter_file": "chapters/33-midi-and-key-remote-control.md"
+  },
+  {
+    "section": "33.2",
+    "title": "The Mapping Browser",
+    "page": 829,
+    "level": 2,
+    "chapter_file": "chapters/33-midi-and-key-remote-control.md"
+  },
+  {
+    "section": "33.2.1",
+    "title": "Assigning MIDI Remote Control",
+    "page": 830,
+    "level": 3,
+    "chapter_file": "chapters/33-midi-and-key-remote-control.md"
+  },
+  {
+    "section": "33.2.2",
+    "title": "Mapping to MIDI Notes",
+    "page": 830,
+    "level": 3,
+    "chapter_file": "chapters/33-midi-and-key-remote-control.md"
+  },
+  {
+    "section": "33.2.3",
+    "title": "Mapping to Absolute MIDI Controllers",
+    "page": 830,
+    "level": 3,
+    "chapter_file": "chapters/33-midi-and-key-remote-control.md"
+  },
+  {
+    "section": "33.2.4",
+    "title": "Mapping to Relative MIDI Controllers",
+    "page": 831,
+    "level": 3,
+    "chapter_file": "chapters/33-midi-and-key-remote-control.md"
+  },
+  {
+    "section": "33.2.5",
+    "title": "Computer Keyboard Remote Control",
+    "page": 833,
+    "level": 3,
+    "chapter_file": "chapters/33-midi-and-key-remote-control.md"
+  },
+  {
+    "section": "34",
+    "title": "Using Push 1",
+    "page": 834,
+    "level": 1,
+    "chapter_file": "chapters/34-using-push-1.md"
+  },
+  {
+    "section": "34.1",
+    "title": "Setup",
+    "page": 834,
+    "level": 2,
+    "chapter_file": "chapters/34-using-push-1.md"
+  },
+  {
+    "section": "34.2",
+    "title": "Browsing and Loading Sounds",
+    "page": 835,
+    "level": 2,
+    "chapter_file": "chapters/34-using-push-1.md"
+  },
+  {
+    "section": "34.3",
+    "title": "Playing and Programming Beats",
+    "page": 836,
+    "level": 2,
+    "chapter_file": "chapters/34-using-push-1.md"
+  },
+  {
+    "section": "34.3.1",
+    "title": "Loop Selector",
+    "page": 836,
+    "level": 3,
+    "chapter_file": "chapters/34-using-push-1.md"
+  },
+  {
+    "section": "34.3.2",
+    "title": "16 Velocities Mode",
+    "page": 838,
+    "level": 3,
+    "chapter_file": "chapters/34-using-push-1.md"
+  },
+  {
+    "section": "34.3.3",
+    "title": "64-Pad Mode",
+    "page": 838,
+    "level": 3,
+    "chapter_file": "chapters/34-using-push-1.md"
+  },
+  {
+    "section": "34.3.4",
+    "title": "Loading Individual Drums",
+    "page": 838,
+    "level": 3,
+    "chapter_file": "chapters/34-using-push-1.md"
+  },
+  {
+    "section": "34.3.5",
+    "title": "Step Sequencing Beats",
+    "page": 839,
+    "level": 3,
+    "chapter_file": "chapters/34-using-push-1.md"
+  },
+  {
+    "section": "34.3.6",
+    "title": "Real-time Recording",
+    "page": 841,
+    "level": 3,
+    "chapter_file": "chapters/34-using-push-1.md"
+  },
+  {
+    "section": "34.3.7",
+    "title": "Fixed Length Recording",
+    "page": 843,
+    "level": 3,
+    "chapter_file": "chapters/34-using-push-1.md"
+  },
+  {
+    "section": "34.4",
+    "title": "Additional Recording Options",
+    "page": 844,
+    "level": 2,
+    "chapter_file": "chapters/34-using-push-1.md"
+  },
+  {
+    "section": "34.4.1",
+    "title": "Recording with Repeat",
+    "page": 844,
+    "level": 3,
+    "chapter_file": "chapters/34-using-push-1.md"
+  },
+  {
+    "section": "34.4.2",
+    "title": "Quantizing",
+    "page": 845,
+    "level": 3,
+    "chapter_file": "chapters/34-using-push-1.md"
+  },
+  {
+    "section": "34.5",
+    "title": "Playing Melodies and Harmonies",
+    "page": 846,
+    "level": 2,
+    "chapter_file": "chapters/34-using-push-1.md"
+  },
+  {
+    "section": "34.5.1",
+    "title": "Playing in Other Keys",
+    "page": 848,
+    "level": 3,
+    "chapter_file": "chapters/34-using-push-1.md"
+  },
+  {
+    "section": "34.6",
+    "title": "Step Sequencing Melodies and Harmonies",
+    "page": 849,
+    "level": 2,
+    "chapter_file": "chapters/34-using-push-1.md"
+  },
+  {
+    "section": "34.6.1",
+    "title": "Adjusting the Loop Length",
+    "page": 851,
+    "level": 3,
+    "chapter_file": "chapters/34-using-push-1.md"
+  },
+  {
+    "section": "34.7",
+    "title": "Melodic Sequencer + 32 Notes",
+    "page": 852,
+    "level": 2,
+    "chapter_file": "chapters/34-using-push-1.md"
+  },
+  {
+    "section": "34.7.1",
+    "title": "32 Notes",
+    "page": 852,
+    "level": 3,
+    "chapter_file": "chapters/34-using-push-1.md"
+  },
+  {
+    "section": "34.7.2",
+    "title": "Sequencer",
+    "page": 853,
+    "level": 3,
+    "chapter_file": "chapters/34-using-push-1.md"
+  },
+  {
+    "section": "34.8",
+    "title": "Navigating in Note Mode",
+    "page": 853,
+    "level": 2,
+    "chapter_file": "chapters/34-using-push-1.md"
+  },
+  {
+    "section": "34.9",
+    "title": "Controlling Live’s Instruments and Effects",
+    "page": 854,
+    "level": 2,
+    "chapter_file": "chapters/34-using-push-1.md"
+  },
+  {
+    "section": "34.10",
+    "title": "Mixing with Push 1",
+    "page": 855,
+    "level": 2,
+    "chapter_file": "chapters/34-using-push-1.md"
+  },
+  {
+    "section": "34.11",
+    "title": "Recording Automation",
+    "page": 857,
+    "level": 2,
+    "chapter_file": "chapters/34-using-push-1.md"
+  },
+  {
+    "section": "34.12",
+    "title": "Step Sequencing Automation",
+    "page": 858,
+    "level": 2,
+    "chapter_file": "chapters/34-using-push-1.md"
+  },
+  {
+    "section": "34.12.1",
+    "title": "Note-Specific Parameters",
+    "page": 858,
+    "level": 3,
+    "chapter_file": "chapters/34-using-push-1.md"
+  },
+  {
+    "section": "34.12.2",
+    "title": "Per-Step Automation",
+    "page": 859,
+    "level": 3,
+    "chapter_file": "chapters/34-using-push-1.md"
+  },
+  {
+    "section": "34.13",
+    "title": "Controlling Live’s Session View",
+    "page": 859,
+    "level": 2,
+    "chapter_file": "chapters/34-using-push-1.md"
+  },
+  {
+    "section": "34.13.1",
+    "title": "Session Overview",
+    "page": 860,
+    "level": 3,
+    "chapter_file": "chapters/34-using-push-1.md"
+  },
+  {
+    "section": "34.14",
+    "title": "Setting User Preferences",
+    "page": 861,
+    "level": 2,
+    "chapter_file": "chapters/34-using-push-1.md"
+  },
+  {
+    "section": "34.15",
+    "title": "Push 1 Control Reference",
+    "page": 863,
+    "level": 2,
+    "chapter_file": "chapters/34-using-push-1.md"
+  },
+  {
+    "section": "35",
+    "title": "Using Push 2",
+    "page": 874,
+    "level": 1,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.1",
+    "title": "Setup",
+    "page": 875,
+    "level": 2,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.2",
+    "title": "Browsing and Loading Sounds",
+    "page": 875,
+    "level": 2,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.3",
+    "title": "Playing and Programming Beats",
+    "page": 878,
+    "level": 2,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.3.1",
+    "title": "Loop Selector",
+    "page": 878,
+    "level": 3,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.3.2",
+    "title": "16 Velocities Mode",
+    "page": 880,
+    "level": 3,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.3.3",
+    "title": "64-Pad Mode",
+    "page": 880,
+    "level": 3,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.3.4",
+    "title": "Loading Individual Drums",
+    "page": 881,
+    "level": 3,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.3.5",
+    "title": "Step Sequencing Beats",
+    "page": 884,
+    "level": 3,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.3.6",
+    "title": "Real-time Recording",
+    "page": 887,
+    "level": 3,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.3.7",
+    "title": "Fixed Length Recording",
+    "page": 889,
+    "level": 3,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.4",
+    "title": "Additional Recording Options",
+    "page": 890,
+    "level": 2,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.4.1",
+    "title": "Recording with Repeat",
+    "page": 890,
+    "level": 3,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.4.2",
+    "title": "Quantizing",
+    "page": 891,
+    "level": 3,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.4.3",
+    "title": "Arrangement Recording",
+    "page": 892,
+    "level": 3,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.5",
+    "title": "Playing Melodies and Harmonies",
+    "page": 892,
+    "level": 2,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.5.1",
+    "title": "Playing in Other Keys",
+    "page": 895,
+    "level": 3,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.6",
+    "title": "Step Sequencing Melodies and Harmonies",
+    "page": 896,
+    "level": 2,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.6.1",
+    "title": "Adjusting the Loop Length",
+    "page": 898,
+    "level": 3,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.7",
+    "title": "Melodic Sequencer + 32 Notes",
+    "page": 899,
+    "level": 2,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.7.1",
+    "title": "32 Notes",
+    "page": 900,
+    "level": 3,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.7.2",
+    "title": "Sequencer",
+    "page": 900,
+    "level": 3,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.8",
+    "title": "Working with Samples",
+    "page": 902,
+    "level": 2,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.8.1",
+    "title": "Classic Playback Mode",
+    "page": 903,
+    "level": 3,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.8.2",
+    "title": "One-Shot Mode",
+    "page": 904,
+    "level": 3,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.8.3",
+    "title": "Slicing Mode",
+    "page": 906,
+    "level": 3,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.9",
+    "title": "Navigating in Note Mode",
+    "page": 908,
+    "level": 2,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.10",
+    "title": "Working With Instruments and Effects",
+    "page": 909,
+    "level": 2,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.10.1",
+    "title": "Adding, Deleting, and Reordering Devices",
+    "page": 911,
+    "level": 3,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.10.2",
+    "title": "Working with Racks",
+    "page": 912,
+    "level": 3,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.11",
+    "title": "Track Control And Mixing",
+    "page": 914,
+    "level": 2,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.11.1",
+    "title": "Rack and Group Track Mixing",
+    "page": 916,
+    "level": 3,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.12",
+    "title": "Recording Automation",
+    "page": 917,
+    "level": 2,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.13",
+    "title": "Step Sequencing Automation",
+    "page": 918,
+    "level": 2,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.14",
+    "title": "Clip Mode",
+    "page": 919,
+    "level": 2,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.14.1",
+    "title": "Using MIDI Tracks in Clip Mode",
+    "page": 921,
+    "level": 3,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.14.2",
+    "title": "Real-Time Playing Layouts",
+    "page": 921,
+    "level": 3,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.14.3",
+    "title": "Sequencing Layouts",
+    "page": 921,
+    "level": 3,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.14.4",
+    "title": "Note-Specific Parameters",
+    "page": 923,
+    "level": 3,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.15",
+    "title": "Controlling Live’s Session View",
+    "page": 923,
+    "level": 2,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.15.1",
+    "title": "Session Overview",
+    "page": 925,
+    "level": 3,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.16",
+    "title": "Setup Menu",
+    "page": 926,
+    "level": 2,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "35.17",
+    "title": "Push 2 Control Reference",
+    "page": 927,
+    "level": 2,
+    "chapter_file": "chapters/35-using-push-2.md"
+  },
+  {
+    "section": "36",
+    "title": "Synchronizing with Link, Tempo Follower, and MIDI",
+    "page": 933,
+    "level": 1,
+    "chapter_file": "chapters/36-synchronizing-with-link-tempo-follower-and-midi.md"
+  },
+  {
+    "section": "36.1",
+    "title": "Synchronizing via Link",
+    "page": 933,
+    "level": 2,
+    "chapter_file": "chapters/36-synchronizing-with-link-tempo-follower-and-midi.md"
+  },
+  {
+    "section": "36.1.1",
+    "title": "Setting up Link",
+    "page": 933,
+    "level": 3,
+    "chapter_file": "chapters/36-synchronizing-with-link-tempo-follower-and-midi.md"
+  },
+  {
+    "section": "36.1.2",
+    "title": "Using Link",
+    "page": 936,
+    "level": 3,
+    "chapter_file": "chapters/36-synchronizing-with-link-tempo-follower-and-midi.md"
+  },
+  {
+    "section": "36.1.3",
+    "title": "Using Link Audio",
+    "page": 936,
+    "level": 3,
+    "chapter_file": "chapters/36-synchronizing-with-link-tempo-follower-and-midi.md"
+  },
+  {
+    "section": "36.2",
+    "title": "Synchronizing via Tempo Follower",
+    "page": 937,
+    "level": 2,
+    "chapter_file": "chapters/36-synchronizing-with-link-tempo-follower-and-midi.md"
+  },
+  {
+    "section": "36.2.1",
+    "title": "Setting Up Tempo Follower",
+    "page": 938,
+    "level": 3,
+    "chapter_file": "chapters/36-synchronizing-with-link-tempo-follower-and-midi.md"
+  },
+  {
+    "section": "36.3",
+    "title": "Synchronizing via MIDI",
+    "page": 939,
+    "level": 2,
+    "chapter_file": "chapters/36-synchronizing-with-link-tempo-follower-and-midi.md"
+  },
+  {
+    "section": "36.3.1",
+    "title": "Synchronizing External MIDI Devices to Live",
+    "page": 939,
+    "level": 3,
+    "chapter_file": "chapters/36-synchronizing-with-link-tempo-follower-and-midi.md"
+  },
+  {
+    "section": "36.3.2",
+    "title": "Synchronizing Live to External MIDI Devices",
+    "page": 939,
+    "level": 3,
+    "chapter_file": "chapters/36-synchronizing-with-link-tempo-follower-and-midi.md"
+  },
+  {
+    "section": "36.3.3",
+    "title": "Sync Delay",
+    "page": 940,
+    "level": 3,
+    "chapter_file": "chapters/36-synchronizing-with-link-tempo-follower-and-midi.md"
+  },
+  {
+    "section": "37",
+    "title": "Computer Audio Resources and Strategies",
+    "page": 942,
+    "level": 1,
+    "chapter_file": "chapters/37-computer-audio-resources-and-strategies.md"
+  },
+  {
+    "section": "37.1",
+    "title": "Managing the CPU Load",
+    "page": 942,
+    "level": 2,
+    "chapter_file": "chapters/37-computer-audio-resources-and-strategies.md"
+  },
+  {
+    "section": "37.1.1",
+    "title": "The CPU Load Meter",
+    "page": 942,
+    "level": 3,
+    "chapter_file": "chapters/37-computer-audio-resources-and-strategies.md"
+  },
+  {
+    "section": "37.1.2",
+    "title": "CPU Load from Multichannel Audio",
+    "page": 944,
+    "level": 3,
+    "chapter_file": "chapters/37-computer-audio-resources-and-strategies.md"
+  },
+  {
+    "section": "37.1.3",
+    "title": "CPU Load from Tracks and Devices",
+    "page": 944,
+    "level": 3,
+    "chapter_file": "chapters/37-computer-audio-resources-and-strategies.md"
+  },
+  {
+    "section": "37.1.4",
+    "title": "Track Freeze",
+    "page": 945,
+    "level": 3,
+    "chapter_file": "chapters/37-computer-audio-resources-and-strategies.md"
+  },
+  {
+    "section": "37.2",
+    "title": "Managing the Disk Load",
+    "page": 946,
+    "level": 2,
+    "chapter_file": "chapters/37-computer-audio-resources-and-strategies.md"
+  },
+  {
+    "section": "38",
+    "title": "Audio Fact Sheet",
+    "page": 948,
+    "level": 1,
+    "chapter_file": "chapters/38-audio-fact-sheet.md"
+  },
+  {
+    "section": "38.1",
+    "title": "Testing and Methodology",
+    "page": 948,
+    "level": 2,
+    "chapter_file": "chapters/38-audio-fact-sheet.md"
+  },
+  {
+    "section": "38.2",
+    "title": "Neutral Operations",
+    "page": 948,
+    "level": 2,
+    "chapter_file": "chapters/38-audio-fact-sheet.md"
+  },
+  {
+    "section": "38.2.1",
+    "title": "Undithered Rendering",
+    "page": 949,
+    "level": 3,
+    "chapter_file": "chapters/38-audio-fact-sheet.md"
+  },
+  {
+    "section": "38.2.2",
+    "title": "Matching Sample Rate/No Transposition",
+    "page": 949,
+    "level": 3,
+    "chapter_file": "chapters/38-audio-fact-sheet.md"
+  },
+  {
+    "section": "38.2.3",
+    "title": "Unstretched Beats/Tones/Texture/Re-Pitch Warping",
+    "page": 949,
+    "level": 3,
+    "chapter_file": "chapters/38-audio-fact-sheet.md"
+  },
+  {
+    "section": "38.2.4",
+    "title": "Summing at Single Mix Points",
+    "page": 950,
+    "level": 3,
+    "chapter_file": "chapters/38-audio-fact-sheet.md"
+  },
+  {
+    "section": "38.2.5",
+    "title": "Recording External Signals (Bit Depth >/= A/D Converter)",
+    "page": 950,
+    "level": 3,
+    "chapter_file": "chapters/38-audio-fact-sheet.md"
+  },
+  {
+    "section": "38.2.6",
+    "title": "Recording Internal Sources at 32 Bit",
+    "page": 950,
+    "level": 3,
+    "chapter_file": "chapters/38-audio-fact-sheet.md"
+  },
+  {
+    "section": "38.2.7",
+    "title": "Freezing Tracks",
+    "page": 951,
+    "level": 3,
+    "chapter_file": "chapters/38-audio-fact-sheet.md"
+  },
+  {
+    "section": "38.2.8",
+    "title": "Bypassed Effects",
+    "page": 951,
+    "level": 3,
+    "chapter_file": "chapters/38-audio-fact-sheet.md"
+  },
+  {
+    "section": "38.2.9",
+    "title": "Routing",
+    "page": 952,
+    "level": 3,
+    "chapter_file": "chapters/38-audio-fact-sheet.md"
+  },
+  {
+    "section": "38.2.10",
+    "title": "Splitting Clips",
+    "page": 952,
+    "level": 3,
+    "chapter_file": "chapters/38-audio-fact-sheet.md"
+  },
+  {
+    "section": "38.3",
+    "title": "Non-Neutral Operations",
+    "page": 952,
+    "level": 2,
+    "chapter_file": "chapters/38-audio-fact-sheet.md"
+  },
+  {
+    "section": "38.3.1",
+    "title": "Playback in Complex and Complex Pro Mode",
+    "page": 952,
+    "level": 3,
+    "chapter_file": "chapters/38-audio-fact-sheet.md"
+  },
+  {
+    "section": "38.3.2",
+    "title": "Sample Rate Conversion/Transposition",
+    "page": 953,
+    "level": 3,
+    "chapter_file": "chapters/38-audio-fact-sheet.md"
+  },
+  {
+    "section": "38.3.3",
+    "title": "Volume Automation",
+    "page": 953,
+    "level": 3,
+    "chapter_file": "chapters/38-audio-fact-sheet.md"
+  },
+  {
+    "section": "38.3.4",
+    "title": "Dithering",
+    "page": 953,
+    "level": 3,
+    "chapter_file": "chapters/38-audio-fact-sheet.md"
+  },
+  {
+    "section": "38.3.5",
+    "title": "Recording External Signals (Bit Depth < A/D Converter)",
+    "page": 953,
+    "level": 3,
+    "chapter_file": "chapters/38-audio-fact-sheet.md"
+  },
+  {
+    "section": "38.3.6",
+    "title": "Recording Internal Sources Below 32 Bit",
+    "page": 954,
+    "level": 3,
+    "chapter_file": "chapters/38-audio-fact-sheet.md"
+  },
+  {
+    "section": "38.3.7",
+    "title": "Consolidate",
+    "page": 954,
+    "level": 3,
+    "chapter_file": "chapters/38-audio-fact-sheet.md"
+  },
+  {
+    "section": "38.3.8",
+    "title": "Clip Fades",
+    "page": 954,
+    "level": 3,
+    "chapter_file": "chapters/38-audio-fact-sheet.md"
+  },
+  {
+    "section": "38.3.9",
+    "title": "Panning",
+    "page": 954,
+    "level": 3,
+    "chapter_file": "chapters/38-audio-fact-sheet.md"
+  },
+  {
+    "section": "38.3.10",
+    "title": "Grooves",
+    "page": 954,
+    "level": 3,
+    "chapter_file": "chapters/38-audio-fact-sheet.md"
+  },
+  {
+    "section": "38.4",
+    "title": "Tips for Achieving Optimal Sound Quality in Live",
+    "page": 955,
+    "level": 2,
+    "chapter_file": "chapters/38-audio-fact-sheet.md"
+  },
+  {
+    "section": "38.5",
+    "title": "Conclusion",
+    "page": 955,
+    "level": 2,
+    "chapter_file": "chapters/38-audio-fact-sheet.md"
+  },
+  {
+    "section": "39",
+    "title": "MIDI Fact Sheet",
+    "page": 956,
+    "level": 1,
+    "chapter_file": "chapters/39-midi-fact-sheet.md"
+  },
+  {
+    "section": "39.1",
+    "title": "Ideal MIDI Behavior",
+    "page": 956,
+    "level": 2,
+    "chapter_file": "chapters/39-midi-fact-sheet.md"
+  },
+  {
+    "section": "39.2",
+    "title": "MIDI Timing Problems",
+    "page": 957,
+    "level": 2,
+    "chapter_file": "chapters/39-midi-fact-sheet.md"
+  },
+  {
+    "section": "39.3",
+    "title": "Live’s MIDI Solutions",
+    "page": 957,
+    "level": 2,
+    "chapter_file": "chapters/39-midi-fact-sheet.md"
+  },
+  {
+    "section": "39.4",
+    "title": "Variables Outside of Live’s Control",
+    "page": 958,
+    "level": 2,
+    "chapter_file": "chapters/39-midi-fact-sheet.md"
+  },
+  {
+    "section": "39.5",
+    "title": "Tips for Achieving Optimal MIDI Performance",
+    "page": 960,
+    "level": 2,
+    "chapter_file": "chapters/39-midi-fact-sheet.md"
+  },
+  {
+    "section": "39.6",
+    "title": "Summary and Conclusions",
+    "page": 960,
+    "level": 2,
+    "chapter_file": "chapters/39-midi-fact-sheet.md"
+  },
+  {
+    "section": "40",
+    "title": "Accessibility and Keyboard Navigation",
+    "page": 962,
+    "level": 1,
+    "chapter_file": "chapters/40-accessibility-and-keyboard-navigation.md"
+  },
+  {
+    "section": "40.1",
+    "title": "Menu and Keyboard Navigation Settings",
+    "page": 962,
+    "level": 2,
+    "chapter_file": "chapters/40-accessibility-and-keyboard-navigation.md"
+  },
+  {
+    "section": "40.1.1",
+    "title": "Using Tab for Navigation",
+    "page": 962,
+    "level": 3,
+    "chapter_file": "chapters/40-accessibility-and-keyboard-navigation.md"
+  },
+  {
+    "section": "40.1.2",
+    "title": "Settings Menu",
+    "page": 963,
+    "level": 3,
+    "chapter_file": "chapters/40-accessibility-and-keyboard-navigation.md"
+  },
+  {
+    "section": "40.1.3",
+    "title": "Options Menu",
+    "page": 964,
+    "level": 3,
+    "chapter_file": "chapters/40-accessibility-and-keyboard-navigation.md"
+  },
+  {
+    "section": "40.1.4",
+    "title": "Speak Help Text",
+    "page": 964,
+    "level": 3,
+    "chapter_file": "chapters/40-accessibility-and-keyboard-navigation.md"
+  },
+  {
+    "section": "40.2",
+    "title": "Audio Setup",
+    "page": 964,
+    "level": 2,
+    "chapter_file": "chapters/40-accessibility-and-keyboard-navigation.md"
+  },
+  {
+    "section": "40.3",
+    "title": "Connecting MIDI Devices",
+    "page": 964,
+    "level": 2,
+    "chapter_file": "chapters/40-accessibility-and-keyboard-navigation.md"
+  },
+  {
+    "section": "40.4",
+    "title": "Navigating in Live",
+    "page": 965,
+    "level": 2,
+    "chapter_file": "chapters/40-accessibility-and-keyboard-navigation.md"
+  },
+  {
+    "section": "40.4.1",
+    "title": "Navigate Menu",
+    "page": 965,
+    "level": 3,
+    "chapter_file": "chapters/40-accessibility-and-keyboard-navigation.md"
+  },
+  {
+    "section": "40.5",
+    "title": "Editing Automation and Modulation Envelopes",
+    "page": 970,
+    "level": 2,
+    "chapter_file": "chapters/40-accessibility-and-keyboard-navigation.md"
+  },
+  {
+    "section": "40.5.1",
+    "title": "Navigating Between Breakpoints",
+    "page": 970,
+    "level": 3,
+    "chapter_file": "chapters/40-accessibility-and-keyboard-navigation.md"
+  },
+  {
+    "section": "40.5.2",
+    "title": "Selecting and Editing Breakpoints",
+    "page": 971,
+    "level": 3,
+    "chapter_file": "chapters/40-accessibility-and-keyboard-navigation.md"
+  },
+  {
+    "section": "40.5.3",
+    "title": "Switching Between Automation Envelopes in Arrangement View",
+    "page": 972,
+    "level": 3,
+    "chapter_file": "chapters/40-accessibility-and-keyboard-navigation.md"
+  },
+  {
+    "section": "41",
+    "title": "Live Keyboard Shortcuts",
+    "page": 973,
+    "level": 1,
+    "chapter_file": "chapters/41-live-keyboard-shortcuts.md"
+  },
+  {
+    "section": "41.1",
+    "title": "Showing and Hiding Views",
+    "page": 973,
+    "level": 2,
+    "chapter_file": "chapters/41-live-keyboard-shortcuts.md"
+  },
+  {
+    "section": "41.2",
+    "title": "Keyboard Focus and Navigation",
+    "page": 974,
+    "level": 2,
+    "chapter_file": "chapters/41-live-keyboard-shortcuts.md"
+  },
+  {
+    "section": "41.3",
+    "title": "Working with Sets and the Program",
+    "page": 975,
+    "level": 2,
+    "chapter_file": "chapters/41-live-keyboard-shortcuts.md"
+  },
+  {
+    "section": "41.4",
+    "title": "Working with Devices and Plug-Ins",
+    "page": 976,
+    "level": 2,
+    "chapter_file": "chapters/41-live-keyboard-shortcuts.md"
+  },
+  {
+    "section": "41.5",
+    "title": "Editing",
+    "page": 976,
+    "level": 2,
+    "chapter_file": "chapters/41-live-keyboard-shortcuts.md"
+  },
+  {
+    "section": "41.6",
+    "title": "Adjusting Values",
+    "page": 977,
+    "level": 2,
+    "chapter_file": "chapters/41-live-keyboard-shortcuts.md"
+  },
+  {
+    "section": "41.7",
+    "title": "Commands for Breakpoint Envelopes",
+    "page": 978,
+    "level": 2,
+    "chapter_file": "chapters/41-live-keyboard-shortcuts.md"
+  },
+  {
+    "section": "41.8",
+    "title": "Loop Brace and Start/End Markers",
+    "page": 979,
+    "level": 2,
+    "chapter_file": "chapters/41-live-keyboard-shortcuts.md"
+  },
+  {
+    "section": "41.9",
+    "title": "Zooming, Display and Selections",
+    "page": 979,
+    "level": 2,
+    "chapter_file": "chapters/41-live-keyboard-shortcuts.md"
+  },
+  {
+    "section": "41.10",
+    "title": "Clip View Editor View Modes",
+    "page": 980,
+    "level": 2,
+    "chapter_file": "chapters/41-live-keyboard-shortcuts.md"
+  },
+  {
+    "section": "41.11",
+    "title": "Clip View Sample Editor",
+    "page": 981,
+    "level": 2,
+    "chapter_file": "chapters/41-live-keyboard-shortcuts.md"
+  },
+  {
+    "section": "41.12",
+    "title": "Clip View MIDI Note Editor",
+    "page": 981,
+    "level": 2,
+    "chapter_file": "chapters/41-live-keyboard-shortcuts.md"
+  },
+  {
+    "section": "41.13",
+    "title": "Grid Snapping and Drawing",
+    "page": 984,
+    "level": 2,
+    "chapter_file": "chapters/41-live-keyboard-shortcuts.md"
+  },
+  {
+    "section": "41.14",
+    "title": "Global Quantization",
+    "page": 984,
+    "level": 2,
+    "chapter_file": "chapters/41-live-keyboard-shortcuts.md"
+  },
+  {
+    "section": "41.15",
+    "title": "Session View",
+    "page": 985,
+    "level": 2,
+    "chapter_file": "chapters/41-live-keyboard-shortcuts.md"
+  },
+  {
+    "section": "41.16",
+    "title": "Arrangement View",
+    "page": 986,
+    "level": 2,
+    "chapter_file": "chapters/41-live-keyboard-shortcuts.md"
+  },
+  {
+    "section": "41.17",
+    "title": "Comping",
+    "page": 988,
+    "level": 2,
+    "chapter_file": "chapters/41-live-keyboard-shortcuts.md"
+  },
+  {
+    "section": "41.18",
+    "title": "Bounce to Audio",
+    "page": 988,
+    "level": 2,
+    "chapter_file": "chapters/41-live-keyboard-shortcuts.md"
+  },
+  {
+    "section": "41.19",
+    "title": "Commands for Tracks",
+    "page": 989,
+    "level": 2,
+    "chapter_file": "chapters/41-live-keyboard-shortcuts.md"
+  },
+  {
+    "section": "41.20",
+    "title": "Transport",
+    "page": 990,
+    "level": 2,
+    "chapter_file": "chapters/41-live-keyboard-shortcuts.md"
+  },
+  {
+    "section": "41.21",
+    "title": "Audio Engine",
+    "page": 991,
+    "level": 2,
+    "chapter_file": "chapters/41-live-keyboard-shortcuts.md"
+  },
+  {
+    "section": "41.22",
+    "title": "Browser",
+    "page": 991,
+    "level": 2,
+    "chapter_file": "chapters/41-live-keyboard-shortcuts.md"
+  },
+  {
+    "section": "41.23",
+    "title": "Similar Sample Swapping",
+    "page": 992,
+    "level": 2,
+    "chapter_file": "chapters/41-live-keyboard-shortcuts.md"
+  },
+  {
+    "section": "41.24",
+    "title": "Key/MIDI Map Mode and the Computer MIDI Keyboard",
+    "page": 992,
+    "level": 2,
+    "chapter_file": "chapters/41-live-keyboard-shortcuts.md"
+  },
+  {
+    "section": "41.25",
+    "title": "Momentary Latching Shortcuts",
+    "page": 993,
+    "level": 2,
+    "chapter_file": "chapters/41-live-keyboard-shortcuts.md"
+  },
+  {
+    "section": "41.26",
+    "title": "General Keyboard Navigation and Workflow",
+    "page": 993,
+    "level": 2,
+    "chapter_file": "chapters/41-live-keyboard-shortcuts.md"
+  },
+  {
+    "section": "41.26.1",
+    "title": "Using Tab for Navigation",
+    "page": 994,
+    "level": 3,
+    "chapter_file": "chapters/41-live-keyboard-shortcuts.md"
+  },
+  {
+    "section": "41.26.2",
+    "title": "Navigating Between Controls in the Settings Menu",
+    "page": 994,
+    "level": 3,
+    "chapter_file": "chapters/41-live-keyboard-shortcuts.md"
+  },
+  {
+    "section": "41.27",
+    "title": "Editing Automation and Modulation Envelopes with the Keyboard",
+    "page": 995,
+    "level": 2,
+    "chapter_file": "chapters/41-live-keyboard-shortcuts.md"
+  },
+  {
+    "section": "41.28",
+    "title": "Accessing Menus",
+    "page": 995,
+    "level": 2,
+    "chapter_file": "chapters/41-live-keyboard-shortcuts.md"
+  },
+  {
+    "section": "41.29",
+    "title": "Using Live’s Context Menu",
+    "page": 995,
+    "level": 2,
+    "chapter_file": "chapters/41-live-keyboard-shortcuts.md"
+  },
+  {
+    "section": "42",
+    "title": "Credits",
+    "page": 996,
+    "level": 1,
+    "chapter_file": "chapters/42-credits.md"
+  }
+]

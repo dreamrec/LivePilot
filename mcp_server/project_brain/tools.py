@@ -84,41 +84,17 @@ def build_project_brain(ctx: Context) -> dict:
         except Exception as exc:
             logger.debug("build_project_brain failed: %s", exc)
 
-    # 5b/5c. Single combined grid sweep for notes (role inference) and clip
-    # automation envelopes. Previously these were two separate
-    # N_tracks x N_scenes loops, each issuing a remote round-trip per slot —
-    # including empty slots. We now consult the get_scene_matrix presence grid
-    # (already fetched at step 3 as clip_matrix) and skip slots that are
-    # positively empty, collapsing both sweeps into one pass over the grid.
+    # 5b. Build notes_map for role inference.
+    # Shape: {section_id: {track_index: [notes]}}. Without this, role_graph
+    # falls back to "assume all tracks active in every section" which destroys
+    # section-scoped role confidence.
     #
     # BUG-E1: section_id must match what build_section_graph_from_scenes emits.
     # The composition engine emits `sec_{i:02d}` using the RAW enumerate index
     # of the scene — it skips unnamed scenes (gap-preserving), so e.g. scenes
     # ["Intro", "", "Verse"] become sections sec_00 and sec_02, not sec_01.
-    # Both maps mirror that or keys won't align.
-    #
-    # clips_scanned is the denominator for coverage_pct (BUG-D2): it counts
-    # the slots we actually probed for envelopes. Slots skipped as empty are
-    # not counted, so coverage_pct stays "fraction of present clips automated".
-    def _slot_is_empty(s_idx: int, t_idx: int) -> bool:
-        """True only when the presence grid positively reports no clip.
-
-        Unknown / out-of-range / malformed cells return False so we still
-        issue the round-trip (safe fallback — never skip on ambiguity).
-        """
-        try:
-            cell = clip_matrix[s_idx][t_idx]
-        except (IndexError, TypeError, KeyError):
-            return False
-        if not isinstance(cell, dict):
-            return False
-        if cell.get("has_clip"):
-            return False
-        return cell.get("state") in ("empty", "missing")
-
+    # Our notes_map must mirror that or keys won't align.
     notes_map: dict[str, dict[int, list[dict]]] = {}
-    clip_automation: list[dict] = []
-    clips_scanned = 0
     try:
         for scene_idx, scene in enumerate(scenes or []):
             scene_name = str(scene.get("name", "")).strip()
@@ -129,11 +105,6 @@ def build_project_brain(ctx: Context) -> dict:
             per_track: dict[int, list[dict]] = {}
             for track in tracks:
                 t_idx = track.get("index", 0)
-                if _slot_is_empty(scene_idx, t_idx):
-                    continue  # no clip in this slot — skip both round-trips
-                clips_scanned += 1
-
-                # Notes for role inference.
                 try:
                     notes_resp = ableton.send_command("get_notes", {
                         "track_index": t_idx,
@@ -144,9 +115,39 @@ def build_project_brain(ctx: Context) -> dict:
                         if notes:
                             per_track[t_idx] = notes
                 except Exception as exc:
-                    logger.debug("build_project_brain notes fetch failed: %s", exc)
+                    logger.debug("build_project_brain failed: %s", exc)
+                    # Individual note fetch failing is fine — continue with others
+                    continue
+            if per_track:
+                notes_map[section_id] = per_track
+    except Exception as exc:
+        logger.debug("build_project_brain failed: %s", exc)
+        # Overall failure: empty map, degrade to "all tracks active" fallback
+        notes_map = {}
 
-                # Clip automation envelopes (BUG-E2).
+    # 5c. Scan clip automation across the session (BUG-E2).
+    # Device-parameter is_automated flags only reflect whether a parameter
+    # is mapped somewhere — they don't reveal clip envelopes. Ableton's
+    # automation actually lives on each clip (session + arrangement). We
+    # walk every clip slot that has a clip and ask get_clip_automation, then
+    # aggregate into a flat list keyed by section.
+    #
+    # clips_scanned is the denominator for coverage_pct (BUG-D2) — it
+    # counts how many (track, scene) slots we probed, regardless of
+    # whether an envelope came back. Without this, a session with zero
+    # automation would be indistinguishable from a session where we
+    # failed to probe, which is exactly the ambiguity BUG-D2 flagged.
+    clip_automation: list[dict] = []
+    clips_scanned = 0
+    try:
+        for scene_idx, scene in enumerate(scenes or []):
+            scene_name = str(scene.get("name", "")).strip()
+            if not scene_name:
+                continue
+            section_id = f"sec_{scene_idx:02d}"
+            for track in tracks:
+                t_idx = track.get("index", 0)
+                clips_scanned += 1
                 try:
                     auto_resp = ableton.send_command("get_clip_automation", {
                         "track_index": t_idx,
@@ -155,27 +156,22 @@ def build_project_brain(ctx: Context) -> dict:
                 except Exception as exc:
                     # No clip in slot, or remote script rejected — skip
                     logger.debug("build_project_brain automation skip: %s", exc)
-                    auto_resp = None
-                if isinstance(auto_resp, dict):
-                    for env in (auto_resp.get("envelopes") or []):
-                        clip_automation.append({
-                            "section_id": section_id,
-                            "track_index": t_idx,
-                            "track_name": track.get("name", ""),
-                            "clip_index": scene_idx,
-                            "parameter_name": env.get("parameter_name", ""),
-                            "parameter_type": env.get("parameter_type", ""),
-                            "device_name": env.get("device_name"),
-                        })
-
-            if per_track:
-                notes_map[section_id] = per_track
+                    continue
+                if not isinstance(auto_resp, dict):
+                    continue
+                envs = auto_resp.get("envelopes") or []
+                for env in envs:
+                    clip_automation.append({
+                        "section_id": section_id,
+                        "track_index": t_idx,
+                        "track_name": track.get("name", ""),
+                        "clip_index": scene_idx,
+                        "parameter_name": env.get("parameter_name", ""),
+                        "parameter_type": env.get("parameter_type", ""),
+                        "device_name": env.get("device_name"),
+                    })
     except Exception as exc:
-        logger.debug("build_project_brain grid sweep failed: %s", exc)
-        # Overall failure: empty maps, degrade to "all tracks active" fallback
-        notes_map = {}
-        clip_automation = []
-        clips_scanned = 0
+        logger.debug("build_project_brain automation scan failed: %s", exc)
 
     # 6. Probe capabilities (direct SpectralCache access, not TCP)
     analyzer_ok = False

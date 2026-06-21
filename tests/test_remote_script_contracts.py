@@ -187,6 +187,190 @@ def test_arrangement_automation_unsupported_returns_outer_error():
     assert "Cannot create automation envelope" in response["error"]["message"]
 
 
+def test_add_arrangement_notes_clips_negative_start_specs():
+    _router, arrangement, _diagnostics = _load_remote_modules()
+
+    class _MidiNoteSpecification:
+        def __init__(self, **kwargs):
+            self.__dict__.update(kwargs)
+
+    previous_live = sys.modules.get("Live")
+    sys.modules["Live"] = types.SimpleNamespace(
+        Clip=types.SimpleNamespace(MidiNoteSpecification=_MidiNoteSpecification)
+    )
+
+    class _Clip:
+        def __init__(self):
+            self.loop_end = 2.0
+            self.end_marker = 2.0
+            self.added_notes = None
+
+        def add_new_notes(self, specs):
+            self.added_notes = list(specs)
+
+    class _Track:
+        def __init__(self):
+            self.arrangement_clips = [_Clip()]
+
+    class _Song:
+        def __init__(self):
+            self.tracks = [_Track()]
+
+        def begin_undo_step(self):
+            pass
+
+        def end_undo_step(self):
+            pass
+
+    song = _Song()
+    try:
+        result = arrangement.add_arrangement_notes(
+            song,
+            {
+                "track_index": 0,
+                "clip_index": 0,
+                "notes": [
+                    {"pitch": 74, "start_time": -0.045, "duration": 3.913},
+                    {"pitch": 72, "start_time": 4.0, "duration": 3.5},
+                ],
+            },
+        )
+    finally:
+        if previous_live is None:
+            sys.modules.pop("Live", None)
+        else:
+            sys.modules["Live"] = previous_live
+
+    added = song.tracks[0].arrangement_clips[0].added_notes
+    assert result["notes_added"] == 2
+    assert result["clipped_negative_start_count"] == 1
+    assert result["loop_end_extended_to"] == 7.5
+    assert added[0].start_time == 0.0
+    assert added[0].duration == 3.868
+
+
+def test_back_to_arranger_clears_orange_override_flag():
+    _router, arrangement, _diagnostics = _load_remote_modules()
+
+    class _Song:
+        def __init__(self):
+            self.back_to_arranger = True
+
+    song = _Song()
+    result = arrangement.back_to_arranger(song, {})
+
+    assert song.back_to_arranger is False
+    assert result["back_to_arranger"] is False
+
+
+def test_force_arrangement_clears_orange_override_flag():
+    _router, arrangement, _diagnostics = _load_remote_modules()
+
+    class _Song:
+        def __init__(self):
+            self.back_to_arranger = True
+            self.is_playing = False
+            self.tracks = []
+            self.current_song_time = 99.0
+            self.loop = False
+            self.loop_start = 0.0
+            self.loop_length = 0.0
+
+        def stop_all_clips(self):
+            pass
+
+        def stop_playing(self):
+            self.is_playing = False
+
+        def start_playing(self):
+            self.is_playing = True
+
+    song = _Song()
+    result = arrangement.force_arrangement(song, {"beat_time": 0, "play": False})
+
+    assert song.back_to_arranger is False
+    assert result["session_clear"] is True
+    assert result["is_playing"] is False
+
+
+def test_start_recording_arrangement_continues_from_current_cursor():
+    _router, arrangement, _diagnostics = _load_remote_modules()
+
+    class _Song:
+        def __init__(self):
+            self.is_playing = False
+            self.record_mode = False
+            self.session_record = False
+            self.session_automation_record = False
+            self.start_playing_calls = 0
+            self.continue_playing_calls = 0
+
+        def start_playing(self):
+            self.start_playing_calls += 1
+            self.is_playing = True
+
+        def continue_playing(self):
+            self.continue_playing_calls += 1
+            self.is_playing = True
+
+    song = _Song()
+    result = arrangement.start_recording(song, {"arrangement": True})
+
+    assert result["record_mode"] is True
+    assert result["automation_record"]["after"] is True
+    assert song.continue_playing_calls == 1
+    assert song.start_playing_calls == 0
+
+
+def test_start_recording_arrangement_reseeks_target_before_record_mode():
+    _router, arrangement, _diagnostics = _load_remote_modules()
+
+    class _Song:
+        def __init__(self):
+            self.is_playing = False
+            self._record_mode = False
+            self.session_record = False
+            self.session_automation_record = False
+            self.current_song_time = 32.0
+            self.record_started_at = None
+
+        @property
+        def record_mode(self):
+            return self._record_mode
+
+        @record_mode.setter
+        def record_mode(self, value):
+            self._record_mode = bool(value)
+            if value:
+                self.record_started_at = self.current_song_time
+
+        def start_playing(self):
+            self.is_playing = True
+            self.current_song_time = 0.0
+
+        def continue_playing(self):
+            self.is_playing = True
+            self.current_song_time = 999.0
+
+    song = _Song()
+    result = arrangement.start_recording(song, {
+        "arrangement": True,
+        "beat_time": 1047.75,
+    })
+
+    assert result["record_mode"] is True
+    assert song.current_song_time == 1047.75
+    assert song.record_started_at == 1047.75
+    assert result["record_positioning"] == {
+        "target": 1047.75,
+        "after_pre_transport_seek": 1047.75,
+        "after_transport_start": 999.0,
+        "after_transport_seek": 1047.75,
+        "after_record_mode_set": 1047.75,
+        "after_record_mode_seek": 1047.75,
+    }
+
+
 def test_session_diagnostics_flags_plugin_health_categories():
     _router, _arrangement, diagnostics = _load_remote_modules()
 
@@ -341,6 +525,29 @@ def _song_with_clip(clip):
     return song
 
 
+def _song_with_arrangement_clip_only(clip):
+    """Build a Song-like object where the clip exists only in Arrangement."""
+    class _Slot:
+        pass
+
+    class _Track:
+        pass
+
+    class _Song:
+        pass
+
+    slot = _Slot()
+    slot.clip = None
+    track = _Track()
+    track.clip_slots = [slot]
+    track.arrangement_clips = [clip]
+    song = _Song()
+    song.tracks = [track]
+    song.master_track = None
+    song.return_tracks = []
+    return song
+
+
 def test_bug_a4_get_clip_info_exposes_audio_pitch_and_gain():
     """BUG-A4: get_clip_info on an audio clip must include pitch_coarse /
     pitch_fine / gain so callers can detect sample-vs-session key drift."""
@@ -434,6 +641,60 @@ def test_bug_a5_set_clip_pitch_requires_at_least_one_param():
 
     with pytest.raises(ValueError, match="at least one"):
         clips.set_clip_pitch(song, {"track_index": 0, "clip_index": 0})
+
+
+def test_set_clip_warp_mode_falls_back_to_arrangement_clip():
+    _router, clips = _load_remote_clips()
+    clip = _make_audio_clip()
+    clip.warping = True
+    clip.warp_mode = 0
+    song = _song_with_arrangement_clip_only(clip)
+
+    result = clips.set_clip_warp_mode(
+        song,
+        {"track_index": 0, "clip_index": 0, "mode": 4, "warping": False},
+    )
+
+    assert result["clip_source"] == "arrangement"
+    assert clip.warp_mode == 4
+    assert clip.warping is False
+
+
+def test_set_clip_loop_falls_back_to_arrangement_clip_and_extends_end_marker():
+    _router, clips = _load_remote_clips()
+    clip = _make_audio_clip()
+    song = _song_with_arrangement_clip_only(clip)
+
+    result = clips.set_clip_loop(
+        song,
+        {"track_index": 0, "clip_index": 0, "end": 8.0, "enabled": False},
+    )
+
+    assert result["clip_source"] == "arrangement"
+    assert result["looping"] is False
+    assert clip.loop_end == 8.0
+    assert clip.end_marker == 8.0
+
+
+def test_get_arrangement_clips_exposes_audio_bounds_and_warp_state():
+    _router, arrangement, _diagnostics = _load_remote_modules()
+    clip = _make_audio_clip(pitch_coarse=-1, pitch_fine=2.5, gain=0.75)
+    clip.name = "vox"
+    clip.start_time = 0.0
+    clip.length = 143.75
+    song = _song_with_arrangement_clip_only(clip)
+
+    result = arrangement.get_arrangement_clips(song, {"track_index": 0})
+
+    info = result["clips"][0]
+    assert info["name"] == "vox"
+    assert info["start_marker"] == 0.0
+    assert info["end_marker"] == 4.0
+    assert info["warping"] is True
+    assert info["warp_mode"] == 4
+    assert info["pitch_coarse"] == -1
+    assert info["pitch_fine"] == 2.5
+    assert info["gain"] == 0.75
 
 
 def test_bug_a5_set_clip_pitch_rejects_out_of_range_coarse():

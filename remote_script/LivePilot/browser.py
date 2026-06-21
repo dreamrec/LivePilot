@@ -405,27 +405,38 @@ _SCAN_MAX_ITERATIONS = 100000
 
 
 def _scan_recursive(item, results, depth, max_depth, max_per_category,
-                    _counter=None):
+                    _counter=None, path_parts=None, pack_name=None,
+                    pack_root=False):
     """Recursively collect loadable browser items with iteration cap."""
     if _counter is None:
         _counter = [0]
+    if path_parts is None:
+        path_parts = []
     if depth > max_depth or len(results) >= max_per_category:
         return
     for child in item.children:
         _counter[0] += 1
         if _counter[0] > _SCAN_MAX_ITERATIONS or len(results) >= max_per_category:
             return
+        child_path = path_parts + [child.name]
+        child_pack = pack_name
+        if pack_root and depth == 0:
+            child_pack = child.name
         if child.is_loadable:
             entry = {"name": child.name, "is_loadable": True}
             try:
                 entry["uri"] = child.uri
             except AttributeError:
                 entry["uri"] = None
+            if child_path:
+                entry["browser_path"] = "/".join(child_path)
+            if child_pack:
+                entry["pack"] = child_pack
             results.append(entry)
         if child.is_folder:
             _scan_recursive(
                 child, results, depth + 1, max_depth, max_per_category,
-                _counter
+                _counter, child_path, child_pack, pack_root
             )
             if len(results) >= max_per_category:
                 return
@@ -450,7 +461,10 @@ def scan_browser_deep(song, params):
     result = {}
     for cat_name, cat_item in categories.items():
         items = []
-        _scan_recursive(cat_item, items, 0, max_depth, max_per_category)
+        _scan_recursive(
+            cat_item, items, 0, max_depth, max_per_category,
+            pack_root=(cat_name == "packs")
+        )
         result[cat_name] = items
 
     return {"categories": result}

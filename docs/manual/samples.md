@@ -2,7 +2,7 @@
 
 LivePilot searches three sample sources simultaneously, scores every result with 6 fitness critics, and offers 29 processing techniques. This chapter covers the full sample workflow — from finding a sound to slicing it into a playable instrument.
 
-Splice's "Describe a Sound" (natural-language semantic search) and "Variations" (similar-sample lookup) are both LIVE via captured GraphQL endpoints. See `splice_describe_sound` and `splice_generate_variation` in the [Tool Reference](tool-reference.md#sample-engine--splice). (Landed in v1.17; see the CHANGELOG for history.)
+**New in v1.17:** Splice's "Describe a Sound" (natural-language semantic search) and "Variations" (similar-sample lookup) are both LIVE via captured GraphQL endpoints. See `splice_describe_sound` and `splice_generate_variation` in the [Tool Reference](tool-reference.md#sample-engine--splice).
 
 ---
 
@@ -16,7 +16,7 @@ Splice's "Describe a Sound" (natural-language semantic search) and "Variations" 
 
 All three are searched in parallel. Results are merged and ranked.
 
-### Splice integration (plan-aware)
+### Splice integration (plan-aware, v1.16.0)
 
 LivePilot talks to Splice through **two** paths:
 
@@ -36,9 +36,7 @@ If you don't have Splice, the Sample Engine still works — it just searches Abl
 
 ---
 
-## The Core 7 Sample Tools
-
-These are the seven tools you'll reach for most. The sample/Splice surface is larger — see the [Tool Reference](tool-reference.md#sample-engine--splice) for the full set.
+## The 7 Tools
 
 ### search_samples — Find samples
 
@@ -134,11 +132,9 @@ plan_slice_workflow(
 )
 → steps: [create_midi_track, load_sample_to_simpler, set_simpler_playback_mode(Slice),
           create_clip, add_notes(real MIDI notes mapped to slices)]
-→ note_map: [{slice_index: 0, midi_note: 36}, {slice_index: 1, midi_note: 37}, ...]
+→ note_map: [{slice_index: 0, midi_note: 60}, {slice_index: 1, midi_note: 61}, ...]
 → suggested_techniques: ["quantize_clip", "add reverb send"]
 ```
-
-Simpler maps slice N to MIDI pitch 36+N (C1 is slice 0) — notes below pitch 36 produce silence.
 
 This is the canonical slice orchestrator. It generates real MIDI notes based on intent:
 

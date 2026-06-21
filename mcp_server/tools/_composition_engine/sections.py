@@ -112,10 +112,6 @@ def build_section_graph_from_scenes(
             density=density,
             tracks_active=active_tracks,
             name=scene_name,
-            # Real session scene row — used as the get_notes clip_index.
-            # Differs from the section's position in this list whenever
-            # earlier unnamed/empty scenes were skipped above.
-            scene_index=i,
         ))
         current_bar = end_bar
 

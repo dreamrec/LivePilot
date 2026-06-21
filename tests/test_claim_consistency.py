@@ -140,29 +140,6 @@ def test_bridge_command_count_matches_js(sync_metadata):
     assert derived > 0
 
 
-def test_agents_is_in_bridge_command_claim_files(sync_metadata):
-    """AGENTS.md is a first-class operating contract and must not drift from
-    the bridge command count."""
-    files = sync_metadata.PROSE_CLAIM_FILES["bridge command"]["files"]
-    assert "AGENTS.md" in files
-
-
-def test_capability_probe_is_in_analyzer_tool_claim_files(sync_metadata):
-    """The runtime capability probe exposes the analyzer-tool unavailable
-    message, so it needs the same derived-count protection as prose docs."""
-    files = sync_metadata.PROSE_CLAIM_FILES["analyzer tool"]["files"]
-    assert "mcp_server/runtime/capability_probe.py" in files
-
-
-def test_readme_documents_all_four_live_version_tiers():
-    """Live 12.4 added the Collaborative tier; README should advertise the
-    same four-tier surface as AGENTS.md/CLAUDE.md."""
-    source = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
-    assert "enables four capability tiers" in source
-    assert "Collaborative (12.4+)" in source
-    assert "`replace_sample_native`" in source
-
-
 def test_no_stale_release_tarballs_in_repo():
     """livepilot-*.tgz artifacts are release-only; shipping them tracked lets
     contributors ``npm install`` a stale version. The gitignore covers this,

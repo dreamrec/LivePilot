@@ -10,8 +10,6 @@ Thank you for your interest in contributing to LivePilot. This guide will help y
 
 ## Development Setup
 
-> For the full local-checkout runbook (venv + `node bin/livepilot.js --install` + pointing your MCP client at `python -m mcp_server` directly), see [docs/manual/dev-install.md](docs/manual/dev-install.md). Use it whenever iterating on `mcp_server/` or `remote_script/` without republishing to npm.
-
 ```bash
 git clone https://github.com/dreamrec/LivePilot.git
 cd LivePilot
@@ -75,7 +73,7 @@ Explain the workflow problem before describing the solution.
 3. **Make your changes** — keep commits focused and atomic
 4. **Run tests** — `pytest tests/ -v` must pass
 5. **Update documentation** if you add or remove tools:
-   - Run `python scripts/sync_metadata.py --fix` to propagate the new tool count across `README.md`, `CLAUDE.md`, `package.json`, the plugin manifests, `server.json`, and the docs (see [Tool Count Discipline](#tool-count-discipline) below)
+   - Update tool count in `README.md`, `CLAUDE.md`, `package.json`
    - Add an entry to `CHANGELOG.md`
 6. **Open a PR** against `main`
 
@@ -105,7 +103,7 @@ Currently **467 tools**. If you add or remove a `@mcp.tool()` decorator, the
 
 ```bash
 # Update the expected count in tests/test_tools_contract.py first:
-#   assert len(tools) == <NEW_COUNT>   # placeholder — use your actual count, currently 467
+#   assert len(tools) == 325   # for example
 python scripts/sync_metadata.py --fix
 ```
 

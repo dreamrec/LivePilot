@@ -62,12 +62,6 @@ class SectionNode:
     density: float  # 0.0-1.0 (how many tracks are active)
     tracks_active: list[int] = field(default_factory=list)
     name: str = ""
-    # Real session scene/row index this section maps to (the clip slot to
-    # read notes from). -1 means "not scene-backed" (e.g. built from the
-    # arrangement view), in which case callers should fall back to the
-    # section's position in the graph. Kept last so existing positional
-    # SectionNode(...) constructions stay valid.
-    scene_index: int = -1
 
     def length_bars(self) -> int:
         return self.end_bar - self.start_bar

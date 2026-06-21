@@ -21,7 +21,7 @@ MCP Server  <=============>  Remote Script (ControlSurface)
 - **UDP 9880** — M4L device sends spectral data stream and LiveAPI responses to MCP Server
 - **OSC 9881** — MCP Server sends LiveAPI commands to M4L device
 
-The bridge is optional. Most tools work without it. The 38 MCP tools in the analyzer domain depend on the bridge for spectral data; sample- and device-mutation tools that call the bridge have graceful fallbacks (and on Live 12.4+, several sample tools take a native LOM path that bypasses the bridge entirely). Backed by 32 bridge commands.
+The bridge is optional. Most tools work without it. The 38 MCP tools in the analyzer domain depend on the bridge for spectral data; sample- and device-mutation tools that call the bridge have graceful fallbacks (and on Live 12.4+, several sample tools take a native LOM path that bypasses the bridge entirely). Backed by 35 bridge commands.
 
 ## Audio Signal Chain
 
@@ -79,13 +79,13 @@ Sampling rate: 5 Hz (200ms snapshots). CPU impact: ~3-4% total.
 
 Commands are sent WITHOUT a leading `/` in the OSC address. This is critical — see "OSC Address Dispatch" below.
 
-## Bridge Commands (32 total)
+## Bridge Commands (35 total)
 
 ### Phase 1: Core LOM Access
 
 | Command | Args | Description |
 |---------|------|-------------|
-| `ping` | (none) | Health check, returns `{ok: true, version: "1.27.1"}` |
+| `ping` | (none) | Health check, returns `{ok: true, version: "1.26.2"}` |
 | `get_version` | (none) | **Internal-only — no OSC response.** Emits the current bridge version on the Max-internal `livepilot_version` named bus so a `[r livepilot_version]` receiver in the patcher can drive the in-UI version label without touching the OSC response outlet. Whitelisted in `tests/test_bridge_parity.py:internal_only`; not in `BRIDGE_COMMANDS` (Python plans never invoke it) |
 | `get_params` | track_idx, device_idx | All parameters with value, range, automation state |
 | `get_hidden_params` | track_idx, device_idx | All parameters including hidden ones, with display string |
@@ -137,6 +137,14 @@ Commands are sent WITHOUT a leading `/` in the OSC address. This is critical —
 | `get_plugin_presets` | track_idx, device_idx | List AU/VST plugin presets exposed via the LiveAPI |
 | `simpler_set_warp` | track_idx, device_idx, on | Toggle Simpler warp on/off (workaround for the Snap silent-playback bug) |
 | `compressor_set_sidechain` | track_idx, device_idx, source_track_idx | Configure compressor sidechain routing via LiveAPI (UI-only otherwise) |
+
+### Local Automation Scheduler
+
+| Command | Args | Description |
+|---------|------|-------------|
+| `automation_curve_arm` | payload_json | Arm a background Max scheduler for a target device parameter curve. Payload includes track/device/parameter indices, absolute-beat points, mode, tick interval, and end beat |
+| `automation_curve_status` | (none) | Report scheduler state: armed/running/completed/error/cancelled, current beat, set count, and target metadata |
+| `automation_curve_cancel` | (none) | Cancel the active scheduler if a record pass aborts |
 
 ## SpectralCache
 
@@ -210,9 +218,9 @@ cursor.goto("live_set tracks 0 devices 0 sample")
 var slices = cursor.get("slices")
 ```
 
-### 5. M4L `replace_sample` Requires Existing Sample
+### 5. `replace_sample` Requires Existing Sample
 
-Loading a sample into an empty Simpler (one created via "Create empty Simpler") silently fails through the M4L bridge path. The Simpler must already have a sample loaded. Workaround: load any sample via the browser first (which auto-creates a Simpler with content), then call `replace_sample`. On Live 12.4+, prefer the native Remote Script `replace_sample_native` route when available; it bypasses this M4L limitation.
+Loading a sample into an empty Simpler (one created via "Create empty Simpler") silently fails. The Simpler must already have a sample loaded. Workaround: load any sample via the browser first (which auto-creates a Simpler with content), then call `replace_sample`.
 
 This is confirmed by Cycling '74 — there is no LiveAPI path to load a sample into a completely empty Simpler.
 
@@ -290,8 +298,8 @@ function anything() {
 
 ## File Locations
 
-- `m4l_device/LivePilot_Analyzer.amxd` — compiled M4L device (binary). Ping returns `{ok: true, version: "1.27.1"}`
-- `m4l_device/livepilot_bridge.js` — bridge JS source (32 commands)
+- `m4l_device/LivePilot_Analyzer.amxd` — compiled M4L device (binary). Ping returns `{ok: true, version: "1.26.2"}`
+- `m4l_device/livepilot_bridge.js` — bridge JS source (35 commands)
 - `m4l_device/LivePilot_MIDITool_Generate.amxd` / `LivePilot_MIDITool_Transform.amxd` — separate Live 12.0+ MIDI Tool devices for in-clip generators (euclidean_rhythm, tintinnabuli, humanize)
 - `m4l_device/miditool_bridge.js` — MIDI Tool bridge JS source
 - `mcp_server/m4l_bridge.py` — SpectralCache, SpectralReceiver, M4LBridge, MidiToolCache, generator registry

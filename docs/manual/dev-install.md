@@ -31,10 +31,9 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-LivePilot requires Python 3.9+ (CI runs 3.11; the runtime gate in
-`bin/livepilot.js`, `manifest.json`, and getting-started.md all floor at 3.9).
-If `python3 --version` reports 3.8 or earlier, install a newer Python before
-creating the venv.
+LivePilot targets Python 3.11+ (matches CI). If `python3 --version` reports
+3.10 or earlier, install a newer Python before creating the venv — the
+FastMCP server uses PEP 604 union syntax that won't parse on older runtimes.
 
 ### Two known-benign installation gotchas
 
@@ -183,7 +182,7 @@ persist an attribute change.
 python -m pytest tests/ -q
 ```
 
-4088 tests as of v1.27.1. The suite takes ~30 seconds on a modern Mac.
+3128 tests as of v1.21.4. The suite takes ~30 seconds on a modern Mac.
 A handful of tests depend on external binaries:
 - `test_amxd_freeze_drift` requires the `.amxd` file to be committed
 - `test_npm_pack_includes_expected_files` requires `npm` on PATH

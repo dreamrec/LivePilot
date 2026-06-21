@@ -60,11 +60,6 @@ class SessionKernel:
     # may add "sculptor". Empty string = producer picks a default.
     creativity_profile: str = ""
 
-    # v1.27 operation posture. This is intentionally descriptive at the
-    # kernel layer; engines can opt into stricter behavior without forcing
-    # every tool to know every profile immediately.
-    operation_profile: str = "studio_deep"
-
     # Caller-asserted sacred elements. Normally sacred elements come from
     # song_brain; this lets the user or a skill override. Shape matches
     # song_brain.sacred_elements entries: {element_type, description, salience}.
@@ -99,7 +94,6 @@ def build_session_kernel(
     # PR2 — creative controls. All optional; legacy callers unaffected.
     freshness: float = 0.5,
     creativity_profile: str = "",
-    operation_profile: str = "studio_deep",
     sacred_elements: Optional[list] = None,
     synth_hints: Optional[dict] = None,
 ) -> SessionKernel:
@@ -143,7 +137,6 @@ def build_session_kernel(
         protected_dimensions=protected_dimensions or {},
         freshness=freshness,
         creativity_profile=creativity_profile,
-        operation_profile=operation_profile,
         sacred_elements=sacred_elements or [],
         synth_hints=synth_hints or {},
     )

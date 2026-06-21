@@ -74,7 +74,7 @@
 | `create_arrangement_clip` | Duplicate a session clip into Arrangement View at a specific beat position. |
 | `create_native_arrangement_clip` | Create an empty MIDI clip directly in Arrangement View (Live 12.1.10+). |
 | `duplicate_arrangement_notes` | Duplicate specific notes in an arrangement clip by ID, with optional time offset (beats). |
-| `force_arrangement` | Force ALL tracks to follow the arrangement and start playback. |
+| `force_arrangement` | Force ALL tracks to follow the arrangement and optionally start playback. |
 | `get_arrangement_clips` | Get all arrangement clips on a track. |
 | `get_arrangement_notes` | Get MIDI notes from an arrangement clip. Returns note_id, pitch, start_time, |
 | `get_cue_points` | Get all cue points in the arrangement. |
@@ -123,7 +123,7 @@
 |------|-------------|
 | `audit_layer` | Run the §5 layer-precision audit on a single track in one call. |
 
-## Automation (9)
+## Automation (11)
 
 | Tool | Description |
 |------|-------------|
@@ -134,6 +134,8 @@
 | `generate_automation_curve` | Generate automation curve points WITHOUT writing them. |
 | `get_automation_recipes` | List all available automation recipes with descriptions. |
 | `get_clip_automation` | List all automation envelopes on a session clip. |
+| `record_parameter_automation_m4l_curve` | Record fast Arrangement automation via the M4L local scheduler. |
+| `record_parameter_automation_realtime` | Record Arrangement automation by moving a device parameter in real time. |
 | `set_arrangement_automation_via_session_record` | Write an arrangement automation envelope at a specific beat via session record. |
 | `set_clip_automation` | Write automation points to a session clip envelope. |
 
@@ -513,7 +515,7 @@
 | `get_style_tactics` | Get production tactics for a specific artist style or genre. |
 | `research_technique` | Research a production technique — search device atlas + memory for answers. |
 
-## Runtime (7)
+## Runtime (5)
 
 | Tool | Description |
 |------|-------------|
@@ -522,8 +524,6 @@
 | `get_capability_state` | Probe the runtime and return a capability state snapshot. |
 | `get_last_move` | Return the most recent semantic move from the action ledger. |
 | `get_session_kernel` | Build the unified turn snapshot for V2 orchestration. |
-| `probe_link_audio` | Read-only probe for Live 12.4 Link Audio MCP controllability. |
-| `probe_stem_workflow` | Read-only probe for Live 12.4 selected-time stem workflow support. |
 
 ## Sample Engine (23)
 

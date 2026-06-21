@@ -380,10 +380,9 @@ async def check_clip_key_consistency(
     # 1) Resolve the clip's file path. Relies on the M4L bridge.
     try:
         from .analyzer import get_clip_file_path as _get_path
-        # Under FastMCP 3.3.1 @mcp.tool() returns the plain async function
-        # (no .fn accessor), so we call it directly for composition — the
-        # same pattern analyzer.verify_all_devices_health uses.
-        path_resp = await _get_path(ctx, track_index, clip_index)
+        # get_clip_file_path is an @mcp.tool, but FastMCP decorators preserve
+        # the underlying function — we can call it directly for composition.
+        path_resp = await _get_path.fn(ctx, track_index, clip_index)
     except Exception as exc:
         return {
             "track_index": track_index,
@@ -415,7 +414,7 @@ async def check_clip_key_consistency(
     # 3) Query the session-detected key (needs the analyzer).
     try:
         from .analyzer import get_detected_key as _get_key
-        key_resp = await _get_key(ctx)
+        key_resp = await _get_key.fn(ctx)
     except Exception as exc:
         return {
             "track_index": track_index,

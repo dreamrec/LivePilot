@@ -108,21 +108,8 @@ def find_hook_candidates(
     for c in candidates:
         # Check if hook is present in payoff sections (via motif locations)
         if c.hook_type == "melodic" and motif_data:
-            for idx, motif in enumerate(motif_data.get("motifs", [])):
-                # BUG-B61 fix: the old test `motif.get("name", "") in c.hook_id`
-                # was always True for real motif data, because the engine emits
-                # `motif_id` (not `name`) so .get("name","") returned "", and
-                # `"" in c.hook_id` is True for every candidate. That boosted
-                # every melodic candidate by every motif's recurrence. Rebuild
-                # the source motif's hook_id exactly as it was constructed above
-                # (motif_id -> name -> idxN fallback) and require an exact match
-                # so each candidate is boosted only by its own source motif.
-                identifier = (
-                    motif.get("motif_id")
-                    or motif.get("name")
-                    or f"idx{idx}"
-                )
-                if f"motif_{identifier}" == c.hook_id:
+            for motif in motif_data.get("motifs", []):
+                if motif.get("name", "") in c.hook_id:
                     # Motif with high recurrence across sections = stronger hook
                     c.memorability = min(1.0, c.memorability + motif.get("recurrence", 0) * 0.2)
 

@@ -38,20 +38,6 @@
 
 ---
 
-## What's New in v1.27.1
-
-A maintenance release that fixes 35 issues from a deep audit and restores tools that had silently broken:
-
-- **Restored tools** — `augment_with_samples`, `get_composition_plan`, `propose_composer_branches`, `check_clip_key_consistency`, and `compare_phrase_renders` were crashing or returning empty results; they now work.
-- **Recursive plugin scanning (#44)** — the User Corpus scanner now finds plugins nested in vendor subfolders (e.g. `VST3/<Vendor>/Plugin.vst3`) instead of only the top level.
-- **Truer analysis** — reference-gap, hook-salience, dynamics, drop-detection, harmony-slot, and grader fixes that previously produced fabricated or empty results.
-- **Safer & faster** — Splice credit-gating fixed, blocking sample I/O moved off the event loop, unbounded tool responses capped, and the M4L bridge no longer loses responses on UDP reordering.
-- **v1.27.0** added two read-only Live 12.4 capability-probe tools (`probe_link_audio`, `probe_stem_workflow`).
-
-Full details in the [CHANGELOG](CHANGELOG.md).
-
----
-
 ## What LivePilot Does
 
 Most MCP servers are tool collections — they execute commands. LivePilot is an **agentic production system**. It has eight layers that work together:
@@ -143,11 +129,11 @@ Most sessions do both. Lead with shorthand to anchor the aesthetic, then refine 
 
 ### How the pieces connect
 
-**Remote Script** (`remote_script/LivePilot/`) — A Python ControlSurface that runs inside Ableton's process. Listens on TCP 9878. All Live Object Model calls execute on Ableton's main thread via `schedule_message`. Detects Ableton version at startup and enables four capability tiers: Core (12.0+), Enhanced Arrangement (12.1.10+), Full Intelligence (12.3+), Collaborative (12.4+).
+**Remote Script** (`remote_script/LivePilot/`) — A Python ControlSurface that runs inside Ableton's process. Listens on TCP 9878. All Live Object Model calls execute on Ableton's main thread via `schedule_message`. Detects Ableton version at startup and enables three capability tiers: Core (12.0+), Enhanced Arrangement (12.1.10+), Full Intelligence (12.3+).
 
 **MCP Server** (`mcp_server/`) — Python FastMCP server. Validates inputs, routes commands to the Remote Script over TCP, manages the M4L bridge, runs the atlas, sample engine, composer, and all intelligence engines. This is what your AI client connects to.
 
-**M4L Bridge** (`m4l_device/`) — Optional Max for Live Audio Effect on the master track. Provides deep LOM access through Max's LiveAPI that the ControlSurface API can't reach. UDP 9880 (M4L to server) carries spectral data and LiveAPI responses. OSC 9881 (server to M4L) sends commands. The 38 spectral/analyzer tools strictly require the bridge; device and sample tools that call the bridge also have graceful fallbacks, so core functionality works without it. Backed by 32 bridge commands for hidden parameters, Simpler internals, warp markers, display values, and Simpler warp / Compressor sidechain writes that live on child objects Python can't reach.
+**M4L Bridge** (`m4l_device/`) — Optional Max for Live Audio Effect on the master track. Provides deep LOM access through Max's LiveAPI that the ControlSurface API can't reach. UDP 9880 (M4L to server) carries spectral data and LiveAPI responses. OSC 9881 (server to M4L) sends commands. The 38 spectral/analyzer tools strictly require the bridge; device and sample tools that call the bridge also have graceful fallbacks, so core functionality works without it. Backed by 35 bridge commands for hidden parameters, Simpler internals, warp markers, display values, and Simpler warp / Compressor sidechain writes that live on child objects Python can't reach.
 
 **Device Atlas** (`mcp_server/atlas/`) — In-memory indexed JSON database. 5264 devices with browser URIs (bundled baseline), 120 enriched with YAML sonic intelligence profiles (mood, genre, texture, recommended chains). 7 indexes: by_id, by_name, by_uri, by_category, by_tag, by_genre, by_pack. Reverse-index `device_techniques_index.json` powers `atlas_techniques_for_device` (146 cross-references across 58 devices). The AI never hallucinates a device name or preset — it always resolves against the atlas first. **v1.22.0+**: run `scan_full_library` after install to index YOUR packs + User Library + plugins into `~/.livepilot/atlas/device_atlas.json` — your personal atlas overrides the baseline and survives npm updates.
 
@@ -236,7 +222,7 @@ Every engine follows: **measure before → act → measure after → compare**. 
 | Browser | 4 | search library, browse tree, load items, filter by category |
 | Mixing | 11 | volume, pan, sends, routing, meters, return tracks, master, full mix snapshot |
 | Arrangement | 21 | timeline clips, native arrangement clips (12.1.10+), arrangement notes, automation, recording, cue points |
-| Automation | 8 | 16 curve types, 15 recipes (filter sweep, sidechain pump, dub throw...), spectral suggestions |
+| Automation | 10 | clip envelopes, real-time arrangement recording, 16 curve types, 15 recipes, spectral suggestions |
 | Theory | 7 | Krumhansl-Schmuckler key detection, Roman numeral analysis, species counterpoint, SATB harmonization |
 | Harmony | 4 | neo-Riemannian PRL transforms, Tonnetz navigation, voice leading paths, chromatic mediants |
 | Generative | 5 | Euclidean rhythm (Bjorklund), tintinnabuli (Arvo Part), phase shift (Steve Reich), additive process (Philip Glass) |
@@ -246,7 +232,7 @@ Every engine follows: **measure before → act → measure after → compare**. 
 
 <br>
 
-### M4L Bridge — 38 analyzer tools `[optional]`, 32 bridge commands
+### M4L Bridge — 38 analyzer tools `[optional]`, 35 bridge commands
 
 The M4L Analyzer sits on the master track. UDP 9880 carries spectral data to the server. OSC 9881 sends commands back. The `ensure_analyzer_on_master` pre-flight (v1.20.3) loads the analyzer idempotently on first use — call it once at session start and forget about it.
 
@@ -487,7 +473,7 @@ Full track with song form: intro, verse, hook, breakdown, outro. Uses a two-phas
 - Native arrangement clips via `create_native_arrangement_clip` (one clip per section, looped to fill section length)
 - Zombie-track cleanup in postflight (removes tracks with no clips and no instrument device)
 - Drum-role pitch repair ported from fast mode
-- **Atlas anchors:** role-level device knowledge is supplied through `KnowledgePack.atlas_anchors`, which consults the indexed atlas rather than filename matching. The older `atlas_candidates_per_role` field is a deprecated legacy stub, kept empty for back-compat.
+- **Known gap (v1.25):** `KnowledgePack.atlas_candidates_per_role` is an empty stub — the agent currently falls through to `search_browser` filename matching instead of consulting the indexed atlas. This is BUG-FULL-MODE-24 and is the headline feature of v1.25.
 - Invoke with: *"Write a full [genre] track at [tempo] BPM"* or *"Build a full arrangement"*
 
 #### develop mode — `develop_apply`
@@ -506,7 +492,7 @@ All three modes share a `KnowledgePack` that provides structured creative contex
 - `event_lexicon` — 42 structural events across 7 categories (drum density, harmonic, texture, vocal, rhythm feel, tension, fx gesture)
 - `genre_context` — parses the 15-genre `genre-vocabularies.md` at load time
 - `artist_context` — parses the ~25-producer `artist-vocabularies.md` at load time
-- `atlas_anchors` — indexed-atlas device anchors per role (replaced the legacy `atlas_candidates_per_role` stub)
+- `atlas_candidates_per_role` — **stubbed in v1.25.0**, will be populated in v1.25
 
 #### Core composer tools
 
@@ -564,7 +550,7 @@ The V2 intelligence layer. These tools analyze, diagnose, plan, evaluate, and le
 
 ### Easiest: Claude Desktop Extension (1 click)
 
-Download the latest `livepilot-<version>.mcpb` from the [Releases page](https://github.com/dreamrec/LivePilot/releases/latest) and double-click it.
+Download [`livepilot.mcpb`](https://github.com/dreamrec/LivePilot/releases/latest) and double-click it.
 Claude Desktop installs everything automatically. Then:
 
 1. Open Ableton Live 12
@@ -598,14 +584,10 @@ Restart Ableton → Preferences → Link, Tempo & MIDI → Control Surface → *
 <details>
 <summary><strong>2. MCP Client</strong></summary>
 
-**Claude Code** — pick one (installing both registers the MCP server twice and collides on port 9878):
+**Claude Code:**
 ```bash
-# MCP server only:
 claude mcp add LivePilot -- npx livepilot
-
-# Or the full plugin (MCP server + skills + slash commands):
-claude plugin marketplace add github:dreamrec/LivePilot
-claude plugin install livepilot@dreamrec-LivePilot
+claude plugin add github:dreamrec/LivePilot/plugin
 ```
 
 **Codex App:**
@@ -698,8 +680,7 @@ npx livepilot --install-codex-plugin
 **Claude Code**
 
 ```bash
-claude plugin marketplace add github:dreamrec/LivePilot
-claude plugin install livepilot@dreamrec-LivePilot
+claude plugin add github:dreamrec/LivePilot/plugin
 ```
 
 | Command | What |
@@ -760,7 +741,6 @@ npx livepilot --version    # Show version
 - **Core (12.0+):** All session tools, mixing, devices, MIDI, theory, generative, memory
 - **Enhanced Arrangement (12.1.10+):** Native arrangement clips, arrangement automation
 - **Full Intelligence (12.3+):** `insert_device_native`, complete device insertion pipeline
-- **Collaborative (12.4+):** `replace_sample_native` and newer sample-editing routes that bypass the M4L fallback when Live exposes a native LOM path
 
 <br>
 

@@ -80,6 +80,27 @@ def test_required_loop_end_picks_largest():
     assert helpers._required_loop_end(notes) == pytest.approx(7.0)
 
 
+def test_normalize_notes_for_add_clips_negative_starts():
+    helpers = _load_clip_helpers()
+    notes = [
+        {"pitch": 74, "start_time": -0.045, "duration": 3.913, "velocity": 100},
+        {"pitch": 72, "start_time": 4.0, "duration": 3.5, "velocity": 67},
+        {"pitch": 60, "start_time": -2.0, "duration": 1.0, "velocity": 10},
+    ]
+
+    normalized, info = helpers._normalize_notes_for_add(notes)
+
+    assert len(normalized) == 2
+    assert normalized[0]["pitch"] == 74
+    assert normalized[0]["start_time"] == 0.0
+    assert normalized[0]["duration"] == pytest.approx(3.868)
+    assert normalized[1] is notes[1]
+    assert info == {
+        "clipped_negative_start_count": 1,
+        "skipped_pre_clip_count": 1,
+    }
+
+
 # ── #1c — _apply_clip_length_invariants ───────────────────────────────
 
 

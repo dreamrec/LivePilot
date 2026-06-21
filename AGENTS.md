@@ -1,11 +1,11 @@
-# LivePilot v1.27.1 — Ableton Live 12
+# LivePilot v1.26.2 — Ableton Live 12
 
 ## Project
 - **Repo:** This directory (LivePilot)
 - **Type:** Agentic MCP production system for Ableton Live 12
 - **Three layers:** Device Atlas (knowledge) + M4L Analyzer (perception) + Technique Memory (learning)
 - **Sister projects:** TDPilot (TouchDesigner), ComfyPilot (ComfyUI)
-- **Historical design snapshot:** `docs/specs/2026-03-17-livepilot-design.md` (March 2026 baseline; current truth lives in README/CLAUDE/AGENTS/manual + `scripts/sync_metadata.py`)
+- **Design spec:** `docs/specs/2026-03-17-livepilot-design.md`
 
 ## Architecture
 - **Remote Script** (`remote_script/LivePilot/`): Runs inside Ableton's Python, ControlSurface base class, TCP socket on port 9878. Version detection at startup, four capability tiers: Core (12.0+), Enhanced Arrangement (12.1.10+), Full Intelligence (12.3+), Collaborative (12.4+)
@@ -13,7 +13,7 @@
 - **M4L Bridge** (`m4l_device/`): Max for Live Audio Effect on master track, UDP/OSC bridge for deep LOM access
   - UDP 9880: M4L -> Server (spectral data, responses)
   - OSC 9881: Server -> M4L (commands)
-  - `livepilot_bridge.js`: 32 bridge commands for LiveAPI access
+  - `livepilot_bridge.js`: 31 bridge commands for LiveAPI access
   - `SpectralCache`: thread-safe, time-expiring data cache (5s max age)
   - Bridge is optional — all core tools work without it
   - `ensure_analyzer_on_master` (v1.20.3) auto-loads the device on first use
@@ -37,6 +37,7 @@
 - Structured errors with codes: INDEX_ERROR, NOT_FOUND, INVALID_PARAM, STATE_ERROR, TIMEOUT, INTERNAL
 - **LivePilot_Analyzer must be LAST on master** — always after ALL effects (EQ, Compressor, Utility) so it reads the final output, not pre-effect signal. `ensure_analyzer_on_master` (v1.20.3) reports `is_last_on_master` and warns on violation
 - **Single TCP client** — Remote Script accepts one connection at a time on port 9878. The MCP server holds a persistent connection. Direct TCP calls will fail with "Another client is already connected" if the MCP server is active. Always use MCP tools, not raw TCP
+- **Back-to-Arrangement override semantics** — on Live 12.4.2, `song.back_to_arranger` and `track.back_to_arranger` expose the orange Back-to-Arrangement override state: `true` means the orange button is lit and Arrangement playback is still overridden; clearing it requires writing `false`. `force_arrangement` must verify `get_session_info()["arrangement_override"] is False` and no track has `arrangement_override=True`, not just that `get_playing_clips` is empty.
 - **Remote Script reload workflow** — after ANY edit to `remote_script/LivePilot/*.py`: run `npx livepilot --install` (NOT `node installer/install.js` — that file only exports the function and is a no-op as a script), then call the `reload_handlers` MCP tool. NEVER manually toggle the Control Surface in Live → Preferences → Link/MIDI. The `reload_handlers` tool uses pkgutil + importlib to re-fire `@register` decorators in-place while the MCP TCP connection stays open. Apply this standard procedure every time handlers change — bug fix, new tool, or release
 
 ## M4L Bridge Notes
@@ -45,7 +46,7 @@
 - `get()` in Max JS LiveAPI always returns arrays
 - `warp_markers` is a dict property returning JSON string — use `JSON.parse()`
 - `SimplerDevice.slices` lives on the `sample` child, not the device
-- M4L `replace_sample` only works on Simplers with existing samples; Live 12.4+ native `replace_sample_native` can route around that limitation when available
+- `replace_sample` only works on Simplers with existing samples
 - Max freezes JS from search path cache, not source directory — copy to `~/Documents/Max 9/`
 
 ## Binary Patching Workflow (.amxd)

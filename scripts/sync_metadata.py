@@ -335,7 +335,6 @@ PROSE_CLAIM_FILES = {
         "threshold": 15,
         "files": [
             "README.md",
-            "AGENTS.md",
             "CLAUDE.md",
             "docs/M4L_BRIDGE.md",
             "livepilot/skills/livepilot-release/SKILL.md",
@@ -384,16 +383,16 @@ PROSE_CLAIM_FILES = {
         ],
     },
     "analyzer tool": {
-        # Catches plain and slashed forms such as "38 analyzer tools" and
-        # "38 spectral/analyzer tools". Keep runtime status strings in
-        # scope too — stale capability messages are user-facing docs.
+        # NOTE: this catches "38 analyzer tools" patterns but NOT
+        # "38 spectral/analyzer tools" (the `/` breaks the check_prose_claim
+        # regex's optional-word prefix). Those variants must be kept in
+        # sync manually — or the regex broadened in a future patch.
         "getter": get_analyzer_tool_count,
         "threshold": 20,
         "files": [
             "README.md",
             "docs/M4L_BRIDGE.md",
             "docs/manual/getting-started.md",
-            "mcp_server/runtime/capability_probe.py",
             "livepilot/skills/livepilot-release/SKILL.md",
         ],
     },

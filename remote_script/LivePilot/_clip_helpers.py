@@ -33,6 +33,44 @@ def _required_loop_end(notes) -> float:
     )
 
 
+def _normalize_notes_for_add(notes):
+    """Clip negative-start notes into the visible/playable clip region.
+
+    Live can return notes with negative clip-relative start times from
+    arrangement clips that have pre-roll content. Re-adding those specs to a
+    newly-created clip is misleading: API readback can find the note only when
+    queried from a negative time, while the ordinary clip view/default query
+    misses it. For note-write APIs, normalize anything crossing zero so the
+    note starts at 0.0 and keeps the same end time.
+    """
+    normalized = []
+    clipped_count = 0
+    skipped_count = 0
+
+    for note in notes:
+        start = float(note.get("start_time", 0.0))
+        duration = float(note.get("duration", 0.0))
+        end = start + duration
+
+        if end <= 0.0:
+            skipped_count += 1
+            continue
+
+        if start < 0.0:
+            out = dict(note)
+            out["start_time"] = 0.0
+            out["duration"] = end
+            normalized.append(out)
+            clipped_count += 1
+        else:
+            normalized.append(note)
+
+    return normalized, {
+        "clipped_negative_start_count": clipped_count,
+        "skipped_pre_clip_count": skipped_count,
+    }
+
+
 def _apply_clip_length_invariants(clip, length: float) -> dict:
     """Force a freshly-created clip's loop_end + end_marker to match length.
 

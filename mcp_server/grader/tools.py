@@ -64,15 +64,9 @@ def _build_light_state(ctx: Context) -> dict[str, Any]:
         info = _safe_call(ableton, "get_track_info", {"track_index": idx})
         if not info:
             continue
-        # Skip master/return tracks (real Remote Script field names are
-        # is_master_track / is_return_track, not is_master / is_return).
-        if info.get("is_master_track") or info.get("is_return_track"):
+        if info.get("is_foldable") and info.get("is_master"):
             continue
-        # Skip group containers — foldable group tracks hold no clips or
-        # devices of their own, so they inflate the §7.3 track count and
-        # (having a mixer volume but no role/ghost tag) trip the
-        # buried-track check. Only count real, content-bearing layers.
-        if info.get("is_foldable"):
+        if info.get("is_return"):
             continue
         tracks.append({
             "index": idx,

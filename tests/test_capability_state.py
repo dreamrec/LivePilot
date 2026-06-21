@@ -76,8 +76,6 @@ class TestCapabilityState:
         assert "analyzer" in state.domains
         assert "memory" in state.domains
         assert "web" in state.domains
-        assert "link_audio" in state.domains
-        assert "stem_workflow" in state.domains
         assert "research" in state.domains
 
     def test_judgment_only_without_analyzer(self):
@@ -223,43 +221,3 @@ class TestBuildCapabilityState:
         state = build_capability_state()
         assert state.domains["research"].mode == "unavailable"
         assert state.domains["research"].available is False
-
-    def test_link_audio_defaults_to_manual_only_even_when_session_is_up(self):
-        """Link Audio is a 12.4 UX feature; LivePilot must not mark it
-        controllable until a probe produces concrete routing evidence."""
-        state = build_capability_state(session_ok=True)
-        link = state.domains["link_audio"]
-        assert link.available is False
-        assert link.mode == "manual_only"
-        assert "link_audio_unprobed" in link.reasons
-
-    def test_link_audio_can_report_routable_probe_evidence(self):
-        state = build_capability_state(
-            session_ok=True,
-            link_audio_mode="routable",
-            link_audio_reasons=[],
-        )
-        link = state.domains["link_audio"]
-        assert link.available is True
-        assert link.mode == "routable"
-        assert link.confidence == 0.8
-        assert link.reasons == []
-
-    def test_stem_workflow_defaults_to_manual_only_even_on_12_4(self):
-        state = build_capability_state(session_ok=True)
-        stems = state.domains["stem_workflow"]
-        assert stems.available is False
-        assert stems.mode == "manual_only"
-        assert "stem_workflow_unprobed" in stems.reasons
-
-    def test_stem_workflow_can_report_callable_probe_evidence(self):
-        state = build_capability_state(
-            session_ok=True,
-            stem_workflow_mode="callable",
-            stem_workflow_reasons=[],
-        )
-        stems = state.domains["stem_workflow"]
-        assert stems.available is True
-        assert stems.mode == "callable"
-        assert stems.confidence == 0.8
-        assert stems.reasons == []

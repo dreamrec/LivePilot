@@ -167,7 +167,7 @@ async def get_session_diagnostics(ctx: Context, check_clip_keys: bool = False) -
         # reasonable upper bound for typical production sessions.
         for clip_idx in range(min(32, len(session_info.get("scenes", []) or []) or 8)):
             try:
-                check = await check_clip_key_consistency(ctx, t_idx, clip_idx)
+                check = await check_clip_key_consistency.fn(ctx, t_idx, clip_idx)
             except Exception:  # noqa: BLE001 — any failure means "skip this clip"
                 continue
             if not isinstance(check, dict):

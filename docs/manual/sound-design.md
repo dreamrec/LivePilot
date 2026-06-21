@@ -155,7 +155,7 @@ Ableton's effects cover everything from subtle corrective processing to total so
 ### Time-Based
 
 - **Reverb** — Algorithmic reverb with pre-delay, decay time, and tone shaping. Use on sends, not inserts, unless you want 100% wet on a specific sound.
-- **Delay** — Tempo-synced delay with feedback and filtering. Live 12.4+ adds a deeper LFO section with Hz/ms/synced rates, seven waveforms, and Morph shaping, so Delay can now supply more of the repeat movement that previously pushed you toward Echo.
+- **Delay** — Tempo-synced delay with feedback and filtering. Good for rhythmic echoes, dub effects, and adding depth.
 - **Echo** — Combines delay with modulation, reverb, and character controls. More creative and colored than Delay — better for effects, worse for transparent repeats.
 
 ### Distortion
@@ -166,12 +166,12 @@ Ableton's effects cover everything from subtle corrective processing to total so
   - *Sinoid Fold* — wavefolder-style, gets wild at high drive
   - The Drive and Output knobs are your main controls.
 - **Overdrive** — Amp-style distortion. Works well on bass and guitars, less useful on full mixes.
-- **Erosion** — Adds digital artifacts and noise. In Live 12.4+, reach for Noise Blend and Stereo Width for more controlled sine/noise abrasion; subtle amounts add air and grit, high amounts destroy the signal.
+- **Erosion** — Adds digital artifacts and noise. Subtle amounts add air and grit, high amounts destroy the signal.
 - **Corpus** — Physical modeling resonator. Puts any sound through a simulated resonating body (tube, membrane, plate). Unique textures when used on drums or noise.
 
 ### Modulation
 
-- **Chorus-Ensemble** — Adds width and movement. Live 12.4+ refines Classic into Chorus mode with Time and Taps controls, giving thicker pedal-like chorus options alongside Ensemble mode. Use sparingly on bass unless the low end is protected.
+- **Chorus-Ensemble** — Adds width and movement. Classic mode for subtle thickening, Ensemble mode for lush, wide chorusing. Use sparingly on bass (it can thin the low end).
 - **Phaser-Flanger** — Phase cancellation effects. Phaser mode for sweepy, psychedelic movement; Flanger mode for jet-engine swooshes and metallic textures.
 
 ### Utility

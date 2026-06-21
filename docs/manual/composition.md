@@ -73,22 +73,19 @@ compose(prompt="dark minimal techno 128bpm with industrial textures and ghostly 
 
 The Composer returns a plan — it does NOT execute. The agent steps through each tool call in the returned sequence.
 
-> Plain `compose` (mode="full") is plan-only. To execute the plan in one call, use `compose(mode="fast")` or the `compose_fast_apply` / `compose_full_apply` tools, which run the planned tool sequence for you.
-
 ### Genre defaults
 
-8 built-in genre profiles, each with a single default tempo, layer-count range, and section template (`GENRE_DEFAULTS` stores one tempo per genre, not a range):
+7 built-in genre profiles with tempo ranges, layer counts, and section templates:
 
 | Genre | Tempo | Layers | Key features |
 |-------|-------|--------|-------------|
-| Techno | 128 | 5-7 | Kick-driven, sparse melody, heavy texture |
-| Dub Techno | 125 | 3-5 | Continuous-evolution, Basic Channel aesthetic |
-| House | 124 | 5-6 | Vocal-forward, chord stabs, groove focus |
-| Hip-hop | 90 | 4-6 | Sample-driven, boom-bap or trap patterns |
-| Ambient | 80 | 3-5 | Sparse, long pads, texture-heavy |
-| Drum & Bass | 174 | 5-7 | Fast breaks, heavy bass, atmospheric pads |
-| Trap | 140 | 4-6 | Rolling hats, 808 bass, half-time feel |
-| Lo-fi | 85 | 3-5 | Dusty, mellow, vinyl-textured |
+| Techno | 125-135 | 5-7 | Kick-driven, sparse melody, heavy texture |
+| House | 118-128 | 5-6 | Vocal-forward, chord stabs, groove focus |
+| Ambient | 60-90 | 3-5 | Sparse, long pads, texture-heavy |
+| Hip-hop | 80-100 | 4-6 | Sample-driven, boom-bap or trap patterns |
+| Drum & Bass | 170-180 | 5-7 | Fast breaks, heavy bass, atmospheric pads |
+| Dub | 65-80 | 4-5 | Heavy reverb/delay, sparse, space-focused |
+| Experimental | any | 3-8 | No rules, genre-crossing |
 
 ### Dry run preview
 

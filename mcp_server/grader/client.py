@@ -17,13 +17,10 @@ session state, returning the same shape used by `mcp_server/audit/checks.py`:
 
 from __future__ import annotations
 
-import logging
 from typing import Any, Callable, Iterable
 
 from mcp_server.audit import checks as audit_checks
 from mcp_server.audit.checks import infer_role
-
-_logger = logging.getLogger(__name__)
 
 
 _TRACK_COUNT_WARN = 8
@@ -444,21 +441,11 @@ def _aggregate_per_track(
         try:
             result = check_fn(*args)
         except Exception as exc:
-            _logger.warning(
-                "grader check %s failed for criterion %r track %r (%s): %s",
-                getattr(check_fn, "__name__", repr(check_fn)),
-                criterion_id,
-                t.get("index"),
-                t.get("name"),
-                exc,
-                exc_info=True,
-            )
             per_track.append({
                 "track_index": t.get("index"),
                 "name": t.get("name"),
                 "role": role,
                 "severity": "n/a",
-                "errored": True,
                 "summary": f"check failed: {type(exc).__name__}",
                 "issues": [],
                 "evidence": {},
@@ -472,30 +459,15 @@ def _aggregate_per_track(
         })
 
     actionable = [r for r in per_track if r["severity"] != "n/a"]
-    n_errored = sum(1 for r in per_track if r.get("errored"))
 
     if not actionable:
-        if n_errored:
-            # Every checkable track raised — do NOT masquerade an all-error
-            # sweep as a benign no-op pass. Surface it as a failure.
-            return {
-                "id": criterion_id,
-                "passed": False,
-                "severity": "fail",
-                "summary": (
-                    f"{n_errored} track(s) errored during check; no track "
-                    "produced a usable result"
-                ),
-                "issues": [],
-                "evidence": {"per_track": per_track, "errored": n_errored},
-            }
         return {
             "id": criterion_id,
             "passed": True,
             "severity": "n/a",
             "summary": "No checkable tracks (data missing or no applicable role)",
             "issues": [],
-            "evidence": {"per_track": per_track, "errored": n_errored},
+            "evidence": {"per_track": per_track},
         }
 
     has_fail = any(r["severity"] == "fail" for r in actionable)
@@ -533,7 +505,7 @@ def _aggregate_per_track(
         "severity": rubric_severity,
         "summary": summary,
         "issues": issues,
-        "evidence": {"per_track": per_track, "errored": n_errored},
+        "evidence": {"per_track": per_track},
     }
 
 

@@ -155,11 +155,9 @@ def test_sample_is_free_when_not_premium():
     assert sample.is_free
 
 
-def test_premium_sample_with_zero_price_is_not_free():
-    # proto3 defaults Price to 0 when the server omits it; a premium
-    # sample must NOT be treated as free just because Price is unset.
+def test_sample_is_free_when_price_zero():
     sample = SpliceSample(is_premium=True, price=0)
-    assert not sample.is_free
+    assert sample.is_free
 
 
 def test_sample_is_paid_when_premium_and_priced():

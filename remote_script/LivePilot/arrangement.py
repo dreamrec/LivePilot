@@ -1,5 +1,5 @@
 """
-LivePilot - Arrangement domain handlers (21 commands).
+LivePilot - Arrangement domain handlers (23 commands).
 
 As of 2026-04-22: adds the two-phase session-record workaround for
 track-level arrangement automation (T5 handoff). Live's LOM can't
@@ -11,6 +11,149 @@ arrangement at a target beat, then cleans up.
 from .clip_automation import set_clip_automation as _set_clip_automation_handler
 from .router import register
 from .utils import get_track
+
+
+_AUTOMATION_RECORD_RESTORE = None
+
+
+def _read_session_automation_record(song):
+    try:
+        return {
+            "supported": True,
+            "value": bool(song.session_automation_record),
+        }
+    except AttributeError:
+        return {
+            "supported": False,
+            "error": "song.session_automation_record is not exposed by this Live build",
+        }
+    except Exception as exc:
+        return {
+            "supported": False,
+            "error": str(exc),
+        }
+
+
+def _enable_session_automation_record(song):
+    global _AUTOMATION_RECORD_RESTORE
+
+    before = _read_session_automation_record(song)
+    if not before.get("supported"):
+        return before
+
+    _AUTOMATION_RECORD_RESTORE = {"value": bool(before.get("value"))}
+    if before.get("value"):
+        return {
+            "supported": True,
+            "before": True,
+            "after": True,
+            "changed": False,
+        }
+
+    try:
+        song.session_automation_record = True
+    except Exception as exc:
+        return {
+            "supported": True,
+            "before": False,
+            "after": False,
+            "changed": False,
+            "writable": False,
+            "error": str(exc),
+        }
+
+    after = _read_session_automation_record(song)
+    return {
+        "supported": True,
+        "before": False,
+        "after": bool(after.get("value")),
+        "changed": bool(after.get("value")),
+        "writable": bool(after.get("supported")),
+        "error": after.get("error"),
+    }
+
+
+def _restore_session_automation_record(song):
+    global _AUTOMATION_RECORD_RESTORE
+
+    if _AUTOMATION_RECORD_RESTORE is None:
+        return {"restored": False, "reason": "no saved automation record state"}
+
+    desired = bool(_AUTOMATION_RECORD_RESTORE.get("value"))
+    _AUTOMATION_RECORD_RESTORE = None
+    try:
+        song.session_automation_record = desired
+        current = _read_session_automation_record(song)
+        return {
+            "restored": True,
+            "restored_to": bool(current.get("value")),
+            "requested": desired,
+            "supported": bool(current.get("supported")),
+            "error": current.get("error"),
+        }
+    except AttributeError:
+        return {
+            "restored": False,
+            "requested": desired,
+            "supported": False,
+            "error": "song.session_automation_record is not exposed by this Live build",
+        }
+    except Exception as exc:
+        return {
+            "restored": False,
+            "requested": desired,
+            "supported": True,
+            "error": str(exc),
+        }
+
+
+@register("get_recording_state")
+def get_recording_state(song, params):
+    """Return transport and recording flags relevant to Arrangement automation."""
+    automation_record = _read_session_automation_record(song)
+    result = {
+        "record_mode": bool(song.record_mode),
+        "session_record": bool(song.session_record),
+        "is_playing": bool(song.is_playing),
+        "current_song_time": float(song.current_song_time),
+        "automation_record": automation_record,
+    }
+    try:
+        result["arrangement_override"] = bool(song.back_to_arranger)
+    except Exception:
+        result["arrangement_override"] = None
+    return result
+
+
+@register("set_session_automation_record")
+def set_session_automation_record(song, params):
+    """Set Live's Automation Arm flag when the Python LOM exposes it."""
+    value = bool(params["enabled"])
+    before = _read_session_automation_record(song)
+    if not before.get("supported"):
+        return {
+            "supported": False,
+            "before": before,
+            "after": before,
+            "changed": False,
+        }
+    try:
+        song.session_automation_record = value
+    except Exception as exc:
+        return {
+            "supported": True,
+            "before": before,
+            "after": _read_session_automation_record(song),
+            "changed": False,
+            "error": str(exc),
+        }
+    after = _read_session_automation_record(song)
+    return {
+        "supported": True,
+        "before": before,
+        "after": after,
+        "changed": before.get("value") != after.get("value"),
+    }
 
 
 @register("get_arrangement_clips")
@@ -29,14 +172,17 @@ def get_arrangement_clips(song, params):
             "color_index": clip.color_index,
             "is_audio_clip": clip.is_audio_clip,
         }
-        # Add loop info if available
-        try:
-            if clip.looping:
-                info["looping"] = True
-                info["loop_start"] = clip.loop_start
-                info["loop_end"] = clip.loop_end
-        except (AttributeError, RuntimeError):
-            pass
+        for attr in ("looping", "loop_start", "loop_end", "start_marker", "end_marker"):
+            try:
+                info[attr] = getattr(clip, attr)
+            except (AttributeError, RuntimeError):
+                pass
+        if clip.is_audio_clip:
+            for attr in ("warping", "warp_mode", "pitch_coarse", "pitch_fine", "gain"):
+                try:
+                    info[attr] = getattr(clip, attr)
+                except (AttributeError, RuntimeError):
+                    pass
         clips.append(info)
     return {"track_index": track_index, "clips": clips}
 
@@ -243,6 +389,8 @@ def create_native_arrangement_clip(song, params):
 @register("add_arrangement_notes")
 def add_arrangement_notes(song, params):
     """Add MIDI notes to an arrangement clip (by index in arrangement_clips)."""
+    from ._clip_helpers import _extend_loop_end_for_notes, _normalize_notes_for_add
+
     track_index = int(params["track_index"])
     clip_index = int(params["clip_index"])
     notes = params["notes"]
@@ -256,11 +404,16 @@ def add_arrangement_notes(song, params):
             % (clip_index, len(arr_clips) - 1)
         )
     clip = arr_clips[clip_index]
+    normalized_notes, note_window_info = _normalize_notes_for_add(notes)
+    if not normalized_notes:
+        raise ValueError("all notes fall before the clip start")
+    extended_to = _extend_loop_end_for_notes(clip, normalized_notes)
+
     import Live
     song.begin_undo_step()
     try:
         note_specs = []
-        for note in notes:
+        for note in normalized_notes:
             kwargs = dict(
                 pitch=int(note["pitch"]),
                 start_time=float(note["start_time"]),
@@ -279,11 +432,22 @@ def add_arrangement_notes(song, params):
         clip.add_new_notes(tuple(note_specs))
     finally:
         song.end_undo_step()
-    return {
+    result = {
         "track_index": track_index,
         "clip_index": clip_index,
-        "notes_added": len(notes),
+        "notes_added": len(normalized_notes),
     }
+    if len(normalized_notes) != len(notes):
+        result["requested_notes"] = len(notes)
+    if note_window_info["clipped_negative_start_count"]:
+        result["clipped_negative_start_count"] = note_window_info[
+            "clipped_negative_start_count"
+        ]
+    if note_window_info["skipped_pre_clip_count"]:
+        result["skipped_pre_clip_count"] = note_window_info["skipped_pre_clip_count"]
+    if extended_to is not None:
+        result["loop_end_extended_to"] = extended_to
+    return result
 
 
 @register("get_arrangement_notes")
@@ -754,13 +918,45 @@ def start_recording(song, params):
     """Start recording in session or arrangement mode.
 
     Live requires transport to be playing for record_mode to engage.
-    If not playing, we start playback first.
+    If not playing, we start playback first. For Arrangement recording,
+    callers may pass ``beat_time`` or ``start_beat``; the handler seeks
+    once before transport start and once after transport start, before
+    enabling record mode, because Live can resume an older transport
+    position when playback starts from a stopped state.
     """
     arrangement = bool(params.get("arrangement", False))
+    automation_record = None
+    record_positioning = None
     if arrangement:
+        automation_record = _enable_session_automation_record(song)
+        target_beat = params.get("beat_time", params.get("start_beat"))
+        if target_beat is not None:
+            target_beat = max(0.0, float(target_beat))
+            song.current_song_time = target_beat
+            record_positioning = {
+                "target": target_beat,
+                "after_pre_transport_seek": song.current_song_time,
+            }
         if not song.is_playing:
-            song.start_playing()
+            # Preserve the arrangement cursor set by jump_to_time callers.
+            # start_playing() starts from the beginning in Live, while
+            # continue_playing() may resume an older stopped position. The
+            # post-start seek below is what makes the target deterministic.
+            song.continue_playing()
+        if record_positioning is not None:
+            record_positioning["after_transport_start"] = song.current_song_time
+        if target_beat is not None:
+            song.current_song_time = target_beat
+            record_positioning["after_transport_seek"] = song.current_song_time
         song.record_mode = True
+        if record_positioning is not None:
+            record_positioning["after_record_mode_set"] = song.current_song_time
+            # Some Live builds move the playhead while record mode engages.
+            # Seek a final time inside the same scheduled handler so the
+            # recording pass begins at the target before the client drives
+            # any parameter changes.
+            song.current_song_time = target_beat
+            record_positioning["after_record_mode_seek"] = song.current_song_time
     else:
         song.session_record = True
     # Verify and report
@@ -768,6 +964,10 @@ def start_recording(song, params):
         "record_mode": song.record_mode,
         "session_record": song.session_record,
     }
+    if automation_record is not None:
+        result["automation_record"] = automation_record
+    if record_positioning is not None:
+        result["record_positioning"] = record_positioning
     if arrangement and not song.record_mode:
         result["warning"] = "Record mode did not engage — check that at least one track is armed"
     if not arrangement and not song.session_record:
@@ -780,7 +980,11 @@ def stop_recording(song, params):
     """Stop all recording."""
     song.record_mode = False
     song.session_record = False
-    return {"record_mode": False, "session_record": False}
+    return {
+        "record_mode": False,
+        "session_record": False,
+        "automation_record_restore": _restore_session_automation_record(song),
+    }
 
 
 @register("get_cue_points")
@@ -821,8 +1025,37 @@ def toggle_cue_point(song, params):
 @register("back_to_arranger")
 def back_to_arranger(song, params):
     """Switch playback from session clips back to the arrangement timeline."""
-    song.back_to_arranger = True
-    return {"back_to_arranger": True}
+    song.back_to_arranger = False
+    return {"back_to_arranger": False}
+
+
+def _stop_session_clips(song):
+    """Best-effort Session View clip stop; returns clips still flagged active."""
+    remaining = []
+    try:
+        song.stop_all_clips()
+    except Exception:
+        pass
+
+    for ti, track in enumerate(song.tracks):
+        for si, slot in enumerate(track.clip_slots):
+            if slot.has_clip and slot.clip:
+                clip = slot.clip
+                if clip.is_playing or clip.is_triggered:
+                    try:
+                        clip.stop()
+                    except Exception:
+                        pass
+                    if clip.is_playing or clip.is_triggered:
+                        remaining.append({
+                            "track_index": ti,
+                            "track_name": track.name,
+                            "clip_index": si,
+                            "clip_name": clip.name,
+                            "is_playing": clip.is_playing,
+                            "is_triggered": clip.is_triggered,
+                        })
+    return remaining
 
 
 @register("force_arrangement")
@@ -839,18 +1072,12 @@ def force_arrangement(song, params):
     if was_playing:
         song.stop_playing()
 
-    # 2. Stop playing clip slots individually to release session overrides
-    #    (track.stop_all_clips() throws STATE_ERROR when tracks have no clips)
-    for track in list(song.tracks) + list(song.return_tracks):
-        try:
-            for slot in track.clip_slots:
-                if slot.has_clip and slot.is_playing:
-                    slot.clip.stop()
-        except Exception:
-            pass
+    # 2. Stop Session View clips so they cannot reassert arrangement override.
+    remaining_clips = _stop_session_clips(song)
 
-    # 3. Global back-to-arranger
-    song.back_to_arranger = True
+    # 3. Global back-to-arranger. In Live 12.4.2 this property is the
+    # orange override state, so clearing it returns tracks to Arrangement.
+    song.back_to_arranger = False
 
     # 4. Jump to position (default: start)
     beat_time = float(params.get("beat_time", 0))
@@ -868,7 +1095,9 @@ def force_arrangement(song, params):
         song.start_playing()
 
     return {
-        "arrangement_active": True,
+        "arrangement_active": not remaining_clips,
+        "session_clear": not remaining_clips,
+        "playing_clips": remaining_clips,
         "position": song.current_song_time,
         "is_playing": song.is_playing,
         "loop": song.loop,
@@ -968,7 +1197,7 @@ def arrangement_automation_via_session_record_start(song, params):
     # Probe 4: seek the arrangement to target_beat. Must be done
     # BEFORE enabling record, or the record starts at wherever the
     # playhead currently is.
-    song.back_to_arranger = True
+    song.back_to_arranger = False
     song.current_song_time = max(0.0, target_beat)
 
     # Probe 5: arm the track. Some tracks need `current_monitoring_state`

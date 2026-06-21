@@ -1,4 +1,4 @@
-"""Verify all 467 MCP tools are registered (v1.27: +2 runtime capability-probe tools)."""
+"""Verify all 467 MCP tools are registered."""
 
 import asyncio
 import sys
@@ -276,6 +276,7 @@ def test_automation_tools_registered():
         "get_automation_recipes",
         "generate_automation_curve",
         "analyze_for_automation",
+        "record_parameter_automation_realtime",
     }
     missing = expected - names
     assert not missing, f"Missing automation tools: {missing}"
@@ -885,8 +886,6 @@ def test_session_kernel_tools_registered():
     expected = {
         "get_session_kernel",
         "get_capability_state",
-        "probe_link_audio",
-        "probe_stem_workflow",
     }
     missing = expected - names
     assert not missing, f"Missing session kernel tools: {missing}"

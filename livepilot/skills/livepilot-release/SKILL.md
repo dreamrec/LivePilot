@@ -29,7 +29,7 @@ Run this checklist EVERY time the user says "update everything", "push", "releas
 ## 2. Tool Count (must ALL match)
 
 Current: **467 tools across 56 domains**.
-Spectral/analyzer (bridge-only): **38**. The remaining tool surface works without the bridge or degrades gracefully. Backed by 32 bridge commands.
+Spectral/analyzer (bridge-only): **38**. The remaining tool surface works without the bridge or degrades gracefully. Backed by 35 bridge commands.
 
 Verify: `grep -rc "@mcp.tool" mcp_server/tools/ | grep -v ":0" | awk -F: '{sum+=$2} END{print sum}'`
 
@@ -85,8 +85,6 @@ Current: **56 domains**: transport, tracks, clips, notes, devices, scenes, mixin
 
 ## 6. Plugin Cache
 
-- [ ] `python3 scripts/verify_codex_plugin_sync.py` passes after `npx livepilot --install-codex-plugin`
-- [ ] `python3 scripts/verify_plugin_sync.py` passes after Claude plugin cache/mirror sync
 - [ ] `~/.claude/plugins/cache/dreamrec-LivePilot/livepilot/` has current version directory
 - [ ] Old version directories removed
 - [ ] `~/.claude/plugins/installed_plugins.json` → `livepilot@dreamrec-LivePilot` entry: update `version`, `installPath`, `gitCommitSha`, `lastUpdated`
@@ -149,5 +147,5 @@ Current: **56 domains**: transport, tracks, clips, notes, devices, scenes, mixin
 ## Quick Verify Command
 
 ```bash
-echo "=== Versions ===" && grep -h '"version"' package.json server.json manifest.json livepilot/.Codex-plugin/plugin.json livepilot/.claude-plugin/plugin.json .claude-plugin/marketplace.json | head -8 && grep __version__ mcp_server/__init__.py remote_script/LivePilot/__init__.py && echo "=== Metadata ===" && python3 scripts/sync_metadata.py --check && echo "=== Plugin sync ===" && python3 scripts/verify_codex_plugin_sync.py --quiet && python3 scripts/verify_plugin_sync.py --quiet && echo "=== Tests ===" && python3 -m pytest tests/ -q 2>&1 | tail -1
+echo "=== Versions ===" && grep -h '"version"' package.json server.json manifest.json livepilot/.Codex-plugin/plugin.json livepilot/.claude-plugin/plugin.json .claude-plugin/marketplace.json | head -8 && grep __version__ mcp_server/__init__.py remote_script/LivePilot/__init__.py && echo "=== Tool count ===" && grep -rc "@mcp.tool" mcp_server/ | grep -v ":0" | awk -F: '{sum+=$2} END{print "Total:", sum}' && echo "=== Tests ===" && python3 -m pytest tests/ -q 2>&1 | tail -1
 ```

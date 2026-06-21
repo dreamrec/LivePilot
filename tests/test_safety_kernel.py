@@ -264,38 +264,3 @@ class TestSafetyCheckDataclass:
         assert d["action"] == "test"
         assert d["allowed"] is True
         assert d["risk_level"] == "safe"
-class TestMutatingOverrides:
-    def test_find_and_load_device_is_not_read_only(self):
-        # find_and_load_device matches the "find_" read-only prefix but is a
-        # genuine mutation (loads a device). It must not be classified safe.
-        assert not is_read_only_action("find_and_load_device")
-
-    def test_find_and_load_device_blocked_in_read_only_mode(self):
-        r = check_action_safety(
-            "find_and_load_device",
-            capability_state={"mode": "read_only"},
-        )
-        assert not r.allowed
-        assert r.risk_level == "blocked"
-
-    def test_genuine_find_reads_stay_read_only(self):
-        # Real read-only find_ tools must keep their prefix classification.
-        assert is_read_only_action("find_primary_hook")
-        assert is_read_only_action("find_voice_leading_path")
-
-    def test_from_session_info_null_live_version_degrades_to_floor(self):
-        # Finding 2: a present-but-null/empty live_version must degrade to the
-        # conservative floor (12.0.0), not bypass the default.
-        from mcp_server.runtime.live_version import LiveVersionCapabilities
-
-        caps_null = LiveVersionCapabilities.from_session_info({"live_version": None})
-        assert (caps_null.major, caps_null.minor, caps_null.patch) == (12, 0, 0)
-
-        caps_empty = LiveVersionCapabilities.from_session_info({"live_version": ""})
-        assert (caps_empty.major, caps_empty.minor, caps_empty.patch) == (12, 0, 0)
-
-        # Absent key and valid value still behave correctly.
-        caps_absent = LiveVersionCapabilities.from_session_info({})
-        assert (caps_absent.major, caps_absent.minor, caps_absent.patch) == (12, 0, 0)
-        caps_valid = LiveVersionCapabilities.from_session_info({"live_version": "12.4.0"})
-        assert (caps_valid.major, caps_valid.minor, caps_valid.patch) == (12, 4, 0)

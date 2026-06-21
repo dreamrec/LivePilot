@@ -2,7 +2,7 @@
 
 LivePilot gives you 467 tools that control every part of Ableton Live 12. You don't call these tools directly -- you describe what you want in plain language, and the AI picks the right tools behind the scenes. But knowing what's available helps you ask better questions and understand what's happening when the AI works on your session.
 
-This chapter covers the most-used tools, grouped by what it does. Each entry tells you the tool name, what it does in practice, what parameters it accepts, and when you'd want it. The complete list of all 467 tools is auto-generated in the **[Tool Catalog](tool-catalog.md)**.
+This chapter covers every tool, grouped by what it does. Each entry tells you the tool name, what it does in practice, what parameters it accepts, and when you'd want it.
 
 > **Quick reference for common values:**
 >
@@ -1486,6 +1486,8 @@ Automation point object:
 
 Switches playback from session clips back to the arrangement timeline. In Ableton, launching session clips overrides the arrangement until you press the "Back to Arrangement" button -- this tool does that.
 
+Live 12.4.2 exposes the orange override as `song.back_to_arranger` / `track.back_to_arranger`: `true` means the orange button is lit and Arrangement playback is overridden; LivePilot clears it by writing `false`. Verify with `get_session_info`: top-level `arrangement_override` should be `false` and no track should report `arrangement_override=true`. If transport positioning also matters, prefer `force_arrangement`.
+
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | *(none)* | | | |
@@ -1713,6 +1715,67 @@ Returns: track name, device count, current level, spectrum data, and a list of s
 
 ---
 
+### record_parameter_automation_realtime
+
+Records native Arrangement automation by moving a device parameter in real time while Arrangement Record and Automation Arm are active. This is the clean Arrangement workaround: it stays in Arrangement, creates a temporary armed MIDI trigger track only to make recording engage, drives the target parameter at scheduled beat offsets, stops, deletes the trigger track, restores previous arm/transport state, and verifies that the target parameter now reports automation.
+
+By default it records a short guard point before `start_beat` at the parameter's pre-pass value. This prevents Ableton from holding the first requested automation value backward across the earlier arrangement.
+
+The recorder starts playback before the first automation point, re-seeks while playback is already running, then engages Arrangement Record during that pre-roll. Automation points are scheduled against absolute Arrangement beats so startup latency does not shift the curve later.
+
+It does not create or fire a Session View automation clip.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | *(required)* | Track containing the target device |
+| `device_index` | int | *(required)* | Device containing the target parameter |
+| `points` | list | *(required)* | `[{time, value}]` relative to `start_beat`; values use the parameter's native range |
+| `start_beat` | float | *(required)* | Arrangement beat where recording starts |
+| `duration_beats` | float | last point + 0.25 | How long to keep Arrangement Record running |
+| `parameter_index` | int | — | Target device parameter index |
+| `parameter_name` | string | — | Target device parameter name; alternative to `parameter_index` |
+| `record_arm_track_index` | int | — | Existing track to arm instead of creating a temporary trigger track |
+| `overwrite_existing` | bool | `false` | Refuse to record if the target parameter already has automation unless true |
+| `require_verification` | bool | `true` | Require post-pass automation-state verification |
+| `restore_transport` | bool | `true` | Restore playhead/playback state after the pass |
+| `guard_previous_value` | bool | `true` | Record a guard point before `start_beat` at the pre-pass parameter value |
+| `guard_beats` | float | `0.25` | How far before `start_beat` to place the guard point |
+| `pre_roll_beats` | float | `8.0` | Beats of playback before the first recorded automation point, used to engage record before driving values |
+
+**When to use:** "Record an Auto Filter cutoff sweep over bars 9-17" or any Arrangement automation pass where the old Session-clip workaround would disturb Arrangement playback.
+
+---
+
+### record_parameter_automation_m4l_curve
+
+Records fast native Arrangement automation by arming a local scheduler inside the LivePilot Analyzer bridge. The MCP side sends the whole curve to Max once, starts playback in pre-roll, engages Arrangement Record, then lets Max drive the target parameter locally against Live song time.
+
+This avoids the TCP-per-point bottleneck in `record_parameter_automation_realtime`. It still stays in Arrangement and does not create or fire a Session View automation clip.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `track_index` | int | *(required)* | Track containing the target device |
+| `device_index` | int | *(required)* | Device containing the target parameter |
+| `points` | list | *(required)* | `[{time, value}]` relative to `start_beat`; values use the parameter's native range |
+| `start_beat` | float | *(required)* | Arrangement beat where the requested curve begins |
+| `duration_beats` | float | last point + 0.25 | How long to keep Arrangement Record running |
+| `parameter_index` | int | — | Target device parameter index |
+| `parameter_name` | string | — | Target device parameter name; alternative to `parameter_index` |
+| `record_arm_track_index` | int | — | Existing track to arm instead of creating a temporary trigger track |
+| `overwrite_existing` | bool | `false` | Refuse to record if the target parameter already has automation unless true |
+| `require_verification` | bool | `true` | Require post-pass automation-state verification |
+| `restore_transport` | bool | `true` | Restore playhead/playback state after the pass |
+| `guard_previous_value` | bool | `true` | Record a guard point before `start_beat` at the pre-pass parameter value |
+| `guard_beats` | float | `0.25` | How far before `start_beat` to place the guard point |
+| `pre_roll_beats` | float | `8.0` | Beats of playback before the first recorded automation point |
+| `mode` | string | `linear` | `linear`, `points`, or `step` scheduler mode |
+| `tick_ms` | int | `10` | Max scheduler tick interval; lower is denser but heavier |
+| `min_delta` | float | `0.0005` | Minimum parameter-value change before another local write in `linear` mode |
+
+**When to use:** fast filter/gain/pan/macro curves, tremolo-like motion, or dense gestures where points closer than about half a beat would be late through normal TCP parameter writes.
+
+---
+
 ### set_arrangement_automation_via_session_record
 
 **[v1.17+]** Writes track-level arrangement automation at a specific beat using the session-clip + arrangement-record workaround. The Live LOM forbids direct track-level arrangement automation writes outside of clips, so this tool uses a two-phase protocol: creates a session clip with the automation, arms the track, records it into arrangement at `target_beat`, then cleans up.
@@ -1854,7 +1917,7 @@ Removes a technique from the library. Creates a backup file first for safety.
 
 ## Analyzer
 
-The Analyzer domain (38 tools) requires the LivePilot Analyzer Max for Live device on the master track. They provide real-time DSP analysis, FluCoMa spectral descriptors, audio capture, deep device introspection, sample manipulation, and warp marker control. Every other tool works without the device.
+These 29 tools require the LivePilot Analyzer Max for Live device on the master track. They provide real-time DSP analysis, FluCoMa spectral descriptors, audio capture, deep device introspection, sample manipulation, and warp marker control. All other 207 tools work without the device.
 
 ### get_master_spectrum
 

@@ -105,62 +105,6 @@ class DetectedPlugin:
 # ─── Top-level entry ────────────────────────────────────────────────────────
 
 
-# Bundle file/dir extensions per plugin format. VST3/AU/AAX/LV2 bundles are
-# themselves directories (Foo.vst3/Contents/...), so the recursive scan treats
-# a matching entry as a leaf — it records it but never descends inside.
-_BUNDLE_EXTS: dict[str, tuple[str, ...]] = {
-    "VST3": (".vst3",),
-    "AU": (".component",),
-    "VST2": (".vst", ".dylib"),
-    "AAX": (".aaxplugin",),
-    "LV2": (".lv2",),
-}
-
-
-def _is_plugin_bundle(path: Path, fmt: str) -> bool:
-    """True when *path* is itself a plugin bundle/file for *fmt* (a leaf to
-    record) rather than a vendor/organisational subfolder to recurse into."""
-    return path.suffix in _BUNDLE_EXTS.get(fmt, ())
-
-
-def _walk_plugin_bundles(root: Path, fmt: str, max_depth: int = 8):
-    """Yield every *fmt* plugin bundle/file under *root*, recursing into plain
-    (vendor) subdirectories but NOT descending into bundle directories.
-
-    Fixes the flat scan that only saw top-level bundles: plugins nested in
-    vendor subfolders (e.g. VST3/Arturia/Analog Lab.vst3) were invisible, and
-    the vendor folders themselves were mis-emitted as junk 'unknown-*' records.
-    Symlink cycles are guarded via resolved-path dedup; recursion depth is
-    capped; unreadable directories are skipped with a warning.
-    """
-    seen_dirs: set[Path] = set()
-    stack: list[tuple[Path, int]] = [(root, 0)]
-    while stack:
-        current, depth = stack.pop()
-        try:
-            real = current.resolve()
-        except OSError:
-            continue
-        if real in seen_dirs:
-            continue
-        seen_dirs.add(real)
-        try:
-            entries = sorted(current.iterdir())
-        except (PermissionError, OSError) as e:
-            logger.warning("Cannot read %s: %s", current, e)
-            continue
-        for entry in entries:
-            if _is_plugin_bundle(entry, fmt):
-                yield entry  # leaf — never descend into a bundle
-            elif depth < max_depth:
-                try:
-                    descend = entry.is_dir()
-                except OSError:
-                    descend = False
-                if descend:
-                    stack.append((entry, depth + 1))
-
-
 def detect_installed_plugins(
     paths: list[tuple[Path, str]] | None = None,
     formats: list[str] | None = None,
@@ -194,19 +138,20 @@ def detect_installed_plugins(
     results: list[DetectedPlugin] = []
     seen_keys: set[tuple[str, str, str]] = set()   # (vendor_lc, name_lc, format)
 
-    # 1. Path-based scan — covers VST3 / VST2 / AAX / LV2 + co-located AU v2.
-    #    Recurses into vendor subfolders (e.g. VST3/Arturia/Foo.vst3) but never
-    #    descends into bundle directories themselves. See _walk_plugin_bundles.
+    # 1. Path-based scan — covers VST3 / VST2 / AAX / LV2 + co-located AU v2
     for root, fmt in paths:
         if not root.exists():
             continue
-        for entry in _walk_plugin_bundles(root, fmt):
-            plugin = _identify_plugin(entry, fmt)
-            if plugin:
-                key = ((plugin.vendor or "").lower(), plugin.name.lower(), plugin.format)
-                if key not in seen_keys:
-                    seen_keys.add(key)
-                    results.append(plugin)
+        try:
+            for entry in sorted(root.iterdir()):
+                plugin = _identify_plugin(entry, fmt)
+                if plugin:
+                    key = ((plugin.vendor or "").lower(), plugin.name.lower(), plugin.format)
+                    if key not in seen_keys:
+                        seen_keys.add(key)
+                        results.append(plugin)
+        except (PermissionError, OSError) as e:
+            logger.warning("Cannot read %s: %s", root, e)
 
     # 2. auval-based AU enumeration — captures AUv3 + arbitrary-location AUs
     want_au = formats is None or "AU" in (formats or [])

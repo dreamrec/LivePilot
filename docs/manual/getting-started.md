@@ -13,8 +13,6 @@ This guide takes you from zero to making sound in about five minutes.
 
 ## Step 1: Install the Remote Script
 
-> **Fastest path:** `npx livepilot --setup` runs the unified wizard — it checks Python, installs the Remote Script, bootstraps the venv, configures MCP, and installs the M4L Analyzer to your User Library in one command. If you run it, you can skip the manual Analyzer drag in the Optional section below. The steps that follow do the same work piece by piece.
-
 The Remote Script is a small Python program that runs inside Ableton and listens for commands from LivePilot. Run this once:
 
 ```bash
@@ -53,11 +51,6 @@ npx livepilot --install-codex-plugin
 This installs the bundled LivePilot plugin into `~/plugins/livepilot` and
 registers it in `~/.agents/plugins/marketplace.json`.
 
-For a manual plugin-dir setup, the committed MCP config lives at
-`livepilot/.mcp.json` (not a root `.mcp.json`) and uses the npx form
-(`{"command": "npx", "args": ["livepilot"]}`); `--install-codex-plugin`
-rewrites it to an absolute path automatically.
-
 ### Claude Desktop
 
 Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
@@ -67,7 +60,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
   "mcpServers": {
     "LivePilot": {
       "command": "npx",
-      "args": ["-y", "livepilot"]
+      "args": ["-y", "github:dreamrec/LivePilot"]
     }
   }
 }
@@ -84,7 +77,7 @@ Add to your MCP config file (`.mcp.json`, `.cursor/mcp.json`, `.vscode/mcp.json`
   "mcpServers": {
     "LivePilot": {
       "command": "npx",
-      "args": ["-y", "livepilot"]
+      "args": ["-y", "github:dreamrec/LivePilot"]
     }
   }
 }
@@ -110,10 +103,8 @@ LivePilot ships with a baseline device atlas — a few thousand stock Ableton de
 Or, if you prefer an explicit tool invocation from an MCP-capable client:
 
 ```
-scan_full_library(max_per_category=30000)
+scan_full_library(force=true, max_per_category=30000)
 ```
-
-A first-time scan needs no `force` flag — there's no prior user atlas to override. Add `force=true` only to re-scan over an existing `~/.livepilot/atlas/device_atlas.json`.
 
 The scan walks every browser category (Instruments, Audio Effects, Drums, Samples, Sounds, Plug-Ins, Max for Live, User Library) and records every loadable item. Takes 30-90 seconds depending on library size. The result is saved to **`~/.livepilot/atlas/device_atlas.json`** — your personal atlas, separate from the bundled baseline.
 
@@ -206,8 +197,7 @@ manually copying files into `~/plugins`.
 If you're using Claude Code, install the plugin for an enhanced experience:
 
 ```bash
-claude plugin marketplace add github:dreamrec/LivePilot
-claude plugin install livepilot@dreamrec-LivePilot
+claude plugin add github:dreamrec/LivePilot/plugin
 ```
 
 This adds:
@@ -218,9 +208,6 @@ This adds:
 - `/mix` — Mixing assistant
 - `/sounddesign` — Sound design workflow
 - `/memory` — Browse, search, and manage saved techniques
-- `/arrange` — Guided arrangement and song structure
-- `/perform` — Live performance mode with safety constraints
-- `/evaluate` — Before/after evaluation of recent changes
 
 ### The producer agent
 
@@ -278,7 +265,7 @@ The LivePilot Analyzer is an optional Max for Live device that enables real-time
 
 ### What it enables
 
-With the Analyzer installed, you get 38 additional tools including:
+With the Analyzer installed, you get 30 additional tools including:
 
 - **Spectrum analysis** — real-time frequency data from the master output
 - **Key detection** — automatic key/scale detection using the Krumhansl-Schmuckler algorithm

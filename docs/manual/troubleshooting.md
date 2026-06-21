@@ -26,7 +26,7 @@ When something goes wrong, find your symptom below and follow the fix.
 
 **Likely cause:** The Remote Script in Ableton is older than the MCP server.
 
-**Fix:** Run `npx livepilot --install` again, then restart Ableton.
+**Fix:** Run `npx -y github:dreamrec/LivePilot --install` again, then restart Ableton.
 
 ---
 
@@ -49,7 +49,7 @@ When something goes wrong, find your symptom below and follow the fix.
 Check these causes in order:
 
 1. **No instrument loaded** -- `get_track_info` shows an empty devices array. Load an instrument first.
-2. **Empty Drum Rack** -- You loaded a bare "Drum Rack" instead of a kit preset. The rack has no samples. Fix: delete it, then use `search_browser` with `path="drums"` and `name_filter="Kit"` to find an actual kit.
+2. **Empty Drum Rack** -- You loaded a bare "Drum Rack" instead of a kit preset. The rack has no samples. Fix: delete it, then use `search_browser` with `path="Drums"` and `name_filter="Kit"` to find an actual kit.
 3. **Notes at wrong pitch** -- Drum kits map samples to specific pitches (36-51 typically). Notes placed at 60-69 may miss all pads. Check the kit mapping with `get_rack_chains`.
 4. **Track volume is 0** -- Check `mixer.volume` in `get_track_info`.
 5. **Track is muted** -- Check the mute state in `get_track_info`.
@@ -63,7 +63,7 @@ Check these causes in order:
 
 **Likely cause:** The rack was loaded without any samples.
 
-**Fix:** Run `get_rack_chains` -- if it returns empty chains, the rack has no samples. Delete the device, then use `search_browser` with `path="drums"` and `name_filter="Kit"` to find a real kit with samples pre-loaded.
+**Fix:** Run `get_rack_chains` -- if it returns empty chains, the rack has no samples. Delete the device, then use `search_browser` with `path="Drums"` and `name_filter="Kit"` to find a real kit with samples pre-loaded.
 
 ---
 
@@ -99,7 +99,7 @@ Check these causes in order:
 
 **Likely cause:** Name matching is partial. For example, searching for "Drift" can match sample files like "Synth Bass Drift Pad.wav" before the Drift synthesizer.
 
-**Fix:** Use `search_browser` with `path="instruments"` and `name_filter="Drift"` for more precise results. Then use `load_browser_item` with the exact URI from the search results.
+**Fix:** Use `search_browser` with `path="Instruments"` and `name_filter="Drift"` for more precise results. Then use `load_browser_item` with the exact URI from the search results.
 
 ---
 
@@ -131,7 +131,9 @@ Use `get_device_parameters` to inspect parameter values.
 
 **Likely cause:** Session clips override arrangement playback on a per-track basis.
 
-**Fix:** Use `back_to_arranger` to return all tracks to arrangement playback. Alternatively, stop individual session clips with `stop_track_clips`.
+**Fix:** Use `force_arrangement` to stop Session View clips, clear the orange Back-to-Arrangement override, seek the playhead, and optionally start playback. For the direct clear, use `back_to_arranger`.
+
+On Live 12.4.2, the API flag is inverse-looking: `song.back_to_arranger` / `track.back_to_arranger` reports whether the orange override is active. `true` means lit/overridden; clearing it requires writing `false`. Verify `get_session_info()["arrangement_override"] is False` and that no track has `arrangement_override=True`. Empty `get_playing_clips` is not enough to prove Arrangement playback is restored.
 
 ---
 

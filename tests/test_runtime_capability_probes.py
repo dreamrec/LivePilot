@@ -31,34 +31,24 @@ class _Ableton:
         return {}
 
 
-class _Ableton124(_Ableton):
-    def send_command(self, cmd, params=None):
-        if cmd == "get_session_info":
-            return {
-                "tempo": 120,
-                "track_count": 0,
-                "tracks": [],
-                "live_version": "12.4.2",
-            }
-        return {}
-
-
-def _make_ctx(spectral=None, ableton=None):
+def _make_ctx(spectral=None):
     return SimpleNamespace(
-        lifespan_context={"ableton": ableton or _Ableton(), "spectral": spectral},
+        lifespan_context={"ableton": _Ableton(), "spectral": spectral},
     )
 
 
 class _Spectral:
-    def __init__(self, *, connected=True, values=None):
-        self.is_connected = connected
-        self._values = values or {}
+    """Minimal spectral-cache stand-in with selectable fresh keys."""
+
+    is_connected = True
+
+    def __init__(self, keys=()):
+        self.keys = set(keys)
 
     def get(self, key):
-        value = self._values.get(key)
-        if value is None:
-            return None
-        return {"value": value}
+        if key in self.keys:
+            return {"value": {}, "age_ms": 1}
+        return None
 
 
 # ── Task B1: web probe ──────────────────────────────────────────────────
@@ -112,13 +102,13 @@ def test_web_probe_helper_swallows_exceptions(monkeypatch):
 # ── Task B2: flucoma probe ──────────────────────────────────────────────
 
 
-def test_flucoma_domain_present_when_streams_are_active(monkeypatch):
-    """When FluCoMa streams are active, the domain is emitted as available."""
+def test_flucoma_domain_present_when_importable(monkeypatch):
+    """When flucoma is importable, a flucoma domain is emitted as available."""
     from mcp_server.runtime import tools as runtime_tools
 
-    monkeypatch.setattr(runtime_tools, "_probe_flucoma_package", lambda: True)
+    monkeypatch.setattr(runtime_tools, "_probe_flucoma", lambda: True)
 
-    ctx = _make_ctx(_Spectral(values={"spectral_shape": {"centroid": 900.0}}))
+    ctx = _make_ctx()
     result = runtime_tools.get_capability_state(ctx)
 
     domains = result["capability_state"]["domains"]
@@ -127,32 +117,13 @@ def test_flucoma_domain_present_when_streams_are_active(monkeypatch):
     )
     assert domains["flucoma"]["available"] is True
     assert domains["flucoma"]["mode"] == "available"
-    assert domains["flucoma"]["device_loaded"] is True
-    assert domains["flucoma"]["reasons"] == []
-
-
-def test_flucoma_domain_installed_but_bridge_unavailable(monkeypatch):
-    """Installed Max package should not be misreported as not installed."""
-    from mcp_server.runtime import tools as runtime_tools
-
-    monkeypatch.setattr(runtime_tools, "_probe_flucoma_package", lambda: True)
-
-    ctx = _make_ctx()
-    result = runtime_tools.get_capability_state(ctx)
-
-    domains = result["capability_state"]["domains"]
-    assert "flucoma" in domains
-    assert domains["flucoma"]["available"] is False
-    assert domains["flucoma"]["device_loaded"] is True
-    assert "flucoma_bridge_unavailable" in domains["flucoma"]["reasons"]
-    assert "flucoma_not_installed" not in domains["flucoma"]["reasons"]
 
 
 def test_flucoma_domain_unavailable_when_not_installed(monkeypatch):
-    """When the Max package is missing, the domain says not installed."""
+    """When flucoma is not importable, the domain still emits but unavailable."""
     from mcp_server.runtime import tools as runtime_tools
 
-    monkeypatch.setattr(runtime_tools, "_probe_flucoma_package", lambda: False)
+    monkeypatch.setattr(runtime_tools, "_probe_flucoma", lambda: False)
 
     ctx = _make_ctx()
     result = runtime_tools.get_capability_state(ctx)
@@ -160,23 +131,43 @@ def test_flucoma_domain_unavailable_when_not_installed(monkeypatch):
     domains = result["capability_state"]["domains"]
     assert "flucoma" in domains
     assert domains["flucoma"]["available"] is False
-    assert domains["flucoma"]["device_loaded"] is False
     assert "flucoma_not_installed" in domains["flucoma"]["reasons"]
 
 
-def test_flucoma_probe_streams_prove_available_even_without_package(monkeypatch):
-    """Frozen analyzers can work even when no global Max package is present."""
+def test_flucoma_domain_available_from_m4l_streams(monkeypatch):
+    """LivePilot's FluCoMa truth comes from M4L streams, not Python import."""
     from mcp_server.runtime import tools as runtime_tools
 
-    monkeypatch.setattr(runtime_tools, "_probe_flucoma_package", lambda: False)
-    probe = runtime_tools._probe_flucoma(
-        _Spectral(values={"mel_bands": [0.0, 0.1, 0.2]})
-    )
+    monkeypatch.setattr(runtime_tools, "_probe_flucoma", lambda: False)
 
-    assert probe["available"] is True
-    assert probe["device_loaded"] is True
-    assert probe["active_streams"] == 1
-    assert probe["reasons"] == []
+    ctx = _make_ctx(spectral=_Spectral(keys=["spectral_shape"]))
+    result = runtime_tools.get_capability_state(ctx)
+
+    domains = result["capability_state"]["domains"]
+    assert domains["flucoma"]["available"] is True
+    assert domains["flucoma"]["mode"] == "available"
+
+
+def test_flucoma_probe_helper_uses_find_spec(monkeypatch):
+    """The flucoma probe must consult importlib.util.find_spec (no hard import).
+
+    Hard `import flucoma` at module load would crash CI. We require find_spec
+    (None -> False) so the probe stays zero-side-effect.
+    """
+    import importlib.util
+
+    from mcp_server.runtime import tools as runtime_tools
+
+    # Simulate no spec: probe must be False, no exception.
+    monkeypatch.setattr(importlib.util, "find_spec", lambda name: None)
+    assert runtime_tools._probe_flucoma() is False
+
+    # Simulate a spec present
+    class _Spec:  # pragma: no cover - trivial sentinel
+        pass
+
+    monkeypatch.setattr(importlib.util, "find_spec", lambda name: _Spec())
+    assert runtime_tools._probe_flucoma() is True
 
 
 # ── P2#3 (v1.17.3) — probes must propagate through get_session_kernel ──
@@ -196,7 +187,7 @@ def test_session_kernel_surfaces_web_probe_result(monkeypatch):
 
     monkeypatch.setattr(runtime_tools, "_probe_web", lambda timeout=0.5: True)
     # Keep flucoma default (off) to isolate the web signal
-    monkeypatch.setattr(runtime_tools, "_probe_flucoma", lambda spectral=None: False)
+    monkeypatch.setattr(runtime_tools, "_probe_flucoma", lambda: False)
 
     ctx = _make_ctx()
     kernel = runtime_tools.get_session_kernel(ctx)
@@ -221,7 +212,7 @@ def test_session_kernel_surfaces_flucoma_probe_result(monkeypatch):
     from mcp_server.runtime import tools as runtime_tools
 
     monkeypatch.setattr(runtime_tools, "_probe_web", lambda timeout=0.5: False)
-    monkeypatch.setattr(runtime_tools, "_probe_flucoma", lambda spectral=None: True)
+    monkeypatch.setattr(runtime_tools, "_probe_flucoma", lambda: True)
 
     ctx = _make_ctx()
     kernel = runtime_tools.get_session_kernel(ctx)
@@ -235,13 +226,27 @@ def test_session_kernel_surfaces_flucoma_probe_result(monkeypatch):
     )
 
 
+def test_session_kernel_surfaces_flucoma_m4l_streams(monkeypatch):
+    """Kernel must preserve the same Max-stream FluCoMa truth."""
+    from mcp_server.runtime import tools as runtime_tools
+
+    monkeypatch.setattr(runtime_tools, "_probe_web", lambda timeout=0.5: False)
+    monkeypatch.setattr(runtime_tools, "_probe_flucoma", lambda: False)
+
+    ctx = _make_ctx(spectral=_Spectral(keys=["mel_bands"]))
+    kernel = runtime_tools.get_session_kernel(ctx)
+
+    domains = kernel["capability_state"]["domains"]
+    assert domains.get("flucoma", {}).get("available") is True
+
+
 def test_session_kernel_reports_both_unavailable_when_probes_false(monkeypatch):
     """Back-compat: when both probes return False, kernel still reports
     them correctly (unavailable)."""
     from mcp_server.runtime import tools as runtime_tools
 
     monkeypatch.setattr(runtime_tools, "_probe_web", lambda timeout=0.5: False)
-    monkeypatch.setattr(runtime_tools, "_probe_flucoma", lambda spectral=None: False)
+    monkeypatch.setattr(runtime_tools, "_probe_flucoma", lambda: False)
 
     ctx = _make_ctx()
     kernel = runtime_tools.get_session_kernel(ctx)
@@ -331,7 +336,7 @@ def test_kernel_capability_state_is_flat_not_double_nested(monkeypatch):
     from mcp_server.runtime import tools as runtime_tools
 
     monkeypatch.setattr(runtime_tools, "_probe_web", lambda timeout=0.5: False)
-    monkeypatch.setattr(runtime_tools, "_probe_flucoma", lambda spectral=None: False)
+    monkeypatch.setattr(runtime_tools, "_probe_flucoma", lambda: False)
 
     ctx = _make_ctx()
     kernel = runtime_tools.get_session_kernel(ctx)
@@ -371,126 +376,3 @@ def test_kernel_flat_shape_preserves_domain_access():
 
     assert session["available"] is True  # _Ableton returns a valid session_info
     assert session["name"] == "session_access"
-
-
-# ── v1.27.0 — Live 12.4 probe-first capability surfaces ────────────────
-
-
-def test_probe_link_audio_reports_manual_only_without_routing_evidence(monkeypatch):
-    """The public probe can succeed while still refusing to claim routing support."""
-    from mcp_server.runtime import tools as runtime_tools
-
-    monkeypatch.setattr(
-        runtime_tools,
-        "_probe_link_audio_surface",
-        lambda ableton, session_info=None: {
-            "mode": "manual_only",
-            "available": False,
-            "reasons": ["link_audio_not_exposed"],
-            "observed": {"peers_visible": False, "inputs_visible": False},
-        },
-    )
-
-    result = runtime_tools.probe_link_audio(_make_ctx(ableton=_Ableton124()))
-
-    assert result["ok"] is True
-    assert result["live_version"] == "12.4.2"
-    assert result["mode"] == "manual_only"
-    assert result["available"] is False
-    assert "link_audio_not_exposed" in result["reasons"]
-    assert result["observed"]["peers_visible"] is False
-
-
-def test_probe_stem_workflow_reports_callable_when_probe_finds_command(monkeypatch):
-    from mcp_server.runtime import tools as runtime_tools
-
-    monkeypatch.setattr(
-        runtime_tools,
-        "_probe_stem_workflow_surface",
-        lambda ableton, session_info=None: {
-            "mode": "callable",
-            "available": True,
-            "reasons": [],
-            "observed": {"callable_paths": ["selected_time_context_command"]},
-        },
-    )
-
-    result = runtime_tools.probe_stem_workflow(_make_ctx(ableton=_Ableton124()))
-
-    assert result["ok"] is True
-    assert result["live_version"] == "12.4.2"
-    assert result["mode"] == "callable"
-    assert result["available"] is True
-    assert result["observed"]["callable_paths"] == ["selected_time_context_command"]
-
-
-def test_capability_state_surfaces_link_and_stem_probe_modes(monkeypatch):
-    from mcp_server.runtime import tools as runtime_tools
-
-    monkeypatch.setattr(runtime_tools, "_probe_web", lambda timeout=0.5: False)
-    monkeypatch.setattr(runtime_tools, "_probe_flucoma", lambda spectral=None: False)
-    monkeypatch.setattr(
-        runtime_tools,
-        "_probe_link_audio_surface",
-        lambda ableton, session_info=None: {
-            "mode": "routable",
-            "available": True,
-            "reasons": [],
-            "observed": {"peers_visible": True, "inputs_visible": True},
-        },
-    )
-    monkeypatch.setattr(
-        runtime_tools,
-        "_probe_stem_workflow_surface",
-        lambda ableton, session_info=None: {
-            "mode": "manual_only",
-            "available": False,
-            "reasons": ["stem_command_not_observable"],
-            "observed": {"callable_paths": []},
-        },
-    )
-
-    ctx = _make_ctx(ableton=_Ableton124())
-    result = runtime_tools.get_capability_state(ctx)
-
-    domains = result["capability_state"]["domains"]
-    assert domains["link_audio"]["mode"] == "routable"
-    assert domains["link_audio"]["available"] is True
-    assert domains["stem_workflow"]["mode"] == "manual_only"
-    assert domains["stem_workflow"]["available"] is False
-    assert "stem_command_not_observable" in domains["stem_workflow"]["reasons"]
-
-
-def test_session_kernel_surfaces_operation_profile_and_probe_domains(monkeypatch):
-    from mcp_server.runtime import tools as runtime_tools
-
-    monkeypatch.setattr(runtime_tools, "_probe_web", lambda timeout=0.5: False)
-    monkeypatch.setattr(runtime_tools, "_probe_flucoma", lambda spectral=None: False)
-    monkeypatch.setattr(
-        runtime_tools,
-        "_probe_link_audio_surface",
-        lambda ableton, session_info=None: {
-            "mode": "manual_only",
-            "available": False,
-            "reasons": ["link_audio_not_exposed"],
-        },
-    )
-    monkeypatch.setattr(
-        runtime_tools,
-        "_probe_stem_workflow_surface",
-        lambda ableton, session_info=None: {
-            "mode": "manual_only",
-            "available": False,
-            "reasons": ["stem_workflow_unprobed"],
-        },
-    )
-
-    kernel = runtime_tools.get_session_kernel(
-        _make_ctx(ableton=_Ableton124()),
-        operation_profile="sound_design_deep",
-    )
-
-    assert kernel["operation_profile"] == "sound_design_deep"
-    domains = kernel["capability_state"]["domains"]
-    assert domains["link_audio"]["mode"] == "manual_only"
-    assert domains["stem_workflow"]["mode"] == "manual_only"

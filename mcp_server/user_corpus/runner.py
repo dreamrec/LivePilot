@@ -11,7 +11,6 @@ mtime-based incremental skipping is on by default.
 
 from __future__ import annotations
 
-import fnmatch
 import hashlib
 import json
 import logging
@@ -182,12 +181,7 @@ def _iter_files(
             continue
         if not scanner.is_applicable(p):
             continue
-        # Honor excludes against BOTH the filename (Path.match, right-anchored —
-        # keeps filename-glob patterns like "*.tmp" working) and the full path
-        # string (fnmatch — lets directory patterns like "*Backup*" exclude
-        # files *inside* a Backup/ folder, which Path.match alone cannot do).
-        path_str = p.as_posix()
-        if any(p.match(g) or fnmatch.fnmatch(path_str, g) for g in excludes):
+        if any(p.match(g) for g in excludes):
             continue
         yield p
 

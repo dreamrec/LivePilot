@@ -172,9 +172,11 @@ def _empty_device(
     category: str,
     subcategory: str,
     source: str,
+    pack: str | None = None,
+    browser_path: str | None = None,
 ) -> dict[str, Any]:
     """Return a skeleton device dict with all atlas fields set to defaults."""
-    return {
+    device = {
         "id": device_id,
         "name": name,
         "uri": uri,
@@ -192,6 +194,43 @@ def _empty_device(
         "gotchas": [],
         "health_flags": [],
     }
+    if pack:
+        device["pack"] = pack
+    if browser_path:
+        device["browser_path"] = browser_path
+    return device
+
+
+def _category_from_pack_path(browser_path: str | None) -> str:
+    """Infer an atlas category from an item's path inside a Live Pack."""
+    if not browser_path:
+        return "packs"
+
+    parts = [p.strip().lower() for p in browser_path.split("/") if p.strip()]
+    if len(parts) >= 2:
+        section = parts[1]
+    elif parts:
+        section = parts[0]
+    else:
+        return "packs"
+
+    if section in {"drums", "drum racks", "drum rack"}:
+        return "drum_kits"
+    if section in {"sounds"}:
+        return "sounds"
+    if section in {"samples"}:
+        return "samples"
+    if section in {"midi clips", "clips", "sets"}:
+        return "clips"
+    if section in {"effect racks", "audio effects", "audio effect rack"}:
+        return "audio_effects"
+    if section in {"midi effects", "midi effect rack"}:
+        return "midi_effects"
+    if section in {"instruments", "instrument rack"}:
+        return "instruments"
+    if section in {"max for live", "max audio effect", "max instrument"}:
+        return "max_for_live"
+    return "packs"
 
 
 # ── Normaliser ───────────────────────────────────────────────────────────────
@@ -214,12 +253,19 @@ def normalize_scan_results(raw_scan: dict[str, Any]) -> list[dict[str, Any]]:
     devices: list[dict[str, Any]] = []
 
     for raw_cat, items in categories_data.items():
-        category = _CATEGORY_MAP.get(raw_cat, raw_cat)
-        source = "native" if raw_cat in _CATEGORY_MAP else raw_cat
+        default_category = _CATEGORY_MAP.get(raw_cat, raw_cat)
+        default_source = "native" if raw_cat in _CATEGORY_MAP else raw_cat
 
         for item in items:
             name = item.get("name", "")
             uri = item.get("uri")
+            pack = item.get("pack")
+            browser_path = item.get("browser_path")
+            category = (
+                _category_from_pack_path(browser_path)
+                if raw_cat == "packs" else default_category
+            )
+            source = "pack" if pack else default_source
 
             # Deduplicate by URI when available
             if uri and uri in seen_uris:
@@ -227,10 +273,13 @@ def normalize_scan_results(raw_scan: dict[str, Any]) -> list[dict[str, Any]]:
             if uri:
                 seen_uris.add(uri)
 
-            device_id = make_device_id(name)
+            device_id = make_device_id(name, prefix=pack) if pack else make_device_id(name)
             subcategory = _classify_subcategory(device_id, category)
             devices.append(
-                _empty_device(device_id, name, uri, category, subcategory, source)
+                _empty_device(
+                    device_id, name, uri, category, subcategory, source,
+                    pack=pack, browser_path=browser_path
+                )
             )
 
     return devices

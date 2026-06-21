@@ -19,9 +19,8 @@
 # The bundle is deliberately lean:
 #   - bin/livepilot.js is pure Node stdlib (zero npm deps) so no
 #     node_modules is shipped
-#   - Python deps are bootstrapped into a `.venv` directory alongside the
-#     bundle (ROOT/.venv) on first launch from the bundled requirements.txt
-#     (the same path npm-install users take)
+#   - Python deps are bootstrapped into ~/.livepilot/.venv on first launch
+#     from the bundled requirements.txt (the same path npm-install users take)
 #   - LivePilot_Analyzer.amxd + Remote Script are shipped so the MCPB
 #     install can auto-install them via the user_config.auto_install_remote_script
 #     switch in manifest.json
@@ -72,11 +71,6 @@ cp -R installer "$STAGE/"
 find "$STAGE" -name "__pycache__" -type d -prune -exec rm -rf {} + 2>/dev/null || true
 find "$STAGE" -name "*.pyc" -delete 2>/dev/null || true
 find "$STAGE" -name ".DS_Store" -delete 2>/dev/null || true
-
-# Honor .mcpbignore for the copied m4l_device tree: user-saved Ableton presets
-# (*.adv) and local re-freeze backups (*.pre-*-backup) must never ship.
-find "$STAGE/m4l_device" -name "*.adv" -delete 2>/dev/null || true
-find "$STAGE/m4l_device" -name "*.pre-*-backup" -delete 2>/dev/null || true
 
 # Ensure output dir exists
 mkdir -p "$(dirname "$OUTPUT")"

@@ -165,6 +165,35 @@ def test_capture_future_none_safe():
 # ── Task 2 Tests ────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
+async def test_send_command_allows_stale_spectral_cache_when_receiver_exists():
+    """Command replies are independent of fresh spectral frames.
+
+    A stopped or silent set can let SpectralCache age out while the M4L
+    command bridge is still alive. send_command should send the command and
+    wait for the reply instead of failing on cache freshness.
+    """
+    import unittest.mock as mock
+
+    cache = SpectralCache()
+    receiver = SpectralReceiver(cache)
+    bridge = M4LBridge(cache, receiver)
+    bridge._sock = mock.MagicMock()
+
+    async def _resolve_response_soon():
+        await asyncio.sleep(0.05)
+        cb = receiver._response_callback
+        if cb is not None and not cb.done():
+            cb.set_result({"ok": True, "version": "test"})
+
+    resolver = asyncio.create_task(_resolve_response_soon())
+    result = await bridge.send_command("ping", timeout=2.0)
+    await resolver
+
+    assert result == {"ok": True, "version": "test"}
+    bridge._sock.sendto.assert_called_once()
+
+
+@pytest.mark.asyncio
 async def test_bridge_send_capture_uses_capture_future():
     """send_capture sets _capture_future, not _response_callback."""
     cache = SpectralCache()

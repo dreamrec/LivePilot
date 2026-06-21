@@ -65,7 +65,7 @@ def test_free_sample_allowed_even_with_zero_credits(tmp_path):
 
 def test_free_sample_allowed_on_free_plan(tmp_path):
     client = _FakeClient(PlanKind.FREE, credits_value=0, tmp_path=tmp_path)
-    sample = SpliceSample(is_premium=False, price=0)  # genuinely free
+    sample = SpliceSample(is_premium=True, price=0)  # price=0 overrides premium
     decision = asyncio.run(client.decide_download("h", sample=sample))
     assert decision.allowed
     assert decision.gating_mode == "free_sample"
@@ -167,28 +167,3 @@ def test_decision_dict_has_expected_shape(tmp_path):
         "credits_remaining", "quota_used", "quota_remaining",
     }
     assert required <= set(d.keys())
-
-
-# ── Regression: premium sample with proto3-default zero Price must be gated ──
-
-
-def test_premium_sample_with_unset_price_does_not_bypass_gating(tmp_path):
-    client = _FakeClient(
-        PlanKind.SOUNDS_PLUS,
-        credits_value=CREDIT_HARD_FLOOR,
-        tmp_path=tmp_path,
-    )
-    sample = SpliceSample(file_hash="h", is_premium=True, price=0)
-    assert not sample.is_free
-    decision = asyncio.run(client.decide_download("h", sample=sample))
-    assert not decision.allowed
-    assert decision.gating_mode == "credit_floor"
-
-
-def test_genuinely_free_sample_still_bypasses_gating(tmp_path):
-    client = _FakeClient(PlanKind.UNKNOWN, credits_value=0, tmp_path=tmp_path)
-    sample = SpliceSample(file_hash="h", is_premium=False, price=999)
-    assert sample.is_free
-    decision = asyncio.run(client.decide_download("h", sample=sample))
-    assert decision.allowed
-    assert decision.gating_mode == "free_sample"

@@ -6,7 +6,6 @@ responses and exposes feature flags for tool routing.
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 
 
@@ -20,39 +19,21 @@ class LiveVersionCapabilities:
 
     @classmethod
     def from_version_string(cls, version_str: str) -> LiveVersionCapabilities:
-        """Parse '12.3.6' into a capabilities instance.
-
-        Tolerant of malformed input: extracts the leading integer of each
-        dotted component and falls back to the conservative floor
-        (major=12, minor=0, patch=0) for missing or non-numeric components.
-        Mirrors the Remote Script's degrade-to-(12,0,0) contract
-        (remote_script/LivePilot/version_detect.py) so a junk live_version
-        string never crashes get_capability_state / get_session_kernel /
-        --doctor.
-        """
-        def _component(parts: list[str], index: int, default: int) -> int:
-            if index >= len(parts):
-                return default
-            match = re.match(r"\s*(\d+)", parts[index])
-            return int(match.group(1)) if match else default
-
-        parts = (version_str or "").split(".")
-        major = _component(parts, 0, 12)
-        minor = _component(parts, 1, 0)
-        patch = _component(parts, 2, 0)
+        """Parse '12.3.6' into a capabilities instance."""
+        parts = version_str.split(".")
+        major = int(parts[0]) if len(parts) > 0 else 12
+        minor = int(parts[1]) if len(parts) > 1 else 0
+        patch = int(parts[2]) if len(parts) > 2 else 0
         return cls(major=major, minor=minor, patch=patch)
 
     @classmethod
     def from_session_info(cls, session_info: dict) -> LiveVersionCapabilities:
         """Extract version from get_session_info response.
 
-        Looks for 'live_version' field. Falls back to 12.0.0 if absent,
-        null, or empty (pre-upgrade Remote Script). Uses a falsy-guard
-        rather than a key-presence default so a present-but-empty value
-        degrades to the conservative floor, aligning with the sibling
-        readers in runtime/tools.py and runtime/capability_probe.py.
+        Looks for 'live_version' field. Falls back to 12.0.0 if absent
+        (pre-upgrade Remote Script).
         """
-        version_str = session_info.get("live_version") or "12.0.0"
+        version_str = session_info.get("live_version", "12.0.0")
         return cls.from_version_string(version_str)
 
     @property
@@ -92,21 +73,6 @@ class LiveVersionCapabilities:
         return self._version_tuple >= (12, 3, 0)
 
     @property
-    def has_link_audio(self) -> bool:
-        """Live 12.4 Link Audio UX exists; MCP control remains probe-gated."""
-        return self._version_tuple >= (12, 4, 0)
-
-    @property
-    def has_stem_time_selection(self) -> bool:
-        """Live 12.4 selected-time stem separation UX exists; probe before use."""
-        return self._version_tuple >= (12, 4, 0)
-
-    @property
-    def has_stem_merge_selected(self) -> bool:
-        """Live 12.4 merge-selected-stems UX exists; probe before use."""
-        return self._version_tuple >= (12, 4, 0)
-
-    @property
     def has_replace_sample_native(self) -> bool:
         """SimplerDevice.replace_sample(path) — 12.4+"""
         return self._version_tuple >= (12, 4, 0)
@@ -134,8 +100,5 @@ class LiveVersionCapabilities:
             "drum_rack_construction": self.has_drum_rack_construction,
             "take_lanes": self.has_take_lanes,
             "stem_separation": self.has_stem_separation,
-            "link_audio": self.has_link_audio,
-            "stem_time_selection": self.has_stem_time_selection,
-            "stem_merge_selected": self.has_stem_merge_selected,
             "replace_sample_native": self.has_replace_sample_native,
         }

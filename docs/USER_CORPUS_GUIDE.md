@@ -1,6 +1,6 @@
 # Building Your Private Corpus-Atlas
 
-How to turn your own Live projects, rack library, Max devices, and plugin presets into queryable AI knowledge — using the same architecture LivePilot uses for its factory pack atlas.
+How to turn your own Live projects, rack library, Max devices, plugin presets, and samples into queryable AI knowledge — using the same architecture LivePilot uses for its factory pack atlas.
 
 ---
 
@@ -14,14 +14,11 @@ You probably have *more* useful content on disk than Ableton ships:
 - Your `.adg` rack library — the saved chains you actually use
 - Your `.amxd` Max devices — third-party + your own
 - Your VST/AU presets — the patches you've made or downloaded
+- Your sample library — what you've curated
 
 **This guide builds a parallel `~/.livepilot/atlas-overlays/user/` tree** with the same shape as the factory tree, scanned from your content, queryable through the same MCP tools (`extension_atlas_search`, `atlas_*`), composable with AI annotation.
 
 The result: an agent that knows *your* sound, not just Ableton's defaults.
-
-> This guide reflects the v1.27.x corpus tool surface. The corpus is built and
-> queried through MCP tools invoked from Claude Code (`corpus_*`,
-> `extension_atlas_*`) — there is no standalone `livepilot corpus` shell command.
 
 ---
 
@@ -34,16 +31,17 @@ The result: an agent that knows *your* sound, not just Ableton's defaults.
 │  ~/Music/Ableton/User Library/Presets/**/*.adg                           │
 │  ~/Documents/Max 9/Max for Live Devices/**/*.amxd                        │
 │  ~/Library/Audio/Presets/**/*.{aupreset,vstpreset,fxp}                   │
+│  ~/Music/Samples/**/*.{wav,aif,flac}                                     │
 └────────────────────┬─────────────────────────────────────────────────────┘
                      │
-                     │   corpus_scan  (MCP tool)
+                     │   livepilot corpus scan
                      ▼
 ┌──────────────────────────────────────────────────────────────────────────┐
-│   SCANNER REGISTRY (mcp_server/user_corpus/scanners/)                    │
-│   ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌──────────────┐               │
-│   │  als    │  │  adg    │  │  amxd   │  │ plugin-preset│               │
-│   └─────────┘  └─────────┘  └─────────┘  └──────────────┘               │
-│        ↑           ↑           ↑              ↑                          │
+│   SCANNER REGISTRY (mcp_server/corpus/scanners/)                         │
+│   ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌──────────────┐  ┌─────────┐  │
+│   │  als    │  │  adg    │  │  amxd   │  │ plugin-preset│  │ sample  │  │
+│   └─────────┘  └─────────┘  └─────────┘  └──────────────┘  └─────────┘  │
+│        ↑           ↑           ↑              ↑              ↑          │
 │        └─ register_scanner(cls) — pluggable: write your own              │
 └────────────────────┬─────────────────────────────────────────────────────┘
                      │
@@ -61,7 +59,8 @@ The result: an agent that knows *your* sound, not just Ableton's defaults.
 │   │   ├── annotated/                                                     │
 │   │   └── *.yaml                                                         │
 │   ├── max_devices/                                                       │
-│   └── plugin_presets/                                                    │
+│   ├── plugin_presets/                                                    │
+│   └── samples/                                                           │
 └────────────────────┬─────────────────────────────────────────────────────┘
                      │
                      │   overlay loader picks up YAMLs at server boot
@@ -73,8 +72,8 @@ The result: an agent that knows *your* sound, not just Ableton's defaults.
 │   extension_atlas_list(namespace="user.projects")                        │
 │   atlas_macro_fingerprint(... pack_filter=["user.racks"])  # via         │
 │                                              # cross-namespace extension │
-│   extension_atlas_search("memphis", namespace="user.projects")          │
-│   corpus_emit_synthesis_briefs(source_id="my-projects")  # AI annotation │
+│   corpus_search("memphis", type="als")  # corpus-specific search         │
+│   corpus_annotate(source="my-projects", mode="ai")  # dispatch sonnet    │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -93,6 +92,7 @@ The result: an agent that knows *your* sound, not just Ableton's defaults.
 | Rack presets | `adg` | `.adg`, `.adv` | Preset name, rack class, macros (idx + name + value via KeyMidi binding resolution), nested chains, branches. Reuses `scripts/als_deep_parse.py::parse_adg`. |
 | Max devices | `amxd` | `.amxd` | Device name + type (audio/instrument/midi), Max version, parser version, exposed Live params (where stored as plain XML, not the frozen JS blob). |
 | Plugin presets | `plugin-preset` | `.aupreset`, `.vstpreset`, `.fxp`, `.fxb`, `.nksf` | Plugin name, manufacturer, format (VST/VST3/AU/NKS), preset filename. Param values are plugin-specific binary — opaque, like in `.als` PluginDevice. |
+| Audio samples | `sample` | `.wav`, `.aif`, `.aiff`, `.flac`, `.mp3` | Path, format, channels, sample rate, bit depth, duration. Optional spectral analysis (centroid, RMS, loudness) when `--analyze` flag is set. |
 
 Add your own: register a `Scanner` subclass for any file type you care about.
 
@@ -161,7 +161,7 @@ Every scanner emits two artifacts per source file:
 {
   "schema_version": 1,
   "scanner": "als",
-  "scanner_version": "<version>",
+  "scanner_version": "1.23.5",
   "source_path": "/Users/me/Music/MyProjects/Memphis Tribute.als",
   "source_mtime": 1714477200,
   "source_sha256": "abc123…",
@@ -238,14 +238,14 @@ cross_references:
 schema_version: 1
 ```
 
-This is AI-written via `corpus_emit_synthesis_briefs`. Same shape as the factory pack identity YAMLs. Optional — the corpus works without it.
+This is AI-written via `corpus_annotate`. Same shape as the factory pack identity YAMLs. Optional — the corpus works without it.
 
 ---
 
 ## Scanner abstraction (write your own)
 
 ```python
-# mcp_server/user_corpus/scanner.py
+# mcp_server/corpus/scanner.py
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import ClassVar
@@ -279,7 +279,7 @@ Plug in:
 
 ```python
 # my_scanner.py
-from mcp_server.user_corpus.scanner import Scanner, register_scanner
+from mcp_server.corpus.scanner import Scanner, register_scanner
 
 @register_scanner
 class ReaperRppScanner(Scanner):
@@ -298,62 +298,63 @@ class ReaperRppScanner(Scanner):
         return f"{sidecar['bpm']} BPM Reaper project, {len(sidecar['tracks'])} tracks"
 ```
 
-Drop the file in `mcp_server/user_corpus/scanners/` (or anywhere on the Python path), it self-registers via the decorator. The runner picks it up.
+Drop the file in `mcp_server/corpus/scanners/` (or anywhere on the Python path), it self-registers via the decorator. The runner picks it up.
 
 ---
 
-## Tool workflow (inside Claude Code)
+## CLI workflow
 
-There is no `livepilot corpus` shell command. The corpus is built and queried
-through MCP tools you invoke from a Claude Code session — either by naming the
-tool directly or by asking in natural language and letting Claude dispatch it.
-The corpus tools are: `corpus_setup_wizard`, `corpus_init`, `corpus_add_source`,
-`corpus_scan`, `corpus_status`, `corpus_emit_synthesis_briefs`, plus the plugin
-helpers (`corpus_detect_plugins`, `corpus_discover_manuals`, …) and
-`corpus_list_scanners`.
-
-```
-# One-time setup — scaffold the overlay tree + default manifest
-> corpus_init
+```bash
+# One-time setup
+$ livepilot corpus init
 ✓ Created ~/.livepilot/atlas-overlays/user/
 ✓ Wrote default manifest at ~/.livepilot/atlas-overlays/user/manifest.yaml
+Edit the manifest to declare what to scan, then run `livepilot corpus scan`.
 
-# (Or run the guided path that wires setup + first sources for you)
-> corpus_setup_wizard
+# Add sources
+$ livepilot corpus add ~/Music/MyProjects --type als --id my-projects
+✓ Source added: my-projects
+  Estimated 47 files matching .als under ~/Music/MyProjects
 
-# Add sources (writes them into manifest.yaml)
-> corpus_add_source(path="~/Music/MyProjects", type_id="als", source_id="my-projects")
-✓ Source added: my-projects   (47 files matching .als)
+$ livepilot corpus add ~/Music/Ableton/User\ Library/Presets --type adg --id my-racks --recursive
 
-> corpus_add_source(path="~/Music/Ableton/User Library/Presets",
-                    type_id="adg", source_id="my-racks", recursive=True)
+# Scan everything
+$ livepilot corpus scan
+[my-projects]   als   ████████████████████ 47/47   6.2s
+[my-racks]      adg   ████████████████████ 1234/1234   18.4s
+[max-devices]   amxd  ████████████████████ 89/89   2.1s
+✓ Wrote 1370 sidecars, 1370 wrappers to ~/.livepilot/atlas-overlays/user/
+  Skipped (unchanged): 0
+  Errors (logged): 2
+    /Music/Ableton/User Library/Presets/broken-rack.adg: gzip: not in gzip format
+    /Music/Ableton/User Library/Presets/locked.adg: PermissionError
 
-# Scan everything declared in the manifest
-> corpus_scan
-[my-projects]   als   47/47
-[my-racks]      adg   1234/1234
-[max-devices]   amxd  89/89
-✓ Wrote 1370 sidecars + wrappers to ~/.livepilot/atlas-overlays/user/
-
-# Scan one source only (incremental — unchanged files are skipped by mtime)
-> corpus_scan(source_id="my-racks")
+# Scan one source only
+$ livepilot corpus scan --source my-projects
 
 # Status
-> corpus_status
+$ livepilot corpus status
 manifest: ~/.livepilot/atlas-overlays/user/manifest.yaml (3 sources, 1370 entries)
-  my-projects   als   47 files    ✓ fresh
-  my-racks      adg   1234 files  ⚠ 12 files newer than scan
-  max-devices   amxd  89 files    ✓ fresh
+sources:
+  my-projects   als   47 files    last-scanned 2026-04-30T15:00Z   ✓ fresh
+  my-racks      adg   1234 files  last-scanned 2026-04-30T15:30Z   ⚠ 12 files newer than scan
+  max-devices   amxd  89 files    last-scanned 2026-04-30T15:31Z   ✓ fresh
 
-# AI annotation — emit synthesis briefs for sonnet subagents to fill in
-> corpus_emit_synthesis_briefs(source_id="my-projects")
+# Incremental rescan (mtime-based)
+$ livepilot corpus scan --source my-racks
+[my-racks]   adg   ████████████████████ 12/12   0.4s   (1222 unchanged, skipped)
 
-# Search — use the atlas search surface against the user namespace
-> extension_atlas_search(query="warm pad", namespace="user.racks")
-3 matches:
-  0.78  Frozen Spectrum.adg
-  0.71  Glacier Pad.adg
-  0.68  Polar Drift.adg
+# AI annotation (dispatches sonnet subagents from Claude Code)
+$ livepilot corpus annotate --source my-projects --workers 4
+This requires running inside Claude Code (uses subagent dispatch).
+Run `> Annotate my user corpus my-projects` from a Claude Code session.
+
+# Search
+$ livepilot corpus search "warm pad" --type adg
+3 matches in user.my-racks:
+  0.78  Frozen Spectrum.adg   (~/Music/.../Frozen Spectrum.adg)
+  0.71  Glacier Pad.adg       (~/Music/.../Glacier Pad.adg)
+  0.68  Polar Drift.adg       (~/Music/.../Polar Drift.adg)
 ```
 
 ---
@@ -382,13 +383,13 @@ The user's corpus is a first-class citizen alongside the factory atlas.
 
 ## AI annotation flow
 
-1. User runs `corpus_emit_synthesis_briefs(source_id="my-projects")` from Claude Code.
+1. User runs `corpus_annotate(source_id="my-projects")` from Claude Code.
 2. The MCP tool reads all `_parses/*.json` for that source.
-3. For each sidecar, it emits a synthesis brief bundling:
+3. For each sidecar, it dispatches a sonnet subagent with:
    - The sidecar contents (BPM, devices, structure)
    - The producer-vocabulary references from `livepilot/skills/livepilot-core/references/`
    - A YAML schema to fill in
-4. A sonnet subagent works each brief and writes one `annotated/<slug>.yaml`.
+4. Each subagent writes one `annotated/<slug>.yaml`.
 5. Tool reports counts + any failures.
 6. User can re-run on subsets, override fields manually, or skip annotation entirely.
 
@@ -434,6 +435,7 @@ The wrapper YAML is what `extension_atlas_search` ranks. Default tag derivation:
 | .adg | rack class (instrument/audio_effect/...), top 3 macro names (after Unicode-fold), nested-rack flag |
 | .amxd | device type (audio/instrument/midi), Max version, top exposed param names |
 | plugin-preset | manufacturer, format (vst/vst3/au), file extension |
+| sample | duration bucket (`short`/`medium`/`long`), sample rate, channels |
 
 Override or extend in your scanner's `derive_tags(sidecar)` method.
 
@@ -445,7 +447,7 @@ Override or extend in your scanner's `derive_tags(sidecar)` method.
 
 1. Bump scanner's `schema_version` constant.
 2. Old sidecars still load; the runner detects mismatch on incremental scan and rescans those files.
-3. Migration scripts under `mcp_server/user_corpus/` can transform old → new schema if needed.
+3. Migration scripts in `mcp_server/corpus/migrations/` can transform old → new schema if needed.
 
 The factory atlas already lives by this rule (its schema bumped 4 times during v1.23.4 fix waves) — same discipline applies.
 
@@ -453,13 +455,11 @@ The factory atlas already lives by this rule (its schema bumped 4 times during v
 
 ## Where to start
 
-All steps run from a Claude Code session — by tool call or in natural language:
-
-1. `corpus_init` (or `corpus_setup_wizard` for the guided path)
-2. `corpus_add_source(path="~/Music/Ableton/User Library", type_id="adg", source_id="my-racks", recursive=True)`
-3. `corpus_scan`
-4. `extension_atlas_search(query="warm pad", namespace="user.racks")` — verify the corpus is queryable
-5. (Optional) `corpus_emit_synthesis_briefs(source_id="my-racks")` — turn mechanical sidecars into described knowledge
+1. `livepilot corpus init`
+2. `livepilot corpus add ~/Music/Ableton/User\ Library --type adg --id my-racks --recursive`
+3. `livepilot corpus scan`
+4. From Claude Code: `> Search my racks for a warm pad` — verify the corpus is queryable
+5. (Optional) `> Annotate my user corpus my-racks` — turn mechanical sidecars into described knowledge
 6. Iterate: add more sources, tune annotations, write your own scanner for unusual content
 
 You're done when you can ask Claude *"what's a good bass to layer with the kick from 2024-12-foo.als"* and get a real, corpus-grounded answer.

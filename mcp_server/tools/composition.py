@@ -408,16 +408,12 @@ def get_harmony_field(
                    for i, t in enumerate(tracks)}
 
     # Per-track scan: fetch notes + score, then sort by score desc.
-    # Use the section's real scene row (scene_index) for the clip slot,
-    # not section_index (its position in the section graph) — these
-    # diverge whenever earlier unnamed/empty scenes were skipped.
-    scene_idx = section.scene_index if getattr(section, "scene_index", -1) >= 0 else section_index
     HARMONIC_THRESHOLD = 0.3
     candidates: list[tuple[float, int, list[dict]]] = []
     for t_idx in section.tracks_active:
         try:
             result = ableton.send_command("get_notes", {
-                "track_index": t_idx, "clip_index": scene_idx,
+                "track_index": t_idx, "clip_index": section_index,
             })
         except Exception as exc:
             logger.debug("harmony scan track %d: %s", t_idx, exc)

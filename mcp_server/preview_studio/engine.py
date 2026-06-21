@@ -33,35 +33,6 @@ def store_preview_set(ps: PreviewSet) -> None:
         del _preview_sets[oldest_key]
 
 
-# Statuses that represent work a user (or caller) has already invested in:
-# a compared ranking or a committed pick. A fresh request that hashes to the
-# same set_id must NOT clobber these — it branches to a distinct id instead.
-_PROTECTED_STATUSES = {"committed", "compared"}
-
-
-def _resolve_set_id(base_id: str) -> str:
-    """Return a set_id that won't clobber a protected (committed/compared) set.
-
-    The base_id is a deterministic hash of request_text + kernel_id, so a
-    re-request reuses it by design. That reuse is fine while the existing set
-    is still 'pending'/'discarded' (nothing of value to lose). But if the
-    existing set under base_id has been compared or committed, overwriting it
-    would silently drop its rankings / committed pick. In that case we branch
-    to a distinct, still-deterministic id (base_id + a monotonic suffix) so the
-    protected set survives and the new set gets its own slot.
-    """
-    existing = _preview_sets.get(base_id)
-    if existing is None or existing.status not in _PROTECTED_STATUSES:
-        return base_id
-    suffix = 2
-    while True:
-        candidate = f"{base_id}_b{suffix}"
-        occupant = _preview_sets.get(candidate)
-        if occupant is None or occupant.status not in _PROTECTED_STATUSES:
-            return candidate
-        suffix += 1
-
-
 # ── Creation ──────────────────────────────────────────────────────
 
 
@@ -87,7 +58,7 @@ def create_preview_set(
         flags the resulting PreviewSet with ``degradation.is_degraded=True``
         so callers can tell a synthesized compile from a real one.
     """
-    set_id = _resolve_set_id(_compute_set_id(request_text, kernel_id))
+    set_id = _compute_set_id(request_text, kernel_id)
     now = int(time.time() * 1000)
 
     moves = available_moves or []

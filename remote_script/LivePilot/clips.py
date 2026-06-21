@@ -3,13 +3,30 @@ LivePilot - Clip domain handlers (12 commands).
 """
 
 from .router import register
-from .utils import get_clip, get_clip_slot
+from .utils import get_clip, get_clip_slot, get_track
 
 
 # Scratch clip slot used by fire_test_note (BUG-2026-04-22#19). We pick a
 # slot far above the user's usual scene count; a helper reuses/cleans up
 # the slot between calls so no clutter accumulates.
 _TEST_NOTE_SLOT_INDEX = 127  # max scene count is 1024; 127 is safe
+
+
+def _get_clip_or_arrangement_clip(song, track_index, clip_index):
+    """Return a session clip when present, otherwise an Arrangement clip.
+
+    Many clip tools historically addressed Session slots only. Audio imports
+    dragged to Arrangement do not occupy a Session slot, so use the same index
+    against track.arrangement_clips as a fallback when the slot is empty.
+    """
+    try:
+        return get_clip(song, track_index, clip_index), "session"
+    except (ValueError, IndexError) as session_error:
+        track = get_track(song, track_index)
+        arrangement_clips = list(getattr(track, "arrangement_clips", ()))
+        if 0 <= clip_index < len(arrangement_clips):
+            return arrangement_clips[clip_index], "arrangement"
+        raise session_error
 
 
 @register("fire_test_note")
@@ -342,7 +359,7 @@ def set_clip_loop(song, params):
     """Enable/disable clip looping and optionally set loop start/end."""
     track_index = int(params["track_index"])
     clip_index = int(params["clip_index"])
-    clip = get_clip(song, track_index, clip_index)
+    clip, clip_source = _get_clip_or_arrangement_clip(song, track_index, clip_index)
 
     # Conditional ordering to avoid Live's loop_start < loop_end clamping.
     # When expanding the window, set the expanding edge first.
@@ -353,6 +370,11 @@ def set_clip_loop(song, params):
     if new_end is not None and new_end > clip.loop_end:
         # Expanding right — set end first so start can move freely
         clip.loop_end = new_end
+        try:
+            if getattr(clip, "end_marker", new_end) < new_end:
+                clip.end_marker = new_end
+        except (AttributeError, RuntimeError):
+            pass
         if new_start is not None:
             clip.loop_start = new_start
     else:
@@ -361,15 +383,21 @@ def set_clip_loop(song, params):
             clip.loop_start = new_start
         if new_end is not None:
             clip.loop_end = new_end
+            try:
+                clip.end_marker = new_end
+            except (AttributeError, RuntimeError):
+                pass
     if "enabled" in params:
         clip.looping = bool(params["enabled"])
 
     return {
         "track_index": track_index,
         "clip_index": clip_index,
+        "clip_source": clip_source,
         "looping": clip.looping,
         "loop_start": clip.loop_start,
         "loop_end": clip.loop_end,
+        "end_marker": getattr(clip, "end_marker", None),
     }
 
 
@@ -456,7 +484,7 @@ def set_clip_warp_mode(song, params):
     """Set warp mode for an audio clip."""
     track_index = int(params["track_index"])
     clip_index = int(params["clip_index"])
-    clip = get_clip(song, track_index, clip_index)
+    clip, clip_source = _get_clip_or_arrangement_clip(song, track_index, clip_index)
 
     if clip.is_midi_clip:
         raise ValueError("Warp modes only apply to audio clips")
@@ -482,6 +510,7 @@ def set_clip_warp_mode(song, params):
     return {
         "track_index": track_index,
         "clip_index": clip_index,
+        "clip_source": clip_source,
         "warp_mode": clip.warp_mode,
         "warping": clip.warping,
     }

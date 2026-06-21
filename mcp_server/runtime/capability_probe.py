@@ -73,7 +73,7 @@ def probe_capabilities(
         bridge_ok = bridge is not None and spectral is not None and getattr(spectral, "is_connected", False)
     report["m4l_bridge"] = {
         "status": "ok" if bridge_ok else "unavailable",
-        "detail": "UDP 9880 / OSC 9881 active" if bridge_ok else "Not connected — 38 analyzer tools unavailable",
+        "detail": "UDP 9880 / OSC 9881 active" if bridge_ok else "Not connected — 30 analyzer tools unavailable",
     }
 
     # 4. Offline perception

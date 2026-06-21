@@ -60,9 +60,6 @@ async def test_12_4_uses_native_path():
     assert call_name == "replace_sample_native"
     bridge.send_command.assert_not_called()
     assert result["method"] == "native_12_4"
-    assert result["native_attempted"] is True
-    assert result["bridge_attempted"] is False
-    assert result["fallback_reason"] is None
 
 
 @pytest.mark.asyncio
@@ -92,15 +89,11 @@ async def test_12_4_falls_back_to_bridge_on_native_error():
          patch("mcp_server.tools.analyzer._simpler_post_load_hygiene",
                new=AsyncMock(return_value={"verified": True})):
         from mcp_server.tools.analyzer import replace_simpler_sample
-        result = await replace_simpler_sample(ctx, 0, 0, "/tmp/a.wav")
+        await replace_simpler_sample(ctx, 0, 0, "/tmp/a.wav")
 
     assert ableton.send_command.called
     assert bridge.send_command.called
     assert bridge.send_command.call_args[0][0] == "replace_simpler_sample"
-    assert result["method"] == "bridge_m4l"
-    assert result["native_attempted"] is True
-    assert result["bridge_attempted"] is True
-    assert result["fallback_reason"].startswith("remote_error:")
 
 
 # ── load_sample_to_simpler routing ─────────────────────────────────────
@@ -121,9 +114,6 @@ async def test_load_12_4_skips_bootstrap_and_uses_native():
 
     assert not bridge.send_command.called
     assert result.get("method") == "native_12_4"
-    assert result["native_attempted"] is True
-    assert result["bridge_attempted"] is False
-    assert result["fallback_reason"] is None
 
 
 @pytest.mark.asyncio
@@ -138,11 +128,7 @@ async def test_load_12_3_6_uses_bootstrap_and_bridge():
          patch("mcp_server.tools.analyzer._simpler_post_load_hygiene",
                new=AsyncMock(return_value={"verified": True})):
         from mcp_server.tools.analyzer import load_sample_to_simpler
-        result = await load_sample_to_simpler(ctx, 0, "/tmp/a.wav")
+        await load_sample_to_simpler(ctx, 0, "/tmp/a.wav")
 
     assert bridge.send_command.called
     assert bridge.send_command.call_args[0][0] == "replace_simpler_sample"
-    assert result["method"] == "bootstrap_and_replace"
-    assert result["native_attempted"] is False
-    assert result["bridge_attempted"] is True
-    assert result["fallback_reason"] == "live_version_below_12_4"

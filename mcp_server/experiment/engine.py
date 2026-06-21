@@ -244,19 +244,12 @@ async def run_branch_async(
     ]
 
     steps_executed = sum(1 for r in exec_results if r.ok)
-    # Only remote_command steps land on Ableton's linear undo stack. Bridge
-    # (M4L/OSC) and mcp_tool mutations do NOT, so issuing one `undo` per
-    # successful step over-undoes and walks back unrelated prior user edits.
-    # Count undos from remote_command successes alone.
-    undo_count = sum(
-        1 for r in exec_results if r.ok and r.backend == "remote_command"
-    )
     branch.executed_at_ms = int(time.time() * 1000)
     branch.after_snapshot = capture_fn()
 
-    # Undo only the remote_command steps back to checkpoint. Undo is itself a
-    # remote_command, routed through the normal ableton.send_command path.
-    for _ in range(undo_count):
+    # Undo all successful steps back to checkpoint. Undo is a remote_command,
+    # route it through the normal ableton.send_command path for simplicity.
+    for _ in range(steps_executed):
         try:
             ableton.send_command("undo", {})
         except Exception as exc:

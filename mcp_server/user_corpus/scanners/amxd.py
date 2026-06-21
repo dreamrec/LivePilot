@@ -143,26 +143,17 @@ class AmxdScanner(Scanner):
 # ─── Parsing ─────────────────────────────────────────────────────────────────
 
 
-# The ampf header carries device type as a 4-byte ASCII tag at offset 8:
-#   'aaaa' = audio effect
-#   'iiii' = instrument
-#   'mmmm' = MIDI effect
-#   'nagg' = MIDI Tool generator      (Live 12.1+)
-#   'natt' = MIDI Tool transformation (Live 12.1+)
+# The ampf header carries device type as an ASCII letter at offset 8:
+#   'a' (97) = audio effect
+#   'i' (105) = instrument
+#   'm' (109) = MIDI effect
 # Earlier guess of 0/1/2 was wrong — verified against the user's 393-file
 # real-world .amxd corpus where 388/393 devices reported as unknown-{97,109,105}.
-# The single-letter map predates the MIDI Tool surface: both MIDI Tool kinds
-# share first byte 'n' (110), so a single-byte read mis-tagged them as
-# unknown-110 and could not tell generator from transformation. Keying off the
-# full 4-byte tag (raw[8:12]) fixes both. The first-byte fallback preserves the
-# legacy unknown-{byte} shape for any tag we don't recognise.
 _AMPF_DEVICE_TYPE_BYTE = 8
-_DEVICE_TYPE_TAG_MAP = {
-    b"aaaa": "audio",
-    b"iiii": "instrument",
-    b"mmmm": "midi",
-    b"nagg": "midi_tool_generator",
-    b"natt": "midi_tool_transformation",
+_DEVICE_TYPE_MAP = {
+    ord("a"): "audio",
+    ord("i"): "instrument",
+    ord("m"): "midi",
 }
 
 
@@ -183,13 +174,11 @@ def _parse_amxd(raw: bytes, filename: str) -> dict:
 
     # 1. Device type from the ampf header
     if len(raw) > 24 and raw[:4] == b"ampf":
-        tag = raw[_AMPF_DEVICE_TYPE_BYTE:_AMPF_DEVICE_TYPE_BYTE + 4]
-        known = _DEVICE_TYPE_TAG_MAP.get(tag)
-        if known is not None:
-            out["device_type"] = known
-        else:
-            # Fall back to the legacy single-byte unknown-{byte} shape.
-            out["device_type"] = f"unknown-{tag[0]}" if tag else None
+        try:
+            tb = raw[_AMPF_DEVICE_TYPE_BYTE]
+            out["device_type"] = _DEVICE_TYPE_MAP.get(tb, f"unknown-{tb}")
+        except IndexError:
+            pass
 
     # 2. Locate + parse the JSON patcher block
     json_blob = _extract_patcher_json(raw)

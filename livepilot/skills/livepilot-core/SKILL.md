@@ -47,7 +47,8 @@ Agentic production system for Ableton Live 12. 467 tools across 56 domains, thre
     - **Parameter ranges are NOT always 0-1.** Auto Filter Frequency is 20-135. Bit Depth is 1-16. Always read `value_string` to see actual units.
 16. **NEVER apply automation recipes without understanding the target parameter's range** — recipes generate 0-1 curves that get auto-scaled for device parameters, but always verify the result
 17. **LivePilot_Analyzer must be LAST on master chain** — always place after ALL effects (EQ, Compressor, Utility, etc.) so it measures the final post-processing output, not the raw signal. When loading effects on master, either load them before the analyzer or move the analyzer to end afterward
-18. **Remote Script reload workflow** — after any edit to `remote_script/LivePilot/*.py`: run `npx livepilot --install` (NOT `node installer/install.js` — that raw file only module-exports the install function and silently no-ops as a script), then call `reload_handlers` (MCP tool, domain: diagnostics). NEVER instruct the user to toggle the Control Surface in Live Preferences. The tool uses pkgutil + importlib to re-fire `@register` decorators in-place in <1s while the TCP connection stays open. Standard procedure for every handler change — not just releases
+18. **Back-to-Arrangement override is an inverse-looking flag** — on Live 12.4.2, `song.back_to_arranger` / `track.back_to_arranger` means "orange override is active": `true` is lit/overridden, `false` is cleared/following Arrangement. Use `back_to_arranger` or `force_arrangement`, then verify `get_session_info()["arrangement_override"] is False` and no track has `arrangement_override=True`. Empty `get_playing_clips` alone is not proof.
+19. **Remote Script reload workflow** — after any edit to `remote_script/LivePilot/*.py`: run `npx livepilot --install` (NOT `node installer/install.js` — that raw file only module-exports the install function and silently no-ops as a script), then call `reload_handlers` (MCP tool, domain: diagnostics). NEVER instruct the user to toggle the Control Surface in Live Preferences. The tool uses pkgutil + importlib to re-fire `@register` decorators in-place in <1s while the TCP connection stays open. Standard procedure for every handler change — not just releases
 
 ## Tool Speed Tiers
 
@@ -198,14 +199,14 @@ Use when the user wants options, variants, or is stuck ("surprise me", "try some
 **Rule of thumb**: if the user asked for a specific fix, Flow A. If they asked "what would you do?" or mentioned feel/vibe without parameters, Flow B.
 
 ### Semantic Moves
-High-level musical intents that compile to deterministic tool sequences. 7 families (44 moves as of v1.27.1):
-- **mix** (9) — `tighten_low_end`, `widen_stereo`, `make_punchier`, `darken_without_losing_width`, `reduce_repetition_fatigue`, `make_kick_bass_lock`, `set_track_routing`, `set_track_metadata`, `configure_send_architecture`
-- **device_creation** (9) — `create_chaos_modulator`, `create_feedback_resonator`, `create_wavefolder_effect`, `create_bitcrusher_effect`, `create_karplus_string`, `create_stochastic_texture`, `create_fdn_reverb`, `create_drum_rack_pad`, `build_send_chain` (procedural M4L device generation)
-- **sound_design** (7) — `add_warmth`, `add_texture`, `shape_transients`, `add_space`, `configure_device`, `remove_device`, `load_chord_source`
-- **sample** (6) — `sample_chop_rhythm`, `sample_texture_layer`, `sample_vocal_ghost`, `sample_break_layer`, `sample_resample_destroy`, `sample_one_shot_accent` (registered from `sample_engine/moves.py`)
-- **performance** (5) — `recover_energy`, `decompress_tension`, `safe_spotlight`, `emergency_simplify`, `configure_record_readiness`
-- **arrangement** (4) — `create_buildup_tension`, `smooth_scene_handoff`, `configure_groove`, `set_scene_metadata`
-- **transition** (4) — `bridge_sections`, `increase_forward_motion`, `open_chorus`, `create_breakdown`
+High-level musical intents that compile to deterministic tool sequences. 7 families (44 moves as of v1.26.2):
+- **mix** — `tighten_low_end`, `widen_stereo`, `make_punchier`, `darken_without_losing_width`, `reduce_repetition_fatigue`, `make_kick_bass_lock`, `reduce_foreground_competition`
+- **arrangement** — `refresh_repeated_section`, plus structural moves defined alongside mix
+- **transition** — `create_buildup_tension`, `smooth_scene_handoff`, `increase_contrast_before_payoff`, `bridge_sections`, `increase_forward_motion`, `open_chorus`, `create_breakdown`
+- **sound_design** — `add_warmth`, `add_texture`, `shape_transients`, `add_space`
+- **performance** — `recover_energy`, `decompress_tension`, `safe_spotlight`, `emergency_simplify`
+- **device_creation** — `create_chaos_modulator`, `create_feedback_resonator`, `create_wavefolder_effect`, `create_bitcrusher_effect`, `create_karplus_string`, `create_stochastic_texture`, `create_fdn_reverb` (procedural M4L device generation)
+- **sample** — `sample_chop_rhythm`, `sample_texture_layer`, `sample_vocal_ghost`, `sample_break_layer`, `sample_resample_destroy`, `sample_one_shot_accent` (registered from `sample_engine/moves.py`)
 
 Use `list_semantic_moves(domain="mix")` to discover available moves.
 

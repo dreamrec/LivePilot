@@ -298,8 +298,6 @@ Sparse, hypnotic, repetitive. The magic is in what you leave out. Per-note proba
 
 One bar. Four-on-the-floor kick, offbeat closed hats -- but the clap only appears 50-65% of the time. The claves (75) and cowbell (56) ghost at 30-50% probability, creating a pattern that shifts every loop. The open hat at 3.75 only opens up 40% of the time. This is how minimal stays interesting for 7 minutes.
 
-**Reminder:** pitches 75 (claves) and 56 (cowbell) only make sound if the loaded kit actually maps those pads -- most factory Drum Racks leave them empty. Run `get_rack_chains` on the Drum Rack first (as in Section 2) and remap these notes to populated pads if the kit doesn't cover 75/56.
-
 ---
 
 ## 4. Scales and Keys

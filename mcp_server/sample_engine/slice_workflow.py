@@ -12,9 +12,8 @@ from __future__ import annotations
 
 import hashlib
 
-# Simpler maps slices to MIDI notes starting at C1 (36): slice N -> pitch 36+N.
-# Notes at 60+ (C3) trigger no slice and produce silence.
-SLICE_BASE_NOTE = 36
+# Simpler maps slices to MIDI notes starting at C3 (60)
+SLICE_BASE_NOTE = 60
 
 
 def plan_slice_steps(

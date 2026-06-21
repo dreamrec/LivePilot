@@ -6,7 +6,6 @@ direct Splice online catalog hunt/download via the gRPC client.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import os
 from typing import Optional
@@ -58,11 +57,7 @@ async def analyze_sample(
         return {"error": "Could not determine file path — provide file_path directly"}
 
     source = "session_clip" if track_index is not None else "filesystem"
-    # Offload audio decode + numpy FFT off the event loop (heavy CPU/IO).
-    loop = asyncio.get_running_loop()
-    profile = await loop.run_in_executor(
-        None, build_profile_from_filename, file_path, source
-    )
+    profile = build_profile_from_filename(file_path, source=source)
     return profile.to_dict()
 
 
@@ -91,11 +86,6 @@ def evaluate_sample_fit(
     song_key = None
     session_tempo = 120.0
     existing_roles: list[str] = []
-    # Map track index -> name so the key-detection loop below can look a
-    # track's name up by its real index. existing_roles is a *packed*
-    # list (unnamed/errored tracks are skipped), so indexing it by track
-    # index misaligns names with the clip that produced the notes.
-    track_names_by_index: dict[int, str] = {}
 
     try:
         ableton = ctx.lifespan_context["ableton"]
@@ -110,7 +100,6 @@ def evaluate_sample_fit(
                 name = track_info.get("name", "").lower()
                 if name:
                     existing_roles.append(name)
-                    track_names_by_index[i] = name
             except Exception as exc:
                 logger.debug("get_track_info(%d) skipped: %s", i, exc)
                 continue
@@ -158,7 +147,9 @@ def evaluate_sample_fit(
                 ) else []
                 if not notes:
                     continue
-                track_name = track_names_by_index.get(i, "")
+                track_name = (
+                    existing_roles[i] if i < len(existing_roles) else ""
+                )
                 if harmonic_score(notes, track_name) >= 0.3:
                     harmonic_pool.extend(notes)
 
@@ -198,11 +189,7 @@ def evaluate_sample_fit(
         recommended_intent=intent,
         surgeon_plan=surgeon_plan,
         alchemist_plan=alchemist_plan,
-        warnings=[
-            c.recommendation
-            for c in critics.values()
-            if getattr(c, "available", True) and c.score < 0.5
-        ],
+        warnings=[c.recommendation for c in critics.values() if c.score < 0.5],
     )
     return report.to_dict()
 
@@ -329,16 +316,12 @@ async def search_samples(
         if not used_grpc:
             splice = SpliceSource()
             if splice.enabled:
-                # Offload blocking SQLite query off the event loop.
-                splice_results = await asyncio.get_running_loop().run_in_executor(
-                    None,
-                    lambda: splice.search(
-                        query=query,
-                        max_results=max_results,
-                        key=key,
-                        bpm_min=bpm_min,
-                        bpm_max=bpm_max,
-                    ),
+                splice_results = splice.search(
+                    query=query,
+                    max_results=max_results,
+                    key=key,
+                    bpm_min=bpm_min,
+                    bpm_max=bpm_max,
                 )
                 for candidate in splice_results:
                     d = candidate.to_dict()
@@ -352,16 +335,12 @@ async def search_samples(
             browser = BrowserSource()
             for category in browser.DEFAULT_CATEGORIES:
                 try:
-                    # Offload blocking TCP round-trip off the event loop.
-                    search_result = await asyncio.get_running_loop().run_in_executor(
-                        None,
-                        lambda: ableton.send_command("search_browser", {
-                            "path": category,
-                            "name_filter": query,
-                            "loadable_only": True,
-                            "max_results": max_results,
-                        }),
-                    )
+                    search_result = ableton.send_command("search_browser", {
+                        "path": category,
+                        "name_filter": query,
+                        "loadable_only": True,
+                        "max_results": max_results,
+                    })
                     raw = search_result.get("results", [])
                     parsed = browser.parse_results(raw, category)
                     for candidate in parsed:
@@ -380,10 +359,7 @@ async def search_samples(
             "~/Music", "~/Documents/Samples",
             "~/Documents/LivePilot/downloads",
         ])
-        # Offload blocking recursive filesystem scan off the event loop.
-        fs_results = await asyncio.get_running_loop().run_in_executor(
-            None, lambda: fs.search(query, max_results=max_results)
-        )
+        fs_results = fs.search(query, max_results=max_results)
         for candidate in fs_results:
             d = candidate.to_dict()
             d["source_priority"] = 3
@@ -1073,18 +1049,10 @@ async def splice_download_sample(
     if copy_to_user_library:
         dest_dir = os.path.expanduser(_SPLICE_USER_LIB_DEST)
         try:
+            os.makedirs(dest_dir, exist_ok=True)
             dest_path = os.path.join(dest_dir, os.path.basename(local_path))
-
-            def _copy_into_user_library():
-                os.makedirs(dest_dir, exist_ok=True)
-                if not os.path.exists(dest_path):
-                    shutil.copy2(local_path, dest_path)
-
-            # Offload the blocking filesystem copy off the event loop,
-            # mirroring the run_in_executor used in splice_preview_sample.
-            await asyncio.get_running_loop().run_in_executor(
-                None, _copy_into_user_library
-            )
+            if not os.path.exists(dest_path):
+                shutil.copy2(local_path, dest_path)
             response["user_library_path"] = dest_path
             # URI format Ableton uses for user_library samples
             response["browser_uri"] = (

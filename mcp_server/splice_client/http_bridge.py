@@ -45,7 +45,6 @@ import logging
 import os
 import ssl
 import urllib.error
-import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
 from typing import Any, Optional
@@ -90,10 +89,6 @@ class SpliceHTTPConfig:
     user_agent: str = "LivePilot/1.16 (+splice-http-bridge)"
     timeout_sec: float = 30.0
     max_retries: int = 2
-    # Opt-in escape hatch: when True, the bearer-token host guard in
-    # SpliceHTTPBridge._request is bypassed so a custom (non-splice.com)
-    # base_url may receive the session token. Defaults off.
-    allow_unverified_endpoints: bool = False
     # Whether any of the above values came from user config (file or env)
     # rather than the built-in defaults. Used by `is_user_configured`.
     _user_configured: bool = False
@@ -140,7 +135,6 @@ class SpliceHTTPConfig:
                                     "splice.json: %s must be an integer", key,
                                 )
                     if data.get("allow_unverified_endpoints"):
-                        instance.allow_unverified_endpoints = True
                         loaded_from_file = True
             except (OSError, json.JSONDecodeError) as exc:
                 logger.warning(
@@ -166,9 +160,6 @@ class SpliceHTTPConfig:
                     logger.warning(
                         "Env %s has invalid value: %s", env_name, exc,
                     )
-
-        if os.environ.get("SPLICE_ALLOW_UNVERIFIED_ENDPOINTS") == "1":
-            instance.allow_unverified_endpoints = True
 
         instance._user_configured = (
             loaded_from_file
@@ -415,23 +406,6 @@ class SpliceHTTPError(Exception):
         }
 
 
-def _is_trusted_splice_host(url: str) -> bool:
-    """True only for HTTPS URLs on a splice.com-owned host.
-
-    Gates attaching the rotating session bearer token: a poisoned base_url
-    (custom config file or SPLICE_API_BASE_URL env) must not be able to
-    exfiltrate the token to an attacker-controlled endpoint.
-    """
-    try:
-        parsed = urllib.parse.urlparse(url)
-    except (ValueError, AttributeError):
-        return False
-    if parsed.scheme != "https":
-        return False
-    host = (parsed.hostname or "").lower()
-    return host == "splice.com" or host.endswith(".splice.com")
-
-
 class SpliceHTTPBridge:
     """Low-level HTTPS client for Splice cloud APIs.
 
@@ -468,25 +442,9 @@ class SpliceHTTPBridge:
 
         url = self.config.base_url.rstrip("/") + path
         if query:
+            import urllib.parse
             qs = urllib.parse.urlencode(query)
             url = f"{url}?{qs}"
-
-        # Token-exfil guard: only attach the Splice session bearer when the
-        # destination is a splice.com-owned HTTPS host. A poisoned base_url
-        # (custom config/env) otherwise leaks the rotating session token to an
-        # attacker-controlled endpoint. Explicit opt-in via
-        # allow_unverified_endpoints / SPLICE_ALLOW_UNVERIFIED_ENDPOINTS=1.
-        if not _is_trusted_splice_host(url) and not self.config.allow_unverified_endpoints:
-            raise SpliceHTTPError(
-                code="UNTRUSTED_ENDPOINT",
-                message=(
-                    f"Refusing to send the Splice session token to non-Splice host "
-                    f"'{self.config.base_url}'. Set allow_unverified_endpoints in "
-                    f"~/.livepilot/splice.json (or SPLICE_ALLOW_UNVERIFIED_ENDPOINTS=1) "
-                    f"to override."
-                ),
-                endpoint=path,
-            )
 
         data_bytes = None
         headers = {

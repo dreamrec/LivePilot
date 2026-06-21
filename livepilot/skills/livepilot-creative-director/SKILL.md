@@ -113,42 +113,6 @@ For open-ended quality requests, treat timbre and spectral character as the main
 
 The `mix` family is dominant only when the user asks for balance, loudness, headroom, masking, stereo translation, send levels, or an explicit mix pass. Otherwise use mix analysis as safety/evidence and keep it out of the main creative slot.
 
-## Producer Decision Center
-
-Before choosing any instrument, preset, sample, or dominant move, run a
-producer decision center pass. This pass exists to prevent generic AI synth
-choices and effects-only "sound design".
-
-**Library hunt order:**
-
-1. `search_browser(path="sounds", name_filter="<role or sonic target>")`
-   for curated Ableton `.adg` chains.
-2. `atlas_search(query="<sonic description>", category="instruments")`
-   for scored character matches.
-3. If `atlas_search` returns `enriched: true`, read the surfaced fields and
-   call `atlas_device_info(device_id)` when the device is borderline or the
-   plan depends on gotchas, self-contained status, or signature techniques.
-4. `search_browser(path="instruments", name_filter="<specific candidate>")`
-   only after the curated/preset search has been exhausted.
-
-**Generic-default guardrail:** do not reach for Analog/Poli/Drift as a
-default bass, pad, or lead unless the user explicitly asked for analog
-subtractive synthesis or that exact instrument. Those defaults read as a
-generic AI synth in this project. If one of them is still the right choice,
-state the reason and program the source immediately.
-
-**Instrument/source-level first:** real sound design changes what the sound
-is before effects-only polish. For every melodic, harmonic, bass, drum, or
-texture layer, plan at least one instrument/source-level move before adding
-effects: envelopes, LFO routing, filter envelope, oscillator/wavetable/FM
-position, pitch modulation, sample start, slice selection, velocity mapping,
-spread, detune, or sampler playback mode.
-
-**Layer precision gate:** before declaring a plan or execution complete,
-each active layer needs a role and an evidence path: timbre/spectrum,
-sequence feel, stereo placement, movement/automation, and parameter
-programming. Low-volume buried layers do not count as solved layers.
-
 ### Phase 1 — Ground
 
 Read in parallel (all are fast). All of these are REQUIRED, not

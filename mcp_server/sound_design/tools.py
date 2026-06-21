@@ -408,7 +408,7 @@ def _cross_engine_hint_for_track(
         return None
     track_issues = [
         i for i in mix_issues
-        if track_index in (getattr(i, "affected_tracks", []) or [])
+        if getattr(i, "track_index", None) == track_index
     ]
     if not track_issues:
         return None

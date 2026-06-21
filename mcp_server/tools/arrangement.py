@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import json
+import time
 from typing import Any, Optional
 
 from fastmcp import Context
@@ -28,6 +29,96 @@ def _validate_track_index(track_index: int):
 def _validate_clip_index(clip_index: int):
     if clip_index < 0:
         raise ValueError("clip_index must be >= 0")
+
+
+_TRANSPORT_SETTLE_SECONDS = 0.15
+_MAX_TRANSPORT_ATTEMPTS = 3
+_POSITION_TOLERANCE_BEATS = 0.75
+_ROLLING_POSITION_TOLERANCE_BEATS = 4.0
+_SESSION_CLEAR_ATTEMPTS = 12
+
+
+def _settle_transport() -> None:
+    if _TRANSPORT_SETTLE_SECONDS > 0:
+        time.sleep(_TRANSPORT_SETTLE_SECONDS)
+
+
+def _float_or_none(value: Any) -> Optional[float]:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _position_delta(info: dict, target: float) -> Optional[float]:
+    position = _float_or_none(info.get("current_song_time"))
+    if position is None:
+        return None
+    return position - target
+
+
+def _position_is_verified(info: dict, target: float) -> bool:
+    delta = _position_delta(info, target)
+    return delta is not None and abs(delta) <= _POSITION_TOLERANCE_BEATS
+
+
+def _rolling_position_is_verified(info: dict, target: float) -> bool:
+    delta = _position_delta(info, target)
+    if delta is None:
+        return False
+    return (
+        delta >= -_POSITION_TOLERANCE_BEATS
+        and delta <= _ROLLING_POSITION_TOLERANCE_BEATS
+    )
+
+
+def _playing_session_clips(result: dict) -> list[dict]:
+    clips = result.get("clips") or []
+    return [
+        clip for clip in clips
+        if clip.get("is_playing") or clip.get("is_triggered")
+    ]
+
+
+def _arrangement_override_active(info: dict) -> bool:
+    observed: list[bool] = []
+    value = info.get("arrangement_override")
+    if isinstance(value, bool):
+        observed.append(value)
+    for track in info.get("tracks") or []:
+        if isinstance(track, dict):
+            value = track.get("arrangement_override")
+            if isinstance(value, bool):
+                observed.append(value)
+    return any(observed)
+
+
+def _clear_session_override(send, warnings: list[str]) -> tuple[bool, int, list[dict]]:
+    """Stop Session View clips and press Back to Arrangement after they settle."""
+    last_clips: list[dict] = []
+    for attempt in range(1, _SESSION_CLEAR_ATTEMPTS + 1):
+        try:
+            send("stop_all_clips")
+        except Exception as exc:
+            warnings.append(f"stop_all_clips failed: {exc}")
+
+        _settle_transport()
+
+        try:
+            last_clips = _playing_session_clips(send("get_playing_clips"))
+        except Exception as exc:
+            warnings.append(f"get_playing_clips failed: {exc}")
+            last_clips = []
+            break
+
+        if not last_clips:
+            send("back_to_arranger")
+            _settle_transport()
+            return True, attempt, []
+
+    send("back_to_arranger")
+    _settle_transport()
+    return not last_clips, _SESSION_CLEAR_ATTEMPTS, last_clips
 
 
 @mcp.tool()
@@ -338,23 +429,133 @@ def force_arrangement(
     loop_length: float = 0,
     play: bool = True,
 ) -> dict:
-    """Force ALL tracks to follow the arrangement and start playback.
+    """Force ALL tracks to follow the arrangement and optionally start playback.
 
-    Atomically: stops all session clips, releases every track from
-    session override, sets back-to-arranger, jumps to position, and
-    starts playing. This is the "play my arrangement from the top"
-    command.
+    Sequenced and verified: stops transport/session clips, releases tracks
+    from session override, sets back-to-arranger, jumps to position, checks
+    the real playhead, starts transport, and re-seeks after playback starts
+    if Live resumes from an old location.
+    This is the reliable "play my arrangement from the top" command.
 
     beat_time: position to start from (default 0 = beginning)
     loop_start: loop region start in beats (default 0)
     loop_length: loop region length in beats (0 = no loop change)
     play: whether to start playback (default True)
     """
-    params: dict = {"beat_time": beat_time, "play": play}
+    ableton = _get_ableton(ctx)
+    target = max(0.0, float(beat_time))
+    warnings: list[str] = []
+    latest_info: dict = {}
+
+    def send(command: str, params: Optional[dict] = None) -> dict:
+        result = ableton.send_command(command, params or {})
+        return result if isinstance(result, dict) else {}
+
+    send("stop_playback")
+    _settle_transport()
+
+    session_clear, session_clear_attempts, playing_clips = _clear_session_override(
+        send, warnings
+    )
+
     if loop_length > 0:
-        params["loop_start"] = loop_start
-        params["loop_length"] = loop_length
-    return _get_ableton(ctx).send_command("force_arrangement", params)
+        send("set_session_loop", {
+            "enabled": True,
+            "loop_start": float(loop_start),
+            "loop_length": float(loop_length),
+        })
+        _settle_transport()
+
+    seek_verified = False
+    seek_attempts = 0
+    for seek_attempts in range(1, _MAX_TRANSPORT_ATTEMPTS + 1):
+        send("jump_to_time", {"beat_time": target})
+        _settle_transport()
+        latest_info = send("get_session_info")
+        if _position_is_verified(latest_info, target):
+            seek_verified = True
+            break
+
+    if not seek_verified:
+        position = latest_info.get("current_song_time")
+        warnings.append(
+            f"position verification failed: requested {target}, observed {position}"
+        )
+
+    play_verified = not play
+    play_attempts = 0
+    if play:
+        for play_attempts in range(1, _MAX_TRANSPORT_ATTEMPTS + 1):
+            send("back_to_arranger")
+            _settle_transport()
+            send("start_playback")
+            _settle_transport()
+
+            try:
+                playing_clips = _playing_session_clips(send("get_playing_clips"))
+                session_clear = not playing_clips
+            except Exception as exc:
+                warnings.append(f"get_playing_clips failed after playback start: {exc}")
+
+            if playing_clips:
+                extra_clear, extra_attempts, playing_clips = _clear_session_override(
+                    send, warnings
+                )
+                session_clear = extra_clear
+                session_clear_attempts += extra_attempts
+
+            latest_info = send("get_session_info")
+            if (
+                latest_info.get("is_playing")
+                and session_clear
+                and not _arrangement_override_active(latest_info)
+                and _rolling_position_is_verified(latest_info, target)
+            ):
+                play_verified = True
+                break
+
+            # Live can resume from a previous playhead despite a stopped seek.
+            # Once transport is rolling, a second seek is much more reliable.
+            if not _rolling_position_is_verified(latest_info, target):
+                send("jump_to_time", {"beat_time": target})
+                _settle_transport()
+                send("back_to_arranger")
+                _settle_transport()
+                latest_info = send("get_session_info")
+                if (
+                    latest_info.get("is_playing")
+                    and session_clear
+                    and not _arrangement_override_active(latest_info)
+                    and _rolling_position_is_verified(latest_info, target)
+                ):
+                    play_verified = True
+                    break
+
+        if not play_verified:
+            warnings.append("playback verification failed after start_playback")
+
+    position = _float_or_none(latest_info.get("current_song_time"))
+    delta = position - target if position is not None else None
+
+    return {
+        "arrangement_active": (
+            session_clear and not _arrangement_override_active(latest_info)
+        ),
+        "arrangement_override": latest_info.get("arrangement_override"),
+        "requested_position": target,
+        "position": position,
+        "position_delta": delta,
+        "is_playing": bool(latest_info.get("is_playing", False)),
+        "loop": latest_info.get("loop"),
+        "verified_position": seek_verified,
+        "verified_playback": play_verified,
+        "session_clear": session_clear,
+        "session_clear_attempts": session_clear_attempts,
+        "playing_clips": playing_clips,
+        "seek_attempts": seek_attempts,
+        "play_attempts": play_attempts,
+        "warnings": warnings,
+    }
 
 
 @mcp.tool()

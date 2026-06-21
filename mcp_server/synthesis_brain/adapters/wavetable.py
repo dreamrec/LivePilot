@@ -48,8 +48,8 @@ from .base import register_adapter
 # corpus (see skills/livepilot-core/references/device-knowledge/
 # instruments-synths.md). PR9 uses a small subset; later PRs extend.
 _KNOWN_PARAMS = {
-    "Osc 1 Pos",
-    "Osc 2 Pos",
+    "Osc 1 Position",
+    "Osc 2 Position",
     "Osc 1 Transpose",
     "Osc 2 Transpose",
     "Voices",
@@ -220,7 +220,7 @@ class WavetableAdapter:
         # shift to that region's center. The actual shift magnitude
         # (how close to the center) scales with freshness — low
         # freshness stops partway, high freshness commits fully.
-        current_pos = float(profile.parameter_state.get("Osc 1 Pos", 0.0) or 0.0)
+        current_pos = float(profile.parameter_state.get("Osc 1 Position", 0.0) or 0.0)
         current_region = _classify_position(current_pos)
         target_region = _choose_target_region(current_region, target)
         region_target_pos = _region_center(target_region)
@@ -281,7 +281,7 @@ class WavetableAdapter:
                     "params": {
                         "track_index": track,
                         "device_index": device,
-                        "parameter_name": "Osc 1 Pos",
+                        "parameter_name": "Osc 1 Position",
                         "value": new_pos,
                     },
                 },

@@ -171,18 +171,6 @@ async def _try_native_replace_sample(
     return resp
 
 
-def _normalize_native_fallback_reason(skip_reason: Optional[str]) -> Optional[str]:
-    if not skip_reason:
-        return None
-    if skip_reason.startswith("gate_closed:"):
-        return "live_version_below_12_4"
-    return skip_reason
-
-
-def _native_dispatch_was_attempted(skip_reason: Optional[str]) -> bool:
-    return bool(skip_reason) and not skip_reason.startswith("gate_closed:")
-
-
 @mcp.tool()
 async def reconnect_bridge(ctx: Context) -> dict:
     """Attempt to reconnect the M4L UDP bridge (port 9880).
@@ -639,9 +627,6 @@ async def replace_simpler_sample(
         result = dict(native)
         result.update(hygiene)
         result["method"] = "native_12_4"  # preserved in case hygiene ever adds its own key
-        result["native_attempted"] = True
-        result["bridge_attempted"] = False
-        result["fallback_reason"] = None
         return result
 
     # Pre-12.4 fallback: M4L bridge path (unchanged behavior).
@@ -651,17 +636,11 @@ async def replace_simpler_sample(
     )
 
     if "error" in result:
-        result["native_attempted"] = _native_dispatch_was_attempted(skip_reason)
-        result["bridge_attempted"] = True
-        result["fallback_reason"] = _normalize_native_fallback_reason(skip_reason)
         return result
     if not result.get("sample_loaded"):
         return {
             "error": "Sample may not have loaded. Ensure the Simpler already "
-            "has a sample loaded — replace_sample silently fails on empty Simplers.",
-            "native_attempted": _native_dispatch_was_attempted(skip_reason),
-            "bridge_attempted": True,
-            "fallback_reason": _normalize_native_fallback_reason(skip_reason),
+            "has a sample loaded — replace_sample silently fails on empty Simplers."
         }
 
     hygiene = await _simpler_post_load_hygiene(
@@ -673,9 +652,6 @@ async def replace_simpler_sample(
 
     result.update(hygiene)
     result["method"] = "bridge_m4l"
-    result["native_attempted"] = _native_dispatch_was_attempted(skip_reason)
-    result["bridge_attempted"] = True
-    result["fallback_reason"] = _normalize_native_fallback_reason(skip_reason)
     if skip_reason:
         result["native_skip_reason"] = skip_reason
     return result
@@ -716,10 +692,7 @@ async def load_sample_to_simpler(
     # Live 12.4+: create an empty Simpler via insert_device, then use the
     # native replace_sample path. Skips the dummy-sample bootstrap entirely.
     caps = _live_caps(ctx)
-    native_attempted = False
-    fallback_reason = "live_version_below_12_4"
     if caps.has_replace_sample_native:
-        fallback_reason = "native_insert_device_unavailable"
         try:
             ins = ableton.send_command("insert_device", {
                 "track_index": track_index,
@@ -728,7 +701,6 @@ async def load_sample_to_simpler(
         except Exception:
             ins = None
         if isinstance(ins, dict) and "error" not in ins:
-            native_attempted = True
             actual_device_index = ins.get("device_index", device_index)
             native = await _try_native_replace_sample(
                 ctx, track_index, actual_device_index, file_path
@@ -745,13 +717,7 @@ async def load_sample_to_simpler(
                 result["method"] = "native_12_4"
                 result["device_index"] = actual_device_index
                 result["track_index"] = track_index
-                result["native_attempted"] = True
-                result["bridge_attempted"] = False
-                result["fallback_reason"] = None
                 return result
-            fallback_reason = _normalize_native_fallback_reason(
-                ctx.lifespan_context.get("_native_replace_skip_reason")
-            ) or "native_replace_failed"
         # Fall through to the legacy bootstrap path below on any failure.
 
     # Step 1: Load a sample from the browser to create Simpler with content
@@ -808,9 +774,6 @@ async def load_sample_to_simpler(
     result["method"] = "bootstrap_and_replace"
     result["device_index"] = actual_device_index  # additive — for step-result binding
     result["track_index"] = track_index
-    result["native_attempted"] = native_attempted
-    result["bridge_attempted"] = True
-    result["fallback_reason"] = fallback_reason
     return result
 
 
@@ -2106,6 +2069,14 @@ def ensure_analyzer_on_master(ctx: Context) -> dict:
 
     devices = (master or {}).get("devices") or []
     matches = [d for d in devices if d.get("name") == _ANALYZER_DEVICE_NAME]
+    generic_m4l_master_analyzer = (
+        len(devices) == 1
+        and devices[0].get("name") == "Max Audio Effect"
+        and devices[0].get("class_name") == "MxDeviceAudioEffect"
+        and devices[0].get("is_active") is not False
+    )
+    if generic_m4l_master_analyzer:
+        matches = [devices[0]]
 
     if matches:
         # 2. Already loaded — build a status report without side effects.
@@ -2114,7 +2085,10 @@ def ensure_analyzer_on_master(ctx: Context) -> dict:
         is_last = False
         if devices:
             last_name = devices[-1].get("name")
-            is_last = (last_name == _ANALYZER_DEVICE_NAME)
+            is_last = (
+                last_name == _ANALYZER_DEVICE_NAME
+                or (generic_m4l_master_analyzer and devices[-1] is first)
+            )
 
         result: dict = {
             "status": "already_loaded",
@@ -2122,6 +2096,12 @@ def ensure_analyzer_on_master(ctx: Context) -> dict:
             "is_last_on_master": is_last,
             "duplicate_count": len(matches),
         }
+        if generic_m4l_master_analyzer:
+            result["warning"] = (
+                "Master Analyzer is loaded but Ableton reports its device name "
+                "as generic 'Max Audio Effect'. Treating the single active "
+                "master M4L device as LivePilot_Analyzer to avoid duplicate loads."
+            )
         if len(matches) > 1:
             result["warning"] = (
                 f"{len(matches)} instances of {_ANALYZER_DEVICE_NAME} on master — "

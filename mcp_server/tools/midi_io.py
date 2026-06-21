@@ -34,12 +34,6 @@ def _require_midiutil():
         )
 
 
-# Hard cap on extract_piano_roll's emitted matrix (pitch_range * time_steps).
-# ~16k cells keeps the JSON response well inside a single context window even
-# for a full 88-key range; coarsen 'resolution' to fit larger material.
-_PIANO_ROLL_CELL_BUDGET = 16000
-
-
 def _require_pretty_midi():
     try:
         import pretty_midi
@@ -354,20 +348,7 @@ def extract_piano_roll(
 
     Returns a velocity matrix [pitch_index][time_step] trimmed to
     the actual pitch range. Resolution is in beats (0.125 = 32nd note).
-
-    To keep the response bounded, the emitted matrix is capped at
-    ``_PIANO_ROLL_CELL_BUDGET`` cells (pitch_range * time_steps). When the
-    full roll exceeds the budget the tool returns a structured error with the
-    offending dimensions instead of a multi-MB matrix; coarsen ``resolution``
-    (larger value = fewer time steps) to fit.
     """
-    if not resolution or resolution <= 0:
-        return {
-            "error": "resolution must be a positive number of beats per step "
-                     f"(got {resolution!r}); e.g. 0.125 for 32nd notes.",
-            "code": "INVALID_PARAM",
-        }
-
     pretty_midi = _require_pretty_midi()
     path = _validate_midi_path(file_path)
     pm = pretty_midi.PrettyMIDI(str(path))
@@ -392,30 +373,10 @@ def extract_piano_roll(
     pitch_max = int(active_pitches[-1])
     trimmed = roll[pitch_min:pitch_max + 1, :]
 
-    pitch_range = int(trimmed.shape[0])
-    time_steps = int(trimmed.shape[1])
-    cell_count = pitch_range * time_steps
-    if cell_count > _PIANO_ROLL_CELL_BUDGET:
-        return {
-            "error": (
-                f"piano roll too large: {pitch_range} pitches x {time_steps} "
-                f"steps = {cell_count} cells exceeds the {_PIANO_ROLL_CELL_BUDGET}"
-                "-cell budget. Increase 'resolution' (e.g. 0.25 or 0.5 beats) "
-                "to coarsen the time axis."
-            ),
-            "code": "INVALID_PARAM",
-            "pitch_min": pitch_min,
-            "pitch_max": pitch_max,
-            "pitch_range": pitch_range,
-            "time_steps": time_steps,
-            "cell_budget": _PIANO_ROLL_CELL_BUDGET,
-            "resolution": resolution,
-        }
-
     return {
         "piano_roll": trimmed.astype(int).tolist(),
         "pitch_min": pitch_min,
         "pitch_max": pitch_max,
-        "time_steps": time_steps,
+        "time_steps": int(trimmed.shape[1]),
         "resolution": resolution,
     }

@@ -187,11 +187,7 @@ Agent dispatch).
 | LV2 | `~/.lv2/` `/usr/lib/lv2/` |
 
 The detector walks all relevant paths for the running OS, filters by file
-extension (and on macOS, treats the bundle directory as the plugin file). It
-recursively descends into vendor subfolders via `_walk_plugin_bundles`
-(depth-limited), so plugins nested under
-`/Library/Audio/Plug-Ins/<format>/<Vendor>/` are detected, not just bundles
-sitting flat at the top level of each format directory.
+extension (and on macOS, treats the bundle directory as the plugin file).
 
 ---
 
@@ -316,7 +312,7 @@ backend.
     }
   ],
   "instructions": "Use WebSearch + WebFetch. Cache top 3 results per query under <plugin_dir>/research/. Stamp each cached file with the source URL + retrieval timestamp.",
-  "next_step_tool": "corpus_emit_synthesis_briefs"
+  "next_step_tool": "corpus_synthesize_plugin_identity"
 }
 ```
 

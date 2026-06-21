@@ -1,8 +1,40 @@
 {
   "name": "livepilot",
-  "version": "1.27.1",
+  "version": "1.26.2",
   "description": "Agentic production system for Ableton Live 12 \u2014 467 tools, 56 domains, 44 semantic moves, device atlas (5264 devices, 120 enriched, 7 indexes), Splice intelligence (gRPC + GraphQL describe-a-sound + preview + collections + presets), 9-band spectral perception auto-loaded via ensure_analyzer_on_master, Creative Director skill, technique memory, neo-Riemannian harmony, Euclidean rhythm, species counterpoint, MIDI I/O",
   "author": {
     "name": "Pilot Studio"
+  },
+  "homepage": "https://github.com/dreamrec/LivePilot",
+  "repository": "https://github.com/dreamrec/LivePilot",
+  "license": "BSL-1.1",
+  "keywords": [
+    "ableton",
+    "mcp",
+    "music-production",
+    "midi",
+    "audio"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "LivePilot",
+    "shortDescription": "Control Ableton Live 12 through MCP",
+    "longDescription": "LivePilot connects Codex to Ableton Live 12 with tools for session control, clips, notes, devices, mixing, arrangement, samples, analyzer data, and production memory.",
+    "developerName": "Pilot Studio",
+    "category": "Integration",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/dreamrec/LivePilot",
+    "privacyPolicyURL": "https://github.com/dreamrec/LivePilot",
+    "termsOfServiceURL": "https://github.com/dreamrec/LivePilot",
+    "defaultPrompt": [
+      "Inspect my Ableton Live session with LivePilot"
+    ],
+    "brandColor": "#ff7a18",
+    "screenshots": []
   }
 }

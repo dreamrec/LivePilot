@@ -497,7 +497,6 @@ class SpectralReceiver(asyncio.DatagramProtocol):
         self._chunks: dict[str, dict] = {}  # Reassembly buffer for chunked responses
         self._chunk_times: dict[str, float] = {}  # Monotonic timestamp per chunk sequence
         self._chunk_id = 0
-        self._chunk_key: Optional[str] = None  # Key of the single active reassembly bucket
         self._response_callback: Optional[asyncio.Future] = None
         self._capture_future: Optional[asyncio.Future] = None
         self._miditool_handler: Optional[Callable[[str, dict, list], None]] = None
@@ -734,26 +733,29 @@ class SpectralReceiver(asyncio.DatagramProtocol):
         way we never poison a prior sequence, and the problem surfaces in
         logs if it happens.
         """
-        # Only one response is chunked at a time: send_command serialises on
-        # _cmd_lock, so a single active reassembly bucket is sufficient and we
-        # do NOT need the first packet to be index 0. Accepting chunks in any
-        # order fixes the permanent-loss path where an index>0 chunk arriving
-        # before index 0 (UDP loopback reordering under load) used to split
-        # one response across two buckets that never completed.
-        active = self._chunks.get(self._chunk_key)
-        if active is None or active["total"] != total:
-            # No bucket open, OR a chunk with a different `total` arrived,
-            # meaning a new response started (e.g. the previous one timed out
-            # without ever completing). Evict any stale partial and open fresh.
-            if active is not None:
-                self._chunks.pop(self._chunk_key, None)
-                self._chunk_times.pop(self._chunk_key, None)
+        if index == 0:
             self._chunk_id += 1
-            self._chunk_key = str(self._chunk_id)
-            self._chunks[self._chunk_key] = {"parts": {}, "total": total}
-            self._chunk_times[self._chunk_key] = time.monotonic()
+            key = str(self._chunk_id)
+            self._chunks[key] = {"parts": {}, "total": total}
+            self._chunk_times[key] = time.monotonic()
+        else:
+            key = str(self._chunk_id)
+            if key not in self._chunks:
+                # Out-of-order arrival. Start a new bucket rather than append
+                # to the previous sequence's parts — that's the corruption
+                # path. Log once so it's diagnosable.
+                import sys
+                print(
+                    f"LivePilot: chunk index={index}/{total} arrived before "
+                    f"index=0 — starting fresh bucket. UDP reordering on "
+                    f"loopback suggests system load.",
+                    file=sys.stderr,
+                )
+                self._chunk_id += 1
+                key = str(self._chunk_id)
+                self._chunks[key] = {"parts": {}, "total": total}
+                self._chunk_times[key] = time.monotonic()
 
-        key = self._chunk_key
         self._chunks[key]["parts"][index] = encoded
 
         if len(self._chunks[key]["parts"]) == total:
@@ -883,9 +885,6 @@ class M4LBridge:
 
     async def send_command(self, command: str, *args: Any, timeout: float = 5.0) -> dict:
         """Send an OSC command to the M4L device and wait for the response."""
-        if not self.cache.is_connected:
-            return {"error": "LivePilot Analyzer not connected. Drop it on the master track."}
-
         # Fail fast if there is no receiver to correlate the response. The
         # previous version sent the OSC packet anyway, dropped the reply
         # inside _handle_response (no future registered), and waited out
@@ -899,6 +898,11 @@ class M4LBridge:
                          "for a bind failure on port 9880."
             }
 
+        # Fresh spectral frames prove that the analyzer's audio-reporting
+        # path is active, but command replies can still work when the set is
+        # stopped, silent, or the spectral cache has aged out. Send command
+        # traffic whenever the UDP receiver exists and let the device reply
+        # or time out.
         if self._cmd_lock is None:
             self._cmd_lock = asyncio.Lock()
         async with self._cmd_lock:
@@ -927,9 +931,6 @@ class M4LBridge:
 
     async def send_capture(self, command: str, *args: Any, timeout: float = 35.0) -> dict:
         """Send a capture command to the M4L device and wait for /capture_complete."""
-        if not self.cache.is_connected:
-            return {"error": "LivePilot Analyzer not connected. Drop it on the master track."}
-
         # Fail fast if there is no receiver to correlate the reply. Prior
         # versions sent the OSC packet anyway, never registered a future,
         # and then waited out the full 35s timeout with a misleading

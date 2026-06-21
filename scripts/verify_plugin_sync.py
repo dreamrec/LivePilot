@@ -44,16 +44,6 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-# Windows consoles default to cp1252, where the ✓/✗ status glyphs below raise
-# UnicodeEncodeError (this crashed the windows-latest CI matrix). Force UTF-8 on
-# our own streams so verifier output is portable. Guarded: reconfigure() exists
-# only on real text streams (CPython 3.7+).
-for _stream in (sys.stdout, sys.stderr):
-    try:
-        _stream.reconfigure(encoding="utf-8")
-    except (AttributeError, ValueError):  # pragma: no cover - non-text stream
-        pass
-
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ACTIVE_DIR = Path.home() / ".claude" / "plugins" / "livepilot"

@@ -140,7 +140,7 @@ All 467 tools across 56 domains, in source-truth per-domain counts:
 | Clips | 16 | Create, delete, duplicate, fire, stop, loop, launch mode, warp mode, pitch, color |
 | Scenes | 12 | Create, delete, duplicate, fire, name, color, per-scene tempo, follow actions |
 | Mixing | 11 | Volume, pan, sends, routing, meters, return tracks, mix snapshot |
-| Automation | 9 | Clip envelopes, 16 curve types, 15 recipes, spectral suggestions |
+| Automation | 10 | Clip envelopes, real-time arrangement recording, 16 curve types, 15 recipes, spectral suggestions |
 | Composition | 9 | Section analysis, motif detection, emotional arc, form planning |
 | Notes | 8 | Add/get/remove/modify MIDI, transpose, duplicate, per-note probability |
 | Scales | 8 | Clip scales, song scales, scale modes, list available scales |

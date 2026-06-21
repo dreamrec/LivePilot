@@ -823,10 +823,8 @@ async function main() {
     console.log("  --help        Show this help");
     console.log("");
     console.log("Environment:");
-    console.log("  LIVE_MCP_HOST          Remote Script host (default: 127.0.0.1)");
-    console.log("  LIVE_MCP_PORT          Remote Script port (default: 9878)");
-    console.log("  LIVEPILOT_AUTO_INSTALL Auto-install Remote Script on launch (set to 'true')");
-    console.log("  LIVEPILOT_TCP_PORT     Override Remote Script port (Desktop Extension/MCPB)");
+    console.log("  LIVE_MCP_HOST   Remote Script host (default: 127.0.0.1)");
+    console.log("  LIVE_MCP_PORT   Remote Script port (default: 9878)");
     return;
   }
 

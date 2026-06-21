@@ -51,11 +51,7 @@ architecture:
     assert entry["entity_type"] == "signature_chain"
     assert entry["namespace"] == "elektron"
     assert entry["requires_box"] == "monomachine"
-    # Search results omit the full YAML body (response-size cap); the complete
-    # entry — including `body` — comes from extension_atlas_get.
-    from mcp_server.atlas.tools import extension_atlas_get
-    full = extension_atlas_get(ctx=None, namespace="elektron", entity_id="sophie_ponyboy_kick")
-    assert full["body"]["architecture"]["tracks"]["T1"]["machine"] == "SID"
+    assert entry["body"]["architecture"]["tracks"]["T1"]["machine"] == "SID"
 
 
 def test_full_pipeline_handles_missing_overlay_dir(monkeypatch, tmp_path):

@@ -71,18 +71,14 @@ def _fetch_project_snapshot(ctx: Context) -> dict:
 
             spec_data = spectral.get("spectrum")
             if spec_data:
-                # gap_analyzer.analyze_gaps reads proj_spectral["band_balance"]
-                # and the reference profile stores its bands under the same
-                # key, so the project spectrum MUST go under band_balance too
-                # (writing it under "bands" made every band read as 0.0).
-                snapshot["spectral"] = {"band_balance": spec_data["value"]}
+                snapshot["spectral"] = {"bands": spec_data["value"]}
                 key_data = spectral.get("key")
                 if key_data:
                     snapshot["spectral"]["detected_key"] = key_data["value"]
     except Exception as exc:
         logger.debug("_fetch_project_snapshot failed: %s", exc)
 
-    # Try to get session info for pacing / density / stereo width
+    # Try to get session info for pacing / density
     try:
         session_info = ableton.send_command("get_session_info", {})
         track_count = session_info.get("track_count", 0)
@@ -90,22 +86,6 @@ def _fetch_project_snapshot(ctx: Context) -> dict:
         # Rough density estimate
         snapshot["density"] = min(1.0, track_count / 20.0)
         snapshot["pacing"] = [{"label": f"scene_{i}", "bars": 8} for i in range(scene_count)]
-
-        # Estimate project stereo width from track pans (mirrors the
-        # pan-spread estimate in translation_engine/tools.py). Without this,
-        # snapshot["width"] stayed 0.0 and the width gap always reported the
-        # full reference width.
-        tracks = session_info.get("tracks", [])
-        if tracks:
-            def _get_pan(t: dict) -> float:
-                mixer = t.get("mixer")
-                if isinstance(mixer, dict):
-                    return abs(mixer.get("panning", 0.0))
-                return abs(t.get("pan", 0.0))
-
-            pan_values = [_get_pan(t) for t in tracks if not t.get("muted", False)]
-            if pan_values:
-                snapshot["width"] = min(1.0, sum(pan_values) / max(len(pan_values), 1))
     except Exception as exc:
         logger.debug("_fetch_project_snapshot failed: %s", exc)
 

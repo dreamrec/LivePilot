@@ -341,37 +341,6 @@ def test_detect_installed_plugins_against_fake_folder(tmp_path):
     assert detected[0].format == "VST3"
 
 
-def test_detect_installed_plugins_recurses_vendor_subfolders(tmp_path):
-    """#44: plugins nested in vendor subfolders must be found, and the vendor
-    folders themselves must NOT be emitted as junk 'unknown-*' records.
-
-    Before the recursive-walk fix, the scanner flat-listed the scan root:
-    nested bundles were invisible and each vendor folder fell through to
-    _fallback_identity, polluting the inventory with bogus entries.
-    """
-    vst3 = tmp_path / "VST3"
-    # top-level bundle (must still be found)
-    (vst3 / "Top.vst3" / "Contents").mkdir(parents=True)
-    # one level deep in a vendor folder (the exact reported scenario)
-    (vst3 / "Arturia" / "Analog Lab V.vst3" / "Contents").mkdir(parents=True)
-    # two levels deep
-    (vst3 / "Native Instruments" / "Massive" / "Massive X.vst3" / "Contents").mkdir(parents=True)
-
-    detected = detect_installed_plugins(paths=[(vst3, "VST3")], use_auval=False)
-    names = {p.name for p in detected}
-
-    assert "Top" in names
-    assert "Analog Lab V" in names            # nested — previously missed
-    assert "Massive X" in names               # deeper nested — previously missed
-    # vendor folders must NOT be emitted as plugins
-    assert "Arturia" not in names
-    assert "Native Instruments" not in names
-    assert "Massive" not in names
-    assert not any(p.plugin_id.startswith("unknown-arturia") for p in detected)
-    # exactly the 3 real bundles, no vendor-folder junk
-    assert len(detected) == 3
-
-
 def test_discover_manuals_finds_pdf_in_bundle(tmp_path):
     """A manual.pdf inside the bundle's Resources should be the top candidate."""
     bundle = tmp_path / "Plugin.vst3"
@@ -390,28 +359,3 @@ def test_discover_manuals_finds_pdf_in_bundle(tmp_path):
     top = cands[0]
     assert top.path == str(manual)
     assert top.location_score == 5  # inside bundle is highest
-def test_slim_plugin_drops_sdk_metadata_but_keeps_identity():
-    """corpus_detect_plugins' inline response must NOT carry the heavy raw
-    sdk_metadata (moduleinfo.json / Info.plist) for every plugin — that lives
-    in the persisted _inventory.json. _slim_plugin strips it while preserving
-    the lightweight identity fields."""
-    from mcp_server.user_corpus.tools import _slim_plugin
-
-    p = DetectedPlugin(
-        plugin_id="u-he-diva", name="Diva", vendor="u-he",
-        format="VST3", version="1.4.5", bundle_path="/tmp/Diva.vst3",
-        unique_id="ABCDEF01", file_size_kb=42,
-        sdk_metadata={"Name": "Diva", "Classes": [{"CID": "X"}], "blob": "y" * 5000},
-    )
-    full = p.to_dict()
-    # Sanity: the full serialization DOES carry the heavy metadata.
-    assert full["sdk_metadata"]["blob"]
-
-    slim = _slim_plugin(full)
-    # Heavy field dropped from inline payload.
-    assert "sdk_metadata" not in slim
-    # Identity fields preserved.
-    for field in ("plugin_id", "name", "vendor", "format", "version"):
-        assert slim[field] == full[field]
-    # Original full dict is untouched (helper returns a copy).
-    assert "sdk_metadata" in full

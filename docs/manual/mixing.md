@@ -262,8 +262,8 @@ Returns input/output routing, monitoring state, and available routing options.
 ### Changing Routing
 
 ```
-set_track_routing  track_index=0  output_routing_type="Sends Only"
-set_track_routing  track_index=3  input_routing_type="Ext. In"  input_routing_channel="1/2"
+set_track_routing  track_index=0  output_routing="Sends Only"
+set_track_routing  track_index=3  input_routing="Ext. In"  input_channel="1/2"
 ```
 
 ### Common Routing Scenarios

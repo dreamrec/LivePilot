@@ -31,19 +31,6 @@ class TechniqueStore:
         self._lock = threading.Lock()
         self._initialized = False
         self._data: dict = {"version": 1, "techniques": []}
-        # Signature (mtime_ns, size) of the file as we last loaded it. Lets
-        # multiple TechniqueStore instances pointing at the same file pick up
-        # each other's writes (reload-on-read) instead of caching stale data
-        # for the life of the process.
-        self._loaded_sig: Optional[tuple] = None
-
-    def _file_signature(self) -> Optional[tuple]:
-        """Return (mtime_ns, size) of the backing file, or None if absent."""
-        try:
-            st = self._file.stat()
-        except OSError:
-            return None
-        return (st.st_mtime_ns, st.st_size)
 
     def _ensure_initialized(self) -> None:
         """Lazily create directory and load data on first access.
@@ -53,14 +40,12 @@ class TechniqueStore:
         Thread-safe: uses double-checked locking to prevent concurrent
         callers from racing on initialization.
         """
-        # Fast path: already initialized AND the file on disk has not changed
-        # since we last loaded it (no other instance has written).
-        if self._initialized and self._file_signature() == self._loaded_sig:
+        if self._initialized:
             return
         with self._lock:
             # Double-check after acquiring lock — another thread may have
-            # (re)loaded while we were waiting.
-            if self._initialized and self._file_signature() == self._loaded_sig:
+            # initialized while we were waiting.
+            if self._initialized:
                 return
             try:
                 self._base_dir.mkdir(parents=True, exist_ok=True)
@@ -73,12 +58,10 @@ class TechniqueStore:
                 try:
                     with open(self._file, "r") as f:
                         self._data = json.load(f)
-                    self._loaded_sig = self._file_signature()
                 except (json.JSONDecodeError, ValueError):
                     corrupt = self._file.with_suffix(".json.corrupt")
                     self._file.rename(corrupt)
                     self._data = {"version": 1, "techniques": []}
-                    self._loaded_sig = None
             else:
                 self._data = {"version": 1, "techniques": []}
                 self._flush()
@@ -94,9 +77,6 @@ class TechniqueStore:
             f.flush()
             os.fsync(f.fileno())
         os.replace(str(tmp), str(self._file))
-        # Record the signature of our own write so this instance does not
-        # needlessly reload the data it already holds in memory.
-        self._loaded_sig = self._file_signature()
 
     # ── public API ───────────────────────────────────────────────
 

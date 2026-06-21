@@ -408,22 +408,12 @@ def plan_sections(
     Returns a list of dicts: {name, bars, layers, start_bar}.
     """
     if section_template is None:
-        # v1.24 removed the built-in SECTION_TEMPLATES registry (form is the
-        # LLM's job, not the framework's). But the deterministic scaffolding
-        # tools (augment_with_samples, get_composition_plan,
-        # propose_composer_branches) and wonder_mode still call this without a
-        # template. Degrade to a SINGLE full-length section containing every
-        # selected role — this is NOT a form template (no genre-keyed
-        # multi-section sequence, no module-level bar-count registry), it just
-        # lets those tools emit a working skeleton. Callers that want real form
-        # pass an explicit section_template.
-        roles = _select_roles(intent)
-        return [{
-            "name": "Full",
-            "bars": max(4, int(intent.duration_bars or 64)),
-            "layers": list(roles),
-            "start_bar": 0,
-        }]
+        raise ValueError(
+            "plan_sections() requires explicit section_template in v1.24+. "
+            "SECTION_TEMPLATES was removed — the LLM provides form, not the "
+            "framework. Pass a section_template list or use the v1.24 full-mode "
+            "compose flow which is LLM-creative."
+        )
 
     template = section_template
 

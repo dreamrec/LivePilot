@@ -719,15 +719,6 @@ async def apply_full_plan_v2(ctx: Context, plan: dict) -> dict:
                 continue
         else:
             track_index = int(track_index)
-            # BUG-FIX (P2 zombie-cleanup): a reused/existing track must also be
-            # registered as "applied". Otherwise the postflight zombie-cleanup
-            # (which excludes only applied_track_indices) sees a reused track
-            # that currently has no session clips / instrument — e.g. one given
-            # only arrangement clips — as an empty leftover and DELETES it.
-            # Reused tracks must never be eligible for cleanup, and postflight
-            # monitoring must be restored on them too.
-            if track_index >= 0 and track_index not in applied_track_indices:
-                applied_track_indices.append(track_index)
 
         # Optional instrument load
         instrument = track_spec.get("instrument") or {}

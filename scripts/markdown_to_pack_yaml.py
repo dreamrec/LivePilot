@@ -13,26 +13,19 @@ mechanical extraction.
 
 Output: ~/.livepilot/atlas-overlays/packs/{identity,demo_projects,lessons,cross_workflows}/<slug>.yaml
 """
-import os, sys, json, re, yaml
+import sys, json, re, yaml
 from pathlib import Path
 from collections import OrderedDict
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-# Sibling private-extensions checkout. Override with LIVEPILOT_EXTENSIONS_DIR;
-# defaults to a repo sibling so this script is portable across machines.
-PRIVATE_PACKS_DIR = (
-    Path(os.environ.get("LIVEPILOT_EXTENSIONS_DIR", REPO_ROOT.parent / "livepilot-dreamrec-extensions"))
-    / "skills" / "livepilot-packs" / "references"
-)
+REPO_ROOT = Path("/Users/visansilviugeorge/Desktop/DREAM AI/LivePilot")
+PRIVATE_PACKS_DIR = Path("/Users/visansilviugeorge/Desktop/DREAM AI/livepilot-dreamrec-extensions/skills/livepilot-packs/references")
 OUT_ROOT = Path.home() / ".livepilot" / "atlas-overlays" / "packs"
 DEMO_SIDECARS = OUT_ROOT / "_demo_parses"
 PRESET_SIDECARS = OUT_ROOT / "_preset_parses"
 
-
-def _ensure_output_dirs() -> None:
-    """Create the overlay output tree. Called from main(), not on import."""
-    for sub in ("identity", "demo_projects", "lessons", "cross_workflows"):
-        (OUT_ROOT / sub).mkdir(parents=True, exist_ok=True)
+# Ensure output dirs
+for sub in ("identity", "demo_projects", "lessons", "cross_workflows"):
+    (OUT_ROOT / sub).mkdir(parents=True, exist_ok=True)
 
 
 class BlockDumper(yaml.SafeDumper):
@@ -276,7 +269,6 @@ def demo_sidecar_to_yaml(sidecar_path: Path):
 # ============================================================================
 
 def main():
-    _ensure_output_dirs()
     # 1. Cross-workflows
     print("=== CROSS-WORKFLOW CONVERSION ===")
     workflows = parse_cross_workflows()

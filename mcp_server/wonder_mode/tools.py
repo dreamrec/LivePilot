@@ -17,19 +17,12 @@ from . import engine
 logger = logging.getLogger(__name__)
 
 
-def _build_synth_profiles_for_wonder(
-    ctx, request_text: str, diagnosis: dict, session_info: dict | None = None
-) -> list:
+def _build_synth_profiles_for_wonder(ctx, request_text: str, diagnosis: dict) -> list:
     """Build SynthProfile objects for every track holding a native synth.
 
     Wires the synthesis_brain producer into enter_wonder_mode's runtime
     flow — without this helper, ``propose_synth_branches`` is registered
     but unreachable from the MCP surface.
-
-    ``session_info``: optional pre-fetched get_session_info payload. When
-    a non-empty dict is supplied the helper reuses it instead of issuing
-    its own round-trip on the single-client TCP socket. Callers should
-    always thread the shared payload to avoid redundant fetches.
 
     Returns a list of SynthProfile objects (possibly empty). All errors
     are swallowed and logged — missing devices, disconnected Ableton,
@@ -46,16 +39,11 @@ def _build_synth_profiles_for_wonder(
     if ableton is None:
         return []
 
-    # Reuse the pre-fetched session payload when available; only fall back
-    # to a fresh round-trip when called without one.
-    if isinstance(session_info, dict) and session_info and "error" not in session_info:
-        session = session_info
-    else:
-        try:
-            session = ableton.send_command("get_session_info", {})
-        except Exception as exc:
-            logger.debug("session fetch for synth profiles failed: %s", exc)
-            return []
+    try:
+        session = ableton.send_command("get_session_info", {})
+    except Exception as exc:
+        logger.debug("session fetch for synth profiles failed: %s", exc)
+        return []
     if not isinstance(session, dict) or "error" in session:
         return []
 
@@ -176,35 +164,21 @@ def _get_ledger_entries(ctx: Context) -> list[dict]:
         return []
 
 
-def _get_stuckness_report(
-    ctx: Context,
-    song_brain: dict,
-    action_ledger: list[dict] | None = None,
-    session_info: dict | None = None,
-) -> dict | None:
-    """Run stuckness detection on recent actions if available.
-
-    ``action_ledger`` and ``session_info`` may be supplied pre-fetched by
-    the caller. enter_wonder_mode already fetches both once at the top of
-    the flow, so threading them here avoids a duplicate ledger read and a
-    redundant get_session_info round-trip on the single-client TCP socket.
-    """
+def _get_stuckness_report(ctx: Context, song_brain: dict) -> dict | None:
+    """Run stuckness detection on recent actions if available."""
     try:
         from ..stuckness_detector.detector import detect_stuckness
-        if action_ledger is None:
-            action_ledger = _get_ledger_entries(ctx)
+        action_ledger = _get_ledger_entries(ctx)
         if not action_ledger:
             return None
-        # Reuse the pre-fetched session payload; only round-trip if the
-        # caller did not supply one.
-        if session_info is None:
-            session_info = {}
-            try:
-                ableton = ctx.lifespan_context.get("ableton")
-                if ableton:
-                    session_info = ableton.send_command("get_session_info", {})
-            except Exception as exc:
-                logger.warning("session_info fetch for stuckness failed: %s", exc)
+        # Pass session_info if available for better accuracy
+        session_info = {}
+        try:
+            ableton = ctx.lifespan_context.get("ableton")
+            if ableton:
+                session_info = ableton.send_command("get_session_info", {})
+        except Exception as exc:
+            logger.warning("session_info fetch for stuckness failed: %s", exc)
         report = detect_stuckness(
             action_history=action_ledger,
             session_info=session_info,
@@ -244,24 +218,7 @@ def enter_wonder_mode(
     taste_graph = _get_taste_graph(ctx)
     active_constraints = _get_active_constraints()
     action_ledger = _get_ledger_entries(ctx)
-
-    # Single get_session_info round-trip for the whole flow. The Remote
-    # Script is single-client on TCP 9878, so each redundant fetch is a
-    # serialized round-trip — fetch once and thread the payload into the
-    # stuckness report, the kernel dict, and the synth-profile builder.
-    session_info: dict = {}
-    try:
-        ableton = ctx.lifespan_context.get("ableton")
-        if ableton:
-            session_info = ableton.send_command("get_session_info", {})
-    except Exception as exc:
-        logger.warning("session_info fetch failed: %s", exc)
-    if not isinstance(session_info, dict) or "error" in session_info:
-        session_info = {}
-
-    stuckness_report = _get_stuckness_report(
-        ctx, song_brain, action_ledger=action_ledger, session_info=session_info
-    )
+    stuckness_report = _get_stuckness_report(ctx, song_brain)
 
     # 1. Build diagnosis
     diagnosis = build_diagnosis(
@@ -292,8 +249,14 @@ def enter_wonder_mode(
             # Graceful degradation — analytical variants still work
             logger.warning("sample opportunity search failed: %s", exc)
 
-    # 1c. session_info for the kernel was already fetched once above and
-    # threaded into the stuckness report — reuse it here, no extra round-trip.
+    # 1c. Get session info for kernel
+    session_info = {}
+    try:
+        ableton = ctx.lifespan_context.get("ableton")
+        if ableton:
+            session_info = ableton.send_command("get_session_info", {})
+    except Exception as exc:
+        logger.warning("session_info fetch for kernel failed: %s", exc)
 
     # 2. Generate variants (legacy path)
     result = engine.generate_wonder_variants(
@@ -328,9 +291,7 @@ def enter_wonder_mode(
     # track that holds a native synth. Lets propose_synth_branches reach
     # the runtime — without this the producer is dark despite being
     # registered in the conductor.
-    synth_profiles = _build_synth_profiles_for_wonder(
-        ctx, request_text, diag_dict, session_info=session_info
-    )
+    synth_profiles = _build_synth_profiles_for_wonder(ctx, request_text, diag_dict)
 
     # Composer branches fire when the base conductor routes to
     # composition — otherwise we'd be emitting composition scaffolding

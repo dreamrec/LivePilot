@@ -103,11 +103,8 @@ def _pick_target_modulator(
         return None
     candidates.sort(reverse=True)  # highest level first
     top_level, top_op = candidates[0]
-    # If every modulator is silent (Level <= 0), shifting its Coarse produces
-    # no audible change. Return None so the caller falls through to
-    # _fallback_carrier_target and targets an audible carrier instead.
-    if top_level <= 0.0:
-        return None
+    # If every modulator is silent, still return the first one — the shift
+    # primes the patch for a future Level bump. Better than no branch.
     return top_op
 
 

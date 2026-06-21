@@ -1,6 +1,6 @@
 # Automation
 
-LivePilot has 9 automation tools covering clip envelopes, arrangement automation (including a two-phase session-record workaround for track-level automation outside clips), 16 curve types, and 15 named recipes. This chapter covers all of it.
+LivePilot has 11 automation tools covering clip envelopes, arrangement automation, real-time Arrangement recording, M4L-local fast curve recording, 16 curve types, and 15 named recipes. This chapter covers all of it.
 
 ---
 
@@ -25,7 +25,7 @@ set_clip_automation(
 )
 ```
 
-### Arrangement automation (arrangement clips)
+### Arrangement automation (arrangement clips and real-time recording)
 
 Automation written directly into the arrangement timeline.
 
@@ -40,6 +40,47 @@ set_arrangement_automation(
     ]
 )
 ```
+
+For track-level Arrangement automation outside a clip, prefer the real-time recorder:
+
+```
+record_parameter_automation_realtime(
+    track_index=0,
+    device_index=0,
+    parameter_name="Frequency",
+    start_beat=32.0,
+    points=[
+        {"time": 0.0, "value": 400.0},
+        {"time": 8.0, "value": 2400.0}
+    ]
+)
+```
+
+This attempts to record Ableton's native Arrangement automation by moving the target parameter during Arrangement Record. It does not create or fire a Session View automation clip. By default it records a short guard point before the requested start beat at the parameter's pre-pass value, so the first requested automation value is not held backward across the earlier arrangement. The recorder starts playback before the first automation point, re-seeks while playback is already running, engages Arrangement Record during that pre-roll, then schedules parameter moves against absolute Arrangement beats. The older `set_arrangement_automation_via_session_record` workaround is still available when a Session clip is the right source material.
+
+Live validation note: on Live 12.4.2, Remote Script parameter writes did change a disposable Utility parameter during Arrangement Record, but Ableton did not persist those writes as Arrangement automation. Treat `verified=True` as mandatory evidence before trusting a recorded pass.
+
+For faster curves, use the M4L-local scheduler:
+
+```
+record_parameter_automation_m4l_curve(
+    track_index=0,
+    device_index=0,
+    parameter_name="Frequency",
+    start_beat=32.0,
+    mode="linear",
+    tick_ms=10,
+    points=[
+        {"time": 0.0, "value": 400.0},
+        {"time": 0.25, "value": 1200.0},
+        {"time": 0.5, "value": 700.0}
+    ]
+)
+```
+
+This arms the LivePilot Analyzer bridge with the whole curve, then records in Arrangement while Max drives the parameter locally from a wall-clock beat origin captured after Arrangement Record starts. It is intended for dense filter, gain, pan, or macro motion where TCP-per-point recording would be late.
+
+Live validation note: on Live 12.4.2, the M4L scheduler completed its local timing loop, but Max LiveAPI did not actually mutate a disposable Utility parameter via the device-parameter path tested here. Keep `require_verification=True`; a completed scheduler pass is not proof that Arrangement automation landed.
 
 ### Parameter types
 

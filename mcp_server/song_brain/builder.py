@@ -566,23 +566,7 @@ def detect_identity_drift(
         drift.drift_score += 0.2 * len(lost)
 
     # Energy arc shift
-    # Align on section_id rather than list position: inserting/removing/
-    # renaming-to-empty a scene shifts energy_arc indices (the BUG-B12 skip
-    # drops empty sections), so a positional diff fabricates drift on every
-    # section after the change. Diffing the shared section_ids compares like
-    # with like and is stable under reordering/insertion.
-    before_energy = {s.section_id: s.energy_level for s in before.section_purposes}
-    after_energy = {s.section_id: s.energy_level for s in after.section_purposes}
-    shared_ids = before_energy.keys() & after_energy.keys()
-    if shared_ids:
-        diff = sum(
-            abs(before_energy[sid] - after_energy[sid]) for sid in shared_ids
-        ) / len(shared_ids)
-        drift.energy_arc_shift = round(diff, 3)
-        drift.drift_score += diff * 0.2
-    elif before.energy_arc and after.energy_arc:
-        # Fallback for snapshots that carry energy_arc but no section_purposes
-        # (e.g. older brains): keep the legacy positional comparison.
+    if before.energy_arc and after.energy_arc:
         min_len = min(len(before.energy_arc), len(after.energy_arc))
         if min_len > 0:
             diff = sum(

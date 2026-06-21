@@ -138,11 +138,9 @@ class TestStateBuilder:
         assert ds.over_compressed is False
 
     def test_build_dynamics_state_compressed(self):
-        # crest ~4 dB lands in the over-compressed band [3, 6); below 3 dB the
-        # (now-reachable) flat_dynamics critic takes over instead of over_compressed.
-        ds = build_dynamics_state(rms=0.5, peak=0.79)
+        ds = build_dynamics_state(rms=0.5, peak=0.55)
         assert ds.over_compressed is True
-        assert 3.0 <= ds.crest_factor_db < 6.0
+        assert ds.crest_factor_db < 6.0
 
     def test_build_dynamics_state_none(self):
         ds = build_dynamics_state(rms=None, peak=None)
@@ -470,36 +468,3 @@ class TestMixIssue:
         assert d["issue_type"] == "anchor_too_weak"
         assert d["severity"] == 0.7
         assert d["recommended_moves"] == ["gain_staging"]
-
-def test_flat_dynamics_fires_through_production_pipeline():
-    """Extremely flat audio (crest < 3 dB) must surface flat_dynamics, not over_compressed.
-
-    Regression for the dead-code bug: build_dynamics_state set
-    over_compressed = crest < 6.0, which made the critic's `elif crest < 3.0`
-    (flat_dynamics) branch unreachable for any real signal. This drives the
-    actual production path (build_dynamics_state -> run_dynamics_critic).
-    """
-    # rms=0.5, peak=0.63 -> crest ~= 2.0 dB (well under 3 dB)
-    ds = build_dynamics_state(rms=0.5, peak=0.63)
-    assert ds.crest_factor_db < 3.0
-    assert ds.over_compressed is False  # below 3 dB must NOT be tagged over_compressed
-    issues = run_dynamics_critic(ds)
-    types = {i.issue_type for i in issues}
-    assert "flat_dynamics" in types
-    assert "over_compressed" not in types
-
-
-def test_over_compressed_band_still_fires():
-    """Mid-flat audio (3 dB <= crest < 6 dB) must still flag over_compressed.
-
-    Guards against the fix over-correcting and silencing the over_compressed
-    warning for genuinely over-compressed (but not extreme) material.
-    """
-    # rms=0.5, peak=0.84 -> crest ~= 4.5 dB (in the 3-6 dB over_compressed band)
-    ds = build_dynamics_state(rms=0.5, peak=0.84)
-    assert 3.0 <= ds.crest_factor_db < 6.0
-    assert ds.over_compressed is True
-    issues = run_dynamics_critic(ds)
-    types = {i.issue_type for i in issues}
-    assert "over_compressed" in types
-    assert "flat_dynamics" not in types

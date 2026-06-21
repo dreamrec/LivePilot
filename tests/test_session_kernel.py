@@ -222,7 +222,6 @@ def test_kernel_creative_controls_default_empty():
     assert kernel.creativity_profile == ""
     assert kernel.sacred_elements == []
     assert kernel.synth_hints == {}
-    assert kernel.operation_profile == "studio_deep"
 
 
 def test_kernel_accepts_freshness_and_creativity_profile():
@@ -274,14 +273,12 @@ def test_kernel_to_dict_roundtrip_includes_creative_fields():
         capability_state={"overall_mode": "normal"},
         freshness=0.7,
         creativity_profile="sculptor",
-        operation_profile="release_audit",
         sacred_elements=[{"element_type": "pad", "description": "the chord bed"}],
         synth_hints={"track_indices": [2]},
     )
     d = kernel.to_dict()
     assert d["freshness"] == 0.7
     assert d["creativity_profile"] == "sculptor"
-    assert d["operation_profile"] == "release_audit"
     assert d["sacred_elements"][0]["description"] == "the chord bed"
     assert d["synth_hints"]["track_indices"] == [2]
 
@@ -302,13 +299,11 @@ def test_get_session_kernel_mcp_tool_accepts_creative_params():
         request_text="surprise me",
         freshness=0.85,
         creativity_profile="alchemist",
-        operation_profile="sound_design_deep",
         sacred_elements=[{"element_type": "hook", "description": "stab", "salience": 0.9}],
         synth_hints={"track_indices": [3]},
     )
     assert result["freshness"] == 0.85
     assert result["creativity_profile"] == "alchemist"
-    assert result["operation_profile"] == "sound_design_deep"
     assert result["sacred_elements"][0]["element_type"] == "hook"
     assert result["synth_hints"]["track_indices"] == [3]
 
@@ -326,6 +321,5 @@ def test_get_session_kernel_legacy_callers_unaffected():
     result = get_session_kernel(ctx, request_text="make it tighter")
     assert result["freshness"] == 0.5
     assert result["creativity_profile"] == ""
-    assert result["operation_profile"] == "studio_deep"
     assert result["sacred_elements"] == []
     assert result["synth_hints"] == {}

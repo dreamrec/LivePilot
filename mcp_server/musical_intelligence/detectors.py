@@ -134,15 +134,9 @@ def detect_repetition_fatigue(
         staleness = min(1.0, (reuse_count / total - 1) * 0.3) if total else 0
         report.section_staleness[name] = round(max(0, staleness), 3)
 
-    # Overall fatigue level — saturating combine (probabilistic OR) so that
-    # adding more issues never *reduces* fatigue. A plain mean would let a
-    # cluster of low-severity issues dilute a single serious one.
+    # Overall fatigue level
     if report.issues:
-        remaining_freshness = 1.0
-        for issue in report.issues:
-            severity = max(0.0, min(1.0, issue["severity"]))
-            remaining_freshness *= (1.0 - severity)
-        report.fatigue_level = min(1.0, 1.0 - remaining_freshness)
+        report.fatigue_level = min(1.0, sum(i["severity"] for i in report.issues) / max(1, len(report.issues)))
 
     # Recommendations
     if report.fatigue_level > 0.5:
@@ -343,9 +337,6 @@ def infer_section_purposes(
         if position < 0.15 and density < 0.5:
             purpose = "setup"
             confidence = 0.7
-        elif density >= 0.8 and density_delta >= 0:
-            purpose = "payoff"
-            confidence = 0.65
         elif density_delta > 0.2:
             purpose = "tension"
             confidence = 0.6

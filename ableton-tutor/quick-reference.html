@@ -1,0 +1,846 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ableton Tutor Quick Reference</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --ink: #17202a;
+      --muted: #667085;
+      --line: #d9dee7;
+      --orange: #f26d21;
+      --cyan: #1677a6;
+      --green: #158463;
+      --plum: #7d3c98;
+      --gold: #9a6b00;
+      --red: #b42318;
+      --shadow: 0 10px 28px rgba(20, 30, 45, 0.08);
+      --radius: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      border-bottom: 1px solid var(--line);
+      background: rgba(246, 247, 249, 0.96);
+      backdrop-filter: blur(12px);
+    }
+
+    .topbar-inner {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 12px;
+    }
+
+    .title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 760;
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+
+    .mac-only {
+      flex: 0 0 auto;
+      border: 1px solid #c8d2df;
+      border-radius: 999px;
+      padding: 3px 9px;
+      color: #344054;
+      background: #eef3f7;
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .search-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+    }
+
+    #search {
+      width: 100%;
+      min-width: 0;
+      border: 1px solid #cbd5e1;
+      border-radius: var(--radius);
+      padding: 10px 11px;
+      background: var(--panel);
+      color: var(--ink);
+      outline: none;
+    }
+
+    #search:focus {
+      border-color: var(--cyan);
+      box-shadow: 0 0 0 3px rgba(22, 119, 166, 0.14);
+    }
+
+    .clear-btn,
+    .copy-btn,
+    .nav-btn {
+      border: 1px solid #cbd5e1;
+      border-radius: var(--radius);
+      padding: 8px 10px;
+      background: var(--panel);
+      color: var(--ink);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .clear-btn:hover,
+    .copy-btn:hover,
+    .nav-btn:hover {
+      border-color: #9aa8ba;
+      background: #f9fafb;
+    }
+
+    .nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .nav-btn {
+      flex: 0 0 auto;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    main {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 14px 12px 32px;
+    }
+
+    .panic {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      border: 1px solid #f3b183;
+      border-left: 6px solid var(--orange);
+      border-radius: var(--radius);
+      background: #fff9f4;
+      box-shadow: var(--shadow);
+      padding: 13px;
+      margin-bottom: 14px;
+    }
+
+    .panic h2 {
+      margin: 0;
+      font-size: 16px;
+      letter-spacing: 0;
+    }
+
+    .panic ol {
+      margin: 0;
+      padding-left: 21px;
+    }
+
+    .panic li {
+      margin: 4px 0;
+    }
+
+    .key {
+      display: inline-block;
+      min-width: 2.2ch;
+      margin: 0 1px;
+      border: 1px solid #b8c0cc;
+      border-bottom-width: 2px;
+      border-radius: 5px;
+      padding: 1px 6px;
+      background: #fff;
+      color: #101828;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.9em;
+      line-height: 1.5;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    section {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    section h2 {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin: 0;
+      border-bottom: 1px solid var(--line);
+      padding: 10px 12px;
+      font-size: 15px;
+      letter-spacing: 0;
+    }
+
+    section[data-tone="orange"] h2 { border-left: 5px solid var(--orange); }
+    section[data-tone="cyan"] h2 { border-left: 5px solid var(--cyan); }
+    section[data-tone="green"] h2 { border-left: 5px solid var(--green); }
+    section[data-tone="plum"] h2 { border-left: 5px solid var(--plum); }
+    section[data-tone="gold"] h2 { border-left: 5px solid var(--gold); }
+    section[data-tone="red"] h2 { border-left: 5px solid var(--red); }
+
+    .count {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: start;
+      border-bottom: 1px solid #edf0f5;
+      padding: 10px 12px;
+    }
+
+    .item:last-child {
+      border-bottom: 0;
+    }
+
+    .item-title {
+      margin: 0 0 4px;
+      font-weight: 730;
+    }
+
+    .item-detail {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .copy-btn {
+      padding: 6px 8px;
+      color: #344054;
+      font-size: 12px;
+    }
+
+    .copy-btn[data-copied="true"] {
+      border-color: var(--green);
+      color: var(--green);
+      background: #f0fbf6;
+    }
+
+    .workflow {
+      grid-column: span 2;
+    }
+
+    .workflow-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      padding: 12px;
+    }
+
+    .flow {
+      border: 1px solid #e1e6ee;
+      border-radius: var(--radius);
+      padding: 10px;
+      background: #fbfcfe;
+    }
+
+    .flow h3 {
+      margin: 0 0 6px;
+      font-size: 14px;
+      letter-spacing: 0;
+    }
+
+    .flow ol,
+    .flow ul {
+      margin: 0;
+      padding-left: 20px;
+      color: #344054;
+      font-size: 13px;
+    }
+
+    .flow li {
+      margin: 3px 0;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    mark {
+      border-radius: 3px;
+      background: #fff2a8;
+      color: inherit;
+      padding: 0 1px;
+    }
+
+    .footer {
+      margin: 16px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    @media (max-width: 880px) {
+      .grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .workflow {
+        grid-column: span 2;
+      }
+    }
+
+    @media (max-width: 620px) {
+      body {
+        font-size: 14px;
+      }
+
+      .topbar-inner {
+        padding: 10px;
+      }
+
+      h1 {
+        font-size: 16px;
+      }
+
+      .grid,
+      .workflow-list {
+        grid-template-columns: 1fr;
+      }
+
+      .workflow {
+        grid-column: span 1;
+      }
+
+      .item {
+        grid-template-columns: 1fr;
+      }
+
+      .copy-btn {
+        justify-self: start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="title-row">
+        <h1>Ableton Quick Reference</h1>
+        <span class="mac-only">Mac only</span>
+      </div>
+      <div class="search-row">
+        <input id="search" type="search" autocomplete="off" placeholder="Search: select all, drag, merge MIDI, zoom, loop, playhead">
+        <button class="clear-btn" type="button" id="clearSearch">Clear</button>
+      </div>
+      <nav class="nav" aria-label="Quick sections">
+        <a class="nav-btn" href="#panic">No Audio</a>
+        <a class="nav-btn" href="#session">Session</a>
+        <a class="nav-btn" href="#arrangement">Arrangement</a>
+        <a class="nav-btn" href="#arrange-edit">Edit</a>
+        <a class="nav-btn" href="#dragging">Drag</a>
+        <a class="nav-btn" href="#zoom">Zoom</a>
+        <a class="nav-btn" href="#recording">Recording</a>
+        <a class="nav-btn" href="#takes">Takes</a>
+        <a class="nav-btn" href="#workflows">Workflows</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="panic searchable" id="panic" data-search="no audio silence stopped scenes stop all clips back to arrangement session override orange button fn f10 playhead arrangement audio space">
+      <h2>No Audio After Session View</h2>
+      <ol>
+        <li>Click <strong>Stop All Clips</strong> if Session clips are still running.</li>
+        <li>Press <span class="key">fn</span> + <span class="key">F10</span> for <strong>Back to Arrangement</strong>.</li>
+        <li>Put the playhead over actual Arrangement clips.</li>
+        <li>Press <span class="key">Space</span>.</li>
+      </ol>
+      <p class="item-detail">LivePilot/API: clear the orange override with <code>back_to_arranger=false</code>; verify <code>arrangement_override=false</code>.</p>
+    </div>
+
+    <div class="grid" id="cards">
+      <section id="session" class="searchable" data-tone="cyan" data-search="session view clips scenes rows columns launch clip scene enter stop all clips back to arrangement">
+        <h2>Session View <span class="count">clips + scenes</span></h2>
+        <div class="item" data-search="tab switch arrangement session view">
+          <div>
+            <p class="item-title"><span class="key">Tab</span> switch views</p>
+            <p class="item-detail">Toggles Arrangement View and Session View.</p>
+          </div>
+          <button class="copy-btn" type="button" data-copy="Tab">Copy</button>
+        </div>
+        <div class="item" data-search="launch selected clip slot scene enter">
+          <div>
+            <p class="item-title"><span class="key">Enter</span> launch selected slot</p>
+            <p class="item-detail">Launches the selected clip/slot. If a scene launch slot is selected, launches that scene.</p>
+          </div>
+          <button class="copy-btn" type="button" data-copy="Enter">Copy</button>
+        </div>
+        <div class="item" data-search="scene launch far right triangle row main track">
+          <div>
+            <p class="item-title">Scene launch is far right</p>
+            <p class="item-detail">Click the small triangle in the numbered row under the Main track to launch the whole row.</p>
+          </div>
+        </div>
+        <div class="item" data-search="one clip one track arrangement still plays">
+          <div>
+            <p class="item-title">One clip only takes over one track</p>
+            <p class="item-detail">Other tracks can keep playing from Arrangement until you launch their Session clips too.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="arrangement" class="searchable" data-tone="orange" data-search="arrangement window timeline back to arrangement fn f10 orange button playhead insert marker loop playback focus select all">
+        <h2>Arrangement <span class="count">timeline</span></h2>
+        <div class="item" data-search="focus arrangement option 2 timeline keyboard commands select all">
+          <div>
+            <p class="item-title"><span class="key">Option</span> + <span class="key">2</span> focus Arrangement</p>
+            <p class="item-detail">Use before Arrangement key commands if shortcuts seem to hit the wrong panel.</p>
+          </div>
+          <button class="copy-btn" type="button" data-copy="Option + 2">Copy</button>
+        </div>
+        <div class="item" data-search="back to arrangement fn f10 orange button">
+          <div>
+            <p class="item-title"><span class="key">fn</span> + <span class="key">F10</span> Back to Arrangement</p>
+            <p class="item-detail">Use after Session clips took over. LivePilot should clear the matching API flag by setting <code>back_to_arranger=false</code>.</p>
+          </div>
+          <button class="copy-btn" type="button" data-copy="fn + F10">Copy</button>
+        </div>
+        <div class="item" data-search="space play stop">
+          <div>
+            <p class="item-title"><span class="key">Space</span> play/stop</p>
+            <p class="item-detail">Starts or stops the transport from the current position.</p>
+          </div>
+          <button class="copy-btn" type="button" data-copy="Space">Copy</button>
+        </div>
+        <div class="item" data-search="stop return beginning 1.1.1 double click stop">
+          <div>
+            <p class="item-title">Double-click Stop = 1.1.1</p>
+            <p class="item-detail">Most reliable way to return the song position to the start.</p>
+          </div>
+        </div>
+        <div class="item" data-search="move playhead clip edge locator option arrow">
+          <div>
+            <p class="item-title"><span class="key">Option</span> + <span class="key">Left/Right</span></p>
+            <p class="item-detail">Jump to previous/next clip edge or locator when Arrangement has focus.</p>
+          </div>
+          <button class="copy-btn" type="button" data-copy="Option + Left/Right">Copy</button>
+        </div>
+      </section>
+
+      <section id="arrange-edit" class="searchable" data-tone="gold" data-search="arrangement edit select all merge midi regions clips consolidate split duplicate cut copy paste cmd a cmd j cmd e">
+        <h2>Arrangement Edits <span class="count">clips</span></h2>
+        <div class="item" data-search="select all arrangement cmd a focus selected panel">
+          <div>
+            <p class="item-title"><span class="key">Cmd</span> + <span class="key">A</span> select all</p>
+            <p class="item-detail">Applies to the focused area. Click the Arrangement first, or press <span class="key">Option</span> + <span class="key">2</span>.</p>
+          </div>
+          <button class="copy-btn" type="button" data-copy="Cmd + A">Copy</button>
+        </div>
+        <div class="item" data-search="merge midi regions consolidate clips join two midi clips cmd j">
+          <div>
+            <p class="item-title"><span class="key">Cmd</span> + <span class="key">J</span> merge MIDI clips</p>
+            <p class="item-detail">Select adjacent MIDI clips, or drag a time selection across them, then Consolidate.</p>
+          </div>
+          <button class="copy-btn" type="button" data-copy="Cmd + J">Copy</button>
+        </div>
+        <div class="item" data-search="split clip region midi audio command e cut at playhead selection">
+          <div>
+            <p class="item-title"><span class="key">Cmd</span> + <span class="key">E</span> split clip</p>
+            <p class="item-detail">Click where the split should happen, or select a time range first.</p>
+          </div>
+          <button class="copy-btn" type="button" data-copy="Cmd + E">Copy</button>
+        </div>
+        <div class="item" data-search="duplicate clip time cmd d copy paste option drag">
+          <div>
+            <p class="item-title"><span class="key">Cmd</span> + <span class="key">D</span> duplicate</p>
+            <p class="item-detail">Duplicates the selected clip or selected time range immediately after itself.</p>
+          </div>
+          <button class="copy-btn" type="button" data-copy="Cmd + D">Copy</button>
+        </div>
+      </section>
+
+      <section id="dragging" class="searchable" data-tone="cyan" data-search="drag clips move copy option drag grid snap cmd drag title bar waveform midi display selected clips start bar one">
+        <h2>Mouse + Drag <span class="count">move fast</span></h2>
+        <div class="item" data-search="move clip drag title bar colored bar not waveform midi display">
+          <div>
+            <p class="item-title">Move a clip: drag its top bar</p>
+            <p class="item-detail">The colored title bar moves the whole clip. Dragging inside the MIDI/waveform area usually selects time inside the clip.</p>
+          </div>
+        </div>
+        <div class="item" data-search="copy clip option drag duplicate while dragging">
+          <div>
+            <p class="item-title"><span class="key">Option</span> + drag = copy</p>
+            <p class="item-detail">Use when you want another copy. Do not hold Option when you only want to move.</p>
+          </div>
+          <button class="copy-btn" type="button" data-copy="Option + drag">Copy</button>
+        </div>
+        <div class="item" data-search="ignore grid snap fine move cmd drag">
+          <div>
+            <p class="item-title"><span class="key">Cmd</span> while dragging ignores grid</p>
+            <p class="item-detail">Use for tiny timing moves. Leave Cmd alone if you want clips snapped cleanly to bars.</p>
+          </div>
+          <button class="copy-btn" type="button" data-copy="Cmd while dragging">Copy</button>
+        </div>
+        <div class="item" data-search="select multiple clips shift click drag selection box">
+          <div>
+            <p class="item-title"><span class="key">Shift</span>-click adds clips</p>
+            <p class="item-detail">Shift-click individual clips, or drag a box around a group before moving them together.</p>
+          </div>
+          <button class="copy-btn" type="button" data-copy="Shift-click">Copy</button>
+        </div>
+      </section>
+
+      <section id="looping" class="searchable" data-tone="green" data-search="loop arrangement loop brace cmd l select loop loop length">
+        <h2>Looping <span class="count">repeat area</span></h2>
+        <div class="item" data-search="cmd l toggle arrangement loop">
+          <div>
+            <p class="item-title"><span class="key">Cmd</span> + <span class="key">L</span> toggle loop</p>
+            <p class="item-detail">Turns the Arrangement loop brace on or off.</p>
+          </div>
+          <button class="copy-btn" type="button" data-copy="Cmd + L">Copy</button>
+        </div>
+        <div class="item" data-search="cmd shift l select loop contents">
+          <div>
+            <p class="item-title"><span class="key">Cmd</span> + <span class="key">Shift</span> + <span class="key">L</span></p>
+            <p class="item-detail">Selects the material inside the loop brace.</p>
+          </div>
+          <button class="copy-btn" type="button" data-copy="Cmd + Shift + L">Copy</button>
+        </div>
+        <div class="item" data-search="loop doesn't start from loop area playhead">
+          <div>
+            <p class="item-title">Loop does not always jump playback</p>
+            <p class="item-detail">Move the playhead to the loop start or inside the loop before pressing Space.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="zoom" class="searchable" data-tone="plum" data-search="zoom fit view time ruler selection arrangement clip editor width height z x plus minus cmd">
+        <h2>Zoom + Fit <span class="count">see faster</span></h2>
+        <div class="item" data-search="zoom in out time ruler plus minus arrangement clip editor">
+          <div>
+            <p class="item-title"><span class="key">+</span> / <span class="key">-</span> zoom time</p>
+            <p class="item-detail">Zooms in/out around the time ruler or focused editor area.</p>
+          </div>
+          <button class="copy-btn" type="button" data-copy="+ / -">Copy</button>
+        </div>
+        <div class="item" data-search="zoom window cmd plus cmd minus interface size">
+          <div>
+            <p class="item-title"><span class="key">Cmd</span> + <span class="key">+</span> / <span class="key">Cmd</span> + <span class="key">-</span></p>
+            <p class="item-detail">Changes Live's window/interface zoom level.</p>
+          </div>
+          <button class="copy-btn" type="button" data-copy="Cmd + + / Cmd + -">Copy</button>
+        </div>
+        <div class="item" data-search="zoom to selection back z x">
+          <div>
+            <p class="item-title"><span class="key">Z</span> zoom to selection, <span class="key">X</span> back</p>
+            <p class="item-detail">Use after selecting a clip, time range, or notes.</p>
+          </div>
+          <button class="copy-btn" type="button" data-copy="Z / X">Copy</button>
+        </div>
+        <div class="item" data-search="fit content width height w h">
+          <div>
+            <p class="item-title"><span class="key">W</span> fit width, <span class="key">H</span> fit height</p>
+            <p class="item-detail">Fast reset when the Arrangement or MIDI editor view feels lost.</p>
+          </div>
+          <button class="copy-btn" type="button" data-copy="W / H">Copy</button>
+        </div>
+      </section>
+
+      <section id="recording" class="searchable" data-tone="red" data-search="record audio recording arm track f9 fn f9 cmd t audio track monitor input">
+        <h2>Record Audio <span class="count">Arrangement</span></h2>
+        <div class="item" data-search="cmd t insert audio track">
+          <div>
+            <p class="item-title"><span class="key">Cmd</span> + <span class="key">T</span> audio track</p>
+            <p class="item-detail">Creates a new audio track.</p>
+          </div>
+          <button class="copy-btn" type="button" data-copy="Cmd + T">Copy</button>
+        </div>
+        <div class="item" data-search="arm selected track c">
+          <div>
+            <p class="item-title"><span class="key">C</span> arm selected track</p>
+            <p class="item-detail">Record-enables the selected track.</p>
+          </div>
+          <button class="copy-btn" type="button" data-copy="C">Copy</button>
+        </div>
+        <div class="item" data-search="record f9 fn f9 arrangement record">
+          <div>
+            <p class="item-title"><span class="key">fn</span> + <span class="key">F9</span> record</p>
+            <p class="item-detail">Arrangement Record on Mac keyboards where F9 is a media key.</p>
+          </div>
+          <button class="copy-btn" type="button" data-copy="fn + F9">Copy</button>
+        </div>
+        <div class="item" data-search="monitor auto in off input">
+          <div>
+            <p class="item-title">Monitoring: Auto / In / Off</p>
+            <p class="item-detail">Use Auto for normal recording, In to always hear input, Off to avoid Live input monitoring.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="takes" class="searchable" data-tone="plum" data-search="takes take lanes comping show take lanes audition promote enter t cmd option u">
+        <h2>Takes + Comping <span class="count">loop passes</span></h2>
+        <div class="item" data-search="show take lanes cmd option u">
+          <div>
+            <p class="item-title"><span class="key">Cmd</span> + <span class="key">Option</span> + <span class="key">U</span></p>
+            <p class="item-detail">Show or hide take lanes.</p>
+          </div>
+          <button class="copy-btn" type="button" data-copy="Cmd + Option + U">Copy</button>
+        </div>
+        <div class="item" data-search="audition selected take lane t">
+          <div>
+            <p class="item-title"><span class="key">T</span> audition take lane</p>
+            <p class="item-detail">Hear the selected take lane.</p>
+          </div>
+          <button class="copy-btn" type="button" data-copy="T">Copy</button>
+        </div>
+        <div class="item" data-search="promote selected take section enter main lane">
+          <div>
+            <p class="item-title"><span class="key">Enter</span> promote take section</p>
+            <p class="item-detail">Adds the selected take-lane area to the main track lane.</p>
+          </div>
+          <button class="copy-btn" type="button" data-copy="Enter">Copy</button>
+        </div>
+        <div class="item" data-search="add take lane shift option t">
+          <div>
+            <p class="item-title"><span class="key">Shift</span> + <span class="key">Option</span> + <span class="key">T</span></p>
+            <p class="item-detail">Adds a take lane manually.</p>
+          </div>
+          <button class="copy-btn" type="button" data-copy="Shift + Option + T">Copy</button>
+        </div>
+      </section>
+
+      <section id="mac-keys" class="searchable" data-tone="gold" data-search="mac function keys fn f9 f10 volume media keyboard">
+        <h2>Mac Function Keys <span class="count">important</span></h2>
+        <div class="item" data-search="f9 media key record fn f9">
+          <div>
+            <p class="item-title">Ableton F-keys may need <span class="key">fn</span></p>
+            <p class="item-detail">If F9/F10 changes brightness or volume, hold fn with the function key.</p>
+          </div>
+        </div>
+        <div class="item" data-search="fn f9 record fn f10 back arrangement">
+          <div>
+            <p class="item-title">Most-used Mac F-keys</p>
+            <p class="item-detail"><span class="key">fn</span> + <span class="key">F9</span> record. <span class="key">fn</span> + <span class="key">F10</span> Back to Arrangement.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="workflows" class="workflow searchable" data-tone="cyan" data-search="workflows no audio session launch scene record loop takes verse swap bass merge midi move clips bar one start beginning">
+        <h2>Fast Workflows <span class="count">do this</span></h2>
+        <div class="workflow-list">
+          <div class="flow" data-search="no audio after stopping scenes">
+            <h3>No audio after Session View</h3>
+            <ol>
+              <li>Stop All Clips.</li>
+              <li><span class="key">fn</span> + <span class="key">F10</span>.</li>
+              <li>Move playhead over Arrangement clips.</li>
+              <li><span class="key">Space</span>.</li>
+            </ol>
+          </div>
+          <div class="flow" data-search="launch whole session row scene">
+            <h3>Launch a whole Session row</h3>
+            <ol>
+              <li>Find the row you want.</li>
+              <li>Click the far-right scene triangle.</li>
+              <li>Use Stop All Clips when done.</li>
+            </ol>
+          </div>
+          <div class="flow" data-search="record loop multiple takes">
+            <h3>Loop-record multiple takes</h3>
+            <ol>
+              <li>Select the Arrangement range.</li>
+              <li><span class="key">Cmd</span> + <span class="key">L</span>.</li>
+              <li>Arm track with <span class="key">C</span>.</li>
+              <li><span class="key">fn</span> + <span class="key">F9</span>.</li>
+              <li><span class="key">Space</span> to stop.</li>
+            </ol>
+          </div>
+          <div class="flow" data-search="try verse 3 bass over verse 1">
+            <h3>Try one part over another</h3>
+            <ol>
+              <li>Put clips into Session slots.</li>
+              <li>Build a test scene row.</li>
+              <li>Use Verse 1 clips except the Verse 3 bass clip.</li>
+              <li>Launch the scene row.</li>
+            </ol>
+          </div>
+          <div class="flow" data-search="move midi clips start bar one beginning space before clip">
+            <h3>Move MIDI to bar 1</h3>
+            <ol>
+              <li><span class="key">Tab</span> to Arrangement.</li>
+              <li>Select the MIDI clips.</li>
+              <li>Drag the colored top bar left to <strong>1.1.1</strong>.</li>
+              <li>Use <span class="key">W</span> to fit width if the start is hidden.</li>
+            </ol>
+          </div>
+          <div class="flow" data-search="merge two midi regions clips consolidate cmd j">
+            <h3>Merge two MIDI regions</h3>
+            <ol>
+              <li>Select both adjacent MIDI clips.</li>
+              <li>Or drag a time selection across both.</li>
+              <li>Press <span class="key">Cmd</span> + <span class="key">J</span>.</li>
+              <li>The result is one consolidated MIDI clip.</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <p class="footer">Local Ableton tutor reference. Mac-only commands. Built for side-window use.</p>
+  </main>
+
+  <script>
+    const searchInput = document.getElementById("search");
+    const clearButton = document.getElementById("clearSearch");
+    const searchable = Array.from(document.querySelectorAll(".searchable, .item, .flow"));
+    const originalText = new Map();
+
+    document.querySelectorAll(".item-title, .item-detail, .flow h3, .flow li, .panic li").forEach((node) => {
+      originalText.set(node, node.innerHTML);
+    });
+
+    function normalize(value) {
+      return value.toLowerCase().trim();
+    }
+
+    function clearMarks() {
+      originalText.forEach((html, node) => {
+        node.innerHTML = html;
+      });
+    }
+
+    function highlight(term) {
+      if (!term) return;
+      const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const rx = new RegExp(`(${escaped})`, "ig");
+      originalText.forEach((html, node) => {
+        node.innerHTML = html.replace(rx, "<mark>$1</mark>");
+      });
+    }
+
+    function updateSearch() {
+      const query = normalize(searchInput.value);
+      clearMarks();
+
+      document.querySelectorAll("section, .panic").forEach((section) => section.classList.remove("hidden"));
+      document.querySelectorAll(".item, .flow").forEach((item) => item.classList.remove("hidden"));
+
+      if (!query) return;
+
+      highlight(query);
+
+      document.querySelectorAll("section").forEach((section) => {
+        const sectionMatches = normalize(section.dataset.search || section.textContent).includes(query);
+        const children = Array.from(section.querySelectorAll(".item, .flow"));
+        let childMatches = 0;
+
+        children.forEach((child) => {
+          const matches = normalize(child.dataset.search || child.textContent).includes(query);
+          child.classList.toggle("hidden", !matches && !sectionMatches);
+          if (matches) childMatches += 1;
+        });
+
+        section.classList.toggle("hidden", !sectionMatches && childMatches === 0);
+      });
+
+      document.querySelectorAll(".panic").forEach((panic) => {
+        const matches = normalize(panic.dataset.search || panic.textContent).includes(query);
+        panic.classList.toggle("hidden", !matches);
+      });
+    }
+
+    async function copyText(text, button) {
+      let copied = false;
+      try {
+        await navigator.clipboard.writeText(text);
+        copied = true;
+      } catch (error) {
+        const field = document.createElement("textarea");
+        field.value = text;
+        field.setAttribute("readonly", "");
+        field.style.position = "fixed";
+        field.style.opacity = "0";
+        document.body.appendChild(field);
+        field.select();
+        copied = document.execCommand("copy");
+        document.body.removeChild(field);
+      }
+
+      if (copied) {
+        button.textContent = "Copied";
+        button.dataset.copied = "true";
+        window.setTimeout(() => {
+          button.textContent = "Copy";
+          button.dataset.copied = "false";
+        }, 1000);
+      }
+    }
+
+    searchInput.addEventListener("input", updateSearch);
+    clearButton.addEventListener("click", () => {
+      searchInput.value = "";
+      searchInput.focus();
+      updateSearch();
+    });
+
+    document.querySelectorAll("[data-copy]").forEach((button) => {
+      button.addEventListener("click", () => copyText(button.dataset.copy, button));
+    });
+
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "/" && document.activeElement !== searchInput) {
+        event.preventDefault();
+        searchInput.focus();
+      }
+      if (event.key === "Escape" && document.activeElement === searchInput) {
+        searchInput.value = "";
+        updateSearch();
+      }
+    });
+  </script>
+</body>
+</html>

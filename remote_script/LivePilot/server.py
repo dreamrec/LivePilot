@@ -50,6 +50,7 @@ WRITE_COMMANDS = frozenset([
     # arrangement
     "jump_to_time", "jump_to_cue", "capture_midi", "start_recording",
     "stop_recording", "toggle_cue_point", "back_to_arranger",
+    "set_session_automation_record",
     "create_arrangement_clip", "add_arrangement_notes",
     "remove_arrangement_notes", "remove_arrangement_notes_by_id",
     "modify_arrangement_notes", "duplicate_arrangement_notes",
@@ -346,14 +347,9 @@ class LivePilotServer(object):
         else:
             timeout = 10
 
-        # Per-command response queue + cancellation flag. The flag is shared
-        # between this TCP thread and the main thread that dequeues the item:
-        # if we time out below, we set it so _process_next_command skips the
-        # (now-abandoned) dispatch instead of mutating Live after the client
-        # has already been told the command timed out (phantom write).
+        # Per-command response queue
         response_queue = queue.Queue()
-        cancelled = threading.Event()
-        self._command_queue.put((command, response_queue, cancelled))
+        self._command_queue.put((command, response_queue))
 
         # Schedule processing on Ableton's main thread
         try:
@@ -390,13 +386,6 @@ class LivePilotServer(object):
         try:
             resp = response_queue.get(timeout=timeout)
         except queue.Empty:
-            # Mark the queued command as abandoned. If it hasn't been dequeued
-            # yet (or is awaiting its settle hop), _process_next_command sees
-            # the flag and skips router.dispatch — preventing a write that the
-            # client was just told timed out from executing on Live's main
-            # thread later. If dispatch already happened, setting the flag is
-            # a harmless no-op.
-            cancelled.set()
             resp = {
                 "id": request_id,
                 "ok": False,
@@ -411,16 +400,8 @@ class LivePilotServer(object):
         """Called on Ableton's main thread via schedule_message.
         Processes one command from the queue."""
         try:
-            command, response_queue, cancelled = self._command_queue.get_nowait()
+            command, response_queue = self._command_queue.get_nowait()
         except queue.Empty:
-            return
-
-        # The TCP thread already gave up on this command (timed out) and told
-        # the client so. Do NOT dispatch it — running the write now would be a
-        # phantom mutation. Nobody is waiting on response_queue, so just keep
-        # the main-thread pump alive by draining whatever is left.
-        if cancelled.is_set():
-            self._drain_queue()
             return
 
         cmd_type = command.get("type", "")

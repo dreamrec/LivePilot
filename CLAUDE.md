@@ -1,11 +1,11 @@
-# LivePilot v1.27.1 — Ableton Live 12
+# LivePilot v1.26.2 — Ableton Live 12
 
 ## Project
 - **Repo:** This directory (LivePilot)
 - **Type:** Agentic MCP production system for Ableton Live 12
 - **Three layers:** Device Atlas (knowledge) + M4L Analyzer (perception) + Technique Memory (learning)
 - **Sister projects:** TDPilot (TouchDesigner), ComfyPilot (ComfyUI)
-- **Historical design snapshot:** `docs/specs/2026-03-17-livepilot-design.md` (March 2026 baseline; current truth lives in README/CLAUDE/AGENTS/manual + `scripts/sync_metadata.py`)
+- **Design spec:** `docs/specs/2026-03-17-livepilot-design.md`
 - **Dev install runbook:** `docs/manual/dev-install.md` — run from a local checkout (venv + `node bin/livepilot.js --install` + point MCP client at `python -m mcp_server` directly); use this whenever iterating on `mcp_server/` or `remote_script/` without republishing to npm
 
 ## Architecture
@@ -14,7 +14,7 @@
 - **M4L Bridge** (`m4l_device/`): Max for Live Audio Effect on master track, UDP/OSC bridge for deep LOM access
   - UDP 9880: M4L -> Server (spectral data, responses)
   - OSC 9881: Server -> M4L (commands)
-  - `livepilot_bridge.js`: 32 bridge commands for LiveAPI access
+  - `livepilot_bridge.js`: 35 bridge commands for LiveAPI access
   - `SpectralCache`: thread-safe, time-expiring data cache (5s max age)
   - Bridge is optional — all core tools work without it
 - **Device Atlas** (`mcp_server/atlas/`): In-memory indexed JSON database — 5264 devices with URIs (bundled baseline), 120 enriched with sonic intelligence (YAML), 47 with aesthetic-tagged `signature_techniques`. **7 indexes**: by_id, by_name, by_uri, by_category, by_tag, by_genre, by_pack . Reverse-index `device_techniques_index.json` (146 cross-references across 58 devices) powers `atlas_techniques_for_device`. Tools: `atlas_search`, `atlas_suggest`, `atlas_chain_suggest`, `atlas_compare`, `atlas_device_info`, `atlas_pack_info` (v1.17), `atlas_describe_chain` (v1.17 — free-text, mirror of `splice_describe_sound`), `atlas_techniques_for_device` (v1.17 — reverse-lookup), `scan_full_library`, `reload_atlas`. **v1.22.0**: atlas now resolves from `~/.livepilot/atlas/device_atlas.json` (user scan) if present, else the bundled baseline. `scan_full_library` writes to the user path — never the bundled one — so personal inventories (packs, user_library, plugins) stay out of the repo and survive npm updates. See `BUNDLED_ATLAS_PATH` / `USER_ATLAS_PATH` / `_resolve_atlas_path()` in `mcp_server/atlas/__init__.py`
@@ -43,7 +43,7 @@
 - `get()` in Max JS LiveAPI always returns arrays
 - `warp_markers` is a dict property returning JSON string — use `JSON.parse()`
 - `SimplerDevice.slices` lives on the `sample` child, not the device
-- M4L `replace_sample` only works on Simplers with existing samples; Live 12.4+ native `replace_sample_native` can route around that limitation when available
+- `replace_sample` only works on Simplers with existing samples
 - Max freezes JS from search path cache, not source directory — copy to `~/Documents/Max 9/`
 
 ## Binary Patching Workflow (.amxd)
@@ -74,7 +74,7 @@ cat .claude-plugin/marketplace.json | python3 -c "import json,sys; print(json.lo
 Expected output: the new version string. If the mirror is stale (happened silently across v1.18.0-v1.18.3 — panel stuck at "1.17.5 installed"), Claude Code's plugin panel will show the old version and `Update` button points at a stale target. The mirror is a git clone that Claude Code fetches from but does NOT auto-pull. Hard-reset is safe — nothing writes to it locally.
 
 ## Tool Count
-Currently 467 tools (up from 465 in v1.26.3 — v1.27 probe-first Live 12.4 surface: +2 runtime tools (probe_link_audio, probe_stem_workflow); up from 462 in v1.25.0 — v1.26 rubric grader system: +3 grader tools (grader_list_rubrics, grader_evaluate, grader_evaluate_all); up from 459 in v1.24.x — v1.25 hybrid knowledge surface: +3 atlas tools (atlas_explore, atlas_audition, atlas_substitute); up from 453 in v1.23.6 — v1.24 compose framework rebuild: Applier preflight/postflight + KnowledgePack scaffolding + per-mode brief builders; up from 437 in Phase F — added atlas_pack_aware_compose + atlas_cross_pack_chain; up from 434 in Phase C — added atlas_transplant; up from 433 in v1.23.3 — added atlas_macro_fingerprint in v1.23.4; up from 430 in v1.22.x — added 3 extension_atlas_* tools in v1.23.0; up from 403 in v1.15.0-beta originally). If adding/removing tools, update: README.md, package.json description, livepilot/.Codex-plugin/plugin.json, livepilot/.claude-plugin/plugin.json, server.json, livepilot/skills/livepilot-core/SKILL.md, livepilot/skills/livepilot-core/references/overview.md, CLAUDE.md, CHANGELOG.md, tests/test_tools_contract.py, docs/manual/index.md, docs/manual/tool-reference.md
+Currently 467 tools (up from 462 in v1.25.0 — v1.26 rubric grader system: +3 grader tools (grader_list_rubrics, grader_evaluate, grader_evaluate_all); up from 459 in v1.24.x — v1.25 hybrid knowledge surface: +3 atlas tools (atlas_explore, atlas_audition, atlas_substitute); up from 453 in v1.23.6 — v1.24 compose framework rebuild: Applier preflight/postflight + KnowledgePack scaffolding + per-mode brief builders; up from 437 in Phase F — added atlas_pack_aware_compose + atlas_cross_pack_chain; up from 434 in Phase C — added atlas_transplant; up from 433 in v1.23.3 — added atlas_macro_fingerprint in v1.23.4; up from 430 in v1.22.x — added 3 extension_atlas_* tools in v1.23.0; up from 403 in v1.15.0-beta originally). If adding/removing tools, update: README.md, package.json description, livepilot/.Codex-plugin/plugin.json, livepilot/.claude-plugin/plugin.json, server.json, livepilot/skills/livepilot-core/SKILL.md, livepilot/skills/livepilot-core/references/overview.md, CLAUDE.md, CHANGELOG.md, tests/test_tools_contract.py, docs/manual/index.md, docs/manual/tool-reference.md
 
 ## Splice plan-aware model (v1.15.0-beta)
 Sample downloads now use plan-aware gating (`mcp_server/splice_client/client.py::decide_download`):
@@ -272,7 +272,10 @@ until ALL FOUR are true:
 3. **Tracks released from session-override** — the orange "▶═"
    Back-to-Arrangement button must be INACTIVE. Call `back_to_arranger`.
    While that button is lit, session clips override arrangement
-   playback — pressing Play won't play the arrangement.
+   playback — pressing Play won't play the arrangement. On Live 12.4.2,
+   `song.back_to_arranger` / `track.back_to_arranger` reports the orange
+   override state: `true` means lit/overridden, and the API clear is
+   writing `false`.
 4. **No leftover playing/triggered session clips.** `stop_all_clips`
    BEFORE `back_to_arranger` — otherwise override re-asserts.
 
@@ -287,7 +290,9 @@ session override). Then `stop_playback` + `jump_to_time(0)` so the
 user starts from bar 1.
 
 If user reports "playback starts mid-song" or "the orange button is
-lit": run the canonical sequence again and verify with the smoke test.
+lit": run the canonical sequence again. Verify `get_session_info`
+returns `arrangement_override=false` and no track reports
+`arrangement_override=true`, then run the smoke test.
 
 ## §9b — Kill Orphan LivePilot Processes (don't ask the user)
 

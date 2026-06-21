@@ -136,6 +136,35 @@ class TestNormalizeScanResults:
         assert devices[0]["category"] == "user_library"
         assert devices[0]["source"] == "user_library"
 
+    def test_pack_metadata_is_preserved(self):
+        raw = self._make_raw({
+            "packs": [
+                {
+                    "name": "Bonzo Kit.adg",
+                    "uri": "query:LivePacks#www.ableton.com/237:Drums:Bonzo%20Kit.adg",
+                    "is_loadable": True,
+                    "pack": "Beat Tools",
+                    "browser_path": "Beat Tools/Drums/Bonzo Kit.adg",
+                },
+                {
+                    "name": "Beat Tools Drum Effects.adg",
+                    "uri": "query:LivePacks#www.ableton.com/237:Effect%20Racks:Mixing%20&%20Mastering:Beat%20Tools%20Drum%20Effects.adg",
+                    "is_loadable": True,
+                    "pack": "Beat Tools",
+                    "browser_path": "Beat Tools/Effect Racks/Mixing & Mastering/Beat Tools Drum Effects.adg",
+                },
+            ],
+        })
+        devices = normalize_scan_results(raw)
+        kit = devices[0]
+        rack = devices[1]
+        assert kit["id"] == "beat_tools_bonzo_kit_adg"
+        assert kit["pack"] == "Beat Tools"
+        assert kit["source"] == "pack"
+        assert kit["category"] == "drum_kits"
+        assert kit["browser_path"] == "Beat Tools/Drums/Bonzo Kit.adg"
+        assert rack["category"] == "audio_effects"
+
     def test_all_fields_present(self):
         raw = self._make_raw({
             "instruments": [

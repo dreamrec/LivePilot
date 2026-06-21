@@ -301,13 +301,9 @@ def run_vibe_fit_critic(
             recommendation="No taste evidence yet — neutral score",
         )
 
-    # Compute energy proxy from sample characteristics (0.0 - 1.0).
-    # brightness is already a 0.0-1.0 fraction, but transient_density is peaks
-    # PER SECOND (unbounded). Normalize it through a saturating curve before
-    # averaging so a busy break does not pin the proxy to 1.0 for every sample.
-    # ~12 peaks/s (busy 16ths) maps to ~1.0.
-    transient_norm = max(0.0, min(1.0, profile.transient_density / 12.0))
-    energy = (profile.brightness + transient_norm) / 2.0
+    # Compute energy proxy from sample characteristics (0.0 - 1.0)
+    # brightness and transient_density are both 0.0-1.0 range
+    energy = (profile.brightness + profile.transient_density) / 2.0
     energy = max(0.0, min(1.0, energy))
 
     # Compare against novelty_band as taste proxy

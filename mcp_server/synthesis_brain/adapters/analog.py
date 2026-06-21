@@ -9,12 +9,9 @@ detune/unison variants and dual-filter variants.
 from __future__ import annotations
 
 import hashlib
-import logging
 from typing import Optional
 
 from ...branches import BranchSeed, freeform_seed
-
-logger = logging.getLogger(__name__)
 from ..models import (
     SynthProfile,
     TimbralFingerprint,
@@ -118,16 +115,7 @@ class AnalogAdapter:
             try:
                 maybe = strategy_fn(profile, target, kernel, adapter=self)
             except Exception:
-                # Never let one strategy's crash kill the rest, but make the
-                # swallowed failure observable instead of silently degrading
-                # the branch set.
-                logger.warning(
-                    "Analog strategy %s crashed on track %s device %s; skipping",
-                    getattr(strategy_fn, "__name__", strategy_fn),
-                    profile.track_index,
-                    profile.device_index,
-                    exc_info=True,
-                )
+                # Never let one strategy's crash kill the rest.
                 continue
             if maybe is not None:
                 results.append(maybe)

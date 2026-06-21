@@ -1,4 +1,4 @@
-# LivePilot v1.27.1 — Architecture & Tool Reference
+# LivePilot v1.26.2 — Architecture & Tool Reference
 
 Agentic production system for Ableton Live 12. 467 tools across 56 domains. Device atlas (5264 devices, 120 enriched, 47 with aesthetic-tagged `signature_techniques`), spectral perception (M4L analyzer with 9-band FFT — sub_low / sub / low / low_mid / mid / high_mid / high / presence / air), technique memory, automation intelligence (16 curve types, 15 recipes), music theory (Krumhansl-Schmuckler, species counterpoint), generative algorithms (Euclidean rhythm, tintinnabuli, phase shift, additive process), neo-Riemannian harmony (PRL transforms, Tonnetz), MIDI file I/O, **LIVE Splice describe-a-sound + variations via captured GraphQL endpoints (v1.17)**, drum-rack pad-by-pad construction, live dead-device detection via meter sampling, role-aware Simpler defaults, session-record arrangement-automation workaround.
 
@@ -11,8 +11,6 @@ Agentic production system for Ableton Live 12. 467 tools across 56 domains. Devi
 **Hybrid Knowledge Surface (v1.25.0):** three new atlas tools close the gap between "compose runs successfully" and "compose makes thoughtful production decisions". `atlas_explore` — per-role ranked candidate query callable mid-design, with corpus-deep ranking signals (tag/genre match, signature_techniques overlap, curated .adg boost, anti-repeat, avoid-list). `atlas_audition` — full sidecar dump for a single URI (character_tags, signature_techniques, producer macro names, curated .adg paths). `atlas_substitute` — anti-tag-driven swap for after analyze_sound_design or analyze_mix flags an issue (11-key inversion table: bright/harsh/aggressive/sparse/thin/muddy/clean/dark/warm/static/generic).
 
 **Compose framework rebuild (v1.25.0):** three modes share a shared Applier substrate (bridge handshake retry + monitoring=Auto postflight + back_to_arranger). `compose_fast_apply` — quick loop in session view, curated-.adg-first hunt order, drum-role pitch repair. `compose_full_apply` — full song form (intro/verse/hook/breakdown/outro), per-section MIDI variants, native arrangement clips via `create_native_arrangement_clip`, zombie-track cleanup. `develop_apply` — extends an existing 8-bar seed, introspects tracks by name+content, pulls references from prompt. `KnowledgePack` scaffolding: `event_lexicon` (42 events), `genre_context` (15 genres), `artist_context` (~25 producers). Known gap: `atlas_candidates_per_role` is an empty stub in v1.25.0 — device lookup still falls back to `search_browser` filename matching. Resolved in v1.25 (BUG-FULL-MODE-24).
-
-**Live 12.4.2 knowledge refresh (2026-06-16):** Ableton's current stable line is Live 12.4.2 (June 11, 2026). The 12.4 baseline added Link Audio, selected-time stem separation and stem merge, updated Erosion, refined Chorus mode in Chorus-Ensemble, expanded Delay LFO modulation, Max 9.1.4, and `SimplerDevice.replace_sample` in the Live API. LivePilot exploits the native Simpler replacement path on Live 12.4+ and ships read-only `probe_link_audio()` / `probe_stem_workflow()` checks; Link Audio routing and stem write workflows remain unavailable unless a real probe proves a stable non-UI-scripted API path.
 
 ## Architecture
 
@@ -218,7 +216,7 @@ This turns "set EQ band 3 to -4 dB" into "cut 400 Hz by 4 dB, then read the spec
 | `memory_update` | Updates name, tags, or qualities | `technique_id`, `name`, `tags`, `qualities` |
 | `memory_delete` | Removes technique (backs up first) | `technique_id` |
 
-### Analyzer (38) — Real-time DSP analysis (requires LivePilot Analyzer M4L device on master track)
+### Analyzer (30) — Real-time DSP analysis (requires LivePilot Analyzer M4L device on master track)
 
 | Tool | What it does | Key params |
 |------|-------------|------------|
@@ -243,7 +241,7 @@ This turns "set EQ band 3 to -4 dB" into "cut 400 Hz by 4 dB, then read the spec
 | `stop_scrub` | Stop preview | `track_index`, `clip_index` |
 | `get_display_values` | Human-readable parameter values ("440 Hz", "-6 dB") | `track_index`, `device_index` |
 
-### Automation (8) — Clip automation CRUD + intelligent curve generation
+### Automation (10) — Clip automation CRUD, arrangement automation, and intelligent curve generation
 
 | Tool | What it does | Key params |
 |------|-------------|------------|
@@ -255,6 +253,8 @@ This turns "set EQ band 3 to -4 dB" into "cut 400 Hz by 4 dB, then read the spec
 | `get_automation_recipes` | Lists all 15 recipes with descriptions and targets | — |
 | `generate_automation_curve` | Previews curve points without writing them | `curve_type`, `duration`, `density`, curve-specific params |
 | `analyze_for_automation` | Spectral analysis + device-aware automation suggestions | `track_index` |
+| `record_parameter_automation_realtime` | Records Arrangement automation by driving a device parameter during Arrangement Record; does not create a Session clip | `track_index`, `device_index`, `parameter_index` or `parameter_name`, `points`, `start_beat` |
+| `set_arrangement_automation_via_session_record` | Legacy workaround that records a Session automation clip into Arrangement | `track_index`, `parameter_type`, `points`, `target_beat`, `duration_beats` |
 
 **16 curve types:** linear, exponential, logarithmic, s_curve, sine, sawtooth, spike, square, steps, perlin, brownian, spring, bezier, easing, euclidean, stochastic
 

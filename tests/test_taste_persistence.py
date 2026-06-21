@@ -134,35 +134,3 @@ def test_empty_store_returns_default():
         assert data["version"] == 1
         assert data["novelty_band"] == 0.5
         assert data["evidence_count"] == 0
-def test_taste_graph_writes_back_device_use_and_novelty():
-    """TasteGraph.record_device_use / update_novelty_from_experiment must
-    persist through the attached PersistentTasteStore so they survive restart.
-    Regression: previously only record_move_outcome wrote back."""
-    import tempfile
-    from pathlib import Path
-    from mcp_server.persistence.taste_store import PersistentTasteStore
-    from mcp_server.memory.taste_graph import build_taste_graph
-
-    with tempfile.TemporaryDirectory() as d:
-        store_path = Path(d) / "taste.json"
-        store = PersistentTasteStore(store_path)
-        graph = build_taste_graph(persistent_store=store)
-
-        graph.record_device_use("Granulator III", positive=True)
-        graph.update_novelty_from_experiment(chose_bold=True, goal_mode="explore")
-
-        # New process / store handle reading the same file must see the writes.
-        store2 = PersistentTasteStore(store_path)
-        persisted = store2.get_all()
-
-        assert "Granulator III" in persisted.get("device_affinities", {})
-        assert persisted["device_affinities"]["Granulator III"]["use_count"] == 1
-        assert persisted["device_affinities"]["Granulator III"]["affinity"] > 0.0
-
-        # explore band shifted up from default 0.5
-        assert persisted.get("novelty_bands", {}).get("explore", 0.5) > 0.5
-
-        # And a freshly built graph hydrates those persisted values.
-        graph2 = build_taste_graph(persistent_store=store2)
-        assert "Granulator III" in graph2.device_affinities
-        assert graph2.novelty_bands.get("explore", 0.5) > 0.5

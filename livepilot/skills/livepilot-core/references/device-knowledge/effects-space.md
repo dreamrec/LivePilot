@@ -63,7 +63,7 @@ Combines convolution (early reflections from real spaces) with algorithmic (cust
 
 ## Delay
 
-Updated in Live 12.4 with a deeper LFO section: rate can be set in Hz, ms, or tempo-synced divisions, with seven waveforms and Morph shaping. The most creative delay in Live.
+Updated in 12.4 with new LFO modes. The most creative delay in Live.
 
 ### Key Parameters
 
@@ -77,7 +77,6 @@ Updated in Live 12.4 with a deeper LFO section: rate can be set in Hz, ms, or te
 **Mod Freq / Dly < Mod / Filter < Mod:** The modulation section.
 - **Dly < Mod:** Modulates delay time — creates pitch wobble on echoes. At 5-15%, subtle tape-like wow. At 20-40%, obvious pitch warping — dub character. At 50%+, extreme — pitch spirals.
 - **Filter < Mod:** Modulates the filter cutoff with the same LFO — echoes alternately brighten and darken. Combined with Dly < Mod, this creates echoes that are never the same twice.
-- **Morph:** Live 12.4+ waveform shaping. Use small Morph values for stable repeat motion; push Morph when the delay tail should feel handmade, unstable, or visibly animated.
 
 **Filter Freq / Width:** Bandpass filter in the feedback loop. This shapes how each echo changes:
 - Freq 500-1000 Hz, Width 4-6: Dark, telephone-like echoes that thin out over time (classic dub)

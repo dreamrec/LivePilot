@@ -7,11 +7,8 @@ suggestion, chain building, and device comparison.
 from __future__ import annotations
 
 import json
-import logging
 import os
 from typing import Any, Dict, List, Optional
-
-logger = logging.getLogger(__name__)
 
 
 class AtlasManager:
@@ -50,26 +47,10 @@ class AtlasManager:
             dev_category = dev.get("category", "")
 
             if dev_id:
-                if dev_id in self._by_id and self._by_id[dev_id] is not dev:
-                    logger.warning(
-                        "atlas: duplicate device id %r shadows a prior entry "
-                        "(name=%r); last-wins", dev_id, dev_name,
-                    )
                 self._by_id[dev_id] = dev
             if dev_name:
-                name_key = dev_name.lower()
-                if name_key in self._by_name and self._by_name[name_key] is not dev:
-                    logger.warning(
-                        "atlas: duplicate device name %r shadows a prior entry "
-                        "(id=%r); last-wins", dev_name, dev_id,
-                    )
-                self._by_name[name_key] = dev
+                self._by_name[dev_name.lower()] = dev
             if dev_uri:
-                if dev_uri in self._by_uri and self._by_uri[dev_uri] is not dev:
-                    logger.warning(
-                        "atlas: duplicate device uri %r shadows a prior entry "
-                        "(id=%r); last-wins", dev_uri, dev_id,
-                    )
                 self._by_uri[dev_uri] = dev
 
             # Category index

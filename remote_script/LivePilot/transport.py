@@ -6,6 +6,17 @@ from .router import register
 from .version_detect import version_string, get_api_features
 
 
+def _safe_scalar_attr(obj, name, default=None):
+    """Read a scalar Live attribute defensively."""
+    try:
+        value = getattr(obj, name)
+    except Exception:
+        return default
+    if isinstance(value, (bool, int, float, str, type(None))):
+        return value
+    return default
+
+
 @register("get_session_info")
 def get_session_info(song, params):
     """Return comprehensive session state."""
@@ -30,6 +41,18 @@ def get_session_info(song, params):
             track_data["arm"] = None
             track_data["has_midi_input"] = None
             track_data["has_audio_input"] = None
+        # Live 12.4.2 exposes the orange Back-to-Arrangement override
+        # state as `back_to_arranger`: True means the orange button is lit,
+        # False means the track is following Arrangement playback.
+        track_data["arrangement_override"] = _safe_scalar_attr(
+            track, "back_to_arranger"
+        )
+        track_data["playing_slot_index"] = _safe_scalar_attr(
+            track, "playing_slot_index"
+        )
+        track_data["fired_slot_index"] = _safe_scalar_attr(
+            track, "fired_slot_index"
+        )
         tracks_info.append(track_data)
 
     return_tracks_info = []
@@ -70,6 +93,7 @@ def get_session_info(song, params):
         "tracks": tracks_info,
         "return_tracks": return_tracks_info,
         "scenes": scenes_info,
+        "arrangement_override": _safe_scalar_attr(song, "back_to_arranger"),
         "live_version": version_string(),
         "api_features": get_api_features(),
     }

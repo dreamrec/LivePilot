@@ -404,6 +404,7 @@ def test_fire_test_note_handler_registered():
     stub_utils = types.ModuleType("utils_stub")
     stub_utils.get_clip = lambda s, t, c: None
     stub_utils.get_clip_slot = lambda s, t, c: None
+    stub_utils.get_track = lambda s, i: None
 
     parent_pkg = "lp_clips_test"
     if parent_pkg in sys.modules:

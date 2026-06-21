@@ -56,15 +56,6 @@ CONFIRM_REQUIRED_ACTIONS: set[str] = {
     "replace_simpler_sample",
 }
 
-# Names that LOOK read-only by prefix but actually mutate session state.
-# These must NOT be classified as read-only — they are intersected against
-# the prefix matcher below so a mutating verb never slips through a read
-# prefix (e.g. ``find_and_load_device`` starts with ``find_`` but loads a
-# device, a real mutation routed through REMOTE_COMMANDS).
-_MUTATING_OVERRIDES: set[str] = {
-    "find_and_load_device",
-}
-
 # Read-only prefixes — any action starting with one of these is a read.
 _READ_ONLY_PREFIXES = (
     "get_",
@@ -212,8 +203,6 @@ _WIDE_SCOPE_THRESHOLD = 5   # tracks
 
 def is_read_only_action(action: str) -> bool:
     """Return True if *action* is a non-mutating read/query."""
-    if action in _MUTATING_OVERRIDES:
-        return False
     if action in SAFE_ACTIONS:
         return True
     return action.startswith(_READ_ONLY_PREFIXES)

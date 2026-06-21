@@ -34,7 +34,7 @@ outlets = 2; // 0: to udpsend (responses), 1: to buffer~/status
 // Single source of truth for the bridge version — bumped alongside the
 // rest of the release manifest. Surfaced in the UI via messnamed("livepilot_version", ...)
 // so the frozen .amxd visibly reports which build it was last exported from.
-var VERSION = "1.27.1";
+var VERSION = "1.26.2";
 
 // ── State ──────────────────────────────────────────────────────────────────
 
@@ -53,6 +53,13 @@ var capture_filename = "";
 var capture_file_path = "";
 var current_sample_rate = 44100; // Updated by dspstate~ via inlet 1
 
+// Automation curve scheduler state. The scheduler is armed by an OSC command,
+// then runs locally in Max while the MCP side controls Arrangement Record.
+var automation_curve_state = null;
+var automation_curve_task = null;
+var automation_curve_last_status = {"status": "idle"};
+var automation_curve_seq = 0;
+
 // Base64 encoding table
 var B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 
@@ -60,7 +67,11 @@ var B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 
 function bang() {
     // Called by live.thisdevice when device is ready
-    if (!initialized) {
+    ensure_initialized();
+}
+
+function ensure_initialized() {
+    if (!initialized || cursor_a === null || cursor_b === null) {
         cursor_a = new LiveAPI(null, "live_set");
         cursor_b = new LiveAPI(null, "live_set");
         initialized = true;
@@ -98,6 +109,7 @@ function anything() {
 }
 
 function dispatch(cmd, args) {
+    ensure_initialized();
     switch(cmd) {
         case "ping":
             send_response({"ok": true, "version": VERSION});
@@ -204,9 +216,41 @@ function dispatch(cmd, args) {
         case "compressor_set_sidechain":
             cmd_compressor_set_sidechain(args);
             break;
+        // ── Local automation scheduler ──
+        case "automation_curve_arm":
+            cmd_automation_curve_arm(args);
+            break;
+        case "automation_curve_status":
+            cmd_automation_curve_status();
+            break;
+        case "automation_curve_cancel":
+            cmd_automation_curve_cancel();
+            break;
         default:
             send_response({"error": "Unknown command: " + cmd});
     }
+}
+
+function _liveapi_scalar(value) {
+    if (value instanceof Array) {
+        if (value.length === 0) return "";
+        if (value.length === 1) return value[0];
+        return value[1];
+    }
+    return value;
+}
+
+function _liveapi_string(api, prop) {
+    var value = _liveapi_scalar(api.get(prop));
+    return value === null || value === undefined ? "" : value.toString();
+}
+
+function _liveapi_float(api, prop) {
+    return parseFloat(_liveapi_scalar(api.get(prop)));
+}
+
+function _liveapi_int(api, prop) {
+    return parseInt(_liveapi_scalar(api.get(prop)));
 }
 
 // ── Commands ───────────────────────────────────────────────────────────────
@@ -324,7 +368,7 @@ function cmd_get_hidden_params(args) {
 }
 
 function cmd_get_auto_state(args) {
-    // args: [track_index, device_index]
+    // args: [track_index, device_index, optional parameter_index...]
     var track_idx = parseInt(args[0]);
     var device_idx = parseInt(args[1]);
     var path = build_device_path(track_idx, device_idx);
@@ -332,6 +376,48 @@ function cmd_get_auto_state(args) {
     cursor_a.goto(path);
     var param_count = cursor_a.getcount("parameters");
     var results = [];
+    var requested = [];
+    for (var r = 2; r < args.length; r++) {
+        var requested_idx = parseInt(args[r]);
+        if (!isNaN(requested_idx) && requested_idx >= 0) {
+            requested.push(requested_idx);
+        }
+    }
+
+    if (requested.length > 0) {
+        try {
+            for (var p = 0; p < requested.length; p++) {
+                var idx = requested[p];
+                cursor_b.goto(path + " parameters " + idx);
+                var requested_state = _liveapi_int(cursor_b, "automation_state");
+                if (requested_state > 0) {
+                    results.push({
+                        index: idx,
+                        name: _liveapi_string(cursor_b, "name"),
+                        automation_state: requested_state,
+                        state_label: requested_state === 1 ? "active" : "overridden"
+                    });
+                }
+            }
+            send_response({
+                "track": track_idx,
+                "device": device_idx,
+                "total_params": param_count,
+                "probed_params": requested,
+                "automated_params": results,
+                "automated_count": results.length
+            });
+        } catch (e0) {
+            send_response({
+                "error": "Failed reading requested automation state: " + String(e0),
+                "track": track_idx,
+                "device": device_idx,
+                "probed_params": requested
+            });
+        }
+        return;
+    }
+
     var current = 0;
     var batch_size = 8;
 
@@ -340,11 +426,11 @@ function cmd_get_auto_state(args) {
             var end = Math.min(current + batch_size, param_count);
             for (var i = current; i < end; i++) {
                 cursor_b.goto(path + " parameters " + i);
-                var state = parseInt(cursor_b.get("automation_state"));
+                var state = _liveapi_int(cursor_b, "automation_state");
                 if (state > 0) {
                     results.push({
                         index: i,
-                        name: cursor_b.get("name").toString(),
+                        name: _liveapi_string(cursor_b, "name"),
                         automation_state: state,
                         state_label: state === 1 ? "active" : "overridden"
                     });
@@ -1580,6 +1666,317 @@ function cmd_capture_stop() {
 
 function pad2(n) {
     return n < 10 ? "0" + n : "" + n;
+}
+
+// ── Local Automation Curve Scheduler ──────────────────────────────────────
+
+function cmd_automation_curve_arm(args) {
+    if (automation_curve_state && automation_curve_state.active) {
+        send_response({
+            "error": "Automation curve scheduler already active",
+            "status": _automation_curve_status_obj()
+        });
+        return;
+    }
+
+    var payload = null;
+    try {
+        payload = JSON.parse(String(args[0] || "{}"));
+    } catch (e) {
+        send_response({"error": "automation_curve_arm payload must be JSON: " + e.message});
+        return;
+    }
+
+    var points = payload.points || [];
+    if (!points || points.length < 1) {
+        send_response({"error": "automation_curve_arm requires at least one point"});
+        return;
+    }
+
+    var track_idx = parseInt(payload.track_index);
+    var device_idx = parseInt(payload.device_index);
+    var parameter_idx = parseInt(payload.parameter_index);
+    if (isNaN(track_idx) || isNaN(device_idx) || isNaN(parameter_idx)) {
+        send_response({"error": "track_index, device_index, and parameter_index must be numeric"});
+        return;
+    }
+
+    var normalized = [];
+    for (var i = 0; i < points.length; i++) {
+        var beat = parseFloat(points[i].beat);
+        var value = parseFloat(points[i].value);
+        if (isNaN(beat) || isNaN(value)) {
+            send_response({"error": "points[" + i + "] must include numeric beat and value"});
+            return;
+        }
+        normalized.push({
+            "beat": beat,
+            "value": value,
+            "guard": !!points[i].guard,
+            "requested_time": points[i].requested_time
+        });
+    }
+    normalized.sort(function(a, b) { return a.beat - b.beat; });
+
+    var mode = String(payload.mode || "linear").toLowerCase();
+    if (mode !== "linear" && mode !== "points" && mode !== "step") {
+        send_response({"error": "mode must be linear, points, or step"});
+        return;
+    }
+    var tick_ms = parseInt(payload.tick_ms);
+    if (isNaN(tick_ms) || tick_ms < 5) tick_ms = 10;
+    if (tick_ms > 250) tick_ms = 250;
+    var min_delta = parseFloat(payload.min_delta);
+    if (isNaN(min_delta) || min_delta < 0) min_delta = 0.0005;
+    var end_beat = parseFloat(payload.end_beat);
+    if (isNaN(end_beat)) {
+        end_beat = normalized[normalized.length - 1].beat;
+    }
+    var end_tolerance_beats = parseFloat(payload.end_tolerance_beats);
+    if (isNaN(end_tolerance_beats) || end_tolerance_beats < 0) {
+        end_tolerance_beats = 0.25;
+    }
+    var time_base = String(payload.time_base || "song_time").toLowerCase();
+    if (time_base !== "song_time" && time_base !== "wall_clock") {
+        send_response({"error": "time_base must be song_time or wall_clock"});
+        return;
+    }
+    var origin_beat = parseFloat(payload.origin_beat);
+    if (isNaN(origin_beat)) origin_beat = 0;
+    var seconds_per_beat = parseFloat(payload.seconds_per_beat);
+    if (isNaN(seconds_per_beat) || seconds_per_beat <= 0) {
+        seconds_per_beat = 0.5;
+    }
+
+    var device_path = build_device_path(track_idx, device_idx);
+    var param_path = device_path + " parameters " + parameter_idx;
+    try {
+        cursor_a.goto(device_path);
+        var param_count = -1;
+        try {
+            param_count = cursor_a.getcount("parameters");
+        } catch (count_error) {
+            param_count = -1;
+        }
+        cursor_b.goto(param_path);
+    } catch (e2) {
+        send_response({"error": "Failed to resolve automation target: " + e2.message});
+        return;
+    }
+
+    automation_curve_seq += 1;
+    automation_curve_state = {
+        "id": String(payload.id || ("curve_" + automation_curve_seq)),
+        "active": true,
+        "status": "armed",
+        "ok": null,
+        "error": "",
+        "track_index": track_idx,
+        "device_index": device_idx,
+        "parameter_index": parameter_idx,
+        "parameter_path": param_path,
+        "parameter_name": "",
+        "points": normalized,
+        "point_count": normalized.length,
+        "next_index": 0,
+        "mode": mode,
+        "time_base": time_base,
+        "origin_beat": origin_beat,
+        "origin_ms": (new Date()).getTime(),
+        "seconds_per_beat": seconds_per_beat,
+        "tick_ms": tick_ms,
+        "min_delta": min_delta,
+        "end_beat": end_beat,
+        "end_tolerance_beats": end_tolerance_beats,
+        "set_count": 0,
+        "last_value": null,
+        "last_beat": null,
+        "started_at_ms": (new Date()).getTime(),
+        "finished_at_ms": null
+    };
+
+    try {
+        cursor_b.goto(param_path);
+        automation_curve_state.parameter_name = _liveapi_string(cursor_b, "name");
+    } catch (e3) {
+        automation_curve_state.parameter_name = "";
+    }
+
+    automation_curve_task = new Task(function() {
+        automation_curve_tick();
+    });
+    automation_curve_task.schedule(0);
+
+    automation_curve_last_status = _automation_curve_status_obj();
+    send_response({
+        "ok": true,
+        "status": "armed",
+        "id": automation_curve_state.id,
+        "track_index": track_idx,
+        "device_index": device_idx,
+        "parameter_index": parameter_idx,
+        "parameter_name": automation_curve_state.parameter_name,
+        "point_count": normalized.length,
+        "first_beat": normalized[0].beat,
+        "end_beat": end_beat,
+        "mode": mode,
+        "time_base": time_base,
+        "tick_ms": tick_ms
+    });
+}
+
+function cmd_automation_curve_status() {
+    send_response(_automation_curve_status_obj());
+}
+
+function cmd_automation_curve_cancel() {
+    if (automation_curve_state && automation_curve_state.active) {
+        _automation_curve_finish(false, "cancelled");
+        send_response({"ok": true, "status": "cancelled"});
+        return;
+    }
+    send_response({"ok": true, "status": "idle", "message": "No automation curve active"});
+}
+
+function automation_curve_tick() {
+    var st = automation_curve_state;
+    if (!st || !st.active) {
+        return;
+    }
+
+    try {
+        var beat = _automation_curve_current_beat(st);
+        st.last_beat = beat;
+
+        if (beat >= st.points[0].beat) {
+            st.status = "running";
+        }
+
+        if (st.mode === "points") {
+            while (st.next_index < st.points.length &&
+                   beat >= st.points[st.next_index].beat) {
+                _automation_curve_set_value(st, st.points[st.next_index].value);
+                st.next_index += 1;
+            }
+        } else if (st.mode === "step") {
+            while (st.next_index < st.points.length &&
+                   beat >= st.points[st.next_index].beat) {
+                _automation_curve_set_value(st, st.points[st.next_index].value);
+                st.next_index += 1;
+            }
+        } else {
+            if (beat >= st.points[0].beat) {
+                var v = _automation_curve_value_at(st, beat);
+                if (st.last_value === null || Math.abs(v - st.last_value) >= st.min_delta) {
+                    _automation_curve_set_value(st, v);
+                }
+            }
+        }
+
+        if (beat >= st.end_beat + st.end_tolerance_beats) {
+            if (st.mode === "linear" && st.points.length > 0) {
+                _automation_curve_set_value(st, st.points[st.points.length - 1].value);
+            }
+            _automation_curve_finish(true, "");
+            return;
+        }
+    } catch (e) {
+        _automation_curve_finish(false, e.message);
+        return;
+    }
+
+    if (automation_curve_task && automation_curve_state && automation_curve_state.active) {
+        automation_curve_task.schedule(st.tick_ms);
+    }
+}
+
+function _automation_curve_value_at(st, beat) {
+    var pts = st.points;
+    if (beat <= pts[0].beat) {
+        return pts[0].value;
+    }
+    for (var i = 0; i < pts.length - 1; i++) {
+        var a = pts[i];
+        var b = pts[i + 1];
+        if (beat <= b.beat) {
+            if (b.beat <= a.beat) {
+                return b.value;
+            }
+            var frac = (beat - a.beat) / (b.beat - a.beat);
+            if (frac < 0) frac = 0;
+            if (frac > 1) frac = 1;
+            return a.value + (b.value - a.value) * frac;
+        }
+    }
+    return pts[pts.length - 1].value;
+}
+
+function _automation_curve_current_beat(st) {
+    if (st && st.time_base === "wall_clock") {
+        var elapsed_ms = (new Date()).getTime() - st.origin_ms;
+        return st.origin_beat + ((elapsed_ms / 1000.0) / st.seconds_per_beat);
+    }
+    cursor_a.goto("live_set");
+    return _liveapi_float(cursor_a, "current_song_time");
+}
+
+function _automation_curve_set_value(st, value) {
+    cursor_b.goto(st.parameter_path);
+    cursor_b.set("value", value);
+    st.last_value = value;
+    st.set_count += 1;
+}
+
+function _automation_curve_finish(ok, error) {
+    var st = automation_curve_state;
+    if (!st) return;
+    st.active = false;
+    st.ok = ok;
+    st.error = error || "";
+    st.status = ok ? "completed" : (error === "cancelled" ? "cancelled" : "error");
+    st.finished_at_ms = (new Date()).getTime();
+    automation_curve_last_status = _automation_curve_status_obj();
+    if (automation_curve_task) {
+        automation_curve_task.cancel();
+        automation_curve_task = null;
+    }
+    automation_curve_state = null;
+}
+
+function _automation_curve_status_obj() {
+    var st = automation_curve_state || automation_curve_last_status;
+    if (!st) {
+        return {"ok": true, "status": "idle"};
+    }
+    var current_beat = null;
+    try {
+        current_beat = _automation_curve_current_beat(st);
+    } catch (e) {
+        current_beat = null;
+    }
+    return {
+        "ok": st.ok === null ? true : !!st.ok,
+        "id": st.id || "",
+        "status": st.status || "idle",
+        "active": !!st.active,
+        "error": st.error || "",
+        "track_index": st.track_index,
+        "device_index": st.device_index,
+        "parameter_index": st.parameter_index,
+        "parameter_name": st.parameter_name || "",
+        "point_count": st.point_count || 0,
+        "next_index": st.next_index || 0,
+        "mode": st.mode || "",
+        "time_base": st.time_base || "song_time",
+        "tick_ms": st.tick_ms || 0,
+        "set_count": st.set_count || 0,
+        "last_value": st.last_value,
+        "last_beat": st.last_beat,
+        "current_beat": current_beat,
+        "end_beat": st.end_beat,
+        "started_at_ms": st.started_at_ms || null,
+        "finished_at_ms": st.finished_at_ms || null
+    };
 }
 
 // ── Plugin Parameters ──────────────────────────────────────────────────────

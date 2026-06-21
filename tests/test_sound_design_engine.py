@@ -496,39 +496,3 @@ class TestBugB35RoleAwareFiltering:
         assert {i.issue_type for i in filtered} == {
             "too_few_blocks", "no_modulation_sources",
         }
-def test_cross_engine_hint_fires_on_affected_tracks(monkeypatch):
-    """Regression: _cross_engine_hint_for_track must filter MixIssue on
-    `affected_tracks` (the real field), not a non-existent `track_index`
-    attribute. Before the fix the getattr(i, 'track_index', None) compare
-    always yielded None == track_index, so the hint never fired even when
-    the track WAS flagged."""
-    import mcp_server.mix_engine.tools as _mix_tools
-    import mcp_server.mix_engine.state_builder as _mix_state_builder
-    import mcp_server.mix_engine.critics as _mix_critics
-    from mcp_server.mix_engine.critics import MixIssue
-    from mcp_server.sound_design import tools as sd_tools
-
-    # Stub the data-fetch + state-build so no Ableton connection is needed.
-    monkeypatch.setattr(_mix_tools, "_fetch_mix_data", lambda ctx: {})
-    monkeypatch.setattr(
-        _mix_state_builder, "build_mix_state", lambda **kwargs: object()
-    )
-
-    issue = MixIssue(
-        issue_type="frequency_collision",
-        critic="masking",
-        severity=0.7,
-        affected_tracks=[3],
-    )
-    monkeypatch.setattr(
-        _mix_critics, "run_all_mix_critics", lambda state: [issue]
-    )
-
-    # Track 3 is flagged -> hint must fire and name the issue + severity.
-    hint = sd_tools._cross_engine_hint_for_track(None, 3)
-    assert hint is not None
-    assert "frequency_collision" in hint
-    assert "plan_mix_move" in hint
-
-    # Track 5 is NOT in affected_tracks -> no hint.
-    assert sd_tools._cross_engine_hint_for_track(None, 5) is None

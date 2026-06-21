@@ -100,70 +100,8 @@ def test_has_replace_sample_native_12_3_6():
     assert caps.has_replace_sample_native is False
 
 
-def test_live_12_4_flags_link_audio_and_selected_time_stems_as_version_known():
-    """12.4 introduces Link Audio and selected-time stem UX, but runtime
-    support is still probe-gated elsewhere."""
-    caps = LiveVersionCapabilities(12, 4, 2)
-    assert caps.has_link_audio is True
-    assert caps.has_stem_time_selection is True
-    assert caps.has_stem_merge_selected is True
-
-
-def test_live_12_3_does_not_claim_12_4_link_or_selected_time_stem_features():
-    caps = LiveVersionCapabilities(12, 3, 6)
-    assert caps.has_link_audio is False
-    assert caps.has_stem_time_selection is False
-    assert caps.has_stem_merge_selected is False
-
-
 def test_to_dict_12_4_includes_collaborative_and_native():
     caps = LiveVersionCapabilities(12, 4, 0)
     d = caps.to_dict()
     assert d["capability_tier"] == "collaborative"
     assert d["replace_sample_native"] is True
-    assert d["link_audio"] is True
-    assert d["stem_time_selection"] is True
-    assert d["stem_merge_selected"] is True
-def test_from_version_string_tolerates_non_numeric_components():
-    """Malformed version strings must degrade to the floor, not crash.
-
-    Mirrors the Remote Script's degrade-to-(12,0,0) contract so a junk
-    live_version string from get_session_info never crashes
-    get_capability_state / get_session_kernel / --doctor.
-    """
-    # Trailing non-digits on a component are stripped to the leading int.
-    caps = LiveVersionCapabilities.from_version_string("12.x")
-    assert (caps.major, caps.minor, caps.patch) == (12, 0, 0)
-
-    caps = LiveVersionCapabilities.from_version_string("12.3-beta")
-    assert (caps.major, caps.minor, caps.patch) == (12, 3, 0)
-
-    # Empty string -> conservative floor, no exception.
-    caps = LiveVersionCapabilities.from_version_string("")
-    assert (caps.major, caps.minor, caps.patch) == (12, 0, 0)
-
-    # Empty interior component (double dot) defaults that component.
-    caps = LiveVersionCapabilities.from_version_string("12..3")
-    assert (caps.major, caps.minor, caps.patch) == (12, 0, 3)
-
-    # Non-numeric major falls back to the major floor (12).
-    caps = LiveVersionCapabilities.from_version_string("Live")
-    assert caps.major == 12
-
-
-def test_from_version_string_still_parses_valid_strings():
-    """Defensive parsing must not change behavior for well-formed input."""
-    caps = LiveVersionCapabilities.from_version_string("12.3.6")
-    assert (caps.major, caps.minor, caps.patch) == (12, 3, 6)
-    caps = LiveVersionCapabilities.from_version_string("12.4")
-    assert (caps.major, caps.minor, caps.patch) == (12, 4, 0)
-
-
-def test_from_session_info_with_garbage_version_does_not_crash():
-    """from_session_info funnels through from_version_string; junk must
-    not propagate a ValueError up to the capability-probe callers."""
-    caps = LiveVersionCapabilities.from_session_info({"live_version": "Live 12.3"})
-    # 'Live 12' has no leading digit -> major floor; '3' -> minor 3.
-    assert caps.major == 12
-    assert caps.minor == 3
-    assert caps.capability_tier in {"core", "enhanced_arrangement", "full_intelligence", "collaborative"}

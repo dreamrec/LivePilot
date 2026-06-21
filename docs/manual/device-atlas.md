@@ -49,17 +49,7 @@ name and hoping for the right match. The atlas gives you:
 
 ---
 
-## The Atlas Tools (22)
-
-> The Atlas domain ships **22 tools**. The most-used ten are documented
-> below in detail. The remaining twelve are the v1.23–v1.25 additions —
-> the `extension_atlas_*` overlay namespaces (`extension_atlas_search`,
-> `extension_atlas_get`, `extension_atlas_list`), the hybrid-knowledge
-> surface (`atlas_explore`, `atlas_audition`, `atlas_substitute`), and
-> the pack-aware compose / chain-extraction tools (`atlas_pack_aware_compose`,
-> `atlas_cross_pack_chain`, `atlas_transplant`, `atlas_extract_chain`,
-> `atlas_macro_fingerprint`, `atlas_demo_story`). See the **Atlas (22)**
-> section of [tool-catalog.md](tool-catalog.md) for the full list.
+## The 10 Atlas Tools
 
 ### atlas_search — Find devices by keyword or character
 
@@ -105,7 +95,7 @@ you want an aesthetic description turned into a concrete device chain
 without manually orchestrating search + suggest + chain_suggest.
 
 Parses role hints (bass/pad/lead/percussion/drums/vocal/fx), artist
-hints (maps ~25 producers to aesthetic tag lists), genre keywords,
+hints (maps ~20 producers to aesthetic tag lists), genre keywords,
 and character words (warm/dark/granular/metallic/etc).
 
 ### atlas_chain_suggest — Full device chain from structured role
@@ -140,8 +130,8 @@ atlas_device_info(device_id="drift")
 ```
 
 Returns the full enriched profile for devices that have sonic
-intelligence (120 out of the 5264-device bundled baseline). For
-non-enriched devices, returns basic parameter info and browser URI.
+intelligence (135 out of 1305). For non-enriched devices, returns basic
+parameter info and browser URI.
 
 ### atlas_techniques_for_device — Reverse-lookup **[v1.17+]**
 
@@ -287,7 +277,7 @@ aesthetic context so the LLM can reach for it when the user says
 
 ## What's Enriched
 
-120 devices have deep sonic-intelligence profiles:
+135 devices have deep sonic-intelligence profiles:
 
 | Category | Count | Examples |
 |----------|-------|---------|
@@ -296,8 +286,8 @@ aesthetic context so the LLM can reach for it when the user says
 | MIDI Effects | 22 | Arpeggiator, Scale, Chord, Filler, Expressive Chords, Microtuner, Phase Pattern, Polyrhythm, Retrigger, Slice Shuffler, SQ Sequencer, Stages |
 | Utility / CV | 24 | Utility, External Instrument, CV Tools suite (10), Performer, Variations, Arrangement Looper, Prearranger, Surround Panner, Vector Map, Rotating Rhythm Generator |
 
-The remaining devices in the 5264-device baseline still have name, URI,
-category, and basic parameter info — enough for search and loading.
+Non-enriched devices (1170) still have name, URI, category, and basic
+parameter info — enough for search and loading.
 
 ---
 

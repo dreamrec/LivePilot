@@ -72,7 +72,7 @@ REMOTE_COMMANDS: frozenset[str] = frozenset({
     "get_browser_tree", "get_browser_items", "search_browser",
     "load_browser_item", "get_device_presets",
     "scan_browser_deep",       # Atlas deep scan — returns full category tree
-    # arrangement (21)
+    # arrangement (23)
     "get_arrangement_clips", "create_arrangement_clip",
     "create_native_arrangement_clip",
     "add_arrangement_notes", "get_arrangement_notes",
@@ -81,6 +81,7 @@ REMOTE_COMMANDS: frozenset[str] = frozenset({
     "set_arrangement_automation", "transpose_arrangement_notes",
     "set_arrangement_clip_name", "jump_to_time",
     "capture_midi", "start_recording", "stop_recording",
+    "get_recording_state", "set_session_automation_record",
     "get_cue_points", "jump_to_cue", "toggle_cue_point",
     "back_to_arranger", "force_arrangement",
     "arrangement_automation_via_session_record_start",
@@ -153,6 +154,7 @@ BRIDGE_COMMANDS: frozenset[str] = frozenset({
     # the matching MCP tools that route through bridge.send_command.
     "simpler_set_warp",
     "compressor_set_sidechain",
+    "automation_curve_arm", "automation_curve_status", "automation_curve_cancel",
     # NOTE: load_sample_to_simpler used to live here, but it's actually an
     # async Python MCP tool in mcp_server/tools/analyzer.py, not a bridge
     # command. It has no case in livepilot_bridge.js and no @register handler

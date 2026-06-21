@@ -241,10 +241,8 @@ def build_dynamics_state(
 
     crest = 20 * math.log10(max(peak_linear, 1e-10) / max(rms_linear, 1e-10))
 
-    # Over-compressed band is 3-6 dB crest. Below 3 dB the signal is so flat
-    # that the dynamics critic should report the stronger `flat_dynamics`
-    # issue instead, which only fires when over_compressed is False.
-    over_compressed = 3.0 <= crest < 6.0
+    # Over-compressed when crest factor < 6 dB (flat dynamics)
+    over_compressed = crest < 6.0
 
     # Headroom = distance from peak to 0 dBFS
     if peak_linear > 0:

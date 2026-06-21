@@ -185,14 +185,10 @@ class SpliceSample:
     def is_free(self) -> bool:
         """True iff this sample costs no credits under any plan.
 
-        `IsPremium` is Splice's authoritative free flag and is always
-        populated in the proto. `Price` is NOT reliable: proto3 ints
-        default to 0 when the server omits the field, so OR-ing in
-        `price == 0` would misclassify premium samples (whose Price is
-        unset/zero) as free and bypass ALL credit/quota gating. Trust
-        only `IsPremium`.
+        Splice marks samples as free via `IsPremium == False` or `Price == 0`.
+        This is orthogonal to plan: even a free-tier user can license these.
         """
-        return not self.is_premium
+        return (not self.is_premium) or self.price == 0
 
     def to_dict(self) -> dict:
         return {

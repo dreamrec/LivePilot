@@ -1,0 +1,872 @@
+section	title	page	level	chapter_file
+1	Welcome to Live	22	1	chapters/01-welcome-to-live.md
+1.1	The Ableton Team Says: Thank You	22	2	chapters/01-welcome-to-live.md
+2	First Steps	23	1	chapters/02-first-steps.md
+2.1	Installation and Authorization	23	2	chapters/02-first-steps.md
+2.2	Learning About Live	23	2	chapters/02-first-steps.md
+2.2.1	Learn View	23	3	chapters/02-first-steps.md
+2.2.2	Info View	28	3	chapters/02-first-steps.md
+2.2.3	Other Learning Resources	29	3	chapters/02-first-steps.md
+2.3	Live’s Settings	30	2	chapters/02-first-steps.md
+2.3.1	Display & Input	30	3	chapters/02-first-steps.md
+2.3.2	Theme & Colors	30	3	chapters/02-first-steps.md
+2.3.3	Audio	31	3	chapters/02-first-steps.md
+2.3.4	Link	31	3	chapters/02-first-steps.md
+2.3.5	Tempo & MIDI	31	3	chapters/02-first-steps.md
+2.3.6	File & Folder	32	3	chapters/02-first-steps.md
+2.3.7	Library	32	3	chapters/02-first-steps.md
+2.3.8	Plug-Ins	32	3	chapters/02-first-steps.md
+2.3.9	Record, Warp & Launch	32	3	chapters/02-first-steps.md
+2.3.10	Licenses & Updates	32	3	chapters/02-first-steps.md
+3	Live Concepts	33	1	chapters/03-live-concepts.md
+3.1	The Control Bar	33	2	chapters/03-live-concepts.md
+3.2	The Status Bar	34	2	chapters/03-live-concepts.md
+3.3	The Browser	35	2	chapters/03-live-concepts.md
+3.4	Sound Similarity	36	2	chapters/03-live-concepts.md
+3.5	Live Sets	38	2	chapters/03-live-concepts.md
+3.6	Arrangement and Session	38	2	chapters/03-live-concepts.md
+3.7	Tracks	40	2	chapters/03-live-concepts.md
+3.8	Audio and MIDI	43	2	chapters/03-live-concepts.md
+3.9	Audio Clips and Samples	44	2	chapters/03-live-concepts.md
+3.10	MIDI Clips and MIDI Files	45	2	chapters/03-live-concepts.md
+3.11	Devices	46	2	chapters/03-live-concepts.md
+3.12	Clip and Device View	48	2	chapters/03-live-concepts.md
+3.13	Scale Awareness	49	2	chapters/03-live-concepts.md
+3.14	The Mixer	51	2	chapters/03-live-concepts.md
+3.15	Presets and Racks	54	2	chapters/03-live-concepts.md
+3.16	Routing	54	2	chapters/03-live-concepts.md
+3.17	Recording New Clips	55	2	chapters/03-live-concepts.md
+3.18	Automation Envelopes	57	2	chapters/03-live-concepts.md
+3.19	Clip Envelopes	57	2	chapters/03-live-concepts.md
+3.20	Undo History	58	2	chapters/03-live-concepts.md
+3.21	MIDI and Key Remote	59	2	chapters/03-live-concepts.md
+3.22	Saving and Exporting	59	2	chapters/03-live-concepts.md
+4	Working with the Browser	61	1	chapters/04-working-with-the-browser.md
+4.1	Content Pane	63	2	chapters/04-working-with-the-browser.md
+4.2	Search Bar	64	2	chapters/04-working-with-the-browser.md
+4.2.1	Saving Search Results as Custom Labels	67	3	chapters/04-working-with-the-browser.md
+4.3	Browser History	70	2	chapters/04-working-with-the-browser.md
+4.4	Filters and Tags	71	2	chapters/04-working-with-the-browser.md
+4.4.1	Filter Groups	72	3	chapters/04-working-with-the-browser.md
+4.4.2	Tags	73	3	chapters/04-working-with-the-browser.md
+4.4.3	Tag Editor	74	3	chapters/04-working-with-the-browser.md
+4.4.4	Quick Tags	78	3	chapters/04-working-with-the-browser.md
+4.5	Collections	80	2	chapters/04-working-with-the-browser.md
+4.6	Library	82	2	chapters/04-working-with-the-browser.md
+4.7	Places	84	2	chapters/04-working-with-the-browser.md
+4.7.1	Downloading and Installing Packs in the Browser	85	3	chapters/04-working-with-the-browser.md
+4.7.2	Pack Info	89	3	chapters/04-working-with-the-browser.md
+4.7.3	Splice	90	3	chapters/04-working-with-the-browser.md
+4.7.4	Using Ableton Cloud	104	3	chapters/04-working-with-the-browser.md
+4.7.5	Transferring Files from Push 3 in Standalone Mode	106	3	chapters/04-working-with-the-browser.md
+4.7.6	User Library	109	3	chapters/04-working-with-the-browser.md
+4.7.7	Current Project	112	3	chapters/04-working-with-the-browser.md
+4.7.8	User Folders	114	3	chapters/04-working-with-the-browser.md
+4.8	Navigating in the Browser	116	2	chapters/04-working-with-the-browser.md
+4.9	Previewing Files	116	2	chapters/04-working-with-the-browser.md
+4.10	Hot-Swap Mode	119	2	chapters/04-working-with-the-browser.md
+4.11	Adding Content from the Browser to a Live Set	122	2	chapters/04-working-with-the-browser.md
+5	Managing Files and Sets	123	1	chapters/05-managing-files-and-sets.md
+5.1	Sample Files	123	2	chapters/05-managing-files-and-sets.md
+5.1.1	The Decoding Cache	123	3	chapters/05-managing-files-and-sets.md
+5.1.2	Analysis Files (.asd)	124	3	chapters/05-managing-files-and-sets.md
+5.1.3	Exporting Audio and Video	125	3	chapters/05-managing-files-and-sets.md
+5.2	MIDI Files	131	2	chapters/05-managing-files-and-sets.md
+5.2.1	Exporting MIDI Files	131	3	chapters/05-managing-files-and-sets.md
+5.3	Live Clips	132	2	chapters/05-managing-files-and-sets.md
+5.4	Live Sets	133	2	chapters/05-managing-files-and-sets.md
+5.4.1	Creating, Opening and Saving Sets	133	3	chapters/05-managing-files-and-sets.md
+5.4.2	Merging Sets	133	3	chapters/05-managing-files-and-sets.md
+5.4.3	Exporting Session Clips as New Sets	136	3	chapters/05-managing-files-and-sets.md
+5.4.4	Template Sets	136	3	chapters/05-managing-files-and-sets.md
+5.4.5	Viewing and Changing a Live Set’s File References	137	3	chapters/05-managing-files-and-sets.md
+5.5	Live Projects	139	2	chapters/05-managing-files-and-sets.md
+5.5.1	Projects and Live Sets	139	3	chapters/05-managing-files-and-sets.md
+5.5.2	Projects and Presets	143	3	chapters/05-managing-files-and-sets.md
+5.5.3	Managing Files in a Project	144	3	chapters/05-managing-files-and-sets.md
+5.6	Locating Missing Files	144	2	chapters/05-managing-files-and-sets.md
+5.6.1	Manual Repair	145	3	chapters/05-managing-files-and-sets.md
+5.6.2	Automatic Repair	145	3	chapters/05-managing-files-and-sets.md
+5.7	Collecting External Files	147	2	chapters/05-managing-files-and-sets.md
+5.7.1	Collect Files on Export	148	3	chapters/05-managing-files-and-sets.md
+5.8	Aggregated Locating and Collecting	149	2	chapters/05-managing-files-and-sets.md
+5.9	Finding Unused Files	149	2	chapters/05-managing-files-and-sets.md
+5.10	Packing Projects into Packs	150	2	chapters/05-managing-files-and-sets.md
+5.11	File Management FAQs	150	2	chapters/05-managing-files-and-sets.md
+5.11.1	How Do I Create a Project?	150	3	chapters/05-managing-files-and-sets.md
+5.11.2	How Can I Save Presets Into My Current Project?	150	3	chapters/05-managing-files-and-sets.md
+5.11.3	Can I Work On Multiple Versions of a Set?	150	3	chapters/05-managing-files-and-sets.md
+5.11.4	Where Should I Save My Live Sets?	151	3	chapters/05-managing-files-and-sets.md
+5.11.5	Can I Use My Own Folder Structure Within a Project Folder?	151	3	chapters/05-managing-files-and-sets.md
+6	Arrangement View	152	1	chapters/06-arrangement-view.md
+6.1	Layout	152	2	chapters/06-arrangement-view.md
+6.2	Navigation and Zooming	155	2	chapters/06-arrangement-view.md
+6.3	Transport and Playback	155	2	chapters/06-arrangement-view.md
+6.4	Launching the Arrangement with Locators	157	2	chapters/06-arrangement-view.md
+6.5	Time Signature Changes	159	2	chapters/06-arrangement-view.md
+6.6	The Arrangement Loop	161	2	chapters/06-arrangement-view.md
+6.7	Moving and Resizing Clips	162	2	chapters/06-arrangement-view.md
+6.8	Audio Clip Fades and Crossfades	164	2	chapters/06-arrangement-view.md
+6.9	Selecting Clips and Time	166	2	chapters/06-arrangement-view.md
+6.10	Using the Editing Grid	167	2	chapters/06-arrangement-view.md
+6.11	Using the …Time Commands	168	2	chapters/06-arrangement-view.md
+6.12	Splitting Clips	168	2	chapters/06-arrangement-view.md
+6.13	Consolidating Clips	169	2	chapters/06-arrangement-view.md
+6.14	Linked-Track Editing	170	2	chapters/06-arrangement-view.md
+6.14.1	Linking and Unlinking Tracks	170	3	chapters/06-arrangement-view.md
+6.14.2	Editing Linked Tracks	171	3	chapters/06-arrangement-view.md
+6.15	The Mixer in Arrangement View	172	2	chapters/06-arrangement-view.md
+7	Session View	174	1	chapters/07-session-view.md
+7.1	Session View Clips	175	2	chapters/07-session-view.md
+7.2	Tracks and Scenes	176	2	chapters/07-session-view.md
+7.2.1	Editing Scene Tempo and Time Signature Values	178	3	chapters/07-session-view.md
+7.2.2	Scene View	179	3	chapters/07-session-view.md
+7.3	The Track Status Fields	181	2	chapters/07-session-view.md
+7.4	Setting Up the Session View Grid	182	2	chapters/07-session-view.md
+7.4.1	Select on Launch	183	3	chapters/07-session-view.md
+7.4.2	Removing Clip Stop Buttons	183	3	chapters/07-session-view.md
+7.4.3	Editing Scenes	183	3	chapters/07-session-view.md
+7.5	Recording Sessions into the Arrangement	184	2	chapters/07-session-view.md
+8	Clip View	187	1	chapters/08-clip-view.md
+8.1	Clip View Layout	188	2	chapters/08-clip-view.md
+8.1.1	Clip Title Bar	189	3	chapters/08-clip-view.md
+8.1.2	Clip Panels	191	3	chapters/08-clip-view.md
+8.1.3	Editor View Modes	193	3	chapters/08-clip-view.md
+8.2	Main Clip Properties Panel	194	2	chapters/08-clip-view.md
+8.2.1	Clip and Loop Region Settings	195	3	chapters/08-clip-view.md
+8.2.2	Clip Time Signature	196	3	chapters/08-clip-view.md
+8.2.3	Clip Groove	197	3	chapters/08-clip-view.md
+8.2.4	Clip Scale	198	3	chapters/08-clip-view.md
+8.3	Extended Clip Properties	199	2	chapters/08-clip-view.md
+8.3.1	Follow Action and Launch Controls	200	3	chapters/08-clip-view.md
+8.3.2	MIDI Clip Bank and Program Change Controls	200	3	chapters/08-clip-view.md
+8.4	Audio Utilities Panel	201	2	chapters/08-clip-view.md
+8.4.1	Warp Controls	202	3	chapters/08-clip-view.md
+8.4.2	Reversing Samples	203	3	chapters/08-clip-view.md
+8.4.3	Destructive Sample Editing	205	3	chapters/08-clip-view.md
+8.4.4	Clip Start and End Fades	205	3	chapters/08-clip-view.md
+8.4.5	Clip RAM Mode	206	3	chapters/08-clip-view.md
+8.4.6	High Quality Interpolation	207	3	chapters/08-clip-view.md
+8.4.7	Clip Gain and Pitch	208	3	chapters/08-clip-view.md
+8.5	Pitch and Time Utilities Panel	209	2	chapters/08-clip-view.md
+8.5.1	Pitch Tools	210	3	chapters/08-clip-view.md
+8.5.2	Time Tools	211	3	chapters/08-clip-view.md
+8.6	Transform and Generate Panels	212	2	chapters/08-clip-view.md
+8.7	Zooming and Scrolling in the Clip View’s Editor	213	2	chapters/08-clip-view.md
+8.8	Playing and Scrubbing Clips	214	2	chapters/08-clip-view.md
+8.9	Looping Clips	215	2	chapters/08-clip-view.md
+8.10	Clip View Sample Details	217	2	chapters/08-clip-view.md
+8.11	Cropping Clips	218	2	chapters/08-clip-view.md
+8.12	Replacing and Editing the Sample	218	2	chapters/08-clip-view.md
+8.13	Editing Clip Properties for Multiple Clips	219	2	chapters/08-clip-view.md
+8.14	Clip Defaults and Update Rate	219	2	chapters/08-clip-view.md
+9	Audio Clips, Tempo, and Warping	221	1	chapters/09-audio-clips-tempo-and-warping.md
+9.1	Tempo	221	2	chapters/09-audio-clips-tempo-and-warping.md
+9.1.1	Setting the Tempo	221	3	chapters/09-audio-clips-tempo-and-warping.md
+9.1.2	Tapping the Tempo	222	3	chapters/09-audio-clips-tempo-and-warping.md
+9.1.3	Nudging the Tempo	223	3	chapters/09-audio-clips-tempo-and-warping.md
+9.1.4	Clip Tempo Followers and Leaders	223	3	chapters/09-audio-clips-tempo-and-warping.md
+9.2	Warping	225	2	chapters/09-audio-clips-tempo-and-warping.md
+9.2.1	Warping Options in Settings	226	3	chapters/09-audio-clips-tempo-and-warping.md
+9.2.2	Importing Samples	227	3	chapters/09-audio-clips-tempo-and-warping.md
+9.2.3	Warp Markers	227	3	chapters/09-audio-clips-tempo-and-warping.md
+9.2.4	Warping Short Samples	229	3	chapters/09-audio-clips-tempo-and-warping.md
+9.2.5	Auto-Warping Long Samples	231	3	chapters/09-audio-clips-tempo-and-warping.md
+9.2.6	Manipulating Grooves	235	3	chapters/09-audio-clips-tempo-and-warping.md
+9.2.7	Quantizing Audio	235	3	chapters/09-audio-clips-tempo-and-warping.md
+9.3	Warp Modes	236	2	chapters/09-audio-clips-tempo-and-warping.md
+9.3.1	Beats Mode	236	3	chapters/09-audio-clips-tempo-and-warping.md
+9.3.2	Tones Mode	237	3	chapters/09-audio-clips-tempo-and-warping.md
+9.3.3	Texture Mode	237	3	chapters/09-audio-clips-tempo-and-warping.md
+9.3.4	Re-Pitch Mode	238	3	chapters/09-audio-clips-tempo-and-warping.md
+9.3.5	Complex and Complex Pro Mode	238	3	chapters/09-audio-clips-tempo-and-warping.md
+10	Editing MIDI	239	1	chapters/10-editing-midi.md
+10.1	The MIDI Note Editor Layout	239	2	chapters/10-editing-midi.md
+10.2	Zooming and Navigating in the MIDI Note Editor	241	2	chapters/10-editing-midi.md
+10.2.1	Grid Snapping	243	3	chapters/10-editing-midi.md
+10.2.2	Playback Options	243	3	chapters/10-editing-midi.md
+10.3	Creating a MIDI Clip	244	2	chapters/10-editing-midi.md
+10.4	Adding MIDI Notes	244	2	chapters/10-editing-midi.md
+10.4.1	Draw Mode	244	3	chapters/10-editing-midi.md
+10.4.2	Previewing Notes	245	3	chapters/10-editing-midi.md
+10.5	Editing MIDI Notes	246	2	chapters/10-editing-midi.md
+10.5.1	Non-Destructive Editing	246	3	chapters/10-editing-midi.md
+10.5.2	Selecting Notes and Timespan	246	3	chapters/10-editing-midi.md
+10.5.3	Find and Select Notes	247	3	chapters/10-editing-midi.md
+10.5.4	Moving Notes	249	3	chapters/10-editing-midi.md
+10.5.5	Changing Note Length	249	3	chapters/10-editing-midi.md
+10.5.6	MIDI Note Stretch	251	3	chapters/10-editing-midi.md
+10.5.7	Deactivating Notes	251	3	chapters/10-editing-midi.md
+10.5.8	Note Operations	252	3	chapters/10-editing-midi.md
+10.5.9	Pitch and Time Utilities	255	3	chapters/10-editing-midi.md
+10.5.10	MIDI Tools	263	3	chapters/10-editing-midi.md
+10.5.11	Quantizing Notes	263	3	chapters/10-editing-midi.md
+10.5.12	Editing Velocities	264	3	chapters/10-editing-midi.md
+10.5.13	Editing Probabilities	269	3	chapters/10-editing-midi.md
+10.6	Folding and Scales	271	2	chapters/10-editing-midi.md
+10.7	Editing MIDI Clips	274	2	chapters/10-editing-midi.md
+10.7.1	Cropping MIDI Clips	274	3	chapters/10-editing-midi.md
+10.7.2	The …Time Commands in the MIDI Note Editor	275	3	chapters/10-editing-midi.md
+10.7.3	Looping	275	3	chapters/10-editing-midi.md
+10.8	Multi-Clip Editing	276	2	chapters/10-editing-midi.md
+10.8.1	Focus Mode	277	3	chapters/10-editing-midi.md
+10.8.2	Multi-Clip Editing in the Session View	279	3	chapters/10-editing-midi.md
+10.8.3	Multi-Clip Editing in the Arrangement View	279	3	chapters/10-editing-midi.md
+11	MIDI Tools	280	1	chapters/11-midi-tools.md
+11.1	Using MIDI Tools	280	2	chapters/11-midi-tools.md
+11.1.1	Using Max for Live MIDI Tools	283	3	chapters/11-midi-tools.md
+11.2	Transformation Tools	284	2	chapters/11-midi-tools.md
+11.2.1	Arpeggiate	284	3	chapters/11-midi-tools.md
+11.2.2	Chop	285	3	chapters/11-midi-tools.md
+11.2.3	Connect	287	3	chapters/11-midi-tools.md
+11.2.4	Glissando	289	3	chapters/11-midi-tools.md
+11.2.5	LFO	291	3	chapters/11-midi-tools.md
+11.2.6	Ornament	293	3	chapters/11-midi-tools.md
+11.2.7	Quantize	296	3	chapters/11-midi-tools.md
+11.2.8	Recombine	297	3	chapters/11-midi-tools.md
+11.2.9	Span	300	3	chapters/11-midi-tools.md
+11.2.10	Strum	302	3	chapters/11-midi-tools.md
+11.2.11	Time Warp	304	3	chapters/11-midi-tools.md
+11.2.12	Velocity Shaper	306	3	chapters/11-midi-tools.md
+11.3	Generative Tools	308	2	chapters/11-midi-tools.md
+11.3.1	Rhythm	308	3	chapters/11-midi-tools.md
+11.3.2	Seed	310	3	chapters/11-midi-tools.md
+11.3.3	Shape	311	3	chapters/11-midi-tools.md
+11.3.4	Stacks	313	3	chapters/11-midi-tools.md
+11.3.5	Euclidean	314	3	chapters/11-midi-tools.md
+12	Editing MPE	317	1	chapters/12-editing-mpe.md
+12.1	Viewing MPE Data	318	2	chapters/12-editing-mpe.md
+12.2	Editing MPE Data	319	2	chapters/12-editing-mpe.md
+12.3	Drawing Envelopes	322	2	chapters/12-editing-mpe.md
+12.4	MPE in Live’s Devices and on Push 2	323	2	chapters/12-editing-mpe.md
+12.5	MPE in External Plug-ins	323	2	chapters/12-editing-mpe.md
+12.6	MPE/Multi-channel Settings	323	2	chapters/12-editing-mpe.md
+12.6.1	Accessing the MPE/Multi-channel Settings Dialog	324	3	chapters/12-editing-mpe.md
+12.6.2	The MPE/Multi-Channel Settings Dialog	326	3	chapters/12-editing-mpe.md
+13	Converting Audio to MIDI	327	1	chapters/13-converting-audio-to-midi.md
+13.1	Slice to New MIDI Track	327	2	chapters/13-converting-audio-to-midi.md
+13.1.1	Resequencing Slices	329	3	chapters/13-converting-audio-to-midi.md
+13.1.2	Using Effects on Slices	329	3	chapters/13-converting-audio-to-midi.md
+13.2	Convert Harmony to New MIDI Track	330	2	chapters/13-converting-audio-to-midi.md
+13.3	Convert Melody to New MIDI Track	330	2	chapters/13-converting-audio-to-midi.md
+13.4	Convert Drums to New MIDI Track	331	2	chapters/13-converting-audio-to-midi.md
+13.5	Optimizing for Better Conversion Quality	331	2	chapters/13-converting-audio-to-midi.md
+14	Using Grooves	332	1	chapters/14-using-grooves.md
+14.1	Groove Pool	333	2	chapters/14-using-grooves.md
+14.1.1	Adjusting Groove Parameters	334	3	chapters/14-using-grooves.md
+14.1.2	Committing Grooves	335	3	chapters/14-using-grooves.md
+14.2	Editing Grooves	336	2	chapters/14-using-grooves.md
+14.2.1	Extracting Grooves	336	3	chapters/14-using-grooves.md
+14.3	Groove Tips	337	2	chapters/14-using-grooves.md
+14.3.1	Grooving a Single Voice	337	3	chapters/14-using-grooves.md
+14.3.2	Non-Destructive Quantization	337	3	chapters/14-using-grooves.md
+14.3.3	Creating Texture With Randomization	337	3	chapters/14-using-grooves.md
+15	Using Tuning Systems	338	1	chapters/15-using-tuning-systems.md
+15.1	Loading a Tuning System	340	2	chapters/15-using-tuning-systems.md
+15.2	The Tuning Section	343	2	chapters/15-using-tuning-systems.md
+15.3	MIDI Track Options for Tuning Systems	344	2	chapters/15-using-tuning-systems.md
+15.3.1	Bypass Tuning	344	3	chapters/15-using-tuning-systems.md
+15.3.2	MIDI Controller Layouts	345	3	chapters/15-using-tuning-systems.md
+15.4	Learn More About Tuning Systems	346	2	chapters/15-using-tuning-systems.md
+16	Launching Clips	347	1	chapters/16-launching-clips.md
+16.1	The Launch Controls	347	2	chapters/16-launching-clips.md
+16.2	Launch Modes	348	2	chapters/16-launching-clips.md
+16.3	Legato Mode	349	2	chapters/16-launching-clips.md
+16.4	Clip Launch Quantization	350	2	chapters/16-launching-clips.md
+16.5	Velocity	351	2	chapters/16-launching-clips.md
+16.6	Clip Offset and Nudging	351	2	chapters/16-launching-clips.md
+16.7	Follow Actions	353	2	chapters/16-launching-clips.md
+16.7.1	Looping Parts of a Clip	356	3	chapters/16-launching-clips.md
+16.7.2	Creating Cycles	357	3	chapters/16-launching-clips.md
+16.7.3	Temporarily Looping Clips	357	3	chapters/16-launching-clips.md
+16.7.4	Adding Variations in Sync	357	3	chapters/16-launching-clips.md
+16.7.5	Mixing up Melodies and Beats	358	3	chapters/16-launching-clips.md
+16.7.6	Creating Nonrepetitive Structures	358	3	chapters/16-launching-clips.md
+17	Routing and I/O	359	1	chapters/17-routing-and-i-o.md
+17.1	Monitoring	361	2	chapters/17-routing-and-i-o.md
+17.2	External Audio In/Out	362	2	chapters/17-routing-and-i-o.md
+17.2.1	Mono/Stereo Conversions	362	3	chapters/17-routing-and-i-o.md
+17.3	External MIDI In/Out	362	2	chapters/17-routing-and-i-o.md
+17.3.1	MIDI Port Inputs and Outputs	363	3	chapters/17-routing-and-i-o.md
+17.3.2	Playing MIDI With the Computer Keyboard	365	3	chapters/17-routing-and-i-o.md
+17.3.3	Connecting External Synthesizers	366	3	chapters/17-routing-and-i-o.md
+17.3.4	MIDI In/Out Indicators	366	3	chapters/17-routing-and-i-o.md
+17.4	Resampling	367	2	chapters/17-routing-and-i-o.md
+17.5	Internal Routings	367	2	chapters/17-routing-and-i-o.md
+17.5.1	Internal Routing Points	368	3	chapters/17-routing-and-i-o.md
+17.5.2	Making Use of Internal Routing	370	3	chapters/17-routing-and-i-o.md
+18	Mixing	381	1	chapters/18-mixing.md
+18.1	The Live Mixer	381	2	chapters/18-mixing.md
+18.1.1	Additional Mixer Features	384	3	chapters/18-mixing.md
+18.2	Audio and MIDI Tracks	385	2	chapters/18-mixing.md
+18.3	Group Tracks	386	2	chapters/18-mixing.md
+18.4	Return Tracks and the Main track	388	2	chapters/18-mixing.md
+18.5	Using Live’s Crossfader	390	2	chapters/18-mixing.md
+18.6	Soloing and Cueing	393	2	chapters/18-mixing.md
+18.7	Track Delays	395	2	chapters/18-mixing.md
+18.8	Keep Monitoring Latency in Recording Track Toggles	395	2	chapters/18-mixing.md
+18.9	Performance Impact Track Indicators	396	2	chapters/18-mixing.md
+19	Recording New Clips	397	1	chapters/19-recording-new-clips.md
+19.1	Choosing an Input	397	2	chapters/19-recording-new-clips.md
+19.2	Arming (Record-Enabling) Tracks	398	2	chapters/19-recording-new-clips.md
+19.3	Recording	398	2	chapters/19-recording-new-clips.md
+19.3.1	Recording Into the Arrangement	399	3	chapters/19-recording-new-clips.md
+19.3.2	Recording Into Session Slots	399	3	chapters/19-recording-new-clips.md
+19.3.3	Overdub Recording MIDI Patterns	401	3	chapters/19-recording-new-clips.md
+19.3.4	MIDI Step Recording	401	3	chapters/19-recording-new-clips.md
+19.4	Recording in Sync	402	2	chapters/19-recording-new-clips.md
+19.4.1	Metronome Settings	404	3	chapters/19-recording-new-clips.md
+19.5	Recording Quantized MIDI Notes	404	2	chapters/19-recording-new-clips.md
+19.6	Recording with Count-in	405	2	chapters/19-recording-new-clips.md
+19.7	Setting up File Types	405	2	chapters/19-recording-new-clips.md
+19.8	Where are the Recorded Samples?	405	2	chapters/19-recording-new-clips.md
+19.9	Using Remote Control for Recording	406	2	chapters/19-recording-new-clips.md
+19.10	Capturing MIDI	407	2	chapters/19-recording-new-clips.md
+19.10.1	Starting a New Live Set	408	3	chapters/19-recording-new-clips.md
+19.10.2	Adding Material to an Existing Live Set	409	3	chapters/19-recording-new-clips.md
+20	Bounce to Audio	410	1	chapters/20-bounce-to-audio.md
+20.1	Bouncing Individual Tracks	410	2	chapters/20-bounce-to-audio.md
+20.2	Bouncing Group Tracks	412	2	chapters/20-bounce-to-audio.md
+20.3	Pasting Bounced Audio	414	2	chapters/20-bounce-to-audio.md
+21	Comping	416	1	chapters/21-comping.md
+21.1	Take Lanes	416	2	chapters/21-comping.md
+21.2	Inserting and Managing Take Lanes	418	2	chapters/21-comping.md
+21.3	Recording Takes	418	2	chapters/21-comping.md
+21.4	Inserting Samples	419	2	chapters/21-comping.md
+21.5	Auditioning Take Lanes	419	2	chapters/21-comping.md
+21.6	Creating a Comp	420	2	chapters/21-comping.md
+21.7	Source Highlights	421	2	chapters/21-comping.md
+22	Stem Separation	422	1	chapters/22-stem-separation.md
+22.1	How Stem Separation Works in Live	422	2	chapters/22-stem-separation.md
+22.2	Separating Audio Files and Clips	422	2	chapters/22-stem-separation.md
+22.2.1	Separation Speed vs. Quality	428	3	chapters/22-stem-separation.md
+23	Working with Instruments and Effects	430	1	chapters/23-working-with-instruments-and-effects.md
+23.1	Device View	430	2	chapters/23-working-with-instruments-and-effects.md
+23.2	Using Devices	432	2	chapters/23-working-with-instruments-and-effects.md
+23.2.1	Device Title Bar	435	3	chapters/23-working-with-instruments-and-effects.md
+23.2.2	Device A/B Comparison	439	3	chapters/23-working-with-instruments-and-effects.md
+23.2.3	Live Device Presets	443	3	chapters/23-working-with-instruments-and-effects.md
+23.2.4	Saving Presets	445	3	chapters/23-working-with-instruments-and-effects.md
+23.2.5	Default Presets	445	3	chapters/23-working-with-instruments-and-effects.md
+23.3	Using Plug-Ins	448	2	chapters/23-working-with-instruments-and-effects.md
+23.3.1	Plug-Ins in the Device View	449	3	chapters/23-working-with-instruments-and-effects.md
+23.3.2	Sidechain Parameters	453	3	chapters/23-working-with-instruments-and-effects.md
+23.4	VST Plug-Ins	454	2	chapters/23-working-with-instruments-and-effects.md
+23.4.1	The VST Plug-In Folder	454	3	chapters/23-working-with-instruments-and-effects.md
+23.4.2	VST Presets and Banks	457	3	chapters/23-working-with-instruments-and-effects.md
+23.5	Audio Units Plug-Ins	458	2	chapters/23-working-with-instruments-and-effects.md
+23.6	Device Delay Compensation	459	2	chapters/23-working-with-instruments-and-effects.md
+24	Instrument, Drum and Effect Racks	461	1	chapters/24-instrument-drum-and-effect-racks.md
+24.1	An Overview of Racks	461	2	chapters/24-instrument-drum-and-effect-racks.md
+24.1.1	Signal Flow and Parallel Device Chains	461	3	chapters/24-instrument-drum-and-effect-racks.md
+24.1.2	Macro Controls	462	3	chapters/24-instrument-drum-and-effect-racks.md
+24.2	Creating Racks	463	2	chapters/24-instrument-drum-and-effect-racks.md
+24.3	Looking at Racks	464	2	chapters/24-instrument-drum-and-effect-racks.md
+24.4	Chain List	465	2	chapters/24-instrument-drum-and-effect-racks.md
+24.4.1	Auto Select	466	3	chapters/24-instrument-drum-and-effect-racks.md
+24.5	Zones	467	2	chapters/24-instrument-drum-and-effect-racks.md
+24.5.1	Signal Flow through Zones	467	3	chapters/24-instrument-drum-and-effect-racks.md
+24.5.2	Key Zones	468	3	chapters/24-instrument-drum-and-effect-racks.md
+24.5.3	Velocity Zones	468	3	chapters/24-instrument-drum-and-effect-racks.md
+24.5.4	Chain Select Zones	469	3	chapters/24-instrument-drum-and-effect-racks.md
+24.6	Drum Racks	471	2	chapters/24-instrument-drum-and-effect-racks.md
+24.6.1	Pad View	472	3	chapters/24-instrument-drum-and-effect-racks.md
+24.7	Using the Macro Controls	474	2	chapters/24-instrument-drum-and-effect-racks.md
+24.7.1	Map Mode	474	3	chapters/24-instrument-drum-and-effect-racks.md
+24.7.2	Randomizing Macro Controls	475	3	chapters/24-instrument-drum-and-effect-racks.md
+24.7.3	Macro Control Variations	477	3	chapters/24-instrument-drum-and-effect-racks.md
+24.8	Mixing With Racks	478	2	chapters/24-instrument-drum-and-effect-racks.md
+24.8.1	Extracting Chains	479	3	chapters/24-instrument-drum-and-effect-racks.md
+25	Automation and Editing Envelopes	481	1	chapters/25-automation-and-editing-envelopes.md
+25.1	Recording Automation in Arrangement View	481	2	chapters/25-automation-and-editing-envelopes.md
+25.2	Recording Automation in Session View	482	2	chapters/25-automation-and-editing-envelopes.md
+25.2.1	Session Automation Recording Modes	484	3	chapters/25-automation-and-editing-envelopes.md
+25.3	Deleting Automation	484	2	chapters/25-automation-and-editing-envelopes.md
+25.4	Overriding Automation	484	2	chapters/25-automation-and-editing-envelopes.md
+25.5	Drawing and Editing Automation	485	2	chapters/25-automation-and-editing-envelopes.md
+25.5.1	Drawing Envelopes	486	3	chapters/25-automation-and-editing-envelopes.md
+25.5.2	Editing Breakpoints	487	3	chapters/25-automation-and-editing-envelopes.md
+25.5.3	Stretching and Skewing Envelopes	489	3	chapters/25-automation-and-editing-envelopes.md
+25.5.4	Simplifying Envelopes	490	3	chapters/25-automation-and-editing-envelopes.md
+25.5.5	Inserting Automation Shapes	491	3	chapters/25-automation-and-editing-envelopes.md
+25.5.6	Locking Envelopes	492	3	chapters/25-automation-and-editing-envelopes.md
+25.5.7	Edit Menu Commands	492	3	chapters/25-automation-and-editing-envelopes.md
+25.5.8	Editing the Tempo Automation	492	3	chapters/25-automation-and-editing-envelopes.md
+26	Clip Envelopes	494	1	chapters/26-clip-envelopes.md
+26.1	The Clip Envelope Editor	494	2	chapters/26-clip-envelopes.md
+26.2	Audio Clip Envelopes	495	2	chapters/26-clip-envelopes.md
+26.2.1	Clip Envelopes are Non-Destructive	495	3	chapters/26-clip-envelopes.md
+26.2.2	Changing Pitch and Tuning per Note	495	3	chapters/26-clip-envelopes.md
+26.2.3	Muting or Attenuating Notes in a Sample	496	3	chapters/26-clip-envelopes.md
+26.2.4	Scrambling Beats	497	3	chapters/26-clip-envelopes.md
+26.2.5	Using Clips as Templates	498	3	chapters/26-clip-envelopes.md
+26.3	Mixer and Device Clip Envelopes	498	2	chapters/26-clip-envelopes.md
+26.3.1	Modulating Mixer Volumes and Sends	500	3	chapters/26-clip-envelopes.md
+26.3.2	Modulating Pan	501	3	chapters/26-clip-envelopes.md
+26.3.3	Modulating Device Controls	501	3	chapters/26-clip-envelopes.md
+26.4	MIDI Controller Clip Envelopes	502	2	chapters/26-clip-envelopes.md
+26.5	Unlinking Clip Envelopes From Clips	502	2	chapters/26-clip-envelopes.md
+26.5.1	Programming a Fade-Out for a Live Set	503	3	chapters/26-clip-envelopes.md
+26.5.2	Creating Long Loops from Short Loops	503	3	chapters/26-clip-envelopes.md
+26.5.3	Imposing Rhythm Patterns onto Samples	504	3	chapters/26-clip-envelopes.md
+26.5.4	Clip Envelopes as LFOs	504	3	chapters/26-clip-envelopes.md
+26.5.5	Warping Linked Envelopes	504	3	chapters/26-clip-envelopes.md
+27	Working with Video	506	1	chapters/27-working-with-video.md
+27.1	Importing Video	506	2	chapters/27-working-with-video.md
+27.2	The Appearance of Video in Live	506	2	chapters/27-working-with-video.md
+27.2.1	Video Clips in the Arrangement View	506	3	chapters/27-working-with-video.md
+27.2.2	The Video Window	507	3	chapters/27-working-with-video.md
+27.2.3	Clip View	508	3	chapters/27-working-with-video.md
+27.3	Matching Sound to Video	509	2	chapters/27-working-with-video.md
+27.4	Video Trimming Tricks	509	2	chapters/27-working-with-video.md
+28	Live Audio Effect Reference	512	1	chapters/28-live-audio-effect-reference.md
+28.1	Amp	512	2	chapters/28-live-audio-effect-reference.md
+28.1.1	Amp Tips	513	3	chapters/28-live-audio-effect-reference.md
+28.2	Auto Filter	514	2	chapters/28-live-audio-effect-reference.md
+28.2.1	Filter Types	515	3	chapters/28-live-audio-effect-reference.md
+28.2.2	Filter Display	516	3	chapters/28-live-audio-effect-reference.md
+28.2.3	LFO Controls	517	3	chapters/28-live-audio-effect-reference.md
+28.2.4	Envelope Follower Controls	518	3	chapters/28-live-audio-effect-reference.md
+28.2.5	Filter Drive and Circuits	519	3	chapters/28-live-audio-effect-reference.md
+28.2.6	Global Controls	520	3	chapters/28-live-audio-effect-reference.md
+28.2.7	Sidechain Parameters	520	3	chapters/28-live-audio-effect-reference.md
+28.3	Auto Pan-Tremolo	522	2	chapters/28-live-audio-effect-reference.md
+28.4	Auto Shift	526	2	chapters/28-live-audio-effect-reference.md
+28.4.1	Input Section	527	3	chapters/28-live-audio-effect-reference.md
+28.4.2	Quantizer Tab	529	3	chapters/28-live-audio-effect-reference.md
+28.4.3	MIDI Tab	530	3	chapters/28-live-audio-effect-reference.md
+28.4.4	LFO Tab	531	3	chapters/28-live-audio-effect-reference.md
+28.4.5	Pitch Section	532	3	chapters/28-live-audio-effect-reference.md
+28.4.6	Vibrato Section	533	3	chapters/28-live-audio-effect-reference.md
+28.5	Beat Repeat	534	2	chapters/28-live-audio-effect-reference.md
+28.6	Cabinet	536	2	chapters/28-live-audio-effect-reference.md
+28.6.1	Cabinet Tips	537	3	chapters/28-live-audio-effect-reference.md
+28.7	Channel EQ	538	2	chapters/28-live-audio-effect-reference.md
+28.7.1	Channel EQ Tips	539	3	chapters/28-live-audio-effect-reference.md
+28.8	Chorus-Ensemble	540	2	chapters/28-live-audio-effect-reference.md
+28.8.1	Chorus-Ensemble Tips	543	3	chapters/28-live-audio-effect-reference.md
+28.9	Compressor	544	2	chapters/28-live-audio-effect-reference.md
+28.9.1	Sidechain Parameters	547	3	chapters/28-live-audio-effect-reference.md
+28.9.2	Compressor Tips	548	3	chapters/28-live-audio-effect-reference.md
+28.10	Corpus	549	2	chapters/28-live-audio-effect-reference.md
+28.10.1	Resonator Parameters	550	3	chapters/28-live-audio-effect-reference.md
+28.10.2	LFO Section	552	3	chapters/28-live-audio-effect-reference.md
+28.10.3	Filter Section	553	3	chapters/28-live-audio-effect-reference.md
+28.10.4	Global Parameters	554	3	chapters/28-live-audio-effect-reference.md
+28.10.5	Sidechain Parameters	554	3	chapters/28-live-audio-effect-reference.md
+28.11	Delay	555	2	chapters/28-live-audio-effect-reference.md
+28.11.1	Context Menu Options for Delay	558	3	chapters/28-live-audio-effect-reference.md
+28.11.2	Delay Tips	558	3	chapters/28-live-audio-effect-reference.md
+28.12	Drum Buss	559	2	chapters/28-live-audio-effect-reference.md
+28.13	Dynamic Tube	561	2	chapters/28-live-audio-effect-reference.md
+28.14	Echo	562	2	chapters/28-live-audio-effect-reference.md
+28.14.1	Echo Tab	563	3	chapters/28-live-audio-effect-reference.md
+28.14.2	Modulation Tab	564	3	chapters/28-live-audio-effect-reference.md
+28.14.3	Character Tab	564	3	chapters/28-live-audio-effect-reference.md
+28.14.4	Global Controls	565	3	chapters/28-live-audio-effect-reference.md
+28.15	EQ Eight	566	2	chapters/28-live-audio-effect-reference.md
+28.16	EQ Three	568	2	chapters/28-live-audio-effect-reference.md
+28.17	Erosion	569	2	chapters/28-live-audio-effect-reference.md
+28.18	External Audio Effect	570	2	chapters/28-live-audio-effect-reference.md
+28.19	Filter Delay	572	2	chapters/28-live-audio-effect-reference.md
+28.20	Gate	573	2	chapters/28-live-audio-effect-reference.md
+28.21	Glue Compressor	575	2	chapters/28-live-audio-effect-reference.md
+28.21.1	Sidechain Parameters	576	3	chapters/28-live-audio-effect-reference.md
+28.22	Grain Delay	578	2	chapters/28-live-audio-effect-reference.md
+28.23	Hybrid Reverb	579	2	chapters/28-live-audio-effect-reference.md
+28.23.1	Signal Flow	580	3	chapters/28-live-audio-effect-reference.md
+28.23.2	Input Section	580	3	chapters/28-live-audio-effect-reference.md
+28.23.3	Convolution Reverb Engine	581	3	chapters/28-live-audio-effect-reference.md
+28.23.4	Algorithmic Reverb Engine	582	3	chapters/28-live-audio-effect-reference.md
+28.23.5	EQ Section	585	3	chapters/28-live-audio-effect-reference.md
+28.23.6	Output Section	585	3	chapters/28-live-audio-effect-reference.md
+28.24	Limiter	586	2	chapters/28-live-audio-effect-reference.md
+28.25	Looper	588	2	chapters/28-live-audio-effect-reference.md
+28.25.1	Feedback Routing	591	3	chapters/28-live-audio-effect-reference.md
+28.26	Multiband Dynamics	592	2	chapters/28-live-audio-effect-reference.md
+28.26.1	Dynamics Processing Theory	592	3	chapters/28-live-audio-effect-reference.md
+28.26.2	Interface and Controls	593	3	chapters/28-live-audio-effect-reference.md
+28.26.3	Sidechain Parameters	595	3	chapters/28-live-audio-effect-reference.md
+28.26.4	Multiband Dynamics Tips	596	3	chapters/28-live-audio-effect-reference.md
+28.27	Overdrive	597	2	chapters/28-live-audio-effect-reference.md
+28.28	Pedal	598	2	chapters/28-live-audio-effect-reference.md
+28.28.1	Pedal Tips	599	3	chapters/28-live-audio-effect-reference.md
+28.29	Phaser-Flanger	601	2	chapters/28-live-audio-effect-reference.md
+28.30	Redux	604	2	chapters/28-live-audio-effect-reference.md
+28.30.1	Downsampling	605	3	chapters/28-live-audio-effect-reference.md
+28.30.2	Bit Reduction	605	3	chapters/28-live-audio-effect-reference.md
+28.31	Resonators	606	2	chapters/28-live-audio-effect-reference.md
+28.32	Reverb	607	2	chapters/28-live-audio-effect-reference.md
+28.32.1	Input Filter	608	3	chapters/28-live-audio-effect-reference.md
+28.32.2	Early Reflections	608	3	chapters/28-live-audio-effect-reference.md
+28.32.3	Diffusion Network	609	3	chapters/28-live-audio-effect-reference.md
+28.32.4	Chorus	609	3	chapters/28-live-audio-effect-reference.md
+28.32.5	Global Settings	610	3	chapters/28-live-audio-effect-reference.md
+28.32.6	Output	611	3	chapters/28-live-audio-effect-reference.md
+28.33	Roar	611	2	chapters/28-live-audio-effect-reference.md
+28.33.1	Input Section	612	3	chapters/28-live-audio-effect-reference.md
+28.33.2	Gain Stage Section	613	3	chapters/28-live-audio-effect-reference.md
+28.33.3	Modulation Section	615	3	chapters/28-live-audio-effect-reference.md
+28.33.4	Feedback Section	617	3	chapters/28-live-audio-effect-reference.md
+28.33.5	Global Section	618	3	chapters/28-live-audio-effect-reference.md
+28.33.6	Sidechain Parameters	619	3	chapters/28-live-audio-effect-reference.md
+28.34	Saturator	620	2	chapters/28-live-audio-effect-reference.md
+28.35	Shifter	623	2	chapters/28-live-audio-effect-reference.md
+28.35.1	Tuning and Delay Section	624	3	chapters/28-live-audio-effect-reference.md
+28.35.2	LFO Section	625	3	chapters/28-live-audio-effect-reference.md
+28.35.3	Envelope Follower Section	626	3	chapters/28-live-audio-effect-reference.md
+28.35.4	Shifter Mode Section	626	3	chapters/28-live-audio-effect-reference.md
+28.35.5	Sidechain Parameters	627	3	chapters/28-live-audio-effect-reference.md
+28.35.6	Shifter Tips	628	3	chapters/28-live-audio-effect-reference.md
+28.36	Spectral Resonator	628	2	chapters/28-live-audio-effect-reference.md
+28.36.1	Pitch Mode Section	629	3	chapters/28-live-audio-effect-reference.md
+28.36.2	Frequency Section	630	3	chapters/28-live-audio-effect-reference.md
+28.36.3	Modulation Section	631	3	chapters/28-live-audio-effect-reference.md
+28.36.4	Spectrogram	631	3	chapters/28-live-audio-effect-reference.md
+28.36.5	Global Parameters	632	3	chapters/28-live-audio-effect-reference.md
+28.36.6	Spectral Resonator Tips	633	3	chapters/28-live-audio-effect-reference.md
+28.37	Spectral Time	633	2	chapters/28-live-audio-effect-reference.md
+28.37.1	Freezer Section	634	3	chapters/28-live-audio-effect-reference.md
+28.37.2	Delay Section	635	3	chapters/28-live-audio-effect-reference.md
+28.37.3	Resolution Section	636	3	chapters/28-live-audio-effect-reference.md
+28.37.4	Global Controls	636	3	chapters/28-live-audio-effect-reference.md
+28.38	Spectrum	637	2	chapters/28-live-audio-effect-reference.md
+28.39	Tuner	638	2	chapters/28-live-audio-effect-reference.md
+28.39.1	View Switches	639	3	chapters/28-live-audio-effect-reference.md
+28.39.2	Classic View	639	3	chapters/28-live-audio-effect-reference.md
+28.39.3	Histogram View	641	3	chapters/28-live-audio-effect-reference.md
+28.39.4	Note Spellings	642	3	chapters/28-live-audio-effect-reference.md
+28.39.5	Reference Slider	643	3	chapters/28-live-audio-effect-reference.md
+28.40	Utility	644	2	chapters/28-live-audio-effect-reference.md
+28.41	Vinyl Distortion	646	2	chapters/28-live-audio-effect-reference.md
+28.42	Vocoder	647	2	chapters/28-live-audio-effect-reference.md
+28.42.1	Vocoder Tips	649	3	chapters/28-live-audio-effect-reference.md
+29	Live MIDI Effect Reference	651	1	chapters/29-live-midi-effect-reference.md
+29.1	Arpeggiator	651	2	chapters/29-live-midi-effect-reference.md
+29.2	CC Control	654	2	chapters/29-live-midi-effect-reference.md
+29.3	Chord	655	2	chapters/29-live-midi-effect-reference.md
+29.4	Note Length	657	2	chapters/29-live-midi-effect-reference.md
+29.5	Pitch	658	2	chapters/29-live-midi-effect-reference.md
+29.6	Random	659	2	chapters/29-live-midi-effect-reference.md
+29.7	Scale	661	2	chapters/29-live-midi-effect-reference.md
+29.8	Velocity	662	2	chapters/29-live-midi-effect-reference.md
+30	Live Instrument Reference	664	1	chapters/30-live-instrument-reference.md
+30.1	Analog	664	2	chapters/30-live-instrument-reference.md
+30.1.1	Architecture and Interface	664	3	chapters/30-live-instrument-reference.md
+30.1.2	Oscillators	665	3	chapters/30-live-instrument-reference.md
+30.1.3	Noise Generator	667	3	chapters/30-live-instrument-reference.md
+30.1.4	Filters	667	3	chapters/30-live-instrument-reference.md
+30.1.5	Amplifiers	668	3	chapters/30-live-instrument-reference.md
+30.1.6	Envelopes	669	3	chapters/30-live-instrument-reference.md
+30.1.7	LFOs	670	3	chapters/30-live-instrument-reference.md
+30.1.8	Global Parameters	671	3	chapters/30-live-instrument-reference.md
+30.1.9	MPE Sources	672	3	chapters/30-live-instrument-reference.md
+30.2	Collision	673	2	chapters/30-live-instrument-reference.md
+30.2.1	Architecture and Interface	673	3	chapters/30-live-instrument-reference.md
+30.2.2	Mallet Section	674	3	chapters/30-live-instrument-reference.md
+30.2.3	Noise Section	675	3	chapters/30-live-instrument-reference.md
+30.2.4	Resonator Tabs	676	3	chapters/30-live-instrument-reference.md
+30.2.5	LFO Tab	679	3	chapters/30-live-instrument-reference.md
+30.2.6	MIDI/MPE Tab	680	3	chapters/30-live-instrument-reference.md
+30.2.7	Sound Design Tips	681	3	chapters/30-live-instrument-reference.md
+30.3	Drift	682	2	chapters/30-live-instrument-reference.md
+30.3.1	Subtractive Synthesis	682	3	chapters/30-live-instrument-reference.md
+30.3.2	Oscillator Section	683	3	chapters/30-live-instrument-reference.md
+30.3.3	Filter Section	685	3	chapters/30-live-instrument-reference.md
+30.3.4	Envelopes Section	686	3	chapters/30-live-instrument-reference.md
+30.3.5	LFO Section	687	3	chapters/30-live-instrument-reference.md
+30.3.6	Mod Section	688	3	chapters/30-live-instrument-reference.md
+30.3.7	Global Section	689	3	chapters/30-live-instrument-reference.md
+30.4	Drum Sampler	690	2	chapters/30-live-instrument-reference.md
+30.4.1	Sample Controls Section	690	3	chapters/30-live-instrument-reference.md
+30.4.2	Playback Effects Section	692	3	chapters/30-live-instrument-reference.md
+30.4.3	Filter Section	694	3	chapters/30-live-instrument-reference.md
+30.4.4	Global Section	694	3	chapters/30-live-instrument-reference.md
+30.4.5	Context Menu Options for Drum Sampler	695	3	chapters/30-live-instrument-reference.md
+30.5	Electric	696	2	chapters/30-live-instrument-reference.md
+30.5.1	Architecture and Interface	696	3	chapters/30-live-instrument-reference.md
+30.5.2	Hammer Section	697	3	chapters/30-live-instrument-reference.md
+30.5.3	Fork Section	698	3	chapters/30-live-instrument-reference.md
+30.5.4	Damper/Pickup Section	699	3	chapters/30-live-instrument-reference.md
+30.5.5	Global Section	700	3	chapters/30-live-instrument-reference.md
+30.6	External Instrument	701	2	chapters/30-live-instrument-reference.md
+30.7	Impulse	703	2	chapters/30-live-instrument-reference.md
+30.7.1	Sample Slots	703	3	chapters/30-live-instrument-reference.md
+30.7.2	Start, Transpose and Stretch	704	3	chapters/30-live-instrument-reference.md
+30.7.3	Filter	704	3	chapters/30-live-instrument-reference.md
+30.7.4	Saturator and Envelope	704	3	chapters/30-live-instrument-reference.md
+30.7.5	Pan and Volume	704	3	chapters/30-live-instrument-reference.md
+30.7.6	Global Controls	705	3	chapters/30-live-instrument-reference.md
+30.7.7	Individual Outputs	705	3	chapters/30-live-instrument-reference.md
+30.8	Meld	705	2	chapters/30-live-instrument-reference.md
+30.8.1	General Overview	705	3	chapters/30-live-instrument-reference.md
+30.8.2	Oscillators	706	3	chapters/30-live-instrument-reference.md
+30.8.3	Oscillator Macros	707	3	chapters/30-live-instrument-reference.md
+30.8.4	Envelopes Tab	709	3	chapters/30-live-instrument-reference.md
+30.8.5	LFOs Tab	710	3	chapters/30-live-instrument-reference.md
+30.8.6	Matrix Tab	710	3	chapters/30-live-instrument-reference.md
+30.8.7	MIDI and MPE Tabs	711	3	chapters/30-live-instrument-reference.md
+30.8.8	Settings Tab	711	3	chapters/30-live-instrument-reference.md
+30.8.9	Filters	712	3	chapters/30-live-instrument-reference.md
+30.8.10	Mix Section	714	3	chapters/30-live-instrument-reference.md
+30.8.11	Global Controls	714	3	chapters/30-live-instrument-reference.md
+30.9	Operator	715	2	chapters/30-live-instrument-reference.md
+30.9.1	General Overview	716	3	chapters/30-live-instrument-reference.md
+30.9.2	Oscillator Section	717	3	chapters/30-live-instrument-reference.md
+30.9.3	LFO Section	719	3	chapters/30-live-instrument-reference.md
+30.9.4	Envelopes	720	3	chapters/30-live-instrument-reference.md
+30.9.5	Filter Section	722	3	chapters/30-live-instrument-reference.md
+30.9.6	Global Controls	723	3	chapters/30-live-instrument-reference.md
+30.9.7	Glide and Spread	724	3	chapters/30-live-instrument-reference.md
+30.9.8	Strategies for Saving CPU Power	725	3	chapters/30-live-instrument-reference.md
+30.9.9	Finally…	725	3	chapters/30-live-instrument-reference.md
+30.9.10	The Complete Parameter List	725	3	chapters/30-live-instrument-reference.md
+30.10	Sampler	733	2	chapters/30-live-instrument-reference.md
+30.10.1	Getting Started with Sampler	733	3	chapters/30-live-instrument-reference.md
+30.10.2	Multisampling	733	3	chapters/30-live-instrument-reference.md
+30.10.3	Title Bar Options	734	3	chapters/30-live-instrument-reference.md
+30.10.4	Sampler’s Tabs	735	3	chapters/30-live-instrument-reference.md
+30.10.5	The Zone Tab	735	3	chapters/30-live-instrument-reference.md
+30.10.6	The Sample Tab	741	3	chapters/30-live-instrument-reference.md
+30.10.7	The Pitch/Osc Tab	745	3	chapters/30-live-instrument-reference.md
+30.10.8	The Filter/Global Tab	747	3	chapters/30-live-instrument-reference.md
+30.10.9	The Modulation Tab	749	3	chapters/30-live-instrument-reference.md
+30.10.10	The MIDI Tab	750	3	chapters/30-live-instrument-reference.md
+30.10.11	Importing Third-Party Multisamples	751	3	chapters/30-live-instrument-reference.md
+30.11	Simpler	751	2	chapters/30-live-instrument-reference.md
+30.11.1	Playback Modes	752	3	chapters/30-live-instrument-reference.md
+30.11.2	Warp Controls	756	3	chapters/30-live-instrument-reference.md
+30.11.3	Filter	757	3	chapters/30-live-instrument-reference.md
+30.11.4	Envelopes	758	3	chapters/30-live-instrument-reference.md
+30.11.5	LFO	759	3	chapters/30-live-instrument-reference.md
+30.11.6	Global Parameters	760	3	chapters/30-live-instrument-reference.md
+30.11.7	Context Menu Options for Simpler	761	3	chapters/30-live-instrument-reference.md
+30.11.8	Strategies for Saving CPU Power	761	3	chapters/30-live-instrument-reference.md
+30.12	Tension	762	2	chapters/30-live-instrument-reference.md
+30.12.1	Architecture and Interface	762	3	chapters/30-live-instrument-reference.md
+30.12.2	String Tab	763	3	chapters/30-live-instrument-reference.md
+30.12.3	Filter/Global Tab	769	3	chapters/30-live-instrument-reference.md
+30.12.4	Sound Design Tips	773	3	chapters/30-live-instrument-reference.md
+30.13	Wavetable	774	2	chapters/30-live-instrument-reference.md
+30.13.1	Wavetable Synthesis	774	3	chapters/30-live-instrument-reference.md
+30.13.2	Oscillators	774	3	chapters/30-live-instrument-reference.md
+30.13.3	Sub Oscillator	776	3	chapters/30-live-instrument-reference.md
+30.13.4	Filters	776	3	chapters/30-live-instrument-reference.md
+30.13.5	Matrix Tab	778	3	chapters/30-live-instrument-reference.md
+30.13.6	Mod Sources Tab	779	3	chapters/30-live-instrument-reference.md
+30.13.7	MIDI Tab	781	3	chapters/30-live-instrument-reference.md
+30.13.8	Global and Unison Controls	781	3	chapters/30-live-instrument-reference.md
+30.13.9	Hi-Quality Mode	783	3	chapters/30-live-instrument-reference.md
+31	Max for Live	784	1	chapters/31-max-for-live.md
+31.1	Setting Up Max for Live	784	2	chapters/31-max-for-live.md
+31.2	Using Max for Live Devices	785	2	chapters/31-max-for-live.md
+31.3	Editing Max for Live Devices	785	2	chapters/31-max-for-live.md
+31.4	Building Max for Live MIDI Tools	788	2	chapters/31-max-for-live.md
+31.5	Max Dependencies	789	2	chapters/31-max-for-live.md
+31.6	Learning Max Programming	789	2	chapters/31-max-for-live.md
+32	Max for Live Devices	790	1	chapters/32-max-for-live-devices.md
+32.1	Max for Live Instruments	791	2	chapters/32-max-for-live-devices.md
+32.1.1	DS Clang	791	3	chapters/32-max-for-live-devices.md
+32.1.2	DS Clap	792	3	chapters/32-max-for-live-devices.md
+32.1.3	DS Cymbal	793	3	chapters/32-max-for-live-devices.md
+32.1.4	DS FM	794	3	chapters/32-max-for-live-devices.md
+32.1.5	DS HH	795	3	chapters/32-max-for-live-devices.md
+32.1.6	DS Kick	796	3	chapters/32-max-for-live-devices.md
+32.1.7	DS Snare	797	3	chapters/32-max-for-live-devices.md
+32.1.8	DS Tom	798	3	chapters/32-max-for-live-devices.md
+32.2	Max for Live Audio Effects	799	2	chapters/32-max-for-live-devices.md
+32.2.1	Align Delay	799	3	chapters/32-max-for-live-devices.md
+32.2.2	Envelope Follower	800	3	chapters/32-max-for-live-devices.md
+32.2.3	LFO	803	3	chapters/32-max-for-live-devices.md
+32.2.4	Shaper	806	3	chapters/32-max-for-live-devices.md
+32.3	Max for Live MIDI Effects	808	2	chapters/32-max-for-live-devices.md
+32.3.1	Envelope MIDI	808	3	chapters/32-max-for-live-devices.md
+32.3.2	Expression Control	811	3	chapters/32-max-for-live-devices.md
+32.3.3	MIDI Monitor	813	3	chapters/32-max-for-live-devices.md
+32.3.4	MPE Control	815	3	chapters/32-max-for-live-devices.md
+32.3.5	Note Echo	821	3	chapters/32-max-for-live-devices.md
+32.3.6	Shaper MIDI	822	3	chapters/32-max-for-live-devices.md
+33	MIDI and Key Remote Control	825	1	chapters/33-midi-and-key-remote-control.md
+33.1	MIDI Remote Control	825	2	chapters/33-midi-and-key-remote-control.md
+33.1.1	Natively Supported Control Surfaces	826	3	chapters/33-midi-and-key-remote-control.md
+33.1.2	Manual Control Surface Setup	827	3	chapters/33-midi-and-key-remote-control.md
+33.1.3	Takeover Mode	828	3	chapters/33-midi-and-key-remote-control.md
+33.2	The Mapping Browser	829	2	chapters/33-midi-and-key-remote-control.md
+33.2.1	Assigning MIDI Remote Control	830	3	chapters/33-midi-and-key-remote-control.md
+33.2.2	Mapping to MIDI Notes	830	3	chapters/33-midi-and-key-remote-control.md
+33.2.3	Mapping to Absolute MIDI Controllers	830	3	chapters/33-midi-and-key-remote-control.md
+33.2.4	Mapping to Relative MIDI Controllers	831	3	chapters/33-midi-and-key-remote-control.md
+33.2.5	Computer Keyboard Remote Control	833	3	chapters/33-midi-and-key-remote-control.md
+34	Using Push 1	834	1	chapters/34-using-push-1.md
+34.1	Setup	834	2	chapters/34-using-push-1.md
+34.2	Browsing and Loading Sounds	835	2	chapters/34-using-push-1.md
+34.3	Playing and Programming Beats	836	2	chapters/34-using-push-1.md
+34.3.1	Loop Selector	836	3	chapters/34-using-push-1.md
+34.3.2	16 Velocities Mode	838	3	chapters/34-using-push-1.md
+34.3.3	64-Pad Mode	838	3	chapters/34-using-push-1.md
+34.3.4	Loading Individual Drums	838	3	chapters/34-using-push-1.md
+34.3.5	Step Sequencing Beats	839	3	chapters/34-using-push-1.md
+34.3.6	Real-time Recording	841	3	chapters/34-using-push-1.md
+34.3.7	Fixed Length Recording	843	3	chapters/34-using-push-1.md
+34.4	Additional Recording Options	844	2	chapters/34-using-push-1.md
+34.4.1	Recording with Repeat	844	3	chapters/34-using-push-1.md
+34.4.2	Quantizing	845	3	chapters/34-using-push-1.md
+34.5	Playing Melodies and Harmonies	846	2	chapters/34-using-push-1.md
+34.5.1	Playing in Other Keys	848	3	chapters/34-using-push-1.md
+34.6	Step Sequencing Melodies and Harmonies	849	2	chapters/34-using-push-1.md
+34.6.1	Adjusting the Loop Length	851	3	chapters/34-using-push-1.md
+34.7	Melodic Sequencer + 32 Notes	852	2	chapters/34-using-push-1.md
+34.7.1	32 Notes	852	3	chapters/34-using-push-1.md
+34.7.2	Sequencer	853	3	chapters/34-using-push-1.md
+34.8	Navigating in Note Mode	853	2	chapters/34-using-push-1.md
+34.9	Controlling Live’s Instruments and Effects	854	2	chapters/34-using-push-1.md
+34.10	Mixing with Push 1	855	2	chapters/34-using-push-1.md
+34.11	Recording Automation	857	2	chapters/34-using-push-1.md
+34.12	Step Sequencing Automation	858	2	chapters/34-using-push-1.md
+34.12.1	Note-Specific Parameters	858	3	chapters/34-using-push-1.md
+34.12.2	Per-Step Automation	859	3	chapters/34-using-push-1.md
+34.13	Controlling Live’s Session View	859	2	chapters/34-using-push-1.md
+34.13.1	Session Overview	860	3	chapters/34-using-push-1.md
+34.14	Setting User Preferences	861	2	chapters/34-using-push-1.md
+34.15	Push 1 Control Reference	863	2	chapters/34-using-push-1.md
+35	Using Push 2	874	1	chapters/35-using-push-2.md
+35.1	Setup	875	2	chapters/35-using-push-2.md
+35.2	Browsing and Loading Sounds	875	2	chapters/35-using-push-2.md
+35.3	Playing and Programming Beats	878	2	chapters/35-using-push-2.md
+35.3.1	Loop Selector	878	3	chapters/35-using-push-2.md
+35.3.2	16 Velocities Mode	880	3	chapters/35-using-push-2.md
+35.3.3	64-Pad Mode	880	3	chapters/35-using-push-2.md
+35.3.4	Loading Individual Drums	881	3	chapters/35-using-push-2.md
+35.3.5	Step Sequencing Beats	884	3	chapters/35-using-push-2.md
+35.3.6	Real-time Recording	887	3	chapters/35-using-push-2.md
+35.3.7	Fixed Length Recording	889	3	chapters/35-using-push-2.md
+35.4	Additional Recording Options	890	2	chapters/35-using-push-2.md
+35.4.1	Recording with Repeat	890	3	chapters/35-using-push-2.md
+35.4.2	Quantizing	891	3	chapters/35-using-push-2.md
+35.4.3	Arrangement Recording	892	3	chapters/35-using-push-2.md
+35.5	Playing Melodies and Harmonies	892	2	chapters/35-using-push-2.md
+35.5.1	Playing in Other Keys	895	3	chapters/35-using-push-2.md
+35.6	Step Sequencing Melodies and Harmonies	896	2	chapters/35-using-push-2.md
+35.6.1	Adjusting the Loop Length	898	3	chapters/35-using-push-2.md
+35.7	Melodic Sequencer + 32 Notes	899	2	chapters/35-using-push-2.md
+35.7.1	32 Notes	900	3	chapters/35-using-push-2.md
+35.7.2	Sequencer	900	3	chapters/35-using-push-2.md
+35.8	Working with Samples	902	2	chapters/35-using-push-2.md
+35.8.1	Classic Playback Mode	903	3	chapters/35-using-push-2.md
+35.8.2	One-Shot Mode	904	3	chapters/35-using-push-2.md
+35.8.3	Slicing Mode	906	3	chapters/35-using-push-2.md
+35.9	Navigating in Note Mode	908	2	chapters/35-using-push-2.md
+35.10	Working With Instruments and Effects	909	2	chapters/35-using-push-2.md
+35.10.1	Adding, Deleting, and Reordering Devices	911	3	chapters/35-using-push-2.md
+35.10.2	Working with Racks	912	3	chapters/35-using-push-2.md
+35.11	Track Control And Mixing	914	2	chapters/35-using-push-2.md
+35.11.1	Rack and Group Track Mixing	916	3	chapters/35-using-push-2.md
+35.12	Recording Automation	917	2	chapters/35-using-push-2.md
+35.13	Step Sequencing Automation	918	2	chapters/35-using-push-2.md
+35.14	Clip Mode	919	2	chapters/35-using-push-2.md
+35.14.1	Using MIDI Tracks in Clip Mode	921	3	chapters/35-using-push-2.md
+35.14.2	Real-Time Playing Layouts	921	3	chapters/35-using-push-2.md
+35.14.3	Sequencing Layouts	921	3	chapters/35-using-push-2.md
+35.14.4	Note-Specific Parameters	923	3	chapters/35-using-push-2.md
+35.15	Controlling Live’s Session View	923	2	chapters/35-using-push-2.md
+35.15.1	Session Overview	925	3	chapters/35-using-push-2.md
+35.16	Setup Menu	926	2	chapters/35-using-push-2.md
+35.17	Push 2 Control Reference	927	2	chapters/35-using-push-2.md
+36	Synchronizing with Link, Tempo Follower, and MIDI	933	1	chapters/36-synchronizing-with-link-tempo-follower-and-midi.md
+36.1	Synchronizing via Link	933	2	chapters/36-synchronizing-with-link-tempo-follower-and-midi.md
+36.1.1	Setting up Link	933	3	chapters/36-synchronizing-with-link-tempo-follower-and-midi.md
+36.1.2	Using Link	936	3	chapters/36-synchronizing-with-link-tempo-follower-and-midi.md
+36.1.3	Using Link Audio	936	3	chapters/36-synchronizing-with-link-tempo-follower-and-midi.md
+36.2	Synchronizing via Tempo Follower	937	2	chapters/36-synchronizing-with-link-tempo-follower-and-midi.md
+36.2.1	Setting Up Tempo Follower	938	3	chapters/36-synchronizing-with-link-tempo-follower-and-midi.md
+36.3	Synchronizing via MIDI	939	2	chapters/36-synchronizing-with-link-tempo-follower-and-midi.md
+36.3.1	Synchronizing External MIDI Devices to Live	939	3	chapters/36-synchronizing-with-link-tempo-follower-and-midi.md
+36.3.2	Synchronizing Live to External MIDI Devices	939	3	chapters/36-synchronizing-with-link-tempo-follower-and-midi.md
+36.3.3	Sync Delay	940	3	chapters/36-synchronizing-with-link-tempo-follower-and-midi.md
+37	Computer Audio Resources and Strategies	942	1	chapters/37-computer-audio-resources-and-strategies.md
+37.1	Managing the CPU Load	942	2	chapters/37-computer-audio-resources-and-strategies.md
+37.1.1	The CPU Load Meter	942	3	chapters/37-computer-audio-resources-and-strategies.md
+37.1.2	CPU Load from Multichannel Audio	944	3	chapters/37-computer-audio-resources-and-strategies.md
+37.1.3	CPU Load from Tracks and Devices	944	3	chapters/37-computer-audio-resources-and-strategies.md
+37.1.4	Track Freeze	945	3	chapters/37-computer-audio-resources-and-strategies.md
+37.2	Managing the Disk Load	946	2	chapters/37-computer-audio-resources-and-strategies.md
+38	Audio Fact Sheet	948	1	chapters/38-audio-fact-sheet.md
+38.1	Testing and Methodology	948	2	chapters/38-audio-fact-sheet.md
+38.2	Neutral Operations	948	2	chapters/38-audio-fact-sheet.md
+38.2.1	Undithered Rendering	949	3	chapters/38-audio-fact-sheet.md
+38.2.2	Matching Sample Rate/No Transposition	949	3	chapters/38-audio-fact-sheet.md
+38.2.3	Unstretched Beats/Tones/Texture/Re-Pitch Warping	949	3	chapters/38-audio-fact-sheet.md
+38.2.4	Summing at Single Mix Points	950	3	chapters/38-audio-fact-sheet.md
+38.2.5	Recording External Signals (Bit Depth >/= A/D Converter)	950	3	chapters/38-audio-fact-sheet.md
+38.2.6	Recording Internal Sources at 32 Bit	950	3	chapters/38-audio-fact-sheet.md
+38.2.7	Freezing Tracks	951	3	chapters/38-audio-fact-sheet.md
+38.2.8	Bypassed Effects	951	3	chapters/38-audio-fact-sheet.md
+38.2.9	Routing	952	3	chapters/38-audio-fact-sheet.md
+38.2.10	Splitting Clips	952	3	chapters/38-audio-fact-sheet.md
+38.3	Non-Neutral Operations	952	2	chapters/38-audio-fact-sheet.md
+38.3.1	Playback in Complex and Complex Pro Mode	952	3	chapters/38-audio-fact-sheet.md
+38.3.2	Sample Rate Conversion/Transposition	953	3	chapters/38-audio-fact-sheet.md
+38.3.3	Volume Automation	953	3	chapters/38-audio-fact-sheet.md
+38.3.4	Dithering	953	3	chapters/38-audio-fact-sheet.md
+38.3.5	Recording External Signals (Bit Depth < A/D Converter)	953	3	chapters/38-audio-fact-sheet.md
+38.3.6	Recording Internal Sources Below 32 Bit	954	3	chapters/38-audio-fact-sheet.md
+38.3.7	Consolidate	954	3	chapters/38-audio-fact-sheet.md
+38.3.8	Clip Fades	954	3	chapters/38-audio-fact-sheet.md
+38.3.9	Panning	954	3	chapters/38-audio-fact-sheet.md
+38.3.10	Grooves	954	3	chapters/38-audio-fact-sheet.md
+38.4	Tips for Achieving Optimal Sound Quality in Live	955	2	chapters/38-audio-fact-sheet.md
+38.5	Conclusion	955	2	chapters/38-audio-fact-sheet.md
+39	MIDI Fact Sheet	956	1	chapters/39-midi-fact-sheet.md
+39.1	Ideal MIDI Behavior	956	2	chapters/39-midi-fact-sheet.md
+39.2	MIDI Timing Problems	957	2	chapters/39-midi-fact-sheet.md
+39.3	Live’s MIDI Solutions	957	2	chapters/39-midi-fact-sheet.md
+39.4	Variables Outside of Live’s Control	958	2	chapters/39-midi-fact-sheet.md
+39.5	Tips for Achieving Optimal MIDI Performance	960	2	chapters/39-midi-fact-sheet.md
+39.6	Summary and Conclusions	960	2	chapters/39-midi-fact-sheet.md
+40	Accessibility and Keyboard Navigation	962	1	chapters/40-accessibility-and-keyboard-navigation.md
+40.1	Menu and Keyboard Navigation Settings	962	2	chapters/40-accessibility-and-keyboard-navigation.md
+40.1.1	Using Tab for Navigation	962	3	chapters/40-accessibility-and-keyboard-navigation.md
+40.1.2	Settings Menu	963	3	chapters/40-accessibility-and-keyboard-navigation.md
+40.1.3	Options Menu	964	3	chapters/40-accessibility-and-keyboard-navigation.md
+40.1.4	Speak Help Text	964	3	chapters/40-accessibility-and-keyboard-navigation.md
+40.2	Audio Setup	964	2	chapters/40-accessibility-and-keyboard-navigation.md
+40.3	Connecting MIDI Devices	964	2	chapters/40-accessibility-and-keyboard-navigation.md
+40.4	Navigating in Live	965	2	chapters/40-accessibility-and-keyboard-navigation.md
+40.4.1	Navigate Menu	965	3	chapters/40-accessibility-and-keyboard-navigation.md
+40.5	Editing Automation and Modulation Envelopes	970	2	chapters/40-accessibility-and-keyboard-navigation.md
+40.5.1	Navigating Between Breakpoints	970	3	chapters/40-accessibility-and-keyboard-navigation.md
+40.5.2	Selecting and Editing Breakpoints	971	3	chapters/40-accessibility-and-keyboard-navigation.md
+40.5.3	Switching Between Automation Envelopes in Arrangement View	972	3	chapters/40-accessibility-and-keyboard-navigation.md
+41	Live Keyboard Shortcuts	973	1	chapters/41-live-keyboard-shortcuts.md
+41.1	Showing and Hiding Views	973	2	chapters/41-live-keyboard-shortcuts.md
+41.2	Keyboard Focus and Navigation	974	2	chapters/41-live-keyboard-shortcuts.md
+41.3	Working with Sets and the Program	975	2	chapters/41-live-keyboard-shortcuts.md
+41.4	Working with Devices and Plug-Ins	976	2	chapters/41-live-keyboard-shortcuts.md
+41.5	Editing	976	2	chapters/41-live-keyboard-shortcuts.md
+41.6	Adjusting Values	977	2	chapters/41-live-keyboard-shortcuts.md
+41.7	Commands for Breakpoint Envelopes	978	2	chapters/41-live-keyboard-shortcuts.md
+41.8	Loop Brace and Start/End Markers	979	2	chapters/41-live-keyboard-shortcuts.md
+41.9	Zooming, Display and Selections	979	2	chapters/41-live-keyboard-shortcuts.md
+41.10	Clip View Editor View Modes	980	2	chapters/41-live-keyboard-shortcuts.md
+41.11	Clip View Sample Editor	981	2	chapters/41-live-keyboard-shortcuts.md
+41.12	Clip View MIDI Note Editor	981	2	chapters/41-live-keyboard-shortcuts.md
+41.13	Grid Snapping and Drawing	984	2	chapters/41-live-keyboard-shortcuts.md
+41.14	Global Quantization	984	2	chapters/41-live-keyboard-shortcuts.md
+41.15	Session View	985	2	chapters/41-live-keyboard-shortcuts.md
+41.16	Arrangement View	986	2	chapters/41-live-keyboard-shortcuts.md
+41.17	Comping	988	2	chapters/41-live-keyboard-shortcuts.md
+41.18	Bounce to Audio	988	2	chapters/41-live-keyboard-shortcuts.md
+41.19	Commands for Tracks	989	2	chapters/41-live-keyboard-shortcuts.md
+41.20	Transport	990	2	chapters/41-live-keyboard-shortcuts.md
+41.21	Audio Engine	991	2	chapters/41-live-keyboard-shortcuts.md
+41.22	Browser	991	2	chapters/41-live-keyboard-shortcuts.md
+41.23	Similar Sample Swapping	992	2	chapters/41-live-keyboard-shortcuts.md
+41.24	Key/MIDI Map Mode and the Computer MIDI Keyboard	992	2	chapters/41-live-keyboard-shortcuts.md
+41.25	Momentary Latching Shortcuts	993	2	chapters/41-live-keyboard-shortcuts.md
+41.26	General Keyboard Navigation and Workflow	993	2	chapters/41-live-keyboard-shortcuts.md
+41.26.1	Using Tab for Navigation	994	3	chapters/41-live-keyboard-shortcuts.md
+41.26.2	Navigating Between Controls in the Settings Menu	994	3	chapters/41-live-keyboard-shortcuts.md
+41.27	Editing Automation and Modulation Envelopes with the Keyboard	995	2	chapters/41-live-keyboard-shortcuts.md
+41.28	Accessing Menus	995	2	chapters/41-live-keyboard-shortcuts.md
+41.29	Using Live’s Context Menu	995	2	chapters/41-live-keyboard-shortcuts.md
+42	Credits	996	1	chapters/42-credits.md

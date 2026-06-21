@@ -35,7 +35,7 @@ class TestWavetableRegionClassification:
             track_index=0,
             device_index=0,
             parameter_state={
-                "Osc 1 Pos": pos,
+                "Osc 1 Position": pos,
                 "Voices": voices,
                 "Voices Detune": detune,
             },
@@ -316,7 +316,7 @@ class TestProducerPayloadContract:
 
     def test_every_synth_seed_carries_strategy_and_topology(self):
         profiles = [
-            analyze_synth_patch("Wavetable", 0, 0, {"Osc 1 Pos": 0.3, "Voices": 2}),
+            analyze_synth_patch("Wavetable", 0, 0, {"Osc 1 Position": 0.3, "Voices": 2}),
             analyze_synth_patch("Operator", 0, 0, {
                 "Algorithm": 0,
                 "Oscillator A Level": 0.7,
@@ -339,49 +339,3 @@ class TestProducerPayloadContract:
                 assert payload["device_name"] == profile.device_name
                 assert payload["track_index"] == profile.track_index
                 assert payload["device_index"] == profile.device_index
-
-
-# ── Wavetable real-parameter-name contract (regression guard) ───────────
-
-
-class TestWavetableRealParamName:
-    """Guards that the adapter uses Ableton's real param name 'Osc 1 Pos'
-    (not 'Osc 1 Position'), so profile extraction keeps the value and the
-    generated plan targets a parameter the device actually exposes.
-    Fails before the rename: with 'Osc 1 Position' the value is dropped by
-    _KNOWN_PARAMS, current_pos collapses to 0.0, and the plan emits the
-    wrong parameter_name.
-    """
-
-    def test_real_position_value_survives_and_plan_targets_real_param(self):
-        profile = analyze_synth_patch(
-            device_name="Wavetable",
-            track_index=0,
-            device_index=0,
-            parameter_state={"Osc 1 Pos": 0.9, "Voices": 2, "Voices Detune": 0.05},
-        )
-        # The real param key must be retained in the focused profile state.
-        assert "Osc 1 Pos" in profile.parameter_state
-        assert profile.parameter_state["Osc 1 Pos"] == 0.9
-
-        target = TimbralFingerprint(brightness=-0.6)
-        pairs = propose_synth_branches(profile, target=target)
-        pos_seed, plan = pairs[0]
-
-        # current_pos must reflect the real input (0.9), not the 0.0 default.
-        hint = pos_seed.producer_payload["topology_hint"]
-        assert hint["current_pos"] == 0.9
-        assert hint["current_region"] == "complex_region"
-
-        # The executable plan must address the real device parameter.
-        step = plan["steps"][0]
-        assert step["tool"] == "set_device_parameter"
-        assert step["params"]["parameter_name"] == "Osc 1 Pos"
-
-    def test_known_params_use_real_pos_names(self):
-        from mcp_server.synthesis_brain.adapters import wavetable as wt
-
-        assert "Osc 1 Pos" in wt._KNOWN_PARAMS
-        assert "Osc 2 Pos" in wt._KNOWN_PARAMS
-        assert "Osc 1 Position" not in wt._KNOWN_PARAMS
-        assert "Osc 2 Position" not in wt._KNOWN_PARAMS

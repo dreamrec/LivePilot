@@ -215,21 +215,8 @@ def compare_phrase_renders(
 
     critiques = []
     for path in file_paths:
-        # Run offline analysis per file so each render gets a real critique
-        loudness_data = None
-        spectrum_data = None
-        try:
-            from ..tools._perception_engine import compute_loudness
-            loudness_data = compute_loudness(path, detail="full")
-        except Exception as exc:
-            logger.debug("compare_phrase_renders loudness failed for %s: %s", path, exc)
-        try:
-            from ..tools._perception_engine import compute_spectral
-            spectrum_data = compute_spectral(path)
-        except Exception as exc:
-            logger.debug("compare_phrase_renders spectral failed for %s: %s", path, exc)
-
-        critique = phrase_critic.analyze_phrase(loudness_data, spectrum_data, target)
+        # Try to get cached analysis or run fresh
+        critique = phrase_critic.analyze_phrase(target=target)
         critique.render_id = path.split("/")[-1] if isinstance(path, str) and "/" in path else str(path)
         critiques.append(critique)
 

@@ -182,14 +182,6 @@ class TasteGraph:
         self.evidence_count += 1
         self.last_updated_ms = now
 
-        # Write-back to persistent store
-        if self._persistent_store is not None:
-            try:
-                self._persistent_store.record_device_use(device_name, positive)
-            except Exception as exc:
-                logger.debug("record_device_use failed: %s", exc)
-                pass  # persistence is best-effort
-
     def update_novelty_from_experiment(
         self, chose_bold: bool, goal_mode: str = "improve",
     ) -> None:
@@ -207,14 +199,6 @@ class TasteGraph:
         else:
             new_val = max(0.0, current - 0.05)
         self.novelty_bands[goal_mode] = new_val
-
-        # Write-back to persistent store
-        if self._persistent_store is not None:
-            try:
-                self._persistent_store.update_novelty(chose_bold, goal_mode)
-            except Exception as exc:
-                logger.debug("update_novelty failed: %s", exc)
-                pass  # persistence is best-effort
 
     # ── Ranking ──────────────────────────────────────────────────────
 
