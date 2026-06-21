@@ -1,11 +1,11 @@
 ---
 name: livepilot-core
-description: Core discipline for LivePilot — agentic production system for Ableton Live 12. 467 tools across 56 domains. This skill should be used whenever working with Ableton Live through MCP tools. Provides golden rules, tool speed tiers, error handling protocol, and pointers to domain and engine skills.
+description: Core discipline for LivePilot — agentic production system for Ableton Live 12. 470 tools across 56 domains. This skill should be used whenever working with Ableton Live through MCP tools. Provides golden rules, tool speed tiers, error handling protocol, and pointers to domain and engine skills.
 ---
 
 # LivePilot Core — Ableton Live 12
 
-Agentic production system for Ableton Live 12. 467 tools across 56 domains, three layers:
+Agentic production system for Ableton Live 12. 470 tools across 56 domains, three layers:
 
 - **Device Atlas** — 5264 devices indexed (120 enriched with sonic intelligence, 683 drum kits). Consult `atlas_search` or `atlas_suggest` before loading any device. Never guess a device name.
 - **M4L Analyzer** — Real-time audio analysis on the master bus (9-band spectrum sub_low → air, RMS/peak, key detection). Optional — all core tools work without it.
@@ -53,7 +53,7 @@ Agentic production system for Ableton Live 12. 467 tools across 56 domains, thre
 ## Tool Speed Tiers
 
 ### Instant (<1s) — Use freely
-All 467 tools plus M4L perception tools.
+All 470 tools plus M4L perception tools.
 
 ### Fast (1-5s) — Use freely
 `analyze_loudness` · `analyze_mix` · `analyze_sound_design`
@@ -143,7 +143,7 @@ Deep production knowledge in `references/`:
 
 | File | Content |
 |------|---------|
-| `references/overview.md` | All 467 tools with params and ranges |
+| `references/overview.md` | All 470 tools with params and ranges |
 | `references/device-atlas/` | 280+ device corpus with URIs and presets |
 | `references/device-knowledge/` | Per-device parameter + technique knowledge |
 | `references/pack-knowledge.md` | All 44 installed packs scored for aesthetic fit (Tier S / A / B / C), with Top / Use-when guidance |

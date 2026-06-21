@@ -9,6 +9,14 @@ from typing import Optional
 
 from fastmcp import Context
 
+from ..persistence.track_annotations import (
+    TrackAnnotationStore,
+    annotation_project_hash,
+    find_annotation_for_track,
+    make_track_signature,
+    resolve_annotation,
+    resolve_annotations,
+)
 from ..server import mcp
 
 
@@ -49,6 +57,56 @@ def _validate_color_index(color_index: int):
         raise ValueError("color_index must be between 0 and 69")
 
 
+def _require_session_info(ctx: Context) -> dict:
+    info = _get_ableton(ctx).send_command("get_session_info")
+    if not isinstance(info, dict) or info.get("error"):
+        raise RuntimeError(f"Could not read session info: {info!r}")
+    return info
+
+
+def _annotation_store_for_session(session_info: dict) -> TrackAnnotationStore:
+    return TrackAnnotationStore(annotation_project_hash(session_info))
+
+
+def _find_regular_track(session_info: dict, track_index: int) -> dict:
+    for track in session_info.get("tracks") or []:
+        if isinstance(track, dict) and track.get("index") == track_index:
+            return track
+    raise ValueError(f"Track index {track_index} not found in current session")
+
+
+def _normalize_tags(tags: Optional[list[str]]) -> list[str]:
+    if tags is None:
+        return []
+    normalized: list[str] = []
+    for tag in tags:
+        value = str(tag).strip()
+        if value and value not in normalized:
+            normalized.append(value)
+    return normalized
+
+
+def _load_track_detail_safely(ctx: Context, track_index: int) -> dict:
+    try:
+        info = _get_ableton(ctx).send_command("get_track_info", {"track_index": track_index})
+    except Exception:
+        return {}
+    return info if isinstance(info, dict) else {}
+
+
+def _annotation_for_track(ctx: Context, track_index: int) -> Optional[dict]:
+    try:
+        session_info = _require_session_info(ctx)
+        store = _annotation_store_for_session(session_info)
+        return find_annotation_for_track(
+            session_info,
+            store.list_annotations(),
+            track_index,
+        )
+    except Exception:
+        return None
+
+
 @mcp.tool()
 def get_track_info(ctx: Context, track_index: int) -> dict:
     """Get detailed info about a track: clips, devices, mixer state.
@@ -61,7 +119,158 @@ def get_track_info(ctx: Context, track_index: int) -> dict:
     _validate_track_index(track_index)
     if track_index == MASTER_TRACK_INDEX:
         return _get_ableton(ctx).send_command("get_master_track")
-    return _get_ableton(ctx).send_command("get_track_info", {"track_index": track_index})
+    result = _get_ableton(ctx).send_command("get_track_info", {"track_index": track_index})
+    if isinstance(result, dict) and track_index >= 0:
+        result["track_annotation"] = _annotation_for_track(ctx, track_index)
+    return result
+
+
+@mcp.tool()
+def set_track_annotation(
+    ctx: Context,
+    track_index: int,
+    role: Optional[str] = None,
+    notes: Optional[str] = None,
+    tags: Optional[list[str]] = None,
+    relationship: Optional[str] = None,
+    annotation_id: Optional[str] = None,
+) -> dict:
+    """Attach persistent role/notes metadata to a regular track.
+
+    The annotation is stored in a project-scoped sidecar and resolved later
+    from track name/color/type signatures, so it survives ordinary track
+    reordering instead of trusting the old positional track_index forever.
+    """
+    _validate_track_index(track_index, allow_return=False, allow_master=False)
+    if all(value is None for value in (role, notes, tags, relationship)):
+        raise ValueError("Provide at least one of role, notes, tags, or relationship")
+
+    session_info = _require_session_info(ctx)
+    track = _find_regular_track(session_info, track_index)
+    detail = _load_track_detail_safely(ctx, track_index)
+    store = _annotation_store_for_session(session_info)
+    annotations = store.list_annotations()
+
+    existing = None
+    if annotation_id:
+        existing = next(
+            (item for item in annotations if item.get("annotation_id") == annotation_id),
+            None,
+        )
+        if existing is None:
+            raise ValueError(f"annotation_id not found: {annotation_id}")
+    else:
+        existing = find_annotation_for_track(session_info, annotations, track_index)
+
+    annotation = dict(existing or {})
+    if role is not None:
+        annotation["role"] = role.strip()
+    if notes is not None:
+        annotation["notes"] = notes.strip()
+    if tags is not None:
+        annotation["tags"] = _normalize_tags(tags)
+    elif "tags" not in annotation:
+        annotation["tags"] = []
+    if relationship is not None:
+        annotation["relationship"] = relationship.strip()
+
+    signature = make_track_signature(track, detail=detail)
+    annotation["track_ref"] = {
+        "name": track.get("name", ""),
+        "last_seen_index": track_index,
+        "signature": signature,
+    }
+    if annotation_id:
+        annotation["annotation_id"] = annotation_id
+
+    saved = store.upsert(annotation)
+    saved = dict(saved)
+    saved["resolution"] = resolve_annotation(session_info, saved)
+    return {
+        "status": "ok",
+        "project_id": store.project_id,
+        "store_path": str(store.path),
+        "annotation": saved,
+    }
+
+
+@mcp.tool()
+def get_track_annotations(
+    ctx: Context,
+    track_index: Optional[int] = None,
+    include_unresolved: bool = True,
+) -> dict:
+    """List persistent track annotations resolved against the current session.
+
+    Pass track_index to return only annotations currently resolved to that
+    regular track. Each annotation includes resolution confidence and candidate
+    matches so callers can detect renamed or duplicate tracks.
+    """
+    if track_index is not None:
+        _validate_track_index(track_index, allow_return=False, allow_master=False)
+    session_info = _require_session_info(ctx)
+    store = _annotation_store_for_session(session_info)
+    annotations = resolve_annotations(session_info, store.list_annotations())
+    if track_index is not None:
+        annotations = [
+            item for item in annotations
+            if item.get("resolution", {}).get("resolved_track_index") == track_index
+        ]
+    if not include_unresolved:
+        annotations = [
+            item for item in annotations
+            if item.get("resolution", {}).get("status") == "resolved"
+        ]
+    return {
+        "project_id": store.project_id,
+        "store_path": str(store.path),
+        "count": len(annotations),
+        "annotations": annotations,
+    }
+
+
+@mcp.tool()
+def clear_track_annotation(
+    ctx: Context,
+    track_index: Optional[int] = None,
+    annotation_id: Optional[str] = None,
+) -> dict:
+    """Clear a persistent track annotation by current track or annotation_id.
+
+    Use annotation_id for ambiguous duplicate-name cases. Use track_index when
+    the annotation resolves cleanly to the current regular track.
+    """
+    if (track_index is None) == (annotation_id is None):
+        raise ValueError("Pass exactly one of track_index or annotation_id")
+    if track_index is not None:
+        _validate_track_index(track_index, allow_return=False, allow_master=False)
+
+    session_info = _require_session_info(ctx)
+    store = _annotation_store_for_session(session_info)
+    annotations = resolve_annotations(session_info, store.list_annotations())
+    if annotation_id is not None:
+        targets = [
+            item for item in annotations
+            if item.get("annotation_id") == annotation_id
+        ]
+    else:
+        targets = [
+            item for item in annotations
+            if item.get("resolution", {}).get("resolved_track_index") == track_index
+        ]
+
+    cleared = []
+    for item in targets:
+        item_id = item.get("annotation_id")
+        if isinstance(item_id, str) and store.delete(item_id):
+            cleared.append(item)
+
+    return {
+        "status": "ok",
+        "project_id": store.project_id,
+        "cleared_count": len(cleared),
+        "cleared_annotations": cleared,
+    }
 
 
 @mcp.tool()
