@@ -10,6 +10,8 @@ const ROOT = path.resolve(__dirname, "..");
 const PKG = require(path.join(ROOT, "package.json"));
 const VENV_DIR = path.join(ROOT, ".venv");
 const REQUIREMENTS = path.join(ROOT, "requirements.txt");
+const LAUNCHER_PATH = path.resolve(__filename);
+const MCP_SERVER_COMMAND_RE = /(^|\s)-m\s+mcp_server(\s|$)/;
 
 // ---------------------------------------------------------------------------
 // Python detection
@@ -78,6 +80,177 @@ function findOtherLiveClient(host, port) {
     // best-effort only
   }
   return null;
+}
+
+function readProcessTable() {
+  if (process.platform === "win32") {
+    return [];
+  }
+  try {
+    const out = execFileSync("ps", ["-axo", "pid=,ppid=,command="], {
+      encoding: "utf-8",
+      timeout: 3000,
+      stdio: ["pipe", "pipe", "ignore"],
+    });
+    return out
+      .split(/\r?\n/)
+      .map((line) => {
+        const match = line.match(/^\s*(\d+)\s+(\d+)\s+(.+)$/);
+        if (!match) {
+          return null;
+        }
+        return {
+          pid: parseInt(match[1], 10),
+          ppid: parseInt(match[2], 10),
+          command: match[3],
+        };
+      })
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+function pidsHoldingUdpPort(port) {
+  if (process.platform === "win32") {
+    return [];
+  }
+  try {
+    const out = execFileSync("lsof", ["-nP", "-t", `-iUDP:${port}`], {
+      encoding: "utf-8",
+      timeout: 3000,
+      stdio: ["pipe", "pipe", "ignore"],
+    });
+    return out
+      .split(/\r?\n/)
+      .map((pid) => parseInt(pid.trim(), 10))
+      .filter((pid) => Number.isInteger(pid) && pid > 0 && pid !== process.pid);
+  } catch {
+    return [];
+  }
+}
+
+function findLivePilotSiblingProcesses() {
+  const rows = readProcessTable();
+  if (rows.length === 0) {
+    return { launchers: [], servers: [] };
+  }
+
+  const byPid = new Map(rows.map((row) => [row.pid, row]));
+  const launchers = rows.filter((row) => (
+    row.pid !== process.pid
+    && row.command.includes(LAUNCHER_PATH)
+  ));
+  const launcherPids = new Set(launchers.map((row) => row.pid));
+
+  const serversByPid = new Map();
+  for (const row of rows) {
+    if (row.pid === process.pid) {
+      continue;
+    }
+    const isChildOfLauncher = launcherPids.has(row.ppid);
+    const isLivePilotServer = MCP_SERVER_COMMAND_RE.test(row.command);
+    if (isChildOfLauncher && isLivePilotServer) {
+      serversByPid.set(row.pid, row);
+    }
+  }
+
+  // Recover orphaned/stale analyzer owners too. These are the common source of
+  // UDP 9880 conflicts after a client thread exits without shutting down cleanly.
+  for (const pid of pidsHoldingUdpPort(9880)) {
+    const row = byPid.get(pid);
+    if (row && MCP_SERVER_COMMAND_RE.test(row.command)) {
+      serversByPid.set(row.pid, row);
+    }
+  }
+
+  return {
+    launchers,
+    servers: Array.from(serversByPid.values()),
+  };
+}
+
+function isProcessAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function stopProcesses(processes, signal) {
+  for (const proc of processes) {
+    if (!isProcessAlive(proc.pid)) {
+      continue;
+    }
+    try {
+      process.kill(proc.pid, signal);
+    } catch {
+      // Process may have exited between discovery and signal delivery.
+    }
+  }
+}
+
+async function cleanupSiblingLivePilotInstances(options = {}) {
+  const mode = process.env.LIVEPILOT_SINGLE_INSTANCE || "replace";
+  if (mode === "off" || mode === "0" || mode === "false") {
+    return { mode, stopped: [], remaining: [], skipped: true };
+  }
+
+  const siblings = findLivePilotSiblingProcesses();
+  const targets = [
+    ...siblings.servers.map((proc) => ({ ...proc, role: "mcp_server" })),
+    ...siblings.launchers.map((proc) => ({ ...proc, role: "launcher" })),
+  ];
+  const uniqueTargets = Array.from(new Map(targets.map((proc) => [proc.pid, proc])).values());
+
+  if (uniqueTargets.length === 0) {
+    return { mode, stopped: [], remaining: [] };
+  }
+
+  if (mode === "fail") {
+    const detail = uniqueTargets
+      .map((proc) => `${proc.role} PID ${proc.pid}`)
+      .join(", ");
+    throw new Error(
+      `another LivePilot instance is already running (${detail}); ` +
+      "set LIVEPILOT_SINGLE_INSTANCE=replace to let this launch take over, " +
+      "or LIVEPILOT_SINGLE_INSTANCE=off to allow multiple instances"
+    );
+  }
+
+  if (!options.quiet) {
+    console.error(
+      "LivePilot: stopping %d older same-repo instance(s) before starting a fresh MCP server",
+      uniqueTargets.length,
+    );
+  }
+
+  await stopProcesses(uniqueTargets, "SIGTERM");
+  await sleep(800);
+
+  const stillAlive = uniqueTargets.filter((proc) => isProcessAlive(proc.pid));
+  if (stillAlive.length > 0) {
+    await stopProcesses(stillAlive, "SIGKILL");
+    await sleep(200);
+  }
+
+  const remaining = uniqueTargets.filter((proc) => isProcessAlive(proc.pid));
+  if (remaining.length > 0) {
+    const detail = remaining.map((proc) => `${proc.role} PID ${proc.pid}`).join(", ");
+    throw new Error(`could not stop older LivePilot instance(s): ${detail}`);
+  }
+
+  return {
+    mode,
+    stopped: uniqueTargets,
+    remaining,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -816,6 +989,7 @@ async function main() {
     console.log("  --uninstall   Remove Remote Script from Ableton Live");
     console.log("  --install-codex-plugin   Install the bundled Codex plugin locally");
     console.log("  --uninstall-codex-plugin Remove the locally installed Codex plugin");
+    console.log("  --cleanup-stale Stop older same-repo LivePilot MCP instances");
     console.log("  --status      Check if Ableton Live is reachable");
     console.log("  --doctor      Run diagnostics (Python, deps, connection)");
     console.log("  --version     Show version");
@@ -825,6 +999,7 @@ async function main() {
     console.log("Environment:");
     console.log("  LIVE_MCP_HOST   Remote Script host (default: 127.0.0.1)");
     console.log("  LIVE_MCP_PORT   Remote Script port (default: 9878)");
+    console.log("  LIVEPILOT_SINGLE_INSTANCE replace|fail|off (default: replace)");
     return;
   }
 
@@ -861,6 +1036,28 @@ async function main() {
   if (flag === "--uninstall-codex-plugin") {
     const { uninstallCodexPlugin } = require(path.join(ROOT, "installer", "codex.js"));
     uninstallCodexPlugin();
+    return;
+  }
+
+  // --cleanup-stale
+  if (flag === "--cleanup-stale") {
+    let result;
+    try {
+      result = await cleanupSiblingLivePilotInstances();
+    } catch (err) {
+      console.error("LivePilot cleanup failed: %s", err.message);
+      process.exit(1);
+    }
+    if (result.skipped) {
+      console.log("LivePilot cleanup skipped: LIVEPILOT_SINGLE_INSTANCE=%s", result.mode);
+    } else if (result.stopped.length === 0) {
+      console.log("LivePilot cleanup: no older same-repo instances found.");
+    } else {
+      console.log(
+        "LivePilot cleanup: stopped %d older instance process(es).",
+        result.stopped.length,
+      );
+    }
     return;
   }
 
@@ -945,6 +1142,14 @@ async function main() {
     console.error("  cd %s", ROOT);
     console.error("  %s -m venv .venv", pyInfo.cmd);
     console.error("  .venv/bin/pip install -r requirements.txt");
+    process.exit(1);
+  }
+
+  try {
+    await cleanupSiblingLivePilotInstances();
+  } catch (err) {
+    console.error("LivePilot: single-instance startup guard failed.");
+    console.error("  %s", err.message);
     process.exit(1);
   }
 

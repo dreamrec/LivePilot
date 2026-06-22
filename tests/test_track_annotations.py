@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from mcp_server.persistence import track_annotations as annotation_store
 from mcp_server.persistence.track_annotations import annotation_project_hash
 from mcp_server.tools.tracks import (
+    build_track_intent_map,
     clear_track_annotation,
     get_track_annotations,
     get_track_info,
@@ -108,3 +109,104 @@ def test_clear_track_annotation_by_id(tmp_path, monkeypatch):
     cleared = clear_track_annotation(ctx, annotation_id=saved["annotation"]["annotation_id"])
     assert cleared["cleared_count"] == 1
     assert get_track_annotations(ctx)["count"] == 0
+
+
+def test_open_track_options_surface_in_intent_map(tmp_path, monkeypatch):
+    monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
+    ableton = _Ableton(_session([
+        {"index": 0, "name": "Vox Harmony", "color_index": 2, "has_audio_input": True},
+    ]))
+    ctx = _ctx(ableton)
+
+    set_track_annotation(
+        ctx,
+        track_index=0,
+        role="harmony_vocal",
+        role_candidates=["support_harmony", "ensemble_harmony"],
+        decision_state="open",
+        priority="undecided",
+        notes="Could be tucked or could become a communal harmony stack.",
+        constraints=["preserve_timing"],
+        decision_policy="audition_before_commit",
+        options=[
+            {
+                "option_id": "tucked_support",
+                "label": "barely-there support",
+                "role": "support_harmony",
+                "priority": "background",
+            },
+            {
+                "option_id": "ensemble_harmony",
+                "label": "Beatles-style ensemble",
+                "role": "ensemble_harmony",
+                "priority": "co_foreground",
+            },
+        ],
+        references=[
+            {
+                "scope": "track",
+                "artist": "The Beatles",
+                "part": "ensemble harmony",
+                "borrow": ["shared foreground"],
+            }
+        ],
+    )
+
+    intent_map = build_track_intent_map(ctx)
+    track = intent_map["tracks"][0]
+    assert track["decision_state"] == "open"
+    assert track["effective_role"] is None
+    assert track["role_source"] == "open_options"
+    assert track["requires_audition"] is True
+    assert "ensemble_harmony" in track["role_candidates"]
+    assert track["constraints"] == ["preserve_timing"]
+    assert track["references"][0]["artist"] == "The Beatles"
+
+
+def test_committed_explicit_role_overrides_name_in_intent_map(tmp_path, monkeypatch):
+    monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
+    ableton = _Ableton(_session([
+        {"index": 0, "name": "Texture Pad", "color_index": 4, "has_midi_input": True},
+    ]))
+    ctx = _ctx(ableton)
+
+    set_track_annotation(
+        ctx,
+        track_index=0,
+        role="bass",
+        decision_state="committed",
+        source="user_explicit",
+        confidence=1.0,
+    )
+
+    track = build_track_intent_map(ctx)["tracks"][0]
+    assert track["inferred_role"] == "pad"
+    assert track["effective_role"] == "bass"
+    assert track["role_source"] == "user_explicit"
+
+
+def test_project_scope_annotation_without_track(tmp_path, monkeypatch):
+    monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
+    ableton = _Ableton(_session([
+        {"index": 0, "name": "Drums", "color_index": 1, "has_midi_input": True},
+    ]))
+    ctx = _ctx(ableton)
+
+    set_track_annotation(
+        ctx,
+        track_index=None,
+        scope="project",
+        notes="Overall reference is The Suburbs: raw, communal, restrained.",
+        references=[
+            {
+                "scope": "project",
+                "artist": "Arcade Fire",
+                "song": "The Suburbs",
+                "borrow": ["raw ensemble glue"],
+            }
+        ],
+    )
+
+    intent_map = build_track_intent_map(ctx)
+    assert intent_map["project_intents"][0]["notes"].startswith("Overall reference")
+    assert intent_map["project_intents"][0]["references"][0]["song"] == "The Suburbs"

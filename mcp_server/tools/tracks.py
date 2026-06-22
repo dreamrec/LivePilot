@@ -12,6 +12,7 @@ from fastmcp import Context
 from ..persistence.track_annotations import (
     TrackAnnotationStore,
     annotation_project_hash,
+    build_track_intent_map as build_track_intent_map_data,
     find_annotation_for_track,
     make_track_signature,
     resolve_annotation,
@@ -128,26 +129,66 @@ def get_track_info(ctx: Context, track_index: int) -> dict:
 @mcp.tool()
 def set_track_annotation(
     ctx: Context,
-    track_index: int,
+    track_index: Optional[int] = None,
+    scope: str = "track",
+    decision_state: Optional[str] = None,
     role: Optional[str] = None,
+    role_candidates: Optional[list[str]] = None,
+    priority: Optional[str] = None,
     notes: Optional[str] = None,
     tags: Optional[list[str]] = None,
     relationship: Optional[str] = None,
+    relationships: Optional[list[dict]] = None,
+    references: Optional[list[dict]] = None,
+    options: Optional[list[dict]] = None,
+    constraints: Optional[list[str]] = None,
+    mix_intent: Optional[str] = None,
+    composition_intent: Optional[str] = None,
+    sound_design_intent: Optional[str] = None,
+    decision_policy: Optional[str] = None,
+    selected_option_id: Optional[str] = None,
+    source: Optional[str] = None,
+    confidence: Optional[float] = None,
     annotation_id: Optional[str] = None,
 ) -> dict:
-    """Attach persistent role/notes metadata to a regular track.
+    """Attach persistent sparse intent metadata to a track or project scope.
 
     The annotation is stored in a project-scoped sidecar and resolved later
     from track name/color/type signatures, so it survives ordinary track
     reordering instead of trusting the old positional track_index forever.
     """
-    _validate_track_index(track_index, allow_return=False, allow_master=False)
-    if all(value is None for value in (role, notes, tags, relationship)):
+    scope = (scope or "track").strip().lower()
+    if scope == "track" and track_index is None:
+        raise ValueError("track_index is required when scope='track'")
+    if track_index is not None:
+        _validate_track_index(track_index, allow_return=False, allow_master=False)
+
+    settable_values = (
+        decision_state,
+        role,
+        role_candidates,
+        priority,
+        notes,
+        tags,
+        relationship,
+        relationships,
+        references,
+        options,
+        constraints,
+        mix_intent,
+        composition_intent,
+        sound_design_intent,
+        decision_policy,
+        selected_option_id,
+        source,
+        confidence,
+    )
+    if all(value is None for value in settable_values):
         raise ValueError("Provide at least one of role, notes, tags, or relationship")
 
     session_info = _require_session_info(ctx)
-    track = _find_regular_track(session_info, track_index)
-    detail = _load_track_detail_safely(ctx, track_index)
+    track = _find_regular_track(session_info, track_index) if track_index is not None else None
+    detail = _load_track_detail_safely(ctx, track_index) if track_index is not None else {}
     store = _annotation_store_for_session(session_info)
     annotations = store.list_annotations()
 
@@ -160,11 +201,22 @@ def set_track_annotation(
         if existing is None:
             raise ValueError(f"annotation_id not found: {annotation_id}")
     else:
-        existing = find_annotation_for_track(session_info, annotations, track_index)
+        existing = (
+            find_annotation_for_track(session_info, annotations, track_index)
+            if track_index is not None
+            else None
+        )
 
     annotation = dict(existing or {})
+    annotation["scope"] = scope
+    if decision_state is not None:
+        annotation["decision_state"] = decision_state.strip()
     if role is not None:
         annotation["role"] = role.strip()
+    if role_candidates is not None:
+        annotation["role_candidates"] = role_candidates
+    if priority is not None:
+        annotation["priority"] = priority.strip()
     if notes is not None:
         annotation["notes"] = notes.strip()
     if tags is not None:
@@ -173,13 +225,36 @@ def set_track_annotation(
         annotation["tags"] = []
     if relationship is not None:
         annotation["relationship"] = relationship.strip()
+    if relationships is not None:
+        annotation["relationships"] = relationships
+    if references is not None:
+        annotation["references"] = references
+    if options is not None:
+        annotation["options"] = options
+    if constraints is not None:
+        annotation["constraints"] = constraints
+    if mix_intent is not None:
+        annotation["mix_intent"] = mix_intent.strip()
+    if composition_intent is not None:
+        annotation["composition_intent"] = composition_intent.strip()
+    if sound_design_intent is not None:
+        annotation["sound_design_intent"] = sound_design_intent.strip()
+    if decision_policy is not None:
+        annotation["decision_policy"] = decision_policy.strip()
+    if selected_option_id is not None:
+        annotation["selected_option_id"] = selected_option_id.strip()
+    if source is not None:
+        annotation["source"] = source.strip()
+    if confidence is not None:
+        annotation["confidence"] = confidence
 
-    signature = make_track_signature(track, detail=detail)
-    annotation["track_ref"] = {
-        "name": track.get("name", ""),
-        "last_seen_index": track_index,
-        "signature": signature,
-    }
+    if track is not None:
+        signature = make_track_signature(track, detail=detail)
+        annotation["track_ref"] = {
+            "name": track.get("name", ""),
+            "last_seen_index": track_index,
+            "signature": signature,
+        }
     if annotation_id:
         annotation["annotation_id"] = annotation_id
 
@@ -192,6 +267,22 @@ def set_track_annotation(
         "store_path": str(store.path),
         "annotation": saved,
     }
+
+
+@mcp.tool()
+def build_track_intent_map(ctx: Context) -> dict:
+    """Build the decision-time map of track roles, options, references, and intent.
+
+    Combines current session tracks with persistent annotations. User-explicit
+    committed intent outranks name inference; open options remain unresolved so
+    creative workflows can audition branches instead of silently choosing.
+    """
+    session_info = _require_session_info(ctx)
+    store = _annotation_store_for_session(session_info)
+    result = build_track_intent_map_data(session_info, store.list_annotations())
+    result["project_id"] = store.project_id
+    result["store_path"] = str(store.path)
+    return result
 
 
 @mcp.tool()

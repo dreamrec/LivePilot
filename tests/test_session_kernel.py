@@ -323,3 +323,43 @@ def test_get_session_kernel_legacy_callers_unaffected():
     assert result["creativity_profile"] == ""
     assert result["sacred_elements"] == []
     assert result["synth_hints"] == {}
+
+
+def test_get_session_kernel_includes_track_intent_map(tmp_path, monkeypatch):
+    from mcp_server.persistence import track_annotations as annotation_store
+    from mcp_server.runtime.tools import get_session_kernel
+    from mcp_server.tools.tracks import set_track_annotation
+
+    monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
+
+    class _Ableton:
+        def send_command(self, cmd, params=None):
+            if cmd == "get_session_info":
+                return {
+                    "tempo": 120,
+                    "track_count": 1,
+                    "tracks": [
+                        {
+                            "index": 0,
+                            "name": "Texture Pad",
+                            "color_index": 4,
+                            "has_midi_input": True,
+                        }
+                    ],
+                }
+            if cmd == "get_track_info":
+                return {
+                    "index": params["track_index"],
+                    "name": "Texture Pad",
+                    "devices": [],
+                    "clips": [],
+                }
+            raise AssertionError(f"Unexpected command: {cmd}")
+
+    ctx = SimpleNamespace(lifespan_context={"ableton": _Ableton(), "action_ledger": SessionLedger()})
+    set_track_annotation(ctx, track_index=0, role="bass", decision_state="committed")
+
+    result = get_session_kernel(ctx)
+    track = result["track_intent_map"]["tracks"][0]
+    assert track["inferred_role"] == "pad"
+    assert track["effective_role"] == "bass"

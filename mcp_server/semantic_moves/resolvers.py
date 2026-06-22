@@ -23,6 +23,31 @@ _ROLE_KEYWORDS: dict[str, list[str]] = {
     "fx": ["fx", "effect", "noise", "riser", "impact", "sweep"],
 }
 
+_ROLE_ALIASES: dict[str, list[str]] = {
+    "lead_vocal": ["lead"],
+    "main_vocal": ["lead"],
+    "vocal_lead": ["lead"],
+    "harmony_vocal": ["lead", "chords"],
+    "support_harmony": ["lead", "chords"],
+    "ensemble_harmony": ["lead", "chords"],
+    "backing_vocal": ["lead", "chords"],
+    "double": ["lead"],
+    "vocal_double": ["lead"],
+    "lead_guitar": ["lead"],
+    "rhythm_guitar": ["chords"],
+    "guitar": ["chords", "lead"],
+    "keys": ["chords"],
+    "piano": ["chords"],
+    "organ": ["chords"],
+    "texture": ["pad"],
+    "background_texture": ["pad", "fx"],
+    "drone": ["pad"],
+    "atmos": ["pad", "fx"],
+    "kick": ["drums", "percussion"],
+    "snare": ["drums", "percussion"],
+    "hat": ["drums", "percussion"],
+}
+
 
 def infer_role(track_name: str) -> str:
     """Infer a musical role from a track name. Returns 'unknown' if no match."""
@@ -36,20 +61,43 @@ def infer_role(track_name: str) -> str:
 
 # ── Track finders ────────────────────────────────────────────────────────────
 
-def find_tracks_by_role(kernel: dict, roles: list[str]) -> list[dict]:
+def find_tracks_by_role(
+    kernel: dict,
+    roles: list[str],
+    include_open_options: bool = False,
+) -> list[dict]:
     """Find all tracks whose inferred role is in the given list.
+
+    If the SessionKernel includes ``track_intent_map``, committed user
+    annotations outrank name inference. Open option roles are only considered
+    when include_open_options=True so compilers do not silently collapse
+    undecided creative forks.
 
     Returns list of {index, name, role, volume, pan} for matched tracks.
     """
     tracks = kernel.get("session_info", {}).get("tracks", [])
+    intent_by_index = _intent_by_index(kernel)
     results = []
     for track in tracks:
-        role = infer_role(track.get("name", ""))
-        if role in roles:
+        intent = intent_by_index.get(track.get("index"))
+        role = _effective_role_for_track(track, intent)
+        matched_role = role if _role_matches(role, roles) else None
+        if matched_role is None and include_open_options and intent:
+            for candidate in intent.get("role_candidates") or []:
+                if _role_matches(candidate, roles):
+                    matched_role = candidate
+                    break
+        if matched_role is not None:
             results.append({
                 "index": track.get("index", 0),
                 "name": track.get("name", ""),
-                "role": role,
+                "role": matched_role,
+                "role_source": (
+                    intent.get("role_source") if intent else "inferred_name"
+                ),
+                "decision_state": (
+                    intent.get("decision_state") if intent else "inferred"
+                ),
                 "volume": track.get("volume"),
                 "pan": track.get("pan"),
                 "mute": track.get("mute", False),
@@ -76,6 +124,30 @@ def find_track_by_name(kernel: dict, name_substring: str) -> Optional[dict]:
         if name_lower in track.get("name", "").lower():
             return track
     return None
+
+
+def _intent_by_index(kernel: dict) -> dict[int, dict]:
+    intent_map = kernel.get("track_intent_map") or {}
+    return {
+        entry.get("index"): entry
+        for entry in intent_map.get("tracks", [])
+        if isinstance(entry, dict) and isinstance(entry.get("index"), int)
+    }
+
+
+def _effective_role_for_track(track: dict, intent: Optional[dict]) -> str:
+    if intent:
+        effective = intent.get("effective_role")
+        if effective:
+            return str(effective)
+        if intent.get("role_source") == "open_options":
+            return "unknown"
+    return infer_role(track.get("name", ""))
+
+
+def _role_matches(role: str, requested_roles: list[str]) -> bool:
+    aliases = {role, *_ROLE_ALIASES.get(role, [])}
+    return any(requested in aliases for requested in requested_roles)
 
 
 # ── Device finders ───────────────────────────────────────────────────────────

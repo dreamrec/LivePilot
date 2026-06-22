@@ -18,6 +18,11 @@ from .base_store import PersistentJsonStore
 
 _PROJECTS_DIR = Path.home() / ".livepilot" / "projects"
 _STORE_VERSION = 1
+_VALID_SCOPES = {"track", "relationship", "section", "project"}
+_ACTIVE_DECISION_STATES = {"committed", "open", "hypothesis"}
+_COMMITTED_STATES = {"committed"}
+_OPEN_STATES = {"open"}
+_REJECTED_STATES = {"rejected"}
 
 
 def annotation_project_hash(session_info: dict) -> str:
@@ -171,6 +176,132 @@ def find_annotation_for_track(
     return matches[0]
 
 
+def normalize_annotation(annotation: dict) -> dict:
+    """Normalize optional intent fields while preserving sparse annotations."""
+    normalized = dict(annotation)
+    scope = str(normalized.get("scope") or "track").strip().lower()
+    normalized["scope"] = scope if scope in _VALID_SCOPES else "track"
+
+    for key in (
+        "role",
+        "priority",
+        "notes",
+        "mix_intent",
+        "composition_intent",
+        "sound_design_intent",
+        "source",
+        "decision_policy",
+    ):
+        if normalized.get(key) is not None:
+            normalized[key] = str(normalized[key]).strip()
+
+    normalized["tags"] = _normalize_string_list(normalized.get("tags"))
+    normalized["role_candidates"] = _normalize_string_list(
+        normalized.get("role_candidates")
+    )
+    normalized["constraints"] = _normalize_string_list(normalized.get("constraints"))
+    normalized["options"] = _normalize_dict_list(normalized.get("options"))
+    normalized["references"] = _normalize_dict_list(normalized.get("references"))
+    normalized["relationships"] = _normalize_dict_list(normalized.get("relationships"))
+
+    if normalized.get("relationship") and not normalized["relationships"]:
+        normalized["relationships"] = [{
+            "type": "related",
+            "notes": str(normalized["relationship"]).strip(),
+        }]
+
+    if normalized.get("confidence") is not None:
+        try:
+            normalized["confidence"] = max(0.0, min(1.0, float(normalized["confidence"])))
+        except (TypeError, ValueError):
+            normalized.pop("confidence", None)
+
+    if not normalized.get("source"):
+        normalized["source"] = "user_explicit"
+    if normalized.get("confidence") is None and normalized["source"] == "user_explicit":
+        normalized["confidence"] = 1.0
+
+    decision_state = str(normalized.get("decision_state") or "").strip().lower()
+    if not decision_state:
+        decision_state = "open" if normalized["options"] else "committed"
+    normalized["decision_state"] = decision_state
+    return normalized
+
+
+def build_track_intent_map(session_info: dict, annotations: list[dict]) -> dict:
+    """Build a compact decision-time intent map for the current session."""
+    from ..semantic_moves.resolvers import infer_role
+
+    resolved = [
+        normalize_annotation(annotation)
+        for annotation in resolve_annotations(session_info, annotations)
+    ]
+    tracks = [
+        t for t in (session_info.get("tracks") or [])
+        if isinstance(t, dict) and isinstance(t.get("index"), int)
+    ]
+    by_track: dict[int, list[dict]] = {int(t.get("index")): [] for t in tracks}
+    warnings: list[dict] = []
+    relationship_intents: list[dict] = []
+    section_intents: list[dict] = []
+    project_intents: list[dict] = []
+
+    for annotation in resolved:
+        resolution = annotation.get("resolution") or {}
+        scope = annotation.get("scope") or "track"
+        if scope == "project":
+            project_intents.append(_compact_annotation(annotation))
+        elif scope == "section":
+            section_intents.append(_compact_annotation(annotation))
+        elif scope == "relationship":
+            relationship_intents.append(_compact_annotation(annotation))
+
+        status = resolution.get("status")
+        if status in {"ambiguous", "unresolved"}:
+            warnings.append({
+                "annotation_id": annotation.get("annotation_id"),
+                "status": status,
+                "reason": resolution.get("reason"),
+                "candidates": resolution.get("candidates", []),
+            })
+
+        idx = resolution.get("resolved_track_index")
+        if isinstance(idx, int) and idx in by_track:
+            by_track[idx].append(annotation)
+
+    intent_tracks = []
+    annotated_count = 0
+    for track in tracks:
+        idx = int(track.get("index"))
+        active_annotations = [
+            a for a in by_track.get(idx, [])
+            if a.get("decision_state") not in _REJECTED_STATES
+        ]
+        if active_annotations:
+            annotated_count += 1
+        inferred_role = infer_role(str(track.get("name", "")))
+        primary = _select_primary_annotation(active_annotations)
+        track_entry = _build_track_intent_entry(
+            track=track,
+            inferred_role=inferred_role,
+            annotations=active_annotations,
+            primary=primary,
+        )
+        intent_tracks.append(track_entry)
+
+    return {
+        "tracks": intent_tracks,
+        "relationship_intents": relationship_intents,
+        "section_intents": section_intents,
+        "project_intents": project_intents,
+        "warnings": warnings,
+        "coverage": {
+            "annotated_tracks": annotated_count,
+            "total_tracks": len(tracks),
+        },
+    }
+
+
 class TrackAnnotationStore:
     """Project-scoped JSON sidecar for track annotations."""
 
@@ -196,7 +327,7 @@ class TrackAnnotationStore:
 
     def upsert(self, annotation: dict) -> dict:
         now = int(time.time() * 1000)
-        annotation = dict(annotation)
+        annotation = normalize_annotation(annotation)
         annotation.setdefault("annotation_id", _new_annotation_id())
         annotation.setdefault("created_at_ms", now)
         annotation["updated_at_ms"] = now
@@ -259,6 +390,207 @@ def _track_hash_fragment(track: dict) -> str:
 
 def _new_annotation_id() -> str:
     return f"trkann_{uuid.uuid4().hex[:12]}"
+
+
+def _normalize_string_list(value) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        value = [value]
+    if not isinstance(value, list):
+        return []
+    out: list[str] = []
+    for item in value:
+        text = str(item).strip()
+        if text and text not in out:
+            out.append(text)
+    return out
+
+
+def _normalize_dict_list(value) -> list[dict]:
+    if value is None:
+        return []
+    if isinstance(value, dict):
+        value = [value]
+    if not isinstance(value, list):
+        return []
+    return [dict(item) for item in value if isinstance(item, dict)]
+
+
+def _select_primary_annotation(annotations: list[dict]) -> Optional[dict]:
+    if not annotations:
+        return None
+    priority = {
+        "committed": 0,
+        "open": 1,
+        "hypothesis": 2,
+    }
+    return sorted(
+        annotations,
+        key=lambda a: (
+            priority.get(str(a.get("decision_state") or "committed"), 5),
+            -float(a.get("confidence") or 0.0),
+            str(a.get("updated_at_ms") or ""),
+        ),
+    )[0]
+
+
+def _build_track_intent_entry(
+    track: dict,
+    inferred_role: str,
+    annotations: list[dict],
+    primary: Optional[dict],
+) -> dict:
+    role_candidates = _collect_role_candidates(annotations, inferred_role)
+    effective_role = None
+    role_source = "inferred_name"
+    requires_audition = False
+    decision_state = "inferred"
+    priority = None
+
+    if primary:
+        decision_state = primary.get("decision_state") or "committed"
+        priority = primary.get("priority") or None
+        selected = _selected_option(primary)
+        if selected and selected.get("role"):
+            effective_role = str(selected["role"]).strip()
+            role_source = "selected_option"
+        elif decision_state in _COMMITTED_STATES and primary.get("role"):
+            effective_role = primary.get("role")
+            role_source = primary.get("source") or "annotation"
+        elif decision_state in _OPEN_STATES:
+            role_source = "open_options"
+            requires_audition = True
+        elif decision_state == "hypothesis" and primary.get("role"):
+            effective_role = primary.get("role")
+            role_source = primary.get("source") or "hypothesis"
+
+        if primary.get("decision_policy") == "audition_before_commit":
+            requires_audition = True
+
+    if not effective_role and role_source != "open_options":
+        effective_role = inferred_role
+
+    return {
+        "index": track.get("index"),
+        "name": track.get("name", ""),
+        "inferred_role": inferred_role,
+        "effective_role": effective_role,
+        "role_candidates": role_candidates,
+        "role_source": role_source,
+        "decision_state": decision_state,
+        "priority": priority or "undecided",
+        "intent": _merge_intent_fields(annotations),
+        "constraints": _merge_string_fields(annotations, "constraints"),
+        "options": _merge_list_fields(annotations, "options"),
+        "references": _merge_list_fields(annotations, "references"),
+        "relationships": _merge_relationships(annotations),
+        "requires_audition": requires_audition,
+        "annotations": [_compact_annotation(a) for a in annotations],
+    }
+
+
+def _collect_role_candidates(annotations: list[dict], inferred_role: str) -> list[str]:
+    candidates: list[str] = []
+    for annotation in annotations:
+        for role in annotation.get("role_candidates") or []:
+            if role and role not in candidates:
+                candidates.append(role)
+        role = annotation.get("role")
+        if role and role not in candidates:
+            candidates.append(role)
+        for option in annotation.get("options") or []:
+            role = option.get("role") or option.get("effective_role")
+            if role and role not in candidates:
+                candidates.append(str(role))
+    if inferred_role and inferred_role != "unknown" and inferred_role not in candidates:
+        candidates.append(inferred_role)
+    return candidates
+
+
+def _selected_option(annotation: dict) -> Optional[dict]:
+    selected_id = annotation.get("selected_option_id")
+    if not selected_id:
+        return None
+    for option in annotation.get("options") or []:
+        if option.get("option_id") == selected_id:
+            return option
+    return None
+
+
+def _merge_intent_fields(annotations: list[dict]) -> dict:
+    merged: dict = {}
+    for key in ("notes", "mix_intent", "composition_intent", "sound_design_intent"):
+        values = [
+            str(a.get(key)).strip()
+            for a in annotations
+            if a.get(key) is not None and str(a.get(key)).strip()
+        ]
+        if values:
+            merged[key] = values[-1]
+    return merged
+
+
+def _merge_string_fields(annotations: list[dict], key: str) -> list[str]:
+    merged: list[str] = []
+    for annotation in annotations:
+        for value in annotation.get(key) or []:
+            if value not in merged:
+                merged.append(value)
+    return merged
+
+
+def _merge_list_fields(annotations: list[dict], key: str) -> list[dict]:
+    merged: list[dict] = []
+    seen: set[str] = set()
+    for annotation in annotations:
+        for value in annotation.get(key) or []:
+            token = repr(sorted(value.items()))
+            if token not in seen:
+                merged.append(value)
+                seen.add(token)
+    return merged
+
+
+def _merge_relationships(annotations: list[dict]) -> list[dict]:
+    relationships = _merge_list_fields(annotations, "relationships")
+    for annotation in annotations:
+        if annotation.get("relationship"):
+            relationships.append({
+                "type": "related",
+                "notes": annotation.get("relationship"),
+            })
+    return relationships
+
+
+def _compact_annotation(annotation: dict) -> dict:
+    keep = (
+        "annotation_id",
+        "scope",
+        "decision_state",
+        "source",
+        "confidence",
+        "role",
+        "role_candidates",
+        "priority",
+        "notes",
+        "mix_intent",
+        "composition_intent",
+        "sound_design_intent",
+        "constraints",
+        "options",
+        "references",
+        "relationships",
+        "relationship",
+        "decision_policy",
+        "selected_option_id",
+        "resolution",
+    )
+    return {
+        key: annotation[key]
+        for key in keep
+        if key in annotation and annotation[key] not in (None, [], {})
+    }
 
 
 def _score_track(annotation: dict, track: dict) -> dict:

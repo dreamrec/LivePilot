@@ -327,6 +327,20 @@ def get_session_kernel(
             kernel_warnings.append(f"conductor_routing_unavailable: {e}")
 
     result_dict = kernel.to_dict()
+    try:
+        from ..persistence.track_annotations import (
+            TrackAnnotationStore,
+            annotation_project_hash,
+            build_track_intent_map,
+        )
+        annotation_store = TrackAnnotationStore(annotation_project_hash(session_info))
+        result_dict["track_intent_map"] = build_track_intent_map(
+            session_info,
+            annotation_store.list_annotations(),
+        )
+    except Exception as e:
+        kernel_warnings.append(f"track_intent_map_unavailable: {e}")
+
     if kernel_warnings:
         # Additive — callers can ignore; debug-mode introspection benefits.
         result_dict["warnings"] = kernel_warnings

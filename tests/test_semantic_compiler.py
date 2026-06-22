@@ -75,6 +75,95 @@ def test_find_tracks_by_role_multiple():
     assert "Glitch Lead" in names
 
 
+def test_find_tracks_by_role_prefers_committed_intent_map():
+    kernel = {
+        **MOCK_KERNEL,
+        "track_intent_map": {
+            "tracks": [
+                {
+                    "index": 3,
+                    "name": "Texture Pad",
+                    "effective_role": "bass",
+                    "role_source": "user_explicit",
+                    "decision_state": "committed",
+                }
+            ]
+        },
+    }
+    bass = resolvers.find_tracks_by_role(kernel, ["bass"])
+    assert any(t["index"] == 3 and t["role_source"] == "user_explicit" for t in bass)
+
+
+def test_find_tracks_by_role_matches_specific_role_aliases():
+    kernel = {
+        **MOCK_KERNEL,
+        "track_intent_map": {
+            "tracks": [
+                {
+                    "index": 4,
+                    "name": "Glitch Lead",
+                    "effective_role": "lead_vocal",
+                    "role_source": "user_explicit",
+                    "decision_state": "committed",
+                }
+            ]
+        },
+    }
+    leads = resolvers.find_tracks_by_role(kernel, ["lead"])
+    assert any(t["index"] == 4 and t["role"] == "lead_vocal" for t in leads)
+
+
+def test_find_tracks_by_role_keeps_open_options_opt_in():
+    kernel = {
+        **MOCK_KERNEL,
+        "track_intent_map": {
+            "tracks": [
+                {
+                    "index": 4,
+                    "name": "Glitch Lead",
+                    "effective_role": None,
+                    "role_candidates": ["support_harmony", "ensemble_harmony"],
+                    "role_source": "open_options",
+                    "decision_state": "open",
+                }
+            ]
+        },
+    }
+
+    assert resolvers.find_tracks_by_role(kernel, ["ensemble_harmony"]) == []
+    matches = resolvers.find_tracks_by_role(
+        kernel,
+        ["ensemble_harmony"],
+        include_open_options=True,
+    )
+    assert matches[0]["index"] == 4
+    assert matches[0]["decision_state"] == "open"
+
+
+def test_find_tracks_by_role_matches_open_option_aliases_when_opted_in():
+    kernel = {
+        **MOCK_KERNEL,
+        "track_intent_map": {
+            "tracks": [
+                {
+                    "index": 4,
+                    "name": "Glitch Lead",
+                    "effective_role": None,
+                    "role_candidates": ["ensemble_harmony"],
+                    "role_source": "open_options",
+                    "decision_state": "open",
+                }
+            ]
+        },
+    }
+    matches = resolvers.find_tracks_by_role(
+        kernel,
+        ["lead"],
+        include_open_options=True,
+    )
+    assert matches[0]["role"] == "ensemble_harmony"
+
+
 def test_find_track_by_name():
     t = resolvers.find_track_by_name(MOCK_KERNEL, "Rhodes")
     assert t is not None

@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog (Generated)
 
-470 tools across 56 domains.
+471 tools across 56 domains.
 
 > Auto-generated from `mcp.list_tools()`. Do not hand-edit.
 > Regenerate: `python3 scripts/generate_tool_catalog.py`
@@ -660,10 +660,11 @@
 | `suggest_next_chord` | Suggest the next chord based on the current progression. |
 | `transpose_smart` | Transpose a MIDI clip to a new key with musical intelligence. |
 
-## Tracks (24)
+## Tracks (25)
 
 | Tool | Description |
 |------|-------------|
+| `build_track_intent_map` | Build the decision-time map of track roles, options, references, and intent. |
 | `clear_track_annotation` | Clear a persistent track annotation by current track or annotation_id. |
 | `create_audio_track` | Create a new audio track. index=-1 appends at end. |
 | `create_midi_track` | Create a new MIDI track. index=-1 appends at end. |
@@ -679,7 +680,7 @@
 | `get_track_performance_impact` | Read a track's CPU performance impact metric. |
 | `jump_in_session_clip` | Jump playhead within a running session clip, in beats from start. |
 | `set_group_fold` | Fold or unfold a group track to show/hide its children. |
-| `set_track_annotation` | Attach persistent role/notes metadata to a regular track. |
+| `set_track_annotation` | Attach persistent sparse intent metadata to a track or project scope. |
 | `set_track_arm` | Arm or disarm a track for recording. |
 | `set_track_color` | Set track color (0-69, Ableton's color palette). |
 | `set_track_input_monitoring` | Set input monitoring (0=In, 1=Auto, 2=Off). Only for regular tracks, not return tracks. |
@@ -758,4 +759,4 @@
 | `rank_wonder_variants` | Rank wonder-mode variants by taste + identity + novelty + coherence. |
 
 ---
-*Generated from 470 registered tools.*
+*Generated from 471 registered tools.*

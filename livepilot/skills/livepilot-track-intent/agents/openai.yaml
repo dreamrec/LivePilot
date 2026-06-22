@@ -1,0 +1,4 @@
+interface:
+  display_name: "LivePilot Track Intent"
+  short_description: "Capture track roles, references, and open options"
+  default_prompt: "Use $livepilot-track-intent to ingest my track notes and guide LivePilot production decisions."
