@@ -8,7 +8,7 @@ This guide takes you from zero to making sound in about five minutes.
 
 - **Ableton Live 12** (any edition — Intro, Standard, or Suite)
 - **Node.js 18+** ([download](https://nodejs.org/))
-- **Python 3.9+** (usually pre-installed on macOS; [download](https://www.python.org/) for Windows)
+- **Python 3.11+** (required by numpy/scipy; usually pre-installed on macOS, but the system 3.9 is too old — `brew install python@3.12`; [download](https://www.python.org/) for Windows)
 - **An MCP-compatible AI client** — [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Claude Desktop](https://claude.ai/download), [Cursor](https://cursor.sh), VS Code with Copilot, or any other MCP client
 
 ## Step 1: Install the Remote Script

@@ -258,7 +258,8 @@ class AbletonConnection:
             needs_retry = fresh_connect and _is_single_client_state_error(response)
 
         if needs_retry:
-            self.disconnect()
+            with self._lock:
+                self.disconnect()
             time.sleep(SINGLE_CLIENT_RETRY_DELAY)
             with self._lock:
                 self.connect()

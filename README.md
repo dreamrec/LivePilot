@@ -751,7 +751,7 @@ npx livepilot --version    # Show version
 | Requirement | Minimum |
 |-------------|---------|
 | Ableton Live | **12** (any edition). Suite required for Max for Live bridge and stock instruments |
-| Python | 3.9+ |
+| Python | 3.11+ (numpy/scipy ship no wheels for 3.9/3.10) |
 | Node.js | 18+ |
 | OS | macOS / Windows |
 | Splice | Desktop app with downloaded samples (optional — enables SQLite metadata search) |

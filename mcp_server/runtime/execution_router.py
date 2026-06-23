@@ -66,6 +66,12 @@ MCP_TOOLS: frozenset[str] = frozenset({
     # set_drum_chain_note + insert_device + replace_sample_native. Used by
     # the create_drum_rack_pad semantic move.
     "add_drum_rack_pad",
+    # Routing-correctness (v1.27.2): these have @mcp.tool wrappers that call
+    # the TCP Remote Script / read the SpectralCache in-process. They must
+    # classify as mcp_tool so plan steps take the SAME path as direct callers
+    # — not the M4L JS bridge, and not the "unknown" dead-end.
+    "compressor_set_sidechain",  # was mis-listed in BRIDGE_COMMANDS → JS bridge
+    "get_master_rms",            # was READ_ONLY but unclassified → plan failure
 })
 
 

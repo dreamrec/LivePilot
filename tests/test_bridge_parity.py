@@ -73,6 +73,16 @@ def test_no_stray_js_cases_outside_whitelist():
         # bus so a [comment] in the patcher can show the current version
         # in the analyzer UI. No OSC response, never called by Python plans.
         "get_version",
+        # get_simpler_file_path: v1.27.2 — primary path is the TCP Remote
+        # Script (REMOTE_COMMANDS). The JS case remains as a backwards-compat
+        # fallback that analyzer.py invokes DIRECTLY via bridge.send_command(),
+        # never through classify_step — so it is not a plan-routable bridge cmd.
+        "get_simpler_file_path",
+        # compressor_set_sidechain: v1.27.2 — its @mcp.tool wrapper routes via
+        # the TCP Remote Script ("set_compressor_sidechain", the BUG-A3 path),
+        # so the tool classifies as mcp_tool. The JS case is a dormant legacy
+        # handler kept for safety; no Python path dispatches to it.
+        "compressor_set_sidechain",
     }
     stray = sorted(
         c for c in js_cases

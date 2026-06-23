@@ -851,9 +851,9 @@ def test_brief_recommended_searches_use_ableton_knowledge_tool_names():
     MCP tool names (search_transcripts / search_live_manual / search_videos /
     search_knowledge_base)."""
     valid_tools = {
-        "search_transcripts", "search_live_manual", "search_push_manual",
-        "search_move_manual", "search_note_manual",
+        "search_transcripts", "search_live_manual",
         "search_videos", "search_knowledge_base",
+        "get_ableton_knowledge_info",
     }
     brief = fast.build_creative_brief(
         CompositionIntent(genre="techno"),

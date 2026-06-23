@@ -173,7 +173,7 @@ Live 12.4 introduces a new capability tier that unlocks native LOM access for sa
 **Tool signatures:** unchanged. Callers do not need to detect the tier —
 routing is transparent.
 
-**Probe-first 12.4 surfaces in v1.27.1:**
+**Probe-first 12.4 surfaces in v1.27.2:**
 - `probe_link_audio()` reports observed peer/input/routing visibility and
   returns `manual_only`, `readable`, `routable`, or `unavailable`.
 - `probe_stem_workflow()` reports observed callable paths and returns

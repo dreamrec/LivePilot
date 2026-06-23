@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.27.2 — 2026-06-23
+
+Maintenance release: M4L bridge response-correlation + chunk-reassembly hardening, plan-routing fixes, a Python 3.11 floor with clearer install diagnostics, and a Remote Script Group-track crash guard. No change to the tool surface (467 tools / 56 domains). Re-frozen LivePilot_Analyzer.amxd (analyzer reports 1.27.2).
+
+### Fixed — M4L bridge
+- Correlate responses by request id across batched reads (`get_params` / `get_hidden_params` / `get_auto_state`): the id is captured per command in the analyzer JS and echoed on both single-packet and chunked responses, so an interleaved or timed-out command can no longer resolve another command's future.
+- Chunk reassembly buckets per request id, bounds-checks the chunk index, and requires every index present before reassembling — fixes a `KeyError` / silent-loss + full-timeout path on duplicate or out-of-range chunks.
+- Non-blocking UDP socket so the miditool response path cannot stall the asyncio event loop; clear the capture future after completion.
+
+### Fixed — routing & Remote Script
+- `compressor_set_sidechain` now classifies as an MCP tool (TCP Remote Script path) instead of being mis-routed to the M4L JS bridge; `get_master_rms` is now dispatchable in plans; removed the dead duplicate `get_simpler_file_path` bridge entry.
+- `get_track_info` no longer crashes on Group/Return tracks (guards the LOM-fragile arm/input properties).
+- `reload_handlers` reports per-module reload errors instead of silently swallowing them.
+- Connection retry tears down the stale socket under the lock.
+
+### Changed — install & docs
+- Raised the Python floor to 3.11 (numpy/scipy publish no wheels for 3.9/3.10) with a clear pre-flight message; pip failures surface captured output + a version hint, and the expected grpcio-tools resolver warning is pre-announced.
+- `consult_ableton_knowledge` docstrings corrected; fast brief now notes the `mcp__Ableton_Knowledge__` prefix and that the knowledge MCP is optional; fixed an over-permissive tool-name test.
+
+
 ## v1.27.1 — 2026-06-21
 
 Maintenance release: 35 verified fixes from a deep multi-agent audit, recursive installed-plugin scanning, and Windows-CI hardening. No change to the tool surface (467 tools / 56 domains).

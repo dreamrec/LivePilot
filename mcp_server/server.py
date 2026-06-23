@@ -362,7 +362,7 @@ def _get_all_tools():
     to the next path rather than exploding.
 
     WARNING: Accesses FastMCP private internals. Pinned to
-    fastmcp>=3.3.1,<3.4.0 in requirements.txt. The startup self-test
+    fastmcp>=3.4.2,<3.5.0 in requirements.txt. The startup self-test
     (_assert_tool_registry_accessible) will fail loudly if every probe
     returns empty — better than silently returning [] and disabling
     schema coercion.

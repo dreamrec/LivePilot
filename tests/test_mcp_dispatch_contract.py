@@ -80,10 +80,10 @@ def test_every_adapter_imports_cleanly():
 def test_read_only_tools_not_in_mcp_tools_except_analysis():
     """Sanity: write-class MCP tools must not be listed as read-only.
 
-    A few tools (analyze_mix, get_master_spectrum, get_emotional_arc,
-    get_motif_graph) deliberately appear in both — they dispatch as
-    mcp_tool but never mutate state. That overlap is intentional; this
-    test documents it so a future drift is visible.
+    A few tools (analyze_mix, get_master_spectrum, get_master_rms,
+    get_emotional_arc, get_motif_graph) deliberately appear in both — they
+    dispatch as mcp_tool but never mutate state. That overlap is intentional;
+    this test documents it so a future drift is visible.
     """
     overlap = MCP_TOOLS & READ_ONLY_TOOLS
     expected = {
@@ -92,6 +92,9 @@ def test_read_only_tools_not_in_mcp_tools_except_analysis():
         "analyze_mix",
         "get_masking_report",
         "get_master_spectrum",
+        # v1.27.2: get_master_rms now dispatches as mcp_tool (SpectralCache
+        # read, sibling of get_master_spectrum) — previously unclassified.
+        "get_master_rms",
         "get_emotional_arc",
         "get_motif_graph",
     }

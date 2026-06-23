@@ -378,12 +378,18 @@ def consult_ableton_knowledge(
     template, and surfaces sources alongside the answer.
 
     Examples:
-      consult_ableton_knowledge("how do I make my kick punchier?")
-        → plan: [search_live_manual("Saturator"), search_transcripts("kick punch"),
-                 search_videos("kick design tutorial")] + synthesis template
-      consult_ableton_knowledge("what's the difference between Operator and Wavetable?")
-        → plan: [search_live_manual("Operator"), search_live_manual("Wavetable"),
-                 search_transcripts("Operator vs Wavetable")]
+      consult_ableton_knowledge("what does the Saturator Drive knob do?")
+        → intent: device
+        → plan: [search_live_manual("what does the Saturator Drive knob do?"),
+                 search_videos("what does the Saturator Drive knob do?"),
+                 search_transcripts("what does the Saturator Drive knob do?")]
+                 + synthesis template
+      consult_ableton_knowledge("how do I make my kick punchier?", {"current_genre": "techno"})
+        → intent: sound_design
+        → plan: [search_transcripts("techno how do I make my kick punchier?"),
+                 search_videos("techno how do I make my kick punchier? tutorial"),
+                 search_knowledge_base("how do I make my kick punchier?")]
+                 + synthesis template
 
     session_context (optional): {
         "current_genre": "techno",

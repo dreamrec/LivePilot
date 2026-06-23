@@ -91,12 +91,18 @@ def get_track_info(song, params):
     if track.is_foldable:
         result["fold_state"] = bool(track.fold_state)
 
-    # Regular tracks have arm and input type; return tracks get null values
+    # Regular tracks expose arm + input type; Group/Return/Master tracks raise
+    # RuntimeError on these LOM properties. hasattr() does NOT catch it (Live
+    # raises rather than omitting the attribute), so a Group track at a positive
+    # index used to crash get_track_info. Guard each access — mirrors the
+    # transport.py get_session_info fix (commit 4aec8e6, closing PR #35).
     if track_index >= 0:
-        result["arm"] = track.arm
-        result["has_midi_input"] = track.has_midi_input
-        result["has_audio_input"] = track.has_audio_input
-        result["current_monitoring_state"] = track.current_monitoring_state
+        for _prop in ("arm", "has_midi_input", "has_audio_input",
+                      "current_monitoring_state"):
+            try:
+                result[_prop] = getattr(track, _prop)
+            except Exception:
+                result[_prop] = None
     else:
         result["arm"] = None
         result["has_midi_input"] = None

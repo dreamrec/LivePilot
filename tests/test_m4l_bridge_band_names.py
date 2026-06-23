@@ -185,3 +185,118 @@ def test_bridge_js_echoes_private_request_id_contract():
 
     assert "__livepilot_request_id:" in js
     assert "_livepilot_request_id" in js
+
+
+# ── v1.27.2: strict correlation + chunk hardening regressions ──────────────
+
+
+def test_no_id_response_dropped_after_id_seen():
+    """Once the analyzer is known to stamp request ids, a NO-id response
+    arriving while a future is live (e.g. a batched read that lost its id
+    across Task.schedule gaps and outlived its timeout) is a stale straggler
+    and must NOT resolve the in-flight command's future."""
+    import asyncio
+
+    loop = asyncio.new_event_loop()
+    try:
+        rx = _make_receiver()
+        rx._seen_request_id = True  # an id-bearing response was already seen
+        future = loop.create_future()
+        rx.set_response_future(future, request_id="cmd_x")
+
+        # A no-id straggler arrives — must be dropped, future left intact.
+        rx._handle_response(_encode_payload({"ok": True, "value": "straggler"}))
+        assert not future.done()
+        assert rx._response_callback is future
+
+        # The correctly-correlated reply resolves it.
+        rx._handle_response(_encode_payload({
+            "_livepilot_request_id": "cmd_x", "ok": True, "value": "real",
+        }))
+        assert future.done()
+        assert future.result() == {"ok": True, "value": "real"}
+    finally:
+        loop.close()
+
+
+def test_no_id_response_accepted_for_legacy_build():
+    """Backwards compat: a pre-request-id analyzer never stamps ids. Until an
+    id is ever seen, a no-id response resolves the in-flight future."""
+    import asyncio
+
+    loop = asyncio.new_event_loop()
+    try:
+        rx = _make_receiver()
+        assert rx._seen_request_id is False
+        future = loop.create_future()
+        rx.set_response_future(future, request_id="cmd_legacy")
+        rx._handle_response(_encode_payload({"ok": True, "value": "legacy"}))
+        assert future.done()
+        assert future.result() == {"ok": True, "value": "legacy"}
+    finally:
+        loop.close()
+
+
+def test_chunk_request_id_buckets_are_isolated():
+    """Chunks carrying distinct request ids reassemble into separate buckets,
+    even when interleaved — a stale chunk from a timed-out command can never
+    contaminate another command's response."""
+    rx = _make_receiver()
+    a = _encode_payload({"ok": True, "cmd": "A", "pad": "a" * 40})
+    b = _encode_payload({"ok": True, "cmd": "B", "pad": "b" * 40})
+    ah, bh = len(a) // 2, len(b) // 2
+
+    captured = []
+    rx._handle_response = lambda full: captured.append(full)
+
+    rx._handle_chunk(0, 2, a[:ah], request_id="A")
+    rx._handle_chunk(0, 2, b[:bh], request_id="B")
+    assert captured == []  # neither complete
+    rx._handle_chunk(1, 2, b[bh:], request_id="B")
+    rx._handle_chunk(1, 2, a[ah:], request_id="A")
+
+    assert a in captured and b in captured
+
+
+def test_chunk_out_of_range_index_dropped():
+    """An out-of-range index (>= total) must be dropped — never stored nor
+    counted toward completion. The old len()==total check could KeyError."""
+    rx = _make_receiver()
+    captured = []
+    rx._handle_response = lambda full: captured.append(full)
+
+    rx._handle_chunk(5, 2, "GARBAGE", request_id="C")  # out of range — ignored
+    rx._handle_chunk(0, 2, "AA", request_id="C")
+    assert captured == []  # still waiting for index 1, and no KeyError raised
+    rx._handle_chunk(1, 2, "BB", request_id="C")
+    assert captured == ["AABB"]
+
+
+def test_chunk_duplicate_index_no_premature_reassembly():
+    """A duplicate index must not let len(parts)==total fire reassembly while a
+    real index is still missing (the KeyError-on-missing-key path)."""
+    rx = _make_receiver()
+    captured = []
+    rx._handle_response = lambda full: captured.append(full)
+
+    rx._handle_chunk(0, 3, "AA", request_id="D")
+    rx._handle_chunk(0, 3, "AA", request_id="D")  # duplicate index 0
+    assert captured == []  # only one distinct index — must NOT reassemble
+    rx._handle_chunk(1, 3, "BB", request_id="D")
+    rx._handle_chunk(2, 3, "CC", request_id="D")
+    assert captured == ["AABBCC"]
+
+
+def test_bridge_js_batched_reads_capture_request_id():
+    """Batched-read handlers must capture the request id in a closure (so it
+    survives Task.schedule gaps) and pass it explicitly to send_response; the
+    chunk header must carry the id as its first arg."""
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    js = (root / "m4l_device" / "livepilot_bridge.js").read_text(encoding="utf-8")
+
+    # One capture per batched-read handler (get_params/hidden_params/auto_state).
+    assert js.count("var captured_request_id = current_response_request_id;") >= 3
+    assert "function send_response(obj, explicit_id)" in js
+    assert '"/response_chunk", (rid || "")' in js

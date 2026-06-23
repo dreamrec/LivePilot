@@ -139,9 +139,11 @@ BRIDGE_COMMANDS: frozenset[str] = frozenset({
     "get_params", "get_hidden_params", "get_auto_state", "walk_rack",
     "get_chains_deep", "get_track_cpu", "get_selected", "get_key",
     "get_clip_file_path", "replace_simpler_sample", "get_simpler_slices",
-    "get_simpler_file_path",  # v1.23.3 — closes the v1.12 follow-up that
-                              # left classify_simpler_slices unable to
-                              # auto-resolve the Simpler's sample path
+    # NOTE: get_simpler_file_path is NOT here — it lives in REMOTE_COMMANDS
+    # (the primary Python LOM path since v1.23.3). classify_step checks
+    # REMOTE first, so listing it here too was dead for dispatch. The
+    # backwards-compat bridge call still exists, but analyzer.py invokes it
+    # directly via bridge.send_command(), bypassing classify_step.
     "crop_simpler", "reverse_simpler", "warp_simpler",
     "get_warp_markers", "add_warp_marker", "move_warp_marker",
     "remove_warp_marker", "capture_audio", "capture_stop",
@@ -152,7 +154,10 @@ BRIDGE_COMMANDS: frozenset[str] = frozenset({
     # only Max JS LiveAPI exposes). See mcp_server/tools/analyzer.py for
     # the matching MCP tools that route through bridge.send_command.
     "simpler_set_warp",
-    "compressor_set_sidechain",
+    # NOTE: compressor_set_sidechain is NOT here — its @mcp.tool wrapper calls
+    # the TCP Remote Script ("set_compressor_sidechain", the BUG-A3 Python
+    # path), so it belongs in MCP_TOOLS. Listing it here routed plan steps to
+    # the M4L JS bridge, a divergent path. Moved to execution_router.MCP_TOOLS.
     # NOTE: load_sample_to_simpler used to live here, but it's actually an
     # async Python MCP tool in mcp_server/tools/analyzer.py, not a bridge
     # command. It has no case in livepilot_bridge.js and no @register handler

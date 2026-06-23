@@ -478,7 +478,10 @@ class SpectralReceiver(asyncio.DatagramProtocol):
         /rms f                     — RMS level
         /pitch f f                 — MIDI note, amplitude
         /response s                — base64-encoded JSON (single packet)
-        /response_chunk i i s      — chunked response (index, total, data)
+        /response_chunk [s] i i s  — chunked response. New builds prefix the
+                                     per-response request id so chunks of
+                                     different commands never share a bucket;
+                                     legacy builds omit it: (index, total, data)
     """
 
     # Band names keyed by how many bands the .amxd emits. 8 bands is the v1.x
@@ -501,6 +504,11 @@ class SpectralReceiver(asyncio.DatagramProtocol):
         self._chunk_key: Optional[str] = None  # Key of the single active reassembly bucket
         self._response_callback: Optional[asyncio.Future] = None
         self._response_request_id: Optional[str] = None
+        # Set True the first time a response arrives carrying a request id.
+        # Once the analyzer build is known to stamp ids, a response that
+        # arrives with NO id (or a mismatched one) while a future is live is a
+        # stale straggler and must be dropped — see _handle_response.
+        self._seen_request_id = False
         self._capture_future: Optional[asyncio.Future] = None
         self._miditool_handler: Optional[Callable[[str, dict, list], None]] = None
 
@@ -655,7 +663,16 @@ class SpectralReceiver(asyncio.DatagramProtocol):
             self._handle_response(str(args[0]))
 
         elif address == "/response_chunk" and len(args) >= 3:
-            self._handle_chunk(int(args[0]), int(args[1]), str(args[2]))
+            # New builds prefix the request id (string): (rid, index, total, data).
+            # Legacy builds send (index, total, data). Distinguish by the type
+            # of the first arg — OSC ints decode to int, the id to a str.
+            if len(args) >= 4 and isinstance(args[0], str):
+                self._handle_chunk(
+                    int(args[1]), int(args[2]), str(args[3]),
+                    request_id=str(args[0]),
+                )
+            else:
+                self._handle_chunk(int(args[0]), int(args[1]), str(args[2]))
 
         elif address == "/miditool/request" and len(args) >= 1:
             self._handle_miditool_request(str(args[0]))
@@ -667,11 +684,15 @@ class SpectralReceiver(asyncio.DatagramProtocol):
     def _handle_response(self, encoded: str) -> None:
         """Decode a single-packet base64 response.
 
-        Updated analyzer JS echoes ``_livepilot_request_id`` from the command
-        payload. When present, require it to match the in-flight future so a
-        late response from a timed-out command cannot resolve the next command.
-        Older analyzer builds omit the token; keep accepting those responses
-        for backwards compatibility, but new builds get strict correlation.
+        Updated analyzer JS echoes ``_livepilot_request_id`` on every response
+        (single-packet here, and on the chunk header for chunked responses).
+        Correlation rules, once this device is known to stamp ids:
+          * a response whose id does NOT match the in-flight future is dropped;
+          * a response with NO id at all is also dropped — it is a stale
+            straggler (e.g. a batched read that outlived its timeout), not a
+            pre-request-id build.
+        Pre-request-id builds (which never stamp an id) stay supported: until
+        the first id is ever seen, no-id responses are accepted.
         """
         try:
             # URL-safe base64 decode (- and _ instead of + and /)
@@ -682,19 +703,26 @@ class SpectralReceiver(asyncio.DatagramProtocol):
             if isinstance(result, dict):
                 response_request_id = result.pop("_livepilot_request_id", None)
 
+            if response_request_id is not None:
+                # This analyzer build stamps request ids — remember it so a
+                # later no-id straggler is recognised as stale rather than
+                # mistaken for an old build that never sends ids.
+                self._seen_request_id = True
+
             cb = self._response_callback
             expected_request_id = self._response_request_id
-            if (
-                cb
-                and not cb.done()
-                and response_request_id is not None
-                and expected_request_id is not None
-                and str(response_request_id) != str(expected_request_id)
-            ):
-                # A stale reply from a timed-out command arrived while another
-                # command was in flight. Drop it and keep waiting for the
-                # matching response.
-                return
+            if cb and not cb.done() and expected_request_id is not None:
+                mismatched = (
+                    response_request_id is not None
+                    and str(response_request_id) != str(expected_request_id)
+                )
+                missing_but_expected = (
+                    response_request_id is None and self._seen_request_id
+                )
+                if mismatched or missing_but_expected:
+                    # Stale/uncorrelated reply — drop it and keep waiting for
+                    # the response that actually matches this command.
+                    return
 
             if cb and not cb.done():
                 cb.set_result(result)
@@ -737,49 +765,62 @@ class SpectralReceiver(asyncio.DatagramProtocol):
                 import sys
                 print(f"LivePilot: miditool handler error: {exc}", file=sys.stderr)
 
-    def _handle_chunk(self, index: int, total: int, encoded: str) -> None:
+    def _handle_chunk(
+        self,
+        index: int,
+        total: int,
+        encoded: str,
+        request_id: Optional[str] = None,
+    ) -> None:
         """Reassemble chunked responses.
 
-        The previous implementation incremented ``_chunk_id`` only when
-        ``index == 0`` and assumed the first chunk always arrived first.
-        Under UDP reordering (rare on loopback but possible under system
-        load), a chunk with ``index > 0`` arriving before ``index 0`` would
-        be dropped into the PREVIOUS sequence's bucket — silently corrupting
-        that earlier response's payload.
+        New analyzer builds stamp the per-response request id on every
+        ``/response_chunk`` header, so chunks from different commands land in
+        SEPARATE buckets and can never be interleaved — even if a stale chunk
+        from a timed-out command arrives mid-flight. Legacy builds omit the id
+        (``request_id`` None/""); they fall back to a single rolling bucket,
+        which is safe because ``send_command`` serialises on ``_cmd_lock``.
 
-        Until the wire protocol adds an explicit sequence id, the safer
-        behavior is: if we see an out-of-order first-chunk (``index > 0``
-        with no open bucket), start a fresh bucket but log a warning. That
-        way we never poison a prior sequence, and the problem surfaces in
-        logs if it happens.
+        Hardening (v1.27.2): an index outside ``[0, total)`` is dropped — a
+        duplicate or malformed packet must never count toward completion — and
+        reassembly only fires once EVERY index ``0..total-1`` is present. The
+        old ``len(parts) == total`` check could KeyError on a duplicate or
+        out-of-range index, silently losing the response and forcing a full
+        timeout.
         """
-        # Only one response is chunked at a time: send_command serialises on
-        # _cmd_lock, so a single active reassembly bucket is sufficient and we
-        # do NOT need the first packet to be index 0. Accepting chunks in any
-        # order fixes the permanent-loss path where an index>0 chunk arriving
-        # before index 0 (UDP loopback reordering under load) used to split
-        # one response across two buckets that never completed.
-        active = self._chunks.get(self._chunk_key)
-        if active is None or active["total"] != total:
-            # No bucket open, OR a chunk with a different `total` arrived,
-            # meaning a new response started (e.g. the previous one timed out
-            # without ever completing). Evict any stale partial and open fresh.
-            if active is not None:
-                self._chunks.pop(self._chunk_key, None)
-                self._chunk_times.pop(self._chunk_key, None)
-            self._chunk_id += 1
-            self._chunk_key = str(self._chunk_id)
-            self._chunks[self._chunk_key] = {"parts": {}, "total": total}
-            self._chunk_times[self._chunk_key] = time.monotonic()
+        # Drop chunks that cannot belong to a well-formed response.
+        if total <= 0 or index < 0 or index >= total:
+            return
 
-        key = self._chunk_key
-        self._chunks[key]["parts"][index] = encoded
+        if request_id:
+            # Collision-free per-response bucket.
+            key = f"rid:{request_id}"
+            active = self._chunks.get(key)
+            if active is None or active["total"] != total:
+                self._chunks[key] = {"parts": {}, "total": total}
+                self._chunk_times[key] = time.monotonic()
+            self._chunk_key = key
+        else:
+            # Legacy single-active-bucket model (no id on the wire). A chunk
+            # with a different `total` means a new response started (e.g. the
+            # previous one timed out without ever completing) — evict + reopen.
+            active = self._chunks.get(self._chunk_key)
+            if active is None or active["total"] != total:
+                if active is not None:
+                    self._chunks.pop(self._chunk_key, None)
+                    self._chunk_times.pop(self._chunk_key, None)
+                self._chunk_id += 1
+                self._chunk_key = str(self._chunk_id)
+                self._chunks[self._chunk_key] = {"parts": {}, "total": total}
+                self._chunk_times[self._chunk_key] = time.monotonic()
+            key = self._chunk_key
 
-        if len(self._chunks[key]["parts"]) == total:
-            # All chunks received — reassemble
-            full = ""
-            for i in range(total):
-                full += self._chunks[key]["parts"][i]
+        parts = self._chunks[key]["parts"]
+        parts[index] = encoded
+
+        if len(parts) == total and all(i in parts for i in range(total)):
+            # Every chunk present — reassemble in order.
+            full = "".join(parts[i] for i in range(total))
             del self._chunks[key]
             self._chunk_times.pop(key, None)
             self._handle_response(full)
@@ -799,6 +840,10 @@ class SpectralReceiver(asyncio.DatagramProtocol):
             result = _normalize_bridge_payload(json.loads(decoded))
             if self._capture_future and not self._capture_future.done():
                 self._capture_future.set_result(result)
+            # Clear the reference so a completed future isn't retained until the
+            # next capture, and so send_capture's done()-guarded cancel has no
+            # stale object to consider.
+            self._capture_future = None
         except Exception as exc:
             import sys
             print(f"LivePilot: failed to decode capture response: {exc}", file=sys.stderr)
@@ -834,6 +879,12 @@ class M4LBridge:
         self.receiver = receiver
         self.miditool_cache = miditool_cache
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # Non-blocking so a momentarily-full send buffer never stalls the
+        # asyncio event loop. The miditool response path sends from inside a
+        # DatagramProtocol callback that runs ON the loop thread — a blocking
+        # sendto there would freeze every pending coroutine. UDP loopback sends
+        # essentially never block; _safe_sendto guards the rare case anyway.
+        self._sock.setblocking(False)
         self._m4l_addr = ("127.0.0.1", 9881)
         self._cmd_lock: Optional[asyncio.Lock] = None
         # BUG-audit-C1: send_capture uses _capture_future, which is
@@ -848,6 +899,22 @@ class M4LBridge:
             self.receiver.set_miditool_handler(self._dispatch_miditool_request)
             if self.receiver.miditool_cache is None and miditool_cache is not None:
                 self.receiver.miditool_cache = miditool_cache
+
+    def _safe_sendto(self, data: bytes) -> None:
+        """Send a UDP packet without ever blocking the event loop.
+
+        The socket is non-blocking; if the OS send buffer is momentarily full
+        (vanishingly rare on loopback) sendto raises BlockingIOError. We drop
+        the packet rather than stall — the caller's timeout/retry handles it.
+        """
+        try:
+            self._sock.sendto(data, self._m4l_addr)
+        except BlockingIOError:
+            import sys
+            print(
+                "LivePilot: M4L UDP send buffer full — packet dropped",
+                file=sys.stderr,
+            )
 
     def _dispatch_miditool_request(
         self, request_id: str, context: dict, notes: list,
@@ -893,7 +960,7 @@ class M4LBridge:
         """
         payload = {"tool_name": tool_name or "", "params": params or {}}
         osc = self._build_osc("miditool/config", (json.dumps(payload),))
-        self._sock.sendto(osc, self._m4l_addr)
+        self._safe_sendto(osc)
 
     def send_miditool_response(self, request_id: str, notes: list) -> None:
         """Send transformed notes back to the JS bridge.
@@ -903,7 +970,7 @@ class M4LBridge:
         """
         payload = {"request_id": str(request_id or ""), "notes": list(notes or [])}
         osc = self._build_osc("miditool/response", (json.dumps(payload),))
-        self._sock.sendto(osc, self._m4l_addr)
+        self._safe_sendto(osc)
 
     async def send_command(self, command: str, *args: Any, timeout: float = 5.0) -> dict:
         """Send an OSC command to the M4L device and wait for the response."""
@@ -936,7 +1003,7 @@ class M4LBridge:
             # passes messagename with / intact to JS, breaking dispatch)
             request_arg = f"__livepilot_request_id:{request_id}"
             osc_data = self._build_osc(command, (*args, request_arg))
-            self._sock.sendto(osc_data, self._m4l_addr)
+            self._safe_sendto(osc_data)
 
             # Wait for response with timeout
             try:
@@ -984,7 +1051,7 @@ class M4LBridge:
             self.receiver.set_capture_future(future)
 
             osc_data = self._build_osc(command, args)
-            self._sock.sendto(osc_data, self._m4l_addr)
+            self._safe_sendto(osc_data)
 
             try:
                 result = await asyncio.wait_for(future, timeout=timeout)

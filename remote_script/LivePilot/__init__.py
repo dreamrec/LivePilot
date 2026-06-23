@@ -5,7 +5,7 @@ Entry point for the ControlSurface. Ableton calls create_instance(c_instance)
 when this script is selected in Preferences > Link, Tempo & MIDI.
 """
 
-__version__ = "1.27.1"
+__version__ = "1.27.2"
 
 from _Framework.ControlSurface import ControlSurface
 from . import router
@@ -98,22 +98,28 @@ def _force_reload_handlers(cs=None):
         except Exception:
             pass
 
+    failures = []
+
     try:
         importlib.reload(router)
     except Exception as exc:
-        _log("reload(router) FAILED — %s: %s" % (type(exc).__name__, exc))
+        msg = "reload(router) FAILED — %s: %s" % (type(exc).__name__, exc)
+        _log(msg)
+        failures.append(("LivePilot.router", "%s: %s" % (type(exc).__name__, exc)))
 
     try:
         importlib.reload(utils)
     except Exception as exc:
-        _log("reload(utils) FAILED — %s: %s" % (type(exc).__name__, exc))
+        msg = "reload(utils) FAILED — %s: %s" % (type(exc).__name__, exc)
+        _log(msg)
+        failures.append(("LivePilot.utils", "%s: %s" % (type(exc).__name__, exc)))
 
     # Invalidate caches so iter_modules sees newly-added files even if
     # an importer cached the previous directory listing.
     importlib.invalidate_caches()
     pkg = _sys.modules.get("LivePilot")
     if pkg is None or getattr(pkg, "__path__", None) is None:
-        return
+        return {"discovered": 0, "reloaded": 0, "first_imported": 0, "failures": failures}
 
     discovered = reloaded = first_imported = 0
     for _finder, modname, _is_pkg in pkgutil.iter_modules(pkg.__path__):
@@ -130,8 +136,9 @@ def _force_reload_handlers(cs=None):
                 importlib.import_module(full_name)
                 first_imported += 1
         except Exception as exc:
-            _log("reload(%s) FAILED — %s: %s" % (
-                full_name, type(exc).__name__, exc))
+            msg = "reload(%s) FAILED — %s: %s" % (full_name, type(exc).__name__, exc)
+            _log(msg)
+            failures.append((full_name, "%s: %s" % (type(exc).__name__, exc)))
 
     # reload_handlers_cmd lives in __init__.py (not a handler module),
     # so the step-3 loop does not cover it. Re-register manually.
@@ -140,15 +147,21 @@ def _force_reload_handlers(cs=None):
     _log("reload complete — %d discovered (%d reloaded, %d first-imported)" % (
         discovered, reloaded, first_imported))
 
+    return {"discovered": discovered, "reloaded": reloaded,
+            "first_imported": first_imported, "failures": failures}
+
 
 def reload_handlers_cmd(song, params):
     """TCP-accessible reload trigger. Lets automation refresh handlers
     without a UI Control Surface toggle — the core dev-loop improvement.
-    Returns the handler count so the caller can assert before/after."""
-    _force_reload_handlers(cs=None)
+    Returns the handler count so the caller can assert before/after.
+    Returns any reload failures so the caller can detect silent errors."""
+    result = _force_reload_handlers(cs=None)
+    failures = result.get("failures", []) if isinstance(result, dict) else []
     return {
         "reloaded": True,
         "handler_count": len(router._handlers),
+        "errors": [{"module": m, "error": e} for m, e in failures],
     }
 
 

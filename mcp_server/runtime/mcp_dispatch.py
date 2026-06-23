@@ -153,6 +153,25 @@ async def _add_drum_rack_pad(params: dict, ctx: Any = None) -> dict:
     return await _call(add_drum_rack_pad, ctx, params)
 
 
+# ── Routing-correctness (v1.27.2) ─────────────────────────────────────────
+#
+# Both have @mcp.tool wrappers in tools/analyzer.py. compressor_set_sidechain
+# was mis-listed in BRIDGE_COMMANDS, so plan steps silently routed to the M4L
+# JS bridge while direct callers used the TCP Remote Script — divergent paths
+# with different error handling. get_master_rms was tagged READ_ONLY but never
+# classified (classify_step returned "unknown"), so plans could not use it at
+# all. Both now dispatch in-process here, matching their direct @mcp.tool path.
+
+async def _compressor_set_sidechain(params: dict, ctx: Any = None) -> dict:
+    from ..tools.analyzer import compressor_set_sidechain
+    return await _call(compressor_set_sidechain, ctx, params)
+
+
+async def _get_master_rms(params: dict, ctx: Any = None) -> dict:
+    from ..tools.analyzer import get_master_rms
+    return await _call(get_master_rms, ctx, params)
+
+
 def build_mcp_dispatch_registry() -> dict[str, Callable]:
     """Return the canonical registry of MCP-only tools for plan execution.
 
@@ -186,4 +205,7 @@ def build_mcp_dispatch_registry() -> dict[str, Callable]:
         "add_session_memory": _add_session_memory,
         # v1.20 — drum rack pad construction (async orchestrator).
         "add_drum_rack_pad": _add_drum_rack_pad,
+        # v1.27.2 — routing-correctness (see adapters above).
+        "compressor_set_sidechain": _compressor_set_sidechain,
+        "get_master_rms": _get_master_rms,
     }
