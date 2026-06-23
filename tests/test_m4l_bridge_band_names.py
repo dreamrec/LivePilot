@@ -137,3 +137,51 @@ def test_chunk_reassembly_new_response_evicts_stale_partial():
 
     assert captured.get("full") == encoded
     assert rx._chunks == {}  # both buckets cleaned up
+
+
+def test_response_request_id_mismatch_does_not_resolve_current_future():
+    """A late response from command A must not resolve command B's future.
+
+    The bridge JS echoes ``_livepilot_request_id`` for updated analyzers. The
+    receiver must drop mismatched ids so a timed-out command cannot bind its
+    delayed reply to the next in-flight command.
+    """
+    import asyncio
+
+    loop = asyncio.new_event_loop()
+    try:
+        rx = _make_receiver()
+        future = loop.create_future()
+        rx.set_response_future(future, request_id="cmd_b")
+
+        rx._handle_response(_encode_payload({
+            "_livepilot_request_id": "cmd_a",
+            "ok": True,
+            "value": "late A",
+        }))
+
+        assert not future.done()
+        assert rx._response_callback is future
+
+        rx._handle_response(_encode_payload({
+            "_livepilot_request_id": "cmd_b",
+            "ok": True,
+            "value": "current B",
+        }))
+
+        assert future.done()
+        assert future.result() == {"ok": True, "value": "current B"}
+        assert rx._response_callback is None
+    finally:
+        loop.close()
+
+
+def test_bridge_js_echoes_private_request_id_contract():
+    """The Max JS bridge must echo Python's private request token."""
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    js = (root / "m4l_device" / "livepilot_bridge.js").read_text(encoding="utf-8")
+
+    assert "__livepilot_request_id:" in js
+    assert "_livepilot_request_id" in js

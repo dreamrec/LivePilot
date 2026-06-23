@@ -30,6 +30,7 @@ import socket
 import struct
 import threading
 import time
+import uuid
 from typing import Any, Callable, Optional
 
 
@@ -499,6 +500,7 @@ class SpectralReceiver(asyncio.DatagramProtocol):
         self._chunk_id = 0
         self._chunk_key: Optional[str] = None  # Key of the single active reassembly bucket
         self._response_callback: Optional[asyncio.Future] = None
+        self._response_request_id: Optional[str] = None
         self._capture_future: Optional[asyncio.Future] = None
         self._miditool_handler: Optional[Callable[[str, dict, list], None]] = None
 
@@ -665,24 +667,41 @@ class SpectralReceiver(asyncio.DatagramProtocol):
     def _handle_response(self, encoded: str) -> None:
         """Decode a single-packet base64 response.
 
-        Resolves _response_callback exactly once, then clears it. Without the
-        clear, a second late packet could overwrite a future belonging to a
-        different in-flight command. The protocol has no request id yet
-        (livepilot_bridge.js:666 emits bare /response), so correlation relies
-        on the single-command-in-flight invariant enforced by M4LBridge._cmd_lock
-        plus this one-shot clear.
+        Updated analyzer JS echoes ``_livepilot_request_id`` from the command
+        payload. When present, require it to match the in-flight future so a
+        late response from a timed-out command cannot resolve the next command.
+        Older analyzer builds omit the token; keep accepting those responses
+        for backwards compatibility, but new builds get strict correlation.
         """
         try:
             # URL-safe base64 decode (- and _ instead of + and /)
             padded = encoded + "=" * (-len(encoded) % 4)
             decoded = base64.urlsafe_b64decode(padded).decode('utf-8')
             result = _normalize_bridge_payload(json.loads(decoded))
+            response_request_id = None
+            if isinstance(result, dict):
+                response_request_id = result.pop("_livepilot_request_id", None)
+
             cb = self._response_callback
+            expected_request_id = self._response_request_id
+            if (
+                cb
+                and not cb.done()
+                and response_request_id is not None
+                and expected_request_id is not None
+                and str(response_request_id) != str(expected_request_id)
+            ):
+                # A stale reply from a timed-out command arrived while another
+                # command was in flight. Drop it and keep waiting for the
+                # matching response.
+                return
+
             if cb and not cb.done():
                 cb.set_result(result)
             # Clear regardless — either we consumed it, or it was already
             # done/abandoned. Future packets with no owner get dropped.
             self._response_callback = None
+            self._response_request_id = None
         except Exception as exc:
             import sys
             print(f"LivePilot: failed to decode bridge response: {exc}", file=sys.stderr)
@@ -784,9 +803,14 @@ class SpectralReceiver(asyncio.DatagramProtocol):
             import sys
             print(f"LivePilot: failed to decode capture response: {exc}", file=sys.stderr)
 
-    def set_response_future(self, future: asyncio.Future) -> None:
+    def set_response_future(
+        self,
+        future: Optional[asyncio.Future],
+        request_id: Optional[str] = None,
+    ) -> None:
         """Set a future to be resolved with the next response."""
         self._response_callback = future
+        self._response_request_id = request_id if future is not None else None
 
     def set_capture_future(self, future: asyncio.Future) -> None:
         """Set a future to be resolved when a capture_complete OSC arrives."""
@@ -905,11 +929,13 @@ class M4LBridge:
             # Create a future for the response
             loop = asyncio.get_running_loop()
             future = loop.create_future()
-            self.receiver.set_response_future(future)
+            request_id = uuid.uuid4().hex
+            self.receiver.set_response_future(future, request_id=request_id)
 
             # Build and send OSC message (no leading / — Max udpreceive
             # passes messagename with / intact to JS, breaking dispatch)
-            osc_data = self._build_osc(command, args)
+            request_arg = f"__livepilot_request_id:{request_id}"
+            osc_data = self._build_osc(command, (*args, request_arg))
             self._sock.sendto(osc_data, self._m4l_addr)
 
             # Wait for response with timeout

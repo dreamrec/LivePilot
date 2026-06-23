@@ -45,6 +45,7 @@ var pitch_history = []; // Rolling buffer for key detection
 var MAX_PITCH_HISTORY = 128;
 var detected_key = "";
 var detected_scale = "";
+var current_response_request_id = "";
 
 // Capture state
 var capture_active = false;
@@ -85,9 +86,19 @@ function anything() {
     var cmd = messagename;
     if (cmd.charAt(0) === "/") cmd = cmd.substring(1);
     var args = _decode_arg_strings(arrayfromargs(arguments));
+    var request_id = "";
+    if (args.length > 0 && typeof args[args.length - 1] === "string") {
+        var last_arg = args[args.length - 1];
+        var request_prefix = "__livepilot_request_id:";
+        if (last_arg.indexOf(request_prefix) === 0) {
+            request_id = last_arg.substring(request_prefix.length);
+            args.pop();
+        }
+    }
 
     // Defer to low-priority thread for LiveAPI safety
     var task = new Task(function() {
+        current_response_request_id = request_id;
         try {
             dispatch(cmd, args);
         } catch(e) {
@@ -690,7 +701,11 @@ function correlate(a, b) {
 // ── Response Encoding ──────────────────────────────────────────────────────
 
 function send_response(obj) {
-    var json = JSON.stringify(obj);
+    var response = obj || {};
+    if (current_response_request_id) {
+        response._livepilot_request_id = current_response_request_id;
+    }
+    var json = JSON.stringify(response);
     var encoded = base64_encode(json);
 
     // Check if chunking needed (Max OSC packet limit ~8KB)
@@ -705,6 +720,7 @@ function send_response(obj) {
             outlet(0, "/response_chunk", i, total, piece);
         }
     }
+    current_response_request_id = "";
 }
 
 function base64_encode(str) {
