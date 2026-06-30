@@ -2430,11 +2430,10 @@ def _render_intent_first_cockpit_html(transport: str = "mcp") -> str:
       font-size: 10px;
     }
     .target-picker {
-      display: none;
       margin-top: 10px;
+      display: grid;
       gap: 8px;
     }
-    .target-picker.open { display: grid; }
     .seg-row, .chip-row, .moves, .actions {
       display: flex;
       flex-wrap: wrap;
@@ -2460,6 +2459,14 @@ def _render_intent_first_cockpit_html(transport: str = "mcp") -> str:
       cursor: pointer;
     }
     .chip small { color: var(--muted); }
+    .target-chip-name {
+      display: inline-block;
+      max-width: 176px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      vertical-align: bottom;
+      white-space: nowrap;
+    }
     .sentence {
       min-height: 92px;
       font-size: 17px;
@@ -2615,17 +2622,17 @@ def _render_intent_first_cockpit_html(transport: str = "mcp") -> str:
           <span id="focusSub">Choose a target or type a brief.</span>
         </div>
         <div class="actions">
-          <button id="changeFocus">Choose target</button>
           <button class="soft" id="clearTarget">Clear target</button>
           <button class="soft" id="refresh">Refresh</button>
           <button class="soft" id="refreshLive">Refresh from Ableton</button>
         </div>
         <div class="target-picker" id="targetPicker">
           <div class="seg-row" id="targetModeRow">
-            <button data-mode="instrument">Track groups</button>
-            <button data-mode="layer">Musical layers</button>
+            <button data-mode="instrument">Auto Groups</button>
+            <button data-mode="layer">Song Layers</button>
+            <button data-mode="track">Tracks</button>
           </div>
-          <input id="targetQuery" placeholder="vocals, lead vocal, intro handoff">
+          <input id="targetQuery" placeholder="Search groups, layers, or tracks">
           <div class="chip-row" id="groupChips"></div>
         </div>
 
@@ -2839,7 +2846,9 @@ __CALL_TOOL_JS__
       return target.matched_layer_label || target.matched_group_label || target.query || ctxState().target_query || "No target";
     }
     function pickerMode() {
-      return targetModeDraft === "layer" ? "layer" : "instrument";
+      if (targetModeDraft === "layer") return "layer";
+      if (targetModeDraft === "track") return "track";
+      return "instrument";
     }
     function targetMode() {
       return ctxState().target_mode || targetState().target_mode || "instrument";
@@ -2898,7 +2907,7 @@ __CALL_TOOL_JS__
         setStatus("Refreshing");
         state = await callTool(BACKEND_TOOLS.get_state);
         selected = selectionFromState();
-      targetModeDraft = targetMode() === "layer" ? "layer" : "instrument";
+        targetModeDraft = targetMode() === "layer" ? "layer" : targetMode() === "query" ? "track" : "instrument";
         syncControlsFromState();
         render();
         setStatus("Ready");
@@ -2935,7 +2944,8 @@ __CALL_TOOL_JS__
       const sentence = $("#sentence");
       if (!sentence.value && ctx.notes) sentence.value = ctx.notes;
       outputMode = ctx.workflow_mode === "commit" ? "apply" : ctx.workflow_mode === "guided" ? "ask" : "auditions";
-      targetModeDraft = (ctx.target_mode || targetMode()) === "layer" ? "layer" : "instrument";
+      const savedMode = ctx.target_mode || targetMode();
+      targetModeDraft = savedMode === "layer" ? "layer" : savedMode === "query" ? "track" : "instrument";
       $$("#laneRow .opt").forEach(node => node.classList.toggle("on", node.dataset.lane === (ctx.lane || "holistic")));
       $$("#sectionRow .opt").forEach(node => node.classList.toggle("on", node.dataset.section === (ctx.section_scope || "whole_song")));
       const protect = new Set(ctx.protect || []);
@@ -2987,19 +2997,45 @@ __CALL_TOOL_JS__
       $("#focusSub").textContent = ((target.section || {}).label || ctxState().section_label || "Whole song");
       $("#clearTarget").disabled = !hasTarget();
       $("#contextLine").textContent = [
-        `Target: ${hasTarget() ? (targetMode() === "layer" ? "musical layer" : targetMode() === "query" ? "single/search" : "track group") : "none"}`,
+        `Target: ${hasTarget() ? (targetMode() === "layer" ? "song layer" : targetMode() === "query" ? "track/search" : "auto group") : "none"}`,
         `Lane: ${currentLane().replace("_", " ")}`,
         `Output: ${OUTPUTS[outputMode].label}`
       ].join(" / ");
     }
     function renderPicker() {
       $$("#targetModeRow button").forEach(node => node.classList.toggle("active", node.dataset.mode === pickerMode()));
-      const groups = pickerMode() === "layer" ? ((state || {}).layer_groups || []) : ((state || {}).track_groups || []);
-      const activeKey = pickerMode() === "layer" ? targetState().matched_layer : targetState().matched_group;
+      const mode = pickerMode();
+      if (mode === "track") {
+        const activeTracks = targetTracks();
+        const activeTrackKey = activeTracks.length === 1 && targetMode() === "query"
+          ? String(activeTracks[0].index)
+          : "";
+        const tracks = ((state || {}).tracks || []).filter(isMusicalTargetTrack);
+        if (!tracks.length) {
+          $("#groupChips").innerHTML = '<span class="sub">No musical tracks found.</span>';
+          return;
+        }
+        $("#groupChips").innerHTML = tracks.map(track => {
+          const idx = Number(track.index);
+          const label = `${idx + 1} ${track.name || "Track"}`;
+          return `
+            <button class="chip ${String(idx) === activeTrackKey ? "active" : ""}" data-track-index="${idx}" title="${escapeHtml(label)}">
+              <span class="target-chip-name">${escapeHtml(label)}</span>
+            </button>
+          `;
+        }).join("");
+        $$("#groupChips .chip").forEach(node => node.addEventListener("click", () => {
+          if (node.classList.contains("active")) clearTarget();
+          else selectTrackTarget(Number(node.dataset.trackIndex));
+        }));
+        return;
+      }
+      const groups = mode === "layer" ? ((state || {}).layer_groups || []) : ((state || {}).track_groups || []);
+      const activeKey = mode === "layer" ? targetState().matched_layer : targetState().matched_group;
       if (!groups.length) {
-        $("#groupChips").innerHTML = pickerMode() === "layer"
-          ? '<span class="sub">No musical layers saved yet.</span>'
-          : '<span class="sub">No track groups found.</span>';
+        $("#groupChips").innerHTML = mode === "layer"
+          ? '<span class="sub">No song layers saved yet.</span>'
+          : '<span class="sub">No auto groups found.</span>';
         return;
       }
       $("#groupChips").innerHTML = groups.map(group => `
@@ -3205,7 +3241,6 @@ __CALL_TOOL_JS__
 
     $("#refresh").addEventListener("click", refresh);
     $("#refreshLive").addEventListener("click", refreshLive);
-    $("#changeFocus").addEventListener("click", () => $("#targetPicker").classList.toggle("open"));
     $("#clearTarget").addEventListener("click", clearTarget);
     $("#targetModeRow").addEventListener("click", event => {
       const button = event.target.closest("button[data-mode]");
@@ -3216,10 +3251,23 @@ __CALL_TOOL_JS__
     $("#targetQuery").addEventListener("keydown", event => {
       if (event.key !== "Enter") return;
       const query = $("#targetQuery").value.trim();
-      const groups = pickerMode() === "layer" ? ((state || {}).layer_groups || []) : ((state || {}).track_groups || []);
       const normalized = normalizeToken(query);
+      if (pickerMode() === "track") {
+        const tracks = ((state || {}).tracks || []).filter(isMusicalTargetTrack);
+        const match = tracks.find(track => {
+          const idx = Number(track.index);
+          return normalizeToken(track.name) === normalized ||
+            normalizeToken(`${idx + 1} ${track.name}`) === normalized ||
+            String(idx + 1) === query ||
+            String(idx) === query;
+        });
+        if (match) selectTrackTarget(Number(match.index));
+        else chooseFreeQuery(query);
+        return;
+      }
+      const groups = pickerMode() === "layer" ? ((state || {}).layer_groups || []) : ((state || {}).track_groups || []);
       const match = groups.find(group => normalizeToken(group.key) === normalized || normalizeToken(group.label) === normalized);
-      if (match) chooseTarget(query, match.key);
+      if (match) chooseTarget(match.label || query, match.key);
       else chooseFreeQuery(query);
     });
     $("#sentence").addEventListener("input", renderBrief);

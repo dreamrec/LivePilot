@@ -401,6 +401,10 @@ def test_intent_first_cockpit_renders_http_backend_contract():
     assert "Preview 3 auditions" in html
     assert "Save brief for Codex" in html
     assert "Clear target" in html
+    assert "Auto Groups" in html
+    assert "Song Layers" in html
+    assert "data-mode=\"track\"" in html
+    assert "Choose target" not in html
     assert "async function clearTarget()" in html
     assert '"#clearTarget").addEventListener("click", clearTarget)' in html
     assert "Refresh from Ableton" in html
