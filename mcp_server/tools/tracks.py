@@ -5,10 +5,13 @@
 
 from __future__ import annotations
 
+import ast
+import json
 from typing import Optional
 
 from fastmcp import Context
 
+from ..persistence.agent_focus import AgentFocusService
 from ..persistence.track_annotations import (
     TrackAnnotationStore,
     annotation_project_hash,
@@ -79,8 +82,28 @@ def _find_regular_track(session_info: dict, track_index: int) -> dict:
 def _normalize_tags(tags: Optional[list[str]]) -> list[str]:
     if tags is None:
         return []
+    if isinstance(tags, str):
+        text = tags.strip()
+        if text.startswith("["):
+            try:
+                parsed = ast.literal_eval(text)
+            except (SyntaxError, ValueError):
+                parsed = None
+            if isinstance(parsed, list):
+                tags = parsed
+            else:
+                tags = [text]
+        elif "," in text:
+            tags = [part.strip() for part in text.split(",")]
+        else:
+            tags = [text]
     normalized: list[str] = []
     for tag in tags:
+        if isinstance(tag, str) and tag.strip().startswith("["):
+            for value in _normalize_tags(tag):
+                if value not in normalized:
+                    normalized.append(value)
+            continue
         value = str(tag).strip()
         if value and value not in normalized:
             normalized.append(value)
@@ -108,22 +131,246 @@ def _annotation_for_track(ctx: Context, track_index: int) -> Optional[dict]:
         return None
 
 
+def _focus_service(ctx: Context) -> AgentFocusService:
+    service = ctx.lifespan_context.get("agent_focus")
+    if isinstance(service, AgentFocusService):
+        return service
+    return AgentFocusService()
+
+
+def _focus_panel_url(ctx: Context) -> Optional[str]:
+    value = ctx.lifespan_context.get("focus_panel_url")
+    return str(value) if value else None
+
+
+def _normalize_focus_indices(track_indices) -> list[int]:
+    if isinstance(track_indices, str):
+        text = track_indices.strip()
+        if text.startswith("["):
+            track_indices = json.loads(text)
+        elif text:
+            track_indices = [part.strip() for part in text.split(",")]
+        else:
+            track_indices = []
+    if not isinstance(track_indices, list):
+        raise ValueError("track_indices must be a list, JSON array, or comma-separated string")
+    out: list[int] = []
+    for value in track_indices:
+        idx = int(value)
+        if idx < 0:
+            raise ValueError("Agent focus currently supports regular tracks only")
+        if idx not in out:
+            out.append(idx)
+    return out
+
+
+def _track_matches_token(track: dict, token: str) -> bool:
+    name = str(track.get("name") or "")
+    return name == token or name.lower() == token.lower()
+
+
+def _track_contains_token(track: dict, token: str) -> bool:
+    return token.lower() in str(track.get("name") or "").lower()
+
+
 @mcp.tool()
-def get_track_info(ctx: Context, track_index: int) -> dict:
-    """Get detailed info about a track: clips, devices, mixer state.
+def get_track_info(
+    ctx: Context,
+    track_index: int,
+    include_device_parameters: bool = False,
+    max_device_parameters: int = 128,
+    include_device_parameter_count: bool = False,
+) -> dict:
+    """Get track clips, device-chain summaries, and mixer state; device parameters are opt-in and capped.
 
     BUG-2026-04-22#11 FIX: track_index=-1000 (the master-track convention
     used by set_track_volume, find_and_load_device, etc.) now dispatches
     to the get_master_track endpoint instead of rejecting. This makes
     -1000 work consistently across every track-addressing tool.
+
+    Device parameters are omitted by default because many plugins expose
+    thousands of parameters. Use get_device_parameters for intentional
+    single-device parameter reads, or opt in here for a capped diagnostic
+    sample.
     """
     _validate_track_index(track_index)
     if track_index == MASTER_TRACK_INDEX:
         return _get_ableton(ctx).send_command("get_master_track")
-    result = _get_ableton(ctx).send_command("get_track_info", {"track_index": track_index})
+    params = {
+        "track_index": track_index,
+        "include_device_parameters": include_device_parameters,
+        "max_device_parameters": max_device_parameters,
+        "include_device_parameter_count": include_device_parameter_count,
+    }
+    result = _get_ableton(ctx).send_command("get_track_info", params)
     if isinstance(result, dict) and track_index >= 0:
         result["track_annotation"] = _annotation_for_track(ctx, track_index)
     return result
+
+
+@mcp.tool()
+def get_agent_focus(ctx: Context, include_history: bool = False) -> dict:
+    """Return the tracks the user has pointed LivePilot at in the focus panel.
+
+    Use this when the user says "this track", "these tracks", "focused",
+    "the selected ones", or otherwise refers to the browser focus panel.
+    """
+    session_info = _require_session_info(ctx)
+    service = _focus_service(ctx)
+    result = service.get_focus(session_info)
+    result["focus_panel_url"] = _focus_panel_url(ctx)
+    if include_history:
+        result["history"] = service.history(session_info)
+    return result
+
+
+@mcp.tool()
+def set_agent_focus(
+    ctx: Context,
+    track_indices: list[int],
+    label: Optional[str] = None,
+    source: str = "mcp",
+) -> dict:
+    """Set LivePilot's current agent focus to one or more regular tracks.
+
+    This is the MCP equivalent of clicking tracks in the local focus panel.
+    """
+    session_info = _require_session_info(ctx)
+    indices = _normalize_focus_indices(track_indices)
+    result = _focus_service(ctx).set_focus(
+        session_info,
+        track_indices=indices,
+        label=label,
+        source=source or "mcp",
+    )
+    result["focus_panel_url"] = _focus_panel_url(ctx)
+    return result
+
+
+@mcp.tool()
+def clear_agent_focus(ctx: Context) -> dict:
+    """Clear LivePilot's current agent focus."""
+    session_info = _require_session_info(ctx)
+    result = _focus_service(ctx).clear_focus(session_info)
+    result["focus_panel_url"] = _focus_panel_url(ctx)
+    return result
+
+
+@mcp.tool()
+def resolve_track_ref(ctx: Context, track_ref: str) -> dict:
+    """Resolve a conversational track reference to current track indices.
+
+    Handles "focused" / "this" via agent focus, "master", exact names,
+    unique case-insensitive names, unique substrings, and numeric indices.
+    """
+    token = str(track_ref or "").strip()
+    if not token:
+        raise ValueError("track_ref cannot be empty")
+
+    lower = token.lower()
+    if lower in {"focused", "focus", "this", "these", "selected", "selection"}:
+        focus = get_agent_focus(ctx)
+        resolved = focus.get("focus") or {}
+        if resolved.get("is_empty"):
+            return {
+                "status": "unresolved",
+                "resolution_type": "agent_focus",
+                "reason": "agent_focus_empty",
+                "track_indices": [],
+                "tracks": [],
+                "focus_panel_url": focus.get("focus_panel_url"),
+            }
+        return {
+            "status": resolved.get("resolution_status", "resolved"),
+            "resolution_type": "agent_focus",
+            "track_indices": resolved.get("track_indices", []),
+            "tracks": resolved.get("tracks", []),
+            "focus_panel_url": focus.get("focus_panel_url"),
+        }
+
+    if lower == "master":
+        return {
+            "status": "resolved",
+            "resolution_type": "master",
+            "track_indices": [-1000],
+            "tracks": [{"index": -1000, "name": "Master"}],
+        }
+
+    session_info = _require_session_info(ctx)
+    tracks = [
+        track for track in (session_info.get("tracks") or [])
+        if isinstance(track, dict) and isinstance(track.get("index"), int)
+    ]
+
+    try:
+        numeric = int(token)
+    except ValueError:
+        numeric = None
+    if numeric is not None:
+        if numeric == -1000:
+            return {
+                "status": "resolved",
+                "resolution_type": "master",
+                "track_indices": [-1000],
+                "tracks": [{"index": -1000, "name": "Master"}],
+            }
+        matches = [track for track in tracks if track.get("index") == numeric]
+        if matches:
+            return {
+                "status": "resolved",
+                "resolution_type": "index",
+                "track_indices": [numeric],
+                "tracks": matches,
+            }
+        return {
+            "status": "unresolved",
+            "resolution_type": "index",
+            "reason": "track_index_not_found",
+            "track_indices": [],
+            "tracks": [],
+        }
+
+    exact = [track for track in tracks if _track_matches_token(track, token)]
+    if len(exact) == 1:
+        return {
+            "status": "resolved",
+            "resolution_type": "name",
+            "track_indices": [exact[0]["index"]],
+            "tracks": exact,
+        }
+    if len(exact) > 1:
+        return {
+            "status": "ambiguous",
+            "resolution_type": "name",
+            "reason": "multiple_exact_name_matches",
+            "track_indices": [track["index"] for track in exact],
+            "tracks": exact,
+        }
+
+    contains = [track for track in tracks if _track_contains_token(track, token)]
+    if len(contains) == 1:
+        return {
+            "status": "resolved",
+            "resolution_type": "substring",
+            "track_indices": [contains[0]["index"]],
+            "tracks": contains,
+        }
+    if len(contains) > 1:
+        return {
+            "status": "ambiguous",
+            "resolution_type": "substring",
+            "reason": "multiple_substring_matches",
+            "track_indices": [track["index"] for track in contains],
+            "tracks": contains,
+        }
+
+    return {
+        "status": "unresolved",
+        "resolution_type": "name",
+        "reason": "no_match",
+        "track_indices": [],
+        "tracks": [],
+    }
 
 
 @mcp.tool()

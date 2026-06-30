@@ -1,4 +1,4 @@
-"""Verify all 471 MCP tools are registered."""
+"""Verify all 475 MCP tools are registered."""
 
 import asyncio
 import sys
@@ -37,6 +37,10 @@ def test_tracks_tools_registered():
     names = _get_tool_names()
     expected = {
         "get_track_info",
+        "get_agent_focus",
+        "set_agent_focus",
+        "clear_agent_focus",
+        "resolve_track_ref",
         "create_midi_track",
         "create_audio_track",
         "create_return_track",
@@ -637,7 +641,13 @@ def test_control_surfaces_tools_registered():
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 471, f"Expected 471 tools, got {len(tools)}"
+    assert len(tools) == 475, f"Expected 475 tools, got {len(tools)}"
+
+
+def test_production_cockpit_tools_are_not_registered_by_default():
+    names = _get_tool_names()
+    assert "open_livepilot_production_cockpit" not in names
+    assert "get_production_context" not in names
 
 
 def test_grader_tools_registered():

@@ -4,12 +4,17 @@ from contextlib import asynccontextmanager
 import asyncio
 import logging
 import os
+import signal
 import subprocess
 
 from fastmcp import FastMCP, Context  # noqa: F401
 
 from .connection import AbletonConnection
+from .focus_panel import FocusPanelServer
+from .lifecycle_log import exception_fields, lifecycle_event
 from .m4l_bridge import SpectralCache, SpectralReceiver, M4LBridge, MidiToolCache
+from .persistence.agent_focus import AgentFocusService
+from .persistence.production_context import ProductionContextService
 
 # Logger must be defined before any function uses it — several module-level
 # helpers below (e.g. _master_has_livepilot_analyzer) call logger.debug on
@@ -172,7 +177,16 @@ async def lifespan(server):
     from .runtime.mcp_dispatch import build_mcp_dispatch_registry
     from .splice_client.client import SpliceGRPCClient
 
+    lifecycle_event(
+        "mcp_lifespan_start",
+        live_host=os.environ.get("LIVE_MCP_HOST", "127.0.0.1"),
+        live_port=os.environ.get("LIVE_MCP_PORT", "9878"),
+        focus_panel_env=os.environ.get("LIVEPILOT_FOCUS_PANEL", "0"),
+        single_instance=os.environ.get("LIVEPILOT_SINGLE_INSTANCE", "replace"),
+    )
     ableton = AbletonConnection()
+    agent_focus = AgentFocusService()
+    production_context = ProductionContextService()
     spectral = SpectralCache()
     miditool = MidiToolCache()
     receiver = SpectralReceiver(spectral, miditool_cache=miditool)
@@ -187,6 +201,7 @@ async def lifespan(server):
         await splice_client.connect()
     except Exception as exc:
         logger.debug("lifespan failed: %s", exc)
+        lifecycle_event("mcp_splice_connect_failed", **exception_fields(exc))
         pass  # client remains in disconnected state
 
     # Start UDP listener for incoming M4L spectral data (port 9880)
@@ -203,6 +218,11 @@ async def lifespan(server):
         # if the other instance is stopped.
         import sys
         holder_info = _identify_port_holder(9880)
+        lifecycle_event(
+            "mcp_udp_bind_failed",
+            port=9880,
+            holder=holder_info,
+        )
         print(
             "LivePilot: UDP port 9880 already in use%s — "
             "analyzer/bridge tools unavailable at startup. "
@@ -219,6 +239,7 @@ async def lifespan(server):
         "loop": loop,
         "receiver": receiver,
     }
+    focus_panel = None
 
     try:
         # BUG-A1: detect stale Remote Script installs early so the user
@@ -232,16 +253,62 @@ async def lifespan(server):
         # in-memory only. If Ableton isn't reachable yet, tools will lazy-bind
         # on first write via ensure_project_store_bound().
         _bind_session_continuity(ableton)
-        yield {
-            "ableton": ableton,
-            "spectral": spectral,
-            "miditool": miditool,
-            "m4l": m4l,
-            "_bridge_state": bridge_state,
-            "mcp_dispatch": mcp_dispatch,
-            "splice_client": splice_client,
-        }
+        if os.environ.get("LIVEPILOT_FOCUS_PANEL", "0").lower() not in {
+            "0", "false", "off", "no",
+        }:
+            try:
+                focus_panel = FocusPanelServer(
+                    ableton,
+                    agent_focus,
+                    production_context,
+                )
+                focus_panel.start()
+                lifecycle_event(
+                    "mcp_focus_panel_started",
+                    focus_panel_url=focus_panel.url,
+                )
+            except Exception as exc:  # noqa: BLE001 - panel is optional
+                logger.warning("LivePilot focus panel failed to start: %s", exc)
+                lifecycle_event(
+                    "mcp_focus_panel_failed",
+                    **exception_fields(exc),
+                )
+                focus_panel = None
+        lifecycle_event(
+            "mcp_lifespan_ready",
+            udp_9880_bound=bridge_state["transport"] is not None,
+            focus_panel_url=focus_panel.url if focus_panel else None,
+            splice_connected=getattr(splice_client, "connected", False),
+        )
+        try:
+            yield {
+                "ableton": ableton,
+                "agent_focus": agent_focus,
+                "production_context": production_context,
+                "focus_panel_url": focus_panel.url if focus_panel else None,
+                "spectral": spectral,
+                "miditool": miditool,
+                "m4l": m4l,
+                "_bridge_state": bridge_state,
+                "mcp_dispatch": mcp_dispatch,
+                "splice_client": splice_client,
+            }
+            lifecycle_event("mcp_lifespan_yield_returned")
+        except BaseException as exc:
+            lifecycle_event(
+                "mcp_lifespan_exception",
+                **exception_fields(exc),
+            )
+            raise
     finally:
+        lifecycle_event(
+            "mcp_lifespan_shutdown_begin",
+            focus_panel_running=focus_panel is not None,
+            udp_9880_bound=bridge_state["transport"] is not None,
+            ableton_connected=ableton.is_connected(),
+        )
+        if focus_panel:
+            focus_panel.stop()
         if bridge_state["transport"]:
             bridge_state["transport"].close()
         m4l.close()
@@ -250,6 +317,8 @@ async def lifespan(server):
             await splice_client.disconnect()
         except Exception as exc:
             logger.debug("lifespan failed: %s", exc)
+            lifecycle_event("mcp_splice_disconnect_failed", **exception_fields(exc))
+        lifecycle_event("mcp_lifespan_shutdown_complete")
 mcp = FastMCP("LivePilot", lifespan=lifespan)
 
 # Import tool modules so they register with `mcp`
@@ -312,6 +381,7 @@ from .audit import tools as audit_tools                        # noqa: F401, E40
 from .grader import tools as grader_tools                      # noqa: F401, E402
 from .tools import diagnostics   # noqa: F401, E402
 from .tools import miditool       # noqa: F401, E402
+from . import production_cockpit  # noqa: F401, E402
 
 # ---------------------------------------------------------------------------
 # Schema coercion patch — accept strings for numeric parameters
@@ -403,7 +473,10 @@ def _get_all_tools():
     best: list = []
     for label, fn in probes:
         try:
-            tools = fn()
+            tools = [
+                item for item in fn()
+                if hasattr(item, "parameters") and hasattr(item, "to_mcp_tool")
+            ]
         except (AttributeError, TypeError):
             continue
         except Exception:  # noqa: BLE001 — any error from an internal probe means "skip"
@@ -549,13 +622,41 @@ except Exception as e:
     logger.warning(f"User-local overlay load failed (non-fatal, server continues): {e}")
 
 
+def _install_signal_lifecycle_logging() -> None:
+    if getattr(_install_signal_lifecycle_logging, "_installed", False):
+        return
+    _install_signal_lifecycle_logging._installed = True
+
+    def _handler(signum, frame):  # noqa: ARG001 - stdlib signal signature
+        name = signal.Signals(signum).name
+        lifecycle_event("mcp_python_signal", signal=name, signum=signum)
+        if signum == signal.SIGINT:
+            raise KeyboardInterrupt
+        raise SystemExit(128 + signum)
+
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        try:
+            signal.signal(sig, _handler)
+        except (OSError, ValueError):
+            pass
+
+
 def main():
     """Run the MCP server over stdio."""
     # Verify tool count matches the contract — runs here (not at module load)
     # so all tool-module imports have completed regardless of the import path
     # that brought server.py in. See _assert_tool_registry_accessible() docstring.
+    _install_signal_lifecycle_logging()
+    lifecycle_event("mcp_python_main_start")
     _assert_expected_tool_count()
-    mcp.run(transport="stdio")
+    try:
+        mcp.run(transport="stdio")
+        lifecycle_event("mcp_python_main_returned")
+    except BaseException as exc:
+        lifecycle_event("mcp_python_main_exception", **exception_fields(exc))
+        raise
+    finally:
+        lifecycle_event("mcp_python_main_exit")
 
 if __name__ == "__main__":
     main()

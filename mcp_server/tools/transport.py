@@ -17,10 +17,32 @@ def _get_ableton(ctx: Context):
     return ctx.lifespan_context["ableton"]
 
 
+def _attach_agent_focus(ctx: Context, session_info: dict) -> dict:
+    if not isinstance(session_info, dict):
+        return session_info
+    try:
+        from ..persistence.agent_focus import AgentFocusService
+
+        service = ctx.lifespan_context.get("agent_focus")
+        if not isinstance(service, AgentFocusService):
+            service = AgentFocusService()
+        focus = service.get_focus(session_info)
+        session_info = dict(session_info)
+        session_info["agent_focus"] = focus.get("focus")
+        panel_url = ctx.lifespan_context.get("focus_panel_url")
+        if panel_url:
+            session_info["focus_panel_url"] = panel_url
+    except Exception:
+        # Focus is an optional operator convenience. Never break the canonical
+        # session read if the sidecar store is unavailable or corrupt.
+        return session_info
+    return session_info
+
+
 @mcp.tool()
 def get_session_info(ctx: Context) -> dict:
     """Get comprehensive Ableton session state: tempo, tracks, scenes, transport."""
-    return _get_ableton(ctx).send_command("get_session_info")
+    return _attach_agent_focus(ctx, _get_ableton(ctx).send_command("get_session_info"))
 
 
 def _validate_tempo(tempo: float) -> None:

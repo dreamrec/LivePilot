@@ -6,11 +6,49 @@ from .router import register
 from .utils import get_track
 
 
+def _safe_attr(obj, name, default=None):
+    try:
+        return getattr(obj, name)
+    except Exception:
+        return default
+
+
+def _safe_parameter_summary(param, index):
+    return {
+        "index": index,
+        "name": _safe_attr(param, "name"),
+        "value": _safe_attr(param, "value"),
+        "min": _safe_attr(param, "min"),
+        "max": _safe_attr(param, "max"),
+        "is_quantized": _safe_attr(param, "is_quantized", False),
+    }
+
+
 @register("get_track_info")
 def get_track_info(song, params):
-    """Return detailed info for a single track."""
+    """Return detailed info for a single track.
+
+    Device parameters are intentionally omitted by default. Some plugins expose
+    thousands of parameters and walking all of them from a track-level read can
+    stall Live's main thread. Use get_device_parameters for intentional
+    single-device parameter inspection, or pass include_device_parameters=True
+    for a capped diagnostic sample.
+    """
     track_index = int(params["track_index"])
     track = get_track(song, track_index)
+    include_device_parameters = bool(
+        params.get("include_device_parameters", params.get("include_parameters", False))
+    )
+    include_device_parameter_count = bool(params.get("include_device_parameter_count", False))
+    try:
+        max_device_parameters = int(params.get("max_device_parameters", 128))
+    except Exception:
+        max_device_parameters = 128
+    if max_device_parameters < 0:
+        max_device_parameters = 0
+    # Track-level reads should never become full plugin dumps. Use
+    # get_device_parameters for explicit single-device parameter inspection.
+    max_device_parameters = min(max_device_parameters, 256)
 
     # Clip slots
     clips = []
@@ -40,21 +78,29 @@ def get_track_info(song, params):
     for i, device in enumerate(track.devices):
         dev_info = {
             "index": i,
-            "name": device.name,
-            "class_name": device.class_name,
-            "is_active": device.is_active,
+            "name": _safe_attr(device, "name"),
+            "class_name": _safe_attr(device, "class_name"),
+            "is_active": _safe_attr(device, "is_active"),
         }
-        dev_params = []
-        for j, param in enumerate(device.parameters):
-            dev_params.append({
-                "index": j,
-                "name": param.name,
-                "value": param.value,
-                "min": param.min,
-                "max": param.max,
-                "is_quantized": param.is_quantized,
-            })
-        dev_info["parameters"] = dev_params
+        if include_device_parameter_count:
+            try:
+                dev_info["parameter_count"] = len(list(device.parameters))
+            except Exception:
+                dev_info["parameter_count"] = None
+        if include_device_parameters:
+            dev_params = []
+            truncated = False
+            try:
+                for j, param in enumerate(device.parameters):
+                    if j >= max_device_parameters:
+                        truncated = True
+                        break
+                    dev_params.append(_safe_parameter_summary(param, j))
+            except Exception as exc:
+                dev_info["parameter_error"] = str(exc)
+            dev_info["parameters"] = dev_params
+            dev_info["parameters_returned"] = len(dev_params)
+            dev_info["parameters_truncated"] = truncated
         devices.append(dev_info)
 
     # Mixer info

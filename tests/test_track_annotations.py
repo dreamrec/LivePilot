@@ -185,6 +185,32 @@ def test_committed_explicit_role_overrides_name_in_intent_map(tmp_path, monkeypa
     assert track["role_source"] == "user_explicit"
 
 
+def test_rejected_annotation_blocks_name_inference_in_intent_map(tmp_path, monkeypatch):
+    monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
+    ableton = _Ableton(_session([
+        {"index": 0, "name": "Bad Lead Hook", "color_index": 8, "has_midi_input": True},
+    ]))
+    ctx = _ctx(ableton)
+
+    set_track_annotation(
+        ctx,
+        track_index=0,
+        role="rejected_guitar_shadow",
+        decision_state="rejected",
+        source="user_corrected_layer_map",
+        tags=["rejected_layer:verse_guitar_color", "state:muted"],
+        composition_intent="Rejected after audition; keep for history only.",
+    )
+
+    track = build_track_intent_map(ctx)["tracks"][0]
+    assert track["inferred_role"] == "lead"
+    assert track["decision_state"] == "rejected"
+    assert track["effective_role"] == "rejected_guitar_shadow"
+    assert track["role_source"] == "user_corrected_layer_map"
+    assert "lead" not in track["role_candidates"]
+    assert track["annotations"][0]["decision_state"] == "rejected"
+
+
 def test_project_scope_annotation_without_track(tmp_path, monkeypatch):
     monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
     ableton = _Ableton(_session([

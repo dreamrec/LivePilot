@@ -286,7 +286,15 @@ class AbletonConnection:
             raise AbletonConnectionError(friendly)
 
         self._command_log.append(log_entry)
-        return response.get("result", {})
+        result = response.get("result", {})
+        if command_type == "get_session_info" and isinstance(result, dict):
+            try:
+                from .persistence.session_snapshot import save_session_snapshot
+
+                save_session_snapshot(result, source="mcp")
+            except Exception:
+                logger.debug("failed to persist session snapshot", exc_info=True)
+        return result
 
     # ------------------------------------------------------------------
     # Command log

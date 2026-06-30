@@ -7,6 +7,7 @@ back to the current session on read.
 
 from __future__ import annotations
 
+import ast
 import hashlib
 import time
 import uuid
@@ -186,6 +187,7 @@ def normalize_annotation(annotation: dict) -> dict:
         "role",
         "priority",
         "notes",
+        "tags",
         "mix_intent",
         "composition_intent",
         "sound_design_intent",
@@ -277,14 +279,19 @@ def build_track_intent_map(session_info: dict, annotations: list[dict]) -> dict:
             a for a in by_track.get(idx, [])
             if a.get("decision_state") not in _REJECTED_STATES
         ]
-        if active_annotations:
+        rejected_annotations = [
+            a for a in by_track.get(idx, [])
+            if a.get("decision_state") in _REJECTED_STATES
+        ]
+        decision_annotations = active_annotations or rejected_annotations
+        if decision_annotations:
             annotated_count += 1
         inferred_role = infer_role(str(track.get("name", "")))
-        primary = _select_primary_annotation(active_annotations)
+        primary = _select_primary_annotation(decision_annotations)
         track_entry = _build_track_intent_entry(
             track=track,
             inferred_role=inferred_role,
-            annotations=active_annotations,
+            annotations=decision_annotations,
             primary=primary,
         )
         intent_tracks.append(track_entry)
@@ -396,11 +403,26 @@ def _normalize_string_list(value) -> list[str]:
     if value is None:
         return []
     if isinstance(value, str):
-        value = [value]
+        text = value.strip()
+        if text.startswith("["):
+            try:
+                parsed = ast.literal_eval(text)
+            except (SyntaxError, ValueError):
+                parsed = None
+            value = parsed if isinstance(parsed, list) else [text]
+        elif "," in text:
+            value = [part.strip() for part in text.split(",")]
+        else:
+            value = [text]
     if not isinstance(value, list):
         return []
     out: list[str] = []
     for item in value:
+        if isinstance(item, str) and item.strip().startswith("["):
+            for text in _normalize_string_list(item):
+                if text not in out:
+                    out.append(text)
+            continue
         text = str(item).strip()
         if text and text not in out:
             out.append(text)
@@ -441,7 +463,6 @@ def _build_track_intent_entry(
     annotations: list[dict],
     primary: Optional[dict],
 ) -> dict:
-    role_candidates = _collect_role_candidates(annotations, inferred_role)
     effective_role = None
     role_source = "inferred_name"
     requires_audition = False
@@ -451,6 +472,13 @@ def _build_track_intent_entry(
     if primary:
         decision_state = primary.get("decision_state") or "committed"
         priority = primary.get("priority") or None
+
+    candidate_inferred_role = (
+        "" if decision_state in _REJECTED_STATES else inferred_role
+    )
+    role_candidates = _collect_role_candidates(annotations, candidate_inferred_role)
+
+    if primary:
         selected = _selected_option(primary)
         if selected and selected.get("role"):
             effective_role = str(selected["role"]).strip()
@@ -464,6 +492,9 @@ def _build_track_intent_entry(
         elif decision_state == "hypothesis" and primary.get("role"):
             effective_role = primary.get("role")
             role_source = primary.get("source") or "hypothesis"
+        elif decision_state in _REJECTED_STATES:
+            effective_role = primary.get("role") or "rejected"
+            role_source = primary.get("source") or "rejected_annotation"
 
         if primary.get("decision_policy") == "audition_before_commit":
             requires_audition = True
@@ -574,6 +605,7 @@ def _compact_annotation(annotation: dict) -> dict:
         "role_candidates",
         "priority",
         "notes",
+        "tags",
         "mix_intent",
         "composition_intent",
         "sound_design_intent",

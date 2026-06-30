@@ -12,6 +12,112 @@ const VENV_DIR = path.join(ROOT, ".venv");
 const REQUIREMENTS = path.join(ROOT, "requirements.txt");
 const LAUNCHER_PATH = path.resolve(__filename);
 const MCP_SERVER_COMMAND_RE = /(^|\s)-m\s+mcp_server(\s|$)/;
+const DEFAULT_LIFECYCLE_LOG = path.join(
+  require("os").homedir(),
+  ".livepilot",
+  "logs",
+  "lifecycle.jsonl",
+);
+let activeChild = null;
+let processLifecycleHandlersInstalled = false;
+
+function lifecycleLogPath() {
+  const value = process.env.LIVEPILOT_LIFECYCLE_LOG;
+  if (value && ["0", "false", "off", "no"].includes(value.toLowerCase())) {
+    return null;
+  }
+  return value || DEFAULT_LIFECYCLE_LOG;
+}
+
+function lifecycleLog(event, fields = {}) {
+  const logPath = lifecycleLogPath();
+  if (!logPath) {
+    return;
+  }
+  const record = {
+    ts_ms: Date.now(),
+    event,
+    pid: process.pid,
+    ppid: process.ppid,
+    argv: process.argv,
+    cwd: process.cwd(),
+    version: PKG.version,
+    ...fields,
+  };
+  try {
+    fs.mkdirSync(path.dirname(logPath), { recursive: true });
+    fs.appendFileSync(logPath, `${JSON.stringify(record)}\n`, "utf8");
+  } catch {
+    // Lifecycle logging must never break MCP stdio startup.
+  }
+}
+
+function summarizeProcess(proc) {
+  return {
+    pid: proc.pid,
+    ppid: proc.ppid,
+    role: proc.role,
+    command: proc.command,
+  };
+}
+
+function installProcessLifecycleHandlers() {
+  if (processLifecycleHandlersInstalled) {
+    return;
+  }
+  processLifecycleHandlersInstalled = true;
+
+  process.on("exit", (code) => {
+    lifecycleLog("launcher_exit", {
+      code,
+      active_child_pid: activeChild ? activeChild.pid : null,
+    });
+  });
+  process.on("SIGINT", () => {
+    lifecycleLog("launcher_signal", {
+      signal: "SIGINT",
+      active_child_pid: activeChild ? activeChild.pid : null,
+    });
+    if (activeChild && !activeChild.killed) {
+      activeChild.kill("SIGINT");
+    }
+    setTimeout(() => process.exit(130), 250).unref();
+  });
+  process.on("SIGTERM", () => {
+    lifecycleLog("launcher_signal", {
+      signal: "SIGTERM",
+      active_child_pid: activeChild ? activeChild.pid : null,
+    });
+    if (activeChild && !activeChild.killed) {
+      activeChild.kill("SIGTERM");
+    }
+    setTimeout(() => process.exit(143), 250).unref();
+  });
+  process.stdin.on("end", () => {
+    lifecycleLog("launcher_stdin_end", {
+      active_child_pid: activeChild ? activeChild.pid : null,
+    });
+  });
+  process.stdin.on("close", () => {
+    lifecycleLog("launcher_stdin_close", {
+      active_child_pid: activeChild ? activeChild.pid : null,
+    });
+  });
+  process.on("uncaughtException", (err) => {
+    lifecycleLog("launcher_uncaught_exception", {
+      error_name: err && err.name,
+      error_message: err && err.message,
+      stack: err && err.stack,
+    });
+    console.error(err);
+    process.exit(1);
+  });
+  process.on("unhandledRejection", (reason) => {
+    lifecycleLog("launcher_unhandled_rejection", {
+      reason: reason && reason.stack ? reason.stack : String(reason),
+    });
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Python detection
@@ -189,16 +295,26 @@ async function stopProcesses(processes, signal) {
       continue;
     }
     try {
+      lifecycleLog("launcher_signal_process", {
+        signal,
+        target: summarizeProcess(proc),
+      });
       process.kill(proc.pid, signal);
     } catch {
       // Process may have exited between discovery and signal delivery.
+      lifecycleLog("launcher_signal_process_failed", {
+        signal,
+        target: summarizeProcess(proc),
+      });
     }
   }
 }
 
 async function cleanupSiblingLivePilotInstances(options = {}) {
   const mode = process.env.LIVEPILOT_SINGLE_INSTANCE || "replace";
+  lifecycleLog("launcher_single_instance_cleanup_start", { mode });
   if (mode === "off" || mode === "0" || mode === "false") {
+    lifecycleLog("launcher_single_instance_cleanup_skipped", { mode });
     return { mode, stopped: [], remaining: [], skipped: true };
   }
 
@@ -210,8 +326,14 @@ async function cleanupSiblingLivePilotInstances(options = {}) {
   const uniqueTargets = Array.from(new Map(targets.map((proc) => [proc.pid, proc])).values());
 
   if (uniqueTargets.length === 0) {
+    lifecycleLog("launcher_single_instance_cleanup_no_targets", { mode });
     return { mode, stopped: [], remaining: [] };
   }
+
+  lifecycleLog("launcher_single_instance_cleanup_targets", {
+    mode,
+    targets: uniqueTargets.map(summarizeProcess),
+  });
 
   if (mode === "fail") {
     const detail = uniqueTargets
@@ -243,9 +365,17 @@ async function cleanupSiblingLivePilotInstances(options = {}) {
   const remaining = uniqueTargets.filter((proc) => isProcessAlive(proc.pid));
   if (remaining.length > 0) {
     const detail = remaining.map((proc) => `${proc.role} PID ${proc.pid}`).join(", ");
+    lifecycleLog("launcher_single_instance_cleanup_remaining", {
+      mode,
+      remaining: remaining.map(summarizeProcess),
+    });
     throw new Error(`could not stop older LivePilot instance(s): ${detail}`);
   }
 
+  lifecycleLog("launcher_single_instance_cleanup_complete", {
+    mode,
+    stopped: uniqueTargets.map(summarizeProcess),
+  });
   return {
     mode,
     stopped: uniqueTargets,
@@ -961,14 +1091,76 @@ async function setup() {
   }
 }
 
+async function runCockpit(args) {
+  const daemon = args.includes("--daemon");
+  args = args.filter((arg) => arg !== "--daemon");
+
+  const pyInfo = findPython();
+  if (!pyInfo) {
+    console.error("Error: Python >= 3.9 is required but was not found.");
+    process.exit(1);
+  }
+
+  let pythonBin;
+  try {
+    pythonBin = ensureVenv(pyInfo.cmd, pyInfo.prefixArgs);
+  } catch (err) {
+    console.error("Error: failed to set up Python environment.");
+    console.error("  %s", err.message);
+    process.exit(1);
+  }
+
+  const child = spawn(pythonBin, ["-m", "mcp_server.focus_panel", ...args], {
+    cwd: ROOT,
+    detached: daemon,
+    stdio: "inherit",
+  });
+  activeChild = child;
+  lifecycleLog("launcher_spawn_cockpit_child", {
+    child_pid: child.pid,
+    daemon,
+    args: ["-m", "mcp_server.focus_panel", ...args],
+  });
+
+  if (daemon) {
+    child.unref();
+    console.error("LivePilot cockpit started as PID %d", child.pid);
+    lifecycleLog("launcher_cockpit_daemon_detached", { child_pid: child.pid });
+    return;
+  }
+
+  child.on("error", (err) => {
+    lifecycleLog("launcher_cockpit_child_error", {
+      child_pid: child.pid,
+      error_name: err && err.name,
+      error_message: err && err.message,
+      stack: err && err.stack,
+    });
+    console.error("Failed to start LivePilot cockpit: %s", err.message);
+    process.exit(1);
+  });
+
+  child.on("exit", (code, signal) => {
+    lifecycleLog("launcher_cockpit_child_exit", {
+      child_pid: child.pid,
+      code,
+      signal,
+    });
+    activeChild = null;
+    process.exit(code || 0);
+  });
+}
+
 
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
 async function main() {
+  installProcessLifecycleHandlers();
   const args = process.argv.slice(2);
   const flag = args[0] || "";
+  lifecycleLog("launcher_main_start", { flag, args });
 
   // --version / -v
   if (flag === "--version" || flag === "-v") {
@@ -990,6 +1182,7 @@ async function main() {
     console.log("  --install-codex-plugin   Install the bundled Codex plugin locally");
     console.log("  --uninstall-codex-plugin Remove the locally installed Codex plugin");
     console.log("  --cleanup-stale Stop older same-repo LivePilot MCP instances");
+    console.log("  --cockpit     Start browser focus panel / production cockpit only");
     console.log("  --status      Check if Ableton Live is reachable");
     console.log("  --doctor      Run diagnostics (Python, deps, connection)");
     console.log("  --version     Show version");
@@ -1000,6 +1193,10 @@ async function main() {
     console.log("  LIVE_MCP_HOST   Remote Script host (default: 127.0.0.1)");
     console.log("  LIVE_MCP_PORT   Remote Script port (default: 9878)");
     console.log("  LIVEPILOT_SINGLE_INSTANCE replace|fail|off (default: replace)");
+    console.log("  LIVEPILOT_FOCUS_PANEL_PORT Browser cockpit port (default: 9890)");
+    console.log("");
+    console.log("Cockpit options:");
+    console.log("  --daemon      With --cockpit, start the browser sidecar in the background");
     return;
   }
 
@@ -1085,6 +1282,12 @@ async function main() {
     return;
   }
 
+  // --cockpit
+  if (flag === "--cockpit" || flag === "cockpit") {
+    await runCockpit(args.slice(1));
+    return;
+  }
+
   // Auto-install Remote Script when launched from Desktop Extension
   if (process.env.LIVEPILOT_AUTO_INSTALL === "true") {
     try {
@@ -1157,18 +1360,42 @@ async function main() {
     cwd: ROOT,
     stdio: "inherit",
   });
+  activeChild = child;
+  lifecycleLog("launcher_spawn_mcp_child", {
+    child_pid: child.pid,
+    args: ["-m", "mcp_server"],
+    live_host: process.env.LIVE_MCP_HOST || "127.0.0.1",
+    live_port: process.env.LIVE_MCP_PORT || "9878",
+  });
 
   child.on("error", (err) => {
+    lifecycleLog("launcher_mcp_child_error", {
+      child_pid: child.pid,
+      error_name: err && err.name,
+      error_message: err && err.message,
+      stack: err && err.stack,
+    });
     console.error("Failed to start MCP server: %s", err.message);
     process.exit(1);
   });
 
-  child.on("exit", (code) => {
+  child.on("exit", (code, signal) => {
+    lifecycleLog("launcher_mcp_child_exit", {
+      child_pid: child.pid,
+      code,
+      signal,
+    });
+    activeChild = null;
     process.exit(code || 0);
   });
 }
 
 main().catch((err) => {
+  lifecycleLog("launcher_main_exception", {
+    error_name: err && err.name,
+    error_message: err && err.message,
+    stack: err && err.stack,
+  });
   console.error(err);
   process.exit(1);
 });
