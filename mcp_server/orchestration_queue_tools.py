@@ -7,7 +7,7 @@ from typing import Optional
 from fastmcp import Context
 
 from .persistence.orchestration_queue import OrchestrationService
-from .runtime.execution_router import execute_plan_steps_async
+from .runtime.execution_router import READ_ONLY_TOOLS, execute_plan_steps_async
 from .server import mcp
 
 
@@ -716,6 +716,242 @@ def _record_job_outcome(
     return logging_result
 
 
+def _job_scope(job: dict) -> dict:
+    scope = job.get("scope")
+    return dict(scope) if isinstance(scope, dict) else {}
+
+
+def _scope_bool(scope: dict, key: str, default: bool) -> bool:
+    value = scope.get(key)
+    if value is None:
+        return default
+    if isinstance(value, str):
+        return value.strip().lower() not in {"0", "false", "no", "off"}
+    return bool(value)
+
+
+def _float_or_none(value) -> Optional[float]:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _execution_needs_transport_guard(job: dict) -> bool:
+    return bool(job.get("requires_transport")) or str(
+        job.get("job_type") or ""
+    ) == "playback_analysis"
+
+
+def _capture_execution_state(ctx: Context, job: dict) -> dict:
+    if not _execution_needs_transport_guard(job):
+        return {"status": "skipped", "reason": "transport_not_required"}
+    try:
+        session = _require_session_info(ctx)
+    except Exception as exc:  # noqa: BLE001 - caller reports degraded preflight.
+        return {"status": "unavailable", "error": str(exc)}
+
+    tracks = []
+    for track in session.get("tracks") or []:
+        if not isinstance(track, dict) or not isinstance(track.get("index"), int):
+            continue
+        tracks.append({
+            "index": int(track["index"]),
+            "mute": bool(track.get("mute", False)),
+            "solo": bool(track.get("solo", False)),
+        })
+
+    return {
+        "status": "captured",
+        "transport": {
+            "is_playing": bool(session.get("is_playing", False)),
+            "current_song_time": _float_or_none(
+                session.get("current_song_time")
+            ),
+            "loop": bool(session.get("loop", False)),
+            "loop_start": _float_or_none(session.get("loop_start")),
+            "loop_length": _float_or_none(session.get("loop_length")),
+            "arrangement_override": session.get("arrangement_override"),
+        },
+        "tracks": tracks,
+    }
+
+
+def _resolve_loop_scope(job: dict) -> Optional[dict]:
+    scope = _job_scope(job)
+    section = scope.get("section") if isinstance(scope.get("section"), dict) else {}
+    candidates = [
+        scope,
+        section,
+    ]
+    for candidate in candidates:
+        start = _float_or_none(
+            candidate.get("loop_start")
+            or candidate.get("section_start_beat")
+            or candidate.get("start_beat")
+        )
+        length = _float_or_none(candidate.get("loop_length"))
+        if length is None:
+            end = _float_or_none(
+                candidate.get("section_end_beat")
+                or candidate.get("end_beat")
+            )
+            if start is not None and end is not None:
+                length = end - start
+        if start is not None and length is not None and length > 0:
+            return {"start": start, "length": length}
+    return None
+
+
+def _prepare_playback_state(ctx: Context, job: dict) -> dict:
+    if not _execution_needs_transport_guard(job):
+        return {"status": "skipped", "reason": "transport_not_required"}
+    ableton = _get_ableton(ctx)
+    scope = _job_scope(job)
+    loop = _resolve_loop_scope(job)
+    play = _scope_bool(scope, "play", False) or _scope_bool(
+        scope,
+        "start_playback",
+        False,
+    )
+    if loop:
+        result = ableton.send_command(
+            "force_arrangement",
+            {
+                "beat_time": loop["start"],
+                "loop_start": loop["start"],
+                "loop_length": loop["length"],
+                "play": play,
+            },
+        )
+        return {
+            "status": "prepared",
+            "action": "force_arrangement",
+            "loop": loop,
+            "play": play,
+            "result": result if isinstance(result, dict) else {},
+        }
+    result = ableton.send_command("back_to_arranger", {})
+    return {
+        "status": "prepared",
+        "action": "back_to_arranger",
+        "loop": None,
+        "play": play,
+        "result": result if isinstance(result, dict) else {},
+    }
+
+
+def _restore_playback_state(
+    ctx: Context,
+    job: dict,
+    captured: dict,
+) -> dict:
+    if not _execution_needs_transport_guard(job):
+        return {"status": "skipped", "reason": "transport_not_required"}
+    if captured.get("status") != "captured":
+        return {
+            "status": "skipped",
+            "reason": "preflight_state_not_captured",
+            "preflight_status": captured.get("status"),
+        }
+
+    scope = _job_scope(job)
+    restore_transport = _scope_bool(scope, "restore_transport", True)
+    restore_monitoring = _scope_bool(scope, "restore_monitoring", True)
+    ableton = _get_ableton(ctx)
+    errors = []
+    restored = []
+
+    def send(command: str, params: Optional[dict] = None) -> None:
+        try:
+            ableton.send_command(command, params or {})
+            restored.append({"command": command, "params": params or {}})
+        except Exception as exc:  # noqa: BLE001 - collect all restore errors.
+            errors.append({
+                "command": command,
+                "params": params or {},
+                "error": str(exc),
+            })
+
+    if restore_transport:
+        transport = captured.get("transport") or {}
+        send("back_to_arranger")
+        if transport.get("loop_start") is not None and transport.get("loop_length"):
+            send(
+                "set_session_loop",
+                {
+                    "enabled": bool(transport.get("loop", False)),
+                    "loop_start": float(transport["loop_start"]),
+                    "loop_length": float(transport["loop_length"]),
+                },
+            )
+        else:
+            send("set_session_loop", {"enabled": bool(transport.get("loop", False))})
+        if transport.get("current_song_time") is not None:
+            send(
+                "jump_to_time",
+                {"beat_time": float(transport["current_song_time"])},
+            )
+        send(
+            "continue_playback"
+            if bool(transport.get("is_playing", False))
+            else "stop_playback"
+        )
+
+    if restore_monitoring:
+        for track in captured.get("tracks") or []:
+            index = track.get("index")
+            if not isinstance(index, int):
+                continue
+            send("set_track_solo", {"track_index": index, "solo": bool(track.get("solo", False))})
+            send("set_track_mute", {"track_index": index, "mute": bool(track.get("mute", False))})
+
+    return {
+        "status": "restored" if not errors else "partial",
+        "restored": restored,
+        "errors": errors,
+    }
+
+
+def _failed_step(exec_results: list[dict]) -> Optional[dict]:
+    for index, item in enumerate(exec_results):
+        if not item.get("ok"):
+            return {
+                "index": index,
+                "tool": item.get("tool", ""),
+                "error": str(item.get("error") or "execution failed"),
+            }
+    return None
+
+
+def _changes_applied(exec_results: list[dict]) -> bool:
+    for item in exec_results:
+        if item.get("ok") and str(item.get("tool") or "") not in READ_ONLY_TOOLS:
+            return True
+    return False
+
+
+def _failure_payload(
+    error: str,
+    exec_results: list[dict],
+    restoration: dict,
+) -> dict:
+    return {
+        "execution_log": exec_results,
+        "error": error,
+        "failed_step": _failed_step(exec_results),
+        "changes_applied": _changes_applied(exec_results),
+        "restoration": restoration,
+        "recommended_recovery": (
+            "Review the execution log before retrying; restoration was partial."
+            if restoration.get("status") == "partial"
+            else "Fix the failed step or refresh the snapshot, then submit a new job."
+        ),
+    }
+
+
 @mcp.tool()
 async def run_next_ableton_job(
     ctx: Context,
@@ -780,7 +1016,12 @@ async def run_next_ableton_job(
 
     started = store.update_job_status(job["job_id"], "running")
     exec_results = []
+    preflight = {
+        "captured": _capture_execution_state(ctx, started),
+        "prepared": {"status": "pending"},
+    }
     try:
+        preflight["prepared"] = _prepare_playback_state(ctx, started)
         results = await execute_plan_steps_async(
             steps,
             ableton=_get_ableton(ctx),
@@ -792,6 +1033,11 @@ async def run_next_ableton_job(
         exec_results = [result.to_dict() for result in results]
         ok = bool(results) and all(result.ok for result in results)
         if ok:
+            restoration = _restore_playback_state(
+                ctx,
+                started,
+                preflight["captured"],
+            )
             revision = None
             if bool(started.get("requires_write")) or started.get("job_type") in {
                 "audition",
@@ -815,6 +1061,8 @@ async def run_next_ableton_job(
                 result={
                     "execution_log": exec_results,
                     "project_revision": revision,
+                    "preflight": preflight,
+                    "restoration": restoration,
                     "logging": logging_result,
                 },
             )
@@ -826,6 +1074,11 @@ async def run_next_ableton_job(
             }
 
         error = _first_execution_error(exec_results)
+        restoration = _restore_playback_state(
+            ctx,
+            started,
+            preflight["captured"],
+        )
         logging_result = _record_job_outcome(
             ctx,
             started,
@@ -833,14 +1086,13 @@ async def run_next_ableton_job(
             exec_results=exec_results,
             error=error,
         )
+        result_payload = _failure_payload(error, exec_results, restoration)
+        result_payload["preflight"] = preflight
+        result_payload["logging"] = logging_result
         failed = store.update_job_status(
             started["job_id"],
             "failed",
-            result={
-                "execution_log": exec_results,
-                "error": error,
-                "logging": logging_result,
-            },
+            result=result_payload,
         )
         return {
             "status": "failed",
@@ -848,8 +1100,14 @@ async def run_next_ableton_job(
             "job": failed,
             "execution_log": exec_results,
             "error": error,
+            "restoration": restoration,
         }
     except Exception as exc:  # noqa: BLE001 - persist job failure details.
+        restoration = _restore_playback_state(
+            ctx,
+            started,
+            preflight["captured"],
+        )
         logging_result = _record_job_outcome(
             ctx,
             started,
@@ -857,14 +1115,13 @@ async def run_next_ableton_job(
             exec_results=exec_results,
             error=str(exc),
         )
+        result_payload = _failure_payload(str(exc), exec_results, restoration)
+        result_payload["preflight"] = preflight
+        result_payload["logging"] = logging_result
         failed = store.update_job_status(
             started["job_id"],
             "failed",
-            result={
-                "execution_log": exec_results,
-                "error": str(exc),
-                "logging": logging_result,
-            },
+            result=result_payload,
         )
         return {
             "status": "failed",
@@ -872,6 +1129,7 @@ async def run_next_ableton_job(
             "job": failed,
             "execution_log": exec_results,
             "error": str(exc),
+            "restoration": restoration,
         }
     finally:
         store.release_leases_for_job(started["job_id"])

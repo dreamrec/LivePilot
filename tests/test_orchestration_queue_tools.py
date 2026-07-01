@@ -24,10 +24,16 @@ def _session() -> dict:
     return {
         "project_identity": {"file_path": "/Users/me/Song.als"},
         "tempo": 116.0,
+        "is_playing": False,
+        "current_song_time": 0.0,
+        "loop": False,
+        "loop_start": 0.0,
+        "loop_length": 4.0,
+        "arrangement_override": False,
         "track_count": 2,
         "tracks": [
-            {"index": 0, "name": "Drums"},
-            {"index": 1, "name": "Guitar"},
+            {"index": 0, "name": "Drums", "mute": False, "solo": False},
+            {"index": 1, "name": "Guitar", "mute": False, "solo": False},
         ],
         "return_tracks": [],
         "scenes": [],
@@ -47,6 +53,46 @@ class _Ableton:
             raise RuntimeError(f"Fake failure on {command}")
         if command == "get_session_info":
             return self.session_info
+        if command == "force_arrangement":
+            self.session_info["arrangement_override"] = False
+            self.session_info["current_song_time"] = float(params.get("beat_time", 0.0))
+            if "loop_length" in params:
+                self.session_info["loop"] = True
+                self.session_info["loop_start"] = float(params.get("loop_start", 0.0))
+                self.session_info["loop_length"] = float(params["loop_length"])
+            self.session_info["is_playing"] = bool(params.get("play", True))
+            return {
+                "arrangement_active": True,
+                "position": self.session_info["current_song_time"],
+                "loop": self.session_info["loop"],
+                "is_playing": self.session_info["is_playing"],
+            }
+        if command == "back_to_arranger":
+            self.session_info["arrangement_override"] = False
+            return {"back_to_arranger": False}
+        if command == "set_session_loop":
+            self.session_info["loop"] = bool(params["enabled"])
+            if "loop_start" in params:
+                self.session_info["loop_start"] = float(params["loop_start"])
+            if "loop_length" in params:
+                self.session_info["loop_length"] = float(params["loop_length"])
+            return {
+                "loop": self.session_info["loop"],
+                "loop_start": self.session_info["loop_start"],
+                "loop_length": self.session_info["loop_length"],
+            }
+        if command == "jump_to_time":
+            self.session_info["current_song_time"] = float(params["beat_time"])
+            return {"current_song_time": self.session_info["current_song_time"]}
+        if command == "continue_playback":
+            self.session_info["is_playing"] = True
+            return {"is_playing": True}
+        if command == "start_playback":
+            self.session_info["is_playing"] = True
+            return {"is_playing": True}
+        if command == "stop_playback":
+            self.session_info["is_playing"] = False
+            return {"is_playing": False}
         if command == "duplicate_track":
             track_index = int(params["track_index"])
             original = dict(self.session_info["tracks"][track_index])
@@ -68,6 +114,10 @@ class _Ableton:
             track = self.session_info["tracks"][int(params["track_index"])]
             track["mute"] = bool(params["mute"])
             return {"index": track["index"], "mute": track["mute"]}
+        if command == "set_track_solo":
+            track = self.session_info["tracks"][int(params["track_index"])]
+            track["solo"] = bool(params["solo"])
+            return {"index": track["index"], "solo": track["solo"]}
         if command == "get_track_info":
             track = self.session_info["tracks"][int(params["track_index"])]
             return {
@@ -312,6 +362,85 @@ def test_run_next_ableton_job_executes_plan_and_increments_revision(tmp_path, mo
     tracker.reset_story()
 
 
+def test_run_next_playback_job_preflights_and_restores_transport_state(
+    tmp_path,
+    monkeypatch,
+):
+    _patch_snapshot_builders(monkeypatch)
+    ctx, ableton = _ctx(tmp_path)
+    ableton.session_info.update({
+        "is_playing": False,
+        "current_song_time": 32.0,
+        "loop": True,
+        "loop_start": 8.0,
+        "loop_length": 4.0,
+        "arrangement_override": True,
+    })
+    snapshot = create_orchestration_snapshot(
+        ctx,
+        request_text="meter the intro",
+        mode="audition",
+    )["snapshot"]
+    job = submit_ableton_job(
+        ctx,
+        job_type="playback_analysis",
+        snapshot_id=snapshot["snapshot_id"],
+        requires_transport=True,
+        requires_write=False,
+        scope={
+            "loop_start": 16.0,
+            "loop_length": 8.0,
+            "play": True,
+        },
+        plan=[
+            {
+                "tool": "set_track_solo",
+                "params": {"track_index": 1, "solo": True},
+            },
+        ],
+    )["job"]
+
+    result = asyncio.run(run_next_ableton_job(ctx, job_id=job["job_id"]))
+
+    assert result["status"] == "done"
+    job_result = result["job"]["result"]
+    assert job_result["project_revision"] is None
+    assert job_result["preflight"]["captured"]["transport"]["current_song_time"] == 32.0
+    assert job_result["preflight"]["prepared"]["action"] == "force_arrangement"
+    assert job_result["preflight"]["prepared"]["loop"] == {
+        "start": 16.0,
+        "length": 8.0,
+    }
+    assert job_result["restoration"]["status"] == "restored"
+    assert ("force_arrangement", {
+        "beat_time": 16.0,
+        "loop_start": 16.0,
+        "loop_length": 8.0,
+        "play": True,
+    }) in ableton.calls
+    assert (
+        "set_track_solo",
+        {"track_index": 1, "solo": True},
+    ) in ableton.calls
+    assert (
+        "set_session_loop",
+        {"enabled": True, "loop_start": 8.0, "loop_length": 4.0},
+    ) in ableton.calls
+    assert ("jump_to_time", {"beat_time": 32.0}) in ableton.calls
+    assert ("stop_playback", {}) in ableton.calls
+    assert (
+        "set_track_solo",
+        {"track_index": 1, "solo": False},
+    ) in ableton.calls
+    assert ableton.session_info["current_song_time"] == 32.0
+    assert ableton.session_info["loop"] is True
+    assert ableton.session_info["loop_start"] == 8.0
+    assert ableton.session_info["loop_length"] == 4.0
+    assert ableton.session_info["is_playing"] is False
+    assert ableton.session_info["tracks"][1]["solo"] is False
+    assert get_orchestration_state(ctx)["project_revision"] == 0
+
+
 def test_run_next_ableton_job_blocks_stale_snapshot(tmp_path, monkeypatch):
     _patch_snapshot_builders(monkeypatch)
     ctx, _ableton = _ctx(tmp_path)
@@ -402,6 +531,10 @@ def test_run_next_ableton_job_marks_failed_and_releases_leases(tmp_path, monkeyp
     assert result["status"] == "failed"
     assert result["job"]["status"] == "failed"
     assert "Fake failure on set_track_pan" in result["error"]
+    assert result["job"]["result"]["failed_step"]["tool"] == "set_track_pan"
+    assert result["job"]["result"]["changes_applied"] is True
+    assert result["job"]["result"]["restoration"]["status"] == "skipped"
+    assert "Fix the failed step" in result["job"]["result"]["recommended_recovery"]
     logging = result["job"]["result"]["logging"]
     assert logging["status"] == "ok"
     assert logging["ledger_entry_id"]
