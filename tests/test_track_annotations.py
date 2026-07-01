@@ -3,7 +3,12 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from mcp_server.persistence import track_annotations as annotation_store
-from mcp_server.persistence.track_annotations import annotation_project_hash
+from mcp_server.persistence.track_annotations import (
+    TrackAnnotationStore,
+    annotation_project_hash,
+    annotation_project_id_for_session,
+    make_track_signature,
+)
 from mcp_server.tools.tracks import (
     build_track_intent_map,
     clear_track_annotation,
@@ -59,6 +64,51 @@ def test_annotation_project_hash_ignores_track_reorder():
     ])
 
     assert annotation_project_hash(first) == annotation_project_hash(reordered)
+
+
+def test_annotation_project_hash_ignores_live_tempo_changes():
+    first = _session([
+        {"index": 0, "name": "Drums", "color_index": 1, "has_midi_input": True},
+        {"index": 1, "name": "Vox 1", "color_index": 2, "has_audio_input": True},
+    ])
+    later = dict(first, tempo=139.4)
+
+    assert annotation_project_hash(first) == annotation_project_hash(later)
+
+
+def test_annotation_project_hash_prefers_saved_live_set_identity():
+    first = _session([
+        {"index": 0, "name": "Drums", "color_index": 1, "has_midi_input": True},
+    ])
+    second = _session([
+        {"index": 0, "name": "Completely Different", "color_index": 9, "has_midi_input": True},
+    ])
+    first["project_identity"] = {"file_path": "/Users/me/Song.als"}
+    second["project_identity"] = {"file_path": "/Users/me/Song.als"}
+    third = dict(second, project_identity={"file_path": "/Users/me/Song Copy.als"})
+
+    assert annotation_project_hash(first) == annotation_project_hash(second)
+    assert annotation_project_hash(first) != annotation_project_hash(third)
+
+
+def test_annotation_project_id_recovers_existing_matching_store(tmp_path):
+    session = _session([
+        {"index": 0, "name": "Drums", "color_index": 1, "has_midi_input": True},
+        {"index": 1, "name": "Vox 1", "color_index": 2, "has_audio_input": True},
+    ])
+    legacy_store = TrackAnnotationStore("legacy_project", base_dir=tmp_path)
+    legacy_store.upsert({
+        "scope": "track",
+        "role": "lead_vox",
+        "tags": ["layer:vocal_stack"],
+        "track_ref": {
+            "last_seen_index": 1,
+            "name": "Vox 1",
+            "signature": make_track_signature(session["tracks"][1]),
+        },
+    })
+
+    assert annotation_project_id_for_session(session, tmp_path) == "legacy_project"
 
 
 def test_track_annotation_resolves_after_track_move(tmp_path, monkeypatch):

@@ -16,7 +16,7 @@ from .persistence.agent_focus import AgentFocusService
 from .persistence.production_context import ProductionContextService
 from .persistence.track_annotations import (
     TrackAnnotationStore,
-    annotation_project_hash,
+    annotation_project_id_for_session,
     build_track_intent_map as build_track_intent_map_data,
 )
 from .server import mcp
@@ -143,7 +143,7 @@ def _production_context_service(ctx: Context) -> ProductionContextService:
 
 
 def _annotation_store_for_session(session_info: dict) -> TrackAnnotationStore:
-    return TrackAnnotationStore(annotation_project_hash(session_info))
+    return TrackAnnotationStore(annotation_project_id_for_session(session_info))
 
 
 def _focus_panel_url(ctx: Context) -> Optional[str]:
@@ -505,12 +505,349 @@ def _section_context(state: dict) -> dict:
     }
 
 
+def _float_or_none(value) -> Optional[float]:
+    try:
+        if value is None or value == "":
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _beats_per_bar(session_info: dict) -> float:
+    numerator = _float_or_none(
+        session_info.get("signature_numerator")
+        or session_info.get("time_signature_numerator")
+    )
+    if numerator is None or numerator <= 0:
+        return 4.0
+    return numerator
+
+
+def _song_length_beats(session_info: dict) -> Optional[float]:
+    value = _float_or_none(session_info.get("song_length"))
+    if value is None or value <= 0:
+        return None
+    return value
+
+
+def _current_song_time_beats(session_info: dict) -> Optional[float]:
+    for key in ("current_song_time", "current_time", "song_time"):
+        value = _float_or_none(session_info.get(key))
+        if value is not None:
+            return value
+    return None
+
+
+def _bar_from_beat(beat: Optional[float], beats_per_bar: float) -> Optional[float]:
+    if beat is None:
+        return None
+    return (float(beat) / beats_per_bar) + 1.0
+
+
+def _section_bar_label(value: Optional[float]) -> str:
+    if value is None:
+        return ""
+    rounded = round(float(value), 1)
+    if abs(rounded - round(rounded)) < 0.05:
+        return str(int(round(rounded)))
+    return f"{rounded:.1f}".rstrip("0").rstrip(".")
+
+
+def _section_id(source: str, label: str, start_beat: Optional[float]) -> str:
+    start = 0 if start_beat is None else int(round(float(start_beat) * 1000))
+    key = _normalize_target_token(label) or "section"
+    return f"{_normalize_target_token(source)}_{start}_{key}"
+
+
+def _section_entry(
+    *,
+    source: str,
+    label: str,
+    start_beat: Optional[float],
+    end_beat: Optional[float],
+    beats_per_bar: float,
+    current_beat: Optional[float],
+) -> dict:
+    if start_beat is not None and end_beat is not None and end_beat <= start_beat:
+        end_beat = None
+    duration_beats = (
+        max(0.0, float(end_beat) - float(start_beat))
+        if start_beat is not None and end_beat is not None else None
+    )
+    start_bar = _bar_from_beat(start_beat, beats_per_bar)
+    end_bar = _bar_from_beat(end_beat, beats_per_bar)
+    is_current = False
+    if current_beat is not None and start_beat is not None:
+        if end_beat is None:
+            is_current = current_beat >= start_beat
+        else:
+            is_current = start_beat <= current_beat < end_beat
+    return {
+        "id": _section_id(source, label, start_beat),
+        "label": str(label or "Section").strip() or "Section",
+        "source": source,
+        "start_beat": start_beat,
+        "end_beat": end_beat,
+        "duration_beats": duration_beats,
+        "start_bar": start_bar,
+        "end_bar": end_bar,
+        "bar_label": _section_range_label(start_bar, end_bar),
+        "is_current": is_current,
+    }
+
+
+def _section_range_label(
+    start_bar: Optional[float],
+    end_bar: Optional[float],
+) -> str:
+    if start_bar is None and end_bar is None:
+        return ""
+    if end_bar is None:
+        return f"Bar {_section_bar_label(start_bar)}"
+    return f"Bars {_section_bar_label(start_bar)}-{_section_bar_label(end_bar)}"
+
+
+def _cue_points_from_session(session_info: dict) -> list[dict]:
+    candidates = []
+    for key in ("cue_points", "locators", "arrangement_markers"):
+        raw = session_info.get(key)
+        if isinstance(raw, dict):
+            raw = raw.get("cue_points") or raw.get("locators") or raw.get("markers")
+        if isinstance(raw, list):
+            candidates.extend(item for item in raw if isinstance(item, dict))
+    seen: set[tuple[float, str]] = set()
+    normalized: list[dict] = []
+    for index, cue in enumerate(candidates):
+        time_value = _float_or_none(
+            cue.get("time")
+            if "time" in cue
+            else cue.get("beat")
+            if "beat" in cue
+            else cue.get("start_beat")
+        )
+        if time_value is None or time_value < 0:
+            continue
+        label = str(cue.get("name") or cue.get("label") or f"Marker {index + 1}").strip()
+        key = (round(time_value, 6), label)
+        if key in seen:
+            continue
+        seen.add(key)
+        normalized.append({"time": time_value, "label": label})
+    return sorted(normalized, key=lambda item: item["time"])
+
+
+def _section_map_from_cue_points(session_info: dict) -> list[dict]:
+    cues = _cue_points_from_session(session_info)
+    if not cues:
+        return []
+    beats = _beats_per_bar(session_info)
+    current = _current_song_time_beats(session_info)
+    song_length = _song_length_beats(session_info)
+    sections: list[dict] = []
+    for index, cue in enumerate(cues):
+        next_time = cues[index + 1]["time"] if index + 1 < len(cues) else song_length
+        sections.append(_section_entry(
+            source="cue_points",
+            label=cue["label"],
+            start_beat=cue["time"],
+            end_beat=next_time,
+            beats_per_bar=beats,
+            current_beat=current,
+        ))
+    return sections
+
+
+def _section_map_from_section_track(session_info: dict) -> list[dict]:
+    beats = _beats_per_bar(session_info)
+    current = _current_song_time_beats(session_info)
+    sections: list[dict] = []
+    for track in session_info.get("tracks") or []:
+        if not isinstance(track, dict):
+            continue
+        name = str(track.get("name") or "").lower()
+        if "section map" not in name and "arrangement map" not in name:
+            continue
+        clips = (
+            track.get("clips")
+            or track.get("arrangement_clips")
+            or track.get("clip_slots")
+            or []
+        )
+        for index, clip in enumerate(clips):
+            if not isinstance(clip, dict):
+                continue
+            start = _float_or_none(
+                clip.get("start_beat")
+                if "start_beat" in clip
+                else clip.get("start_time")
+                if "start_time" in clip
+                else clip.get("start")
+            )
+            end = _float_or_none(
+                clip.get("end_beat")
+                if "end_beat" in clip
+                else clip.get("end_time")
+                if "end_time" in clip
+                else clip.get("end")
+            )
+            length = _float_or_none(clip.get("length"))
+            if end is None and start is not None and length is not None:
+                end = start + length
+            if start is None:
+                continue
+            label = str(clip.get("name") or clip.get("label") or f"Section {index + 1}")
+            sections.append(_section_entry(
+                source="section_track",
+                label=label,
+                start_beat=start,
+                end_beat=end,
+                beats_per_bar=beats,
+                current_beat=current,
+            ))
+    return sorted(sections, key=lambda item: item.get("start_beat") or 0.0)
+
+
+def _section_map_from_saved_context(session_info: dict, state: dict) -> list[dict]:
+    scope = str(state.get("section_scope") or "whole_song")
+    label = str(state.get("section_label") or "").strip()
+    if scope == "whole_song":
+        return []
+    beats = _beats_per_bar(session_info)
+    current = _current_song_time_beats(session_info)
+    start_bar = _float_or_none(state.get("section_start_bar"))
+    end_bar = _float_or_none(state.get("section_end_bar"))
+    start_beat = (start_bar - 1.0) * beats if start_bar is not None else None
+    end_beat = (end_bar - 1.0) * beats if end_bar is not None else None
+    return [_section_entry(
+        source="saved_context",
+        label=label or scope.replace("_", " ").title(),
+        start_beat=start_beat,
+        end_beat=end_beat,
+        beats_per_bar=beats,
+        current_beat=current,
+    )]
+
+
+def _fallback_section_map(session_info: dict) -> list[dict]:
+    beats = _beats_per_bar(session_info)
+    current = _current_song_time_beats(session_info)
+    return [_section_entry(
+        source="manual",
+        label="Whole song",
+        start_beat=0.0,
+        end_beat=_song_length_beats(session_info),
+        beats_per_bar=beats,
+        current_beat=current,
+    )]
+
+
+def _build_section_map(session_info: dict, state: dict) -> dict:
+    sources = [
+        ("cue_points", "Arrangement markers", _section_map_from_cue_points),
+        ("section_track", "SECTION MAP track", _section_map_from_section_track),
+        ("saved_context", "Saved section", lambda info: _section_map_from_saved_context(info, state)),
+        ("manual", "Manual scope", _fallback_section_map),
+    ]
+    source = "manual"
+    source_label = "Manual scope"
+    sections: list[dict] = []
+    for key, label, builder in sources:
+        sections = builder(session_info)
+        if sections:
+            source = key
+            source_label = label
+            break
+    current_section_id = ""
+    for section in sections:
+        if section.get("is_current"):
+            current_section_id = str(section.get("id") or "")
+            break
+    return {
+        "source": source,
+        "source_label": source_label,
+        "beats_per_bar": _beats_per_bar(session_info),
+        "current_song_time": _current_song_time_beats(session_info),
+        "song_length": _song_length_beats(session_info),
+        "current_section_id": current_section_id,
+        "sections": sections,
+    }
+
+
+def _read_cue_points(ctx: Context) -> list[dict]:
+    try:
+        result = _get_ableton(ctx).send_command("get_cue_points", {}) or {}
+    except Exception:
+        return []
+    if not isinstance(result, dict) or result.get("error"):
+        return []
+    cues = result.get("cue_points")
+    return cues if isinstance(cues, list) else []
+
+
+def _section_map_track(track: dict) -> bool:
+    name = str(track.get("name") or "").lower()
+    return "section map" in name or "arrangement map" in name
+
+
+def _read_arrangement_clips(ctx: Context, track_index: int) -> list[dict]:
+    try:
+        result = _get_ableton(ctx).send_command(
+            "get_arrangement_clips",
+            {"track_index": int(track_index)},
+        ) or {}
+    except Exception:
+        return []
+    if not isinstance(result, dict) or result.get("error"):
+        return []
+    clips = result.get("clips")
+    return clips if isinstance(clips, list) else []
+
+
+def _attach_section_track_clips(ctx: Context, session_info: dict) -> dict:
+    tracks = session_info.get("tracks") or []
+    updated_tracks: list[dict] = []
+    changed = False
+    for track in tracks:
+        if not isinstance(track, dict):
+            updated_tracks.append(track)
+            continue
+        if not _section_map_track(track):
+            updated_tracks.append(track)
+            continue
+        if track.get("clips") or track.get("arrangement_clips"):
+            updated_tracks.append(track)
+            continue
+        index = track.get("index")
+        if not isinstance(index, int):
+            updated_tracks.append(track)
+            continue
+        clips = _read_arrangement_clips(ctx, index)
+        if not clips:
+            updated_tracks.append(track)
+            continue
+        entry = dict(track)
+        entry["arrangement_clips"] = clips
+        updated_tracks.append(entry)
+        changed = True
+    if not changed:
+        return session_info
+    enriched = dict(session_info)
+    enriched["tracks"] = updated_tracks
+    return enriched
+
+
 def _build_context(
     ctx: Context,
     request_text: str = "",
     include_history: bool = False,
 ) -> dict:
     session_info = _require_session_info(ctx)
+    cue_points = _read_cue_points(ctx)
+    if cue_points:
+        session_info = dict(session_info)
+        session_info["cue_points"] = cue_points
+    session_info = _attach_section_track_clips(ctx, session_info)
     focus = _focus_service(ctx).get_focus(session_info)
     if include_history:
         focus["history"] = _focus_service(ctx).history(session_info)
@@ -551,6 +888,7 @@ def _build_context(
     track_groups = _build_track_groups(tracks)
     layer_groups = _build_layer_groups(tracks)
     target = _target_context(production_state, tracks, layer_groups)
+    section_map = _build_section_map(session_info, production_state)
     payload = {
         "status": "ok",
         "version": __version__,
@@ -560,10 +898,12 @@ def _build_context(
             "tempo": session_info.get("tempo"),
             "signature_numerator": session_info.get("signature_numerator"),
             "signature_denominator": session_info.get("signature_denominator"),
+            "project_identity": session_info.get("project_identity"),
             "song_length": session_info.get("song_length"),
             "track_count": session_info.get("track_count", len(tracks)),
             "is_playing": session_info.get("is_playing"),
             "current_time": session_info.get("current_time"),
+            "current_song_time": session_info.get("current_song_time"),
             "arrangement_override": session_info.get("arrangement_override"),
         },
         "focus": focus,
@@ -573,6 +913,7 @@ def _build_context(
         "track_intent_map": intent_map,
         "track_groups": track_groups,
         "layer_groups": layer_groups,
+        "section_map": section_map,
         "target": target,
         "tracks": tracks,
         "focused_tracks": focused_tracks,
@@ -601,6 +942,8 @@ def _summarize_context(
         "lane": state.get("lane", "holistic"),
         "workflow_mode": state.get("workflow_mode", "guided"),
         "audition_required": bool(state.get("audition_required", True)),
+        "audition_count": int(state.get("audition_count") or 3),
+        "audition_scope": state.get("audition_scope", "layer"),
         "target_query": target.get("query", ""),
         "target_mode": target.get("target_mode", "instrument"),
         "target_layer": target.get("target_layer", ""),
@@ -754,6 +1097,8 @@ def save_production_context(
     lane: Optional[str] = None,
     workflow_mode: Optional[str] = None,
     audition_required: Optional[bool] = None,
+    audition_count: Optional[int] = None,
+    audition_scope: Optional[str] = None,
     protect: Optional[list[str]] = None,
     reference: Optional[str] = None,
     notes: Optional[str] = None,
@@ -773,6 +1118,8 @@ def save_production_context(
         lane=lane,
         workflow_mode=workflow_mode,
         audition_required=audition_required,
+        audition_count=audition_count,
+        audition_scope=audition_scope,
         protect=protect,
         reference=reference,
         notes=notes,
@@ -2342,6 +2689,80 @@ def _render_intent_first_cockpit_html(transport: str = "mcp") -> str:
       border-radius: 50%;
       background: var(--green);
     }
+    .song-map {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+    .song-map-head {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+    }
+    .song-map-title {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+    .song-map-title b {
+      font-size: 13px;
+    }
+    .song-map-title span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .whole-song {
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+    .whole-song.active {
+      border-color: var(--accent);
+      background: #2a2113;
+      color: #f5d9aa;
+    }
+    .song-strip {
+      display: flex;
+      gap: 5px;
+      min-height: 54px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+    .section-seg {
+      min-width: 86px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--raise);
+      padding: 8px;
+      text-align: left;
+      display: grid;
+      align-content: start;
+      gap: 2px;
+    }
+    .section-seg.active {
+      border-color: var(--accent);
+      background: #2a2113;
+      color: #f5d9aa;
+    }
+    .section-seg.current {
+      box-shadow: inset 0 -2px 0 var(--green);
+    }
+    .section-seg b {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 12px;
+    }
+    .section-seg span {
+      color: var(--muted);
+      font-size: 11px;
+      white-space: nowrap;
+    }
     .grid {
       display: grid;
       grid-template-columns: 260px minmax(0, 1fr) 340px;
@@ -2484,6 +2905,20 @@ def _render_intent_first_cockpit_html(transport: str = "mcp") -> str:
       padding: 7px 11px;
     }
     .actions { margin-top: 14px; align-items: center; }
+    .count-control {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+    .audition-count {
+      width: auto;
+      min-width: 74px;
+      padding: 7px 8px;
+    }
     .helper { color: var(--muted); font-size: 12px; margin-top: 10px; }
     .drawer {
       margin-top: 14px;
@@ -2597,6 +3032,7 @@ def _render_intent_first_cockpit_html(transport: str = "mcp") -> str:
     @media (max-width: 1020px) {
       body { padding: 12px; }
       .top { grid-template-columns: 1fr; }
+      .song-map-head { grid-template-columns: 1fr; }
       .grid { grid-template-columns: 1fr; }
       .rail, .brief { position: static; }
       .track-list { max-height: none; }
@@ -2612,6 +3048,17 @@ def _render_intent_first_cockpit_html(transport: str = "mcp") -> str:
       </div>
       <div class="pill"><span class="dot"></span><span id="sessionPill">Loading session</span></div>
       <div class="status" id="status">Loading</div>
+    </div>
+
+    <div class="song-map" id="songMap">
+      <div class="song-map-head">
+        <div>
+          <div class="label">Song Sections</div>
+          <div class="song-map-title"><b id="songMapTitle">Loading sections</b><span id="songMapMeta"></span></div>
+        </div>
+        <button class="whole-song" id="wholeSongButton">Whole song</button>
+      </div>
+      <div class="song-strip" id="songStrip"></div>
     </div>
 
     <div class="grid">
@@ -2653,7 +3100,17 @@ def _render_intent_first_cockpit_html(transport: str = "mcp") -> str:
           <textarea id="sentence" class="sentence" spellcheck="false" placeholder="Make the focused part rawer and darker, but keep the notes and timing."></textarea>
           <div class="moves" id="quickMoves"></div>
           <div class="actions">
-            <button class="primary" id="preview">Preview 3 auditions</button>
+            <button class="primary" id="preview">Save 3 layer auditions</button>
+            <div class="count-control" id="auditionControl">
+              <span>Auditions</span>
+              <select id="auditionCount" class="audition-count" aria-label="Audition count">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3" selected>3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+              </select>
+            </div>
             <button id="applyCarefully">Apply carefully</button>
           </div>
           <div class="helper" id="helperLine">Briefs save to LivePilot context; Codex reads the saved state before acting.</div>
@@ -2704,7 +3161,7 @@ def _render_intent_first_cockpit_html(transport: str = "mcp") -> str:
         <div class="brief-row"><div class="ic">Y</div><div><div class="k">Direction</div><div class="v" id="briefDirection">Waiting for brief</div></div></div>
         <div class="brief-row"><div class="ic">Y</div><div><div class="k">Scope</div><div class="v" id="briefScope">Whole song</div></div></div>
         <div class="brief-row"><div class="ic">Y</div><div><div class="k">Keep safe</div><div class="v" id="briefProtect">None</div></div></div>
-        <div class="brief-row warn" id="outputRow"><div class="ic">!</div><div><div class="k">Output</div><div class="v" id="briefOutput">3 safe auditions</div><div class="sub">Click to cycle output mode.</div></div></div>
+        <div class="brief-row warn" id="outputRow"><div class="ic">!</div><div><div class="k">Output</div><div class="v" id="briefOutput">3 layer auditions</div><div class="sub" id="briefOutputSub">Requires a Song Layer target.</div></div></div>
         <div class="plan" id="plan">
           <div class="k">Codex will</div>
           <ul id="willList"></ul>
@@ -2734,7 +3191,7 @@ __CALL_TOOL_JS__
     ];
     const OUTPUTS = {
       ask: {label: "Ask before acting", workflow: "guided", audition: true},
-      auditions: {label: "3 safe auditions", workflow: "audition", audition: true},
+      auditions: {label: "Layer auditions", workflow: "audition", audition: true},
       apply: {label: "Apply carefully", workflow: "commit", audition: false}
     };
     const PROTECT_LABELS = {
@@ -2798,8 +3255,50 @@ __CALL_TOOL_JS__
       if (active) return active.dataset.label || SECTION_LABELS[active.dataset.section] || "Whole song";
       return ctxState().section_label || "Whole song";
     }
+    function sectionMapState() {
+      return (state || {}).section_map || {};
+    }
+    function sectionScopeFor(section) {
+      const token = normalizeToken(section && section.label);
+      return Object.prototype.hasOwnProperty.call(SECTION_LABELS, token) ? token : "custom";
+    }
+    function selectedSectionMatches(section) {
+      const ctx = ctxState();
+      if ((ctx.section_scope || "whole_song") === "whole_song") return false;
+      const labelMatches = normalizeToken(ctx.section_label) === normalizeToken(section.label);
+      const start = Number(ctx.section_start_bar);
+      const sectionStart = Number(section.start_bar);
+      const startMatches = Number.isFinite(start) && Number.isFinite(sectionStart) && Math.abs(start - sectionStart) < 0.05;
+      return Boolean(labelMatches || startMatches);
+    }
+    function sectionFlex(section) {
+      const duration = Number(section.duration_beats);
+      if (!Number.isFinite(duration) || duration <= 0) return 6;
+      return Math.max(6, Math.min(duration, 96));
+    }
+    function sectionBarText(section) {
+      return section.bar_label || "";
+    }
     function currentProtect() {
       return $$("#protectRow .tog.on").map(node => node.dataset.protect).filter(Boolean);
+    }
+    function auditionCount() {
+      const node = $("#auditionCount");
+      const raw = Number((node && node.value) || ctxState().audition_count || 3);
+      if (!Number.isFinite(raw)) return 3;
+      return Math.max(1, Math.min(8, Math.round(raw)));
+    }
+    function auditionLabel() {
+      const count = auditionCount();
+      return `${count} layer audition${count === 1 ? "" : "s"}`;
+    }
+    function outputLabel() {
+      return outputMode === "auditions" ? auditionLabel() : OUTPUTS[outputMode].label;
+    }
+    function auditionLayerReady() {
+      const target = targetState();
+      const ctx = ctxState();
+      return targetMode() === "layer" && Boolean(target.matched_layer || ctx.target_layer);
     }
     function selectionFromState(payload = state) {
       const targetIndices = (((payload || {}).target || {}).track_indices || []).map(Number);
@@ -2946,6 +3445,7 @@ __CALL_TOOL_JS__
       outputMode = ctx.workflow_mode === "commit" ? "apply" : ctx.workflow_mode === "guided" ? "ask" : "auditions";
       const savedMode = ctx.target_mode || targetMode();
       targetModeDraft = savedMode === "layer" ? "layer" : savedMode === "query" ? "track" : "instrument";
+      $("#auditionCount").value = String(Math.max(1, Math.min(5, Number(ctx.audition_count || 3))));
       $$("#laneRow .opt").forEach(node => node.classList.toggle("on", node.dataset.lane === (ctx.lane || "holistic")));
       $$("#sectionRow .opt").forEach(node => node.classList.toggle("on", node.dataset.section === (ctx.section_scope || "whole_song")));
       const protect = new Set(ctx.protect || []);
@@ -2955,6 +3455,7 @@ __CALL_TOOL_JS__
 
     function render() {
       renderTop();
+      renderSectionMap();
       renderFocus();
       renderPicker();
       renderTracks();
@@ -2989,6 +3490,35 @@ __CALL_TOOL_JS__
       const hours = Math.round(minutes / 60);
       return `${hours}h old`;
     }
+    function renderSectionMap() {
+      const map = sectionMapState();
+      const sections = Array.isArray(map.sections) ? map.sections : [];
+      const selectedScope = ctxState().section_scope || "whole_song";
+      const source = map.source_label || "Manual scope";
+      $("#songMapTitle").textContent = source;
+      $("#songMapMeta").textContent = sections.length
+        ? `${sections.length} section${sections.length === 1 ? "" : "s"}`
+        : "";
+      $("#wholeSongButton").classList.toggle("active", selectedScope === "whole_song");
+      if (!sections.length) {
+        $("#songStrip").innerHTML = '<button class="section-seg active" data-whole-song="1"><b>Whole song</b><span></span></button>';
+      } else {
+        $("#songStrip").innerHTML = sections.map(section => {
+          const selectedSection = selectedSectionMatches(section);
+          const currentSection = section.is_current || section.id === map.current_section_id;
+          return `
+            <button class="section-seg ${selectedSection ? "active" : ""} ${currentSection ? "current" : ""}" data-section-id="${escapeHtml(section.id || "")}" style="flex: ${sectionFlex(section)} 1 90px">
+              <b title="${escapeHtml(section.label || "Section")}">${escapeHtml(section.label || "Section")}</b>
+              <span>${escapeHtml(sectionBarText(section))}</span>
+            </button>
+          `;
+        }).join("");
+      }
+      $$("#songStrip .section-seg").forEach(node => node.addEventListener("click", () => {
+        if (node.dataset.wholeSong) chooseWholeSong();
+        else chooseSection(node.dataset.sectionId || "");
+      }));
+    }
     function renderFocus() {
       const tracks = targetTracks();
       const target = targetState();
@@ -2999,7 +3529,7 @@ __CALL_TOOL_JS__
       $("#contextLine").textContent = [
         `Target: ${hasTarget() ? (targetMode() === "layer" ? "song layer" : targetMode() === "query" ? "track/search" : "auto group") : "none"}`,
         `Lane: ${currentLane().replace("_", " ")}`,
-        `Output: ${OUTPUTS[outputMode].label}`
+        `Output: ${outputLabel()}`
       ].join(" / ");
     }
     function renderPicker() {
@@ -3093,9 +3623,18 @@ __CALL_TOOL_JS__
       $("#briefDirection").textContent = inferDirection(text);
       $("#briefScope").textContent = ((target.section || {}).label || selectedSectionLabel());
       $("#briefProtect").textContent = protect.length ? protect.map(flag => PROTECT_LABELS[flag] || flag).join(" / ") : "None";
-      $("#briefOutput").textContent = OUTPUTS[outputMode].label;
-      $("#outputRow").classList.toggle("warn", outputMode === "ask");
-      $("#preview").textContent = outputMode === "apply" ? "Apply carefully" : "Preview 3 auditions";
+      $("#briefOutput").textContent = outputLabel();
+      $("#briefOutputSub").textContent = outputMode === "auditions"
+        ? (auditionLayerReady() ? "Codex will create visible muted audition lanes." : "Choose a Song Layer target before saving auditions.")
+        : "Click to cycle output mode.";
+      $("#outputRow").classList.toggle("warn", outputMode !== "apply");
+      $("#preview").textContent = outputMode === "apply" ? "Apply carefully" : `Save ${auditionLabel()}`;
+      $("#preview").disabled = outputMode === "auditions" && !auditionLayerReady();
+      $("#auditionCount").disabled = outputMode !== "auditions";
+      $("#auditionControl").style.display = outputMode === "auditions" ? "inline-flex" : "none";
+      $("#helperLine").textContent = outputMode === "auditions" && !auditionLayerReady()
+        ? "Choose Song Layers on the left and select a saved layer before saving audition variants."
+        : "Briefs save to LivePilot context; Codex reads the saved state before acting.";
       $("#willList").innerHTML = planWill(text, tracks).map(item => `<li>${escapeHtml(item)}</li>`).join("");
       $("#wontList").innerHTML = planWont(protect).map(item => `<li>${escapeHtml(item)}</li>`).join("");
     }
@@ -3103,7 +3642,7 @@ __CALL_TOOL_JS__
       const direction = inferDirection(text).toLowerCase();
       const count = tracks.length || targetState().track_count || 0;
       const items = [`Use ${count || "the focused"} target track${count === 1 ? "" : "s"} as context`];
-      if (outputMode === "auditions") items.push("Prepare audition variants before committing");
+      if (outputMode === "auditions") items.push(`Create ${auditionLabel()} as visible muted Arrangement lanes`);
       if (outputMode === "apply") items.push("Apply one careful pass to the selected target");
       if (direction && direction !== "waiting for brief") items.push(`Aim for: ${direction}`);
       return items.slice(0, 3);
@@ -3131,6 +3670,31 @@ __CALL_TOOL_JS__
       render();
       await saveFocus(label || key || "target");
       toast("Target saved");
+    }
+    async function chooseWholeSong() {
+      state = await callTool(BACKEND_TOOLS.save_context, {
+        section_scope: "whole_song",
+        section_label: "Whole song",
+        section_start_bar: null,
+        section_end_bar: null
+      });
+      syncControlsFromState();
+      render();
+      toast("Whole song scoped");
+    }
+    async function chooseSection(sectionId) {
+      const section = (sectionMapState().sections || []).find(item => String(item.id || "") === String(sectionId || ""));
+      if (!section) return;
+      const payload = {
+        section_scope: sectionScopeFor(section),
+        section_label: section.label || "Section",
+        section_start_bar: Number.isFinite(Number(section.start_bar)) ? Number(section.start_bar) : null,
+        section_end_bar: Number.isFinite(Number(section.end_bar)) ? Number(section.end_bar) : null
+      };
+      state = await callTool(BACKEND_TOOLS.save_context, payload);
+      syncControlsFromState();
+      render();
+      toast("Section scoped");
     }
     async function chooseFreeQuery(query) {
       const label = query || "target";
@@ -3213,6 +3777,12 @@ __CALL_TOOL_JS__
     }
     async function saveBrief(mode = outputMode) {
       outputMode = mode;
+      if (outputMode === "auditions" && !auditionLayerReady()) {
+        setStatus("Choose a Song Layer target before saving auditions.");
+        toast("Choose a Song Layer first");
+        renderBrief();
+        return;
+      }
       const text = $("#sentence").value.trim();
       const ctx = ctxState();
       const lane = text ? inferLane(text) : currentLane();
@@ -3223,6 +3793,8 @@ __CALL_TOOL_JS__
         lane,
         workflow_mode: OUTPUTS[outputMode].workflow,
         audition_required: OUTPUTS[outputMode].audition,
+        audition_count: auditionCount(),
+        audition_scope: "layer",
         protect,
         notes: appendNote(ctx.notes, text),
         target_query: $("#targetQuery").value || targetState().query || ctx.target_query || "",
@@ -3242,6 +3814,7 @@ __CALL_TOOL_JS__
     $("#refresh").addEventListener("click", refresh);
     $("#refreshLive").addEventListener("click", refreshLive);
     $("#clearTarget").addEventListener("click", clearTarget);
+    $("#wholeSongButton").addEventListener("click", chooseWholeSong);
     $("#targetModeRow").addEventListener("click", event => {
       const button = event.target.closest("button[data-mode]");
       if (!button) return;
@@ -3271,6 +3844,7 @@ __CALL_TOOL_JS__
       else chooseFreeQuery(query);
     });
     $("#sentence").addEventListener("input", renderBrief);
+    $("#auditionCount").addEventListener("change", renderBrief);
     $("#outputRow").addEventListener("click", () => {
       outputMode = outputMode === "ask" ? "auditions" : outputMode === "auditions" ? "apply" : "ask";
       renderBrief();

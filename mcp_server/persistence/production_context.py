@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Optional
 
 from .base_store import PersistentJsonStore
-from .track_annotations import annotation_project_hash
+from .track_annotations import annotation_project_id_for_session
 
 
 _PROJECTS_DIR = Path.home() / ".livepilot" / "projects"
@@ -21,6 +21,7 @@ _STORE_VERSION = 1
 
 _VALID_LANES = {"holistic", "composition", "sound_design", "mix"}
 _VALID_WORKFLOW_MODES = {"observe", "guided", "audition", "commit"}
+_VALID_AUDITION_SCOPES = {"layer"}
 _VALID_SECTION_SCOPES = {
     "whole_song",
     "intro",
@@ -64,6 +65,8 @@ class ProductionContextService:
         lane: Optional[str] = None,
         workflow_mode: Optional[str] = None,
         audition_required: Optional[bool] = None,
+        audition_count: Optional[int] = None,
+        audition_scope: Optional[str] = None,
         protect: Optional[list[str]] = None,
         reference: Optional[str] = None,
         notes: Optional[str] = None,
@@ -81,6 +84,8 @@ class ProductionContextService:
             lane=lane,
             workflow_mode=workflow_mode,
             audition_required=audition_required,
+            audition_count=audition_count,
+            audition_scope=audition_scope,
             protect=protect,
             reference=reference,
             notes=notes,
@@ -112,7 +117,7 @@ class ProductionContextService:
 
     def _store_for_session(self, session_info: dict) -> "ProductionContextStore":
         return ProductionContextStore(
-            annotation_project_hash(session_info),
+            annotation_project_id_for_session(session_info, self._base_dir),
             self._base_dir,
         )
 
@@ -145,6 +150,8 @@ class ProductionContextStore:
         lane: Optional[str] = None,
         workflow_mode: Optional[str] = None,
         audition_required: Optional[bool] = None,
+        audition_count: Optional[int] = None,
+        audition_scope: Optional[str] = None,
         protect: Optional[list[str]] = None,
         reference: Optional[str] = None,
         notes: Optional[str] = None,
@@ -168,6 +175,10 @@ class ProductionContextStore:
                 state["workflow_mode"] = _normalize_workflow_mode(workflow_mode)
             if audition_required is not None:
                 state["audition_required"] = bool(audition_required)
+            if audition_count is not None:
+                state["audition_count"] = _normalize_audition_count(audition_count)
+            if audition_scope is not None:
+                state["audition_scope"] = _normalize_audition_scope(audition_scope)
             if protect is not None:
                 state["protect"] = _normalize_protect_flags(protect)
             if reference is not None:
@@ -220,6 +231,8 @@ class ProductionContextStore:
             "lane": "holistic",
             "workflow_mode": "guided",
             "audition_required": True,
+            "audition_count": 3,
+            "audition_scope": "layer",
             "protect": [],
             "reference": "",
             "notes": "",
@@ -260,6 +273,26 @@ def _normalize_workflow_mode(value: str) -> str:
             + ", ".join(sorted(_VALID_WORKFLOW_MODES))
         )
     return mode
+
+
+def _normalize_audition_count(value) -> int:
+    try:
+        count = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("audition_count must be an integer") from exc
+    if count < 1 or count > 8:
+        raise ValueError("audition_count must be between 1 and 8")
+    return count
+
+
+def _normalize_audition_scope(value: str) -> str:
+    scope = _normalize_key(value)
+    if scope not in _VALID_AUDITION_SCOPES:
+        raise ValueError(
+            "audition_scope must be one of: "
+            + ", ".join(sorted(_VALID_AUDITION_SCOPES))
+        )
+    return scope
 
 
 def _normalize_target_mode(value: str) -> str:

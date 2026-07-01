@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Optional
 
 from .base_store import PersistentJsonStore
-from .track_annotations import annotation_project_hash
+from .track_annotations import annotation_project_id_for_session
 
 
 _PROJECTS_DIR = Path.home() / ".livepilot" / "projects"
@@ -94,7 +94,10 @@ class AgentFocusService:
         ]
 
     def _store_for_session(self, session_info: dict) -> "AgentFocusStore":
-        return AgentFocusStore(annotation_project_hash(session_info), self._base_dir)
+        return AgentFocusStore(
+            annotation_project_id_for_session(session_info, self._base_dir),
+            self._base_dir,
+        )
 
 
 class AgentFocusStore:

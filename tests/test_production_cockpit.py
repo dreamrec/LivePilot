@@ -11,6 +11,7 @@ from mcp_server.persistence import track_annotations as annotation_store
 from mcp_server.production_cockpit import (
     COCKPIT_RESOURCE_URI,
     _backend_tool_map,
+    _build_section_map,
     _render_cockpit_html,
     _render_intent_first_cockpit_html,
     clear_cockpit_focus,
@@ -43,6 +44,18 @@ class _Ableton:
     def send_command(self, command, params=None):
         if command == "get_session_info":
             return self.session_info
+        if command == "get_cue_points":
+            return {"cue_points": self.session_info.get("cue_points", [])}
+        if command == "get_arrangement_clips":
+            track_index = int(params["track_index"])
+            track = next(
+                item for item in self.session_info["tracks"]
+                if item["index"] == track_index
+            )
+            return {
+                "track_index": track_index,
+                "clips": track.get("arrangement_clips", []),
+            }
         if command == "get_track_info":
             track_index = int(params["track_index"])
             track = next(
@@ -80,6 +93,8 @@ def test_production_context_service_round_trips(tmp_path):
         lane="sound design",
         workflow_mode="audition",
         audition_required=True,
+        audition_count=4,
+        audition_scope="layer",
         protect=["preserve_notes", "preserve_timing"],
         reference="The Suburbs",
         notes="Keep the intro bleak.",
@@ -92,6 +107,8 @@ def test_production_context_service_round_trips(tmp_path):
 
     assert saved["state"]["lane"] == "sound_design"
     assert saved["state"]["workflow_mode"] == "audition"
+    assert saved["state"]["audition_count"] == 4
+    assert saved["state"]["audition_scope"] == "layer"
     assert saved["state"]["protect"] == ["preserve_notes", "preserve_timing"]
     assert saved["state"]["target_query"] == "guitars"
     assert saved["state"]["target_mode"] == "layer"
@@ -113,6 +130,12 @@ def test_production_context_service_rejects_unknown_values(tmp_path):
 
     with pytest.raises(ValueError, match="target_mode must be one of"):
         service.save_state(session, target_mode="sideways")
+
+    with pytest.raises(ValueError, match="audition_count must be between"):
+        service.save_state(session, audition_count=0)
+
+    with pytest.raises(ValueError, match="audition_scope must be one of"):
+        service.save_state(session, audition_scope="mix")
 
 
 def test_cockpit_focus_context_and_track_intent_flow(tmp_path, monkeypatch):
@@ -162,6 +185,8 @@ def test_cockpit_focus_context_and_track_intent_flow(tmp_path, monkeypatch):
     assert context["summary"]["section"]["scope"] == "verse_1"
     assert context["summary"]["focused_track_names"] == ["Vox 1"]
     assert context["summary"]["audition_required"] is False
+    assert context["summary"]["audition_count"] == 3
+    assert context["summary"]["audition_scope"] == "layer"
     assert context["route"]["request_type"] == "mix"
 
     vox = next(track for track in context["tracks"] if track["index"] == 1)
@@ -318,6 +343,93 @@ def test_cockpit_layer_groups_and_layer_target(tmp_path, monkeypatch):
     assert context["summary"]["target_layer"] == "elec_low_multi_role"
 
 
+def test_cockpit_section_map_uses_cue_points(tmp_path, monkeypatch):
+    monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
+    ctx = _ctx(
+        tmp_path,
+        _session([
+            {"index": 0, "name": "Drums", "color_index": 1, "has_midi_input": True},
+        ]) | {
+            "song_length": 80.0,
+            "current_song_time": 20.0,
+            "cue_points": [
+                {"index": 0, "name": "Intro", "time": 0.0},
+                {"index": 1, "name": "Verse 1", "time": 16.0},
+                {"index": 2, "name": "Chorus", "time": 48.0},
+            ],
+        },
+    )
+
+    context = get_production_context(ctx)
+    section_map = context["section_map"]
+
+    assert section_map["source"] == "cue_points"
+    assert section_map["source_label"] == "Arrangement markers"
+    assert context["session"]["current_song_time"] == 20.0
+    assert [section["label"] for section in section_map["sections"]] == [
+        "Intro",
+        "Verse 1",
+        "Chorus",
+    ]
+    assert section_map["sections"][1]["start_bar"] == 5.0
+    assert section_map["sections"][1]["end_bar"] == 13.0
+    assert section_map["sections"][1]["is_current"] is True
+    assert section_map["current_section_id"] == section_map["sections"][1]["id"]
+
+
+def test_cockpit_section_map_uses_section_map_track(tmp_path, monkeypatch):
+    monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
+    ctx = _ctx(
+        tmp_path,
+        _session([
+            {
+                "index": 0,
+                "name": "SECTION MAP",
+                "color_index": 1,
+                "has_midi_input": True,
+                "arrangement_clips": [
+                    {"name": "Intro", "start_time": 0.0, "end_time": 16.0, "length": 16.0},
+                    {"name": "Verse 1", "start_time": 16.0, "end_time": 48.0, "length": 32.0},
+                ],
+            },
+            {"index": 1, "name": "Piano", "color_index": 2, "has_midi_input": True},
+        ]),
+    )
+
+    context = get_production_context(ctx)
+    section_map = context["section_map"]
+
+    assert section_map["source"] == "section_track"
+    assert [section["label"] for section in section_map["sections"]] == [
+        "Intro",
+        "Verse 1",
+    ]
+    assert section_map["sections"][0]["bar_label"] == "Bars 1-5"
+    assert section_map["sections"][1]["bar_label"] == "Bars 5-13"
+
+
+def test_section_map_falls_back_to_saved_context():
+    section_map = _build_section_map(
+        {
+            "tempo": 116,
+            "signature_numerator": 4,
+            "song_length": 64.0,
+            "tracks": [],
+        },
+        {
+            "section_scope": "custom",
+            "section_label": "Bars 5-9",
+            "section_start_bar": 5,
+            "section_end_bar": 9,
+        },
+    )
+
+    assert section_map["source"] == "saved_context"
+    assert section_map["sections"][0]["label"] == "Bars 5-9"
+    assert section_map["sections"][0]["start_beat"] == 16.0
+    assert section_map["sections"][0]["bar_label"] == "Bars 5-9"
+
+
 def test_layer_status_can_target_one_layer_without_leaking(tmp_path, monkeypatch):
     monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
     ctx = _ctx(
@@ -398,9 +510,17 @@ def test_intent_first_cockpit_renders_http_backend_contract():
     html = _render_intent_first_cockpit_html(transport="http")
 
     assert "LivePilot Intent Cockpit" in html
-    assert "Preview 3 auditions" in html
+    assert "Save 3 layer auditions" in html
+    assert "id=\"auditionCount\"" in html
+    assert "Choose a Song Layer target before saving auditions." in html
+    assert "audition_count: auditionCount()" in html
+    assert "audition_scope: \"layer\"" in html
     assert "Save brief for Codex" in html
     assert "Clear target" in html
+    assert "Song Sections" in html
+    assert "id=\"songStrip\"" in html
+    assert "async function chooseSection(sectionId)" in html
+    assert '"#wholeSongButton").addEventListener("click", chooseWholeSong)' in html
     assert "Auto Groups" in html
     assert "Song Layers" in html
     assert "data-mode=\"track\"" in html

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import ast
 import hashlib
+import json
 import time
 import uuid
 from pathlib import Path
@@ -32,12 +33,12 @@ def annotation_project_hash(session_info: dict) -> str:
     The main ProjectStore hash intentionally changes when tracks are reordered.
     Track annotations need the opposite behavior: if the user drags "vox1" from
     index 4 to index 2, the notes should still be found. This fingerprint keeps
-    broad project identity fields but sorts track/scene/return signatures.
+    stable project identity fields but sorts track/scene/return signatures.
     """
-    tempo = session_info.get("tempo", 120.0)
-    sig_num = session_info.get("signature_numerator", 4)
-    sig_denom = session_info.get("signature_denominator", 4)
-    song_length = session_info.get("song_length", 0.0)
+    project_identity = _stable_saved_project_identity(session_info)
+    if project_identity:
+        seed = "||".join(["annotation-v2", project_identity])
+        return hashlib.sha256(seed.encode("utf-8")).hexdigest()[:12]
 
     tracks = session_info.get("tracks", []) or []
     track_sig = "|".join(sorted(
@@ -57,10 +58,8 @@ def annotation_project_hash(session_info: dict) -> str:
     ))
 
     seed = "||".join([
-        f"annotation-v1",
-        f"t={float(tempo):.1f}",
-        f"sig={sig_num}/{sig_denom}",
-        f"len={float(song_length):.2f}",
+        f"annotation-v2",
+        "unsaved-or-path-unavailable",
         f"n_tracks={len(tracks)}",
         f"tracks=[{track_sig}]",
         f"n_returns={len(return_tracks)}",
@@ -69,6 +68,27 @@ def annotation_project_hash(session_info: dict) -> str:
         f"scenes=[{scene_sig}]",
     ])
     return hashlib.sha256(seed.encode("utf-8")).hexdigest()[:12]
+
+
+def _stable_saved_project_identity(session_info: dict) -> str:
+    identity = session_info.get("project_identity")
+    if not isinstance(identity, dict):
+        identity = {}
+    for key in (
+        "file_path",
+        "path",
+        "project_path",
+        "set_path",
+        "live_set_path",
+    ):
+        value = str(identity.get(key) or session_info.get(key) or "").strip()
+        if value:
+            return f"saved_path={value}"
+    for key in ("name", "project_name", "set_name", "live_set_name"):
+        value = str(identity.get(key) or session_info.get(key) or "").strip()
+        if value and value.lower() != "untitled":
+            return f"saved_name={value}"
+    return ""
 
 
 def make_track_signature(track: dict, detail: Optional[dict] = None) -> dict:
@@ -175,6 +195,48 @@ def find_annotation_for_track(
         reverse=True,
     )
     return matches[0]
+
+
+def annotation_project_id_for_session(
+    session_info: dict,
+    base_dir: Optional[Path] = None,
+) -> str:
+    """Return the best project id for sparse, user-authored annotations.
+
+    The direct fingerprint includes broad song identity fields such as tempo.
+    That is useful for avoiding collisions, but tempo automation/live-refresh
+    snapshots can drift enough to strand annotations in an older project
+    folder. If the direct folder has no annotations, recover the existing
+    annotation store whose track references resolve best against this session.
+    """
+    direct_id = annotation_project_hash(session_info)
+    base = base_dir or _PROJECTS_DIR
+    direct_annotations = _read_annotation_file(
+        base / direct_id / "track_annotations.json"
+    )
+    if direct_annotations:
+        return direct_id
+
+    best_id = ""
+    best_score: tuple[int, int, int, int, float] = (0, 0, 0, 0, 0.0)
+    for path in base.glob("*/track_annotations.json"):
+        project_id = path.parent.name
+        if project_id == direct_id:
+            continue
+        annotations = _read_annotation_file(path)
+        if not annotations:
+            continue
+        score = _score_annotation_project(session_info, annotations, path)
+        if score > best_score:
+            best_id = project_id
+            best_score = score
+
+    resolved_tracks, resolved_annotations, layer_tags, _active, _mtime = best_score
+    if resolved_tracks >= 2 or (
+        resolved_tracks >= 1 and resolved_annotations >= 1 and layer_tags >= 1
+    ):
+        return best_id
+    return direct_id
 
 
 def normalize_annotation(annotation: dict) -> dict:
@@ -393,6 +455,56 @@ def _track_hash_fragment(track: dict) -> str:
         str(int(bool(track.get("has_midi_input", False)))),
         str(int(bool(track.get("has_audio_input", False)))),
     ])
+
+
+def _read_annotation_file(path: Path) -> list[dict]:
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return []
+    if not isinstance(data, dict) or data.get("version") != _STORE_VERSION:
+        return []
+    annotations = data.get("annotations")
+    return list(annotations) if isinstance(annotations, list) else []
+
+
+def _score_annotation_project(
+    session_info: dict,
+    annotations: list[dict],
+    path: Path,
+) -> tuple[int, int, int, int, float]:
+    resolved = resolve_annotations(session_info, annotations)
+    resolved_track_indices = {
+        item.get("resolution", {}).get("resolved_track_index")
+        for item in resolved
+        if item.get("resolution", {}).get("status") == "resolved"
+        and isinstance(item.get("resolution", {}).get("resolved_track_index"), int)
+    }
+    resolved_annotations = [
+        item for item in resolved
+        if item.get("resolution", {}).get("status") == "resolved"
+    ]
+    layer_tags = sum(
+        1
+        for item in resolved_annotations
+        for tag in (item.get("tags") or [])
+        if str(tag).strip().lower().startswith("layer:")
+    )
+    active_annotations = [
+        item for item in resolved_annotations
+        if item.get("decision_state") not in _REJECTED_STATES
+    ]
+    try:
+        mtime = float(path.stat().st_mtime)
+    except OSError:
+        mtime = 0.0
+    return (
+        len(resolved_track_indices),
+        len(resolved_annotations),
+        layer_tags,
+        len(active_annotations),
+        mtime,
+    )
 
 
 def _new_annotation_id() -> str:

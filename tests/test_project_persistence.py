@@ -17,6 +17,23 @@ def test_project_hash_stable():
     assert len(h1) == 12
 
 
+def test_project_hash_uses_saved_live_set_path_when_available():
+    info1 = {
+        "tempo": 120.0,
+        "project_identity": {"file_path": "/Users/me/Song.als"},
+        "tracks": [{"name": "Drums"}],
+    }
+    info2 = {
+        "tempo": 139.4,
+        "project_identity": {"file_path": "/Users/me/Song.als"},
+        "tracks": [{"name": "Different Track Layout"}],
+    }
+    info3 = dict(info2, project_identity={"file_path": "/Users/me/Song Copy.als"})
+
+    assert project_hash(info1) == project_hash(info2)
+    assert project_hash(info1) != project_hash(info3)
+
+
 def test_project_hash_differs():
     info1 = {"tempo": 120.0, "tracks": [{"name": "Drums"}]}
     info2 = {"tempo": 128.0, "tracks": [{"name": "Drums"}]}

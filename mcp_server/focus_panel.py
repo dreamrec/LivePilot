@@ -211,6 +211,8 @@ class FocusPanelServer:
             "lane",
             "workflow_mode",
             "audition_required",
+            "audition_count",
+            "audition_scope",
             "protect",
             "reference",
             "notes",
@@ -301,6 +303,10 @@ class FocusPanelServer:
     def _read_live_session(self) -> tuple[dict, dict]:
         if self.ableton is not None:
             session_info = self.ableton.send_command("get_session_info", {}) or {}
+            session_info = _augment_live_session_info(
+                session_info,
+                self.ableton.send_command,
+            )
             record = self._save_snapshot(session_info, source="focus_panel")
             return session_info, {
                 "source": "live",
@@ -313,6 +319,10 @@ class FocusPanelServer:
         connection = AbletonConnection()
         try:
             session_info = connection.send_command("get_session_info", {}) or {}
+            session_info = _augment_live_session_info(
+                session_info,
+                connection.send_command,
+            )
         finally:
             connection.disconnect()
         record = self._save_snapshot(session_info, source="focus_panel_probe")
@@ -360,6 +370,55 @@ class _PanelAbletonProxy:
         raise RuntimeError(
             f"{command} is unavailable in snapshot-backed cockpit mode"
         )
+
+
+def _augment_live_session_info(session_info: dict, send_command) -> dict:
+    """Attach lightweight arrangement metadata when live refresh owns the socket."""
+    if not isinstance(session_info, dict):
+        return session_info
+    enriched = dict(session_info)
+    try:
+        cue_result = send_command("get_cue_points", {}) or {}
+    except Exception:
+        cue_result = {}
+    cues = cue_result.get("cue_points") if isinstance(cue_result, dict) else None
+    if isinstance(cues, list) and cues:
+        enriched["cue_points"] = cues
+
+    tracks = enriched.get("tracks") or []
+    updated_tracks = []
+    changed = False
+    for track in tracks:
+        if not isinstance(track, dict):
+            updated_tracks.append(track)
+            continue
+        name = str(track.get("name") or "").lower()
+        if "section map" not in name and "arrangement map" not in name:
+            updated_tracks.append(track)
+            continue
+        index = track.get("index")
+        if not isinstance(index, int):
+            updated_tracks.append(track)
+            continue
+        try:
+            clip_result = send_command(
+                "get_arrangement_clips",
+                {"track_index": index},
+            ) or {}
+        except Exception:
+            updated_tracks.append(track)
+            continue
+        clips = clip_result.get("clips") if isinstance(clip_result, dict) else None
+        if not isinstance(clips, list) or not clips:
+            updated_tracks.append(track)
+            continue
+        entry = dict(track)
+        entry["arrangement_clips"] = clips
+        updated_tracks.append(entry)
+        changed = True
+    if changed:
+        enriched["tracks"] = updated_tracks
+    return enriched
 
 
 class _LivePilotFocusHTTPServer(ThreadingHTTPServer):

@@ -36,15 +36,19 @@ def project_hash(session_info: dict) -> str:
       * ORDERED scene list: (index, name, color_index)
       * return track count + names
 
-    This is still a fingerprint, not a true project ID (for that we'd need
-    the Live set file path, which requires a new Remote Script handler).
-    But it's collision-resistant across the common failure modes:
+    Prefer the Live set file path/name when the Remote Script exposes it.
+    The structural fallback is still only a fingerprint, but it is
+    collision-resistant across the common failure modes:
       * template-based starts diverge once the user renames a track, adds
         a scene, or adjusts the arrangement length
       * track reordering produces a new hash (correctly — it's a real edit)
       * two songs at 128 BPM with tracks named Drums/Bass no longer collide
         unless they also share identical scene lists AND song length
     """
+    project_identity = _stable_saved_project_identity(session_info)
+    if project_identity:
+        return hashlib.sha256(f"project-v2||{project_identity}".encode()).hexdigest()[:12]
+
     tempo = session_info.get("tempo", 120.0)
     sig_num = session_info.get("signature_numerator", 4)
     sig_denom = session_info.get("signature_denominator", 4)
@@ -84,6 +88,27 @@ def project_hash(session_info: dict) -> str:
         f"scenes=[{scene_sig}]",
     ])
     return hashlib.sha256(seed.encode()).hexdigest()[:12]
+
+
+def _stable_saved_project_identity(session_info: dict) -> str:
+    identity = session_info.get("project_identity")
+    if not isinstance(identity, dict):
+        identity = {}
+    for key in (
+        "file_path",
+        "path",
+        "project_path",
+        "set_path",
+        "live_set_path",
+    ):
+        value = str(identity.get(key) or session_info.get(key) or "").strip()
+        if value:
+            return f"saved_path={value}"
+    for key in ("name", "project_name", "set_name", "live_set_name"):
+        value = str(identity.get(key) or session_info.get(key) or "").strip()
+        if value and value.lower() != "untitled":
+            return f"saved_name={value}"
+    return ""
 
 
 class ProjectStore:
