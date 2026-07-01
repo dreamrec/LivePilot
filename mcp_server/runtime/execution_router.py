@@ -61,6 +61,9 @@ MCP_TOOLS: frozenset[str] = frozenset({
     # No TCP round-trip. Used by remove_device to audit destructive ops + by
     # the director's escape-hatch tech_debt logging.
     "add_session_memory",
+    # Project-scoped track intent writes. Generated visible-audition plans
+    # annotate duplicated lanes after Remote Script duplication/rename steps.
+    "set_track_annotation",
     # Drum-rack pad construction (v1.20) — async orchestrator in
     # mcp_server/tools/analyzer.py:775 that composes insert_rack_chain +
     # set_drum_chain_note + insert_device + replace_sample_native. Used by

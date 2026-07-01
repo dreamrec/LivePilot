@@ -11,6 +11,19 @@ from .runtime.execution_router import execute_plan_steps_async
 from .server import mcp
 
 
+_VARIANT_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+_DEFAULT_VARIANT_LABELS = [
+    "lift",
+    "edge color",
+    "wide support",
+    "darker",
+    "brighter",
+    "tucked",
+    "raw",
+    "polished",
+]
+
+
 def _lifespan(ctx: Context) -> dict:
     return getattr(ctx, "lifespan_context", {}) or {}
 
@@ -81,6 +94,270 @@ def _build_session_kernel(ctx: Context, request_text: str, mode: str) -> dict:
             "status": "degraded",
             "warning": f"session_kernel_unavailable: {exc}",
         }
+
+
+def _normalize_layer_id(value) -> str:
+    return (
+        str(value or "")
+        .strip()
+        .lower()
+        .replace("-", "_")
+        .replace("/", "_")
+        .replace(" ", "_")
+    )
+
+
+def _bounded_audition_count(value, fallback: int = 3) -> int:
+    try:
+        count = int(value)
+    except (TypeError, ValueError):
+        count = fallback
+    return max(1, min(8, count))
+
+
+def _track_lookup(session_info: dict, context: dict) -> dict[int, dict]:
+    tracks = {}
+    for track in session_info.get("tracks") or []:
+        if isinstance(track, dict) and isinstance(track.get("index"), int):
+            tracks[int(track["index"])] = dict(track)
+    for track in context.get("tracks") or []:
+        if isinstance(track, dict) and isinstance(track.get("index"), int):
+            tracks[int(track["index"])] = dict(track)
+    return tracks
+
+
+def _find_layer_group(context: dict, layer_id: str) -> Optional[dict]:
+    wanted = _normalize_layer_id(layer_id)
+    if not wanted:
+        return None
+    for group in context.get("layer_groups") or []:
+        if not isinstance(group, dict):
+            continue
+        keys = [
+            group.get("key"),
+            group.get("id"),
+            group.get("layer_id"),
+            group.get("label"),
+        ]
+        if any(_normalize_layer_id(value) == wanted for value in keys):
+            return group
+    return None
+
+
+def _normalize_track_indices(values) -> list[int]:
+    if isinstance(values, str):
+        values = [part.strip() for part in values.split(",")]
+    if not isinstance(values, list):
+        return []
+    out: list[int] = []
+    for value in values:
+        try:
+            index = int(value)
+        except (TypeError, ValueError):
+            continue
+        if index >= 0 and index not in out:
+            out.append(index)
+    return out
+
+
+def _variant_letter(index: int) -> str:
+    if index < len(_VARIANT_LETTERS):
+        return _VARIANT_LETTERS[index]
+    return f"V{index + 1}"
+
+
+def _variant_label(scope: dict, index: int) -> str:
+    raw = (
+        scope.get("variant_labels")
+        or scope.get("variant_concepts")
+        or scope.get("concepts")
+        or []
+    )
+    if isinstance(raw, str):
+        raw = [part.strip() for part in raw.split(",")]
+    if isinstance(raw, list) and index < len(raw):
+        label = str(raw[index] or "").strip()
+        if label:
+            return label
+    if index < len(_DEFAULT_VARIANT_LABELS):
+        return _DEFAULT_VARIANT_LABELS[index]
+    return f"variant {index + 1}"
+
+
+def _audition_track_name(letter: str, source_name: str, label: str) -> str:
+    source = " ".join(str(source_name or "track").split())
+    concept = " ".join(str(label or "").split())
+    name = f"AUD {letter} {source}"
+    if concept:
+        name = f"{name} {concept}"
+    return name[:80].rstrip()
+
+
+def _compile_visible_layer_audition_job(
+    ctx: Context,
+    session_info: dict,
+    scope: dict,
+    title: str,
+) -> dict:
+    """Compile duplicate/rename/mute/annotate steps for visible auditions."""
+    scope = dict(scope or {})
+    context = _build_production_context(
+        ctx,
+        request_text=str(scope.get("brief") or title or ""),
+    )
+    target = context.get("target") if isinstance(context.get("target"), dict) else {}
+    summary = (
+        context.get("summary")
+        if isinstance(context.get("summary"), dict) else {}
+    )
+    layer_id = _normalize_layer_id(
+        scope.get("layer_id")
+        or target.get("matched_layer")
+        or target.get("target_layer")
+        or summary.get("target_layer")
+    )
+    if not layer_id:
+        raise ValueError(
+            "Layer audition jobs require scope.layer_id or an active cockpit "
+            "Song Layer target."
+        )
+
+    layer = _find_layer_group(context, layer_id)
+    track_indices = _normalize_track_indices(scope.get("track_indices"))
+    if not track_indices and layer:
+        track_indices = _normalize_track_indices(layer.get("track_indices"))
+    if not track_indices:
+        raise ValueError(
+            f"Layer audition job could not resolve tracks for layer '{layer_id}'."
+        )
+
+    count = _bounded_audition_count(
+        scope.get("audition_count"),
+        fallback=_bounded_audition_count(summary.get("audition_count"), 3),
+    )
+    tracks = _track_lookup(session_info, context)
+    layer_label = (
+        str((layer or {}).get("label") or layer_id.replace("_", " ").title())
+        if layer else layer_id.replace("_", " ").title()
+    )
+    generated_scope = dict(scope)
+    generated_scope.update({
+        "layer_id": layer_id,
+        "layer_label": layer_label,
+        "track_indices": track_indices,
+        "source_track_indices": track_indices,
+        "audition_count": count,
+        "audition_style": "visible_muted_duplicate_lanes",
+    })
+
+    plan: list[dict] = []
+    variants = []
+    for variant_index in range(count):
+        variants.append({
+            "letter": _variant_letter(variant_index),
+            "label": _variant_label(scope, variant_index),
+        })
+
+    # Duplicate all variants for a source before moving to lower source tracks.
+    # Ableton inserts duplicates next to the source, so descending source order
+    # preserves the original source indices until each source is finished.
+    for source_index in sorted(track_indices, reverse=True):
+        source_name = str(tracks.get(source_index, {}).get("name") or f"Track {source_index + 1}")
+        for variant in variants:
+            letter = variant["letter"]
+            label = variant["label"]
+            duplicate_step_id = f"aud_{letter.lower()}_src_{source_index}_duplicate"
+            duplicate_index = {"$from_step": duplicate_step_id, "path": "index"}
+            plan.extend([
+                {
+                    "step_id": duplicate_step_id,
+                    "tool": "duplicate_track",
+                    "params": {"track_index": source_index},
+                    "summary": (
+                        f"Duplicate source track {source_index} for "
+                        f"audition {letter}."
+                    ),
+                },
+                {
+                    "tool": "set_track_name",
+                    "params": {
+                        "track_index": duplicate_index,
+                        "name": _audition_track_name(letter, source_name, label),
+                    },
+                    "summary": f"Name audition {letter} duplicate.",
+                },
+                {
+                    "tool": "set_track_mute",
+                    "params": {
+                        "track_index": duplicate_index,
+                        "mute": True,
+                    },
+                    "summary": f"Mute audition {letter} duplicate by default.",
+                },
+                {
+                    "tool": "set_track_annotation",
+                    "backend": "mcp_tool",
+                    "params": {
+                        "track_index": duplicate_index,
+                        "role": "audition_variant",
+                        "decision_state": "open",
+                        "source": "orchestration_layer_audition_job",
+                        "notes": (
+                            f"Visible audition {letter} for layer "
+                            f"{layer_label}; source track {source_name}."
+                        ),
+                        "tags": [
+                            "audition",
+                            f"variant:{letter}",
+                            f"layer:{layer_id}",
+                            f"source_track:{source_index}",
+                        ],
+                        "relationships": [
+                            {
+                                "type": "variant_of",
+                                "source_track_index": source_index,
+                                "source_track_name": source_name,
+                            },
+                            {
+                                "type": "audition_layer",
+                                "layer_id": layer_id,
+                                "layer_label": layer_label,
+                            },
+                            {
+                                "type": "audition_variant",
+                                "variant": letter,
+                                "concept": label,
+                            },
+                        ],
+                    },
+                    "summary": f"Annotate audition {letter} duplicate.",
+                },
+            ])
+
+    resources = [f"track:{index}" for index in track_indices]
+    resources.extend([f"layer:{layer_id}", "project"])
+    generated_title = title or (
+        f"Create {count} visible {layer_label} audition"
+        f"{'' if count == 1 else 's'}"
+    )
+    return {
+        "title": generated_title,
+        "scope": generated_scope,
+        "requires_transport": False,
+        "requires_write": True,
+        "write_set": resources,
+        "leases": resources,
+        "plan": plan,
+        "audition_manifest": {
+            "style": "visible_muted_duplicate_lanes",
+            "layer_id": layer_id,
+            "layer_label": layer_label,
+            "source_track_indices": track_indices,
+            "variant_count": count,
+            "variants": variants,
+            "steps_per_duplicate": 4,
+        },
+    }
 
 
 @mcp.tool()
@@ -215,21 +492,50 @@ def submit_ableton_job(
     status: str = "queued",
 ) -> dict:
     """Submit a serialized Ableton job for later conductor execution."""
-    store, _session_info = _store(ctx)
-    job = store.save_job({
+    store, session_info = _store(ctx)
+    resolved_scope = dict(scope or {})
+    resolved_plan = plan or []
+    resolved_write_set = write_set or []
+    resolved_leases = leases or []
+    resolved_title = title
+    resolved_requires_transport = requires_transport
+    resolved_requires_write = requires_write
+    audition_manifest = None
+
+    normalized_job_type = str(job_type or "").strip().lower().replace("-", "_")
+    if normalized_job_type == "audition" and not resolved_plan:
+        generated = _compile_visible_layer_audition_job(
+            ctx,
+            session_info,
+            resolved_scope,
+            title=title,
+        )
+        resolved_scope = generated["scope"]
+        resolved_plan = generated["plan"]
+        resolved_write_set = generated["write_set"]
+        resolved_leases = generated["leases"]
+        resolved_title = generated["title"]
+        resolved_requires_transport = generated["requires_transport"]
+        resolved_requires_write = generated["requires_write"]
+        audition_manifest = generated["audition_manifest"]
+
+    payload = {
         "snapshot_id": snapshot_id,
-        "title": title,
+        "title": resolved_title,
         "submitted_by": submitted_by,
         "job_type": job_type,
         "priority": priority,
-        "scope": scope or {},
-        "requires_transport": requires_transport,
-        "requires_write": requires_write,
-        "write_set": write_set or [],
-        "leases": leases or [],
-        "plan": plan or [],
+        "scope": resolved_scope,
+        "requires_transport": resolved_requires_transport,
+        "requires_write": resolved_requires_write,
+        "write_set": resolved_write_set,
+        "leases": resolved_leases,
+        "plan": resolved_plan,
         "status": status,
-    })
+    }
+    if audition_manifest is not None:
+        payload["audition_manifest"] = audition_manifest
+    job = store.save_job(payload)
     return {"status": "ok", "project_id": store.project_id, "job": job}
 
 

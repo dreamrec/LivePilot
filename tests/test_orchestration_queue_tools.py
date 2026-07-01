@@ -15,13 +15,16 @@ from mcp_server.orchestration_queue_tools import (
     submit_agent_proposal,
     submit_agent_task,
 )
+from mcp_server.persistence import track_annotations as annotation_store
 from mcp_server.persistence.orchestration_queue import OrchestrationService
+from mcp_server.runtime.mcp_dispatch import build_mcp_dispatch_registry
 
 
 def _session() -> dict:
     return {
         "project_identity": {"file_path": "/Users/me/Song.als"},
         "tempo": 116.0,
+        "track_count": 2,
         "tracks": [
             {"index": 0, "name": "Drums"},
             {"index": 1, "name": "Guitar"},
@@ -38,13 +41,43 @@ class _Ableton:
         self.calls = []
 
     def send_command(self, command, params=None):
+        params = params or {}
         self.calls.append((command, params))
         if command in self.fail_on:
             raise RuntimeError(f"Fake failure on {command}")
         if command == "get_session_info":
             return self.session_info
+        if command == "duplicate_track":
+            track_index = int(params["track_index"])
+            original = dict(self.session_info["tracks"][track_index])
+            duplicate = dict(original)
+            duplicate["name"] = f"{original.get('name', 'Track')} Copy"
+            self.session_info["tracks"].insert(track_index + 1, duplicate)
+            for index, track in enumerate(self.session_info["tracks"]):
+                track["index"] = index
+            self.session_info["track_count"] = len(self.session_info["tracks"])
+            return {
+                "index": track_index + 1,
+                "name": duplicate["name"],
+            }
+        if command == "set_track_name":
+            track = self.session_info["tracks"][int(params["track_index"])]
+            track["name"] = params["name"]
+            return {"index": track["index"], "name": track["name"]}
+        if command == "set_track_mute":
+            track = self.session_info["tracks"][int(params["track_index"])]
+            track["mute"] = bool(params["mute"])
+            return {"index": track["index"], "mute": track["mute"]}
+        if command == "get_track_info":
+            track = self.session_info["tracks"][int(params["track_index"])]
+            return {
+                "index": track["index"],
+                "name": track["name"],
+                "devices": [],
+                "clips": [],
+            }
         if command in {"set_track_volume", "set_track_pan"}:
-            return {"ok": True, "command": command, "params": params or {}}
+            return {"ok": True, "command": command, "params": params}
         raise AssertionError(f"Unexpected command: {command} {params}")
 
 
@@ -138,6 +171,97 @@ def test_orchestration_mcp_flow_round_trips(tmp_path, monkeypatch):
     assert state["proposal_count"] == 1
     assert state["job_count"] == 2
     assert state["next_queued_job"]["job_id"] == high["job_id"]
+
+
+def test_submit_audition_job_generates_visible_layer_plan(tmp_path, monkeypatch):
+    _patch_snapshot_builders(monkeypatch)
+    ctx, _ableton = _ctx(tmp_path)
+    snapshot = create_orchestration_snapshot(
+        ctx,
+        request_text="make auditions",
+        mode="audition",
+    )["snapshot"]
+
+    job = submit_ableton_job(
+        ctx,
+        job_type="audition",
+        snapshot_id=snapshot["snapshot_id"],
+        scope={
+            "layer_id": "intro_handoff",
+            "audition_count": 2,
+            "variant_labels": ["edge sat", "wide tucked"],
+        },
+    )["job"]
+
+    assert job["title"] == "Create 2 visible Intro Handoff auditions"
+    assert job["requires_write"] is True
+    assert job["requires_transport"] is False
+    assert job["scope"]["source_track_indices"] == [1]
+    assert job["audition_manifest"]["variant_count"] == 2
+    assert job["write_set"] == ["track:1", "layer:intro_handoff", "project"]
+    assert [step["tool"] for step in job["plan"]] == [
+        "duplicate_track",
+        "set_track_name",
+        "set_track_mute",
+        "set_track_annotation",
+        "duplicate_track",
+        "set_track_name",
+        "set_track_mute",
+        "set_track_annotation",
+    ]
+    assert job["plan"][1]["params"] == {
+        "track_index": {"$from_step": "aud_a_src_1_duplicate", "path": "index"},
+        "name": "AUD A Guitar edge sat",
+    }
+    assert job["plan"][2]["params"]["mute"] is True
+    assert job["plan"][3]["backend"] == "mcp_tool"
+    assert job["plan"][3]["params"]["role"] == "audition_variant"
+    assert "variant:A" in job["plan"][3]["params"]["tags"]
+
+
+def test_run_generated_audition_job_creates_muted_annotated_lane(
+    tmp_path,
+    monkeypatch,
+):
+    _patch_snapshot_builders(monkeypatch)
+    monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
+    ctx, ableton = _ctx(tmp_path)
+    ctx.lifespan_context["mcp_dispatch"] = build_mcp_dispatch_registry()
+    snapshot = create_orchestration_snapshot(
+        ctx,
+        request_text="make one audition",
+        mode="audition",
+    )["snapshot"]
+    job = submit_ableton_job(
+        ctx,
+        job_type="audition",
+        snapshot_id=snapshot["snapshot_id"],
+        scope={"layer_id": "intro_handoff", "audition_count": 1},
+    )["job"]
+
+    result = asyncio.run(run_next_ableton_job(ctx, job_id=job["job_id"]))
+
+    assert result["status"] == "done"
+    assert result["job"]["result"]["project_revision"] == 1
+    assert ("duplicate_track", {"track_index": 1}) in ableton.calls
+    assert (
+        "set_track_name",
+        {"track_index": 2, "name": "AUD A Guitar lift"},
+    ) in ableton.calls
+    assert (
+        "set_track_mute",
+        {"track_index": 2, "mute": True},
+    ) in ableton.calls
+    assert ableton.session_info["tracks"][2]["name"] == "AUD A Guitar lift"
+    assert ableton.session_info["tracks"][2]["mute"] is True
+
+    from mcp_server.tools.tracks import get_track_annotations
+
+    annotations = get_track_annotations(ctx)["annotations"]
+    assert len(annotations) == 1
+    assert annotations[0]["role"] == "audition_variant"
+    assert annotations[0]["decision_state"] == "open"
+    assert "layer:intro_handoff" in annotations[0]["tags"]
 
 
 def test_run_next_ableton_job_executes_plan_and_increments_revision(tmp_path, monkeypatch):

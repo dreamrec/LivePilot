@@ -73,6 +73,7 @@ def test_every_adapter_imports_cleanly():
         "mcp_server.sample_engine.tools",
         "mcp_server.synthesis_brain.tools",
         "mcp_server.device_forge.tools",
+        "mcp_server.tools.tracks",
     ):
         importlib.import_module(modpath)
 
