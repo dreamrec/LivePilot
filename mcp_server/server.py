@@ -14,6 +14,7 @@ from .focus_panel import FocusPanelServer
 from .lifecycle_log import exception_fields, lifecycle_event
 from .m4l_bridge import SpectralCache, SpectralReceiver, M4LBridge, MidiToolCache
 from .persistence.agent_focus import AgentFocusService
+from .persistence.orchestration_queue import OrchestrationService
 from .persistence.production_context import ProductionContextService
 
 # Logger must be defined before any function uses it — several module-level
@@ -187,6 +188,7 @@ async def lifespan(server):
     ableton = AbletonConnection()
     agent_focus = AgentFocusService()
     production_context = ProductionContextService()
+    orchestration_queue = OrchestrationService()
     spectral = SpectralCache()
     miditool = MidiToolCache()
     receiver = SpectralReceiver(spectral, miditool_cache=miditool)
@@ -285,6 +287,7 @@ async def lifespan(server):
                 "ableton": ableton,
                 "agent_focus": agent_focus,
                 "production_context": production_context,
+                "orchestration_queue": orchestration_queue,
                 "focus_panel_url": focus_panel.url if focus_panel else None,
                 "spectral": spectral,
                 "miditool": miditool,
@@ -382,6 +385,7 @@ from .grader import tools as grader_tools                      # noqa: F401, E40
 from .tools import diagnostics   # noqa: F401, E402
 from .tools import miditool       # noqa: F401, E402
 from . import production_cockpit  # noqa: F401, E402
+from . import orchestration_queue_tools  # noqa: F401, E402
 
 # ---------------------------------------------------------------------------
 # Schema coercion patch — accept strings for numeric parameters

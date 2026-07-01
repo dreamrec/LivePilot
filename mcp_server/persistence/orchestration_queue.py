@@ -48,7 +48,7 @@ class OrchestrationService:
         self._base_dir = base_dir or _PROJECTS_DIR
 
     def get_state(self, session_info: dict) -> dict:
-        store = self._store_for_session(session_info)
+        store = self.store_for_session(session_info)
         return {
             "status": "ok",
             "project_id": store.project_id,
@@ -66,7 +66,7 @@ class OrchestrationService:
         layer_groups: Optional[list[dict]] = None,
         track_intent_map: Optional[dict] = None,
     ) -> dict:
-        store = self._store_for_session(session_info)
+        store = self.store_for_session(session_info)
         snapshot = store.save_snapshot({
             "project_id": store.project_id,
             "project_revision": store.get_revision(),
@@ -84,7 +84,7 @@ class OrchestrationService:
             "snapshot": snapshot,
         }
 
-    def _store_for_session(self, session_info: dict) -> "OrchestrationStore":
+    def store_for_session(self, session_info: dict) -> "OrchestrationStore":
         return OrchestrationStore(
             annotation_project_id_for_session(session_info, self._base_dir),
             self._base_dir,
