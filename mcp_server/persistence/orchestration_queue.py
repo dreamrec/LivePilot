@@ -190,6 +190,34 @@ class OrchestrationStore:
     def list_snapshots(self) -> list[dict]:
         return list(self.get_all().get("snapshots", []))
 
+    def snapshot_staleness(self, snapshot_id: str) -> dict:
+        snapshot_id = str(snapshot_id or "").strip()
+        current_revision = self.get_revision()
+        snapshot = self.get_snapshot(snapshot_id)
+        if snapshot is None:
+            return {
+                "snapshot_id": snapshot_id,
+                "status": "missing",
+                "is_stale": True,
+                "snapshot_revision": None,
+                "current_revision": current_revision,
+                "reason": "snapshot_not_found",
+            }
+        snapshot_revision = _as_int(snapshot.get("project_revision"), 0)
+        is_stale = snapshot_revision < current_revision
+        return {
+            "snapshot_id": snapshot_id,
+            "status": "stale" if is_stale else "fresh",
+            "is_stale": is_stale,
+            "snapshot_revision": snapshot_revision,
+            "current_revision": current_revision,
+            "reason": (
+                "snapshot_revision_behind_current"
+                if is_stale else
+                "snapshot_matches_current_revision"
+            ),
+        }
+
     def save_task(self, task: dict) -> dict:
         now = _now_ms()
         normalized = _normalize_task(task, now)
@@ -329,6 +357,22 @@ class OrchestrationStore:
         queued = self.list_jobs(status="queued", ordered=True)
         return queued[0] if queued else None
 
+    def get_job(self, job_id: str) -> Optional[dict]:
+        return _find_optional(self.get_all().get("jobs", []), "job_id", job_id)
+
+    def job_staleness(self, job_id: str) -> dict:
+        job = self.get_job(job_id)
+        if job is None:
+            return {
+                "job_id": str(job_id or "").strip(),
+                "status": "missing",
+                "is_stale": True,
+                "reason": "job_not_found",
+            }
+        result = self.snapshot_staleness(str(job.get("snapshot_id") or ""))
+        result["job_id"] = job.get("job_id")
+        return result
+
     def update_job_status(
         self,
         job_id: str,
@@ -371,6 +415,152 @@ class OrchestrationStore:
             if _as_int(lease.get("expires_at_ms"), 0) <= 0
             or _as_int(lease.get("expires_at_ms"), 0) > now
         ]
+
+    def resources_for_job(self, job_or_id) -> list[str]:
+        if isinstance(job_or_id, dict):
+            job = dict(job_or_id)
+        else:
+            job = self.get_job(str(job_or_id or ""))
+            if job is None:
+                raise KeyError(f"job_id not found: {job_or_id}")
+        resources: list[str] = []
+        if bool(job.get("requires_transport", False)):
+            resources.append("transport")
+        for item in job.get("leases") or []:
+            _append_resource(resources, item)
+        for item in job.get("write_set") or []:
+            _append_resource(resources, _resource_from_write_set(item))
+        scope = job.get("scope") if isinstance(job.get("scope"), dict) else {}
+        for track_index in scope.get("track_indices") or []:
+            _append_resource(resources, f"track:{track_index}")
+        if scope.get("layer_id"):
+            _append_resource(resources, f"layer:{scope.get('layer_id')}")
+        if scope.get("section_id"):
+            _append_resource(resources, f"section:{scope.get('section_id')}")
+        return resources
+
+    def find_resource_conflicts(
+        self,
+        resources: list[str],
+        exclude_job_id: str = "",
+    ) -> list[dict]:
+        requested = [_normalize_resource(item) for item in resources]
+        requested = [item for item in requested if item]
+        exclude_job_id = str(exclude_job_id or "").strip()
+        conflicts = []
+        for lease in self.list_leases(include_expired=False):
+            if exclude_job_id and lease.get("job_id") == exclude_job_id:
+                continue
+            held = _normalize_resource(lease.get("resource"))
+            for resource in requested:
+                if _resources_conflict(resource, held):
+                    conflicts.append({
+                        "requested": resource,
+                        "held": held,
+                        "lease": lease,
+                    })
+        return conflicts
+
+    def claim_resources_for_job(
+        self,
+        job_id: str,
+        resources: Optional[list[str]] = None,
+        owner: str = "conductor",
+        ttl_ms: int = 0,
+    ) -> dict:
+        """Atomically claim leases for a job unless active leases conflict."""
+        job_id = str(job_id or "").strip()
+        owner = str(owner or "conductor").strip() or "conductor"
+        now = _now_ms()
+        claim_result: dict = {}
+
+        def _update(data: dict) -> dict:
+            nonlocal claim_result
+            data = data if data.get("version") == _STORE_VERSION else self._default()
+            job = _find_optional(data.get("jobs", []), "job_id", job_id)
+            if job is None:
+                raise KeyError(f"job_id not found: {job_id}")
+            requested = resources or self.resources_for_job(job)
+            requested = [_normalize_resource(item) for item in requested]
+            requested = [item for item in requested if item]
+            active_leases = [
+                lease for lease in data.get("leases", [])
+                if not _lease_expired(lease, now)
+                and lease.get("job_id") != job_id
+            ]
+            conflicts = []
+            for resource in requested:
+                for lease in active_leases:
+                    held = _normalize_resource(lease.get("resource"))
+                    if _resources_conflict(resource, held):
+                        conflicts.append({
+                            "requested": resource,
+                            "held": held,
+                            "lease": dict(lease),
+                        })
+            if conflicts:
+                claim_result = {
+                    "status": "blocked",
+                    "job_id": job_id,
+                    "claimed": [],
+                    "conflicts": conflicts,
+                }
+                return data
+
+            ttl = _as_int(ttl_ms, 0)
+            expires_at_ms = now + ttl if ttl > 0 else 0
+            existing = data.setdefault("leases", [])
+            claimed = []
+            for resource in requested:
+                lease = _normalize_lease({
+                    "lease_id": _new_id("lease"),
+                    "resource": resource,
+                    "job_id": job_id,
+                    "owner": owner,
+                    "expires_at_ms": expires_at_ms,
+                }, now)
+                existing.append(lease)
+                claimed.append(lease)
+            data["last_updated_ms"] = now
+            claim_result = {
+                "status": "claimed",
+                "job_id": job_id,
+                "claimed": claimed,
+                "conflicts": [],
+            }
+            return data
+
+        self._store.update(_update)
+        return claim_result
+
+    def release_leases_for_job(self, job_id: str) -> dict:
+        job_id = str(job_id or "").strip()
+        now = _now_ms()
+        release_result: dict = {}
+
+        def _update(data: dict) -> dict:
+            nonlocal release_result
+            data = data if data.get("version") == _STORE_VERSION else self._default()
+            released = [
+                lease for lease in data.get("leases", [])
+                if lease.get("job_id") == job_id
+            ]
+            data["leases"] = [
+                lease for lease in data.get("leases", [])
+                if lease.get("job_id") != job_id
+            ]
+            if released:
+                data["last_updated_ms"] = now
+            release_result = {
+                "status": "ok",
+                "job_id": job_id,
+                "released": released,
+                "released_count": len(released),
+            }
+            return data
+
+        self._store.update(_update)
+        return release_result
 
     def remove_lease(self, lease_id: str) -> bool:
         lease_id = str(lease_id or "").strip()
@@ -551,6 +741,59 @@ def _normalize_lease(lease: dict, now: int) -> dict:
     item["created_at_ms"] = _as_int(item.get("created_at_ms"), now)
     item["updated_at_ms"] = now
     return item
+
+
+def _append_resource(resources: list[str], value) -> None:
+    resource = _normalize_resource(value)
+    if resource and resource not in resources:
+        resources.append(resource)
+
+
+def _normalize_resource(value) -> str:
+    text = str(value or "").strip().lower().replace(" ", "_")
+    if not text:
+        return ""
+    parts = [part for part in text.split(":") if part]
+    if not parts:
+        return ""
+    head = parts[0]
+    if head in {"transport", "master", "project"}:
+        return head
+    if head in {"track", "layer", "section"} and len(parts) >= 2:
+        return f"{head}:{parts[1]}"
+    return text
+
+
+def _resource_from_write_set(value) -> str:
+    text = str(value or "").strip().lower().replace(" ", "_")
+    if not text:
+        return ""
+    if text.startswith("master"):
+        return "master"
+    if text.startswith("project"):
+        return "project"
+    if text.startswith("transport"):
+        return "transport"
+    return _normalize_resource(text)
+
+
+def _resources_conflict(left: str, right: str) -> bool:
+    left = _normalize_resource(left)
+    right = _normalize_resource(right)
+    if not left or not right:
+        return False
+    if left == right:
+        return True
+    if "project" in {left, right}:
+        return True
+    if {left, right} == {"master", "transport"}:
+        return True
+    return False
+
+
+def _lease_expired(lease: dict, now: int) -> bool:
+    expires_at_ms = _as_int(lease.get("expires_at_ms"), 0)
+    return expires_at_ms > 0 and expires_at_ms <= now
 
 
 def _upsert_by_id(items: list[dict], key: str, item: dict) -> None:

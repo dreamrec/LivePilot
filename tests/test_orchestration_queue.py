@@ -130,6 +130,29 @@ def test_revision_increment_marks_active_proposals_stale(tmp_path):
     assert proposals[rejected["proposal_id"]]["status"] == "rejected"
 
 
+def test_snapshot_and_job_staleness_reports_revision_drift(tmp_path):
+    store = OrchestrationStore("proj1", base_dir=tmp_path)
+    snapshot = store.save_snapshot({
+        "snapshot_id": "snap_1",
+        "project_revision": 0,
+    })
+    job = store.save_job({
+        "job_id": "job_1",
+        "snapshot_id": snapshot["snapshot_id"],
+    })
+
+    assert store.snapshot_staleness(snapshot["snapshot_id"])["is_stale"] is False
+    assert store.job_staleness(job["job_id"])["is_stale"] is False
+
+    store.increment_revision(reason="mutation_done")
+
+    snapshot_report = store.snapshot_staleness(snapshot["snapshot_id"])
+    assert snapshot_report["is_stale"] is True
+    assert snapshot_report["snapshot_revision"] == 0
+    assert snapshot_report["current_revision"] == 1
+    assert store.job_staleness(job["job_id"])["is_stale"] is True
+
+
 def test_queued_jobs_are_ordered_by_priority_then_fifo(tmp_path):
     store = OrchestrationStore("proj1", base_dir=tmp_path)
     low = store.save_job({"job_id": "job_low", "priority": 10})
@@ -147,6 +170,86 @@ def test_queued_jobs_are_ordered_by_priority_then_fifo(tmp_path):
                                       result={"verified": True})
     assert updated["result"]["verified"] is True
     assert store.next_queued_job()["job_id"] == high_second["job_id"]
+
+
+def test_resources_for_job_derives_conservative_locks(tmp_path):
+    store = OrchestrationStore("proj1", base_dir=tmp_path)
+    job = store.save_job({
+        "job_id": "job_1",
+        "requires_transport": True,
+        "leases": ["layer:intro_handoff:all"],
+        "write_set": ["track:21:devices", "master:devices"],
+        "scope": {
+            "track_indices": [22],
+            "section_id": "intro",
+        },
+    })
+
+    assert store.resources_for_job(job["job_id"]) == [
+        "transport",
+        "layer:intro_handoff",
+        "track:21",
+        "master",
+        "track:22",
+        "section:intro",
+    ]
+
+
+def test_claim_resources_blocks_conflicting_active_leases(tmp_path):
+    store = OrchestrationStore("proj1", base_dir=tmp_path)
+    first = store.save_job({
+        "job_id": "job_first",
+        "write_set": ["track:21:devices"],
+    })
+    second = store.save_job({
+        "job_id": "job_second",
+        "write_set": ["track:21:clips"],
+    })
+
+    claimed = store.claim_resources_for_job(first["job_id"])
+    assert claimed["status"] == "claimed"
+    assert claimed["claimed"][0]["resource"] == "track:21"
+
+    blocked = store.claim_resources_for_job(second["job_id"])
+    assert blocked["status"] == "blocked"
+    assert blocked["conflicts"][0]["requested"] == "track:21"
+    assert blocked["conflicts"][0]["held"] == "track:21"
+
+    released = store.release_leases_for_job(first["job_id"])
+    assert released["released_count"] == 1
+    assert store.claim_resources_for_job(second["job_id"])["status"] == "claimed"
+
+
+def test_transport_master_and_expired_lease_conflicts(tmp_path):
+    store = OrchestrationStore("proj1", base_dir=tmp_path)
+    master = store.save_job({
+        "job_id": "job_master",
+        "write_set": ["master:devices"],
+    })
+    transport = store.save_job({
+        "job_id": "job_transport",
+        "requires_transport": True,
+    })
+    later = store.save_job({
+        "job_id": "job_later",
+        "write_set": ["track:99:clips"],
+    })
+
+    assert store.claim_resources_for_job(master["job_id"])["status"] == "claimed"
+    blocked = store.claim_resources_for_job(transport["job_id"])
+    assert blocked["status"] == "blocked"
+    assert blocked["conflicts"][0]["requested"] == "transport"
+    assert blocked["conflicts"][0]["held"] == "master"
+
+    store.release_leases_for_job(master["job_id"])
+    store.save_lease({
+        "lease_id": "lease_expired",
+        "resource": "track:99",
+        "job_id": "job_expired",
+        "expires_at_ms": 1,
+    })
+    assert store.list_leases() == []
+    assert store.claim_resources_for_job(later["job_id"])["status"] == "claimed"
 
 
 def test_status_updates_preserve_created_at(tmp_path):
