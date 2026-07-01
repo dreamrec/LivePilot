@@ -13,6 +13,7 @@ from fastmcp.tools.base import ToolResult
 
 from . import __version__
 from .persistence.agent_focus import AgentFocusService
+from .persistence.orchestration_queue import OrchestrationService
 from .persistence.production_context import ProductionContextService
 from .persistence.track_annotations import (
     TrackAnnotationStore,
@@ -140,6 +141,13 @@ def _production_context_service(ctx: Context) -> ProductionContextService:
     if isinstance(service, ProductionContextService):
         return service
     return ProductionContextService()
+
+
+def _orchestration_service(ctx: Context) -> OrchestrationService:
+    service = _lifespan(ctx).get("orchestration_queue")
+    if isinstance(service, OrchestrationService):
+        return service
+    return OrchestrationService()
 
 
 def _annotation_store_for_session(session_info: dict) -> TrackAnnotationStore:
@@ -837,6 +845,170 @@ def _attach_section_track_clips(ctx: Context, session_info: dict) -> dict:
     return enriched
 
 
+def _compact_orchestration_job(job: dict) -> dict:
+    scope = job.get("scope") if isinstance(job.get("scope"), dict) else {}
+    return {
+        "job_id": job.get("job_id", ""),
+        "title": job.get("title") or job.get("job_type", "Ableton job"),
+        "job_type": job.get("job_type", ""),
+        "status": job.get("status", ""),
+        "priority": job.get("priority"),
+        "snapshot_id": job.get("snapshot_id", ""),
+        "requires_transport": bool(job.get("requires_transport", False)),
+        "requires_write": bool(job.get("requires_write", False)),
+        "write_set": job.get("write_set") or [],
+        "scope": scope,
+        "sequence": job.get("sequence"),
+        "updated_at_ms": job.get("updated_at_ms"),
+    }
+
+
+def _compact_orchestration_proposal(proposal: dict) -> dict:
+    return {
+        "proposal_id": proposal.get("proposal_id", ""),
+        "task_id": proposal.get("task_id", ""),
+        "snapshot_id": proposal.get("snapshot_id", ""),
+        "agent_role": proposal.get("agent_role", ""),
+        "summary": proposal.get("summary", ""),
+        "confidence": proposal.get("confidence"),
+        "risk": proposal.get("risk", ""),
+        "status": proposal.get("status", ""),
+        "requires_user_decision": bool(
+            proposal.get("requires_user_decision", False)
+        ),
+        "transport_required": bool(proposal.get("transport_required", False)),
+        "write_set": proposal.get("write_set") or [],
+        "updated_at_ms": proposal.get("updated_at_ms"),
+    }
+
+
+def _compact_orchestration_lease(lease: dict) -> dict:
+    return {
+        "lease_id": lease.get("lease_id", ""),
+        "resource": lease.get("resource", ""),
+        "job_id": lease.get("job_id", ""),
+        "owner": lease.get("owner", ""),
+        "expires_at_ms": lease.get("expires_at_ms"),
+    }
+
+
+def _orchestration_summary(ctx: Context, session_info: dict) -> dict:
+    """Return queue/proposal state for cockpit display.
+
+    This is read-only and intentionally compact: the cockpit needs enough state
+    to show what is waiting for Codex, not the full durable queue payload.
+    """
+    try:
+        store = _orchestration_service(ctx).store_for_session(session_info)
+        data = store.get_all()
+        tasks = store.list_tasks()
+        proposals = store.list_proposals()
+        jobs = store.list_jobs(ordered=True)
+        active_leases = store.list_leases(include_expired=False)
+        queued_jobs = [
+            job for job in jobs
+            if job.get("status") == "queued"
+        ]
+        active_jobs = [
+            job for job in jobs
+            if job.get("status") in {"queued", "running", "awaiting_decision"}
+        ]
+        recent_jobs = sorted(
+            [
+                job for job in jobs
+                if job.get("status") in {"done", "failed", "canceled"}
+            ],
+            key=lambda item: int(item.get("updated_at_ms") or 0),
+            reverse=True,
+        )
+        pending_proposals = [
+            proposal for proposal in proposals
+            if proposal.get("status") in {
+                "proposed",
+                "approved",
+                "stale_needs_revalidation",
+            }
+        ]
+        stale_proposals = [
+            proposal for proposal in proposals
+            if proposal.get("status") == "stale_needs_revalidation"
+        ]
+        next_job = queued_jobs[0] if queued_jobs else None
+        return {
+            "status": "ok",
+            "project_id": store.project_id,
+            "store_path": str(store.path),
+            "project_revision": store.get_revision(),
+            "last_updated_ms": data.get("last_updated_ms", 0),
+            "has_activity": bool(tasks or proposals or jobs or active_leases),
+            "counts": {
+                "tasks": len(tasks),
+                "queued_tasks": sum(
+                    1 for task in tasks if task.get("status") == "queued"
+                ),
+                "proposals": len(proposals),
+                "pending_proposals": len(pending_proposals),
+                "stale_proposals": len(stale_proposals),
+                "jobs": len(jobs),
+                "queued_jobs": len(queued_jobs),
+                "running_jobs": sum(
+                    1 for job in jobs if job.get("status") == "running"
+                ),
+                "awaiting_decision_jobs": sum(
+                    1 for job in jobs
+                    if job.get("status") == "awaiting_decision"
+                ),
+                "active_leases": len(active_leases),
+            },
+            "next_queued_job": (
+                _compact_orchestration_job(next_job) if next_job else None
+            ),
+            "active_jobs": [
+                _compact_orchestration_job(job)
+                for job in active_jobs[:8]
+            ],
+            "recent_jobs": [
+                _compact_orchestration_job(job)
+                for job in recent_jobs[:5]
+            ],
+            "pending_proposals": [
+                _compact_orchestration_proposal(proposal)
+                for proposal in pending_proposals[:8]
+            ],
+            "active_leases": [
+                _compact_orchestration_lease(lease)
+                for lease in active_leases[:8]
+            ],
+            "warnings": (
+                ["stale_proposals_need_revalidation"]
+                if stale_proposals else []
+            ),
+        }
+    except Exception as exc:  # noqa: BLE001 - cockpit must degrade.
+        return {
+            "status": "unavailable",
+            "warning": f"orchestration_unavailable: {exc}",
+            "has_activity": False,
+            "counts": {
+                "tasks": 0,
+                "queued_tasks": 0,
+                "proposals": 0,
+                "pending_proposals": 0,
+                "stale_proposals": 0,
+                "jobs": 0,
+                "queued_jobs": 0,
+                "running_jobs": 0,
+                "awaiting_decision_jobs": 0,
+                "active_leases": 0,
+            },
+            "active_jobs": [],
+            "recent_jobs": [],
+            "pending_proposals": [],
+            "active_leases": [],
+            "warnings": [],
+        }
+
+
 def _build_context(
     ctx: Context,
     request_text: str = "",
@@ -889,6 +1061,7 @@ def _build_context(
     layer_groups = _build_layer_groups(tracks)
     target = _target_context(production_state, tracks, layer_groups)
     section_map = _build_section_map(session_info, production_state)
+    orchestration = _orchestration_summary(ctx, session_info)
     payload = {
         "status": "ok",
         "version": __version__,
@@ -914,6 +1087,7 @@ def _build_context(
         "track_groups": track_groups,
         "layer_groups": layer_groups,
         "section_map": section_map,
+        "orchestration": orchestration,
         "target": target,
         "tracks": tracks,
         "focused_tracks": focused_tracks,
@@ -3002,6 +3176,54 @@ def _render_intent_first_cockpit_html(transport: str = "mcp") -> str:
       gap: 8px;
     }
     .plan ul { margin: 0; padding-left: 18px; color: #d8dde5; font-size: 12px; }
+    .queue-card {
+      border-top: 1px solid var(--border);
+      padding-top: 12px;
+      display: grid;
+      gap: 8px;
+    }
+    .queue-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      color: #f3f5f8;
+      font-size: 13px;
+    }
+    .queue-badge {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 3px 8px;
+      color: var(--muted);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+    .queue-list {
+      display: grid;
+      gap: 6px;
+    }
+    .queue-item {
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 8px;
+      background: rgba(255, 255, 255, 0.03);
+      display: grid;
+      gap: 3px;
+    }
+    .queue-item b {
+      color: #e8edf3;
+      font-size: 12px;
+      line-height: 1.25;
+    }
+    .queue-item span {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.25;
+    }
+    .queue-item.stale {
+      border-color: rgba(240, 163, 58, 0.5);
+      background: rgba(240, 163, 58, 0.08);
+    }
     .status {
       min-height: 18px;
       color: var(--muted);
@@ -3162,6 +3384,11 @@ def _render_intent_first_cockpit_html(transport: str = "mcp") -> str:
         <div class="brief-row"><div class="ic">Y</div><div><div class="k">Scope</div><div class="v" id="briefScope">Whole song</div></div></div>
         <div class="brief-row"><div class="ic">Y</div><div><div class="k">Keep safe</div><div class="v" id="briefProtect">None</div></div></div>
         <div class="brief-row warn" id="outputRow"><div class="ic">!</div><div><div class="k">Output</div><div class="v" id="briefOutput">3 layer auditions</div><div class="sub" id="briefOutputSub">Requires a Song Layer target.</div></div></div>
+        <div class="queue-card" id="queueCard">
+          <div class="queue-head"><b>Agent Queue</b><span class="queue-badge" id="queueBadge">Idle</span></div>
+          <div class="sub" id="queueSummary">No orchestration work queued.</div>
+          <div class="queue-list" id="queueItems"></div>
+        </div>
         <div class="plan" id="plan">
           <div class="k">Codex will</div>
           <ul id="willList"></ul>
@@ -3461,6 +3688,7 @@ __CALL_TOOL_JS__
       renderTracks();
       renderQuickMoves();
       renderBrief();
+      renderOrchestration();
     }
     function renderTop() {
       const session = (state || {}).session || {};
@@ -3637,6 +3865,70 @@ __CALL_TOOL_JS__
         : "Briefs save to LivePilot context; Codex reads the saved state before acting.";
       $("#willList").innerHTML = planWill(text, tracks).map(item => `<li>${escapeHtml(item)}</li>`).join("");
       $("#wontList").innerHTML = planWont(protect).map(item => `<li>${escapeHtml(item)}</li>`).join("");
+    }
+    function orchestrationState() {
+      return (state || {}).orchestration || {};
+    }
+    function compactId(value) {
+      const text = String(value || "");
+      return text.length > 10 ? text.slice(0, 10) : text;
+    }
+    function renderOrchestration() {
+      const orchestration = orchestrationState();
+      const counts = orchestration.counts || {};
+      const badge = $("#queueBadge");
+      const summary = $("#queueSummary");
+      const items = $("#queueItems");
+      if (!badge || !summary || !items) return;
+      if (orchestration.status && orchestration.status !== "ok") {
+        badge.textContent = "Unavailable";
+        summary.textContent = orchestration.warning || "Orchestration state is not available.";
+        items.innerHTML = "";
+        return;
+      }
+      const queued = Number(counts.queued_jobs || 0);
+      const running = Number(counts.running_jobs || 0);
+      const decisions = Number(counts.awaiting_decision_jobs || 0);
+      const proposals = Number(counts.pending_proposals || 0);
+      const stale = Number(counts.stale_proposals || 0);
+      const leases = Number(counts.active_leases || 0);
+      badge.textContent = queued || running || decisions
+        ? `${queued} queued / ${running + decisions} active`
+        : "Idle";
+      if (!orchestration.has_activity) {
+        summary.textContent = "No queued jobs or pending proposals for this project.";
+        items.innerHTML = "";
+        return;
+      }
+      summary.textContent = [
+        `${queued} queued job${queued === 1 ? "" : "s"}`,
+        `${proposals} pending proposal${proposals === 1 ? "" : "s"}`,
+        stale ? `${stale} stale` : "",
+        leases ? `${leases} lease${leases === 1 ? "" : "s"}` : ""
+      ].filter(Boolean).join(" - ");
+      const rows = [];
+      (orchestration.active_jobs || []).slice(0, 4).forEach(job => {
+        const title = job.title || job.job_type || "Ableton job";
+        rows.push(`
+          <div class="queue-item">
+            <b>${escapeHtml(title)}</b>
+            <span>${escapeHtml(job.status || "queued")} - ${escapeHtml(job.job_type || "job")} ${compactId(job.job_id) ? "#" + escapeHtml(compactId(job.job_id)) : ""}</span>
+          </div>
+        `);
+      });
+      (orchestration.pending_proposals || []).slice(0, 3).forEach(proposal => {
+        const staleClass = proposal.status === "stale_needs_revalidation" ? " stale" : "";
+        rows.push(`
+          <div class="queue-item${staleClass}">
+            <b>${escapeHtml(proposal.summary || proposal.agent_role || "Agent proposal")}</b>
+            <span>${escapeHtml(proposal.status || "proposed")} - ${escapeHtml(proposal.agent_role || "agent")} ${compactId(proposal.proposal_id) ? "#" + escapeHtml(compactId(proposal.proposal_id)) : ""}</span>
+          </div>
+        `);
+      });
+      if (!rows.length) {
+        rows.push('<div class="queue-item"><b>No active queue items</b><span>Recent completed jobs are stored in the project queue.</span></div>');
+      }
+      items.innerHTML = rows.join("");
     }
     function planWill(text, tracks) {
       const direction = inferDirection(text).toLowerCase();
