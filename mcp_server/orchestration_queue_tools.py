@@ -573,6 +573,149 @@ def cancel_ableton_job(
     return {"status": "ok", "project_id": store.project_id, "job": job}
 
 
+def _logging_track_indices(job: dict) -> list[int]:
+    scope = job.get("scope") if isinstance(job.get("scope"), dict) else {}
+    values = (
+        scope.get("track_indices")
+        or scope.get("source_track_indices")
+        or []
+    )
+    return _normalize_track_indices(values)
+
+
+def _execution_score(exec_results: list[dict]) -> float:
+    if not exec_results:
+        return 0.0
+    ok_count = sum(1 for item in exec_results if item.get("ok"))
+    return ok_count / len(exec_results)
+
+
+def _execution_summary(job: dict, status: str, exec_results: list[dict]) -> str:
+    title = str(job.get("title") or job.get("job_type") or "Ableton job")
+    ok_count = sum(1 for item in exec_results if item.get("ok"))
+    return (
+        f"{status} {job.get('job_type', 'job')} job "
+        f"{job.get('job_id', '')}: {title} "
+        f"({ok_count}/{len(exec_results)} steps ok)"
+    )
+
+
+def _record_job_outcome(
+    ctx: Context,
+    job: dict,
+    status: str,
+    exec_results: list[dict],
+    project_revision: Optional[int] = None,
+    error: str = "",
+) -> dict:
+    """Best-effort ledger/session-continuity logging for conductor jobs."""
+    logging_result = {
+        "status": "ok",
+        "ledger_entry_id": None,
+        "session_memory_id": None,
+        "turn_id": None,
+        "warnings": [],
+    }
+    title = str(job.get("title") or job.get("job_type") or "Ableton job")
+    job_type = str(job.get("job_type") or "job")
+    job_status = "done" if status == "done" else "failed"
+
+    try:
+        from .runtime.action_ledger import SessionLedger
+
+        ledger = _lifespan(ctx).setdefault("action_ledger", SessionLedger())
+        entry_id = ledger.start_move(
+            engine="orchestration",
+            move_class=job_type,
+            intent=f"{job.get('job_id', '')}: {title}",
+            undo_scope=(
+                "project"
+                if "project" in (job.get("write_set") or [])
+                else "section"
+                if job.get("requires_transport")
+                else "micro"
+            ),
+        )
+        entry = ledger.get_entry(entry_id)
+        if entry is not None:
+            entry.scope = dict(job.get("scope") or {})
+        ledger.set_before_refs(
+            entry_id,
+            {
+                "snapshot_id": job.get("snapshot_id", ""),
+                "job_id": job.get("job_id", ""),
+            },
+        )
+        for item in exec_results:
+            ledger.append_action(
+                entry_id,
+                tool_name=str(item.get("tool") or ""),
+                summary=(
+                    str(item.get("tool") or "step")
+                    if item.get("ok")
+                    else str(item.get("error") or "failed step")
+                ),
+            )
+        ledger.set_after_refs(
+            entry_id,
+            {
+                "job_id": job.get("job_id", ""),
+                "status": job_status,
+                "project_revision": project_revision,
+                "error": error,
+            },
+        )
+        ledger.finalize_move(
+            entry_id,
+            kept=(status == "done"),
+            score=_execution_score(exec_results),
+            memory_candidate=False,
+        )
+        logging_result["ledger_entry_id"] = entry_id
+    except Exception as exc:  # noqa: BLE001 - logging must not fail jobs.
+        logging_result["warnings"].append(f"action_ledger_unavailable: {exc}")
+
+    try:
+        from .memory.session_memory import SessionMemoryStore
+
+        session_memory = _lifespan(ctx).setdefault(
+            "session_memory",
+            SessionMemoryStore(),
+        )
+        content = _execution_summary(job, job_status, exec_results)
+        if error:
+            content = f"{content}; error={error}"
+        logging_result["session_memory_id"] = session_memory.add(
+            category="move_executed" if status == "done" else "issue",
+            content=content,
+            engine="orchestration",
+            confidence=1.0 if status == "done" else 0.8,
+            tracks=_logging_track_indices(job),
+        )
+    except Exception as exc:  # noqa: BLE001 - logging must not fail jobs.
+        logging_result["warnings"].append(f"session_memory_unavailable: {exc}")
+
+    try:
+        from .session_continuity import tracker
+
+        turn = tracker.record_turn_resolution(
+            request_text=title,
+            outcome="accepted" if status == "done" else "rejected",
+            move_applied=f"orchestration:{job_type}",
+            identity_effect="evolves" if status == "done" else "preserves",
+            user_sentiment="neutral",
+        )
+        logging_result["turn_id"] = turn.turn_id
+    except Exception as exc:  # noqa: BLE001 - logging must not fail jobs.
+        logging_result["warnings"].append(
+            f"session_continuity_unavailable: {exc}"
+        )
+
+    if logging_result["warnings"]:
+        logging_result["status"] = "partial"
+    return logging_result
+
+
 @mcp.tool()
 async def run_next_ableton_job(
     ctx: Context,
@@ -659,12 +802,20 @@ async def run_next_ableton_job(
                     source_id=started["job_id"],
                 )
                 revision = revision_state.get("project_revision")
+            logging_result = _record_job_outcome(
+                ctx,
+                started,
+                status="done",
+                exec_results=exec_results,
+                project_revision=revision,
+            )
             done = store.update_job_status(
                 started["job_id"],
                 "done",
                 result={
                     "execution_log": exec_results,
                     "project_revision": revision,
+                    "logging": logging_result,
                 },
             )
             return {
@@ -674,12 +825,21 @@ async def run_next_ableton_job(
                 "execution_log": exec_results,
             }
 
+        error = _first_execution_error(exec_results)
+        logging_result = _record_job_outcome(
+            ctx,
+            started,
+            status="failed",
+            exec_results=exec_results,
+            error=error,
+        )
         failed = store.update_job_status(
             started["job_id"],
             "failed",
             result={
                 "execution_log": exec_results,
-                "error": _first_execution_error(exec_results),
+                "error": error,
+                "logging": logging_result,
             },
         )
         return {
@@ -687,15 +847,23 @@ async def run_next_ableton_job(
             "project_id": store.project_id,
             "job": failed,
             "execution_log": exec_results,
-            "error": _first_execution_error(exec_results),
+            "error": error,
         }
     except Exception as exc:  # noqa: BLE001 - persist job failure details.
+        logging_result = _record_job_outcome(
+            ctx,
+            started,
+            status="failed",
+            exec_results=exec_results,
+            error=str(exc),
+        )
         failed = store.update_job_status(
             started["job_id"],
             "failed",
             result={
                 "execution_log": exec_results,
                 "error": str(exc),
+                "logging": logging_result,
             },
         )
         return {

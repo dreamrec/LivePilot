@@ -266,6 +266,9 @@ def test_run_generated_audition_job_creates_muted_annotated_lane(
 
 def test_run_next_ableton_job_executes_plan_and_increments_revision(tmp_path, monkeypatch):
     _patch_snapshot_builders(monkeypatch)
+    from mcp_server.session_continuity import tracker
+
+    tracker.reset_story()
     ctx, ableton = _ctx(tmp_path)
     snapshot = create_orchestration_snapshot(ctx, request_text="apply it")["snapshot"]
     job = submit_ableton_job(
@@ -286,10 +289,27 @@ def test_run_next_ableton_job_executes_plan_and_increments_revision(tmp_path, mo
     assert result["status"] == "done"
     assert result["job"]["status"] == "done"
     assert result["job"]["result"]["project_revision"] == 1
+    logging = result["job"]["result"]["logging"]
+    assert logging["status"] == "ok"
+    assert logging["ledger_entry_id"]
+    assert logging["session_memory_id"]
+    assert logging["turn_id"]
     assert ("set_track_volume", {"track_index": 1, "volume": 0.5}) in ableton.calls
     state = get_orchestration_state(ctx)
     assert state["project_revision"] == 1
     assert state["leases"] == []
+    ledger_entry = ctx.lifespan_context["action_ledger"].get_last_move()
+    assert ledger_entry.engine == "orchestration"
+    assert ledger_entry.move_class == "mutation"
+    assert ledger_entry.kept is True
+    assert ledger_entry.actions[0]["tool"] == "set_track_volume"
+    memory = ctx.lifespan_context["session_memory"].get_recent(
+        category="move_executed",
+    )
+    assert "done mutation job" in memory[0].content
+    story = tracker.get_session_story()
+    assert story.turns[-1].move_applied == "orchestration:mutation"
+    tracker.reset_story()
 
 
 def test_run_next_ableton_job_blocks_stale_snapshot(tmp_path, monkeypatch):
@@ -382,6 +402,15 @@ def test_run_next_ableton_job_marks_failed_and_releases_leases(tmp_path, monkeyp
     assert result["status"] == "failed"
     assert result["job"]["status"] == "failed"
     assert "Fake failure on set_track_pan" in result["error"]
+    logging = result["job"]["result"]["logging"]
+    assert logging["status"] == "ok"
+    assert logging["ledger_entry_id"]
+    ledger_entry = ctx.lifespan_context["action_ledger"].get_last_move()
+    assert ledger_entry.kept is False
+    assert ledger_entry.score == 0.5
+    issues = ctx.lifespan_context["session_memory"].get_recent(category="issue")
+    assert "failed mutation job" in issues[0].content
+    assert "Fake failure on set_track_pan" in issues[0].content
     state = get_orchestration_state(ctx)
     assert state["project_revision"] == 0
     assert state["leases"] == []
