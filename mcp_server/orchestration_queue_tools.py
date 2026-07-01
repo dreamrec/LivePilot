@@ -7,6 +7,7 @@ from typing import Optional
 from fastmcp import Context
 
 from .persistence.orchestration_queue import OrchestrationService
+from .runtime.execution_router import execute_plan_steps_async
 from .server import mcp
 
 
@@ -267,6 +268,142 @@ def cancel_ableton_job(
 
 
 @mcp.tool()
+async def run_next_ableton_job(
+    ctx: Context,
+    job_id: str = "",
+) -> dict:
+    """Run one queued Ableton job through the serialized conductor path.
+
+    This is manual by design: no background worker and no automatic queue
+    drain. The first implementation supports the limited plan format already
+    used by LivePilot compiled plans: a list of `{tool, params}` or
+    `{command, args}` step dictionaries routed through the async execution
+    router.
+    """
+    store, _session_info = _store(ctx)
+    job = store.get_job(job_id) if job_id else store.next_queued_job()
+    if job is None:
+        return {
+            "status": "idle",
+            "project_id": store.project_id,
+            "job": None,
+            "message": "No queued Ableton job found.",
+        }
+
+    stale = store.job_staleness(job["job_id"])
+    if stale.get("is_stale"):
+        updated = store.update_job_status(
+            job["job_id"],
+            "awaiting_decision",
+            result={"blocked_reason": "stale_snapshot", "staleness": stale},
+        )
+        return {
+            "status": "blocked",
+            "project_id": store.project_id,
+            "job": updated,
+            "blocked_reason": "stale_snapshot",
+            "staleness": stale,
+        }
+
+    steps = _job_plan_steps(job)
+    if not steps:
+        failed = store.update_job_status(
+            job["job_id"],
+            "failed",
+            result={"error": "Job has no executable plan steps."},
+        )
+        return {
+            "status": "failed",
+            "project_id": store.project_id,
+            "job": failed,
+            "error": "Job has no executable plan steps.",
+        }
+
+    claim = store.claim_resources_for_job(job["job_id"])
+    if claim.get("status") == "blocked":
+        return {
+            "status": "blocked",
+            "project_id": store.project_id,
+            "job": job,
+            "blocked_reason": "resource_conflict",
+            "conflicts": claim.get("conflicts", []),
+        }
+
+    started = store.update_job_status(job["job_id"], "running")
+    exec_results = []
+    try:
+        results = await execute_plan_steps_async(
+            steps,
+            ableton=_get_ableton(ctx),
+            bridge=_lifespan(ctx).get("m4l"),
+            mcp_registry=_lifespan(ctx).get("mcp_dispatch", {}),
+            ctx=ctx,
+            stop_on_failure=True,
+        )
+        exec_results = [result.to_dict() for result in results]
+        ok = bool(results) and all(result.ok for result in results)
+        if ok:
+            revision = None
+            if bool(started.get("requires_write")) or started.get("job_type") in {
+                "audition",
+                "mutation",
+            }:
+                revision_state = store.increment_revision(
+                    reason=f"{started.get('job_type')}_job_done",
+                    source_id=started["job_id"],
+                )
+                revision = revision_state.get("project_revision")
+            done = store.update_job_status(
+                started["job_id"],
+                "done",
+                result={
+                    "execution_log": exec_results,
+                    "project_revision": revision,
+                },
+            )
+            return {
+                "status": "done",
+                "project_id": store.project_id,
+                "job": done,
+                "execution_log": exec_results,
+            }
+
+        failed = store.update_job_status(
+            started["job_id"],
+            "failed",
+            result={
+                "execution_log": exec_results,
+                "error": _first_execution_error(exec_results),
+            },
+        )
+        return {
+            "status": "failed",
+            "project_id": store.project_id,
+            "job": failed,
+            "execution_log": exec_results,
+            "error": _first_execution_error(exec_results),
+        }
+    except Exception as exc:  # noqa: BLE001 - persist job failure details.
+        failed = store.update_job_status(
+            started["job_id"],
+            "failed",
+            result={
+                "execution_log": exec_results,
+                "error": str(exc),
+            },
+        )
+        return {
+            "status": "failed",
+            "project_id": store.project_id,
+            "job": failed,
+            "execution_log": exec_results,
+            "error": str(exc),
+        }
+    finally:
+        store.release_leases_for_job(started["job_id"])
+
+
+@mcp.tool()
 def get_orchestration_state(
     ctx: Context,
     task_status: str = "",
@@ -305,3 +442,25 @@ def _snapshot_id_for_task(store, task_id: str) -> str:
         if task.get("task_id") == task_id:
             return str(task.get("snapshot_id") or "")
     return ""
+
+
+def _job_plan_steps(job: dict) -> list[dict]:
+    plan = job.get("plan")
+    if not isinstance(plan, list):
+        return []
+    steps = []
+    for step in plan:
+        if not isinstance(step, dict):
+            continue
+        tool = step.get("tool") or step.get("command")
+        if not tool:
+            continue
+        steps.append(dict(step))
+    return steps
+
+
+def _first_execution_error(exec_results: list[dict]) -> str:
+    for item in exec_results:
+        if not item.get("ok"):
+            return str(item.get("error") or "execution failed")
+    return "execution failed"
