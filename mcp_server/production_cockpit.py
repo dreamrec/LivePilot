@@ -32,6 +32,7 @@ _BACKEND_TOOL_NAMES = {
     "set_focus": "set_cockpit_focus",
     "clear_focus": "clear_cockpit_focus",
     "save_context": "save_production_context",
+    "send_brief": "send_cockpit_brief",
     "save_track_intent": "save_cockpit_track_intent",
 }
 
@@ -1132,6 +1133,174 @@ def _summarize_context(
     }
 
 
+def _task_scope_from_context(context: dict) -> dict:
+    target = context.get("target") if isinstance(context.get("target"), dict) else {}
+    section = target.get("section") if isinstance(target.get("section"), dict) else {}
+    scope = {
+        "track_indices": target.get("track_indices") or [],
+        "target_mode": target.get("target_mode", "instrument"),
+        "section": section,
+    }
+    layer_id = target.get("matched_layer") or target.get("target_layer")
+    if layer_id:
+        scope["layer_id"] = layer_id
+    if section.get("scope"):
+        scope["section_id"] = section.get("scope")
+    if section.get("label"):
+        scope["section_label"] = section.get("label")
+    if section.get("start_bar") is not None:
+        scope["section_start_bar"] = section.get("start_bar")
+    if section.get("end_bar") is not None:
+        scope["section_end_bar"] = section.get("end_bar")
+    return scope
+
+
+def _brief_text_from_payload(payload: dict, context: dict) -> str:
+    for key in ("request_text", "brief", "text", "notes"):
+        text = str(payload.get(key) or "").strip()
+        if text:
+            return text
+    state = context.get("production_context", {}).get("state", {})
+    return str(state.get("notes") or "").strip()
+
+
+def _submit_cockpit_brief_packet(
+    ctx: Context,
+    context: dict,
+    request_text: str,
+) -> dict:
+    """Create orchestration snapshot/task and optional audition job."""
+    session_info = _require_session_info(ctx)
+    service = _orchestration_service(ctx)
+    snapshot_result = service.create_snapshot(
+        session_info,
+        brief=dict(context.get("summary") or {}) | (
+            {"text": request_text} if request_text else {}
+        ),
+        session_kernel=_build_session_kernel_for_cockpit(
+            ctx,
+            request_text=request_text,
+            mode=str(
+                context.get("production_context", {})
+                .get("state", {})
+                .get("workflow_mode", "observe")
+            ),
+        ),
+        cockpit_context=context,
+        section_map=(context.get("section_map") or {}).get("sections", []),
+        layer_groups=context.get("layer_groups") or [],
+        track_intent_map=context.get("track_intent_map") or {},
+    )
+    snapshot = snapshot_result["snapshot"]
+    state = context.get("production_context", {}).get("state", {})
+    target = context.get("target") if isinstance(context.get("target"), dict) else {}
+    scope = _task_scope_from_context(context)
+    store = service.store_for_session(session_info)
+    task = store.save_task({
+        "snapshot_id": snapshot["snapshot_id"],
+        "agent_role": "audition_planner"
+        if state.get("workflow_mode") == "audition"
+        else "production_conductor",
+        "instruction": request_text or "Review the saved cockpit brief.",
+        "scope": scope,
+        "constraints": {
+            "workflow_mode": state.get("workflow_mode", "guided"),
+            "lane": state.get("lane", "holistic"),
+            "protect": state.get("protect", []),
+            "audition_required": bool(state.get("audition_required", True)),
+            "audition_count": int(state.get("audition_count") or 3),
+            "audition_scope": state.get("audition_scope", "layer"),
+        },
+        "status": "queued",
+    })
+
+    job = None
+    if (
+        state.get("workflow_mode") == "audition"
+        and target.get("target_mode") == "layer"
+        and (target.get("matched_layer") or target.get("target_layer"))
+    ):
+        from .orchestration_queue_tools import submit_ableton_job
+
+        job_scope = dict(scope)
+        job_scope.update({
+            "layer_id": target.get("matched_layer") or target.get("target_layer"),
+            "track_indices": target.get("track_indices") or [],
+            "audition_count": int(state.get("audition_count") or 3),
+            "brief": request_text,
+        })
+        if state.get("section_scope"):
+            job_scope["section_id"] = state.get("section_scope")
+        job = submit_ableton_job(
+            ctx,
+            job_type="audition",
+            snapshot_id=snapshot["snapshot_id"],
+            title="",
+            priority=80,
+            scope=job_scope,
+            submitted_by="cockpit",
+        )["job"]
+
+    return {
+        "status": "ok",
+        "snapshot": snapshot,
+        "task": task,
+        "job": job,
+    }
+
+
+def _build_session_kernel_for_cockpit(
+    ctx: Context,
+    request_text: str,
+    mode: str,
+) -> dict:
+    try:
+        from .runtime.tools import get_session_kernel
+
+        return get_session_kernel(
+            ctx,
+            request_text=request_text,
+            mode=mode or "observe",
+        )
+    except Exception as exc:  # noqa: BLE001 - brief packet should degrade.
+        return {
+            "status": "degraded",
+            "warning": f"session_kernel_unavailable: {exc}",
+        }
+
+
+def _send_cockpit_brief(
+    ctx: Context,
+    payload: dict,
+) -> dict:
+    """Save a cockpit brief and submit it into the orchestration queue."""
+    save_production_context(
+        ctx,
+        lane=payload.get("lane"),
+        workflow_mode=payload.get("workflow_mode"),
+        audition_required=payload.get("audition_required"),
+        audition_count=payload.get("audition_count"),
+        audition_scope=payload.get("audition_scope"),
+        protect=payload.get("protect"),
+        reference=payload.get("reference"),
+        notes=payload.get("notes"),
+        target_query=payload.get("target_query"),
+        target_group=payload.get("target_group"),
+        target_mode=payload.get("target_mode"),
+        target_layer=payload.get("target_layer"),
+        section_scope=payload.get("section_scope"),
+        section_label=payload.get("section_label"),
+        section_start_bar=payload.get("section_start_bar"),
+        section_end_bar=payload.get("section_end_bar"),
+    )
+    context = _build_context(ctx, include_history=False)
+    request_text = _brief_text_from_payload(payload, context)
+    submission = _submit_cockpit_brief_packet(ctx, context, request_text)
+    context = _build_context(ctx, include_history=False)
+    context["orchestration_submission"] = submission
+    return context
+
+
 def _tool_result(text: str, structured: dict, meta: Optional[dict] = None) -> ToolResult:
     return ToolResult(
         content=text,
@@ -1307,6 +1476,52 @@ def save_production_context(
         section_end_bar=section_end_bar,
     )
     return _build_context(ctx, include_history=False)
+
+
+@cockpit_app.tool()
+def send_cockpit_brief(
+    ctx: Context,
+    lane: Optional[str] = None,
+    workflow_mode: Optional[str] = None,
+    audition_required: Optional[bool] = None,
+    audition_count: Optional[int] = None,
+    audition_scope: Optional[str] = None,
+    protect: Optional[list[str]] = None,
+    reference: Optional[str] = None,
+    notes: Optional[str] = None,
+    request_text: Optional[str] = None,
+    target_query: Optional[str] = None,
+    target_group: Optional[str] = None,
+    target_mode: Optional[str] = None,
+    target_layer: Optional[str] = None,
+    section_scope: Optional[str] = None,
+    section_label: Optional[str] = None,
+    section_start_bar: Optional[float] = None,
+    section_end_bar: Optional[float] = None,
+) -> dict:
+    """App-only brief submission that creates orchestration work."""
+    return _send_cockpit_brief(
+        ctx,
+        {
+            "lane": lane,
+            "workflow_mode": workflow_mode,
+            "audition_required": audition_required,
+            "audition_count": audition_count,
+            "audition_scope": audition_scope,
+            "protect": protect,
+            "reference": reference,
+            "notes": notes,
+            "request_text": request_text,
+            "target_query": target_query,
+            "target_group": target_group,
+            "target_mode": target_mode,
+            "target_layer": target_layer,
+            "section_scope": section_scope,
+            "section_label": section_label,
+            "section_start_bar": section_start_bar,
+            "section_end_bar": section_end_bar,
+        },
+    )
 
 
 @cockpit_app.tool()
@@ -4089,6 +4304,7 @@ __CALL_TOOL_JS__
         audition_scope: "layer",
         protect,
         notes: appendNote(ctx.notes, text),
+        request_text: text,
         target_query: $("#targetQuery").value || targetState().query || ctx.target_query || "",
         target_mode: targetMode(),
         target_group: targetMode() === "instrument" ? (targetState().matched_group || ctx.target_group || "") : "",
@@ -4096,11 +4312,17 @@ __CALL_TOOL_JS__
         section_scope: selectedSectionScope(),
         section_label: selectedSectionLabel()
       };
-      state = await callTool(BACKEND_TOOLS.save_context, payload);
+      if (selected.size) {
+        state = await callTool(BACKEND_TOOLS.set_focus, {
+          track_indices: [...selected],
+          label: targetLabel() || [...selected].map(index => Number(index) + 1).join(",")
+        });
+      }
+      state = await callTool(BACKEND_TOOLS.send_brief, payload);
       selected = selectionFromState();
-      await saveFocus(targetLabel());
       render();
-      toast(outputMode === "apply" ? "Apply brief saved for Codex" : "Audition brief saved for Codex");
+      const queued = (((state || {}).orchestration_submission || {}).job || {}).title;
+      toast(queued ? `Queued: ${queued}` : "Brief sent to Codex");
     }
 
     $("#refresh").addEventListener("click", refresh);
@@ -4186,6 +4408,7 @@ def _cockpit_call_tool_js(transport: str) -> str:
         [BACKEND_TOOLS.set_focus]: ["POST", "/api/cockpit/focus"],
         [BACKEND_TOOLS.clear_focus]: ["POST", "/api/cockpit/focus/clear"],
         [BACKEND_TOOLS.save_context]: ["POST", "/api/cockpit/context"],
+        [BACKEND_TOOLS.send_brief]: ["POST", "/api/cockpit/brief"],
         [BACKEND_TOOLS.save_track_intent]: ["POST", "/api/cockpit/track-intent"]
       };
       const route = routes[name];

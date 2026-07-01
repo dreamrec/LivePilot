@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 from mcp_server.persistence.agent_focus import AgentFocusService
+from mcp_server.persistence.orchestration_queue import OrchestrationService
 from mcp_server.persistence.production_context import ProductionContextService
 from mcp_server.persistence import track_annotations as annotation_store
 from mcp_server.production_cockpit import (
@@ -19,6 +20,7 @@ from mcp_server.production_cockpit import (
     open_livepilot_production_cockpit,
     save_cockpit_track_intent,
     save_production_context,
+    send_cockpit_brief,
     set_cockpit_focus,
 )
 from mcp_server.tools.tracks import set_track_annotation
@@ -76,6 +78,7 @@ def _ctx(tmp_path, session_info: dict):
         lifespan_context={
             "ableton": _Ableton(session_info),
             "agent_focus": AgentFocusService(base_dir=tmp_path),
+            "orchestration_queue": OrchestrationService(base_dir=tmp_path),
             "production_context": ProductionContextService(base_dir=tmp_path),
             "focus_panel_url": "http://127.0.0.1:9890/",
         }
@@ -464,6 +467,62 @@ def test_layer_status_can_target_one_layer_without_leaking(tmp_path, monkeypatch
     assert layer_groups["vocal_stack"]["status"] == "layered"
 
 
+def test_send_cockpit_brief_creates_snapshot_task_and_layer_audition_job(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
+    ctx = _ctx(
+        tmp_path,
+        _session([
+            {"index": 0, "name": "drums", "color_index": 1, "has_audio_input": True},
+            {"index": 1, "name": "el-guit-intro", "color_index": 2, "has_audio_input": True},
+            {"index": 2, "name": "violins1-intro", "color_index": 3, "has_midi_input": True},
+        ]),
+    )
+    set_track_annotation(
+        ctx,
+        track_index=1,
+        role="intro_handoff_guitar",
+        decision_state="committed",
+        tags=["layer:intro_handoff"],
+    )
+    set_track_annotation(
+        ctx,
+        track_index=2,
+        role="intro_handoff_strings",
+        decision_state="committed",
+        tags=["layer:intro_handoff"],
+    )
+
+    context = send_cockpit_brief(
+        ctx,
+        lane="sound_design",
+        workflow_mode="audition",
+        audition_required=True,
+        audition_count=3,
+        audition_scope="layer",
+        request_text="make the intro handoff pop out",
+        target_mode="layer",
+        target_layer="intro_handoff",
+        target_query="Intro Handoff",
+        section_scope="intro",
+        section_label="Intro",
+    )
+
+    submission = context["orchestration_submission"]
+    assert submission["status"] == "ok"
+    assert submission["snapshot"]["brief"]["text"] == "make the intro handoff pop out"
+    assert submission["task"]["agent_role"] == "audition_planner"
+    assert submission["task"]["scope"]["layer_id"] == "intro_handoff"
+    assert submission["job"]["job_type"] == "audition"
+    assert submission["job"]["status"] == "queued"
+    assert submission["job"]["scope"]["source_track_indices"] == [1, 2]
+    assert submission["job"]["audition_manifest"]["variant_count"] == 3
+    assert context["orchestration"]["counts"]["queued_tasks"] == 1
+    assert context["orchestration"]["counts"]["queued_jobs"] == 1
+
+
 def test_cockpit_mcp_tools_are_opt_in_by_default():
     from mcp_server.server import mcp
 
@@ -515,6 +574,7 @@ def test_intent_first_cockpit_renders_http_backend_contract():
     assert "Choose a Song Layer target before saving auditions." in html
     assert "audition_count: auditionCount()" in html
     assert "audition_scope: \"layer\"" in html
+    assert "request_text: text" in html
     assert "Save brief for Codex" in html
     assert "Clear target" in html
     assert "Song Sections" in html
@@ -530,6 +590,7 @@ def test_intent_first_cockpit_renders_http_backend_contract():
     assert "Refresh from Ableton" in html
     assert "/api/cockpit/state" in html
     assert "/api/cockpit/context" in html
+    assert "/api/cockpit/brief" in html
     assert "/api/cockpit/focus" in html
     assert "/api/cockpit/refresh-live" in html
     assert "window.openai.callTool" not in html

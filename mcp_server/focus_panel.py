@@ -21,6 +21,7 @@ from typing import Optional
 from urllib.parse import urlparse
 
 from .persistence.agent_focus import AgentFocusService
+from .persistence.orchestration_queue import OrchestrationService
 from .persistence.production_context import ProductionContextService
 from .persistence.session_snapshot import SessionSnapshotStore
 from .lifecycle_log import exception_fields, lifecycle_event
@@ -42,6 +43,7 @@ class FocusPanelServer:
         host: str = "127.0.0.1",
         port: Optional[int] = None,
         allow_live_refresh: bool = False,
+        orchestration_service: Optional[OrchestrationService] = None,
     ):
         self.ableton = ableton
         self.focus_service = focus_service or AgentFocusService()
@@ -49,6 +51,7 @@ class FocusPanelServer:
             production_context_service or ProductionContextService()
         )
         self.snapshot_store = snapshot_store or SessionSnapshotStore()
+        self.orchestration_service = orchestration_service or OrchestrationService()
         self.allow_live_refresh = allow_live_refresh
         self.host = host
         self.requested_port = (
@@ -230,6 +233,11 @@ class FocusPanelServer:
             **{key: payload.get(key) for key in allowed if key in payload},
         )
 
+    def send_cockpit_brief_payload(self, payload: dict) -> dict:
+        from .production_cockpit import _send_cockpit_brief
+
+        return _send_cockpit_brief(self._cockpit_ctx(), payload)
+
     def save_cockpit_track_intent_payload(self, payload: dict) -> dict:
         from .production_cockpit import save_cockpit_track_intent
 
@@ -254,6 +262,7 @@ class FocusPanelServer:
             lifespan_context={
                 "ableton": _PanelAbletonProxy(self),
                 "agent_focus": self.focus_service,
+                "orchestration_queue": self.orchestration_service,
                 "production_context": self.production_context_service,
                 "focus_panel_url": self.url,
             }
@@ -487,6 +496,10 @@ class _FocusPanelHandler(BaseHTTPRequestHandler):
             if path == "/api/cockpit/context":
                 payload = self._read_json_body()
                 self._send_json(self.server.panel.save_cockpit_context_payload(payload))
+                return
+            if path == "/api/cockpit/brief":
+                payload = self._read_json_body()
+                self._send_json(self.server.panel.send_cockpit_brief_payload(payload))
                 return
             if path == "/api/cockpit/track-intent":
                 payload = self._read_json_body()

@@ -10,6 +10,7 @@ import pytest
 
 from mcp_server.focus_panel import FocusPanelServer
 from mcp_server.persistence.agent_focus import AgentFocusService
+from mcp_server.persistence.orchestration_queue import OrchestrationService
 from mcp_server.persistence.production_context import ProductionContextService
 from mcp_server.persistence.session_snapshot import SessionSnapshotStore
 from mcp_server.persistence import track_annotations as annotation_store
@@ -233,6 +234,7 @@ def test_focus_panel_serves_dual_use_cockpit(monkeypatch):
         base = Path(directory)
         monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", base)
         service = AgentFocusService(base_dir=base)
+        orchestration = OrchestrationService(base_dir=base)
         production_context = ProductionContextService(base_dir=base)
         session = _session([
             _track(0, "drums"),
@@ -244,6 +246,7 @@ def test_focus_panel_serves_dual_use_cockpit(monkeypatch):
             lifespan_context={
                 "ableton": ableton,
                 "agent_focus": service,
+                "orchestration_queue": orchestration,
                 "production_context": production_context,
                 "focus_panel_url": "http://127.0.0.1:9890/",
             }
@@ -268,6 +271,7 @@ def test_focus_panel_serves_dual_use_cockpit(monkeypatch):
             production_context,
             snapshot_store=SessionSnapshotStore(base / "current_session.json"),
             port=0,
+            orchestration_service=orchestration,
         )
         try:
             url = panel.start()
@@ -335,6 +339,31 @@ def test_focus_panel_serves_dual_use_cockpit(monkeypatch):
             assert layer_body["layer_groups"][0]["key"] == "intro_high_motif"
             assert layer_body["target"]["matched_layer"] == "intro_high_motif"
             assert layer_body["summary"]["target_track_names"] == ["keys", "piano"]
+
+            req = request.Request(
+                url + "api/cockpit/brief",
+                data=json.dumps({
+                    "lane": "sound_design",
+                    "workflow_mode": "audition",
+                    "audition_required": True,
+                    "audition_count": 2,
+                    "audition_scope": "layer",
+                    "request_text": "make this layer shimmer",
+                    "target_mode": "layer",
+                    "target_query": "Intro High Motif",
+                    "target_layer": "intro_high_motif",
+                    "section_scope": "intro",
+                    "section_label": "Intro",
+                }).encode("utf-8"),
+                headers={"content-type": "application/json"},
+                method="POST",
+            )
+            with request.urlopen(req, timeout=5) as response:
+                brief_body = json.loads(response.read().decode("utf-8"))
+            assert brief_body["orchestration_submission"]["task"]["agent_role"] == "audition_planner"
+            assert brief_body["orchestration_submission"]["job"]["status"] == "queued"
+            assert brief_body["orchestration_submission"]["job"]["scope"]["source_track_indices"] == [1, 2]
+            assert brief_body["orchestration"]["counts"]["queued_jobs"] == 1
 
             req = request.Request(
                 url + "api/cockpit/focus",
