@@ -91,14 +91,15 @@ class TestStartupSafety:
         )
 
     def test_no_signal_import(self):
-        """The signal module should not be imported in server.py."""
+        """The signal module should not be loaded directly in server.py."""
         import inspect
         from mcp_server import server
         source = inspect.getsource(server)
-        # Check that 'import signal' is not present
         assert "import signal" not in source, (
             "server.py still imports signal — should be removed"
         )
+        assert "__import__(\"signal\")" not in source
+        assert "__import__('signal')" not in source
 
 
 class TestCodexPlugin:

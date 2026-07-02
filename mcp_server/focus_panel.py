@@ -11,7 +11,6 @@ import argparse
 import json
 import logging
 import os
-import signal
 import sys
 import threading
 import time
@@ -26,7 +25,11 @@ from .persistence.layer_groups import LayerGroupService
 from .persistence.orchestration_queue import OrchestrationService
 from .persistence.production_context import ProductionContextService
 from .persistence.session_snapshot import SessionSnapshotStore
-from .lifecycle_log import exception_fields, lifecycle_event
+from .lifecycle_log import (
+    exception_fields,
+    install_process_exit_logging,
+    lifecycle_event,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -838,7 +841,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         port=args.port,
         live_refresh=args.live_refresh,
     )
-    _install_signal_lifecycle_logging()
+    install_process_exit_logging("focus_panel_signal")
 
     panel = FocusPanelServer(
         ableton=None,
@@ -876,25 +879,6 @@ def main(argv: Optional[list[str]] = None) -> int:
         panel.stop()
         lifecycle_event("focus_panel_shutdown_complete")
     return 0
-
-
-def _install_signal_lifecycle_logging() -> None:
-    if getattr(_install_signal_lifecycle_logging, "_installed", False):
-        return
-    _install_signal_lifecycle_logging._installed = True
-
-    def _handler(signum, frame):  # noqa: ARG001 - stdlib signal signature
-        name = signal.Signals(signum).name
-        lifecycle_event("focus_panel_signal", signal=name, signum=signum)
-        if signum == signal.SIGINT:
-            raise KeyboardInterrupt
-        raise SystemExit(128 + signum)
-
-    for sig in (signal.SIGINT, signal.SIGTERM):
-        try:
-            signal.signal(sig, _handler)
-        except (OSError, ValueError):
-            pass
 
 
 if __name__ == "__main__":

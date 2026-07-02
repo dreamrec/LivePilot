@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import signal
 import sys
 import time
 import traceback
@@ -52,3 +53,25 @@ def exception_fields(exc: BaseException) -> dict:
             traceback.format_exception(type(exc), exc, exc.__traceback__)
         )[-12000:],
     }
+
+
+def install_process_exit_logging(event_name: str = "mcp_python_signal") -> None:
+    """Install best-effort process signal logging for CLI entry points."""
+    installed = getattr(install_process_exit_logging, "_installed", set())
+    if event_name in installed:
+        return
+    installed.add(event_name)
+    install_process_exit_logging._installed = installed
+
+    def _handler(signum, frame):  # noqa: ARG001 - stdlib signal signature
+        name = signal.Signals(signum).name
+        lifecycle_event(event_name, signal=name, signum=signum)
+        if signum == signal.SIGINT:
+            raise KeyboardInterrupt
+        raise SystemExit(128 + signum)
+
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        try:
+            signal.signal(sig, _handler)
+        except (OSError, ValueError):
+            pass

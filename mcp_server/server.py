@@ -10,7 +10,11 @@ from fastmcp import FastMCP, Context  # noqa: F401
 
 from .connection import AbletonConnection
 from .focus_panel import FocusPanelServer
-from .lifecycle_log import exception_fields, lifecycle_event
+from .lifecycle_log import (
+    exception_fields,
+    install_process_exit_logging,
+    lifecycle_event,
+)
 from .m4l_bridge import SpectralCache, SpectralReceiver, M4LBridge, MidiToolCache
 from .persistence.agent_focus import AgentFocusService
 from .persistence.briefs import BriefService
@@ -633,35 +637,12 @@ except Exception as e:
     logger.warning(f"User-local overlay load failed (non-fatal, server continues): {e}")
 
 
-def _install_signal_lifecycle_logging() -> None:
-    if getattr(_install_signal_lifecycle_logging, "_installed", False):
-        return
-    _install_signal_lifecycle_logging._installed = True
-    sig_module = __import__("signal")
-
-    def _handler(signum, frame):  # noqa: ARG001 - stdlib signal signature
-        name = sig_module.Signals(signum).name
-        lifecycle_event("mcp_python_signal", signal=name, signum=signum)
-        if signum == getattr(sig_module, "SIGINT"):
-            raise KeyboardInterrupt
-        raise SystemExit(128 + signum)
-
-    for sig in (
-        getattr(sig_module, "SIGINT"),
-        getattr(sig_module, "SIGTERM"),
-    ):
-        try:
-            sig_module.signal(sig, _handler)
-        except (OSError, ValueError):
-            pass
-
-
 def main():
     """Run the MCP server over stdio."""
     # Verify tool count matches the contract — runs here (not at module load)
     # so all tool-module imports have completed regardless of the import path
     # that brought server.py in. See _assert_tool_registry_accessible() docstring.
-    _install_signal_lifecycle_logging()
+    install_process_exit_logging()
     lifecycle_event("mcp_python_main_start")
     _assert_expected_tool_count()
     try:
