@@ -210,11 +210,13 @@ def annotation_project_id_for_session(
     annotation store whose track references resolve best against this session.
     """
     direct_id = annotation_project_hash(session_info)
+    identity = _project_marker_identity(session_info, direct_id)
     base = base_dir or _PROJECTS_DIR
     direct_annotations = _read_annotation_file(
         base / direct_id / "track_annotations.json"
     )
     if direct_annotations:
+        _ensure_project_marker(base / direct_id, identity=identity)
         return direct_id
 
     best_id = ""
@@ -235,7 +237,13 @@ def annotation_project_id_for_session(
     if resolved_tracks >= 2 or (
         resolved_tracks >= 1 and resolved_annotations >= 1 and layer_tags >= 1
     ):
+        _ensure_project_marker(
+            base / best_id,
+            identity=_read_project_marker_identity(base / best_id) or f"structural={best_id}",
+            alias=identity,
+        )
         return best_id
+    _ensure_project_marker(base / direct_id, identity=identity)
     return direct_id
 
 
@@ -466,6 +474,61 @@ def _read_annotation_file(path: Path) -> list[dict]:
         return []
     annotations = data.get("annotations")
     return list(annotations) if isinstance(annotations, list) else []
+
+
+def _project_marker_identity(session_info: dict, project_id: str) -> str:
+    return _stable_saved_project_identity(session_info) or f"structural={project_id}"
+
+
+def _read_project_marker_identity(project_dir: Path) -> str:
+    try:
+        data = json.loads((project_dir / "project.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return ""
+    if not isinstance(data, dict) or data.get("version") != 1:
+        return ""
+    return str(data.get("identity") or "").strip()
+
+
+def _ensure_project_marker(
+    project_dir: Path,
+    *,
+    identity: str,
+    alias: str = "",
+) -> None:
+    now = int(time.time() * 1000)
+    store = PersistentJsonStore(project_dir / "project.json")
+
+    def _update(data: dict) -> dict:
+        marker = data if data.get("version") == 1 else {}
+        aliases = marker.get("aliases")
+        if not isinstance(aliases, list):
+            aliases = []
+        normalized_aliases = [
+            str(item).strip()
+            for item in aliases
+            if str(item).strip()
+        ]
+        normalized_alias = str(alias or "").strip()
+        marker_identity = str(marker.get("identity") or identity).strip() or identity
+        if (
+            normalized_alias
+            and normalized_alias != marker_identity
+            and normalized_alias not in normalized_aliases
+        ):
+            normalized_aliases.append(normalized_alias)
+        return {
+            "version": 1,
+            "identity": marker_identity,
+            "aliases": normalized_aliases,
+            "created_at_ms": int(marker.get("created_at_ms") or now),
+            "last_seen_at_ms": now,
+        }
+
+    try:
+        store.update(_update)
+    except OSError:
+        pass
 
 
 def _score_annotation_project(

@@ -14,7 +14,7 @@ from fastmcp import Context
 from ..persistence.agent_focus import AgentFocusService
 from ..persistence.track_annotations import (
     TrackAnnotationStore,
-    annotation_project_hash,
+    annotation_project_id_for_session,
     build_track_intent_map as build_track_intent_map_data,
     find_annotation_for_track,
     make_track_signature,
@@ -69,7 +69,7 @@ def _require_session_info(ctx: Context) -> dict:
 
 
 def _annotation_store_for_session(session_info: dict) -> TrackAnnotationStore:
-    return TrackAnnotationStore(annotation_project_hash(session_info))
+    return TrackAnnotationStore(annotation_project_id_for_session(session_info))
 
 
 def _find_regular_track(session_info: dict, track_index: int) -> dict:

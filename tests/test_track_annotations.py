@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from types import SimpleNamespace
 
 from mcp_server.persistence import track_annotations as annotation_store
@@ -109,6 +110,55 @@ def test_annotation_project_id_recovers_existing_matching_store(tmp_path):
     })
 
     assert annotation_project_id_for_session(session, tmp_path) == "legacy_project"
+
+
+def test_annotation_project_id_prefers_saved_identity_across_rename_and_reorder(tmp_path):
+    first = _session([
+        {"index": 0, "name": "Drums", "color_index": 1, "has_midi_input": True},
+        {"index": 1, "name": "Vox 1", "color_index": 2, "has_audio_input": True},
+    ])
+    first["project_identity"] = {"file_path": "/Users/me/Song.als"}
+    changed = _session([
+        {"index": 0, "name": "Lead Vocal Print", "color_index": 2, "has_audio_input": True},
+        {"index": 1, "name": "Kit", "color_index": 1, "has_midi_input": True},
+    ])
+    changed["project_identity"] = {"file_path": "/Users/me/Song.als"}
+
+    assert annotation_project_id_for_session(first, tmp_path) == annotation_project_id_for_session(
+        changed,
+        tmp_path,
+    )
+
+
+def test_annotation_project_recovery_appends_project_marker_alias(tmp_path):
+    legacy_session = _session([
+        {"index": 0, "name": "Drums", "color_index": 1, "has_midi_input": True},
+        {"index": 1, "name": "Vox 1", "color_index": 2, "has_audio_input": True},
+    ])
+    legacy_store = TrackAnnotationStore("legacy_project", base_dir=tmp_path)
+    legacy_store.upsert({
+        "scope": "track",
+        "role": "lead_vox",
+        "tags": ["layer:vocal_stack"],
+        "track_ref": {
+            "last_seen_index": 1,
+            "name": "Vox 1",
+            "signature": make_track_signature(legacy_session["tracks"][1]),
+        },
+    })
+    changed_session = _session([
+        {"index": 0, "name": "Drums", "color_index": 1, "has_midi_input": True},
+        {"index": 1, "name": "Vox 1", "color_index": 2, "has_audio_input": True},
+        {"index": 2, "name": "Bass", "color_index": 3, "has_midi_input": True},
+    ])
+    direct_id = annotation_project_hash(changed_session)
+
+    assert annotation_project_id_for_session(changed_session, tmp_path) == "legacy_project"
+
+    marker = json.loads((tmp_path / "legacy_project" / "project.json").read_text())
+    assert marker["version"] == 1
+    assert marker["identity"]
+    assert f"structural={direct_id}" in marker["aliases"]
 
 
 def test_track_annotation_resolves_after_track_move(tmp_path, monkeypatch):

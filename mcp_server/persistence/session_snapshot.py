@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 import time
 from pathlib import Path
 from typing import Optional
@@ -93,11 +94,11 @@ def _same_snapshot_project(current: dict, previous: dict) -> bool:
         return False
     current_identity = _saved_project_identity(current)
     previous_identity = _saved_project_identity(previous)
-    if current_identity and previous_identity:
+    if current_identity or previous_identity:
         return current_identity == previous_identity
     current_names = _track_name_signature(current)
     previous_names = _track_name_signature(previous)
-    return bool(current_names) and current_names == previous_names
+    return _track_name_overlap(current_names, previous_names) >= 0.8
 
 
 def _saved_project_identity(session_info: dict) -> str:
@@ -127,6 +128,17 @@ def _track_name_signature(session_info: dict) -> tuple[str, ...]:
         for track in (session_info.get("tracks") or [])
         if isinstance(track, dict)
     )
+
+
+def _track_name_overlap(current_names: tuple[str, ...], previous_names: tuple[str, ...]) -> float:
+    if not current_names or not previous_names:
+        return 0.0
+    current_counts = Counter(name for name in current_names if name)
+    previous_counts = Counter(name for name in previous_names if name)
+    if not current_counts or not previous_counts:
+        return 0.0
+    shared = sum((current_counts & previous_counts).values())
+    return shared / max(sum(current_counts.values()), sum(previous_counts.values()))
 
 
 def _merge_section_track_clips(

@@ -18,6 +18,12 @@ def _session(tracks: list[dict]) -> dict:
     }
 
 
+def _unsaved_session(tracks: list[dict]) -> dict:
+    data = _session(tracks)
+    data.pop("project_identity", None)
+    return data
+
+
 def test_plain_mcp_snapshot_preserves_section_track_clips(tmp_path):
     store = SessionSnapshotStore(tmp_path / "current_session.json")
     rich = _session([
@@ -67,3 +73,33 @@ def test_snapshot_does_not_preserve_section_clips_across_save_as(tmp_path):
     saved = store.save(save_as, source="mcp")
 
     assert "arrangement_clips" not in saved["session_info"]["tracks"][0]
+
+
+def test_snapshot_preserves_cue_points_across_single_unsaved_track_rename(tmp_path):
+    store = SessionSnapshotStore(tmp_path / "current_session.json")
+    rich = _unsaved_session([
+        {"index": 0, "name": "SECTION MAP", "has_midi_input": True},
+        {"index": 1, "name": "Drums", "has_audio_input": True},
+        {"index": 2, "name": "Bass", "has_midi_input": True},
+        {"index": 3, "name": "Vox", "has_audio_input": True},
+        {"index": 4, "name": "Guitar", "has_audio_input": True},
+    ])
+    rich["cue_points"] = [
+        {"index": 0, "name": "Intro", "time": 0.0},
+        {"index": 1, "name": "Verse", "time": 16.0},
+    ]
+    renamed = _unsaved_session([
+        {"index": 0, "name": "SECTION MAP", "has_midi_input": True},
+        {"index": 1, "name": "Drums", "has_audio_input": True},
+        {"index": 2, "name": "Bass", "has_midi_input": True},
+        {"index": 3, "name": "Lead Vox", "has_audio_input": True},
+        {"index": 4, "name": "Guitar", "has_audio_input": True},
+    ])
+
+    store.save(rich, source="focus_panel_probe")
+    saved = store.save(renamed, source="mcp")
+
+    assert saved["session_info"]["cue_points"] == [
+        {"index": 0, "name": "Intro", "time": 0.0},
+        {"index": 1, "name": "Verse", "time": 16.0},
+    ]

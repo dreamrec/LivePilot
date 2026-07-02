@@ -330,10 +330,12 @@ def get_session_kernel(
     try:
         from ..persistence.track_annotations import (
             TrackAnnotationStore,
-            annotation_project_hash,
+            annotation_project_id_for_session,
             build_track_intent_map,
         )
-        annotation_store = TrackAnnotationStore(annotation_project_hash(session_info))
+        annotation_store = TrackAnnotationStore(
+            annotation_project_id_for_session(session_info)
+        )
         result_dict["track_intent_map"] = build_track_intent_map(
             session_info,
             annotation_store.list_annotations(),

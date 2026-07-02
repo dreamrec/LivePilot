@@ -17,6 +17,16 @@ def _safe_scalar_attr(obj, name, default=None):
     return default
 
 
+def _project_identity(song):
+    """Return stable Live Set identity fields when Live exposes them."""
+    return {
+        "name": _safe_scalar_attr(song, "name"),
+        "file_path": _safe_scalar_attr(song, "file_path"),
+        "path": _safe_scalar_attr(song, "path"),
+        "appointed_device": _safe_scalar_attr(song, "appointed_device"),
+    }
+
+
 @register("get_session_info")
 def get_session_info(song, params):
     """Return comprehensive session state."""
@@ -75,6 +85,7 @@ def get_session_info(song, params):
         })
 
     return {
+        "project_identity": _project_identity(song),
         "tempo": song.tempo,
         "signature_numerator": song.signature_numerator,
         "signature_denominator": song.signature_denominator,
