@@ -170,9 +170,7 @@ class FocusPanelServer:
         return self.focus_service.clear_focus(session_info)
 
     def get_cockpit_html(self) -> str:
-        from .production_cockpit import _render_cockpit_html
-
-        return _render_cockpit_html(transport="http")
+        return self.get_intent_cockpit_html()
 
     def get_intent_cockpit_html(self) -> str:
         from .production_cockpit import _render_intent_first_cockpit_html
@@ -653,10 +651,10 @@ class _FocusPanelHandler(BaseHTTPRequestHandler):
             self._send_empty(status=204)
             return
         if path in ("", "/"):
-            self._send_html(_HTML)
+            self._send_redirect("/cockpit/intent")
             return
         if path in ("/cockpit", "/cockpit/"):
-            self._send_html(self.server.panel.get_cockpit_html())
+            self._send_redirect("/cockpit/intent")
             return
         if path in ("/cockpit/intent", "/cockpit/intent/"):
             self._send_html(self.server.panel.get_intent_cockpit_html())
@@ -806,366 +804,12 @@ class _FocusPanelHandler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
 
-
-_HTML = """<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>LivePilot Focus</title>
-  <style>
-    :root {
-      color-scheme: dark;
-      --bg: #181818;
-      --panel: #222;
-      --panel-2: #2b2b2b;
-      --text: #f2f2f2;
-      --muted: #a7a7a7;
-      --line: #3a3a3a;
-      --accent: #f6a33a;
-      --good: #72c46e;
-      --danger: #e05c5c;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font: 13px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: var(--bg);
-      color: var(--text);
-    }
-    header {
-      position: sticky;
-      top: 0;
-      z-index: 2;
-      padding: 12px;
-      background: #141414;
-      border-bottom: 1px solid var(--line);
-    }
-    h1 {
-      margin: 0 0 10px;
-      font-size: 15px;
-      font-weight: 650;
-      letter-spacing: 0;
-    }
-    .controls {
-      display: grid;
-      grid-template-columns: 1fr auto auto;
-      gap: 8px;
-      align-items: center;
-    }
-    input, button {
-      height: 32px;
-      border-radius: 6px;
-      border: 1px solid var(--line);
-      background: var(--panel);
-      color: var(--text);
-      font: inherit;
-    }
-    input {
-      width: 100%;
-      padding: 0 9px;
-    }
-    button {
-      padding: 0 10px;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-    button.primary {
-      border-color: #b8752a;
-      background: var(--accent);
-      color: #1b1207;
-      font-weight: 700;
-    }
-    button.ghost {
-      background: transparent;
-    }
-    button.danger {
-      border-color: #693232;
-      color: #ffb6b6;
-    }
-    main {
-      padding: 10px;
-    }
-    .status {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      align-items: center;
-      min-height: 26px;
-      margin-bottom: 10px;
-      color: var(--muted);
-    }
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      min-height: 24px;
-      padding: 2px 8px;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      background: var(--panel);
-      color: var(--text);
-    }
-    .tracks {
-      display: grid;
-      gap: 6px;
-    }
-    .track {
-      display: grid;
-      grid-template-columns: 22px minmax(0, 1fr) auto;
-      gap: 8px;
-      align-items: center;
-      min-height: 42px;
-      padding: 7px;
-      border: 1px solid var(--line);
-      border-radius: 7px;
-      background: var(--panel);
-      cursor: pointer;
-    }
-    .track:hover {
-      background: var(--panel-2);
-    }
-    .track.selected {
-      border-color: var(--accent);
-      box-shadow: inset 0 0 0 1px var(--accent);
-    }
-    .swatch {
-      width: 15px;
-      height: 15px;
-      border-radius: 4px;
-      border: 1px solid rgba(255,255,255,.28);
-    }
-    .name {
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      font-weight: 620;
-    }
-    .meta {
-      color: var(--muted);
-      font-size: 11px;
-      margin-top: 2px;
-    }
-    .badges {
-      display: flex;
-      gap: 4px;
-      align-items: center;
-    }
-    .badge {
-      min-width: 20px;
-      height: 20px;
-      padding: 2px 5px;
-      border-radius: 5px;
-      border: 1px solid var(--line);
-      color: var(--muted);
-      text-align: center;
-      font-size: 11px;
-    }
-    .badge.on {
-      color: #101010;
-      background: var(--accent);
-      border-color: var(--accent);
-    }
-    .empty {
-      color: var(--muted);
-      border: 1px dashed var(--line);
-      border-radius: 7px;
-      padding: 16px;
-      text-align: center;
-    }
-  </style>
-</head>
-<body>
-  <header>
-    <h1>LivePilot Focus</h1>
-    <div class="controls">
-      <input id="label" placeholder="label, e.g. vox + intro melody">
-      <button class="primary" id="setFocus">Set</button>
-      <button class="danger" id="clearFocus">Clear</button>
-    </div>
-    <div class="controls" style="grid-template-columns: 1fr auto; margin-top: 8px;">
-      <input id="filter" placeholder="filter tracks">
-      <button class="ghost" id="refresh">Refresh</button>
-    </div>
-  </header>
-  <main>
-    <div class="status" id="status">Loading...</div>
-    <div class="tracks" id="tracks"></div>
-  </main>
-  <script>
-    const state = {
-      tracks: [],
-      selected: new Set(),
-      filter: "",
-      dirty: false,
-      lastFocus: null
-    };
-
-    const abletonPalette = [
-      "#ffb000", "#ff3b30", "#ff9500", "#ffcc00", "#34c759", "#5ac8fa",
-      "#007aff", "#5856d6", "#af52de", "#ff2d55", "#8e8e93", "#ffffff"
-    ];
-
-    function colorFor(index) {
-      const n = Number(index);
-      return abletonPalette[Math.abs(Number.isFinite(n) ? n : 0) % abletonPalette.length];
-    }
-
-    async function api(path, options = {}) {
-      const res = await fetch(path, {
-        ...options,
-        headers: {
-          "content-type": "application/json",
-          ...(options.headers || {})
-        }
-      });
-      const body = await res.json();
-      if (!res.ok || body.status === "error") {
-        throw new Error(body.error || `Request failed: ${res.status}`);
-      }
-      return body;
-    }
-
-    async function refresh() {
-      setStatus("Loading...");
-      try {
-        const data = await api("/api/session");
-        state.tracks = data.tracks || [];
-        state.lastFocus = data.focus || null;
-        if (!state.dirty) {
-          state.selected = new Set((data.focus?.track_indices || []).map(Number));
-        }
-        const label = document.getElementById("label");
-        if (!label.value && data.focus?.label) label.value = data.focus.label;
-        render(activeFocus());
-      } catch (err) {
-        setStatus(`Error: ${err.message}`);
-      }
-    }
-
-    function setStatus(text) {
-      document.getElementById("status").textContent = text;
-    }
-
-    function render(focus) {
-      focus = focus || activeFocus();
-      const focusText = focus && !focus.is_empty
-        ? `${state.dirty ? "Draft: " : "Focused: "}${focus.tracks.map(t => `${t.index} ${t.name}`).join(", ")}`
-        : "No focus set";
-      document.getElementById("status").innerHTML =
-        `<span class="pill">${escapeHtml(focusText)}</span>` +
-        `<span class="pill">${state.tracks.length} tracks</span>`;
-
-      const q = state.filter.trim().toLowerCase();
-      const filtered = state.tracks.filter(track => {
-        if (!q) return true;
-        return String(track.name || "").toLowerCase().includes(q) ||
-          String(track.index).includes(q);
-      });
-      const root = document.getElementById("tracks");
-      if (!filtered.length) {
-        root.innerHTML = `<div class="empty">No matching tracks</div>`;
-        return;
-      }
-      root.innerHTML = filtered.map(trackTemplate).join("");
-      for (const el of root.querySelectorAll(".track")) {
-        el.addEventListener("click", () => toggleTrack(Number(el.dataset.index)));
-      }
-    }
-
-    function trackTemplate(track) {
-      const selected = state.selected.has(Number(track.index));
-      const kind = track.has_midi_input ? "MIDI" : track.has_audio_input ? "Audio" : "Track";
-      return `
-        <div class="track ${selected ? "selected" : ""}" data-index="${track.index}">
-          <div class="swatch" style="background:${colorFor(track.color_index)}"></div>
-          <div>
-            <div class="name">${track.index}. ${escapeHtml(track.name || "")}</div>
-            <div class="meta">${kind}</div>
-          </div>
-          <div class="badges">
-            <span class="badge ${track.mute ? "on" : ""}">M</span>
-            <span class="badge ${track.solo ? "on" : ""}">S</span>
-            <span class="badge ${track.arm ? "on" : ""}">R</span>
-          </div>
-        </div>
-      `;
-    }
-
-    function toggleTrack(index) {
-      if (state.selected.has(index)) {
-        state.selected.delete(index);
-      } else {
-        state.selected.add(index);
-      }
-      state.dirty = true;
-      render(activeFocus());
-    }
-
-    function selectedTracks() {
-      return state.tracks.filter(t => state.selected.has(Number(t.index)));
-    }
-
-    function activeFocus() {
-      if (state.dirty) {
-        return {
-          track_indices: Array.from(state.selected),
-          tracks: selectedTracks(),
-          is_empty: state.selected.size === 0
-        };
-      }
-      return state.lastFocus || {
-        track_indices: [],
-        tracks: [],
-        is_empty: true
-      };
-    }
-
-    async function setFocus() {
-      const track_indices = Array.from(state.selected);
-      if (!track_indices.length) {
-        setStatus("Select at least one track first");
-        return;
-      }
-      const label = document.getElementById("label").value;
-      await api("/api/focus", {
-        method: "POST",
-        body: JSON.stringify({ track_indices, label })
-      });
-      state.dirty = false;
-      await refresh();
-    }
-
-    async function clearFocus() {
-      await api("/api/focus/clear", { method: "POST", body: "{}" });
-      state.dirty = false;
-      state.selected.clear();
-      document.getElementById("label").value = "";
-      await refresh();
-    }
-
-    function escapeHtml(value) {
-      return String(value)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
-    }
-
-    document.getElementById("setFocus").addEventListener("click", setFocus);
-    document.getElementById("clearFocus").addEventListener("click", clearFocus);
-    document.getElementById("refresh").addEventListener("click", refresh);
-    document.getElementById("filter").addEventListener("input", (event) => {
-      state.filter = event.target.value;
-      render(activeFocus());
-    });
-    refresh();
-    setInterval(refresh, 5000);
-  </script>
-</body>
-</html>
-"""
+    def _send_redirect(self, location: str, status: int = 302) -> None:
+        self.send_response(status)
+        self.send_header("Location", location)
+        self.send_header("Content-Length", "0")
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
 
 
 def main(argv: Optional[list[str]] = None) -> int:
@@ -1207,12 +851,10 @@ def main(argv: Optional[list[str]] = None) -> int:
         lifecycle_event("focus_panel_bind_failed", host=args.host, port=args.port)
         return 1
 
-    cockpit_url = url.rstrip("/") + "/cockpit"
-    intent_url = url.rstrip("/") + "/cockpit/intent"
+    cockpit_url = url.rstrip("/") + "/cockpit/intent"
     lifecycle_event("focus_panel_started", url=url, cockpit_url=cockpit_url)
-    print(f"LivePilot focus panel listening at {url}", file=sys.stderr)
-    print(f"LivePilot production cockpit listening at {cockpit_url}", file=sys.stderr)
-    print(f"LivePilot intent cockpit listening at {intent_url}", file=sys.stderr)
+    print(f"LivePilot cockpit listening at {cockpit_url}", file=sys.stderr)
+    print(f"Legacy cockpit URLs redirect to {cockpit_url}", file=sys.stderr)
     if not args.live_refresh:
         print(
             "Snapshot-backed mode: live pointing/transport/locator buttons are "

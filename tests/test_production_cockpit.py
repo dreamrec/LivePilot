@@ -14,7 +14,6 @@ from mcp_server.persistence import track_annotations as annotation_store
 from mcp_server.production_cockpit import (
     _backend_tool_map,
     _build_section_map,
-    _render_cockpit_html,
     _render_intent_first_cockpit_html,
     clear_cockpit_focus,
     get_production_context,
@@ -636,21 +635,23 @@ def test_open_cockpit_returns_browser_url(tmp_path, monkeypatch):
 
     result = open_livepilot_production_cockpit(ctx)
 
-    assert result.structured_content["cockpit_url"] == "http://127.0.0.1:9890/cockpit"
+    assert result.structured_content["cockpit_url"] == "http://127.0.0.1:9890/cockpit/intent"
     assert not result.meta
     assert result.structured_content["tracks"][0]["name"] == "Intro Texture"
 
 
-def test_cockpit_renders_single_primary_send_brief_action():
-    html = _render_cockpit_html(transport="http")
+def test_intent_cockpit_templates_render_as_single_primary_ui():
+    html = _render_intent_first_cockpit_html(transport="http")
 
-    assert "Send Brief to Codex" in html
-    assert "Instruments" in html
-    assert "Layers" in html
+    assert "__INTENT_CSS__" not in html
+    assert "__INTENT_JS__" not in html
+    assert "__BACKEND_TOOLS__" not in html
+    assert "__CALL_TOOL_JS__" not in html
+    assert "Save brief for Codex" in html
+    assert "Auto Groups" in html
+    assert "Song Layers" in html
     assert "Apply Brief" not in html
     assert html.count('class="primary"') == 1
-    assert "<summary>Advanced session context</summary>" in html
-    assert "<summary>Selected track intent</summary>" in html
 
 
 def test_intent_first_cockpit_renders_http_backend_contract():

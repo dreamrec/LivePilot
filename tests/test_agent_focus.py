@@ -127,6 +127,11 @@ class _LivePanelAbleton:
         raise AssertionError(f"Unexpected command: {command}")
 
 
+class _NoRedirect(request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
 def test_agent_focus_round_trips_for_current_session():
     with tempfile.TemporaryDirectory() as directory:
         base = Path(directory)
@@ -372,9 +377,20 @@ def test_focus_panel_serves_dual_use_cockpit(monkeypatch):
             url = panel.start()
             assert url
 
+            opener = request.build_opener(_NoRedirect)
+            with pytest.raises(error.HTTPError) as root_redirect:
+                opener.open(url, timeout=5)
+            assert root_redirect.value.code == 302
+            assert root_redirect.value.headers["Location"] == "/cockpit/intent"
+
+            with pytest.raises(error.HTTPError) as redirect:
+                opener.open(url + "cockpit", timeout=5)
+            assert redirect.value.code == 302
+            assert redirect.value.headers["Location"] == "/cockpit/intent"
+
             with request.urlopen(url + "cockpit", timeout=5) as response:
                 html = response.read().decode("utf-8")
-            assert "LivePilot Production Cockpit" in html
+            assert "LivePilot Intent Cockpit" in html
             assert "/api/cockpit/state" in html
             assert "window.openai.callTool" not in html
 

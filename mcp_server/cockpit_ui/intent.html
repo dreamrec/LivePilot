@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LivePilot Intent Cockpit</title>
+  <style>
+__INTENT_CSS__
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="top">
+      <div class="brand">
+        <div class="mark">LP</div>
+        <div><b>LivePilot</b><span>Intent Cockpit</span></div>
+      </div>
+      <div class="pill"><span class="dot"></span><span id="sessionPill">Loading session</span></div>
+      <div class="status" id="status">Loading</div>
+    </div>
+
+    <div class="song-map" id="songMap">
+      <div class="song-map-head">
+        <div>
+          <div class="label">Song Sections</div>
+          <div class="song-map-title"><b id="songMapTitle">Loading sections</b><span id="songMapMeta"></span></div>
+        </div>
+        <div class="live-actions">
+          <button class="whole-song" id="grabLiveSelection">Grab selection from Live</button>
+          <button class="whole-song" id="loopSectionLive">Loop section in Live</button>
+          <button class="whole-song" id="writeSectionLocator">Write section to Live locator</button>
+          <button class="whole-song" id="wholeSongButton">Whole song</button>
+        </div>
+      </div>
+      <div class="song-strip" id="songStrip"></div>
+    </div>
+
+    <div class="grid">
+      <aside class="rail">
+        <div class="label">Target</div>
+        <div class="focus-card">
+          <b id="focusTitle">No target</b>
+          <span id="focusSub">Choose a target or type a brief.</span>
+        </div>
+        <div class="actions">
+          <button class="soft" id="clearTarget">Clear target</button>
+          <button class="soft" id="refresh">Refresh</button>
+          <button class="soft" id="refreshLive">Refresh from Ableton</button>
+        </div>
+        <div class="target-picker" id="targetPicker">
+          <div class="seg-row" id="targetModeRow">
+            <button data-mode="instrument">Auto Groups</button>
+            <button data-mode="layer">Song Layers</button>
+            <button data-mode="track">Tracks</button>
+          </div>
+          <input id="targetQuery" placeholder="Search groups, layers, or tracks">
+          <div class="chip-row" id="groupChips"></div>
+          <div class="actions" id="layerActions">
+            <button class="soft" id="saveLayer">Save selection as layer</button>
+            <button class="soft" id="deleteLayer">Delete layer</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="label">Tracks</div>
+          <div class="track-list" id="trackList"></div>
+        </div>
+
+        <div class="section">
+          <div class="label">Context</div>
+          <div class="sub" id="contextLine">No session context loaded.</div>
+        </div>
+      </aside>
+
+      <main>
+        <div class="card">
+          <p class="prompt-line" id="promptLine">Say what should happen to the focused target.</p>
+          <textarea id="sentence" class="sentence" spellcheck="false" placeholder="Make the focused part rawer and darker, but keep the notes and timing."></textarea>
+          <div class="moves" id="quickMoves"></div>
+          <div class="actions">
+            <div class="seg-row" id="outputModeRow">
+              <button class="opt" data-output="ask">Ask first</button>
+              <button class="opt" data-output="auditions">Auditions</button>
+              <button class="opt" data-output="apply">Apply</button>
+            </div>
+            <div class="count-control" id="auditionControl">
+              <span>Auditions</span>
+              <select id="auditionCount" class="audition-count" aria-label="Audition count">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3" selected>3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+              </select>
+            </div>
+          </div>
+          <div class="helper" id="helperLine">Briefs save to LivePilot context; Codex reads the saved state before acting.</div>
+        </div>
+
+        <div class="drawer" id="fineTune">
+          <div class="drawer-head" id="fineTuneHead">
+            <b>Fine-tune this brief</b><span>scope, lane, guardrails</span><span class="chev">&gt;</span>
+          </div>
+          <div class="drawer-body">
+            <div>
+              <div class="label">Focus area</div>
+              <div class="seg-row" id="laneRow">
+                <button class="opt" data-lane="sound_design">Sound</button>
+                <button class="opt" data-lane="mix">Mix</button>
+                <button class="opt" data-lane="composition">Composition</button>
+                <button class="opt" data-lane="holistic">Holistic</button>
+              </div>
+            </div>
+            <div>
+              <div class="label">Keep safe</div>
+              <div class="seg-row" id="protectRow">
+                <button class="opt tog" data-protect="preserve_notes">Notes</button>
+                <button class="opt tog" data-protect="preserve_timing">Timing</button>
+                <button class="opt tog" data-protect="preserve_vocal">Vocal</button>
+                <button class="opt tog" data-protect="preserve_arrangement">Arrangement</button>
+                <button class="opt tog" data-protect="preserve_level">Level</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <aside class="brief">
+        <div class="brief-head"><b>Codex understood</b><span id="briefAge">live</span></div>
+        <div class="brief-row"><div class="ic">Y</div><div><div class="k">Target</div><div class="v" id="briefTarget">None</div><div class="sub" id="briefTracks"></div></div></div>
+        <div class="brief-row"><div class="ic">Y</div><div><div class="k">Focus</div><div class="v" id="briefLane">Holistic</div></div></div>
+        <div class="brief-row"><div class="ic">Y</div><div><div class="k">Direction</div><div class="v" id="briefDirection">Waiting for brief</div></div></div>
+        <div class="brief-row"><div class="ic">Y</div><div><div class="k">Scope</div><div class="v" id="briefScope">Whole song</div></div></div>
+        <div class="brief-row"><div class="ic">Y</div><div><div class="k">Keep safe</div><div class="v" id="briefProtect">None</div></div></div>
+        <div class="brief-row warn" id="outputRow"><div class="ic">!</div><div><div class="k">Output</div><div class="v" id="briefOutput">3 layer auditions</div><div class="sub" id="briefOutputSub">Requires a Song Layer target.</div></div></div>
+        <div class="queue-card" id="queueCard">
+          <div class="queue-head"><b>Agent Queue</b><span class="queue-badge" id="queueBadge">Idle</span></div>
+          <div class="sub" id="queueSummary">No orchestration work queued.</div>
+          <div class="queue-list" id="queueItems"></div>
+        </div>
+        <div class="queue-card" id="briefFeedCard">
+          <div class="queue-head"><b>Briefs</b><span class="queue-badge" id="briefBadge">None</span></div>
+          <div class="queue-list" id="briefFeed"></div>
+        </div>
+        <div class="plan" id="plan">
+          <div class="k">Codex will</div>
+          <ul id="willList"></ul>
+          <div class="k">Codex will not</div>
+          <ul id="wontList"></ul>
+        </div>
+        <div class="actions">
+          <button class="primary" id="runBrief">Save brief for Codex</button>
+        </div>
+      </aside>
+    </div>
+  </div>
+  <div id="toast" class="toast">Saved</div>
+  <script>
+    const BACKEND_TOOLS = __BACKEND_TOOLS__;
+    const HTTP_REFRESH_AVAILABLE = __HTTP_REFRESH_AVAILABLE__;
+__CALL_TOOL_JS__
+__INTENT_JS__
+  </script>
+</body>
+</html>

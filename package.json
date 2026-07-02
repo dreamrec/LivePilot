@@ -53,6 +53,7 @@
     "mcp_server/**/*.yaml",
     "mcp_server/**/*.md",
     "mcp_server/**/*.db",
+    "mcp_server/cockpit_ui/**",
     "remote_script/**/*.py",
     "m4l_device/LivePilot_Analyzer.amxd",
     "m4l_device/LivePilot_Analyzer.adv",
