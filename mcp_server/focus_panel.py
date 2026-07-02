@@ -21,6 +21,7 @@ from typing import Optional
 from urllib.parse import urlparse
 
 from .persistence.agent_focus import AgentFocusService
+from .persistence.briefs import BriefService
 from .persistence.layer_groups import LayerGroupService
 from .persistence.orchestration_queue import OrchestrationService
 from .persistence.production_context import ProductionContextService
@@ -46,6 +47,7 @@ class FocusPanelServer:
         allow_live_refresh: bool = False,
         orchestration_service: Optional[OrchestrationService] = None,
         layer_group_service: Optional[LayerGroupService] = None,
+        brief_service: Optional[BriefService] = None,
     ):
         self.ableton = ableton
         self.focus_service = focus_service or AgentFocusService()
@@ -55,6 +57,7 @@ class FocusPanelServer:
         self.snapshot_store = snapshot_store or SessionSnapshotStore()
         self.orchestration_service = orchestration_service or OrchestrationService()
         self.layer_group_service = layer_group_service or LayerGroupService()
+        self.brief_service = brief_service or BriefService()
         self.allow_live_refresh = allow_live_refresh
         self.host = host
         self.requested_port = (
@@ -174,6 +177,11 @@ class FocusPanelServer:
         payload.update(self._session_meta_payload())
         return payload
 
+    def get_cockpit_briefs_payload(self) -> dict:
+        from .production_cockpit import list_cockpit_briefs
+
+        return list_cockpit_briefs(self._cockpit_ctx())
+
     def refresh_live_payload(self) -> dict:
         try:
             session_info, session_meta = self._read_live_session()
@@ -290,6 +298,7 @@ class FocusPanelServer:
             lifespan_context={
                 "ableton": _PanelAbletonProxy(self),
                 "agent_focus": self.focus_service,
+                "briefs": self.brief_service,
                 "layer_groups": self.layer_group_service,
                 "orchestration_queue": self.orchestration_service,
                 "production_context": self.production_context_service,
@@ -490,6 +499,9 @@ class _FocusPanelHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/cockpit/state":
             self._send_json(self.server.panel.get_cockpit_payload())
+            return
+        if path == "/api/cockpit/briefs":
+            self._send_json(self.server.panel.get_cockpit_briefs_payload())
             return
         if path == "/api/cockpit/layers":
             self._send_json({

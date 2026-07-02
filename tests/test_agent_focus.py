@@ -10,6 +10,7 @@ import pytest
 
 from mcp_server.focus_panel import FocusPanelServer
 from mcp_server.persistence.agent_focus import AgentFocusService
+from mcp_server.persistence.briefs import BriefService
 from mcp_server.persistence.orchestration_queue import OrchestrationService
 from mcp_server.persistence.production_context import ProductionContextService
 from mcp_server.persistence.session_snapshot import SessionSnapshotStore
@@ -196,6 +197,7 @@ def test_focus_panel_http_api_sets_focus():
             service,
             port=0,
             snapshot_store=SessionSnapshotStore(base / "current_session.json"),
+            brief_service=BriefService(base_dir=base),
         )
         try:
             url = panel.start()
@@ -217,6 +219,12 @@ def test_focus_panel_http_api_sets_focus():
 
             assert body["focus"]["label"] == "intro"
             assert body["tracks"][1]["focused"] is True
+
+            with request.urlopen(url + "api/cockpit/briefs", timeout=5) as response:
+                body = json.loads(response.read().decode("utf-8"))
+
+            assert body["status"] == "ok"
+            assert body["briefs"] == []
         finally:
             panel.stop()
 

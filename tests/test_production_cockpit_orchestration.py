@@ -3,6 +3,8 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from mcp_server.persistence.agent_focus import AgentFocusService
+from mcp_server.persistence.briefs import BriefService
+from mcp_server.persistence.layer_groups import LayerGroupService
 from mcp_server.persistence.orchestration_queue import OrchestrationService
 from mcp_server.persistence.production_context import ProductionContextService
 from mcp_server.persistence import track_annotations as annotation_store
@@ -42,6 +44,8 @@ def _ctx(tmp_path, session_info: dict):
         lifespan_context={
             "ableton": _Ableton(session_info),
             "agent_focus": AgentFocusService(base_dir=tmp_path),
+            "briefs": BriefService(base_dir=tmp_path),
+            "layer_groups": LayerGroupService(base_dir=tmp_path),
             "production_context": ProductionContextService(base_dir=tmp_path),
             "orchestration_queue": OrchestrationService(base_dir=tmp_path),
             "focus_panel_url": "http://127.0.0.1:9890/",
@@ -143,7 +147,10 @@ def test_intent_cockpit_renders_orchestration_queue_card():
     html = _render_intent_first_cockpit_html(transport="http")
 
     assert "Agent Queue" in html
+    assert "Briefs" in html
     assert "id=\"queueBadge\"" in html
     assert "id=\"queueItems\"" in html
+    assert "id=\"briefFeed\"" in html
     assert "function renderOrchestration()" in html
+    assert "function renderBriefFeed()" in html
     assert "stale_needs_revalidation" in html

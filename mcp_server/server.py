@@ -14,6 +14,7 @@ from .focus_panel import FocusPanelServer
 from .lifecycle_log import exception_fields, lifecycle_event
 from .m4l_bridge import SpectralCache, SpectralReceiver, M4LBridge, MidiToolCache
 from .persistence.agent_focus import AgentFocusService
+from .persistence.briefs import BriefService
 from .persistence.layer_groups import LayerGroupService
 from .persistence.orchestration_queue import OrchestrationService
 from .persistence.production_context import ProductionContextService
@@ -189,6 +190,7 @@ async def lifespan(server):
     ableton = AbletonConnection()
     agent_focus = AgentFocusService()
     layer_groups = LayerGroupService()
+    briefs = BriefService()
     production_context = ProductionContextService()
     orchestration_queue = OrchestrationService()
     spectral = SpectralCache()
@@ -266,6 +268,7 @@ async def lifespan(server):
                     agent_focus,
                     production_context,
                     layer_group_service=layer_groups,
+                    brief_service=briefs,
                 )
                 focus_panel.start()
                 lifecycle_event(
@@ -289,6 +292,8 @@ async def lifespan(server):
             yield {
                 "ableton": ableton,
                 "agent_focus": agent_focus,
+                "briefs": briefs,
+                "layer_groups": layer_groups,
                 "production_context": production_context,
                 "orchestration_queue": orchestration_queue,
                 "focus_panel_url": focus_panel.url if focus_panel else None,

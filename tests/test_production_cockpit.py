@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 from mcp_server.persistence.agent_focus import AgentFocusService
+from mcp_server.persistence.briefs import BriefService
 from mcp_server.persistence.layer_groups import LayerGroupService
 from mcp_server.persistence.orchestration_queue import OrchestrationService
 from mcp_server.persistence.production_context import ProductionContextService
@@ -79,6 +80,7 @@ def _ctx(tmp_path, session_info: dict):
         lifespan_context={
             "ableton": _Ableton(session_info),
             "agent_focus": AgentFocusService(base_dir=tmp_path),
+            "briefs": BriefService(base_dir=tmp_path),
             "layer_groups": LayerGroupService(base_dir=tmp_path),
             "orchestration_queue": OrchestrationService(base_dir=tmp_path),
             "production_context": ProductionContextService(base_dir=tmp_path),
@@ -554,14 +556,21 @@ def test_send_cockpit_brief_creates_snapshot_task_and_layer_audition_job(
     )
 
     submission = context["orchestration_submission"]
+    brief = submission["brief"]
     assert submission["status"] == "ok"
+    assert brief["request_text"] == "make the intro handoff pop out"
     assert submission["snapshot"]["brief"]["text"] == "make the intro handoff pop out"
+    assert submission["snapshot"]["brief"]["brief_id"] == brief["brief_id"]
     assert submission["task"]["agent_role"] == "audition_planner"
+    assert submission["task"]["constraints"]["brief_id"] == brief["brief_id"]
     assert submission["task"]["scope"]["layer_id"] == "intro_handoff"
+    assert submission["task"]["scope"]["brief_id"] == brief["brief_id"]
     assert submission["job"]["job_type"] == "audition"
     assert submission["job"]["status"] == "queued"
+    assert submission["job"]["scope"]["brief_id"] == brief["brief_id"]
     assert submission["job"]["scope"]["source_track_indices"] == [1, 2]
     assert submission["job"]["audition_manifest"]["variant_count"] == 3
+    assert brief["job_ids"] == [submission["job"]["job_id"]]
     assert context["orchestration"]["counts"]["queued_tasks"] == 1
     assert context["orchestration"]["counts"]["queued_jobs"] == 1
 
@@ -574,6 +583,7 @@ def test_cockpit_mcp_read_tools_are_registered_unconditionally():
         names = {tool.name for tool in tools}
         assert "open_livepilot_production_cockpit" in names
         assert "get_production_context" in names
+        assert "list_cockpit_briefs" in names
         assert not (set(_backend_tool_map().values()) & names)
 
     asyncio.run(_run())
@@ -611,12 +621,13 @@ def test_intent_first_cockpit_renders_http_backend_contract():
     html = _render_intent_first_cockpit_html(transport="http")
 
     assert "LivePilot Intent Cockpit" in html
-    assert "Save 3 layer auditions" in html
+    assert "id=\"outputModeRow\"" in html
     assert "id=\"auditionCount\"" in html
     assert "Choose a Song Layer target before saving auditions." in html
     assert "audition_count: auditionCount()" in html
     assert "audition_scope: \"layer\"" in html
     assert "request_text: text" in html
+    assert "notes: appendNote" not in html
     assert "Save brief for Codex" in html
     assert "Clear target" in html
     assert "Save selection as layer" in html
@@ -643,4 +654,6 @@ def test_intent_first_cockpit_renders_http_backend_contract():
     assert "/api/cockpit/refresh-live" in html
     assert "async function saveCurrentLayer()" in html
     assert "function trackLayerChips(track)" in html
+    assert "function renderBriefFeed()" in html
+    assert "setInterval(() =>" in html
     assert "window.openai.callTool" not in html

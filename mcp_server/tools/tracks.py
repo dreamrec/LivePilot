@@ -12,6 +12,7 @@ from typing import Optional
 from fastmcp import Context
 
 from ..persistence.agent_focus import AgentFocusService
+from ..persistence.briefs import stamp_reader_for_context
 from ..persistence.layer_groups import LayerGroupService
 from ..persistence.orchestration_queue import OrchestrationService
 from ..persistence.track_annotations import (
@@ -231,6 +232,7 @@ def get_agent_focus(ctx: Context, include_history: bool = False) -> dict:
     Use this when the user says "this track", "these tracks", "focused",
     "the selected ones", or otherwise refers to the browser focus panel.
     """
+    stamp_reader_for_context(ctx, "get_agent_focus")
     session_info = _require_session_info(ctx)
     service = _focus_service(ctx)
     result = service.get_focus(session_info)

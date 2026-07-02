@@ -6,6 +6,7 @@ from typing import Optional
 
 from fastmcp import Context
 
+from .persistence.briefs import stamp_reader_for_context
 from .persistence.orchestration_queue import OrchestrationService
 from .runtime.execution_router import READ_ONLY_TOOLS, execute_plan_steps_async
 from .server import mcp
@@ -73,7 +74,16 @@ def _snapshot_inputs(ctx: Context, request_text: str, mode: str) -> dict:
 def _build_production_context(ctx: Context, request_text: str) -> dict:
     try:
         from .production_cockpit import get_production_context
-        return get_production_context(ctx, request_text=request_text)
+        lifespan = _lifespan(ctx)
+        previous = lifespan.get("_suppress_brief_reader_stamp")
+        lifespan["_suppress_brief_reader_stamp"] = True
+        try:
+            return get_production_context(ctx, request_text=request_text)
+        finally:
+            if previous is None:
+                lifespan.pop("_suppress_brief_reader_stamp", None)
+            else:
+                lifespan["_suppress_brief_reader_stamp"] = previous
     except Exception as exc:  # noqa: BLE001 - snapshot should degrade.
         return {
             "status": "degraded",
@@ -1144,6 +1154,7 @@ def get_orchestration_state(
     include_expired_leases: bool = False,
 ) -> dict:
     """Return the current project orchestration state for Codex/cockpit."""
+    stamp_reader_for_context(ctx, "get_orchestration_state")
     store, _session_info = _store(ctx)
     tasks = store.list_tasks(status=task_status or None)
     proposals = store.list_proposals(status=proposal_status or None)

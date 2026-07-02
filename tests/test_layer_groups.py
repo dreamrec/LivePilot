@@ -3,6 +3,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from mcp_server.persistence.layer_groups import LayerGroupService
+from mcp_server.persistence.briefs import BriefService
 from mcp_server.persistence.orchestration_queue import OrchestrationService
 from mcp_server.persistence.production_context import ProductionContextService
 from mcp_server.persistence.agent_focus import AgentFocusService
@@ -70,6 +71,7 @@ def _ctx(tmp_path, session_info: dict):
         lifespan_context={
             "ableton": _Ableton(session_info),
             "agent_focus": AgentFocusService(base_dir=tmp_path),
+            "briefs": BriefService(base_dir=tmp_path),
             "layer_groups": LayerGroupService(base_dir=tmp_path),
             "orchestration_queue": OrchestrationService(base_dir=tmp_path),
             "production_context": ProductionContextService(base_dir=tmp_path),

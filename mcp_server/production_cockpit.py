@@ -10,6 +10,7 @@ from fastmcp.tools.base import ToolResult
 
 from . import __version__
 from .persistence.agent_focus import AgentFocusService
+from .persistence.briefs import BriefService
 from .persistence.layer_groups import LayerGroupService
 from .persistence.orchestration_queue import OrchestrationService
 from .persistence.production_context import ProductionContextService
@@ -17,6 +18,7 @@ from .persistence.track_annotations import (
     TrackAnnotationStore,
     annotation_project_id_for_session,
     build_track_intent_map as build_track_intent_map_data,
+    make_track_signature,
 )
 from .server import mcp
 from .tools._conductor import classify_request
@@ -128,6 +130,13 @@ def _layer_group_service(ctx: Context) -> LayerGroupService:
     if isinstance(service, LayerGroupService):
         return service
     return LayerGroupService()
+
+
+def _brief_service(ctx: Context) -> BriefService:
+    service = _lifespan(ctx).get("briefs")
+    if isinstance(service, BriefService):
+        return service
+    return BriefService()
 
 
 def _orchestration_service(ctx: Context) -> OrchestrationService:
@@ -1076,6 +1085,17 @@ def _orchestration_summary(ctx: Context, session_info: dict) -> dict:
         }
 
 
+def _orchestration_state_for_briefs(ctx: Context, session_info: dict) -> dict:
+    try:
+        store = _orchestration_service(ctx).store_for_session(session_info)
+        return {
+            "tasks": store.list_tasks(),
+            "jobs": store.list_jobs(ordered=True),
+        }
+    except Exception:
+        return {"tasks": [], "jobs": []}
+
+
 def _build_context(
     ctx: Context,
     request_text: str = "",
@@ -1138,9 +1158,15 @@ def _build_context(
     )
     section_map = _build_section_map(session_info, production_state)
     orchestration = _orchestration_summary(ctx, session_info)
+    brief_state = _brief_service(ctx).list_briefs(
+        session_info,
+        orchestration_state=_orchestration_state_for_briefs(ctx, session_info),
+    )
     payload = {
         "status": "ok",
         "version": __version__,
+        "project_id": production_context.get("project_id")
+        or annotation_store.project_id,
         "backend_tools": _backend_tool_map(),
         "session": {
             "tempo": session_info.get("tempo"),
@@ -1162,6 +1188,9 @@ def _build_context(
         "track_groups": track_groups,
         "layer_groups": layer_groups,
         "section_map": section_map,
+        "briefs": brief_state.get("briefs", []),
+        "brief_count": brief_state.get("brief_count", 0),
+        "codex_last_read_ms": brief_state.get("codex_last_read_ms", 0),
         "orchestration": orchestration,
         "target": target,
         "tracks": tracks,
@@ -1246,6 +1275,40 @@ def _brief_text_from_payload(payload: dict, context: dict) -> str:
     return str(state.get("notes") or "").strip()
 
 
+def _brief_context_digest(context: dict) -> dict:
+    state = context.get("production_context", {}).get("state", {})
+    target = context.get("target") if isinstance(context.get("target"), dict) else {}
+    target_tracks = [
+        track for track in (context.get("target_tracks") or [])
+        if isinstance(track, dict)
+    ]
+    track_refs = [
+        {
+            "signature": make_track_signature(track),
+            "last_seen_index": track.get("index"),
+        }
+        for track in target_tracks
+    ]
+    return {
+        "target_mode": target.get("target_mode", state.get("target_mode", "")),
+        "target_label": (
+            target.get("matched_layer_label")
+            or target.get("matched_group_label")
+            or target.get("query", "")
+        ),
+        "layer_id": target.get("matched_layer") or target.get("target_layer") or "",
+        "track_indices": target.get("track_indices") or [],
+        "track_refs": track_refs,
+        "section": target.get("section") or state.get("section"),
+        "lane": state.get("lane", "holistic"),
+        "workflow_mode": state.get("workflow_mode", "guided"),
+        "audition_count": int(state.get("audition_count") or 3),
+        "audition_scope": state.get("audition_scope", "layer"),
+        "protect": state.get("protect", []),
+        "reference": state.get("reference", ""),
+    }
+
+
 def _submit_cockpit_brief_packet(
     ctx: Context,
     context: dict,
@@ -1254,11 +1317,19 @@ def _submit_cockpit_brief_packet(
     """Create orchestration snapshot/task and optional audition job."""
     session_info = _require_session_info(ctx)
     service = _orchestration_service(ctx)
+    brief_result = _brief_service(ctx).create_brief(
+        session_info,
+        request_text=request_text,
+        context_digest=_brief_context_digest(context),
+        source="cockpit",
+    )
+    brief = brief_result["brief"]
+    brief_id = brief["brief_id"]
     snapshot_result = service.create_snapshot(
         session_info,
         brief=dict(context.get("summary") or {}) | (
             {"text": request_text} if request_text else {}
-        ),
+        ) | {"brief_id": brief_id, "seq": brief.get("seq")},
         session_kernel=_build_session_kernel_for_cockpit(
             ctx,
             request_text=request_text,
@@ -1277,6 +1348,7 @@ def _submit_cockpit_brief_packet(
     state = context.get("production_context", {}).get("state", {})
     target = context.get("target") if isinstance(context.get("target"), dict) else {}
     scope = _task_scope_from_context(context)
+    scope["brief_id"] = brief_id
     store = service.store_for_session(session_info)
     task = store.save_task({
         "snapshot_id": snapshot["snapshot_id"],
@@ -1292,6 +1364,7 @@ def _submit_cockpit_brief_packet(
             "audition_required": bool(state.get("audition_required", True)),
             "audition_count": int(state.get("audition_count") or 3),
             "audition_scope": state.get("audition_scope", "layer"),
+            "brief_id": brief_id,
         },
         "status": "queued",
     })
@@ -1310,6 +1383,7 @@ def _submit_cockpit_brief_packet(
             "track_indices": target.get("track_indices") or [],
             "audition_count": int(state.get("audition_count") or 3),
             "brief": request_text,
+            "brief_id": brief_id,
         })
         job = submit_ableton_job(
             ctx,
@@ -1321,8 +1395,17 @@ def _submit_cockpit_brief_packet(
             submitted_by="cockpit",
         )["job"]
 
+    attached = _brief_service(ctx).attach_artifacts(
+        session_info,
+        brief_id,
+        snapshot_id=snapshot["snapshot_id"],
+        task_id=task["task_id"],
+        job_ids=[job["job_id"]] if job else [],
+    )["brief"]
+
     return {
         "status": "ok",
+        "brief": attached,
         "snapshot": snapshot,
         "task": task,
         "job": job,
@@ -1336,12 +1419,21 @@ def _build_session_kernel_for_cockpit(
 ) -> dict:
     try:
         from .runtime.tools import get_session_kernel
+        lifespan = _lifespan(ctx)
+        previous = lifespan.get("_suppress_brief_reader_stamp")
+        lifespan["_suppress_brief_reader_stamp"] = True
+        try:
+            return get_session_kernel(
+                ctx,
+                request_text=request_text,
+                mode=mode or "observe",
+            )
+        finally:
+            if previous is None:
+                lifespan.pop("_suppress_brief_reader_stamp", None)
+            else:
+                lifespan["_suppress_brief_reader_stamp"] = previous
 
-        return get_session_kernel(
-            ctx,
-            request_text=request_text,
-            mode=mode or "observe",
-        )
     except Exception as exc:  # noqa: BLE001 - brief packet should degrade.
         return {
             "status": "degraded",
@@ -1390,6 +1482,16 @@ def _tool_result(text: str, structured: dict, meta: Optional[dict] = None) -> To
     )
 
 
+def _stamp_reader(ctx: Context, reader: str) -> None:
+    try:
+        if _lifespan(ctx).get("_suppress_brief_reader_stamp"):
+            return
+        session_info = _require_session_info(ctx)
+        _brief_service(ctx).stamp_reader(session_info, reader)
+    except Exception:
+        pass
+
+
 def get_production_context(
     ctx: Context,
     request_text: str = "",
@@ -1401,10 +1503,27 @@ def get_production_context(
     "composition lane", "sound design lane", or "mix lane" from the embedded
     LivePilot Production Cockpit.
     """
+    _stamp_reader(ctx, "get_production_context")
     return _build_context(
         ctx,
         request_text=request_text,
         include_history=include_history,
+    )
+
+
+def list_cockpit_briefs(
+    ctx: Context,
+    limit: int = 20,
+    status: str = "",
+) -> dict:
+    """List durable cockpit briefs with derived queue status."""
+    _stamp_reader(ctx, "list_cockpit_briefs")
+    session_info = _require_session_info(ctx)
+    return _brief_service(ctx).list_briefs(
+        session_info,
+        limit=limit,
+        status=status,
+        orchestration_state=_orchestration_state_for_briefs(ctx, session_info),
     )
 
 
@@ -1434,6 +1553,7 @@ mcp.tool(
 )(open_livepilot_production_cockpit)
 
 mcp.tool()(get_production_context)
+mcp.tool()(list_cockpit_briefs)
 
 
 def get_cockpit_state(ctx: Context) -> dict:
@@ -3615,7 +3735,11 @@ def _render_intent_first_cockpit_html(transport: str = "mcp") -> str:
           <textarea id="sentence" class="sentence" spellcheck="false" placeholder="Make the focused part rawer and darker, but keep the notes and timing."></textarea>
           <div class="moves" id="quickMoves"></div>
           <div class="actions">
-            <button class="primary" id="preview">Save 3 layer auditions</button>
+            <div class="seg-row" id="outputModeRow">
+              <button class="opt" data-output="ask">Ask first</button>
+              <button class="opt" data-output="auditions">Auditions</button>
+              <button class="opt" data-output="apply">Apply</button>
+            </div>
             <div class="count-control" id="auditionControl">
               <span>Auditions</span>
               <select id="auditionCount" class="audition-count" aria-label="Audition count">
@@ -3626,7 +3750,6 @@ def _render_intent_first_cockpit_html(transport: str = "mcp") -> str:
                 <option value="5">5</option>
               </select>
             </div>
-            <button id="applyCarefully">Apply carefully</button>
           </div>
           <div class="helper" id="helperLine">Briefs save to LivePilot context; Codex reads the saved state before acting.</div>
         </div>
@@ -3671,6 +3794,10 @@ def _render_intent_first_cockpit_html(transport: str = "mcp") -> str:
           <div class="queue-head"><b>Agent Queue</b><span class="queue-badge" id="queueBadge">Idle</span></div>
           <div class="sub" id="queueSummary">No orchestration work queued.</div>
           <div class="queue-list" id="queueItems"></div>
+        </div>
+        <div class="queue-card" id="briefFeedCard">
+          <div class="queue-head"><b>Briefs</b><span class="queue-badge" id="briefBadge">None</span></div>
+          <div class="queue-list" id="briefFeed"></div>
         </div>
         <div class="plan" id="plan">
           <div class="k">Codex will</div>
@@ -3775,6 +3902,33 @@ __CALL_TOOL_JS__
     }
     function sectionBarText(section) {
       return section.bar_label || "";
+    }
+    function projectId() {
+      return (state || {}).project_id || "unknown_project";
+    }
+    function draftKey() {
+      return `livepilot.intent.draft.${projectId()}`;
+    }
+    function loadDraft() {
+      try {
+        return window.localStorage.getItem(draftKey()) || "";
+      } catch (_error) {
+        return "";
+      }
+    }
+    function saveDraft() {
+      try {
+        window.localStorage.setItem(draftKey(), $("#sentence").value || "");
+      } catch (_error) {
+        // Ignore localStorage failures; server state remains authoritative.
+      }
+    }
+    function clearDraft() {
+      try {
+        window.localStorage.removeItem(draftKey());
+      } catch (_error) {
+        // Ignore localStorage failures.
+      }
     }
     function currentProtect() {
       return $$("#protectRow .tog.on").map(node => node.dataset.protect).filter(Boolean);
@@ -3955,12 +4109,13 @@ __CALL_TOOL_JS__
     function syncControlsFromState() {
       const ctx = ctxState();
       const sentence = $("#sentence");
-      if (!sentence.value && ctx.notes) sentence.value = ctx.notes;
+      if (!sentence.value) sentence.value = loadDraft();
       outputMode = ctx.workflow_mode === "commit" ? "apply" : ctx.workflow_mode === "guided" ? "ask" : "auditions";
       const savedMode = ctx.target_mode || targetMode();
       targetModeDraft = savedMode === "layer" ? "layer" : savedMode === "query" ? "track" : "instrument";
       $("#auditionCount").value = String(Math.max(1, Math.min(5, Number(ctx.audition_count || 3))));
       $$("#laneRow .opt").forEach(node => node.classList.toggle("on", node.dataset.lane === (ctx.lane || "holistic")));
+      $$("#outputModeRow .opt").forEach(node => node.classList.toggle("on", node.dataset.output === outputMode));
       const protect = new Set(ctx.protect || []);
       $$("#protectRow .tog").forEach(node => node.classList.toggle("on", protect.has(node.dataset.protect)));
       $("#targetQuery").value = ctx.target_query || targetState().query || "";
@@ -3975,13 +4130,17 @@ __CALL_TOOL_JS__
       renderQuickMoves();
       renderBrief();
       renderOrchestration();
+      renderBriefFeed();
     }
     function renderTop() {
       const session = (state || {}).session || {};
       const tempo = session.tempo ? Math.round(Number(session.tempo)) + " BPM" : "tempo unknown";
       const count = session.track_count || ((state || {}).tracks || []).length || 0;
       const source = sessionSourceLabel();
-      $("#sessionPill").textContent = `${tempo} - ${count} tracks${source ? " - " + source : ""}`;
+      const project = compactId(projectId());
+      const codex = Number((state || {}).codex_last_read_ms || 0);
+      const codexText = codex ? `Codex ${formatAge(Date.now() - codex)}` : "Codex never";
+      $("#sessionPill").textContent = `${tempo} - ${count} tracks - ${project}${source ? " - " + source : ""} - ${codexText}`;
       $("#refreshLive").style.display = HTTP_REFRESH_AVAILABLE ? "" : "none";
     }
     function sessionSourceLabel() {
@@ -4159,10 +4318,15 @@ __CALL_TOOL_JS__
       $("#briefOutput").textContent = outputLabel();
       $("#briefOutputSub").textContent = outputMode === "auditions"
         ? (auditionLayerReady() ? "Codex will create visible muted audition lanes." : "Choose a Song Layer target before saving auditions.")
-        : "Click to cycle output mode.";
+        : "Output mode selected in the brief controls.";
+      $$("#outputModeRow .opt").forEach(node => node.classList.toggle("on", node.dataset.output === outputMode));
       $("#outputRow").classList.toggle("warn", outputMode !== "apply");
-      $("#preview").textContent = outputMode === "apply" ? "Apply carefully" : `Save ${auditionLabel()}`;
-      $("#preview").disabled = outputMode === "auditions" && !auditionLayerReady();
+      $("#runBrief").textContent = outputMode === "apply"
+        ? "Save apply brief for Codex"
+        : outputMode === "auditions"
+          ? `Save ${auditionLabel()} for Codex`
+          : "Save brief for Codex";
+      $("#runBrief").disabled = outputMode === "auditions" && !auditionLayerReady();
       $("#auditionCount").disabled = outputMode !== "auditions";
       $("#auditionControl").style.display = outputMode === "auditions" ? "inline-flex" : "none";
       $("#helperLine").textContent = outputMode === "auditions" && !auditionLayerReady()
@@ -4234,6 +4398,33 @@ __CALL_TOOL_JS__
         rows.push('<div class="queue-item"><b>No active queue items</b><span>Recent completed jobs are stored in the project queue.</span></div>');
       }
       items.innerHTML = rows.join("");
+    }
+    function renderBriefFeed() {
+      const briefs = Array.isArray((state || {}).briefs) ? state.briefs : [];
+      const badge = $("#briefBadge");
+      const feed = $("#briefFeed");
+      if (!badge || !feed) return;
+      badge.textContent = briefs.length ? `${briefs.length} saved` : "None";
+      if (!briefs.length) {
+        feed.innerHTML = '<div class="queue-item"><b>No briefs yet</b><span>Save a brief and tell Codex to pick it up.</span></div>';
+        return;
+      }
+      feed.innerHTML = briefs.slice(0, 6).map(brief => {
+        const trail = (brief.status_trail || [brief.status || "saved"]).join(" -> ");
+        const text = brief.request_text || "Untitled brief";
+        const jobs = brief.related_jobs || [];
+        const plan = jobs.flatMap(job => job.plan || []).slice(0, 3);
+        const planText = plan.length
+          ? plan.map(step => step.summary || step.tool || "step").join(" / ")
+          : `${brief.related_task_count || 0} task${brief.related_task_count === 1 ? "" : "s"} / ${brief.related_job_count || 0} job${brief.related_job_count === 1 ? "" : "s"}`;
+        return `
+          <div class="queue-item">
+            <b>${escapeHtml(text)}</b>
+            <span>${escapeHtml(trail)} - #${escapeHtml(String(brief.seq || ""))}</span>
+            <span>${escapeHtml(planText)}</span>
+          </div>
+        `;
+      }).join("");
     }
     function planWill(text, tracks) {
       const direction = inferDirection(text).toLowerCase();
@@ -4445,7 +4636,6 @@ __CALL_TOOL_JS__
         audition_count: auditionCount(),
         audition_scope: "layer",
         protect,
-        notes: appendNote(ctx.notes, text),
         request_text: text,
         target_query: $("#targetQuery").value || targetState().query || ctx.target_query || "",
         target_mode: targetMode(),
@@ -4461,6 +4651,8 @@ __CALL_TOOL_JS__
       }
       state = await callTool(BACKEND_TOOLS.send_brief, payload);
       selected = selectionFromState();
+      $("#sentence").value = "";
+      clearDraft();
       render();
       const queued = (((state || {}).orchestration_submission || {}).job || {}).title;
       toast(queued ? `Queued: ${queued}` : "Brief sent to Codex");
@@ -4500,10 +4692,15 @@ __CALL_TOOL_JS__
       if (match) chooseTarget(match.label || query, match.key);
       else chooseFreeQuery(query);
     });
-    $("#sentence").addEventListener("input", renderBrief);
+    $("#sentence").addEventListener("input", () => {
+      saveDraft();
+      renderBrief();
+    });
     $("#auditionCount").addEventListener("change", renderBrief);
-    $("#outputRow").addEventListener("click", () => {
-      outputMode = outputMode === "ask" ? "auditions" : outputMode === "auditions" ? "apply" : "ask";
+    $("#outputModeRow").addEventListener("click", event => {
+      const button = event.target.closest("button[data-output]");
+      if (!button) return;
+      outputMode = button.dataset.output || "ask";
       renderBrief();
     });
     $("#fineTuneHead").addEventListener("click", () => $("#fineTune").classList.toggle("open"));
@@ -4520,11 +4717,12 @@ __CALL_TOOL_JS__
       button.classList.toggle("on");
       renderBrief();
     });
-    $("#preview").addEventListener("click", () => saveBrief(outputMode === "apply" ? "apply" : "auditions"));
-    $("#applyCarefully").addEventListener("click", () => saveBrief("apply"));
     $("#runBrief").addEventListener("click", () => saveBrief(outputMode));
 
     refresh();
+    setInterval(() => {
+      if (!document.hidden) refresh();
+    }, 4000);
   </script>
 </body>
 </html>"""

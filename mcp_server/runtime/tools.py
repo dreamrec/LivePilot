@@ -16,6 +16,7 @@ from fastmcp import Context
 
 from ..server import mcp
 from ..memory.technique_store import TechniqueStore
+from ..persistence.briefs import stamp_reader_for_context
 from .capability_state import build_capability_state
 
 logger = logging.getLogger(__name__)
@@ -188,6 +189,7 @@ def get_session_kernel(
     Returns: SessionKernel dict with kernel_id, session topology, capabilities,
     memory context, routing hints, and (if provided) creative controls.
     """
+    stamp_reader_for_context(ctx, "get_session_kernel")
     from .session_kernel import build_session_kernel
 
     ableton = ctx.lifespan_context["ableton"]
