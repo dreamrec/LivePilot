@@ -17,20 +17,12 @@ from .track_annotations import annotation_project_id_for_session
 
 
 _PROJECTS_DIR = Path.home() / ".livepilot" / "projects"
-_STORE_VERSION = 1
+_STORE_VERSION = 2
 
 _VALID_LANES = {"holistic", "composition", "sound_design", "mix"}
 _VALID_WORKFLOW_MODES = {"observe", "guided", "audition", "commit"}
 _VALID_AUDITION_SCOPES = {"layer"}
-_VALID_SECTION_SCOPES = {
-    "whole_song",
-    "intro",
-    "verse_1",
-    "verse_2",
-    "chorus",
-    "bridge",
-    "custom",
-}
+_VALID_SECTION_SOURCES = {"cue_points", "section_track", "manual", "whole_song"}
 _VALID_TARGET_MODES = {"instrument", "layer", "query"}
 _VALID_PROTECT_FLAGS = {
     "preserve_arrangement",
@@ -74,6 +66,7 @@ class ProductionContextService:
         target_group: Optional[str] = None,
         target_mode: Optional[str] = None,
         target_layer: Optional[str] = None,
+        section: Optional[dict] = None,
         section_scope: Optional[str] = None,
         section_label: Optional[str] = None,
         section_start_bar: Optional[float] = None,
@@ -93,6 +86,7 @@ class ProductionContextService:
             target_group=target_group,
             target_mode=target_mode,
             target_layer=target_layer,
+            section=section,
             section_scope=section_scope,
             section_label=section_label,
             section_start_bar=section_start_bar,
@@ -140,7 +134,11 @@ class ProductionContextStore:
 
     def get_all(self) -> dict:
         data = self._store.read()
-        return data if data.get("version") == _STORE_VERSION else self._default()
+        if data.get("version") == _STORE_VERSION:
+            return data
+        if data.get("version") == 1:
+            return self._migrate_v1(data)
+        return self._default()
 
     def get_state(self) -> dict:
         return dict(self.get_all().get("state") or self._default_state())
@@ -159,6 +157,7 @@ class ProductionContextStore:
         target_group: Optional[str] = None,
         target_mode: Optional[str] = None,
         target_layer: Optional[str] = None,
+        section: Optional[dict] = None,
         section_scope: Optional[str] = None,
         section_label: Optional[str] = None,
         section_start_bar: Optional[float] = None,
@@ -167,7 +166,12 @@ class ProductionContextStore:
         now = int(time.time() * 1000)
 
         def _update(data: dict) -> dict:
-            data = data if data.get("version") == _STORE_VERSION else self._default()
+            if data.get("version") == _STORE_VERSION:
+                data = data
+            elif data.get("version") == 1:
+                data = self._migrate_v1(data)
+            else:
+                data = self._default()
             state = dict(data.get("state") or self._default_state())
             if lane is not None:
                 state["lane"] = _normalize_lane(lane)
@@ -193,18 +197,23 @@ class ProductionContextStore:
                 state["target_mode"] = _normalize_target_mode(target_mode)
             if target_layer is not None:
                 state["target_layer"] = _normalize_key(target_layer)
-            if section_scope is not None:
-                normalized_scope = _normalize_section_scope(section_scope)
-                state["section_scope"] = normalized_scope
-                if normalized_scope != "custom":
-                    state["section_start_bar"] = None
-                    state["section_end_bar"] = None
-            if section_label is not None:
-                state["section_label"] = str(section_label).strip()
-            if section_start_bar is not None:
-                state["section_start_bar"] = _normalize_optional_float(section_start_bar)
-            if section_end_bar is not None:
-                state["section_end_bar"] = _normalize_optional_float(section_end_bar)
+            if section is not None:
+                state["section"] = _normalize_section(section)
+            elif any(
+                value is not None
+                for value in (
+                    section_scope,
+                    section_label,
+                    section_start_bar,
+                    section_end_bar,
+                )
+            ):
+                state["section"] = _section_from_legacy_fields(
+                    section_scope=section_scope,
+                    section_label=section_label,
+                    section_start_bar=section_start_bar,
+                    section_end_bar=section_end_bar,
+                )
             state["updated_at_ms"] = now
             data["state"] = state
             data["last_updated_ms"] = now
@@ -240,10 +249,7 @@ class ProductionContextStore:
             "target_group": "",
             "target_mode": "instrument",
             "target_layer": "",
-            "section_scope": "whole_song",
-            "section_label": "Whole song",
-            "section_start_bar": None,
-            "section_end_bar": None,
+            "section": None,
             "updated_at_ms": 0,
         }
 
@@ -253,6 +259,39 @@ class ProductionContextStore:
             "version": _STORE_VERSION,
             "state": cls._default_state(),
             "last_updated_ms": 0,
+        }
+
+    @classmethod
+    def _migrate_v1(cls, data: dict) -> dict:
+        old_state = data.get("state") if isinstance(data.get("state"), dict) else {}
+        state = cls._default_state()
+        for key in (
+            "lane",
+            "workflow_mode",
+            "audition_required",
+            "audition_count",
+            "audition_scope",
+            "protect",
+            "reference",
+            "notes",
+            "target_query",
+            "target_group",
+            "target_mode",
+            "target_layer",
+            "updated_at_ms",
+        ):
+            if key in old_state:
+                state[key] = old_state[key]
+        state["section"] = _section_from_legacy_fields(
+            section_scope=old_state.get("section_scope"),
+            section_label=old_state.get("section_label"),
+            section_start_bar=old_state.get("section_start_bar"),
+            section_end_bar=old_state.get("section_end_bar"),
+        )
+        return {
+            "version": _STORE_VERSION,
+            "state": state,
+            "last_updated_ms": data.get("last_updated_ms", 0),
         }
 
 
@@ -305,18 +344,70 @@ def _normalize_target_mode(value: str) -> str:
     return mode
 
 
-def _normalize_section_scope(value: str) -> str:
-    scope = _normalize_key(value)
-    if scope not in _VALID_SECTION_SCOPES:
-        raise ValueError(
-            "section_scope must be one of: "
-            + ", ".join(sorted(_VALID_SECTION_SCOPES))
-        )
-    return scope
-
-
 def _normalize_key(value: str) -> str:
     return str(value or "").strip().lower().replace("-", "_").replace(" ", "_")
+
+
+def _normalize_section(value) -> Optional[dict]:
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        raise ValueError("section must be an object or null")
+    source = _normalize_key(value.get("source") or "manual")
+    if source == "whole_song":
+        return None
+    if source not in _VALID_SECTION_SOURCES:
+        raise ValueError(
+            "section.source must be one of: "
+            + ", ".join(sorted(_VALID_SECTION_SOURCES))
+        )
+    label = str(value.get("label") or "Section").strip() or "Section"
+    start_beat = _normalize_optional_float(value.get("start_beat"))
+    end_beat = _normalize_optional_float(value.get("end_beat"))
+    if end_beat is not None and start_beat is not None and end_beat <= start_beat:
+        end_beat = None
+    section_id = str(
+        value.get("section_id")
+        or value.get("id")
+        or _derive_section_id(source, label, start_beat)
+    ).strip()
+    return {
+        "section_id": section_id,
+        "label": label,
+        "start_beat": start_beat,
+        "end_beat": end_beat,
+        "source": source,
+    }
+
+
+def _section_from_legacy_fields(
+    *,
+    section_scope,
+    section_label,
+    section_start_bar,
+    section_end_bar,
+) -> Optional[dict]:
+    scope = _normalize_key(section_scope or "whole_song")
+    if scope == "whole_song":
+        return None
+    label = str(section_label or "").strip() or scope.replace("_", " ").title()
+    start_bar = _normalize_optional_float(section_start_bar)
+    end_bar = _normalize_optional_float(section_end_bar)
+    start_beat = (start_bar - 1.0) * 4.0 if start_bar is not None else None
+    end_beat = (end_bar - 1.0) * 4.0 if end_bar is not None else None
+    return _normalize_section({
+        "section_id": _derive_section_id("manual", label, start_beat),
+        "label": label,
+        "start_beat": start_beat,
+        "end_beat": end_beat,
+        "source": "manual",
+    })
+
+
+def _derive_section_id(source: str, label: str, start_beat: Optional[float]) -> str:
+    start = 0 if start_beat is None else int(round(float(start_beat) * 1000))
+    token = _normalize_key(label) or "section"
+    return f"{_normalize_key(source)}_{start}_{token}"
 
 
 def _normalize_optional_float(value) -> Optional[float]:

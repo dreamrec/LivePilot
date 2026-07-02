@@ -358,6 +358,8 @@ def _target_context(
     state: dict,
     tracks: list[dict],
     layer_groups: Optional[list[dict]] = None,
+    *,
+    beats_per_bar: float = 4.0,
 ) -> dict:
     raw_query = str(state.get("target_query") or state.get("target_group") or "").strip()
     target_mode = _normalize_target_mode(state.get("target_mode"))
@@ -441,7 +443,7 @@ def _target_context(
     else:
         matches = []
 
-    section = _section_context(state)
+    section = _section_context(state, beats_per_bar=beats_per_bar)
     return {
         "query": raw_query,
         "target_mode": target_mode,
@@ -477,16 +479,30 @@ def _track_matches_terms(track: dict, terms: list[str]) -> bool:
     return all(term in haystack for term in terms)
 
 
-def _section_context(state: dict) -> dict:
-    scope = str(state.get("section_scope") or "whole_song")
-    label = str(state.get("section_label") or "").strip()
-    if not label:
-        label = scope.replace("_", " ").title()
+def _section_context(state: dict, *, beats_per_bar: float = 4.0) -> dict:
+    section = state.get("section") if isinstance(state.get("section"), dict) else None
+    if not section:
+        return {
+            "section_id": "",
+            "scope": "whole_song",
+            "label": "Whole song",
+            "source": "whole_song",
+            "start_beat": None,
+            "end_beat": None,
+            "start_bar": None,
+            "end_bar": None,
+        }
+    start_beat = _float_or_none(section.get("start_beat"))
+    end_beat = _float_or_none(section.get("end_beat"))
     return {
-        "scope": scope,
-        "label": label,
-        "start_bar": state.get("section_start_bar"),
-        "end_bar": state.get("section_end_bar"),
+        "section_id": str(section.get("section_id") or section.get("id") or ""),
+        "scope": str(section.get("section_id") or section.get("id") or "custom"),
+        "label": str(section.get("label") or "Section"),
+        "source": str(section.get("source") or "manual"),
+        "start_beat": start_beat,
+        "end_beat": end_beat,
+        "start_bar": _bar_from_beat(start_beat, beats_per_bar),
+        "end_bar": _bar_from_beat(end_beat, beats_per_bar),
     }
 
 
@@ -694,21 +710,16 @@ def _section_map_from_section_track(session_info: dict) -> list[dict]:
 
 
 def _section_map_from_saved_context(session_info: dict, state: dict) -> list[dict]:
-    scope = str(state.get("section_scope") or "whole_song")
-    label = str(state.get("section_label") or "").strip()
-    if scope == "whole_song":
+    section = state.get("section") if isinstance(state.get("section"), dict) else None
+    if not section:
         return []
     beats = _beats_per_bar(session_info)
     current = _current_song_time_beats(session_info)
-    start_bar = _float_or_none(state.get("section_start_bar"))
-    end_bar = _float_or_none(state.get("section_end_bar"))
-    start_beat = (start_bar - 1.0) * beats if start_bar is not None else None
-    end_beat = (end_bar - 1.0) * beats if end_bar is not None else None
     return [_section_entry(
-        source="saved_context",
-        label=label or scope.replace("_", " ").title(),
-        start_beat=start_beat,
-        end_beat=end_beat,
+        source=str(section.get("source") or "manual"),
+        label=str(section.get("label") or "Section"),
+        start_beat=_float_or_none(section.get("start_beat")),
+        end_beat=_float_or_none(section.get("end_beat")),
         beats_per_bar=beats,
         current_beat=current,
     )]
@@ -1036,7 +1047,12 @@ def _build_context(
     production_state = production_context.get("state") or {}
     track_groups = _build_track_groups(tracks)
     layer_groups = _build_layer_groups(tracks)
-    target = _target_context(production_state, tracks, layer_groups)
+    target = _target_context(
+        production_state,
+        tracks,
+        layer_groups,
+        beats_per_bar=_beats_per_bar(session_info),
+    )
     section_map = _build_section_map(session_info, production_state)
     orchestration = _orchestration_summary(ctx, session_info)
     payload = {
@@ -1119,10 +1135,18 @@ def _task_scope_from_context(context: dict) -> dict:
     layer_id = target.get("matched_layer") or target.get("target_layer")
     if layer_id:
         scope["layer_id"] = layer_id
-    if section.get("scope"):
+    if section.get("section_id"):
+        scope["section_id"] = section.get("section_id")
+    elif section.get("scope") and section.get("scope") != "whole_song":
         scope["section_id"] = section.get("scope")
     if section.get("label"):
         scope["section_label"] = section.get("label")
+    if section.get("source"):
+        scope["section_source"] = section.get("source")
+    if section.get("start_beat") is not None:
+        scope["section_start_beat"] = section.get("start_beat")
+    if section.get("end_beat") is not None:
+        scope["section_end_beat"] = section.get("end_beat")
     if section.get("start_bar") is not None:
         scope["section_start_bar"] = section.get("start_bar")
     if section.get("end_bar") is not None:
@@ -1204,8 +1228,6 @@ def _submit_cockpit_brief_packet(
             "audition_count": int(state.get("audition_count") or 3),
             "brief": request_text,
         })
-        if state.get("section_scope"):
-            job_scope["section_id"] = state.get("section_scope")
         job = submit_ableton_job(
             ctx,
             job_type="audition",
@@ -1263,6 +1285,7 @@ def _send_cockpit_brief(
         target_group=payload.get("target_group"),
         target_mode=payload.get("target_mode"),
         target_layer=payload.get("target_layer"),
+        section=payload.get("section"),
         section_scope=payload.get("section_scope"),
         section_label=payload.get("section_label"),
         section_start_bar=payload.get("section_start_bar"),
@@ -1373,6 +1396,7 @@ def save_production_context(
     target_group: Optional[str] = None,
     target_mode: Optional[str] = None,
     target_layer: Optional[str] = None,
+    section: Optional[dict] = None,
     section_scope: Optional[str] = None,
     section_label: Optional[str] = None,
     section_start_bar: Optional[float] = None,
@@ -1394,6 +1418,7 @@ def save_production_context(
         target_group=target_group,
         target_mode=target_mode,
         target_layer=target_layer,
+        section=section,
         section_scope=section_scope,
         section_label=section_label,
         section_start_bar=section_start_bar,
@@ -1417,6 +1442,7 @@ def send_cockpit_brief(
     target_group: Optional[str] = None,
     target_mode: Optional[str] = None,
     target_layer: Optional[str] = None,
+    section: Optional[dict] = None,
     section_scope: Optional[str] = None,
     section_label: Optional[str] = None,
     section_start_bar: Optional[float] = None,
@@ -1439,6 +1465,7 @@ def send_cockpit_brief(
             "target_group": target_group,
             "target_mode": target_mode,
             "target_layer": target_layer,
+            "section": section,
             "section_scope": section_scope,
             "section_label": section_label,
             "section_start_bar": section_start_bar,
@@ -2096,15 +2123,6 @@ def _render_cockpit_html(transport: str = "mcp") -> str:
         notes: "Preserve the vocal character and timing."
       }}
     }};
-    const SECTION_LABELS = {{
-      whole_song: "Whole song",
-      intro: "Intro",
-      verse_1: "Verse 1",
-      verse_2: "Verse 2",
-      chorus: "Chorus",
-      bridge: "Bridge",
-      custom: "Custom"
-    }};
     const AUDITION_TEMPLATES = {{
       mix: [
         ["A", "Balance first", "Level and pan the target so it sits with the track before tone changes."],
@@ -2461,7 +2479,7 @@ def _render_cockpit_html(transport: str = "mcp") -> str:
         const end = document.getElementById("sectionEnd").value;
         if (start || end) return `Bars ${{start || "?"}}-${{end || "?"}}`;
       }}
-      return SECTION_LABELS[selectedSectionScope()] || "Whole song";
+      return active ? (active.dataset.label || "Whole song") : "Whole song";
     }}
 
     function selectedTargetGroup() {{
@@ -2609,7 +2627,7 @@ def _render_cockpit_html(transport: str = "mcp") -> str:
     async function chooseSection(scope, label) {{
       updateDraftContext({{
         section_scope: scope,
-        section_label: label || SECTION_LABELS[scope] || "Whole song"
+        section_label: label || "Whole song"
       }});
       await saveContext();
     }}
@@ -3477,16 +3495,6 @@ def _render_intent_first_cockpit_html(transport: str = "mcp") -> str:
           </div>
           <div class="drawer-body">
             <div>
-              <div class="label">Section</div>
-              <div class="seg-row" id="sectionRow">
-                <button class="opt" data-section="whole_song" data-label="Whole song">Whole song</button>
-                <button class="opt" data-section="intro" data-label="Intro">Intro</button>
-                <button class="opt" data-section="verse_1" data-label="Verse 1">Verse 1</button>
-                <button class="opt" data-section="verse_2" data-label="Verse 2">Verse 2</button>
-                <button class="opt" data-section="chorus" data-label="Chorus">Chorus</button>
-              </div>
-            </div>
-            <div>
               <div class="label">Focus area</div>
               <div class="seg-row" id="laneRow">
                 <button class="opt" data-lane="sound_design">Sound</button>
@@ -3563,16 +3571,6 @@ __CALL_TOOL_JS__
       preserve_vocal: "Vocal",
       preserve_groove: "Groove"
     };
-    const SECTION_LABELS = {
-      whole_song: "Whole song",
-      intro: "Intro",
-      verse_1: "Verse 1",
-      verse_2: "Verse 2",
-      chorus: "Chorus",
-      bridge: "Bridge",
-      custom: "Custom"
-    };
-
     let state = null;
     let selected = new Set();
     let outputMode = "auditions";
@@ -3606,30 +3604,27 @@ __CALL_TOOL_JS__
       const active = $("#laneRow .on");
       return active ? active.dataset.lane : "";
     }
-    function selectedSectionScope() {
-      const active = $("#sectionRow .on");
-      return active ? active.dataset.section : (ctxState().section_scope || "whole_song");
+    function savedSection() {
+      const section = ctxState().section;
+      return section && typeof section === "object" ? section : null;
     }
     function selectedSectionLabel() {
-      const active = $("#sectionRow .on");
-      if (active) return active.dataset.label || SECTION_LABELS[active.dataset.section] || "Whole song";
-      return ctxState().section_label || "Whole song";
+      const section = savedSection();
+      return section ? (section.label || "Section") : "Whole song";
     }
     function sectionMapState() {
       return (state || {}).section_map || {};
     }
-    function sectionScopeFor(section) {
-      const token = normalizeToken(section && section.label);
-      return Object.prototype.hasOwnProperty.call(SECTION_LABELS, token) ? token : "custom";
-    }
     function selectedSectionMatches(section) {
-      const ctx = ctxState();
-      if ((ctx.section_scope || "whole_song") === "whole_song") return false;
-      const labelMatches = normalizeToken(ctx.section_label) === normalizeToken(section.label);
-      const start = Number(ctx.section_start_bar);
-      const sectionStart = Number(section.start_bar);
-      const startMatches = Number.isFinite(start) && Number.isFinite(sectionStart) && Math.abs(start - sectionStart) < 0.05;
-      return Boolean(labelMatches || startMatches);
+      const saved = savedSection();
+      if (!saved || !section) return false;
+      const savedId = String(saved.section_id || saved.id || "");
+      if (savedId && savedId === String(section.id || section.section_id || "")) return true;
+      const labelMatches = normalizeToken(saved.label) === normalizeToken(section.label);
+      const savedStart = Number(saved.start_beat);
+      const sectionStart = Number(section.start_beat);
+      const startMatches = Number.isFinite(savedStart) && Number.isFinite(sectionStart) && Math.abs(savedStart - sectionStart) < 0.2;
+      return Boolean(labelMatches && startMatches);
     }
     function sectionFlex(section) {
       const duration = Number(section.duration_beats);
@@ -3807,7 +3802,6 @@ __CALL_TOOL_JS__
       targetModeDraft = savedMode === "layer" ? "layer" : savedMode === "query" ? "track" : "instrument";
       $("#auditionCount").value = String(Math.max(1, Math.min(5, Number(ctx.audition_count || 3))));
       $$("#laneRow .opt").forEach(node => node.classList.toggle("on", node.dataset.lane === (ctx.lane || "holistic")));
-      $$("#sectionRow .opt").forEach(node => node.classList.toggle("on", node.dataset.section === (ctx.section_scope || "whole_song")));
       const protect = new Set(ctx.protect || []);
       $$("#protectRow .tog").forEach(node => node.classList.toggle("on", protect.has(node.dataset.protect)));
       $("#targetQuery").value = ctx.target_query || targetState().query || "";
@@ -3854,13 +3848,12 @@ __CALL_TOOL_JS__
     function renderSectionMap() {
       const map = sectionMapState();
       const sections = Array.isArray(map.sections) ? map.sections : [];
-      const selectedScope = ctxState().section_scope || "whole_song";
       const source = map.source_label || "Manual scope";
       $("#songMapTitle").textContent = source;
       $("#songMapMeta").textContent = sections.length
         ? `${sections.length} section${sections.length === 1 ? "" : "s"}`
         : "";
-      $("#wholeSongButton").classList.toggle("active", selectedScope === "whole_song");
+      $("#wholeSongButton").classList.toggle("active", !savedSection());
       if (!sections.length) {
         $("#songStrip").innerHTML = '<button class="section-seg active" data-whole-song="1"><b>Whole song</b><span></span></button>';
       } else {
@@ -3885,7 +3878,7 @@ __CALL_TOOL_JS__
       const target = targetState();
       const label = targetLabel();
       $("#focusTitle").textContent = tracks.length ? `${label} - ${tracks.length} track${tracks.length === 1 ? "" : "s"}` : label;
-      $("#focusSub").textContent = ((target.section || {}).label || ctxState().section_label || "Whole song");
+      $("#focusSub").textContent = ((target.section || {}).label || selectedSectionLabel());
       $("#clearTarget").disabled = !hasTarget();
       $("#contextLine").textContent = [
         `Target: ${hasTarget() ? (targetMode() === "layer" ? "song layer" : targetMode() === "query" ? "track/search" : "auto group") : "none"}`,
@@ -4098,10 +4091,7 @@ __CALL_TOOL_JS__
     }
     async function chooseWholeSong() {
       state = await callTool(BACKEND_TOOLS.save_context, {
-        section_scope: "whole_song",
-        section_label: "Whole song",
-        section_start_bar: null,
-        section_end_bar: null
+        section_scope: "whole_song"
       });
       syncControlsFromState();
       render();
@@ -4111,10 +4101,13 @@ __CALL_TOOL_JS__
       const section = (sectionMapState().sections || []).find(item => String(item.id || "") === String(sectionId || ""));
       if (!section) return;
       const payload = {
-        section_scope: sectionScopeFor(section),
-        section_label: section.label || "Section",
-        section_start_bar: Number.isFinite(Number(section.start_bar)) ? Number(section.start_bar) : null,
-        section_end_bar: Number.isFinite(Number(section.end_bar)) ? Number(section.end_bar) : null
+        section: {
+          section_id: section.id || section.section_id || "",
+          label: section.label || "Section",
+          start_beat: Number.isFinite(Number(section.start_beat)) ? Number(section.start_beat) : null,
+          end_beat: Number.isFinite(Number(section.end_beat)) ? Number(section.end_beat) : null,
+          source: section.source || "manual"
+        }
       };
       state = await callTool(BACKEND_TOOLS.save_context, payload);
       syncControlsFromState();
@@ -4227,8 +4220,7 @@ __CALL_TOOL_JS__
         target_mode: targetMode(),
         target_group: targetMode() === "instrument" ? (targetState().matched_group || ctx.target_group || "") : "",
         target_layer: targetMode() === "layer" ? (targetState().matched_layer || ctx.target_layer || "") : "",
-        section_scope: selectedSectionScope(),
-        section_label: selectedSectionLabel()
+        section: savedSection()
       };
       if (selected.size) {
         state = await callTool(BACKEND_TOOLS.set_focus, {
@@ -4282,13 +4274,6 @@ __CALL_TOOL_JS__
       renderBrief();
     });
     $("#fineTuneHead").addEventListener("click", () => $("#fineTune").classList.toggle("open"));
-    $("#sectionRow").addEventListener("click", event => {
-      const button = event.target.closest("button[data-section]");
-      if (!button) return;
-      $$("#sectionRow .opt").forEach(node => node.classList.remove("on"));
-      button.classList.add("on");
-      renderBrief();
-    });
     $("#laneRow").addEventListener("click", event => {
       const button = event.target.closest("button[data-lane]");
       if (!button) return;

@@ -115,8 +115,13 @@ def test_production_context_service_round_trips(tmp_path):
     assert saved["state"]["target_query"] == "guitars"
     assert saved["state"]["target_mode"] == "layer"
     assert saved["state"]["target_layer"] == "intro_handoff"
-    assert saved["state"]["section_scope"] == "verse_1"
-    assert saved["state"]["section_label"] == "Verse 1"
+    assert saved["state"]["section"] == {
+        "section_id": "manual_0_verse_1",
+        "label": "Verse 1",
+        "start_beat": None,
+        "end_beat": None,
+        "source": "manual",
+    }
     assert service.get_state(session)["state"]["reference"] == "The Suburbs"
 
 
@@ -184,7 +189,8 @@ def test_cockpit_focus_context_and_track_intent_flow(tmp_path, monkeypatch):
     assert context["summary"]["target_track_names"] == [
         "Vox 1",
     ]
-    assert context["summary"]["section"]["scope"] == "verse_1"
+    assert context["summary"]["section"]["section_id"] == "manual_0_verse_1"
+    assert context["summary"]["section"]["label"] == "Verse 1"
     assert context["summary"]["focused_track_names"] == ["Vox 1"]
     assert context["summary"]["audition_required"] is False
     assert context["summary"]["audition_count"] == 3
@@ -419,10 +425,13 @@ def test_section_map_falls_back_to_saved_context():
             "tracks": [],
         },
         {
-            "section_scope": "custom",
-            "section_label": "Bars 5-9",
-            "section_start_bar": 5,
-            "section_end_bar": 9,
+            "section": {
+                "section_id": "manual_16000_bars_5_9",
+                "label": "Bars 5-9",
+                "start_beat": 16.0,
+                "end_beat": 32.0,
+                "source": "manual",
+            },
         },
     )
 
@@ -577,7 +586,9 @@ def test_intent_first_cockpit_renders_http_backend_contract():
     assert "Clear target" in html
     assert "Song Sections" in html
     assert "id=\"songStrip\"" in html
+    assert "id=\"sectionRow\"" not in html
     assert "async function chooseSection(sectionId)" in html
+    assert "section: savedSection()" in html
     assert '"#wholeSongButton").addEventListener("click", chooseWholeSong)' in html
     assert "Auto Groups" in html
     assert "Song Layers" in html

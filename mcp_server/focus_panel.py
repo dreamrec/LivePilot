@@ -223,6 +223,7 @@ class FocusPanelServer:
             "target_group",
             "target_mode",
             "target_layer",
+            "section",
             "section_scope",
             "section_label",
             "section_start_bar",
