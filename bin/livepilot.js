@@ -1182,7 +1182,7 @@ async function main() {
     console.log("  --install-codex-plugin   Install the bundled Codex plugin locally");
     console.log("  --uninstall-codex-plugin Remove the locally installed Codex plugin");
     console.log("  --cleanup-stale Stop older same-repo LivePilot MCP instances");
-    console.log("  --cockpit     Start browser focus panel / production cockpit only");
+    console.log("  --cockpit     Start snapshot-backed browser cockpit only");
     console.log("  --status      Check if Ableton Live is reachable");
     console.log("  --doctor      Run diagnostics (Python, deps, connection)");
     console.log("  --version     Show version");
@@ -1194,9 +1194,10 @@ async function main() {
     console.log("  LIVE_MCP_PORT   Remote Script port (default: 9878)");
     console.log("  LIVEPILOT_SINGLE_INSTANCE replace|fail|off (default: replace)");
     console.log("  LIVEPILOT_FOCUS_PANEL_PORT Browser cockpit port (default: 9890)");
+    console.log("  LIVEPILOT_FOCUS_PANEL Enable MCP-hosted live cockpit (default: 1)");
     console.log("");
     console.log("Cockpit options:");
-    console.log("  --daemon      With --cockpit, start the browser sidecar in the background");
+    console.log("  --daemon      With --cockpit, start the snapshot sidecar in the background");
     return;
   }
 

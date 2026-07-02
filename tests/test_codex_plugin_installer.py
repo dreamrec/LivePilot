@@ -69,7 +69,7 @@ def test_install_codex_plugin_updates_temp_marketplace(tmp_path: Path):
     ]
     assert mcp_config["mcpServers"]["livepilot"]["env"] == {
         "LIVEPILOT_SINGLE_INSTANCE": "off",
-        "LIVEPILOT_FOCUS_PANEL": "0",
+        "LIVEPILOT_FOCUS_PANEL": "1",
     }
     assert (cache_dir / ".mcp.json").exists()
     assert (cache_dir / "skills" / "livepilot-creative-director" / "SKILL.md").exists()

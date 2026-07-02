@@ -24,6 +24,68 @@ def _safe_parameter_summary(param, index):
     }
 
 
+def _track_ref(song, track):
+    """Return LivePilot's track index convention for a Live track object."""
+    if track is None:
+        return {
+            "track_index": None,
+            "track_name": None,
+            "track_type": "none",
+        }
+    try:
+        if track == song.master_track:
+            return {
+                "track_index": -1000,
+                "track_name": track.name,
+                "track_type": "master",
+            }
+    except Exception:
+        pass
+    for index, candidate in enumerate(song.tracks):
+        try:
+            if track == candidate:
+                return {
+                    "track_index": index,
+                    "track_name": candidate.name,
+                    "track_type": "track",
+                }
+        except Exception:
+            continue
+    for index, candidate in enumerate(song.return_tracks):
+        try:
+            if track == candidate:
+                return {
+                    "track_index": -(index + 1),
+                    "track_name": candidate.name,
+                    "track_type": "return",
+                }
+        except Exception:
+            continue
+    return {
+        "track_index": None,
+        "track_name": getattr(track, "name", None),
+        "track_type": "unknown",
+    }
+
+
+@register("get_selected_track")
+def get_selected_track(song, params):
+    """Return the currently selected track in Live's UI."""
+    del params
+    return _track_ref(song, song.view.selected_track)
+
+
+@register("select_track")
+def select_track(song, params):
+    """Select a track in Live's UI using LivePilot's track index convention."""
+    track_index = int(params["track_index"])
+    track = get_track(song, track_index)
+    song.view.selected_track = track
+    result = _track_ref(song, track)
+    result["selected"] = True
+    return result
+
+
 @register("get_track_info")
 def get_track_info(song, params):
     """Return detailed info for a single track.

@@ -226,6 +226,12 @@ def get_track_info(
 
 
 @mcp.tool()
+def get_live_selection(ctx: Context) -> dict:
+    """Return the track currently selected in Ableton's UI."""
+    return _get_ableton(ctx).send_command("get_selected_track")
+
+
+@mcp.tool()
 def get_agent_focus(ctx: Context, include_history: bool = False) -> dict:
     """Return the tracks the user has pointed LivePilot at in the focus panel.
 

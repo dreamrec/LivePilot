@@ -73,7 +73,7 @@ function writeLocalMcpConfig(destDir) {
         cwd: ROOT,
         env: {
           LIVEPILOT_SINGLE_INSTANCE: "off",
-          LIVEPILOT_FOCUS_PANEL: "0",
+          LIVEPILOT_FOCUS_PANEL: "1",
         },
         startup_timeout_sec: 60,
         tool_timeout_sec: 900,

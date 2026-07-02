@@ -1022,6 +1022,49 @@ def toggle_cue_point(song, params):
     return {"toggled": True}
 
 
+def _find_cue_at_time(song, time_value, tolerance=0.001):
+    for index, cue in enumerate(song.cue_points):
+        try:
+            if abs(float(cue.time) - float(time_value)) <= tolerance:
+                return index, cue
+        except Exception:
+            continue
+    return None, None
+
+
+@register("create_locator")
+def create_locator(song, params):
+    """Create or rename a cue point at an explicit arrangement beat."""
+    time_value = max(0.0, float(params["time"]))
+    name = str(params.get("name") or "").strip()
+    index, cue = _find_cue_at_time(song, time_value)
+    created = False
+
+    if cue is None:
+        if hasattr(song, "create_cue_point"):
+            cue = song.create_cue_point(time_value)
+        else:
+            previous_time = song.current_song_time
+            song.current_song_time = time_value
+            song.set_or_delete_cue()
+            song.current_song_time = previous_time
+            index, cue = _find_cue_at_time(song, time_value)
+        created = True
+
+    if cue is None:
+        raise RuntimeError("Cue point was not created")
+
+    if name:
+        cue.name = name
+    index, cue = _find_cue_at_time(song, time_value)
+    return {
+        "created": created,
+        "index": index,
+        "name": cue.name,
+        "time": cue.time,
+    }
+
+
 @register("back_to_arranger")
 def back_to_arranger(song, params):
     """Switch playback from session clips back to the arrangement timeline."""

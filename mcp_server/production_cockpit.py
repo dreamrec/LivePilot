@@ -33,6 +33,10 @@ _BACKEND_TOOL_NAMES = {
     "save_layer": "save_cockpit_layer_group",
     "delete_layer": "delete_cockpit_layer_group",
     "audition_action": "submit_cockpit_audition_action",
+    "get_live_selection": "get_cockpit_live_selection",
+    "select_live_track": "select_live_track",
+    "loop_live_section": "loop_live_section",
+    "write_live_locator": "write_live_locator",
 }
 
 _TRACK_GROUPS = [
@@ -99,6 +103,19 @@ def _backend_tool_map() -> dict[str, str]:
 
 def _lifespan(ctx: Context) -> dict:
     return getattr(ctx, "lifespan_context", {}) or {}
+
+
+def _cockpit_capabilities(ctx: Context) -> dict:
+    mode = str(_lifespan(ctx).get("cockpit_mode") or "").strip().lower()
+    if mode:
+        live_mode = mode == "live"
+    else:
+        live_mode = _lifespan(ctx).get("ableton") is not None
+    return {
+        "live_pointing": live_mode,
+        "transport_ops": live_mode,
+        "locator_write": live_mode,
+    }
 
 
 def _get_ableton(ctx: Context):
@@ -1189,6 +1206,7 @@ def _build_context(
         "track_groups": track_groups,
         "layer_groups": layer_groups,
         "section_map": section_map,
+        "capabilities": _cockpit_capabilities(ctx),
         "briefs": brief_state.get("briefs", []),
         "brief_count": brief_state.get("brief_count", 0),
         "codex_last_read_ms": brief_state.get("codex_last_read_ms", 0),
@@ -3320,6 +3338,12 @@ def _render_intent_first_cockpit_html(transport: str = "mcp") -> str:
       background: #2a2113;
       color: #f5d9aa;
     }
+    .live-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
     .song-strip {
       display: flex;
       gap: 5px;
@@ -3709,7 +3733,12 @@ def _render_intent_first_cockpit_html(transport: str = "mcp") -> str:
           <div class="label">Song Sections</div>
           <div class="song-map-title"><b id="songMapTitle">Loading sections</b><span id="songMapMeta"></span></div>
         </div>
-        <button class="whole-song" id="wholeSongButton">Whole song</button>
+        <div class="live-actions">
+          <button class="whole-song" id="grabLiveSelection">Grab selection from Live</button>
+          <button class="whole-song" id="loopSectionLive">Loop section in Live</button>
+          <button class="whole-song" id="writeSectionLocator">Write section to Live locator</button>
+          <button class="whole-song" id="wholeSongButton">Whole song</button>
+        </div>
       </div>
       <div class="song-strip" id="songStrip"></div>
     </div>
@@ -3885,6 +3914,9 @@ __CALL_TOOL_JS__
     function ctxState() {
       return (((state || {}).production_context || {}).state) || {};
     }
+    function capabilities() {
+      return (state || {}).capabilities || {};
+    }
     function targetState() {
       return (state || {}).target || {};
     }
@@ -3902,6 +3934,17 @@ __CALL_TOOL_JS__
     function selectedSectionLabel() {
       const section = savedSection();
       return section ? (section.label || "Section") : "Whole song";
+    }
+    function liveSection() {
+      const section = savedSection();
+      if (!section || section.scope === "whole_song" || section.source === "whole_song") return null;
+      return section;
+    }
+    function hasLiveSectionBounds(section = liveSection()) {
+      if (!section) return false;
+      const start = Number(section.start_beat);
+      const end = Number(section.end_beat);
+      return Number.isFinite(start) && Number.isFinite(end) && end > start;
     }
     function sectionMapState() {
       return (state || {}).section_map || {};
@@ -4187,11 +4230,19 @@ __CALL_TOOL_JS__
       const map = sectionMapState();
       const sections = Array.isArray(map.sections) ? map.sections : [];
       const source = map.source_label || "Manual scope";
+      const caps = capabilities();
+      const section = liveSection();
       $("#songMapTitle").textContent = source;
       $("#songMapMeta").textContent = sections.length
         ? `${sections.length} section${sections.length === 1 ? "" : "s"}`
         : "";
       $("#wholeSongButton").classList.toggle("active", !savedSection());
+      $("#grabLiveSelection").disabled = !caps.live_pointing;
+      $("#loopSectionLive").disabled = !caps.transport_ops || !hasLiveSectionBounds(section);
+      $("#writeSectionLocator").disabled = !caps.locator_write || !section || !Number.isFinite(Number(section.start_beat));
+      $("#grabLiveSelection").title = caps.live_pointing ? "Use the selected track from Ableton" : "Unavailable in snapshot mode";
+      $("#loopSectionLive").title = caps.transport_ops ? "Set Live loop brace and play this section" : "Unavailable in snapshot mode";
+      $("#writeSectionLocator").title = caps.locator_write ? "Create or rename a Live locator at this section start" : "Unavailable in snapshot mode";
       if (!sections.length) {
         $("#songStrip").innerHTML = '<button class="section-seg active" data-whole-song="1"><b>Whole song</b><span></span></button>';
       } else {
@@ -4594,6 +4645,63 @@ __CALL_TOOL_JS__
       render();
       toast(`Queued audition ${action}`);
     }
+    async function grabLiveSelection() {
+      if (!capabilities().live_pointing) {
+        toast("Live pointing unavailable in snapshot mode");
+        return;
+      }
+      const result = await callTool(BACKEND_TOOLS.get_live_selection);
+      const selection = result.selection || result || {};
+      const index = Number(selection.track_index);
+      if (!Number.isInteger(index) || index < 0) {
+        setStatus("Select a regular track in Ableton first.");
+        toast("No regular Live track selected");
+        return;
+      }
+      await selectTrackTarget(index);
+      toast("Grabbed Live selection");
+    }
+    async function loopSelectedSectionLive() {
+      const section = liveSection();
+      if (!capabilities().transport_ops) {
+        toast("Live transport unavailable in snapshot mode");
+        return;
+      }
+      if (!hasLiveSectionBounds(section)) {
+        toast("Choose a bounded section first");
+        return;
+      }
+      state = await callTool(BACKEND_TOOLS.loop_live_section, {
+        section,
+        play: true
+      });
+      selected = selectionFromState();
+      syncControlsFromState();
+      render();
+      toast("Looped section in Live");
+    }
+    async function writeSelectedSectionLocator() {
+      const section = liveSection();
+      if (!capabilities().locator_write) {
+        toast("Locator write unavailable in snapshot mode");
+        return;
+      }
+      if (!section || !Number.isFinite(Number(section.start_beat))) {
+        toast("Choose a section first");
+        return;
+      }
+      const label = section.label || "Section";
+      if (!window.confirm(`Write "${label}" to Live locators?`)) return;
+      state = await callTool(BACKEND_TOOLS.write_live_locator, {
+        section,
+        name: label,
+        confirm: true
+      });
+      selected = selectionFromState();
+      syncControlsFromState();
+      render();
+      toast("Locator written");
+    }
     async function clearTarget() {
       const keepPickerMode = pickerMode();
       setStatus("Clearing target");
@@ -4641,6 +4749,16 @@ __CALL_TOOL_JS__
         track_indices: [index],
         label: `${index + 1} ${label}`
       });
+      if (capabilities().live_pointing) {
+        try {
+          state = await callTool(BACKEND_TOOLS.select_live_track, {
+            track_index: index
+          });
+        } catch (error) {
+          setStatus(error.message || String(error));
+          toast("Cockpit target saved; Live selection not changed");
+        }
+      }
       syncControlsFromState();
       render();
       toast("Track target saved");
@@ -4706,6 +4824,9 @@ __CALL_TOOL_JS__
 
     $("#refresh").addEventListener("click", refresh);
     $("#refreshLive").addEventListener("click", refreshLive);
+    $("#grabLiveSelection").addEventListener("click", grabLiveSelection);
+    $("#loopSectionLive").addEventListener("click", loopSelectedSectionLive);
+    $("#writeSectionLocator").addEventListener("click", writeSelectedSectionLocator);
     $("#clearTarget").addEventListener("click", clearTarget);
     $("#saveLayer").addEventListener("click", saveCurrentLayer);
     $("#deleteLayer").addEventListener("click", deleteCurrentLayer);
@@ -4801,7 +4922,11 @@ def _cockpit_call_tool_js(transport: str) -> str:
         [BACKEND_TOOLS.save_track_intent]: ["POST", "/api/cockpit/track-intent"],
         [BACKEND_TOOLS.save_layer]: ["POST", "/api/cockpit/layers/save"],
         [BACKEND_TOOLS.delete_layer]: ["POST", "/api/cockpit/layers/delete"],
-        [BACKEND_TOOLS.audition_action]: ["POST", "/api/cockpit/auditions/action"]
+        [BACKEND_TOOLS.audition_action]: ["POST", "/api/cockpit/auditions/action"],
+        [BACKEND_TOOLS.get_live_selection]: ["GET", "/api/cockpit/live/selection"],
+        [BACKEND_TOOLS.select_live_track]: ["POST", "/api/cockpit/live/select-track"],
+        [BACKEND_TOOLS.loop_live_section]: ["POST", "/api/cockpit/live/loop-section"],
+        [BACKEND_TOOLS.write_live_locator]: ["POST", "/api/cockpit/live/write-locator"]
       };
       const route = routes[name];
       if (!route) throw new Error(`Unknown cockpit tool: ${name}`);

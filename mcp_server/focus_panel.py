@@ -33,6 +33,15 @@ logger = logging.getLogger(__name__)
 DEFAULT_FOCUS_PANEL_PORT = 9890
 
 
+def _float_or_none(value) -> Optional[float]:
+    try:
+        if value is None or value == "":
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
 class FocusPanelServer:
     """Small localhost HTTP server for the focus panel."""
 
@@ -204,6 +213,126 @@ class FocusPanelServer:
         })
         return payload
 
+    def get_live_selection_payload(self) -> dict:
+        if not self._is_live_mode():
+            return self._live_unavailable_payload()
+        selection = self.ableton.send_command("get_selected_track", {}) or {}
+        return {
+            "status": "ok",
+            "selection": selection,
+        }
+
+    def select_live_track_payload(self, payload: dict) -> dict:
+        if not self._is_live_mode():
+            return self._live_unavailable_payload()
+        result = self.ableton.send_command(
+            "select_track",
+            {"track_index": int(payload["track_index"])},
+        ) or {}
+        response = self.get_cockpit_payload()
+        response["status"] = "ok"
+        response["live_selection"] = result
+        return response
+
+    def loop_live_section_payload(self, payload: dict) -> dict:
+        if not self._is_live_mode():
+            return self._live_unavailable_payload()
+        section = self._section_payload(payload)
+        start_beat = _float_or_none(section.get("start_beat"))
+        end_beat = _float_or_none(section.get("end_beat"))
+        if start_beat is None or end_beat is None or end_beat <= start_beat:
+            return {
+                "status": "error",
+                "reason": "invalid_section",
+                "error": "Loop section needs start_beat and end_beat",
+                "_http_status": 400,
+            }
+        store = self.orchestration_service.store_for_session(self._session_info())
+        claim = store.claim_resource("transport", owner="cockpit", ttl_ms=15000)
+        if claim.get("status") != "claimed":
+            return {
+                "status": "error",
+                "reason": "lease_conflict",
+                "error": "Queue is using the transport",
+                "conflicts": claim.get("conflicts", []),
+                "_http_status": 409,
+            }
+        play = bool(payload.get("play", True))
+        loop_length = end_beat - start_beat
+        commands = []
+        try:
+            loop_result = self.ableton.send_command("set_session_loop", {
+                "enabled": True,
+                "loop_start": start_beat,
+                "loop_length": loop_length,
+            }) or {}
+            commands.append({"command": "set_session_loop", "result": loop_result})
+            force_result = self.ableton.send_command("force_arrangement", {
+                "beat_time": start_beat,
+                "play": play,
+                "loop_start": start_beat,
+                "loop_length": loop_length,
+            }) or {}
+            commands.append({"command": "force_arrangement", "result": force_result})
+        finally:
+            release = store.release_resource("transport", owner="cockpit")
+        response = self.get_cockpit_payload()
+        response.update({
+            "status": "ok",
+            "loop_section": section,
+            "loop_start": start_beat,
+            "loop_length": loop_length,
+            "play": play,
+            "commands": commands,
+            "lease": {"claim": claim, "release": release},
+        })
+        return response
+
+    def write_live_locator_payload(self, payload: dict) -> dict:
+        if not self._is_live_mode():
+            return self._live_unavailable_payload()
+        if not bool(payload.get("confirm") or payload.get("confirmed")):
+            return {
+                "status": "error",
+                "reason": "confirmation_required",
+                "error": "write-locator requires confirm=true",
+                "_http_status": 400,
+            }
+        section = self._section_payload(payload)
+        start_beat = _float_or_none(section.get("start_beat"))
+        if start_beat is None:
+            return {
+                "status": "error",
+                "reason": "invalid_section",
+                "error": "Locator section needs start_beat",
+                "_http_status": 400,
+            }
+        store = self.orchestration_service.store_for_session(self._session_info())
+        claim = store.claim_resource("project", owner="cockpit", ttl_ms=15000)
+        if claim.get("status") != "claimed":
+            return {
+                "status": "error",
+                "reason": "lease_conflict",
+                "error": "Queue is writing the project",
+                "conflicts": claim.get("conflicts", []),
+                "_http_status": 409,
+            }
+        try:
+            result = self.ableton.send_command("create_locator", {
+                "time": start_beat,
+                "name": str(payload.get("name") or section.get("label") or "Section"),
+            }) or {}
+        finally:
+            release = store.release_resource("project", owner="cockpit")
+        response = self.get_cockpit_payload()
+        response.update({
+            "status": "ok",
+            "locator": result,
+            "locator_section": section,
+            "lease": {"claim": claim, "release": release},
+        })
+        return response
+
     def set_cockpit_focus_payload(self, payload: dict) -> dict:
         from .production_cockpit import set_cockpit_focus
 
@@ -313,6 +442,7 @@ class FocusPanelServer:
                 "orchestration_queue": self.orchestration_service,
                 "production_context": self.production_context_service,
                 "focus_panel_url": self.url,
+                "cockpit_mode": "live" if self._is_live_mode() else "snapshot",
             }
         )
 
@@ -388,6 +518,33 @@ class FocusPanelServer:
             "project_id": (record or {}).get("project_id"),
             "updated_at_ms": (record or {}).get("updated_at_ms"),
         }
+
+    def _is_live_mode(self) -> bool:
+        return self.ableton is not None
+
+    def _live_unavailable_payload(self) -> dict:
+        return {
+            "status": "error",
+            "reason": "snapshot_mode",
+            "error": "Live pointing is unavailable in snapshot-backed cockpit mode",
+            "_http_status": 409,
+        }
+
+    def _section_payload(self, payload: dict) -> dict:
+        section = payload.get("section") if isinstance(payload.get("section"), dict) else {}
+        if section:
+            return section
+        try:
+            from .production_cockpit import _build_context
+
+            context = _build_context(self._cockpit_ctx())
+            target = context.get("target") if isinstance(context.get("target"), dict) else {}
+            current = target.get("section") if isinstance(target.get("section"), dict) else {}
+            if current:
+                return current
+        except Exception:
+            logger.debug("failed to resolve current cockpit section", exc_info=True)
+        return {}
 
     def _save_snapshot(self, session_info: dict, source: str) -> Optional[dict]:
         try:
@@ -521,6 +678,9 @@ class _FocusPanelHandler(BaseHTTPRequestHandler):
                 ),
             })
             return
+        if path == "/api/cockpit/live/selection":
+            self._send_panel_payload(self.server.panel.get_live_selection_payload())
+            return
         if path == "/api/focus":
             self._send_json({
                 "status": "ok",
@@ -578,6 +738,24 @@ class _FocusPanelHandler(BaseHTTPRequestHandler):
                     self.server.panel.submit_cockpit_audition_action_payload(payload)
                 )
                 return
+            if path == "/api/cockpit/live/select-track":
+                payload = self._read_json_body()
+                self._send_panel_payload(
+                    self.server.panel.select_live_track_payload(payload)
+                )
+                return
+            if path == "/api/cockpit/live/loop-section":
+                payload = self._read_json_body()
+                self._send_panel_payload(
+                    self.server.panel.loop_live_section_payload(payload)
+                )
+                return
+            if path == "/api/cockpit/live/write-locator":
+                payload = self._read_json_body()
+                self._send_panel_payload(
+                    self.server.panel.write_live_locator_payload(payload)
+                )
+                return
             if path == "/api/cockpit/refresh-live":
                 self._send_json(self.server.panel.refresh_live_payload())
                 return
@@ -616,6 +794,11 @@ class _FocusPanelHandler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(encoded)
+
+    def _send_panel_payload(self, payload: dict) -> None:
+        body = dict(payload or {})
+        status = int(body.pop("_http_status", 200) or 200)
+        self._send_json(body, status=status)
 
     def _send_empty(self, status: int = 204) -> None:
         self.send_response(status)
@@ -1032,8 +1215,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     print(f"LivePilot intent cockpit listening at {intent_url}", file=sys.stderr)
     if not args.live_refresh:
         print(
-            "Snapshot-backed mode: run get_session_info through MCP after "
-            "major Live session changes to refresh the track map.",
+            "Snapshot-backed mode: live pointing/transport/locator buttons are "
+            "disabled. Run get_session_info through MCP after major Live session "
+            "changes to refresh the track map.",
             file=sys.stderr,
         )
     try:

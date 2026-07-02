@@ -14,8 +14,9 @@ REMOTE_COMMANDS: frozenset[str] = frozenset({
     "get_session_info", "set_tempo", "set_time_signature",
     "start_playback", "stop_playback", "continue_playback",
     "toggle_metronome", "set_session_loop", "undo", "redo",
-    # tracks (17)
-    "get_track_info", "create_midi_track", "create_audio_track",
+    # tracks (19)
+    "get_track_info", "get_selected_track", "select_track",
+    "create_midi_track", "create_audio_track",
     "create_return_track", "delete_track", "duplicate_track",
     "set_track_name", "set_track_color", "set_track_mute",
     "set_track_solo", "set_track_arm", "stop_track_clips",
@@ -82,7 +83,7 @@ REMOTE_COMMANDS: frozenset[str] = frozenset({
     "set_arrangement_clip_name", "jump_to_time",
     "capture_midi", "start_recording", "stop_recording",
     "get_recording_state", "set_session_automation_record",
-    "get_cue_points", "jump_to_cue", "toggle_cue_point",
+    "get_cue_points", "jump_to_cue", "toggle_cue_point", "create_locator",
     "back_to_arranger", "force_arrangement",
     "arrangement_automation_via_session_record_start",
     "arrangement_automation_via_session_record_complete",

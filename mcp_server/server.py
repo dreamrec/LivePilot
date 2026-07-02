@@ -184,7 +184,7 @@ async def lifespan(server):
         "mcp_lifespan_start",
         live_host=os.environ.get("LIVE_MCP_HOST", "127.0.0.1"),
         live_port=os.environ.get("LIVE_MCP_PORT", "9878"),
-        focus_panel_env=os.environ.get("LIVEPILOT_FOCUS_PANEL", "0"),
+        focus_panel_env=os.environ.get("LIVEPILOT_FOCUS_PANEL", "1"),
         single_instance=os.environ.get("LIVEPILOT_SINGLE_INSTANCE", "replace"),
     )
     ableton = AbletonConnection()
@@ -259,7 +259,7 @@ async def lifespan(server):
         # in-memory only. If Ableton isn't reachable yet, tools will lazy-bind
         # on first write via ensure_project_store_bound().
         _bind_session_continuity(ableton)
-        if os.environ.get("LIVEPILOT_FOCUS_PANEL", "0").lower() not in {
+        if os.environ.get("LIVEPILOT_FOCUS_PANEL", "1").lower() not in {
             "0", "false", "off", "no",
         }:
             try:

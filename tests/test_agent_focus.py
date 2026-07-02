@@ -4,7 +4,7 @@ import json
 import tempfile
 from pathlib import Path
 from types import SimpleNamespace
-from urllib import request
+from urllib import error, request
 
 import pytest
 
@@ -38,6 +38,93 @@ def _track(index: int, name: str, color: int = 0, midi: bool = False, audio: boo
         "has_midi_input": midi,
         "has_audio_input": audio,
     }
+
+
+def _post_json(url: str, payload: dict):
+    req = request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"content-type": "application/json"},
+        method="POST",
+    )
+    with request.urlopen(req, timeout=5) as response:
+        return response.status, json.loads(response.read().decode("utf-8"))
+
+
+def _http_error_body(exc: error.HTTPError) -> dict:
+    return json.loads(exc.read().decode("utf-8"))
+
+
+class _LivePanelAbleton:
+    def __init__(self, session_info):
+        self.session_info = dict(session_info)
+        self.commands = []
+        self.selected_track_index = 0
+
+    def send_command(self, command, params=None):
+        params = params or {}
+        self.commands.append((command, dict(params)))
+        if command == "get_session_info":
+            return self.session_info
+        if command == "get_cue_points":
+            return {"cue_points": self.session_info.get("cue_points", [])}
+        if command == "get_arrangement_clips":
+            return {"clips": []}
+        if command == "get_track_info":
+            track_index = int(params["track_index"])
+            track = next(
+                item for item in self.session_info["tracks"]
+                if item["index"] == track_index
+            )
+            return {"index": track_index, "name": track["name"], "devices": []}
+        if command == "get_selected_track":
+            track = next(
+                item for item in self.session_info["tracks"]
+                if item["index"] == self.selected_track_index
+            )
+            return {
+                "track_index": track["index"],
+                "track_name": track["name"],
+                "track_type": "track",
+            }
+        if command == "select_track":
+            self.selected_track_index = int(params["track_index"])
+            track = next(
+                item for item in self.session_info["tracks"]
+                if item["index"] == self.selected_track_index
+            )
+            return {
+                "track_index": track["index"],
+                "track_name": track["name"],
+                "track_type": "track",
+                "selected": True,
+            }
+        if command == "set_session_loop":
+            self.session_info["loop"] = bool(params.get("enabled"))
+            self.session_info["loop_start"] = float(params.get("loop_start", 0))
+            self.session_info["loop_length"] = float(params.get("loop_length", 0))
+            return {
+                "loop": self.session_info["loop"],
+                "loop_start": self.session_info["loop_start"],
+                "loop_length": self.session_info["loop_length"],
+            }
+        if command == "force_arrangement":
+            self.session_info["current_song_time"] = float(params.get("beat_time", 0))
+            self.session_info["is_playing"] = bool(params.get("play", True))
+            return {
+                "arrangement_active": True,
+                "position": self.session_info["current_song_time"],
+                "is_playing": self.session_info["is_playing"],
+            }
+        if command == "create_locator":
+            cue = {
+                "index": len(self.session_info.setdefault("cue_points", [])),
+                "name": params.get("name") or "Section",
+                "time": float(params["time"]),
+            }
+            self.session_info["cue_points"].append(cue)
+            return cue
+        raise AssertionError(f"Unexpected command: {command}")
 
 
 def test_agent_focus_round_trips_for_current_session():
@@ -444,5 +531,150 @@ def test_focus_panel_standalone_uses_snapshot_without_ableton(monkeypatch):
                 focused = json.loads(response.read().decode("utf-8"))
             assert focused["summary"]["focused_track_names"] == ["guit-rhth1"]
             assert service.get_focus(session)["focus"]["track_indices"] == [1]
+        finally:
+            panel.stop()
+
+
+def test_focus_panel_live_routes_reject_snapshot_mode(monkeypatch):
+    with tempfile.TemporaryDirectory() as directory:
+        base = Path(directory)
+        monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", base)
+        snapshot_store = SessionSnapshotStore(base / "current_session.json")
+        session = _session([_track(0, "drums")])
+        snapshot_store.save(session, source="test")
+        panel = FocusPanelServer(
+            ableton=None,
+            focus_service=AgentFocusService(base_dir=base),
+            production_context_service=ProductionContextService(base_dir=base),
+            snapshot_store=snapshot_store,
+            port=0,
+        )
+        try:
+            url = panel.start()
+            assert url
+
+            with pytest.raises(error.HTTPError) as exc_info:
+                request.urlopen(url + "api/cockpit/live/selection", timeout=5)
+            assert exc_info.value.code == 409
+            body = _http_error_body(exc_info.value)
+            assert body["reason"] == "snapshot_mode"
+
+            with request.urlopen(url + "api/cockpit/state", timeout=5) as response:
+                state = json.loads(response.read().decode("utf-8"))
+            assert state["capabilities"] == {
+                "live_pointing": False,
+                "transport_ops": False,
+                "locator_write": False,
+            }
+        finally:
+            panel.stop()
+
+
+def test_focus_panel_loop_section_blocks_on_transport_lease(monkeypatch):
+    with tempfile.TemporaryDirectory() as directory:
+        base = Path(directory)
+        monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", base)
+        session = _session([_track(0, "drums")])
+        ableton = _LivePanelAbleton(session)
+        orchestration = OrchestrationService(base_dir=base)
+        store = orchestration.store_for_session(session)
+        store.save_lease({
+            "lease_id": "lease_transport_busy",
+            "resource": "transport",
+            "job_id": "job_busy",
+            "owner": "conductor",
+        })
+        panel = FocusPanelServer(
+            ableton=ableton,
+            focus_service=AgentFocusService(base_dir=base),
+            production_context_service=ProductionContextService(base_dir=base),
+            snapshot_store=SessionSnapshotStore(base / "current_session.json"),
+            orchestration_service=orchestration,
+            port=0,
+        )
+        try:
+            url = panel.start()
+            assert url
+            with pytest.raises(error.HTTPError) as exc_info:
+                _post_json(
+                    url + "api/cockpit/live/loop-section",
+                    {"section": {"label": "Intro", "start_beat": 0, "end_beat": 8}},
+                )
+            assert exc_info.value.code == 409
+            body = _http_error_body(exc_info.value)
+            assert body["reason"] == "lease_conflict"
+            assert "set_session_loop" not in [command for command, _ in ableton.commands]
+        finally:
+            panel.stop()
+
+
+def test_focus_panel_loop_section_sets_loop_and_releases_lease(monkeypatch):
+    with tempfile.TemporaryDirectory() as directory:
+        base = Path(directory)
+        monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", base)
+        session = _session([_track(0, "drums")])
+        ableton = _LivePanelAbleton(session)
+        orchestration = OrchestrationService(base_dir=base)
+        panel = FocusPanelServer(
+            ableton=ableton,
+            focus_service=AgentFocusService(base_dir=base),
+            production_context_service=ProductionContextService(base_dir=base),
+            snapshot_store=SessionSnapshotStore(base / "current_session.json"),
+            orchestration_service=orchestration,
+            port=0,
+        )
+        try:
+            url = panel.start()
+            assert url
+            status, body = _post_json(
+                url + "api/cockpit/live/loop-section",
+                {"section": {"label": "Verse", "start_beat": 4, "end_beat": 12}},
+            )
+            assert status == 200
+            assert body["loop_start"] == 4
+            assert body["loop_length"] == 8
+            assert [command for command, _ in ableton.commands].count("set_session_loop") == 1
+            assert [command for command, _ in ableton.commands].count("force_arrangement") == 1
+            assert orchestration.store_for_session(session).list_leases() == []
+        finally:
+            panel.stop()
+
+
+def test_focus_panel_write_locator_requires_confirm_and_writes_once(monkeypatch):
+    with tempfile.TemporaryDirectory() as directory:
+        base = Path(directory)
+        monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", base)
+        session = _session([_track(0, "drums")])
+        ableton = _LivePanelAbleton(session)
+        panel = FocusPanelServer(
+            ableton=ableton,
+            focus_service=AgentFocusService(base_dir=base),
+            production_context_service=ProductionContextService(base_dir=base),
+            snapshot_store=SessionSnapshotStore(base / "current_session.json"),
+            orchestration_service=OrchestrationService(base_dir=base),
+            port=0,
+        )
+        try:
+            url = panel.start()
+            assert url
+            with pytest.raises(error.HTTPError) as exc_info:
+                _post_json(
+                    url + "api/cockpit/live/write-locator",
+                    {"section": {"label": "Bridge", "start_beat": 16}},
+                )
+            assert exc_info.value.code == 400
+            assert _http_error_body(exc_info.value)["reason"] == "confirmation_required"
+            assert "create_locator" not in [command for command, _ in ableton.commands]
+
+            status, body = _post_json(
+                url + "api/cockpit/live/write-locator",
+                {
+                    "section": {"label": "Bridge", "start_beat": 16},
+                    "confirm": True,
+                },
+            )
+            assert status == 200
+            assert body["locator"]["name"] == "Bridge"
+            assert [command for command, _ in ableton.commands].count("create_locator") == 1
         finally:
             panel.stop()

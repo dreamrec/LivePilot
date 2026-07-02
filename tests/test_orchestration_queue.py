@@ -220,6 +220,24 @@ def test_claim_resources_blocks_conflicting_active_leases(tmp_path):
     assert store.claim_resources_for_job(second["job_id"])["status"] == "claimed"
 
 
+def test_claim_resource_supports_owner_scoped_short_lived_operations(tmp_path):
+    store = OrchestrationStore("proj1", base_dir=tmp_path)
+
+    claimed = store.claim_resource("transport", owner="cockpit", ttl_ms=15000)
+    assert claimed["status"] == "claimed"
+    assert claimed["claimed"][0]["resource"] == "transport"
+    assert claimed["claimed"][0]["owner"] == "cockpit"
+    assert claimed["claimed"][0]["job_id"] == ""
+
+    blocked = store.claim_resource("transport", owner="other", ttl_ms=15000)
+    assert blocked["status"] == "blocked"
+    assert blocked["conflicts"][0]["requested"] == "transport"
+
+    released = store.release_resource("transport", owner="cockpit")
+    assert released["released_count"] == 1
+    assert store.claim_resource("transport", owner="other", ttl_ms=15000)["status"] == "claimed"
+
+
 def test_transport_master_and_expired_lease_conflicts(tmp_path):
     store = OrchestrationStore("proj1", base_dir=tmp_path)
     master = store.save_job({

@@ -110,6 +110,7 @@ SAFE_ACTIONS: set[str] = {
     "get_scene_matrix",
     "get_playing_clips",
     "get_cue_points",
+    "get_selected_track",
     "get_hidden_parameters",
     "get_automation_state",
     "get_display_values",

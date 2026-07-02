@@ -96,6 +96,7 @@ READ_ONLY_TOOLS: frozenset[str] = frozenset({
     "get_scene_matrix",
     "get_playing_clips",
     "get_cue_points",
+    "get_selected_track",
     "get_rack_chains",
     "get_clip_automation",
     "analyze_sample",

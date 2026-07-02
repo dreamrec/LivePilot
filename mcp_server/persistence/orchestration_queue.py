@@ -533,6 +533,110 @@ class OrchestrationStore:
         self._store.update(_update)
         return claim_result
 
+    def claim_resource(
+        self,
+        resource: str,
+        owner: str = "cockpit",
+        ttl_ms: int = 15000,
+    ) -> dict:
+        """Atomically claim one resource for a short owner-scoped operation."""
+        owner = str(owner or "cockpit").strip() or "cockpit"
+        requested = _normalize_resource(resource)
+        if not requested:
+            raise ValueError("resource cannot be empty")
+        now = _now_ms()
+        claim_result: dict = {}
+
+        def _update(data: dict) -> dict:
+            nonlocal claim_result
+            data = data if data.get("version") == _STORE_VERSION else self._default()
+            active_leases = [
+                lease for lease in data.get("leases", [])
+                if not _lease_expired(lease, now)
+            ]
+            conflicts = []
+            for lease in active_leases:
+                held = _normalize_resource(lease.get("resource"))
+                if _resources_conflict(requested, held):
+                    conflicts.append({
+                        "requested": requested,
+                        "held": held,
+                        "lease": dict(lease),
+                    })
+            if conflicts:
+                claim_result = {
+                    "status": "blocked",
+                    "owner": owner,
+                    "resource": requested,
+                    "claimed": [],
+                    "conflicts": conflicts,
+                }
+                return data
+
+            ttl = _as_int(ttl_ms, 15000)
+            expires_at_ms = now + ttl if ttl > 0 else 0
+            lease = _normalize_lease({
+                "lease_id": _new_id("lease"),
+                "resource": requested,
+                "job_id": "",
+                "owner": owner,
+                "expires_at_ms": expires_at_ms,
+            }, now)
+            data.setdefault("leases", []).append(lease)
+            data["last_updated_ms"] = now
+            claim_result = {
+                "status": "claimed",
+                "owner": owner,
+                "resource": requested,
+                "claimed": [lease],
+                "conflicts": [],
+            }
+            return data
+
+        self._store.update(_update)
+        return claim_result
+
+    def release_resource(
+        self,
+        resource: str,
+        owner: str = "cockpit",
+    ) -> dict:
+        """Release non-job leases matching a resource and owner."""
+        owner = str(owner or "cockpit").strip() or "cockpit"
+        requested = _normalize_resource(resource)
+        now = _now_ms()
+        release_result: dict = {}
+
+        def _update(data: dict) -> dict:
+            nonlocal release_result
+            data = data if data.get("version") == _STORE_VERSION else self._default()
+            released = []
+            kept = []
+            for lease in data.get("leases", []):
+                lease_resource = _normalize_resource(lease.get("resource"))
+                if (
+                    lease_resource == requested
+                    and str(lease.get("owner") or "") == owner
+                    and not str(lease.get("job_id") or "").strip()
+                ):
+                    released.append(lease)
+                else:
+                    kept.append(lease)
+            data["leases"] = kept
+            if released:
+                data["last_updated_ms"] = now
+            release_result = {
+                "status": "ok",
+                "owner": owner,
+                "resource": requested,
+                "released": released,
+                "released_count": len(released),
+            }
+            return data
+
+        self._store.update(_update)
+        return release_result
+
     def release_leases_for_job(self, job_id: str) -> dict:
         job_id = str(job_id or "").strip()
         now = _now_ms()

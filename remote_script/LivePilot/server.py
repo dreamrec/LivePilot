@@ -24,7 +24,7 @@ WRITE_COMMANDS = frozenset([
     "create_midi_track", "create_audio_track", "create_return_track",
     "delete_track", "duplicate_track", "set_track_name", "set_track_color",
     "set_track_mute", "set_track_solo", "set_track_arm", "stop_track_clips",
-    "set_group_fold", "set_track_input_monitoring",
+    "set_group_fold", "set_track_input_monitoring", "select_track",
     # clips
     "create_clip", "delete_clip", "duplicate_clip", "fire_clip", "stop_clip",
     "set_clip_name", "set_clip_color", "set_clip_loop", "set_clip_launch",
@@ -49,7 +49,7 @@ WRITE_COMMANDS = frozenset([
     "load_browser_item",
     # arrangement
     "jump_to_time", "jump_to_cue", "capture_midi", "start_recording",
-    "stop_recording", "toggle_cue_point", "back_to_arranger",
+    "stop_recording", "toggle_cue_point", "create_locator", "back_to_arranger",
     "set_session_automation_record",
     "create_arrangement_clip", "add_arrangement_notes",
     "remove_arrangement_notes", "remove_arrangement_notes_by_id",
