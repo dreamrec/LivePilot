@@ -49,7 +49,7 @@ __INTENT_CSS__
         </div>
         <div class="target-picker" id="targetPicker">
           <div class="seg-row" id="targetModeRow">
-            <button data-mode="instrument">Auto Groups</button>
+            <button data-mode="instrument">Suggestions</button>
             <button data-mode="layer">Song Layers</button>
             <button data-mode="track">Tracks</button>
           </div>
@@ -133,6 +133,10 @@ __INTENT_CSS__
         <div class="brief-row"><div class="ic">Y</div><div><div class="k">Scope</div><div class="v" id="briefScope">Whole song</div></div></div>
         <div class="brief-row"><div class="ic">Y</div><div><div class="k">Keep safe</div><div class="v" id="briefProtect">None</div></div></div>
         <div class="brief-row warn" id="outputRow"><div class="ic">!</div><div><div class="k">Output</div><div class="v" id="briefOutput">3 layer auditions</div><div class="sub" id="briefOutputSub">Requires a Song Layer target.</div></div></div>
+        <div class="queue-card needs-you" id="needsYouCard">
+          <div class="queue-head"><b>Needs you</b><span class="queue-badge" id="needsYouBadge">Clear</span></div>
+          <div class="queue-list" id="needsYouItems"></div>
+        </div>
         <div class="queue-card" id="queueCard">
           <div class="queue-head"><b>Agent Queue</b><span class="queue-badge" id="queueBadge">Idle</span></div>
           <div class="sub" id="queueSummary">No orchestration work queued.</div>

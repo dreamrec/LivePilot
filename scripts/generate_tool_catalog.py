@@ -56,11 +56,11 @@ def get_tools() -> list[dict]:
 
 
 def infer_domain(module: str) -> str:
-    """Infer domain from module path using the same module-layout rule as
-    ``scripts/sync_metadata.py``:
-      - ``mcp_server.<X>.<...>``              → ``<X>``
-      - ``mcp_server.tools.<Y>``              → ``<Y>``
-    The display name is Title-Cased; underscores become spaces.
+    """Infer the display section for a registered tool.
+
+    Top-level ``mcp_server.<module>`` tool modules still get catalog sections
+    here, but ``scripts/sync_metadata.py`` intentionally excludes those helper
+    modules from the release-wide public domain count.
     """
     parts = module.split(".")
     if len(parts) < 2 or parts[0] != "mcp_server":
@@ -70,6 +70,16 @@ def infer_domain(module: str) -> str:
     else:
         domain_key = parts[1]
     return domain_key.replace("_", " ").title()
+
+
+def release_domain_count() -> int:
+    """Return the release-wide domain count used by metadata sync."""
+    try:
+        from scripts.sync_metadata import get_domains
+    except Exception:
+        return 0
+    count, _domains = get_domains()
+    return count
 
 
 def main():
@@ -84,7 +94,8 @@ def main():
 
     print(f"# LivePilot — Full Tool Catalog (Generated)")
     print()
-    print(f"{total} tools across {len(domains)} domains.")
+    domain_count = release_domain_count() or len(domains)
+    print(f"{total} tools across {domain_count} domains.")
     print()
     print("> Auto-generated from `mcp.list_tools()`. Do not hand-edit.")
     print("> Regenerate: `python3 scripts/generate_tool_catalog.py`")

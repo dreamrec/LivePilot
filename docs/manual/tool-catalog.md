@@ -458,6 +458,21 @@
 | `remove_notes_by_id` | Remove specific MIDI notes by their IDs (JSON array of ints). Use undo to revert. |
 | `transpose_notes` | Transpose notes in a time range by semitones (positive=up, negative=down). |
 
+## Orchestration Queue Tools (10)
+
+| Tool | Description |
+|------|-------------|
+| `cancel_ableton_job` | Cancel a queued or pending Ableton job. |
+| `create_orchestration_snapshot` | Create a project-scoped orchestration snapshot for parallel agents. |
+| `get_orchestration_state` | Return the current project orchestration state for Codex/cockpit. |
+| `list_ableton_jobs` | List serialized Ableton jobs. |
+| `list_agent_proposals` | List orchestration proposals, optionally filtered by status/snapshot. |
+| `list_agent_tasks` | List orchestration tasks, optionally filtered by status or snapshot. |
+| `run_next_ableton_job` | Run one queued Ableton job through the serialized conductor path. |
+| `submit_ableton_job` | Submit a serialized Ableton job for later conductor execution. |
+| `submit_agent_proposal` | Submit a specialist-agent proposal for conductor review. |
+| `submit_agent_task` | Submit a read-mostly task for a specialist agent. |
+
 ## Perception (4)
 
 | Tool | Description |
@@ -491,6 +506,14 @@
 | `create_preview_set` | Create a preview set with multiple creative options. |
 | `discard_preview_set` | Discard an entire preview set and all its variants. |
 | `render_preview_variant` | Render a short preview of a specific variant for evaluation. |
+
+## Production Cockpit (3)
+
+| Tool | Description |
+|------|-------------|
+| `get_production_context` | Return focused tracks plus current lane, preserve flags, and track intent. |
+| `list_cockpit_briefs` | List durable cockpit briefs with derived queue status. |
+| `open_livepilot_production_cockpit` | Return the outside-browser LivePilot cockpit URL for selecting focused tracks, workflow lane, preserve flags, and per-tr |
 
 ## Project Brain (2)
 
@@ -660,7 +683,7 @@
 | `suggest_next_chord` | Suggest the next chord based on the current progression. |
 | `transpose_smart` | Transpose a MIDI clip to a new key with musical intelligence. |
 
-## Tracks (29)
+## Tracks (33)
 
 | Tool | Description |
 |------|-------------|
@@ -670,6 +693,7 @@
 | `create_audio_track` | Create a new audio track. index=-1 appends at end. |
 | `create_midi_track` | Create a new MIDI track. index=-1 appends at end. |
 | `create_return_track` | Create a new return track. |
+| `delete_layer_group` | Delete a project-scoped musical layer group. |
 | `delete_track` | Delete a track by index. Use undo to revert if needed. |
 | `duplicate_track` | Duplicate a track (copies all clips, devices, and settings). |
 | `flatten_track` | Flatten a frozen track — commit rendered audio permanently. |
@@ -677,11 +701,14 @@
 | `get_agent_focus` | Return the tracks the user has pointed LivePilot at in the focus panel. |
 | `get_appointed_device` | Return the Blue Hand (appointed/focused) device location as (track_index, device_index, track_name, device_name). |
 | `get_freeze_status` | Check if a track is frozen. |
+| `get_live_selection` | Return the track currently selected in Ableton's UI. |
 | `get_track_annotations` | List persistent track annotations resolved against the current session. |
 | `get_track_info` | Get track clips, device-chain summaries, and mixer state; device parameters are opt-in and capped. |
 | `get_track_performance_impact` | Read a track's CPU performance impact metric. |
 | `jump_in_session_clip` | Jump playhead within a running session clip, in beats from start. |
+| `list_layer_groups` | List project-scoped musical layer groups resolved to current tracks. |
 | `resolve_track_ref` | Resolve a conversational track reference to current track indices. |
+| `save_layer_group` | Create or update a project-scoped musical layer group. |
 | `set_agent_focus` | Set LivePilot's current agent focus to one or more regular tracks. |
 | `set_group_fold` | Fold or unfold a group track to show/hide its children. |
 | `set_track_annotation` | Attach persistent sparse intent metadata to a track or project scope. |
@@ -763,4 +790,4 @@
 | `rank_wonder_variants` | Rank wonder-mode variants by taste + identity + novelty + coherence. |
 
 ---
-*Generated from 475 registered tools.*
+*Generated from 492 registered tools.*

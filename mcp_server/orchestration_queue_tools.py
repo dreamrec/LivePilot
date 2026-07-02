@@ -885,6 +885,7 @@ def _record_job_outcome(
     job_status = "done" if status == "done" else "failed"
 
     try:
+        # store_purpose: writer
         from .runtime.action_ledger import SessionLedger
 
         ledger = _lifespan(ctx).setdefault("action_ledger", SessionLedger())

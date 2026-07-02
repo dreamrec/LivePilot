@@ -43,7 +43,7 @@ class ProductionContextService:
 
     def get_state(self, session_info: dict) -> dict:
         store = self._store_for_session(session_info)
-        raw = store.get_state()
+        raw = store.get_state(beats_per_bar=_beats_per_bar(session_info))
         return {
             "status": "ok",
             "project_id": store.project_id,
@@ -74,6 +74,7 @@ class ProductionContextService:
     ) -> dict:
         store = self._store_for_session(session_info)
         state = store.save_state(
+            beats_per_bar=_beats_per_bar(session_info),
             lane=lane,
             workflow_mode=workflow_mode,
             audition_required=audition_required,
@@ -132,19 +133,23 @@ class ProductionContextStore:
     def path(self) -> Path:
         return self._store.path
 
-    def get_all(self) -> dict:
+    def get_all(self, beats_per_bar: float = 4.0) -> dict:
         data = self._store.read()
         if data.get("version") == _STORE_VERSION:
             return data
         if data.get("version") == 1:
-            return self._migrate_v1(data)
+            return self._migrate_v1(data, beats_per_bar=beats_per_bar)
         return self._default()
 
-    def get_state(self) -> dict:
-        return dict(self.get_all().get("state") or self._default_state())
+    def get_state(self, beats_per_bar: float = 4.0) -> dict:
+        return dict(
+            self.get_all(beats_per_bar=beats_per_bar).get("state")
+            or self._default_state()
+        )
 
     def save_state(
         self,
+        beats_per_bar: float = 4.0,
         lane: Optional[str] = None,
         workflow_mode: Optional[str] = None,
         audition_required: Optional[bool] = None,
@@ -169,7 +174,7 @@ class ProductionContextStore:
             if data.get("version") == _STORE_VERSION:
                 data = data
             elif data.get("version") == 1:
-                data = self._migrate_v1(data)
+                data = self._migrate_v1(data, beats_per_bar=beats_per_bar)
             else:
                 data = self._default()
             state = dict(data.get("state") or self._default_state())
@@ -213,6 +218,7 @@ class ProductionContextStore:
                     section_label=section_label,
                     section_start_bar=section_start_bar,
                     section_end_bar=section_end_bar,
+                    beats_per_bar=beats_per_bar,
                 )
             state["updated_at_ms"] = now
             data["state"] = state
@@ -262,7 +268,7 @@ class ProductionContextStore:
         }
 
     @classmethod
-    def _migrate_v1(cls, data: dict) -> dict:
+    def _migrate_v1(cls, data: dict, beats_per_bar: float = 4.0) -> dict:
         old_state = data.get("state") if isinstance(data.get("state"), dict) else {}
         state = cls._default_state()
         for key in (
@@ -287,6 +293,7 @@ class ProductionContextStore:
             section_label=old_state.get("section_label"),
             section_start_bar=old_state.get("section_start_bar"),
             section_end_bar=old_state.get("section_end_bar"),
+            beats_per_bar=beats_per_bar,
         )
         return {
             "version": _STORE_VERSION,
@@ -386,6 +393,7 @@ def _section_from_legacy_fields(
     section_label,
     section_start_bar,
     section_end_bar,
+    beats_per_bar: float = 4.0,
 ) -> Optional[dict]:
     scope = _normalize_key(section_scope or "whole_song")
     if scope == "whole_song":
@@ -393,8 +401,9 @@ def _section_from_legacy_fields(
     label = str(section_label or "").strip() or scope.replace("_", " ").title()
     start_bar = _normalize_optional_float(section_start_bar)
     end_bar = _normalize_optional_float(section_end_bar)
-    start_beat = (start_bar - 1.0) * 4.0 if start_bar is not None else None
-    end_beat = (end_bar - 1.0) * 4.0 if end_bar is not None else None
+    beats = _normalize_beats_per_bar(beats_per_bar)
+    start_beat = (start_bar - 1.0) * beats if start_bar is not None else None
+    end_beat = (end_bar - 1.0) * beats if end_bar is not None else None
     return _normalize_section({
         "section_id": _derive_section_id("manual", label, start_beat),
         "label": label,
@@ -417,6 +426,22 @@ def _normalize_optional_float(value) -> Optional[float]:
         return float(value)
     except (TypeError, ValueError) as exc:
         raise ValueError("section bar values must be numbers") from exc
+
+
+def _normalize_beats_per_bar(value) -> float:
+    try:
+        beats = float(value)
+    except (TypeError, ValueError):
+        beats = 4.0
+    return beats if beats > 0 else 4.0
+
+
+def _beats_per_bar(session_info: dict) -> float:
+    return _normalize_beats_per_bar(
+        session_info.get("signature_numerator")
+        or session_info.get("time_signature_numerator")
+        or 4.0
+    )
 
 
 def _normalize_protect_flags(value) -> list[str]:

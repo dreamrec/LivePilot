@@ -224,14 +224,6 @@
       if (/level|volume|balance/.test(lower)) flags.push("preserve_level");
       return flags;
     }
-    function appendNote(existing, next) {
-      const first = String(existing || "").trim();
-      const second = String(next || "").trim();
-      if (!second) return first;
-      if (!first) return second;
-      if (first.includes(second)) return first;
-      return first + "\\n" + second;
-    }
     function mergeUnique(...lists) {
       const out = new Set();
       lists.flat().filter(Boolean).forEach(item => out.add(item));
@@ -323,6 +315,7 @@
       renderTracks();
       renderQuickMoves();
       renderBrief();
+      renderNeedsYou();
       renderOrchestration();
       renderBriefFeed();
     }
@@ -440,7 +433,7 @@
       const activeKey = mode === "layer" ? targetState().matched_layer : targetState().matched_group;
       if (!groups.length) {
         $("#groupChips").innerHTML = mode === "layer"
-          ? '<span class="sub">No layers yet - choose Tracks or Auto Groups, then save the target as a layer.</span>'
+          ? '<span class="sub">No layers yet - choose Tracks or Suggestions, then save the target as a layer.</span>'
           : '<span class="sub">No auto groups found.</span>';
         renderLayerActions();
         return;
@@ -543,6 +536,67 @@
     function compactId(value) {
       const text = String(value || "");
       return text.length > 10 ? text.slice(0, 10) : text;
+    }
+    function compactObjectLabel(value) {
+      if (!value) return "Unknown reference";
+      if (typeof value === "string") return value;
+      if (typeof value !== "object") return String(value);
+      return value.track_name || value.name || value.label || value.track_ref || value.signature_key || value.id || JSON.stringify(value).slice(0, 96);
+    }
+    function needsYouRows() {
+      const orchestration = orchestrationState();
+      const rows = [];
+      (orchestration.active_jobs || []).forEach(job => {
+        if (job.status !== "awaiting_decision") return;
+        rows.push({
+          kind: "blocked",
+          title: job.title || job.job_type || "Ableton job needs a decision",
+          detail: `${job.status} - ${job.job_type || "job"} ${compactId(job.job_id) ? "#" + compactId(job.job_id) : ""}`
+        });
+      });
+      (orchestration.pending_proposals || []).forEach(proposal => {
+        if (proposal.status !== "stale_needs_revalidation") return;
+        rows.push({
+          kind: "needs",
+          title: proposal.summary || "Proposal needs revalidation",
+          detail: `stale proposal - ${proposal.agent_role || "agent"} ${compactId(proposal.proposal_id) ? "#" + compactId(proposal.proposal_id) : ""}`
+        });
+      });
+      const focus = (((state || {}).focus || {}).focus) || {};
+      (focus.unresolved_refs || []).forEach(ref => {
+        rows.push({
+          kind: "blocked",
+          title: compactObjectLabel(ref),
+          detail: "Focused track reference no longer resolves"
+        });
+      });
+      ((state || {}).layer_groups || []).forEach(group => {
+        (group.unresolved_members || []).forEach(member => {
+          rows.push({
+            kind: "blocked",
+            title: `${group.label || group.key || "Layer"}: ${compactObjectLabel(member)}`,
+            detail: "Layer member no longer resolves"
+          });
+        });
+      });
+      return rows;
+    }
+    function renderNeedsYou() {
+      const badge = $("#needsYouBadge");
+      const items = $("#needsYouItems");
+      if (!badge || !items) return;
+      const rows = needsYouRows();
+      badge.textContent = rows.length ? `${rows.length} item${rows.length === 1 ? "" : "s"}` : "Clear";
+      if (!rows.length) {
+        items.innerHTML = '<div class="queue-item"><b>Nothing needs you</b><span>Queued work can continue without a decision.</span></div>';
+        return;
+      }
+      items.innerHTML = rows.slice(0, 6).map(row => `
+        <div class="queue-item ${escapeHtml(row.kind || "needs")}">
+          <b>${escapeHtml(row.title)}</b>
+          <span>${escapeHtml(row.detail)}</span>
+        </div>
+      `).join("");
     }
     function renderOrchestration() {
       const orchestration = orchestrationState();

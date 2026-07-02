@@ -487,6 +487,14 @@
       border-color: rgba(240, 163, 58, 0.5);
       background: rgba(240, 163, 58, 0.08);
     }
+    .queue-item.needs {
+      border-color: rgba(240, 163, 58, 0.62);
+      background: rgba(240, 163, 58, 0.1);
+    }
+    .queue-item.blocked {
+      border-color: rgba(224, 91, 91, 0.55);
+      background: rgba(224, 91, 91, 0.08);
+    }
     .status {
       min-height: 18px;
       color: var(--muted);

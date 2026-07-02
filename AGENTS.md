@@ -77,7 +77,7 @@ cat .claude-plugin/marketplace.json | python3 -c "import json,sys; print(json.lo
 Expected output: the new version string. If the mirror is stale (happened silently across v1.18.0-v1.18.3 — panel stuck at "1.17.5 installed"), Claude Code's plugin panel will show the old version and `Update` button points at a stale target. The mirror is a git clone that Claude Code fetches from but does NOT auto-pull. Hard-reset is safe — nothing writes to it locally.
 
 ## Tool Count
-Currently 492 tools. If adding/removing tools, update: README.md, package.json description, livepilot/.Codex-plugin/plugin.json, livepilot/.claude-plugin/plugin.json, server.json, livepilot/skills/livepilot-core/SKILL.md, livepilot/skills/livepilot-core/references/overview.md, AGENTS.md, CLAUDE.md, CHANGELOG.md, tests/test_tools_contract.py, docs/manual/index.md, docs/manual/tool-reference.md, docs/manual/tool-catalog.md
+Currently 492 tools. The latest cockpit delta adds 7 public tools: list/save/delete layer groups, list_cockpit_briefs, get_live_selection, and always-registered open_livepilot_production_cockpit/get_production_context; older doc drift was repaired during that count sync. If adding/removing tools, update: README.md, package.json description, livepilot/.Codex-plugin/plugin.json, livepilot/.claude-plugin/plugin.json, server.json, livepilot/skills/livepilot-core/SKILL.md, livepilot/skills/livepilot-core/references/overview.md, AGENTS.md, CLAUDE.md, CHANGELOG.md, tests/test_tools_contract.py, docs/manual/index.md, docs/manual/tool-reference.md, docs/manual/tool-catalog.md
 
 ## Splice plan-aware model
 Sample downloads use plan-aware gating (`mcp_server/splice_client/client.py::decide_download`):

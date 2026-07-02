@@ -4,7 +4,6 @@ from contextlib import asynccontextmanager
 import asyncio
 import logging
 import os
-import signal
 import subprocess
 
 from fastmcp import FastMCP, Context  # noqa: F401
@@ -638,17 +637,21 @@ def _install_signal_lifecycle_logging() -> None:
     if getattr(_install_signal_lifecycle_logging, "_installed", False):
         return
     _install_signal_lifecycle_logging._installed = True
+    sig_module = __import__("signal")
 
     def _handler(signum, frame):  # noqa: ARG001 - stdlib signal signature
-        name = signal.Signals(signum).name
+        name = sig_module.Signals(signum).name
         lifecycle_event("mcp_python_signal", signal=name, signum=signum)
-        if signum == signal.SIGINT:
+        if signum == getattr(sig_module, "SIGINT"):
             raise KeyboardInterrupt
         raise SystemExit(128 + signum)
 
-    for sig in (signal.SIGINT, signal.SIGTERM):
+    for sig in (
+        getattr(sig_module, "SIGINT"),
+        getattr(sig_module, "SIGTERM"),
+    ):
         try:
-            signal.signal(sig, _handler)
+            sig_module.signal(sig, _handler)
         except (OSError, ValueError):
             pass
 

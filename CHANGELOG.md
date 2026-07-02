@@ -9,10 +9,22 @@
 - `record_parameter_automation_realtime` now starts playback in pre-roll, re-seeks while already playing, engages Arrangement Record before the first point, and schedules parameter moves against absolute Arrangement beats so transport startup latency does not shift the automation pass later.
 - `record_parameter_automation_m4l_curve` MCP tool plus `automation_curve_arm/status/cancel` bridge commands for fast Arrangement automation curves. The MCP side arms the whole curve once, then Max drives the target parameter locally during Arrangement Record to avoid TCP-per-point timing drift.
 - Remote Script recording-state helpers: `get_recording_state` and `set_session_automation_record`.
+- Browser-first Production Cockpit workflow v2: stable project identity, snapshot-backed continuity, identified song sections, first-class layers, a durable brief ledger, visible audition lifecycle actions, live selection/section-loop/locator controls, and extracted `mcp_server/cockpit_ui` templates.
+- New cockpit workflow tools: `list_layer_groups`, `save_layer_group`, `delete_layer_group`, `list_cockpit_briefs`, and `get_live_selection`; `open_livepilot_production_cockpit` and `get_production_context` are now always registered for browser-cockpit use.
+- Local LivePilot Focus panel on `127.0.0.1`, plus `get_agent_focus`, `set_agent_focus`, `clear_agent_focus`, and `resolve_track_ref` MCP tools. The browser panel lets the user point at tracks while agents read the focus state programmatically without driving the browser.
+- Embedded Codex MCP Apps Production Cockpit, plus `open_livepilot_production_cockpit` and `get_production_context`, for track focus, workflow lane, preserve flags, and per-track production intent inside Codex.
+- Dual-use Production Cockpit browser route at `/cockpit`, reusing the embedded cockpit UI with local HTTP adapters so the same workflow can run inside Codex or from a regular browser.
+- `npx livepilot --cockpit` standalone browser sidecar for the focus panel and Production Cockpit. It uses the latest persisted `get_session_info` snapshot by default, so the browser UI no longer depends on the Codex-managed MCP process lifetime or competes for Ableton's single TCP client.
+- Persistent lifecycle diagnostics at `~/.livepilot/logs/lifecycle.jsonl` for launcher startup, stdin close/end, single-instance cleanup targets, MCP child spawn/exit/error, Python MCP lifespan readiness/shutdown, signals, and cockpit sidecar startup/shutdown.
 
 ### Tests
 
 - Added `tests/test_realtime_arrangement_automation.py` covering the clean real-time recorder path, M4L scheduler path, record-start re-seeking, existing-automation preflight refusal, and cleanup when Arrangement Record fails to engage.
+- Added cockpit workflow coverage across `tests/test_layer_groups.py`, `tests/test_briefs.py`, `tests/test_production_context_v2.py`, `tests/test_production_cockpit.py`, `tests/test_production_cockpit_orchestration.py`, and focus-panel HTTP route tests, plus npm/MCPB packaging checks for extracted cockpit templates.
+- Added `tests/test_agent_focus.py` covering focus persistence, track-reorder resolution, MCP track-reference resolution, and the local focus-panel HTTP API.
+- Added snapshot-backed cockpit regression coverage proving the browser sidecar can serve state and save focus without an Ableton socket.
+- Added `tests/test_production_cockpit.py` covering the embedded MCP Apps resource metadata, app-only backend tools, context persistence, focus flow, and track-intent writes.
+- Added `tests/test_lifecycle_log.py` covering persistent lifecycle JSONL writes.
 
 ## v1.26.2 — 2026-05-27
 

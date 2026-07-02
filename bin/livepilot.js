@@ -3,6 +3,7 @@
 
 const { execFileSync, execSync, spawn } = require("child_process");
 const fs = require("fs");
+const http = require("http");
 const net = require("net");
 const path = require("path");
 
@@ -1110,6 +1111,21 @@ async function runCockpit(args) {
     process.exit(1);
   }
 
+  const requestedPort = cockpitPortFromArgs(args);
+  const existing = await probeCockpitHealth(requestedPort);
+  if (existing) {
+    const existingUrl = `http://127.0.0.1:${requestedPort}/cockpit/intent`;
+    console.error(
+      "LivePilot cockpit already appears to be running at %s; this snapshot sidecar may bind an adjacent port.",
+      existingUrl,
+    );
+    lifecycleLog("launcher_cockpit_existing_detected", {
+      port: requestedPort,
+      url: existingUrl,
+      health: existing,
+    });
+  }
+
   const child = spawn(pythonBin, ["-m", "mcp_server.focus_panel", ...args], {
     cwd: ROOT,
     detached: daemon,
@@ -1148,6 +1164,54 @@ async function runCockpit(args) {
     });
     activeChild = null;
     process.exit(code || 0);
+  });
+}
+
+function cockpitPortFromArgs(args) {
+  const fallback = parseInt(process.env.LIVEPILOT_FOCUS_PANEL_PORT || "9890", 10);
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+    if (arg === "--port" && args[i + 1]) {
+      return parseInt(args[i + 1], 10) || fallback;
+    }
+    if (arg.startsWith("--port=")) {
+      return parseInt(arg.slice("--port=".length), 10) || fallback;
+    }
+  }
+  return fallback;
+}
+
+function probeCockpitHealth(port) {
+  return new Promise((resolve) => {
+    const req = http.get({
+      host: "127.0.0.1",
+      port,
+      path: "/api/health",
+      timeout: 800,
+    }, (res) => {
+      let body = "";
+      res.setEncoding("utf8");
+      res.on("data", (chunk) => {
+        body += chunk;
+      });
+      res.on("end", () => {
+        if (res.statusCode !== 200) {
+          resolve(null);
+          return;
+        }
+        try {
+          const parsed = JSON.parse(body || "{}");
+          resolve(parsed && parsed.status === "ok" ? parsed : null);
+        } catch {
+          resolve(null);
+        }
+      });
+    });
+    req.on("timeout", () => {
+      req.destroy();
+      resolve(null);
+    });
+    req.on("error", () => resolve(null));
   });
 }
 

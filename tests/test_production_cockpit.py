@@ -648,7 +648,7 @@ def test_intent_cockpit_templates_render_as_single_primary_ui():
     assert "__BACKEND_TOOLS__" not in html
     assert "__CALL_TOOL_JS__" not in html
     assert "Save brief for Codex" in html
-    assert "Auto Groups" in html
+    assert "Suggestions" in html
     assert "Song Layers" in html
     assert "Apply Brief" not in html
     assert html.count('class="primary"') == 1
@@ -665,6 +665,7 @@ def test_intent_first_cockpit_renders_http_backend_contract():
     assert 'audition_scope: targetMode() === "layer" ? "layer" : "track"' in html
     assert "request_text: text" in html
     assert "notes: appendNote" not in html
+    assert "function appendNote" not in html
     assert "Save brief for Codex" in html
     assert "Clear target" in html
     assert "Save selection as layer" in html
@@ -675,8 +676,12 @@ def test_intent_first_cockpit_renders_http_backend_contract():
     assert "async function chooseSection(sectionId)" in html
     assert "section: savedSection()" in html
     assert '"#wholeSongButton").addEventListener("click", chooseWholeSong)' in html
-    assert "Auto Groups" in html
+    assert "Suggestions" in html
     assert "Song Layers" in html
+    assert "Needs you" in html
+    assert "id=\"needsYouCard\"" in html
+    assert "id=\"needsYouBadge\"" in html
+    assert "id=\"needsYouItems\"" in html
     assert "data-mode=\"track\"" in html
     assert "Choose target" not in html
     assert "async function clearTarget()" in html
@@ -691,6 +696,7 @@ def test_intent_first_cockpit_renders_http_backend_contract():
     assert "/api/cockpit/refresh-live" in html
     assert "async function saveCurrentLayer()" in html
     assert "function trackLayerChips(track)" in html
+    assert "function renderNeedsYou()" in html
     assert "function renderBriefFeed()" in html
     assert "submitAuditionAction" in html
     assert "/api/cockpit/auditions/action" in html

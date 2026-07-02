@@ -23,6 +23,12 @@ def _session() -> dict:
     }
 
 
+def _session_3_4() -> dict:
+    session = _session()
+    session["signature_numerator"] = 3
+    return session
+
+
 def test_section_object_round_trips(tmp_path):
     service = ProductionContextService(base_dir=tmp_path)
     saved = service.save_state(
@@ -90,3 +96,32 @@ def test_v1_section_scope_migrates_on_read_without_rewriting(tmp_path):
         "source": "manual",
     }
     assert json.loads(store_path.read_text())["version"] == 1
+
+
+def test_v1_section_scope_migration_uses_session_meter(tmp_path):
+    session = _session_3_4()
+    project_id = annotation_project_id_for_session(session, tmp_path)
+    store_path = tmp_path / project_id / "production_context.json"
+    store_path.parent.mkdir(parents=True, exist_ok=True)
+    store_path.write_text(json.dumps({
+        "version": 1,
+        "state": {
+            "lane": "mix",
+            "section_scope": "custom",
+            "section_label": "Bars 5-9",
+            "section_start_bar": 5,
+            "section_end_bar": 9,
+        },
+        "last_updated_ms": 123,
+    }))
+
+    state = ProductionContextService(base_dir=tmp_path).get_state(session)["state"]
+
+    assert state["lane"] == "mix"
+    assert state["section"] == {
+        "section_id": "manual_12000_bars_5_9",
+        "label": "Bars 5-9",
+        "start_beat": 12.0,
+        "end_beat": 24.0,
+        "source": "manual",
+    }

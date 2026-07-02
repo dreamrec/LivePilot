@@ -115,6 +115,15 @@ def test_cockpit_context_includes_orchestration_queue_summary(
         "requires_write": False,
         "status": "running",
     })
+    store.save_job({
+        "snapshot_id": snapshot["snapshot_id"],
+        "title": "Choose guitar audition winner",
+        "job_type": "audition",
+        "priority": 95,
+        "requires_transport": False,
+        "requires_write": False,
+        "status": "awaiting_decision",
+    })
 
     context = get_production_context(ctx)
     orchestration = context["orchestration"]
@@ -125,6 +134,7 @@ def test_cockpit_context_includes_orchestration_queue_summary(
     assert orchestration["counts"]["queued_tasks"] == 1
     assert orchestration["counts"]["queued_jobs"] == 1
     assert orchestration["counts"]["running_jobs"] == 1
+    assert orchestration["counts"]["awaiting_decision_jobs"] == 1
     assert orchestration["counts"]["pending_proposals"] == 2
     assert orchestration["counts"]["stale_proposals"] == 1
     assert orchestration["warnings"] == ["stale_proposals_need_revalidation"]
@@ -132,6 +142,7 @@ def test_cockpit_context_includes_orchestration_queue_summary(
     assert [
         job["title"] for job in orchestration["active_jobs"]
     ] == [
+        "Choose guitar audition winner",
         "Audition C edge saturation",
         "Playback meter check",
     ]
@@ -147,10 +158,16 @@ def test_intent_cockpit_renders_orchestration_queue_card():
     html = _render_intent_first_cockpit_html(transport="http")
 
     assert "Agent Queue" in html
+    assert "Needs you" in html
     assert "Briefs" in html
     assert "id=\"queueBadge\"" in html
     assert "id=\"queueItems\"" in html
+    assert "id=\"needsYouBadge\"" in html
+    assert "id=\"needsYouItems\"" in html
     assert "id=\"briefFeed\"" in html
     assert "function renderOrchestration()" in html
+    assert "function renderNeedsYou()" in html
     assert "function renderBriefFeed()" in html
+    assert "awaiting_decision" in html
+    assert "unresolved_members" in html
     assert "stale_needs_revalidation" in html
