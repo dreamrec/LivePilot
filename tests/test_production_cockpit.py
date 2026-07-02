@@ -129,6 +129,9 @@ def test_production_context_service_round_trips(tmp_path):
     }
     assert service.get_state(session)["state"]["reference"] == "The Suburbs"
 
+    track_scope = service.save_state(session, audition_scope="track")
+    assert track_scope["state"]["audition_scope"] == "track"
+
 
 def test_production_context_service_rejects_unknown_values(tmp_path):
     service = ProductionContextService(base_dir=tmp_path)
@@ -575,6 +578,39 @@ def test_send_cockpit_brief_creates_snapshot_task_and_layer_audition_job(
     assert context["orchestration"]["counts"]["queued_jobs"] == 1
 
 
+def test_send_cockpit_brief_creates_track_scoped_audition_job(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
+    ctx = _ctx(
+        tmp_path,
+        _session([
+            {"index": 0, "name": "drums", "color_index": 1, "has_audio_input": True},
+            {"index": 1, "name": "el-guit-intro", "color_index": 2, "has_audio_input": True},
+        ]),
+    )
+
+    context = send_cockpit_brief(
+        ctx,
+        lane="mix",
+        workflow_mode="audition",
+        audition_required=True,
+        audition_count=2,
+        audition_scope="track",
+        request_text="make this guitar speak",
+        target_mode="query",
+        target_query="el-guit-intro",
+    )
+
+    submission = context["orchestration_submission"]
+    assert submission["job"]["job_type"] == "audition"
+    assert submission["job"]["scope"]["target_mode"] == "track"
+    assert submission["job"]["scope"]["source_track_indices"] == [1]
+    assert submission["job"]["audition_manifest"]["scope_type"] == "track"
+    assert submission["job"]["audition_manifest"]["variant_count"] == 2
+
+
 def test_cockpit_mcp_read_tools_are_registered_unconditionally():
     from mcp_server.server import mcp
 
@@ -623,9 +659,9 @@ def test_intent_first_cockpit_renders_http_backend_contract():
     assert "LivePilot Intent Cockpit" in html
     assert "id=\"outputModeRow\"" in html
     assert "id=\"auditionCount\"" in html
-    assert "Choose a Song Layer target before saving auditions." in html
+    assert "Choose a layer or track target before saving auditions." in html
     assert "audition_count: auditionCount()" in html
-    assert "audition_scope: \"layer\"" in html
+    assert 'audition_scope: targetMode() === "layer" ? "layer" : "track"' in html
     assert "request_text: text" in html
     assert "notes: appendNote" not in html
     assert "Save brief for Codex" in html
@@ -655,5 +691,7 @@ def test_intent_first_cockpit_renders_http_backend_contract():
     assert "async function saveCurrentLayer()" in html
     assert "function trackLayerChips(track)" in html
     assert "function renderBriefFeed()" in html
+    assert "submitAuditionAction" in html
+    assert "/api/cockpit/auditions/action" in html
     assert "setInterval(() =>" in html
     assert "window.openai.callTool" not in html

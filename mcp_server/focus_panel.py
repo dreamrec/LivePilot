@@ -293,6 +293,16 @@ class FocusPanelServer:
             layer_id=str(payload.get("layer_id") or payload.get("key") or ""),
         )
 
+    def submit_cockpit_audition_action_payload(self, payload: dict) -> dict:
+        from .production_cockpit import submit_cockpit_audition_action
+
+        return submit_cockpit_audition_action(
+            self._cockpit_ctx(),
+            source_job_id=str(payload.get("source_job_id") or payload.get("job_id") or ""),
+            action=str(payload.get("action") or ""),
+            variant_letter=str(payload.get("variant_letter") or ""),
+        )
+
     def _cockpit_ctx(self):
         return SimpleNamespace(
             lifespan_context={
@@ -561,6 +571,12 @@ class _FocusPanelHandler(BaseHTTPRequestHandler):
             if path == "/api/cockpit/layers/delete":
                 payload = self._read_json_body()
                 self._send_json(self.server.panel.delete_cockpit_layer_payload(payload))
+                return
+            if path == "/api/cockpit/auditions/action":
+                payload = self._read_json_body()
+                self._send_json(
+                    self.server.panel.submit_cockpit_audition_action_payload(payload)
+                )
                 return
             if path == "/api/cockpit/refresh-live":
                 self._send_json(self.server.panel.refresh_live_payload())

@@ -32,6 +32,7 @@ _BACKEND_TOOL_NAMES = {
     "save_track_intent": "save_cockpit_track_intent",
     "save_layer": "save_cockpit_layer_group",
     "delete_layer": "delete_cockpit_layer_group",
+    "audition_action": "submit_cockpit_audition_action",
 }
 
 _TRACK_GROUPS = [
@@ -1372,14 +1373,15 @@ def _submit_cockpit_brief_packet(
     job = None
     if (
         state.get("workflow_mode") == "audition"
-        and target.get("target_mode") == "layer"
-        and (target.get("matched_layer") or target.get("target_layer"))
+        and (target.get("track_indices") or [])
     ):
         from .orchestration_queue_tools import submit_ableton_job
 
         job_scope = dict(scope)
+        layer_id = target.get("matched_layer") or target.get("target_layer")
+        if layer_id:
+            job_scope["layer_id"] = layer_id
         job_scope.update({
-            "layer_id": target.get("matched_layer") or target.get("target_layer"),
             "track_indices": target.get("track_indices") or [],
             "audition_count": int(state.get("audition_count") or 3),
             "brief": request_text,
@@ -1718,6 +1720,26 @@ def delete_cockpit_layer_group(ctx: Context, layer_id: str) -> dict:
         )
     context = _build_context(ctx, include_history=False)
     context["layer_delete"] = result
+    return context
+
+
+def submit_cockpit_audition_action(
+    ctx: Context,
+    source_job_id: str,
+    action: str,
+    variant_letter: str = "",
+) -> dict:
+    """Queue a play/promote/discard job for a visible audition variant."""
+    from .orchestration_queue_tools import submit_audition_action_job
+
+    result = submit_audition_action_job(
+        ctx,
+        source_job_id=source_job_id,
+        action=action,
+        variant_letter=variant_letter,
+    )
+    context = _build_context(ctx, include_history=False)
+    context["audition_action_submission"] = result
     return context
 
 
@@ -3941,15 +3963,13 @@ __CALL_TOOL_JS__
     }
     function auditionLabel() {
       const count = auditionCount();
-      return `${count} layer audition${count === 1 ? "" : "s"}`;
+      return `${count} audition${count === 1 ? "" : "s"}`;
     }
     function outputLabel() {
       return outputMode === "auditions" ? auditionLabel() : OUTPUTS[outputMode].label;
     }
     function auditionLayerReady() {
-      const target = targetState();
-      const ctx = ctxState();
-      return targetMode() === "layer" && Boolean(target.matched_layer || ctx.target_layer);
+      return targetTracks().length > 0;
     }
     function selectionFromState(payload = state) {
       const targetIndices = (((payload || {}).target || {}).track_indices || []).map(Number);
@@ -4317,7 +4337,7 @@ __CALL_TOOL_JS__
       $("#briefProtect").textContent = protect.length ? protect.map(flag => PROTECT_LABELS[flag] || flag).join(" / ") : "None";
       $("#briefOutput").textContent = outputLabel();
       $("#briefOutputSub").textContent = outputMode === "auditions"
-        ? (auditionLayerReady() ? "Codex will create visible muted audition lanes." : "Choose a Song Layer target before saving auditions.")
+        ? (auditionLayerReady() ? "Codex will create visible muted audition lanes." : "Choose a layer or track target before saving auditions.")
         : "Output mode selected in the brief controls.";
       $$("#outputModeRow .opt").forEach(node => node.classList.toggle("on", node.dataset.output === outputMode));
       $("#outputRow").classList.toggle("warn", outputMode !== "apply");
@@ -4330,7 +4350,7 @@ __CALL_TOOL_JS__
       $("#auditionCount").disabled = outputMode !== "auditions";
       $("#auditionControl").style.display = outputMode === "auditions" ? "inline-flex" : "none";
       $("#helperLine").textContent = outputMode === "auditions" && !auditionLayerReady()
-        ? "Choose Song Layers on the left and select a saved layer before saving audition variants."
+        ? "Choose a Song Layer or Track target before saving audition variants."
         : "Briefs save to LivePilot context; Codex reads the saved state before acting.";
       $("#willList").innerHTML = planWill(text, tracks).map(item => `<li>${escapeHtml(item)}</li>`).join("");
       $("#wontList").innerHTML = planWont(protect).map(item => `<li>${escapeHtml(item)}</li>`).join("");
@@ -4414,6 +4434,14 @@ __CALL_TOOL_JS__
         const text = brief.request_text || "Untitled brief";
         const jobs = brief.related_jobs || [];
         const plan = jobs.flatMap(job => job.plan || []).slice(0, 3);
+        const variants = jobs.flatMap(job => {
+          const manifest = job.audition_manifest || {};
+          return (manifest.variants || []).map(variant => ({
+            source_job_id: job.job_id,
+            letter: variant.letter || "",
+            label: variant.label || "",
+          }));
+        }).slice(0, 8);
         const planText = plan.length
           ? plan.map(step => step.summary || step.tool || "step").join(" / ")
           : `${brief.related_task_count || 0} task${brief.related_task_count === 1 ? "" : "s"} / ${brief.related_job_count || 0} job${brief.related_job_count === 1 ? "" : "s"}`;
@@ -4422,6 +4450,12 @@ __CALL_TOOL_JS__
             <b>${escapeHtml(text)}</b>
             <span>${escapeHtml(trail)} - #${escapeHtml(String(brief.seq || ""))}</span>
             <span>${escapeHtml(planText)}</span>
+            ${variants.length ? `<span>${variants.map(variant => `
+              ${escapeHtml(variant.letter)} ${escapeHtml(variant.label)}
+              <button class="soft audition-action" data-action="play" data-job-id="${escapeHtml(variant.source_job_id)}" data-variant="${escapeHtml(variant.letter)}">Play</button>
+              <button class="soft audition-action" data-action="promote" data-job-id="${escapeHtml(variant.source_job_id)}" data-variant="${escapeHtml(variant.letter)}">Promote</button>
+              <button class="soft audition-action" data-action="discard" data-job-id="${escapeHtml(variant.source_job_id)}" data-variant="${escapeHtml(variant.letter)}">Discard</button>
+            `).join(" ")}</span>` : ""}
           </div>
         `;
       }).join("");
@@ -4548,6 +4582,18 @@ __CALL_TOOL_JS__
       render();
       toast("Layer deleted");
     }
+    async function submitAuditionAction(action, sourceJobId, variantLetter) {
+      if (!sourceJobId || !action) return;
+      state = await callTool(BACKEND_TOOLS.audition_action, {
+        source_job_id: sourceJobId,
+        action,
+        variant_letter: variantLetter || ""
+      });
+      selected = selectionFromState();
+      syncControlsFromState();
+      render();
+      toast(`Queued audition ${action}`);
+    }
     async function clearTarget() {
       const keepPickerMode = pickerMode();
       setStatus("Clearing target");
@@ -4618,8 +4664,8 @@ __CALL_TOOL_JS__
     async function saveBrief(mode = outputMode) {
       outputMode = mode;
       if (outputMode === "auditions" && !auditionLayerReady()) {
-        setStatus("Choose a Song Layer target before saving auditions.");
-        toast("Choose a Song Layer first");
+        setStatus("Choose a layer or track target before saving auditions.");
+        toast("Choose a target first");
         renderBrief();
         return;
       }
@@ -4634,7 +4680,7 @@ __CALL_TOOL_JS__
         workflow_mode: OUTPUTS[outputMode].workflow,
         audition_required: OUTPUTS[outputMode].audition,
         audition_count: auditionCount(),
-        audition_scope: "layer",
+        audition_scope: targetMode() === "layer" ? "layer" : "track",
         protect,
         request_text: text,
         target_query: $("#targetQuery").value || targetState().query || ctx.target_query || "",
@@ -4703,6 +4749,15 @@ __CALL_TOOL_JS__
       outputMode = button.dataset.output || "ask";
       renderBrief();
     });
+    $("#briefFeed").addEventListener("click", event => {
+      const button = event.target.closest("button.audition-action");
+      if (!button) return;
+      submitAuditionAction(
+        button.dataset.action || "",
+        button.dataset.jobId || "",
+        button.dataset.variant || ""
+      );
+    });
     $("#fineTuneHead").addEventListener("click", () => $("#fineTune").classList.toggle("open"));
     $("#laneRow").addEventListener("click", event => {
       const button = event.target.closest("button[data-lane]");
@@ -4745,7 +4800,8 @@ def _cockpit_call_tool_js(transport: str) -> str:
         [BACKEND_TOOLS.send_brief]: ["POST", "/api/cockpit/brief"],
         [BACKEND_TOOLS.save_track_intent]: ["POST", "/api/cockpit/track-intent"],
         [BACKEND_TOOLS.save_layer]: ["POST", "/api/cockpit/layers/save"],
-        [BACKEND_TOOLS.delete_layer]: ["POST", "/api/cockpit/layers/delete"]
+        [BACKEND_TOOLS.delete_layer]: ["POST", "/api/cockpit/layers/delete"],
+        [BACKEND_TOOLS.audition_action]: ["POST", "/api/cockpit/auditions/action"]
       };
       const route = routes[name];
       if (!route) throw new Error(`Unknown cockpit tool: ${name}`);

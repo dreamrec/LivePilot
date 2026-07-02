@@ -21,7 +21,7 @@ _STORE_VERSION = 2
 
 _VALID_LANES = {"holistic", "composition", "sound_design", "mix"}
 _VALID_WORKFLOW_MODES = {"observe", "guided", "audition", "commit"}
-_VALID_AUDITION_SCOPES = {"layer"}
+_VALID_AUDITION_SCOPES = {"layer", "track"}
 _VALID_SECTION_SOURCES = {"cue_points", "section_track", "manual", "whole_song"}
 _VALID_TARGET_MODES = {"instrument", "layer", "query"}
 _VALID_PROTECT_FLAGS = {

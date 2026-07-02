@@ -11,6 +11,7 @@ from mcp_server.orchestration_queue_tools import (
     list_agent_proposals,
     list_agent_tasks,
     run_next_ableton_job,
+    submit_audition_action_job,
     submit_ableton_job,
     submit_agent_proposal,
     submit_agent_task,
@@ -114,10 +115,25 @@ class _Ableton:
             track = self.session_info["tracks"][int(params["track_index"])]
             track["mute"] = bool(params["mute"])
             return {"index": track["index"], "mute": track["mute"]}
+        if command == "delete_track":
+            track_index = int(params["track_index"])
+            self.session_info["tracks"].pop(track_index)
+            for index, track in enumerate(self.session_info["tracks"]):
+                track["index"] = index
+            self.session_info["track_count"] = len(self.session_info["tracks"])
+            return {"deleted_index": track_index}
         if command == "set_track_solo":
             track = self.session_info["tracks"][int(params["track_index"])]
             track["solo"] = bool(params["solo"])
             return {"index": track["index"], "solo": track["solo"]}
+        if command == "get_track_meters":
+            return {
+                "track_index": int(params["track_index"]),
+                "left": 0.1,
+                "right": 0.1,
+            }
+        if command == "get_master_meters":
+            return {"left": 0.2, "right": 0.2}
         if command == "get_track_info":
             track = self.session_info["tracks"][int(params["track_index"])]
             return {
@@ -258,6 +274,8 @@ def test_submit_audition_job_generates_visible_layer_plan(tmp_path, monkeypatch)
         "set_track_name",
         "set_track_mute",
         "set_track_annotation",
+        "get_track_meters",
+        "get_master_meters",
     ]
     assert job["plan"][1]["params"] == {
         "track_index": {"$from_step": "aud_a_src_1_duplicate", "path": "index"},
@@ -267,6 +285,113 @@ def test_submit_audition_job_generates_visible_layer_plan(tmp_path, monkeypatch)
     assert job["plan"][3]["backend"] == "mcp_tool"
     assert job["plan"][3]["params"]["role"] == "audition_variant"
     assert "variant:A" in job["plan"][3]["params"]["tags"]
+    assert job["plan"][-2]["summary"].startswith("Audibility verification")
+
+
+def test_submit_audition_job_generates_visible_track_plan(tmp_path, monkeypatch):
+    _patch_snapshot_builders(monkeypatch)
+    ctx, _ableton = _ctx(tmp_path)
+    snapshot = create_orchestration_snapshot(
+        ctx,
+        request_text="make track auditions",
+        mode="audition",
+    )["snapshot"]
+
+    job = submit_ableton_job(
+        ctx,
+        job_type="audition",
+        snapshot_id=snapshot["snapshot_id"],
+        scope={
+            "target_label": "Guitar",
+            "track_indices": [1],
+            "audition_count": 2,
+            "variant_labels": ["edge sat", "wide tucked"],
+        },
+    )["job"]
+
+    assert job["title"] == "Create 2 visible Guitar auditions"
+    assert job["scope"]["target_mode"] == "track"
+    assert job["scope"]["source_track_indices"] == [1]
+    assert job["audition_manifest"]["scope_type"] == "track"
+    assert job["audition_manifest"]["layer_id"] == ""
+    assert job["write_set"] == ["track:1", "project"]
+    assert "layer:intro_handoff" not in job["plan"][3]["params"]["tags"]
+    assert job["audition_manifest"]["tracks"][0]["expected_track_name"] == (
+        "AUD A Guitar edge sat"
+    )
+
+
+def test_audition_action_jobs_reference_manifest_tracks(tmp_path, monkeypatch):
+    _patch_snapshot_builders(monkeypatch)
+    ctx, ableton = _ctx(tmp_path)
+    snapshot = create_orchestration_snapshot(
+        ctx,
+        request_text="make auditions",
+        mode="audition",
+    )["snapshot"]
+    source_job = submit_ableton_job(
+        ctx,
+        job_type="audition",
+        snapshot_id=snapshot["snapshot_id"],
+        scope={
+            "target_label": "Guitar",
+            "track_indices": [1],
+            "audition_count": 2,
+            "variant_labels": ["edge sat", "wide tucked"],
+        },
+    )["job"]
+    ableton.session_info["tracks"].append({
+        "index": 2,
+        "name": "AUD A Guitar edge sat",
+        "mute": True,
+        "solo": False,
+    })
+    ableton.session_info["tracks"].append({
+        "index": 3,
+        "name": "AUD B Guitar wide tucked",
+        "mute": True,
+        "solo": False,
+    })
+    ableton.session_info["track_count"] = 4
+
+    play = submit_audition_action_job(
+        ctx,
+        source_job_id=source_job["job_id"],
+        action="play",
+        variant_letter="A",
+    )["job"]
+    promote = submit_audition_action_job(
+        ctx,
+        source_job_id=source_job["job_id"],
+        action="promote",
+        variant_letter="A",
+    )["job"]
+    discard = submit_audition_action_job(
+        ctx,
+        source_job_id=source_job["job_id"],
+        action="discard",
+        variant_letter="B",
+    )["job"]
+
+    assert play["job_type"] == "playback_analysis"
+    assert play["requires_transport"] is True
+    assert play["scope"]["track_names"] == ["AUD A Guitar edge sat"]
+    assert [step["tool"] for step in play["plan"]] == [
+        "set_track_mute",
+        "set_track_solo",
+    ]
+
+    assert promote["job_type"] == "mutation"
+    assert promote["scope"]["track_names"] == ["AUD A Guitar edge sat"]
+    assert promote["scope"]["loser_expected_track_names"] == [
+        "AUD B Guitar wide tucked",
+    ]
+    assert "set_track_annotation" in [step["tool"] for step in promote["plan"]]
+
+    assert discard["job_type"] == "mutation"
+    assert discard["scope"]["track_names"] == ["AUD B Guitar wide tucked"]
+    assert discard["plan"][0]["tool"] == "delete_track"
+    assert discard["plan"][0]["params"]["track_index"] == 3
 
 
 def test_run_generated_audition_job_creates_muted_annotated_lane(

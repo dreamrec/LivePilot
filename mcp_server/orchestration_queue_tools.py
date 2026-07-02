@@ -203,6 +203,25 @@ def _audition_track_name(letter: str, source_name: str, label: str) -> str:
     return name[:80].rstrip()
 
 
+def _audibility_verification_steps(track_indices: list[int]) -> list[dict]:
+    steps = []
+    for index in track_indices:
+        steps.append({
+            "tool": "get_track_meters",
+            "params": {"track_index": index},
+            "summary": (
+                "Audibility verification: read source-track meters after "
+                "audition lanes are prepared."
+            ),
+        })
+    steps.append({
+        "tool": "get_master_meters",
+        "params": {},
+        "summary": "Audibility verification: read master meters after audition setup.",
+    })
+    return steps
+
+
 def _compile_visible_layer_audition_job(
     ctx: Context,
     session_info: dict,
@@ -220,25 +239,27 @@ def _compile_visible_layer_audition_job(
         context.get("summary")
         if isinstance(context.get("summary"), dict) else {}
     )
+    track_indices = _normalize_track_indices(scope.get("track_indices"))
+    explicit_track_scope = bool(track_indices) and not scope.get("layer_id")
     layer_id = _normalize_layer_id(
         scope.get("layer_id")
-        or target.get("matched_layer")
-        or target.get("target_layer")
-        or summary.get("target_layer")
-    )
-    if not layer_id:
-        raise ValueError(
-            "Layer audition jobs require scope.layer_id or an active cockpit "
-            "Song Layer target."
+        or (
+            ""
+            if explicit_track_scope else
+            target.get("matched_layer")
+            or target.get("target_layer")
+            or summary.get("target_layer")
         )
-
+    )
     layer = _find_layer_group(context, layer_id)
-    track_indices = _normalize_track_indices(scope.get("track_indices"))
     if not track_indices and layer:
         track_indices = _normalize_track_indices(layer.get("track_indices"))
     if not track_indices:
+        track_indices = _normalize_track_indices(target.get("track_indices"))
+    if not track_indices:
         raise ValueError(
-            f"Layer audition job could not resolve tracks for layer '{layer_id}'."
+            "Audition job requires scope.track_indices, an active Track target, "
+            "or a resolvable Song Layer target."
         )
 
     count = _bounded_audition_count(
@@ -246,22 +267,30 @@ def _compile_visible_layer_audition_job(
         fallback=_bounded_audition_count(summary.get("audition_count"), 3),
     )
     tracks = _track_lookup(session_info, context)
-    layer_label = (
+    scope_type = "layer" if layer_id else "track"
+    target_label = (
         str((layer or {}).get("label") or layer_id.replace("_", " ").title())
-        if layer else layer_id.replace("_", " ").title()
+        if layer_id else
+        str(scope.get("target_label") or target.get("query") or "Track")
     )
     generated_scope = dict(scope)
     generated_scope.update({
-        "layer_id": layer_id,
-        "layer_label": layer_label,
+        "target_mode": scope_type,
+        "target_label": target_label,
         "track_indices": track_indices,
         "source_track_indices": track_indices,
         "audition_count": count,
         "audition_style": "visible_muted_duplicate_lanes",
     })
+    if layer_id:
+        generated_scope.update({
+            "layer_id": layer_id,
+            "layer_label": target_label,
+        })
 
     plan: list[dict] = []
     variants = []
+    manifest_tracks = []
     for variant_index in range(count):
         variants.append({
             "letter": _variant_letter(variant_index),
@@ -278,6 +307,14 @@ def _compile_visible_layer_audition_job(
             label = variant["label"]
             duplicate_step_id = f"aud_{letter.lower()}_src_{source_index}_duplicate"
             duplicate_index = {"$from_step": duplicate_step_id, "path": "index"}
+            audition_name = _audition_track_name(letter, source_name, label)
+            manifest_tracks.append({
+                "letter": letter,
+                "label": label,
+                "source_track_index": source_index,
+                "source_track_name": source_name,
+                "expected_track_name": audition_name,
+            })
             plan.extend([
                 {
                     "step_id": duplicate_step_id,
@@ -292,7 +329,7 @@ def _compile_visible_layer_audition_job(
                     "tool": "set_track_name",
                     "params": {
                         "track_index": duplicate_index,
-                        "name": _audition_track_name(letter, source_name, label),
+                        "name": audition_name,
                     },
                     "summary": f"Name audition {letter} duplicate.",
                 },
@@ -313,13 +350,13 @@ def _compile_visible_layer_audition_job(
                         "decision_state": "open",
                         "source": "orchestration_layer_audition_job",
                         "notes": (
-                            f"Visible audition {letter} for layer "
-                            f"{layer_label}; source track {source_name}."
+                            f"Visible audition {letter} for {scope_type} "
+                            f"{target_label}; source track {source_name}."
                         ),
                         "tags": [
                             "audition",
                             f"variant:{letter}",
-                            f"layer:{layer_id}",
+                            *([f"layer:{layer_id}"] if layer_id else []),
                             f"source_track:{source_index}",
                         ],
                         "relationships": [
@@ -328,11 +365,18 @@ def _compile_visible_layer_audition_job(
                                 "source_track_index": source_index,
                                 "source_track_name": source_name,
                             },
-                            {
-                                "type": "audition_layer",
-                                "layer_id": layer_id,
-                                "layer_label": layer_label,
-                            },
+                            *([
+                                {
+                                    "type": "audition_layer",
+                                    "layer_id": layer_id,
+                                    "layer_label": target_label,
+                                },
+                            ] if layer_id else [
+                                {
+                                    "type": "audition_track",
+                                    "target_label": target_label,
+                                },
+                            ]),
                             {
                                 "type": "audition_variant",
                                 "variant": letter,
@@ -343,11 +387,14 @@ def _compile_visible_layer_audition_job(
                     "summary": f"Annotate audition {letter} duplicate.",
                 },
             ])
+    plan.extend(_audibility_verification_steps(track_indices))
 
     resources = [f"track:{index}" for index in track_indices]
-    resources.extend([f"layer:{layer_id}", "project"])
+    if layer_id:
+        resources.append(f"layer:{layer_id}")
+    resources.append("project")
     generated_title = title or (
-        f"Create {count} visible {layer_label} audition"
+        f"Create {count} visible {target_label} audition"
         f"{'' if count == 1 else 's'}"
     )
     return {
@@ -360,11 +407,14 @@ def _compile_visible_layer_audition_job(
         "plan": plan,
         "audition_manifest": {
             "style": "visible_muted_duplicate_lanes",
+            "scope_type": scope_type,
             "layer_id": layer_id,
-            "layer_label": layer_label,
+            "layer_label": target_label if layer_id else "",
+            "target_label": target_label,
             "source_track_indices": track_indices,
             "variant_count": count,
             "variants": variants,
+            "tracks": manifest_tracks,
             "steps_per_duplicate": 4,
         },
     }
@@ -547,6 +597,210 @@ def submit_ableton_job(
         payload["audition_manifest"] = audition_manifest
     job = store.save_job(payload)
     return {"status": "ok", "project_id": store.project_id, "job": job}
+
+
+def submit_audition_action_job(
+    ctx: Context,
+    source_job_id: str,
+    action: str,
+    variant_letter: str = "",
+) -> dict:
+    """Submit a play/promote/discard job for a generated audition variant."""
+    store, session_info = _store(ctx)
+    source_job = store.get_job(source_job_id)
+    if source_job is None:
+        raise ValueError(f"source_job_id not found: {source_job_id}")
+    manifest = source_job.get("audition_manifest")
+    if not isinstance(manifest, dict):
+        raise ValueError("source job does not have an audition_manifest")
+    action = str(action or "").strip().lower()
+    if action not in {"play", "promote", "discard"}:
+        raise ValueError("action must be one of play, promote, discard")
+    resolved = _resolve_audition_manifest_tracks(
+        session_info,
+        manifest,
+        variant_letter=variant_letter,
+    )
+    if not resolved:
+        raise ValueError("No audition variant tracks resolved in current session")
+    generated = _compile_audition_action_job(
+        source_job=source_job,
+        manifest=manifest,
+        action=action,
+        resolved_tracks=resolved,
+        variant_letter=variant_letter,
+    )
+    job = store.save_job(generated)
+    return {"status": "ok", "project_id": store.project_id, "job": job}
+
+
+def _resolve_audition_manifest_tracks(
+    session_info: dict,
+    manifest: dict,
+    variant_letter: str = "",
+) -> list[dict]:
+    wanted = str(variant_letter or "").strip().upper()
+    by_name = {
+        str(track.get("name") or ""): track
+        for track in session_info.get("tracks") or []
+        if isinstance(track, dict)
+    }
+    out = []
+    for item in manifest.get("tracks") or []:
+        if not isinstance(item, dict):
+            continue
+        letter = str(item.get("letter") or "").strip().upper()
+        if wanted and letter != wanted:
+            continue
+        expected = str(item.get("expected_track_name") or "")
+        current = by_name.get(expected)
+        if not current:
+            continue
+        entry = dict(item)
+        entry["track_index"] = current.get("index")
+        entry["track_name"] = current.get("name")
+        out.append(entry)
+    return out
+
+
+def _compile_audition_action_job(
+    *,
+    source_job: dict,
+    manifest: dict,
+    action: str,
+    resolved_tracks: list[dict],
+    variant_letter: str = "",
+) -> dict:
+    source_scope = source_job.get("scope") if isinstance(source_job.get("scope"), dict) else {}
+    variant = str(variant_letter or "").strip().upper()
+    suffix = f" {variant}" if variant else ""
+    track_indices = [
+        int(item["track_index"]) for item in resolved_tracks
+        if isinstance(item.get("track_index"), int)
+    ]
+    track_names = [str(item.get("track_name") or "") for item in resolved_tracks]
+    scope = {
+        "source_job_id": source_job.get("job_id", ""),
+        "audition_action": action,
+        "variant_letter": variant,
+        "track_indices": track_indices,
+        "track_names": track_names,
+        "expected_track_names": [
+            str(item.get("expected_track_name") or "") for item in resolved_tracks
+        ],
+        "source_audition_manifest": manifest,
+    }
+    for key in (
+        "section",
+        "section_id",
+        "section_label",
+        "section_start_beat",
+        "section_end_beat",
+        "loop_start",
+        "loop_length",
+    ):
+        if key in source_scope:
+            scope[key] = source_scope[key]
+
+    if action == "play":
+        plan = []
+        for index in track_indices:
+            plan.extend([
+                {
+                    "tool": "set_track_mute",
+                    "params": {"track_index": index, "mute": False},
+                    "summary": f"Unmute audition track {index + 1} for playback.",
+                },
+                {
+                    "tool": "set_track_solo",
+                    "params": {"track_index": index, "solo": True},
+                    "summary": f"Solo audition track {index + 1} for playback.",
+                },
+            ])
+        return {
+            "snapshot_id": source_job.get("snapshot_id", ""),
+            "title": f"Play audition{suffix}",
+            "submitted_by": "cockpit",
+            "job_type": "playback_analysis",
+            "priority": 85,
+            "scope": scope | {"play": True},
+            "requires_transport": True,
+            "requires_write": False,
+            "write_set": [],
+            "leases": ["transport"],
+            "plan": plan,
+            "status": "queued",
+        }
+
+    if action == "promote":
+        selected_names = {item.get("expected_track_name") for item in resolved_tracks}
+        loser_tracks = [
+            item for item in manifest.get("tracks") or []
+            if item.get("expected_track_name") not in selected_names
+        ]
+        plan = []
+        for index in track_indices:
+            plan.extend([
+                {
+                    "tool": "set_track_mute",
+                    "params": {"track_index": index, "mute": False},
+                    "summary": f"Promote audition track {index + 1}.",
+                },
+                {
+                    "tool": "set_track_annotation",
+                    "backend": "mcp_tool",
+                    "params": {
+                        "track_index": index,
+                        "decision_state": "committed",
+                        "role": "promoted_audition_variant",
+                        "source": "cockpit_audition_promote",
+                        "tags": ["audition_promoted"],
+                    },
+                    "summary": f"Mark audition track {index + 1} as promoted.",
+                },
+            ])
+        scope["loser_expected_track_names"] = [
+            str(item.get("expected_track_name") or "") for item in loser_tracks
+        ]
+        return {
+            "snapshot_id": source_job.get("snapshot_id", ""),
+            "title": f"Promote audition{suffix}",
+            "submitted_by": "cockpit",
+            "job_type": "mutation",
+            "priority": 90,
+            "scope": scope,
+            "requires_transport": False,
+            "requires_write": True,
+            "write_set": [f"track:{index}" for index in track_indices] + ["project"],
+            "leases": [f"track:{index}" for index in track_indices] + ["project"],
+            "plan": plan,
+            "status": "queued",
+        }
+
+    # Discard deletes the selected variant, or every audition variant if no
+    # variant letter was passed.
+    plan = [
+        {
+            "tool": "delete_track",
+            "params": {"track_index": index},
+            "summary": f"Discard audition track {index + 1}.",
+        }
+        for index in sorted(track_indices, reverse=True)
+    ]
+    return {
+        "snapshot_id": source_job.get("snapshot_id", ""),
+        "title": f"Discard audition{suffix}",
+        "submitted_by": "cockpit",
+        "job_type": "mutation",
+        "priority": 75,
+        "scope": scope,
+        "requires_transport": False,
+        "requires_write": True,
+        "write_set": [f"track:{index}" for index in track_indices] + ["project"],
+        "leases": [f"track:{index}" for index in track_indices] + ["project"],
+        "plan": plan,
+        "status": "queued",
+    }
 
 
 @mcp.tool()
