@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog (Generated)
 
-471 tools across 56 domains.
+487 tools across 56 domains.
 
 > Auto-generated from `mcp.list_tools()`. Do not hand-edit.
 > Regenerate: `python3 scripts/generate_tool_catalog.py`
@@ -660,11 +660,12 @@
 | `suggest_next_chord` | Suggest the next chord based on the current progression. |
 | `transpose_smart` | Transpose a MIDI clip to a new key with musical intelligence. |
 
-## Tracks (25)
+## Tracks (29)
 
 | Tool | Description |
 |------|-------------|
 | `build_track_intent_map` | Build the decision-time map of track roles, options, references, and intent. |
+| `clear_agent_focus` | Clear LivePilot's current agent focus. |
 | `clear_track_annotation` | Clear a persistent track annotation by current track or annotation_id. |
 | `create_audio_track` | Create a new audio track. index=-1 appends at end. |
 | `create_midi_track` | Create a new MIDI track. index=-1 appends at end. |
@@ -673,12 +674,15 @@
 | `duplicate_track` | Duplicate a track (copies all clips, devices, and settings). |
 | `flatten_track` | Flatten a frozen track — commit rendered audio permanently. |
 | `freeze_track` | Freeze a track — render all devices to audio for CPU savings. |
+| `get_agent_focus` | Return the tracks the user has pointed LivePilot at in the focus panel. |
 | `get_appointed_device` | Return the Blue Hand (appointed/focused) device location as (track_index, device_index, track_name, device_name). |
 | `get_freeze_status` | Check if a track is frozen. |
 | `get_track_annotations` | List persistent track annotations resolved against the current session. |
-| `get_track_info` | Get detailed info about a track: clips, devices, mixer state. |
+| `get_track_info` | Get track clips, device-chain summaries, and mixer state; device parameters are opt-in and capped. |
 | `get_track_performance_impact` | Read a track's CPU performance impact metric. |
 | `jump_in_session_clip` | Jump playhead within a running session clip, in beats from start. |
+| `resolve_track_ref` | Resolve a conversational track reference to current track indices. |
+| `set_agent_focus` | Set LivePilot's current agent focus to one or more regular tracks. |
 | `set_group_fold` | Fold or unfold a group track to show/hide its children. |
 | `set_track_annotation` | Attach persistent sparse intent metadata to a track or project scope. |
 | `set_track_arm` | Arm or disarm a track for recording. |
@@ -759,4 +763,4 @@
 | `rank_wonder_variants` | Rank wonder-mode variants by taste + identity + novelty + coherence. |
 
 ---
-*Generated from 471 registered tools.*
+*Generated from 475 registered tools.*

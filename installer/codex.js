@@ -70,6 +70,13 @@ function writeLocalMcpConfig(destDir) {
       livepilot: {
         command: process.execPath,
         args: [path.join(ROOT, "bin", "livepilot.js")],
+        cwd: ROOT,
+        env: {
+          LIVEPILOT_SINGLE_INSTANCE: "off",
+          LIVEPILOT_FOCUS_PANEL: "0",
+        },
+        startup_timeout_sec: 60,
+        tool_timeout_sec: 900,
       },
     },
   };

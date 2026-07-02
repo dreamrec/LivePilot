@@ -17,7 +17,7 @@
 
 <p align="center">
   An agentic production system for Ableton Live 12.<br>
-  471 tools. 56 domains. Device atlas. Plan-aware Splice integration. Auto-composition. Spectral perception. Technique memory. Drum-rack pad builder. Live dead-device detection.
+  487 tools. 56 domains. Device atlas. Plan-aware Splice integration. Auto-composition. Spectral perception. Technique memory. Drum-rack pad builder. Live dead-device detection.
 </p>
 
 <br>
@@ -59,7 +59,7 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 
 ## Two Ways to Talk to LivePilot
 
-Pick whichever is faster for the idea in your head — both reach the same 471-tool surface.
+Pick whichever is faster for the idea in your head — both reach the same 487-tool surface.
 
 ### Route A — Artist / aesthetic shorthand
 
@@ -112,7 +112,7 @@ Most sessions do both. Lead with shorthand to anchor the aesthetic, then refine 
 │         └─────────────────┼──────────────────┘                       │
 │                           ▼                                          │
 │                  ┌─────────────────┐                                  │
-│                  │   471 MCP Tools  │                                  │
+│                  │   487 MCP Tools  │                                  │
 │                  │   56 domains     │                                  │
 │                  └────────┬────────┘                                  │
 │                           │                                          │
@@ -153,7 +153,7 @@ Most sessions do both. Lead with shorthand to anchor the aesthetic, then refine 
 
 ## The Intelligence Layer
 
-12 engines sit on top of the 471 tools. They give the AI musical judgment, not just musical execution.
+12 engines sit on top of the 487 tools. They give the AI musical judgment, not just musical execution.
 
 ### SongBrain — What the Song Is
 
@@ -205,7 +205,7 @@ Every engine follows: **measure before → act → measure after → compare**. 
 
 ## Tools
 
-471 tools across 56 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
+487 tools across 56 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
 
 <br>
 
@@ -214,7 +214,7 @@ Every engine follows: **measure before → act → measure after → compare**. 
 | Domain | # | What it covers |
 |--------|:-:|----------------|
 | Transport | 12 | playback, tempo, time sig, loop, metronome, undo/redo, cue points, diagnostics |
-| Tracks | 17 | create MIDI/audio/return, delete, duplicate, arm, mute, solo, color, freeze, flatten |
+| Tracks | 21 | create MIDI/audio/return, delete, duplicate, arm, mute, solo, color, freeze, flatten, browser-driven agent focus |
 | Clips | 11 | create, delete, duplicate, fire, stop, loop, launch mode, warp mode, quantize |
 | Notes | 8 | add/get/remove/modify MIDI notes, transpose, duplicate, per-note probability |
 | Devices | 19 | load by name or URI, insert native (12.3+), get/set parameters, batch edit, racks, chains, drum chain note assignment, presets, plugin deep control |
@@ -540,7 +540,7 @@ The V2 intelligence layer. These tools analyze, diagnose, plan, evaluate, and le
 | Creative Constraints | 5 | constraint activation, reference-inspired variants |
 | Preview Studio | 5 | variant creation, preview rendering, comparison, commit |
 
-> **[View all 471 tools →](docs/manual/tool-catalog.md)**
+> **[View all 487 tools →](docs/manual/tool-catalog.md)**
 
 <br>
 
@@ -718,6 +718,8 @@ npx livepilot --install    # Install Remote Script
 npx livepilot --uninstall  # Remove Remote Script
 npx livepilot --install-codex-plugin   # Install bundled Codex plugin
 npx livepilot --uninstall-codex-plugin # Remove bundled Codex plugin
+npx livepilot --cockpit    # Start browser focus panel / Production Cockpit
+npx livepilot --cockpit --daemon # Start the cockpit sidecar in background
 npx livepilot --status     # Check Ableton connection
 npx livepilot --doctor     # Full diagnostic check
 npx livepilot --version    # Show version
@@ -767,7 +769,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for architecture details, code guidelines
 
 | Document | What's inside |
 |----------|---------------|
-| [Manual](docs/manual/index.md) | Complete reference: architecture, all 471 tools, workflows |
+| [Manual](docs/manual/index.md) | Complete reference: architecture, all 487 tools, workflows |
 | [Intelligence Layer](docs/manual/intelligence.md) | How the 12 engines connect — conductor, moves, preview, evaluation |
 | [Device Atlas](docs/manual/device-atlas.md) | 5264 devices indexed — search, suggest, chain building |
 | [Samples & Slicing](docs/manual/samples.md) | 3-source search, fitness critics, slice workflows |

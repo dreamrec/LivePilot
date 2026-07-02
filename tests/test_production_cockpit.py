@@ -10,7 +10,6 @@ from mcp_server.persistence.orchestration_queue import OrchestrationService
 from mcp_server.persistence.production_context import ProductionContextService
 from mcp_server.persistence import track_annotations as annotation_store
 from mcp_server.production_cockpit import (
-    COCKPIT_RESOURCE_URI,
     _backend_tool_map,
     _build_section_map,
     _render_cockpit_html,
@@ -523,14 +522,14 @@ def test_send_cockpit_brief_creates_snapshot_task_and_layer_audition_job(
     assert context["orchestration"]["counts"]["queued_jobs"] == 1
 
 
-def test_cockpit_mcp_tools_are_opt_in_by_default():
+def test_cockpit_mcp_read_tools_are_registered_unconditionally():
     from mcp_server.server import mcp
 
     async def _run():
         tools = await mcp.list_tools()
         names = {tool.name for tool in tools}
-        assert "open_livepilot_production_cockpit" not in names
-        assert "get_production_context" not in names
+        assert "open_livepilot_production_cockpit" in names
+        assert "get_production_context" in names
         assert not (set(_backend_tool_map().values()) & names)
 
     asyncio.run(_run())
@@ -547,7 +546,6 @@ def test_open_cockpit_returns_browser_url(tmp_path, monkeypatch):
 
     result = open_livepilot_production_cockpit(ctx)
 
-    assert result.structured_content["resource_uri"] == COCKPIT_RESOURCE_URI
     assert result.structured_content["cockpit_url"] == "http://127.0.0.1:9890/cockpit"
     assert not result.meta
     assert result.structured_content["tracks"][0]["name"] == "Intro Texture"

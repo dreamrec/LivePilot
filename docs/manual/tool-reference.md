@@ -1,6 +1,6 @@
 # Tool Reference
 
-LivePilot gives you 471 tools that control every part of Ableton Live 12. You don't call these tools directly -- you describe what you want in plain language, and the AI picks the right tools behind the scenes. But knowing what's available helps you ask better questions and understand what's happening when the AI works on your session.
+LivePilot gives you 487 tools that control every part of Ableton Live 12. You don't call these tools directly -- you describe what you want in plain language, and the AI picks the right tools behind the scenes. But knowing what's available helps you ask better questions and understand what's happening when the AI works on your session.
 
 This chapter covers every tool, grouped by what it does. Each entry tells you the tool name, what it does in practice, what parameters it accepts, and when you'd want it.
 
@@ -176,13 +176,53 @@ Scans your session for potential issues: tracks left armed, forgotten solos/mute
 
 Tools for creating, deleting, naming, coloring, and controlling tracks.
 
+### Agent focus panel
+
+Run the local browser focus panel separately from MCP:
+
+```bash
+npx livepilot --cockpit
+# or
+npx livepilot --cockpit --daemon
+```
+
+It serves the focus panel at `http://127.0.0.1:9890/` and the richer
+Production Cockpit at `http://127.0.0.1:9890/cockpit`. Open either in Codex's
+in-app browser or any local browser. Codex does not need to drive the browser
+after that; it reads the selected tracks through `get_agent_focus`.
+
+The standalone cockpit is snapshot-backed by default. LivePilot persists the
+latest successful `get_session_info` result to `~/.livepilot/current_session.json`,
+so the browser UI can show tracks and save focus/intent without opening a
+second Ableton TCP connection. After major Live session changes, run
+`get_session_info` once through MCP to refresh the cockpit's track map.
+
+| Tool | Use |
+|------|-----|
+| `get_agent_focus` | Read the tracks selected in the focus panel |
+| `set_agent_focus` | Set focus from MCP, useful for scripts or tests |
+| `clear_agent_focus` | Clear the current focus |
+| `resolve_track_ref` | Resolve "focused", "this", a track name, a unique substring, an index, or `master` |
+
+**When to use:** When you want to point at tracks visually and then tell the
+agent "work on this" or "make these sit together" without spelling out track
+names.
+
+---
+
 ### get_track_info
 
-Returns detailed info about a single track: its clips, devices, volume, pan, mute/solo/arm state, and routing.
+Returns detailed info about a single track: its clips, device chain summaries,
+volume, pan, mute/solo/arm state, and routing. Device parameter lists are
+omitted by default to keep this safe on plugin-heavy sets; use
+`get_device_parameters` for intentional single-device parameter inspection.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `track_index` | int | *(required)* | Track number (0-based) |
+| `include_device_parameters` | bool | false | Include a capped sample of device parameters |
+| `max_device_parameters` | int | 128 | Maximum parameters to include per device when opted in; capped internally |
+| `include_device_parameter_count` | bool | false | Count parameters per device; slower on large plugins |
 
 **When to use:** When the AI needs to inspect a specific track before making changes, or when you ask "what's on track 3?"
 
@@ -3546,7 +3586,7 @@ Lightweight health check — parameter_count sanity (≤1 parameter = probably d
 
 ## More tools
 
-This chapter covers the most-used tools. The complete list of all 471 tools across 56 domains — including all intelligence-engine tools, creative-constraints, preview-studio, wonder-mode, memory, song-brain, transition/reference/translation engines — is auto-generated at **[Tool Catalog](tool-catalog.md)** from the running MCP server.
+This chapter covers the most-used tools. The complete list of all 487 tools across 56 domains — including all intelligence-engine tools, creative-constraints, preview-studio, wonder-mode, memory, song-brain, transition/reference/translation engines — is auto-generated at **[Tool Catalog](tool-catalog.md)** from the running MCP server.
 
 See also:
 - **[The Intelligence Layer](intelligence.md)** — how the engines connect

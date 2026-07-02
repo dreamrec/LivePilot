@@ -3,12 +3,9 @@
 from __future__ import annotations
 
 import json
-import os
 from typing import Optional
 
-from fastmcp import Context, FastMCPApp
-from fastmcp.apps import AppConfig, ResourceCSP
-from fastmcp.server.providers.addressing import hashed_backend_name
+from fastmcp import Context
 from fastmcp.tools.base import ToolResult
 
 from . import __version__
@@ -22,10 +19,6 @@ from .persistence.track_annotations import (
 )
 from .server import mcp
 from .tools._conductor import classify_request
-
-
-APP_NAME = "LivePilotCockpit"
-COCKPIT_RESOURCE_URI = f"ui://livepilot/{__version__}/production-cockpit-v5.html"
 
 _BACKEND_TOOL_NAMES = {
     "get_state": "get_cockpit_state",
@@ -87,20 +80,6 @@ _LAYER_TAG_PREFIX = "layer:"
 _LAYER_STATUS_TAG_PREFIX = "layer_status:"
 
 
-def _embedded_cockpit_enabled() -> bool:
-    """Return true when the experimental Codex embedded app is enabled."""
-    return os.environ.get("LIVEPILOT_CODEX_EMBEDDED_COCKPIT", "").lower() in {
-        "1", "true", "yes", "on",
-    }
-
-
-def _cockpit_mcp_tools_enabled() -> bool:
-    """Return true when cockpit helper tools should be exposed to MCP clients."""
-    return _embedded_cockpit_enabled() or os.environ.get(
-        "LIVEPILOT_COCKPIT_MCP_TOOLS", ""
-    ).lower() in {"1", "true", "yes", "on"}
-
-
 def _cockpit_url(ctx: Context) -> Optional[str]:
     base = _focus_panel_url(ctx)
     if not base:
@@ -109,10 +88,7 @@ def _cockpit_url(ctx: Context) -> Optional[str]:
 
 
 def _backend_tool_map() -> dict[str, str]:
-    return {
-        key: hashed_backend_name(APP_NAME, local_name)
-        for key, local_name in _BACKEND_TOOL_NAMES.items()
-    }
+    return dict(_BACKEND_TOOL_NAMES)
 
 
 def _lifespan(ctx: Context) -> dict:
@@ -1066,7 +1042,6 @@ def _build_context(
     payload = {
         "status": "ok",
         "version": __version__,
-        "resource_uri": COCKPIT_RESOURCE_URI,
         "backend_tools": _backend_tool_map(),
         "session": {
             "tempo": session_info.get("tempo"),
@@ -1331,15 +1306,8 @@ def open_livepilot_production_cockpit(
     ctx: Context,
     request_text: str = "",
 ) -> ToolResult:
-    """Return cockpit context for either embedded or outside-browser UI."""
+    """Return cockpit context and the outside-browser cockpit URL."""
     data = _build_context(ctx, request_text=request_text, include_history=False)
-    if _embedded_cockpit_enabled():
-        return _tool_result(
-            "Opened LivePilot Production Cockpit.",
-            data,
-            meta={"openai/outputTemplate": COCKPIT_RESOURCE_URI},
-        )
-
     url = data.get("cockpit_url") or data.get("focus_panel_url")
     text = (
         f"LivePilot Production Cockpit is available at {url}."
@@ -1349,72 +1317,30 @@ def open_livepilot_production_cockpit(
     return _tool_result(text, data)
 
 
-if _embedded_cockpit_enabled():
-    @mcp.resource(
-        COCKPIT_RESOURCE_URI,
-        name="LivePilot Production Cockpit",
-        title="LivePilot Production Cockpit",
-        description=(
-            "Embedded workflow cockpit for LivePilot track focus and "
-            "production intent."
-        ),
-        app=AppConfig(
-            csp=ResourceCSP(),
-            prefers_border=True,
-        ),
-    )
-    def livepilot_production_cockpit_resource() -> str:
-        """Return the embedded cockpit HTML."""
-        return _render_cockpit_html()
+mcp.tool(
+    name="open_livepilot_production_cockpit",
+    title="Open LivePilot Production Cockpit",
+    description=(
+        "Return the outside-browser LivePilot cockpit URL for selecting "
+        "focused tracks, workflow lane, preserve flags, and per-track "
+        "production intent."
+    ),
+)(open_livepilot_production_cockpit)
 
-    mcp.tool(
-        name="open_livepilot_production_cockpit",
-        title="Open LivePilot Production Cockpit",
-        description=(
-            "Open the embedded LivePilot cockpit for selecting focused tracks, "
-            "workflow lane, preserve flags, and per-track production intent."
-        ),
-        app=AppConfig(
-            resource_uri=COCKPIT_RESOURCE_URI,
-            visibility=["model"],
-        ),
-        meta={
-            "openai/outputTemplate": COCKPIT_RESOURCE_URI,
-            "openai/widgetAccessible": True,
-            "ui/resourceUri": COCKPIT_RESOURCE_URI,
-        },
-    )(open_livepilot_production_cockpit)
-elif _cockpit_mcp_tools_enabled():
-    mcp.tool(
-        name="open_livepilot_production_cockpit",
-        title="Open LivePilot Production Cockpit",
-        description=(
-            "Return the outside-browser LivePilot cockpit URL for selecting "
-            "focused tracks, workflow lane, preserve flags, and per-track "
-            "production intent."
-        ),
-    )(open_livepilot_production_cockpit)
-
-if _cockpit_mcp_tools_enabled():
-    mcp.tool()(get_production_context)
+mcp.tool()(get_production_context)
 
 
-cockpit_app = FastMCPApp(APP_NAME)
-
-
-@cockpit_app.tool()
 def get_cockpit_state(ctx: Context) -> dict:
-    """App-only state read used by the embedded cockpit UI."""
+    """State read used by the browser cockpit UI."""
     return _build_context(ctx, include_history=False)
 
 
-@cockpit_app.tool()
 def set_cockpit_focus(
     ctx: Context,
     track_indices: list[int],
     label: str = "",
 ) -> dict:
-    """App-only focus write used by the embedded cockpit UI."""
+    """Focus write used by the browser cockpit UI."""
     session_info = _require_session_info(ctx)
     indices = _normalize_cockpit_focus_indices(track_indices)
     _focus_service(ctx).set_focus(
@@ -1426,15 +1352,13 @@ def set_cockpit_focus(
     return _build_context(ctx, include_history=False)
 
 
-@cockpit_app.tool()
 def clear_cockpit_focus(ctx: Context) -> dict:
-    """App-only focus clear used by the embedded cockpit UI."""
+    """Focus clear used by the browser cockpit UI."""
     session_info = _require_session_info(ctx)
     _focus_service(ctx).clear_focus(session_info)
     return _build_context(ctx, include_history=False)
 
 
-@cockpit_app.tool()
 def save_production_context(
     ctx: Context,
     lane: Optional[str] = None,
@@ -1454,7 +1378,7 @@ def save_production_context(
     section_start_bar: Optional[float] = None,
     section_end_bar: Optional[float] = None,
 ) -> dict:
-    """App-only production context write used by the embedded cockpit UI."""
+    """Production context write used by the browser cockpit UI."""
     session_info = _require_session_info(ctx)
     _production_context_service(ctx).save_state(
         session_info,
@@ -1478,7 +1402,6 @@ def save_production_context(
     return _build_context(ctx, include_history=False)
 
 
-@cockpit_app.tool()
 def send_cockpit_brief(
     ctx: Context,
     lane: Optional[str] = None,
@@ -1499,7 +1422,7 @@ def send_cockpit_brief(
     section_start_bar: Optional[float] = None,
     section_end_bar: Optional[float] = None,
 ) -> dict:
-    """App-only brief submission that creates orchestration work."""
+    """Brief submission that creates orchestration work."""
     return _send_cockpit_brief(
         ctx,
         {
@@ -1524,7 +1447,6 @@ def send_cockpit_brief(
     )
 
 
-@cockpit_app.tool()
 def save_cockpit_track_intent(
     ctx: Context,
     track_index: int,
@@ -1537,7 +1459,7 @@ def save_cockpit_track_intent(
     constraints: Optional[list[str]] = None,
     decision_state: Optional[str] = None,
 ) -> dict:
-    """App-only per-track intent write used by the embedded cockpit UI."""
+    """Per-track intent write used by the browser cockpit UI."""
     from .tools.tracks import set_track_annotation as _set_track_annotation_tool
 
     _set_track_annotation_tool(
@@ -1555,10 +1477,6 @@ def save_cockpit_track_intent(
         confidence=1.0,
     )
     return _build_context(ctx, include_history=False)
-
-
-if _embedded_cockpit_enabled():
-    mcp.add_provider(cockpit_app)
 
 
 def _render_cockpit_html(transport: str = "mcp") -> str:
@@ -4401,8 +4319,8 @@ __CALL_TOOL_JS__
 
 
 def _cockpit_call_tool_js(transport: str) -> str:
-    if transport == "http":
-        return """    async function callTool(name, args = {}) {
+    del transport
+    return """    async function callTool(name, args = {}) {
       const routes = {
         [BACKEND_TOOLS.get_state]: ["GET", "/api/cockpit/state"],
         [BACKEND_TOOLS.set_focus]: ["POST", "/api/cockpit/focus"],
@@ -4424,38 +4342,5 @@ def _cockpit_call_tool_js(transport: str) -> str:
         throw new Error(body.error || `Request failed: ${response.status}`);
       }
       return body;
-    }
-"""
-    return """    async function callTool(name, args = {}) {
-      if (window.openai && typeof window.openai.callTool === "function") {
-        const result = await window.openai.callTool(name, args);
-        return result && (result.structuredContent || result.structured_content || result);
-      }
-      return await callToolViaPostMessage(name, args);
-    }
-
-    function callToolViaPostMessage(name, args) {
-      return new Promise((resolve, reject) => {
-        const id = "lp-" + Math.random().toString(36).slice(2);
-        const timeout = setTimeout(() => {
-          window.removeEventListener("message", onMessage);
-          reject(new Error("MCP app bridge did not answer"));
-        }, 8000);
-        function onMessage(event) {
-          const data = event.data || {};
-          if (data.id !== id) return;
-          clearTimeout(timeout);
-          window.removeEventListener("message", onMessage);
-          if (data.error) reject(new Error(data.error.message || "tool call failed"));
-          else resolve(data.result && (data.result.structuredContent || data.result.structured_content || data.result));
-        }
-        window.addEventListener("message", onMessage);
-        window.parent.postMessage({
-          jsonrpc: "2.0",
-          id,
-          method: "tools/call",
-          params: { name, arguments: args }
-        }, "*");
-      });
     }
 """

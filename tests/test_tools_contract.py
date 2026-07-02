@@ -1,4 +1,4 @@
-"""Verify all 485 MCP tools are registered."""
+"""Verify all 487 MCP tools are registered."""
 
 import asyncio
 import sys
@@ -641,13 +641,13 @@ def test_control_surfaces_tools_registered():
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 485, f"Expected 485 tools, got {len(tools)}"
+    assert len(tools) == 487, f"Expected 487 tools, got {len(tools)}"
 
 
-def test_production_cockpit_tools_are_not_registered_by_default():
+def test_production_cockpit_read_tools_are_registered():
     names = _get_tool_names()
-    assert "open_livepilot_production_cockpit" not in names
-    assert "get_production_context" not in names
+    assert "open_livepilot_production_cockpit" in names
+    assert "get_production_context" in names
 
 
 def test_grader_tools_registered():
