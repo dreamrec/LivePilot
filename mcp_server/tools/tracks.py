@@ -12,6 +12,8 @@ from typing import Optional
 from fastmcp import Context
 
 from ..persistence.agent_focus import AgentFocusService
+from ..persistence.layer_groups import LayerGroupService
+from ..persistence.orchestration_queue import OrchestrationService
 from ..persistence.track_annotations import (
     TrackAnnotationStore,
     annotation_project_id_for_session,
@@ -70,6 +72,20 @@ def _require_session_info(ctx: Context) -> dict:
 
 def _annotation_store_for_session(session_info: dict) -> TrackAnnotationStore:
     return TrackAnnotationStore(annotation_project_id_for_session(session_info))
+
+
+def _layer_group_service_for_ctx(ctx: Context) -> LayerGroupService:
+    service = getattr(ctx, "lifespan_context", {}).get("layer_groups")
+    if isinstance(service, LayerGroupService):
+        return service
+    return LayerGroupService()
+
+
+def _orchestration_service_for_ctx(ctx: Context) -> OrchestrationService:
+    service = getattr(ctx, "lifespan_context", {}).get("orchestration_queue")
+    if isinstance(service, OrchestrationService):
+        return service
+    return OrchestrationService()
 
 
 def _find_regular_track(session_info: dict, track_index: int) -> dict:
@@ -529,6 +545,65 @@ def build_track_intent_map(ctx: Context) -> dict:
     result = build_track_intent_map_data(session_info, store.list_annotations())
     result["project_id"] = store.project_id
     result["store_path"] = str(store.path)
+    return result
+
+
+@mcp.tool()
+def list_layer_groups(ctx: Context) -> dict:
+    """List project-scoped musical layer groups resolved to current tracks."""
+    session_info = _require_session_info(ctx)
+    return _layer_group_service_for_ctx(ctx).list_groups(session_info)
+
+
+@mcp.tool()
+def save_layer_group(
+    ctx: Context,
+    label: str,
+    track_indices: list[int],
+    layer_id: str = "",
+    status: str = "layered",
+    linked_layers: Optional[list[str]] = None,
+    notes: str = "",
+) -> dict:
+    """Create or update a project-scoped musical layer group.
+
+    The saved member references are signature-based, so future reads can
+    resolve the layer after ordinary track reordering or renaming.
+    """
+    session_info = _require_session_info(ctx)
+    result = _layer_group_service_for_ctx(ctx).save_group(
+        session_info,
+        label=label,
+        layer_id=layer_id,
+        track_indices=track_indices,
+        status=status,
+        linked_layers=linked_layers,
+        notes=notes,
+    )
+    revision = _orchestration_service_for_ctx(ctx).store_for_session(
+        session_info
+    ).increment_revision(
+        reason="layer_map_save",
+        source_id=str(result.get("layer", {}).get("layer_id") or ""),
+        metadata={"label": result.get("layer", {}).get("label")},
+    )
+    result["orchestration_revision"] = revision.get("project_revision")
+    return result
+
+
+@mcp.tool()
+def delete_layer_group(ctx: Context, layer_id: str) -> dict:
+    """Delete a project-scoped musical layer group."""
+    session_info = _require_session_info(ctx)
+    result = _layer_group_service_for_ctx(ctx).delete_group(session_info, layer_id)
+    if result.get("deleted"):
+        revision = _orchestration_service_for_ctx(ctx).store_for_session(
+            session_info
+        ).increment_revision(
+            reason="layer_map_delete",
+            source_id=str(layer_id or ""),
+        )
+        result["orchestration_revision"] = revision.get("project_revision")
     return result
 
 

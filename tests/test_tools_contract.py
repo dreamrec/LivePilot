@@ -1,4 +1,4 @@
-"""Verify all 487 MCP tools are registered."""
+"""Verify all 490 MCP tools are registered."""
 
 import asyncio
 import sys
@@ -57,6 +57,9 @@ def test_tracks_tools_registered():
         "get_track_annotations",
         "clear_track_annotation",
         "build_track_intent_map",
+        "list_layer_groups",
+        "save_layer_group",
+        "delete_layer_group",
         "set_group_fold",
         "set_track_input_monitoring",
         # Freeze/flatten
@@ -641,7 +644,7 @@ def test_control_surfaces_tools_registered():
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 487, f"Expected 487 tools, got {len(tools)}"
+    assert len(tools) == 490, f"Expected 490 tools, got {len(tools)}"
 
 
 def test_production_cockpit_read_tools_are_registered():

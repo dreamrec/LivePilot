@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog (Generated)
 
-487 tools across 56 domains.
+490 tools across 56 domains.
 
 > Auto-generated from `mcp.list_tools()`. Do not hand-edit.
 > Regenerate: `python3 scripts/generate_tool_catalog.py`

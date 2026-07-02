@@ -10,6 +10,7 @@ from fastmcp.tools.base import ToolResult
 
 from . import __version__
 from .persistence.agent_focus import AgentFocusService
+from .persistence.layer_groups import LayerGroupService
 from .persistence.orchestration_queue import OrchestrationService
 from .persistence.production_context import ProductionContextService
 from .persistence.track_annotations import (
@@ -27,6 +28,8 @@ _BACKEND_TOOL_NAMES = {
     "save_context": "save_production_context",
     "send_brief": "send_cockpit_brief",
     "save_track_intent": "save_cockpit_track_intent",
+    "save_layer": "save_cockpit_layer_group",
+    "delete_layer": "delete_cockpit_layer_group",
 }
 
 _TRACK_GROUPS = [
@@ -118,6 +121,13 @@ def _production_context_service(ctx: Context) -> ProductionContextService:
     if isinstance(service, ProductionContextService):
         return service
     return ProductionContextService()
+
+
+def _layer_group_service(ctx: Context) -> LayerGroupService:
+    service = _lifespan(ctx).get("layer_groups")
+    if isinstance(service, LayerGroupService):
+        return service
+    return LayerGroupService()
 
 
 def _orchestration_service(ctx: Context) -> OrchestrationService:
@@ -245,10 +255,79 @@ def _is_musical_target_track(track: dict) -> bool:
 
 
 def _normalize_target_token(value: str) -> str:
-    return str(value or "").strip().lower().replace("-", "_").replace("/", "_").replace(" ", "_")
+    return (
+        str(value or "")
+        .strip()
+        .lower()
+        .replace("-", "_")
+        .replace("/", "_")
+        .replace(" ", "_")
+    )
 
 
-def _build_layer_groups(tracks: list[dict]) -> list[dict]:
+def _build_layer_groups(
+    tracks: list[dict],
+    stored_layers: Optional[list[dict]] = None,
+) -> list[dict]:
+    by_key: dict[str, dict] = {}
+    for group in stored_layers or []:
+        key = _normalize_target_token(
+            str(group.get("key") or group.get("layer_id") or "")
+        )
+        if not key:
+            continue
+        entry = dict(group)
+        entry["key"] = key
+        entry["layer_id"] = key
+        entry.setdefault("label", _humanize_key(key))
+        entry.setdefault("track_indices", [])
+        entry.setdefault("track_names", [])
+        entry.setdefault("linked_layers", [])
+        entry.setdefault("status", "layered")
+        entry.setdefault("source", "store")
+        sources = list(entry.get("sources") or [])
+        if "store" not in sources:
+            sources.insert(0, "store")
+        entry["sources"] = sources
+        entry["track_indices"] = list(entry.get("track_indices") or [])
+        entry["track_names"] = list(entry.get("track_names") or [])
+        entry["count"] = len(entry["track_indices"])
+        entry["is_expandable"] = entry.get("status") in {"singleton", "potential"}
+        by_key[key] = entry
+
+    for group in _annotation_layer_groups(tracks):
+        key = str(group.get("key") or "")
+        if key in by_key:
+            entry = by_key[key]
+            entry.setdefault("sources", ["store"])
+            if "annotation_tag" not in entry["sources"]:
+                entry["sources"].append("annotation_tag")
+            for index, name in zip(
+                group.get("track_indices") or [],
+                group.get("track_names") or [],
+            ):
+                if index not in entry["track_indices"]:
+                    entry["track_indices"].append(index)
+                    entry["track_names"].append(name)
+            for linked in group.get("linked_layers") or []:
+                if linked not in entry["linked_layers"]:
+                    entry["linked_layers"].append(linked)
+            entry["count"] = len(entry["track_indices"])
+            if entry.get("status") == "layered" and group.get("status") == "potential":
+                entry["status"] = "potential"
+            entry["is_expandable"] = entry.get("status") in {"singleton", "potential"}
+        else:
+            item = dict(group)
+            item["source"] = "annotation_tag"
+            item["sources"] = ["annotation_tag"]
+            by_key[key] = item
+    return sorted(
+        by_key.values(),
+        key=lambda item: str(item.get("label") or "").lower(),
+    )
+
+
+def _annotation_layer_groups(tracks: list[dict]) -> list[dict]:
     by_key: dict[str, dict] = {}
     for track in tracks:
         if not _is_musical_target_track(track):
@@ -1046,7 +1125,11 @@ def _build_context(
     focused_tracks = [track for track in tracks if track.get("focused")]
     production_state = production_context.get("state") or {}
     track_groups = _build_track_groups(tracks)
-    layer_groups = _build_layer_groups(tracks)
+    layer_result = _layer_group_service(ctx).list_groups(session_info)
+    layer_groups = _build_layer_groups(
+        tracks,
+        layer_result.get("layer_groups") or [],
+    )
     target = _target_context(
         production_state,
         tracks,
@@ -1472,6 +1555,50 @@ def send_cockpit_brief(
             "section_end_bar": section_end_bar,
         },
     )
+
+
+def save_cockpit_layer_group(
+    ctx: Context,
+    label: str,
+    track_indices: list[int],
+    layer_id: str = "",
+    status: str = "layered",
+    linked_layers: Optional[list[str]] = None,
+    notes: str = "",
+) -> dict:
+    """Create or update a project-scoped musical layer group."""
+    session_info = _require_session_info(ctx)
+    result = _layer_group_service(ctx).save_group(
+        session_info,
+        label=label,
+        layer_id=layer_id,
+        track_indices=track_indices,
+        status=status,
+        linked_layers=linked_layers,
+        notes=notes,
+    )
+    _orchestration_service(ctx).store_for_session(session_info).increment_revision(
+        reason="layer_map_save",
+        source_id=str(result.get("layer", {}).get("layer_id") or ""),
+        metadata={"label": result.get("layer", {}).get("label")},
+    )
+    context = _build_context(ctx, include_history=False)
+    context["layer_save"] = result
+    return context
+
+
+def delete_cockpit_layer_group(ctx: Context, layer_id: str) -> dict:
+    """Delete a project-scoped musical layer group."""
+    session_info = _require_session_info(ctx)
+    result = _layer_group_service(ctx).delete_group(session_info, layer_id)
+    if result.get("deleted"):
+        _orchestration_service(ctx).store_for_session(session_info).increment_revision(
+            reason="layer_map_delete",
+            source_id=str(layer_id or ""),
+        )
+    context = _build_context(ctx, include_history=False)
+    context["layer_delete"] = result
+    return context
 
 
 def save_cockpit_track_intent(
@@ -3168,12 +3295,23 @@ def _render_intent_first_cockpit_html(transport: str = "mcp") -> str:
       overflow: hidden;
       text-overflow: ellipsis;
     }
+    .track-layers {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 4px;
+    }
     .badge {
       border: 1px solid var(--line);
       border-radius: 999px;
       padding: 1px 6px;
       color: var(--muted);
       font-size: 10px;
+    }
+    .badge.layer {
+      border-color: rgba(91, 184, 184, 0.38);
+      color: #bfe8e8;
+      background: rgba(91, 184, 184, 0.09);
     }
     .target-picker {
       margin-top: 10px;
@@ -3454,6 +3592,10 @@ def _render_intent_first_cockpit_html(transport: str = "mcp") -> str:
           </div>
           <input id="targetQuery" placeholder="Search groups, layers, or tracks">
           <div class="chip-row" id="groupChips"></div>
+          <div class="actions" id="layerActions">
+            <button class="soft" id="saveLayer">Save selection as layer</button>
+            <button class="soft" id="deleteLayer">Delete layer</button>
+          </div>
         </div>
 
         <div class="section">
@@ -3755,6 +3897,23 @@ __CALL_TOOL_JS__
       const raw = Number(track.color_index || 0);
       return colors[Math.abs(raw) % colors.length];
     }
+    function trackLayers(track) {
+      const idx = Number((track || {}).index);
+      return ((state || {}).layer_groups || []).filter(group => {
+        const indices = (group.track_indices || []).map(Number);
+        return indices.includes(idx);
+      });
+    }
+    function trackLayerChips(track) {
+      const layers = trackLayers(track);
+      if (!layers.length) return "";
+      return `
+        <div class="track-layers">
+          ${layers.slice(0, 4).map(layer => `<span class="badge layer">${escapeHtml(layer.label || layer.key || "Layer")}</span>`).join("")}
+          ${layers.length > 4 ? `<span class="badge">+${layers.length - 4}</span>` : ""}
+        </div>
+      `;
+    }
 
     async function refresh() {
       try {
@@ -3897,6 +4056,7 @@ __CALL_TOOL_JS__
         const tracks = ((state || {}).tracks || []).filter(isMusicalTargetTrack);
         if (!tracks.length) {
           $("#groupChips").innerHTML = '<span class="sub">No musical tracks found.</span>';
+          renderLayerActions();
           return;
         }
         $("#groupChips").innerHTML = tracks.map(track => {
@@ -3912,25 +4072,43 @@ __CALL_TOOL_JS__
           if (node.classList.contains("active")) clearTarget();
           else selectTrackTarget(Number(node.dataset.trackIndex));
         }));
+        renderLayerActions();
         return;
       }
       const groups = mode === "layer" ? ((state || {}).layer_groups || []) : ((state || {}).track_groups || []);
       const activeKey = mode === "layer" ? targetState().matched_layer : targetState().matched_group;
       if (!groups.length) {
         $("#groupChips").innerHTML = mode === "layer"
-          ? '<span class="sub">No song layers saved yet.</span>'
+          ? '<span class="sub">No layers yet - choose Tracks or Auto Groups, then save the target as a layer.</span>'
           : '<span class="sub">No auto groups found.</span>';
+        renderLayerActions();
         return;
       }
       $("#groupChips").innerHTML = groups.map(group => `
         <button class="chip ${group.key === activeKey ? "active" : ""}" data-key="${escapeHtml(group.key)}" data-label="${escapeHtml(group.label)}">
-          ${escapeHtml(group.label)} <small>${group.count}</small>
+          ${escapeHtml(group.label)}
+          ${mode === "layer" ? `<small>${escapeHtml(group.status || "layered")}</small>` : ""}
+          <small>${group.count}</small>
         </button>
       `).join("");
       $$("#groupChips .chip").forEach(node => node.addEventListener("click", () => {
         if (node.classList.contains("active")) clearTarget();
         else chooseTarget(node.dataset.label, node.dataset.key);
       }));
+      renderLayerActions();
+    }
+    function renderLayerActions() {
+      const actions = $("#layerActions");
+      if (!actions) return;
+      const mode = pickerMode();
+      const target = targetState();
+      const ctx = ctxState();
+      const hasTracks = targetTracks().length > 0 || selected.size > 0;
+      const layerId = target.matched_layer || ctx.target_layer || "";
+      const canDelete = mode === "layer" && Boolean(layerId);
+      actions.style.display = mode === "layer" || hasTracks ? "flex" : "none";
+      $("#saveLayer").disabled = !hasTracks;
+      $("#deleteLayer").disabled = !canDelete;
     }
     function renderTracks() {
       const targeted = targetTracks();
@@ -3954,6 +4132,7 @@ __CALL_TOOL_JS__
             <div>
               <div class="track-name">${idx + 1} - ${escapeHtml(track.name)}</div>
               <div class="track-meta">${escapeHtml(role)} - ${kind}</div>
+              ${trackLayerChips(track)}
             </div>
             <div>${track.mute ? '<span class="badge">M</span>' : ''}${track.solo ? '<span class="badge">S</span>' : ''}</div>
           </div>
@@ -4126,6 +4305,58 @@ __CALL_TOOL_JS__
       await saveFocus(label);
       toast("Target saved");
     }
+    async function saveCurrentLayer() {
+      const tracks = targetTracks();
+      const indices = tracks.length
+        ? tracks.map(track => Number(track.index))
+        : [...selected].map(Number);
+      if (!indices.length) {
+        toast("Choose tracks first");
+        return;
+      }
+      const currentLayer = targetState().matched_layer || ctxState().target_layer || "";
+      const defaultLabel = targetLabel() && targetLabel() !== "No target"
+        ? targetLabel()
+        : "New Layer";
+      const label = window.prompt("Layer name", defaultLabel);
+      if (!label) return;
+      state = await callTool(BACKEND_TOOLS.save_layer, {
+        label,
+        layer_id: pickerMode() === "layer" ? currentLayer : "",
+        track_indices: indices,
+        status: indices.length > 1 ? "layered" : "singleton"
+      });
+      const savedLayer = (((state || {}).layer_save || {}).layer || {});
+      const layerId = savedLayer.layer_id || savedLayer.key || normalizeToken(label);
+      state = await callTool(BACKEND_TOOLS.save_context, {
+        target_mode: "layer",
+        target_query: savedLayer.label || label,
+        target_group: "",
+        target_layer: layerId
+      });
+      targetModeDraft = "layer";
+      selected = selectionFromState();
+      syncControlsFromState();
+      render();
+      toast("Layer saved");
+    }
+    async function deleteCurrentLayer() {
+      const layerId = targetState().matched_layer || ctxState().target_layer || "";
+      if (!layerId) return;
+      if (!window.confirm(`Delete layer "${targetLabel()}"?`)) return;
+      state = await callTool(BACKEND_TOOLS.delete_layer, {layer_id: layerId});
+      state = await callTool(BACKEND_TOOLS.save_context, {
+        target_mode: "instrument",
+        target_query: "",
+        target_group: "",
+        target_layer: ""
+      });
+      targetModeDraft = "layer";
+      selected = selectionFromState();
+      syncControlsFromState();
+      render();
+      toast("Layer deleted");
+    }
     async function clearTarget() {
       const keepPickerMode = pickerMode();
       setStatus("Clearing target");
@@ -4238,6 +4469,8 @@ __CALL_TOOL_JS__
     $("#refresh").addEventListener("click", refresh);
     $("#refreshLive").addEventListener("click", refreshLive);
     $("#clearTarget").addEventListener("click", clearTarget);
+    $("#saveLayer").addEventListener("click", saveCurrentLayer);
+    $("#deleteLayer").addEventListener("click", deleteCurrentLayer);
     $("#wholeSongButton").addEventListener("click", chooseWholeSong);
     $("#targetModeRow").addEventListener("click", event => {
       const button = event.target.closest("button[data-mode]");
@@ -4312,7 +4545,9 @@ def _cockpit_call_tool_js(transport: str) -> str:
         [BACKEND_TOOLS.clear_focus]: ["POST", "/api/cockpit/focus/clear"],
         [BACKEND_TOOLS.save_context]: ["POST", "/api/cockpit/context"],
         [BACKEND_TOOLS.send_brief]: ["POST", "/api/cockpit/brief"],
-        [BACKEND_TOOLS.save_track_intent]: ["POST", "/api/cockpit/track-intent"]
+        [BACKEND_TOOLS.save_track_intent]: ["POST", "/api/cockpit/track-intent"],
+        [BACKEND_TOOLS.save_layer]: ["POST", "/api/cockpit/layers/save"],
+        [BACKEND_TOOLS.delete_layer]: ["POST", "/api/cockpit/layers/delete"]
       };
       const route = routes[name];
       if (!route) throw new Error(`Unknown cockpit tool: ${name}`);

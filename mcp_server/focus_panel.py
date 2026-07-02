@@ -21,6 +21,7 @@ from typing import Optional
 from urllib.parse import urlparse
 
 from .persistence.agent_focus import AgentFocusService
+from .persistence.layer_groups import LayerGroupService
 from .persistence.orchestration_queue import OrchestrationService
 from .persistence.production_context import ProductionContextService
 from .persistence.session_snapshot import SessionSnapshotStore
@@ -44,6 +45,7 @@ class FocusPanelServer:
         port: Optional[int] = None,
         allow_live_refresh: bool = False,
         orchestration_service: Optional[OrchestrationService] = None,
+        layer_group_service: Optional[LayerGroupService] = None,
     ):
         self.ableton = ableton
         self.focus_service = focus_service or AgentFocusService()
@@ -52,6 +54,7 @@ class FocusPanelServer:
         )
         self.snapshot_store = snapshot_store or SessionSnapshotStore()
         self.orchestration_service = orchestration_service or OrchestrationService()
+        self.layer_group_service = layer_group_service or LayerGroupService()
         self.allow_live_refresh = allow_live_refresh
         self.host = host
         self.requested_port = (
@@ -258,11 +261,36 @@ class FocusPanelServer:
             **{key: payload.get(key) for key in allowed if key in payload},
         )
 
+    def save_cockpit_layer_payload(self, payload: dict) -> dict:
+        from .production_cockpit import save_cockpit_layer_group
+
+        allowed = {
+            "label",
+            "track_indices",
+            "layer_id",
+            "status",
+            "linked_layers",
+            "notes",
+        }
+        return save_cockpit_layer_group(
+            self._cockpit_ctx(),
+            **{key: payload.get(key) for key in allowed if key in payload},
+        )
+
+    def delete_cockpit_layer_payload(self, payload: dict) -> dict:
+        from .production_cockpit import delete_cockpit_layer_group
+
+        return delete_cockpit_layer_group(
+            self._cockpit_ctx(),
+            layer_id=str(payload.get("layer_id") or payload.get("key") or ""),
+        )
+
     def _cockpit_ctx(self):
         return SimpleNamespace(
             lifespan_context={
                 "ableton": _PanelAbletonProxy(self),
                 "agent_focus": self.focus_service,
+                "layer_groups": self.layer_group_service,
                 "orchestration_queue": self.orchestration_service,
                 "production_context": self.production_context_service,
                 "focus_panel_url": self.url,
@@ -463,6 +491,14 @@ class _FocusPanelHandler(BaseHTTPRequestHandler):
         if path == "/api/cockpit/state":
             self._send_json(self.server.panel.get_cockpit_payload())
             return
+        if path == "/api/cockpit/layers":
+            self._send_json({
+                "status": "ok",
+                "layer_groups": self.server.panel.get_cockpit_payload().get(
+                    "layer_groups", []
+                ),
+            })
+            return
         if path == "/api/focus":
             self._send_json({
                 "status": "ok",
@@ -505,6 +541,14 @@ class _FocusPanelHandler(BaseHTTPRequestHandler):
             if path == "/api/cockpit/track-intent":
                 payload = self._read_json_body()
                 self._send_json(self.server.panel.save_cockpit_track_intent_payload(payload))
+                return
+            if path == "/api/cockpit/layers/save":
+                payload = self._read_json_body()
+                self._send_json(self.server.panel.save_cockpit_layer_payload(payload))
+                return
+            if path == "/api/cockpit/layers/delete":
+                payload = self._read_json_body()
+                self._send_json(self.server.panel.delete_cockpit_layer_payload(payload))
                 return
             if path == "/api/cockpit/refresh-live":
                 self._send_json(self.server.panel.refresh_live_payload())

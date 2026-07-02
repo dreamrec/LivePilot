@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 from mcp_server.persistence.agent_focus import AgentFocusService
+from mcp_server.persistence.layer_groups import LayerGroupService
 from mcp_server.persistence.orchestration_queue import OrchestrationService
 from mcp_server.persistence.production_context import ProductionContextService
 from mcp_server.persistence import track_annotations as annotation_store
@@ -18,6 +19,7 @@ from mcp_server.production_cockpit import (
     get_production_context,
     open_livepilot_production_cockpit,
     save_cockpit_track_intent,
+    save_cockpit_layer_group,
     save_production_context,
     send_cockpit_brief,
     set_cockpit_focus,
@@ -77,6 +79,7 @@ def _ctx(tmp_path, session_info: dict):
         lifespan_context={
             "ableton": _Ableton(session_info),
             "agent_focus": AgentFocusService(base_dir=tmp_path),
+            "layer_groups": LayerGroupService(base_dir=tmp_path),
             "orchestration_queue": OrchestrationService(base_dir=tmp_path),
             "production_context": ProductionContextService(base_dir=tmp_path),
             "focus_panel_url": "http://127.0.0.1:9890/",
@@ -351,6 +354,38 @@ def test_cockpit_layer_groups_and_layer_target(tmp_path, monkeypatch):
     assert context["summary"]["target_layer"] == "elec_low_multi_role"
 
 
+def test_cockpit_store_defined_layer_can_be_targeted(tmp_path, monkeypatch):
+    monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
+    ctx = _ctx(
+        tmp_path,
+        _session([
+            {"index": 0, "name": "lead vox", "color_index": 1, "has_audio_input": True},
+            {"index": 1, "name": "harm vox", "color_index": 2, "has_audio_input": True},
+        ]),
+    )
+
+    saved = save_cockpit_layer_group(
+        ctx,
+        label="Vocal Stack",
+        track_indices=[0, 1],
+    )
+
+    assert saved["layer_save"]["layer"]["layer_id"] == "vocal_stack"
+    assert saved["layer_groups"][0]["source"] == "store"
+
+    save_production_context(
+        ctx,
+        target_mode="layer",
+        target_layer="vocal_stack",
+        target_query="Vocal Stack",
+    )
+    context = get_production_context(ctx)
+
+    assert context["target"]["matched_layer"] == "vocal_stack"
+    assert context["target"]["track_names"] == ["lead vox", "harm vox"]
+    assert context["summary"]["target_track_names"] == ["lead vox", "harm vox"]
+
+
 def test_cockpit_section_map_uses_cue_points(tmp_path, monkeypatch):
     monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
     ctx = _ctx(
@@ -584,6 +619,8 @@ def test_intent_first_cockpit_renders_http_backend_contract():
     assert "request_text: text" in html
     assert "Save brief for Codex" in html
     assert "Clear target" in html
+    assert "Save selection as layer" in html
+    assert "id=\"deleteLayer\"" in html
     assert "Song Sections" in html
     assert "id=\"songStrip\"" in html
     assert "id=\"sectionRow\"" not in html
@@ -601,5 +638,9 @@ def test_intent_first_cockpit_renders_http_backend_contract():
     assert "/api/cockpit/context" in html
     assert "/api/cockpit/brief" in html
     assert "/api/cockpit/focus" in html
+    assert "/api/cockpit/layers/save" in html
+    assert "/api/cockpit/layers/delete" in html
     assert "/api/cockpit/refresh-live" in html
+    assert "async function saveCurrentLayer()" in html
+    assert "function trackLayerChips(track)" in html
     assert "window.openai.callTool" not in html
