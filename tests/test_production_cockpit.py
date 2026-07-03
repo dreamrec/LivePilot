@@ -932,6 +932,7 @@ def test_working_thread_dispatch_actions_and_status(
     assert action["deeplink_working_thread"] == f"codex://threads/{thread_id}"
     assert action["sweep_prompt"].startswith("Pick up the unseen LivePilot")
     assert action["existing_thread_prefill"] is False
+    assert action["existing_thread_prefill_status"] == "unverified_safe_fallback"
     assert task["constraints"]["evidence_budget"] == "quick"
     assert context["orchestration_submission"]["brief"]["context_digest"]["evidence_budget"] == "quick"
 
@@ -1016,6 +1017,11 @@ def test_rollout_capture_ignores_ambiguous_and_old_candidates(
     first = "019f2903-7fd2-79b3-9ae0-e46a767c326d"
     second = "019f2904-7fd2-79b3-9ae0-e46a767c326d"
     old = "019f2905-7fd2-79b3-9ae0-e46a767c326d"
+    monkeypatch.setattr(
+        production_cockpit,
+        "_rollout_candidate_time_seconds",
+        lambda path: path.stat().st_mtime,
+    )
     for thread_id in (first, second, old):
         path = rollout_dir / f"rollout-2026-07-03T13-25-23-{thread_id}.jsonl"
         path.write_text("not parsed\n")
@@ -1031,6 +1037,18 @@ def test_rollout_capture_ignores_ambiguous_and_old_candidates(
     for path in rollout_dir.glob(f"*-{second}.jsonl"):
         path.unlink()
     assert production_cockpit._recent_rollout_thread_candidates(now_ms) == [first]
+
+
+def test_rollout_candidate_time_prefers_birthtime_when_available(monkeypatch):
+    class FakeStat:
+        st_birthtime = 123.0
+        st_mtime = 456.0
+
+    class FakePath:
+        def stat(self):
+            return FakeStat()
+
+    assert production_cockpit._rollout_candidate_time_seconds(FakePath()) == 123.0
 
 
 def test_rollout_scan_does_not_open_rollout_contents(tmp_path, monkeypatch):

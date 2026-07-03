@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from types import SimpleNamespace
 
 from mcp_server.persistence import track_annotations as annotation_store
@@ -159,6 +160,21 @@ def test_annotation_project_recovery_appends_project_marker_alias(tmp_path):
     assert marker["version"] == 1
     assert marker["identity"]
     assert f"structural={direct_id}" in marker["aliases"]
+
+
+def test_annotation_project_marker_not_rewritten_for_noop_resolution(tmp_path):
+    session = _session([
+        {"index": 0, "name": "Drums", "color_index": 1, "has_midi_input": True},
+        {"index": 1, "name": "Vox 1", "color_index": 2, "has_audio_input": True},
+    ])
+    project_id = annotation_project_id_for_session(session, tmp_path)
+    marker_path = tmp_path / project_id / "project.json"
+    old_time = 1_700_000_000
+    os.utime(marker_path, (old_time, old_time))
+    before = marker_path.stat().st_mtime_ns
+
+    assert annotation_project_id_for_session(session, tmp_path) == project_id
+    assert marker_path.stat().st_mtime_ns == before
 
 
 def test_track_annotation_resolves_after_track_move(tmp_path, monkeypatch):

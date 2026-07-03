@@ -16,6 +16,7 @@
 - Browser cockpit now supports a pinned working Codex thread, a per-brief evidence budget hint, and captured dispatch thread ids from recent rollout filenames.
 - `complete_cockpit_brief` closes the song-memory loop by marking a brief done only after recording learnings, touched-track intent updates, and rejected alternatives with reasons.
 - Orchestration snapshots now store compact `context_digest` and `production_context_state` fields instead of embedding the full cockpit context for every brief.
+- Codex dispatch metadata now distinguishes the safe existing-thread prompt-copy fallback from an unverified composer-prefill capability, and rollout capture prefers file birth time when available.
 - Agent focus tools remain available through `get_agent_focus`, `set_agent_focus`, `clear_agent_focus`, and `resolve_track_ref`; visual track pointing is now part of the Production Cockpit.
 - `npx livepilot --cockpit` standalone browser sidecar for the Production Cockpit. It uses the latest persisted `get_session_info` snapshot by default, so the browser UI no longer depends on the Codex-managed MCP process lifetime or competes for Ableton's single TCP client.
 - Persistent lifecycle diagnostics at `~/.livepilot/logs/lifecycle.jsonl` for launcher startup, stdin close/end, single-instance cleanup targets, MCP child spawn/exit/error, Python MCP lifespan readiness/shutdown, signals, and cockpit sidecar startup/shutdown.

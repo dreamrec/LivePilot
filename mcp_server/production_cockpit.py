@@ -117,7 +117,10 @@ _CODEX_DEEPLINK_NEW_THREAD_TEMPLATE = (
     "codex://threads/new?prompt={prompt}&path={path}"
 )
 _CODEX_DEEPLINK_OPEN_THREAD_TEMPLATE = "codex://threads/{thread_id}"
+# Safe fallback until a visual Codex Desktop composer check confirms existing
+# thread prompt prefill. Disk checks only prove no auto-submit.
 _CODEX_EXISTING_THREAD_PREFILL = False
+_CODEX_EXISTING_THREAD_PREFILL_STATUS = "unverified_safe_fallback"
 _CODEX_SESSIONS_DIR: Optional[Path] = None
 _CODEX_CAPTURE_WINDOW_MS = 120_000
 _CODEX_CAPTURE_MTIME_FUZZ_MS = 2_000
@@ -143,6 +146,7 @@ def _codex_dispatch_base() -> dict:
         "prompt_template": _CODEX_DISPATCH_PROMPT_TEMPLATE,
         "sweep_prompt_template": _CODEX_DISPATCH_SWEEP_PROMPT_TEMPLATE,
         "existing_thread_prefill": _CODEX_EXISTING_THREAD_PREFILL,
+        "existing_thread_prefill_status": _CODEX_EXISTING_THREAD_PREFILL_STATUS,
         "workspace_path": _codex_dispatch_workspace_path(),
     }
 
@@ -171,6 +175,7 @@ def _brief_dispatch_action(
         "deeplink_open_thread": "",
         "deeplink_working_thread": "",
         "existing_thread_prefill": _CODEX_EXISTING_THREAD_PREFILL,
+        "existing_thread_prefill_status": _CODEX_EXISTING_THREAD_PREFILL_STATUS,
         "working_thread_status": working_thread_status,
     }
     if working_thread and working_thread_status == "live":
@@ -289,10 +294,8 @@ def _recent_rollout_thread_candidates(dispatch_at_ms: int) -> list[str]:
     seen: list[str] = []
     try:
         for path in sessions_dir.rglob("*.jsonl"):
-            try:
-                if path.stat().st_mtime < threshold:
-                    continue
-            except OSError:
+            candidate_time = _rollout_candidate_time_seconds(path)
+            if candidate_time is None or candidate_time < threshold:
                 continue
             match = _CODEX_THREAD_ID_RE.search(path.name)
             if not match:
@@ -303,6 +306,17 @@ def _recent_rollout_thread_candidates(dispatch_at_ms: int) -> list[str]:
     except OSError:
         return []
     return seen
+
+
+def _rollout_candidate_time_seconds(path: Path) -> Optional[float]:
+    try:
+        stat_result = path.stat()
+    except OSError:
+        return None
+    birthtime = getattr(stat_result, "st_birthtime", None)
+    if isinstance(birthtime, (int, float)) and birthtime > 0:
+        return float(birthtime)
+    return float(stat_result.st_mtime)
 
 
 def _briefs_with_dispatch_actions(

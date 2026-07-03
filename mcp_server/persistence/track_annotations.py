@@ -503,35 +503,43 @@ def _ensure_project_marker(
 ) -> None:
     now = int(time.time() * 1000)
     store = PersistentJsonStore(project_dir / "project.json")
+    existing = store.read()
 
-    def _update(data: dict) -> dict:
-        marker = data if data.get("version") == 1 else {}
-        aliases = marker.get("aliases")
-        if not isinstance(aliases, list):
-            aliases = []
-        normalized_aliases = [
-            str(item).strip()
-            for item in aliases
-            if str(item).strip()
-        ]
-        normalized_alias = str(alias or "").strip()
-        marker_identity = str(marker.get("identity") or identity).strip() or identity
-        if (
-            normalized_alias
-            and normalized_alias != marker_identity
-            and normalized_alias not in normalized_aliases
-        ):
-            normalized_aliases.append(normalized_alias)
-        return {
-            "version": 1,
-            "identity": marker_identity,
-            "aliases": normalized_aliases,
-            "created_at_ms": int(marker.get("created_at_ms") or now),
-            "last_seen_at_ms": now,
-        }
+    marker = existing if existing.get("version") == 1 else {}
+    aliases = marker.get("aliases")
+    if not isinstance(aliases, list):
+        aliases = []
+    normalized_aliases = [
+        str(item).strip()
+        for item in aliases
+        if str(item).strip()
+    ]
+    normalized_alias = str(alias or "").strip()
+    marker_identity = str(marker.get("identity") or identity).strip() or identity
+    should_add_alias = (
+        bool(normalized_alias)
+        and normalized_alias != marker_identity
+        and normalized_alias not in normalized_aliases
+    )
+    if should_add_alias:
+        normalized_aliases.append(normalized_alias)
+    marker_missing_or_invalid = (
+        marker.get("version") != 1
+        or not str(marker.get("identity") or "").strip()
+    )
+    if not marker_missing_or_invalid and not should_add_alias:
+        return
+
+    next_marker = {
+        "version": 1,
+        "identity": marker_identity,
+        "aliases": normalized_aliases,
+        "created_at_ms": int(marker.get("created_at_ms") or now),
+        "last_seen_at_ms": now,
+    }
 
     try:
-        store.update(_update)
+        store.write(next_marker)
     except OSError:
         pass
 

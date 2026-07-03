@@ -59,7 +59,7 @@ Observed from the current Codex manual and the installed app bundle scheme regis
 - `originUrl=` can match a workspace by Git remote URL; if `path` is also present, `path` wins.
 - Query string values must be URL-encoded.
 - There is no documented deep-link form that sends a message into an existing thread.
-- Tested 2026-07-03 (post-verdict): `codex://threads/<existing-id>?prompt=<encoded>` does **not** auto-submit into the existing thread — the target thread's rollout file was byte-identical 60s after the link fired, and the prompt did not land in any new rollout either. Auto-submit is exclusive to `threads/new` in app build 4674. (Whether the app prefills the composer without submitting was not disk-observable.)
+- Tested 2026-07-03 (post-verdict): `codex://threads/<existing-id>?prompt=<encoded>` does **not** auto-submit into the existing thread — the target thread's rollout file was byte-identical 60s after the link fired, and the prompt did not land in any new rollout either. Auto-submit is exclusive to `threads/new` in app build 4674. Whether the app prefills the composer without submitting was not disk-observable and remains unverified; LivePilot therefore exposes `existing_thread_prefill=false` with `existing_thread_prefill_status=unverified_safe_fallback`.
 
 ## Mechanics
 
