@@ -21,6 +21,7 @@ function usage() {
 Options:
   --home PATH        CODEX_HOME/CODEX_SQLITE_HOME for the app-server child.
   --codex PATH       Codex CLI path. Default: ${DEFAULT_CODEX}
+  --config K=V       Repeatable Codex config override passed to app-server.
   --timeout-ms N     Request/turn timeout. Default: 120000
   --model MODEL      Optional model override for thread/start.
   --cwd PATH         Optional workspace path for thread/start or turn/start.
@@ -38,6 +39,7 @@ function parseArgs(argv) {
     cwd: "",
     thread: "",
     prompt: "",
+    config: [],
   };
   const rest = [];
   for (let i = 0; i < argv.length; i += 1) {
@@ -54,6 +56,8 @@ function parseArgs(argv) {
     }
     if (key === "timeoutMs") {
       options.timeoutMs = Number(value);
+    } else if (key === "config") {
+      options.config.push(value);
     } else if (Object.hasOwn(options, key)) {
       options[key] = value;
     } else {
@@ -91,9 +95,14 @@ class AppServerClient {
       env.CODEX_HOME = home;
       env.CODEX_SQLITE_HOME = home;
     }
+    const args = ["app-server"];
+    for (const item of this.options.config || []) {
+      args.push("--config", item);
+    }
+    args.push("--listen", "stdio://");
     this.proc = spawn(
       this.options.codex,
-      ["app-server", "--listen", "stdio://"],
+      args,
       {
         cwd: process.cwd(),
         env,

@@ -2,7 +2,7 @@
 
 Date: 2026-07-03
 Spec: `docs/specs/2026-07-03-codex-dispatch-spec-a-gate-and-deeplink.md`
-Status: Phase 1 complete; Phases 2-4 pending.
+Status: Phase 2 started; manual gate checks pending.
 
 ## Surface
 
@@ -127,11 +127,11 @@ Completion notifications included `GATE-OK-2`. A direct `turn/start` from a fres
 
 | ID | Verdict | Evidence excerpt |
 |----|---------|------------------|
-| A | pending-human | Phase 2 not run yet. |
-| B | pending-human | Phase 2 not run yet. |
-| C | pending-human | Phase 2 not run yet. |
-| D | pending-human | Phase 2 not run yet. |
-| E | pending-human | Phase 2 not run yet. |
+| A | pending-human | Real-home gate thread `019f28e9-3b8a-7b62-b8af-7abbee5583d5` was created and `open codex://threads/019f28e9-3b8a-7b62-b8af-7abbee5583d5` was fired. Producer confirmation pending. |
+| B | pending-human | Producer has not yet sent `GATE-HUMAN-TURN` in the app. |
+| C | pending-human | Backend polling waits on B. |
+| D | pending-human | Backend push test waits on C. |
+| E | pending-human | Resume/read/write-after-app-touch waits on B/C. |
 
 ## Verdict
 
@@ -141,8 +141,9 @@ Pending Phase 2. Spec B must not choose a branch until this section names Branch
 
 | Thread id | Created | Purpose |
 |-----------|---------|---------|
-| pending | pending | Phase 2 real-home gate thread has not been created yet. |
 | 019f28e4-bdab-7f20-919e-10449da66d45 | 2026-07-03 | Isolated-home mechanics rehearsal; disposable under `/Users/terencemahon/.livepilot/tmp/codex-gate-home`. |
+| 019f28e8-daa4-7501-b4d4-6b1ecc715c4c | 2026-07-03 | Real-home Phase 2 attempt; first turn failed because upstream rejected `service_tier=flex`. Disposable test thread, safe to delete. |
+| 019f28e9-3b8a-7b62-b8af-7abbee5583d5 | 2026-07-03 | Real-home Phase 2 gate thread; first turn returned `GATE-OK`. Disposable test thread, safe to delete after gate. |
 
 ## Anomalies
 
@@ -151,3 +152,4 @@ Pending Phase 2. Spec B must not choose a branch until this section names Branch
 - A bare `thread/start` with no first turn was not durable enough for a later fresh app-server process to `turn/start`; the later call returned `thread not found`.
 - `turn/start` on a persisted thread from a fresh app-server connection also returned `thread not found` until the harness first called `thread/resume`.
 - The isolated home's fallback model was `gpt-5.3-codex`, which this ChatGPT account rejected. Explicit `model="gpt-5"` was also rejected. Explicit `model="gpt-5.5"` worked.
+- Real-home `thread/start` failed with the user's current config because `service_tier = "default"` is invalid for app-server 0.130.0. The harness now supports `--config`; `--config 'service_tier="fast"'` allowed the real-home gate to run. `service_tier="flex"` parsed but the upstream API rejected it.
