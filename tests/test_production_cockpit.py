@@ -678,6 +678,9 @@ def test_intent_first_cockpit_renders_http_backend_contract():
     assert '"#wholeSongButton").addEventListener("click", chooseWholeSong)' in html
     assert "Suggestions" in html
     assert "Song Layers" in html
+    assert "function savedPickerMode()" in html
+    assert 'const keepPickerMode = state ? pickerMode() : "";' in html
+    assert "targetModeDraft = savedMode" not in html
     assert "Needs you" in html
     assert "id=\"needsYouCard\"" in html
     assert "id=\"needsYouBadge\"" in html

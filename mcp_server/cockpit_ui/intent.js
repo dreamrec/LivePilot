@@ -197,6 +197,12 @@
     function targetMode() {
       return ctxState().target_mode || targetState().target_mode || "instrument";
     }
+    function savedPickerMode() {
+      const mode = targetMode();
+      if (mode === "layer") return "layer";
+      if (mode === "query") return "track";
+      return "instrument";
+    }
     function inferLane(text) {
       const lower = String(text || "").toLowerCase();
       if (/\b(mix|level|balance|eq|compress|reverb|delay|glue|headroom|pan|stereo|tuck)\b/.test(lower)) return "mix";
@@ -258,9 +264,10 @@
     async function refresh() {
       try {
         setStatus("Refreshing");
+        const keepPickerMode = state ? pickerMode() : "";
         state = await callTool(BACKEND_TOOLS.get_state);
         selected = selectionFromState();
-        targetModeDraft = targetMode() === "layer" ? "layer" : targetMode() === "query" ? "track" : "instrument";
+        targetModeDraft = keepPickerMode || savedPickerMode();
         syncControlsFromState();
         render();
         setStatus("Ready");
@@ -280,8 +287,10 @@
         if (!response.ok || body.status === "error") {
           throw new Error(body.hint || body.error || `Request failed: ${response.status}`);
         }
+        const keepPickerMode = state ? pickerMode() : "";
         state = body;
         selected = selectionFromState(body);
+        targetModeDraft = keepPickerMode || savedPickerMode();
         syncControlsFromState();
         render();
         setStatus("Ready");
@@ -297,8 +306,6 @@
       const sentence = $("#sentence");
       if (!sentence.value) sentence.value = loadDraft();
       outputMode = ctx.workflow_mode === "commit" ? "apply" : ctx.workflow_mode === "guided" ? "ask" : "auditions";
-      const savedMode = ctx.target_mode || targetMode();
-      targetModeDraft = savedMode === "layer" ? "layer" : savedMode === "query" ? "track" : "instrument";
       $("#auditionCount").value = String(Math.max(1, Math.min(5, Number(ctx.audition_count || 3))));
       $$("#laneRow .opt").forEach(node => node.classList.toggle("on", node.dataset.lane === (ctx.lane || "holistic")));
       $$("#outputModeRow .opt").forEach(node => node.classList.toggle("on", node.dataset.output === outputMode));
