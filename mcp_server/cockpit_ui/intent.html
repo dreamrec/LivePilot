@@ -69,6 +69,11 @@ __INTENT_CSS__
         <div class="section">
           <div class="label">Context</div>
           <div class="sub" id="contextLine">No session context loaded.</div>
+          <div class="thread-pill" id="workingThreadPill">
+            <span class="thread-dot" id="workingThreadDot"></span>
+            <b id="workingThreadLabel">No working thread</b>
+            <button class="soft mini" id="clearWorkingThread">Clear</button>
+          </div>
         </div>
       </aside>
 
@@ -121,6 +126,14 @@ __INTENT_CSS__
                 <button class="opt tog" data-protect="preserve_level">Level</button>
               </div>
             </div>
+            <label>
+              Evidence budget
+              <select id="evidenceBudget">
+                <option value="quick">Quick</option>
+                <option value="standard" selected>Standard</option>
+                <option value="deep">Deep</option>
+              </select>
+            </label>
           </div>
         </div>
       </main>

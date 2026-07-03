@@ -222,3 +222,15 @@ def test_brief_dispatch_stamp_is_optional_and_round_trips(tmp_path):
     assert isinstance(dispatched["dispatch"]["at_ms"], int)
     listed = service.list_briefs(session)["briefs"][0]
     assert listed["dispatch"]["method"] == "copy_prompt"
+
+    existing = service.record_dispatch(
+        session,
+        created["brief_id"],
+        method="deeplink_existing",
+        codex_thread_id="019f2903-7fd2-79b3-9ae0-e46a767c326d",
+    )["brief"]
+
+    assert existing["dispatch"]["method"] == "deeplink_existing"
+    assert existing["dispatch"]["codex_thread_id"] == (
+        "019f2903-7fd2-79b3-9ae0-e46a767c326d"
+    )

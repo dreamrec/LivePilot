@@ -348,6 +348,7 @@
       if (!sentence.value) sentence.value = loadDraft();
       if (!outputModeUserOverride) outputMode = outputModeFromWorkflow(ctx.workflow_mode);
       $("#auditionCount").value = String(Math.max(1, Math.min(5, Number(ctx.audition_count || 3))));
+      $("#evidenceBudget").value = ctx.evidence_budget || "standard";
       $$("#laneRow .opt").forEach(node => node.classList.toggle("on", node.dataset.lane === (ctx.lane || "holistic")));
       $$("#outputModeRow .opt").forEach(node => node.classList.toggle("on", node.dataset.output === outputMode));
       const protect = new Set(ctx.protect || []);
@@ -363,6 +364,7 @@
       renderTracks();
       renderQuickMoves();
       renderBrief();
+      renderWorkingThread();
       renderNeedsYou();
       renderOrchestration();
       renderBriefFeed();
@@ -402,7 +404,30 @@
       const dispatch = brief.dispatch || {};
       if (!dispatch.method || !dispatch.at_ms) return "";
       const age = formatAge(Math.max(0, Date.now() - Number(dispatch.at_ms || 0)));
-      return `dispatched - ${dispatch.method} - ${age}`;
+      const thread = dispatch.codex_thread_id ? ` - thread ${compactId(dispatch.codex_thread_id)}` : "";
+      return `dispatched - ${dispatch.method}${thread} - ${age}`;
+    }
+    function workingThread() {
+      return ctxState().working_thread || null;
+    }
+    function workingThreadStatus() {
+      return ((state || {}).production_context || {}).working_thread_status || "unset";
+    }
+    function renderWorkingThread() {
+      const pill = $("#workingThreadPill");
+      if (!pill) return;
+      const thread = workingThread();
+      const status = workingThreadStatus();
+      pill.classList.toggle("live", status === "live");
+      pill.classList.toggle("missing", status === "missing");
+      if (!thread || !thread.thread_id) {
+        $("#workingThreadLabel").textContent = "No working thread";
+        $("#clearWorkingThread").disabled = true;
+        return;
+      }
+      const label = thread.label || compactId(thread.thread_id);
+      $("#workingThreadLabel").textContent = `${label} - ${status}`;
+      $("#clearWorkingThread").disabled = false;
     }
     function renderSectionMap() {
       const map = sectionMapState();
@@ -450,7 +475,8 @@
       $("#contextLine").textContent = [
         `Target: ${hasTarget() ? (targetMode() === "layer" ? "song layer" : targetMode() === "query" ? "track/search" : "auto group") : "none"}`,
         `Lane: ${currentLane().replace("_", " ")}`,
-        `Output: ${outputLabel()}`
+        `Output: ${outputLabel()}`,
+        `Evidence: ${ctxState().evidence_budget || "standard"}`
       ].join(" / ");
     }
     function renderPicker() {
@@ -724,6 +750,7 @@
         const text = brief.request_text || "Untitled brief";
         const dispatchAction = brief.dispatch_action || {};
         const dispatchHref = dispatchAction.deeplink_new_thread || dispatchAction.deeplink_open_thread || "codex://threads/new";
+        const workingHref = dispatchAction.deeplink_working_thread || "";
         const dispatchText = dispatchStatusText(brief);
         const jobs = brief.related_jobs || [];
         const plan = jobs.flatMap(job => job.plan || []).slice(0, 3);
@@ -748,7 +775,8 @@
               <button class="soft brief-action danger" data-action="delete" data-brief-id="${escapeHtml(brief.brief_id || "")}">Delete</button>
             </span>
             <span>
-              <a class="link-button brief-dispatch" href="${escapeHtml(dispatchHref)}" data-action="open_codex" data-brief-id="${escapeHtml(brief.brief_id || "")}">Open in Codex</a>
+              <a class="link-button brief-dispatch" href="${escapeHtml(dispatchHref)}" data-action="open_codex" data-brief-id="${escapeHtml(brief.brief_id || "")}">New Codex thread</a>
+              ${workingHref ? `<a class="link-button brief-dispatch" href="${escapeHtml(workingHref)}" data-action="open_working_thread" data-brief-id="${escapeHtml(brief.brief_id || "")}">Open working thread</a>` : ""}
               <button class="soft brief-dispatch" data-action="copy_prompt" data-brief-id="${escapeHtml(brief.brief_id || "")}">Copy prompt</button>
             </span>
             ${dispatchText ? `<span>${escapeHtml(dispatchText)}</span>` : ""}
@@ -938,9 +966,13 @@
       render();
       toast("Brief deleted");
     }
-    async function recordBriefDispatch(briefId, method) {
+    async function recordBriefDispatch(briefId, method, codexThreadId = "") {
       if (!briefId || !method) return;
-      state = await callTool(BACKEND_TOOLS.record_dispatch, {brief_id: briefId, method});
+      state = await callTool(BACKEND_TOOLS.record_dispatch, {
+        brief_id: briefId,
+        method,
+        codex_thread_id: codexThreadId
+      });
       selected = selectionFromState();
       syncControlsFromState();
       render();
@@ -948,6 +980,20 @@
     async function openBriefInCodex(briefId, href) {
       try {
         await recordBriefDispatch(briefId, "deeplink");
+      } catch (error) {
+        setStatus(error.message || String(error));
+      }
+      window.location.href = href || "codex://threads/new";
+    }
+    async function openWorkingThread(briefId, href) {
+      const brief = briefById(briefId);
+      const action = (brief || {}).dispatch_action || {};
+      try {
+        if (!action.existing_thread_prefill) {
+          await copyText(action.sweep_prompt || action.prompt || "");
+        }
+        await recordBriefDispatch(briefId, "deeplink_existing", action.working_thread_id || "");
+        toast(action.existing_thread_prefill ? "Thread opened - press Enter" : "Thread opened - prompt copied, paste and send");
       } catch (error) {
         setStatus(error.message || String(error));
       }
@@ -963,6 +1009,13 @@
       await copyText(prompt);
       await recordBriefDispatch(briefId, "copy_prompt");
       toast("Prompt copied");
+    }
+    async function clearWorkingThread() {
+      state = await callTool(BACKEND_TOOLS.save_context, {working_thread: {}});
+      selected = selectionFromState();
+      syncControlsFromState();
+      render();
+      toast("Working thread cleared");
     }
     async function copyText(text) {
       if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -1155,6 +1208,7 @@
         audition_required: OUTPUTS[outputMode].audition,
         audition_count: auditionCount(),
         audition_scope: targetMode() === "layer" ? "layer" : "track",
+        evidence_budget: $("#evidenceBudget").value || ctx.evidence_budget || "standard",
         protect,
         request_text: text,
         target_query: $("#targetQuery").value || targetState().query || ctx.target_query || "",
@@ -1186,6 +1240,7 @@
     $("#clearTarget").addEventListener("click", clearTarget);
     $("#saveLayer").addEventListener("click", saveCurrentLayer);
     $("#deleteLayer").addEventListener("click", deleteCurrentLayer);
+    $("#clearWorkingThread").addEventListener("click", clearWorkingThread);
     $("#wholeSongButton").addEventListener("click", chooseWholeSong);
     $("#targetModeRow").addEventListener("click", event => {
       const button = event.target.closest("button[data-mode]");
@@ -1221,6 +1276,7 @@
       renderBrief();
     });
     $("#auditionCount").addEventListener("change", renderBrief);
+    $("#evidenceBudget").addEventListener("change", renderBrief);
     $("#outputModeRow").addEventListener("click", event => {
       const button = event.target.closest("button[data-output]");
       if (!button) return;
@@ -1236,6 +1292,10 @@
         if (action === "open_codex") {
           event.preventDefault();
           openBriefInCodex(briefId, dispatchNode.getAttribute("href") || "");
+        }
+        if (action === "open_working_thread") {
+          event.preventDefault();
+          openWorkingThread(briefId, dispatchNode.getAttribute("href") || "");
         }
         if (action === "copy_prompt") copyBriefPrompt(briefId);
         return;

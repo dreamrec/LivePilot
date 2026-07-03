@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from importlib import resources
 import json
+import os
 from pathlib import Path
 from typing import Optional
 from urllib.parse import quote
@@ -97,10 +98,17 @@ _CODEX_DISPATCH_PROMPT_TEMPLATE = (
     "Pick up LivePilot cockpit brief #{seq} (id {brief_id}) - read it with "
     "get_production_context / list_cockpit_briefs, then run the queue."
 )
+_CODEX_DISPATCH_SWEEP_PROMPT_TEMPLATE = (
+    "Pick up the unseen LivePilot cockpit briefs - read them with "
+    "list_cockpit_briefs / get_production_context, run the queue, then "
+    "complete each with complete_cockpit_brief."
+)
 _CODEX_DEEPLINK_NEW_THREAD_TEMPLATE = (
     "codex://threads/new?prompt={prompt}&path={path}"
 )
 _CODEX_DEEPLINK_OPEN_THREAD_TEMPLATE = "codex://threads/{thread_id}"
+_CODEX_EXISTING_THREAD_PREFILL = False
+_CODEX_SESSIONS_DIR: Optional[Path] = None
 
 
 def _cockpit_url(ctx: Context) -> Optional[str]:
@@ -113,8 +121,11 @@ def _cockpit_url(ctx: Context) -> Optional[str]:
 def _codex_dispatch_base() -> dict:
     return {
         "deeplink_open_thread": _CODEX_DEEPLINK_OPEN_THREAD_TEMPLATE,
+        "deeplink_open_thread_template": _CODEX_DEEPLINK_OPEN_THREAD_TEMPLATE,
         "deeplink_new_thread": _CODEX_DEEPLINK_NEW_THREAD_TEMPLATE,
         "prompt_template": _CODEX_DISPATCH_PROMPT_TEMPLATE,
+        "sweep_prompt_template": _CODEX_DISPATCH_SWEEP_PROMPT_TEMPLATE,
+        "existing_thread_prefill": _CODEX_EXISTING_THREAD_PREFILL,
         "workspace_path": _codex_dispatch_workspace_path(),
     }
 
@@ -123,18 +134,33 @@ def _codex_dispatch_workspace_path() -> str:
     return str(Path(__file__).resolve().parents[1])
 
 
-def _brief_dispatch_action(brief: dict) -> dict:
+def _brief_dispatch_action(
+    brief: dict,
+    working_thread: Optional[dict] = None,
+    working_thread_status: str = "unset",
+) -> dict:
     prompt = _codex_dispatch_prompt(brief)
     workspace_path = _codex_dispatch_workspace_path()
+    working_thread = working_thread if isinstance(working_thread, dict) else None
     action = {
         "prompt": prompt,
         "prompt_template": _CODEX_DISPATCH_PROMPT_TEMPLATE,
+        "sweep_prompt": _CODEX_DISPATCH_SWEEP_PROMPT_TEMPLATE,
+        "sweep_prompt_template": _CODEX_DISPATCH_SWEEP_PROMPT_TEMPLATE,
         "deeplink_new_thread": _CODEX_DEEPLINK_NEW_THREAD_TEMPLATE.format(
             prompt=quote(prompt, safe=""),
             path=quote(workspace_path, safe=""),
         ),
         "deeplink_open_thread": "",
+        "deeplink_working_thread": "",
+        "existing_thread_prefill": _CODEX_EXISTING_THREAD_PREFILL,
+        "working_thread_status": working_thread_status,
     }
+    if working_thread and working_thread_status == "live":
+        action["working_thread_id"] = str(working_thread.get("thread_id") or "")
+        action["deeplink_working_thread"] = _CODEX_DEEPLINK_OPEN_THREAD_TEMPLATE.format(
+            thread_id=quote(str(working_thread.get("thread_id") or ""), safe=""),
+        )
     thread_id = str(brief.get("thread_id") or "").strip()
     if _looks_like_codex_thread_id(thread_id):
         action["deeplink_open_thread"] = _CODEX_DEEPLINK_OPEN_THREAD_TEMPLATE.format(
@@ -159,11 +185,46 @@ def _looks_like_codex_thread_id(value: str) -> bool:
     )
 
 
-def _briefs_with_dispatch_actions(briefs: list[dict]) -> list[dict]:
+def _codex_sessions_dir() -> Path:
+    if _CODEX_SESSIONS_DIR is not None:
+        return Path(_CODEX_SESSIONS_DIR)
+    codex_home = os.environ.get("CODEX_HOME")
+    base = Path(codex_home).expanduser() if codex_home else Path.home() / ".codex"
+    return base / "sessions"
+
+
+def _working_thread_status(working_thread) -> str:
+    if not isinstance(working_thread, dict):
+        return "unset"
+    thread_id = str(working_thread.get("thread_id") or "").strip()
+    if not thread_id:
+        return "unset"
+    sessions_dir = _codex_sessions_dir()
+    if not sessions_dir.exists():
+        return "missing"
+    try:
+        for _path in sessions_dir.rglob(f"*-{thread_id}.jsonl"):
+            return "live"
+    except OSError:
+        return "missing"
+    return "missing"
+
+
+def _briefs_with_dispatch_actions(
+    briefs: list[dict],
+    production_state: Optional[dict] = None,
+    working_thread_status: str = "unset",
+) -> list[dict]:
+    production_state = production_state if isinstance(production_state, dict) else {}
+    working_thread = production_state.get("working_thread")
     out = []
     for brief in briefs:
         item = dict(brief)
-        item["dispatch_action"] = _brief_dispatch_action(item)
+        item["dispatch_action"] = _brief_dispatch_action(
+            item,
+            working_thread=working_thread,
+            working_thread_status=working_thread_status,
+        )
         out.append(item)
     return out
 
@@ -1251,6 +1312,11 @@ def _build_context(
         session_info,
         orchestration_state=_orchestration_state_for_briefs(ctx, session_info),
     )
+    working_thread_status = _working_thread_status(
+        production_state.get("working_thread")
+    )
+    production_context = dict(production_context)
+    production_context["working_thread_status"] = working_thread_status
     payload = {
         "status": "ok",
         "version": __version__,
@@ -1279,7 +1345,11 @@ def _build_context(
         "section_map": section_map,
         "capabilities": _cockpit_capabilities(ctx),
         "dispatch": _codex_dispatch_base(),
-        "briefs": _briefs_with_dispatch_actions(brief_state.get("briefs", [])),
+        "briefs": _briefs_with_dispatch_actions(
+            brief_state.get("briefs", []),
+            production_state=production_state,
+            working_thread_status=working_thread_status,
+        ),
         "brief_count": brief_state.get("brief_count", 0),
         "codex_last_read_ms": brief_state.get("codex_last_read_ms", 0),
         "orchestration": orchestration,
@@ -1313,6 +1383,7 @@ def _summarize_context(
         "audition_required": bool(state.get("audition_required", True)),
         "audition_count": int(state.get("audition_count") or 3),
         "audition_scope": state.get("audition_scope", "layer"),
+        "evidence_budget": state.get("evidence_budget", "standard"),
         "target_query": target.get("query", ""),
         "target_mode": target.get("target_mode", "instrument"),
         "target_layer": target.get("target_layer", ""),
@@ -1392,6 +1463,7 @@ def _brief_context_digest(context: dict) -> dict:
         "workflow_mode": state.get("workflow_mode", "guided"),
         "audition_count": int(state.get("audition_count") or 3),
         "audition_scope": state.get("audition_scope", "layer"),
+        "evidence_budget": state.get("evidence_budget", "standard"),
         "protect": state.get("protect", []),
         "reference": state.get("reference", ""),
     }
@@ -1647,6 +1719,7 @@ def _submit_cockpit_brief_packet(
             "audition_required": bool(state.get("audition_required", True)),
             "audition_count": int(state.get("audition_count") or 3),
             "audition_scope": state.get("audition_scope", "layer"),
+            "evidence_budget": state.get("evidence_budget", "standard"),
             "brief_id": brief_id,
         },
         "status": "queued",
@@ -1690,7 +1763,14 @@ def _submit_cockpit_brief_packet(
     return {
         "status": "ok",
         "brief": attached,
-        "dispatch": _brief_dispatch_action(attached),
+        "dispatch": _brief_dispatch_action(
+            attached,
+            working_thread=state.get("working_thread"),
+            working_thread_status=(
+                (context.get("production_context") or {})
+                .get("working_thread_status", "unset")
+            ),
+        ),
         "snapshot": snapshot,
         "task": task,
         "job": job,
@@ -1745,6 +1825,7 @@ def _send_cockpit_brief(
         target_group=payload.get("target_group"),
         target_mode=payload.get("target_mode"),
         target_layer=payload.get("target_layer"),
+        evidence_budget=payload.get("evidence_budget"),
         section=payload.get("section"),
         section_scope=payload.get("section_scope"),
         section_label=payload.get("section_label"),
@@ -1810,8 +1891,18 @@ def list_cockpit_briefs(
         status=status,
         orchestration_state=_orchestration_state_for_briefs(ctx, session_info),
     )
+    production_context = _production_context_service(ctx).get_state(session_info)
+    production_state = production_context.get("state") or {}
+    working_thread_status = _working_thread_status(
+        production_state.get("working_thread")
+    )
     result["dispatch"] = _codex_dispatch_base()
-    result["briefs"] = _briefs_with_dispatch_actions(result.get("briefs", []))
+    result["working_thread_status"] = working_thread_status
+    result["briefs"] = _briefs_with_dispatch_actions(
+        result.get("briefs", []),
+        production_state=production_state,
+        working_thread_status=working_thread_status,
+    )
     return result
 
 
@@ -1887,6 +1978,8 @@ def save_production_context(
     target_group: Optional[str] = None,
     target_mode: Optional[str] = None,
     target_layer: Optional[str] = None,
+    working_thread: Optional[dict] = None,
+    evidence_budget: Optional[str] = None,
     section: Optional[dict] = None,
     section_scope: Optional[str] = None,
     section_label: Optional[str] = None,
@@ -1909,6 +2002,8 @@ def save_production_context(
         target_group=target_group,
         target_mode=target_mode,
         target_layer=target_layer,
+        working_thread=working_thread,
+        evidence_budget=evidence_budget,
         section=section,
         section_scope=section_scope,
         section_label=section_label,
@@ -1933,6 +2028,7 @@ def send_cockpit_brief(
     target_group: Optional[str] = None,
     target_mode: Optional[str] = None,
     target_layer: Optional[str] = None,
+    evidence_budget: Optional[str] = None,
     section: Optional[dict] = None,
     section_scope: Optional[str] = None,
     section_label: Optional[str] = None,
@@ -1956,6 +2052,7 @@ def send_cockpit_brief(
             "target_group": target_group,
             "target_mode": target_mode,
             "target_layer": target_layer,
+            "evidence_budget": evidence_budget,
             "section": section,
             "section_scope": section_scope,
             "section_label": section_label,
@@ -2022,6 +2119,7 @@ def record_cockpit_brief_dispatch(
     ctx: Context,
     brief_id: str,
     method: str,
+    codex_thread_id: str = "",
 ) -> dict:
     """Record that a cockpit brief was dispatched to Codex."""
     session_info = _require_session_info(ctx)
@@ -2029,6 +2127,7 @@ def record_cockpit_brief_dispatch(
         session_info,
         brief_id,
         method=method,
+        codex_thread_id=codex_thread_id,
     )
     context = _build_context(ctx, include_history=False)
     context["brief_dispatch"] = result

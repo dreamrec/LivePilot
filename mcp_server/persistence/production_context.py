@@ -25,6 +25,7 @@ _VALID_WORKFLOW_MODES = {"observe", "guided", "audition", "commit"}
 _VALID_AUDITION_SCOPES = {"layer", "track"}
 _VALID_SECTION_SOURCES = {"cue_points", "section_track", "manual", "whole_song"}
 _VALID_TARGET_MODES = {"instrument", "layer", "query"}
+_VALID_EVIDENCE_BUDGETS = {"quick", "standard", "deep"}
 _VALID_PROTECT_FLAGS = {
     "preserve_arrangement",
     "preserve_notes",
@@ -67,6 +68,8 @@ class ProductionContextService:
         target_group: Optional[str] = None,
         target_mode: Optional[str] = None,
         target_layer: Optional[str] = None,
+        working_thread: Optional[dict] = None,
+        evidence_budget: Optional[str] = None,
         section: Optional[dict] = None,
         section_scope: Optional[str] = None,
         section_label: Optional[str] = None,
@@ -88,6 +91,8 @@ class ProductionContextService:
             target_group=target_group,
             target_mode=target_mode,
             target_layer=target_layer,
+            working_thread=working_thread,
+            evidence_budget=evidence_budget,
             section=section,
             section_scope=section_scope,
             section_label=section_label,
@@ -143,9 +148,8 @@ class ProductionContextStore:
         return self._default()
 
     def get_state(self, beats_per_bar: float = 4.0) -> dict:
-        return dict(
+        return _state_with_defaults(
             self.get_all(beats_per_bar=beats_per_bar).get("state")
-            or self._default_state()
         )
 
     def save_state(
@@ -163,6 +167,8 @@ class ProductionContextStore:
         target_group: Optional[str] = None,
         target_mode: Optional[str] = None,
         target_layer: Optional[str] = None,
+        working_thread: Optional[dict] = None,
+        evidence_budget: Optional[str] = None,
         section: Optional[dict] = None,
         section_scope: Optional[str] = None,
         section_label: Optional[str] = None,
@@ -178,7 +184,7 @@ class ProductionContextStore:
                 data = self._migrate_v1(data, beats_per_bar=beats_per_bar)
             else:
                 data = self._default()
-            state = dict(data.get("state") or self._default_state())
+            state = _state_with_defaults(data.get("state"))
             if lane is not None:
                 state["lane"] = _normalize_lane(lane)
             if workflow_mode is not None:
@@ -203,6 +209,10 @@ class ProductionContextStore:
                 state["target_mode"] = _normalize_target_mode(target_mode)
             if target_layer is not None:
                 state["target_layer"] = _normalize_key(target_layer)
+            if working_thread is not None:
+                state["working_thread"] = _normalize_working_thread(working_thread)
+            if evidence_budget is not None:
+                state["evidence_budget"] = _normalize_evidence_budget(evidence_budget)
             if section is not None:
                 state["section"] = _normalize_section(section)
             elif any(
@@ -227,19 +237,22 @@ class ProductionContextStore:
             return data
 
         data = self._store.update(_update)
-        return dict(data.get("state") or self._default_state())
+        return _state_with_defaults(data.get("state"))
 
     def clear_state(self) -> dict:
         now = int(time.time() * 1000)
 
         def _update(data: dict) -> dict:
             data = data if data.get("version") == _STORE_VERSION else self._default()
-            data["state"] = self._default_state()
+            previous_state = _state_with_defaults(data.get("state"))
+            state = self._default_state()
+            state["working_thread"] = previous_state.get("working_thread")
+            data["state"] = state
             data["last_updated_ms"] = now
             return data
 
         data = self._store.update(_update)
-        return dict(data.get("state") or self._default_state())
+        return _state_with_defaults(data.get("state"))
 
     @staticmethod
     def _default_state() -> dict:
@@ -256,6 +269,8 @@ class ProductionContextStore:
             "target_group": "",
             "target_mode": "instrument",
             "target_layer": "",
+            "working_thread": None,
+            "evidence_budget": "standard",
             "section": None,
             "updated_at_ms": 0,
         }
@@ -285,6 +300,8 @@ class ProductionContextStore:
             "target_group",
             "target_mode",
             "target_layer",
+            "working_thread",
+            "evidence_budget",
             "updated_at_ms",
         ):
             if key in old_state:
@@ -301,6 +318,17 @@ class ProductionContextStore:
             "state": state,
             "last_updated_ms": data.get("last_updated_ms", 0),
         }
+
+
+def _state_with_defaults(value) -> dict:
+    state = ProductionContextStore._default_state()
+    if isinstance(value, dict):
+        state.update(value)
+    state["working_thread"] = _normalize_working_thread(state.get("working_thread"))
+    state["evidence_budget"] = _normalize_evidence_budget(
+        state.get("evidence_budget") or "standard"
+    )
+    return state
 
 
 def _normalize_lane(value: str) -> str:
@@ -350,6 +378,42 @@ def _normalize_target_mode(value: str) -> str:
             + ", ".join(sorted(_VALID_TARGET_MODES))
         )
     return mode
+
+
+def _normalize_evidence_budget(value: str) -> str:
+    budget = _normalize_key(value or "standard")
+    if budget not in _VALID_EVIDENCE_BUDGETS:
+        raise ValueError(
+            "evidence_budget must be one of: "
+            + ", ".join(sorted(_VALID_EVIDENCE_BUDGETS))
+        )
+    return budget
+
+
+def _normalize_working_thread(value) -> Optional[dict]:
+    if value in (None, "", False):
+        return None
+    if not isinstance(value, dict):
+        raise ValueError("working_thread must be an object or null")
+    thread_id = str(value.get("thread_id") or "").strip()
+    if not thread_id:
+        return None
+    now = int(time.time() * 1000)
+    pinned_at = _normalize_ms(value.get("pinned_at_ms"), fallback=now)
+    return {
+        "thread_id": thread_id,
+        "label": str(value.get("label") or "").strip(),
+        "pinned_at_ms": pinned_at,
+        "last_used_ms": _normalize_ms(value.get("last_used_ms"), fallback=pinned_at),
+    }
+
+
+def _normalize_ms(value, *, fallback: int) -> int:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return int(fallback)
+    return parsed if parsed >= 0 else int(fallback)
 
 
 def _normalize_key(value: str) -> str:

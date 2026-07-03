@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
+import mcp_server.production_cockpit as production_cockpit
 from mcp_server.persistence.agent_focus import AgentFocusService
 from mcp_server.persistence.briefs import BriefService
 from mcp_server.persistence.layer_groups import LayerGroupService
@@ -747,6 +748,85 @@ def test_brief_dispatch_prompt_links_and_stamp_round_trip(
     assert stamped["briefs"][0]["dispatch_action"]["prompt"] == dispatch["prompt"]
 
 
+def test_working_thread_dispatch_actions_and_status(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
+    sessions_dir = tmp_path / "codex_sessions"
+    rollout_dir = sessions_dir / "2026" / "07" / "03"
+    rollout_dir.mkdir(parents=True)
+    thread_id = "019f2903-7fd2-79b3-9ae0-e46a767c326d"
+    (rollout_dir / f"rollout-2026-07-03T13-25-23-{thread_id}.jsonl").write_text(
+        "not parsed\n"
+    )
+    monkeypatch.setattr(production_cockpit, "_CODEX_SESSIONS_DIR", sessions_dir)
+    ctx = _ctx(
+        tmp_path,
+        _session([
+            {"index": 0, "name": "el-guit-intro", "color_index": 1, "has_audio_input": True},
+        ]),
+    )
+
+    save_production_context(
+        ctx,
+        target_mode="query",
+        target_query="el-guit-intro",
+        working_thread={"thread_id": thread_id, "label": "Verse pass"},
+        evidence_budget="quick",
+    )
+    context = send_cockpit_brief(
+        ctx,
+        lane="mix",
+        workflow_mode="guided",
+        audition_required=False,
+        request_text="make the guitar easier to hear",
+        target_mode="query",
+        target_query="el-guit-intro",
+        evidence_budget="quick",
+    )
+
+    state = context["production_context"]["state"]
+    action = context["briefs"][0]["dispatch_action"]
+    task = context["orchestration_submission"]["task"]
+
+    assert context["production_context"]["working_thread_status"] == "live"
+    assert state["working_thread"]["thread_id"] == thread_id
+    assert state["evidence_budget"] == "quick"
+    assert action["deeplink_working_thread"] == f"codex://threads/{thread_id}"
+    assert action["sweep_prompt"].startswith("Pick up the unseen LivePilot")
+    assert action["existing_thread_prefill"] is False
+    assert task["constraints"]["evidence_budget"] == "quick"
+    assert context["orchestration_submission"]["brief"]["context_digest"]["evidence_budget"] == "quick"
+
+
+def test_working_thread_status_missing_when_rollout_absent(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
+    sessions_dir = tmp_path / "codex_sessions"
+    sessions_dir.mkdir()
+    monkeypatch.setattr(production_cockpit, "_CODEX_SESSIONS_DIR", sessions_dir)
+    ctx = _ctx(
+        tmp_path,
+        _session([
+            {"index": 0, "name": "drums", "color_index": 1, "has_audio_input": True},
+        ]),
+    )
+
+    context = save_production_context(
+        ctx,
+        working_thread={
+            "thread_id": "019f2903-7fd2-79b3-9ae0-e46a767c326d",
+            "label": "Missing thread",
+        },
+    )
+
+    assert context["production_context"]["working_thread_status"] == "missing"
+    assert context["briefs"] == []
+
+
 def test_send_cockpit_brief_creates_track_scoped_audition_job(
     tmp_path,
     monkeypatch,
@@ -888,10 +968,19 @@ def test_intent_first_cockpit_renders_http_backend_contract():
     assert "button.brief-action" in html
     assert "Pick up" in html
     assert "Delete" in html
-    assert "Open in Codex" in html
+    assert "New Codex thread" in html
+    assert "Open working thread" in html
     assert "Copy prompt" in html
+    assert "id=\"workingThreadPill\"" in html
+    assert "id=\"clearWorkingThread\"" in html
+    assert "id=\"evidenceBudget\"" in html
+    assert "Evidence budget" in html
+    assert "deeplink_working_thread" in html
+    assert "deeplink_existing" in html
     assert "function dispatchStatusText(brief)" in html
     assert "recordBriefDispatch" in html
+    assert "function renderWorkingThread()" in html
+    assert "function openWorkingThread(briefId, href)" in html
     assert "copyBriefPrompt" in html
     assert "async function handleTrackRowClick(index)" in html
     assert "Layer focus updated" in html

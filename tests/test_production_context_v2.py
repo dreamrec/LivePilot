@@ -68,6 +68,52 @@ def test_whole_song_is_stored_as_null_section(tmp_path):
     assert saved["state"]["section"] is None
 
 
+def test_working_thread_and_evidence_budget_round_trip_and_clear_semantics(tmp_path):
+    service = ProductionContextService(base_dir=tmp_path)
+    session = _session()
+    saved = service.save_state(
+        session,
+        lane="mix",
+        evidence_budget="deep",
+        working_thread={
+            "thread_id": "019f2903-7fd2-79b3-9ae0-e46a767c326d",
+            "label": "Verse work",
+            "pinned_at_ms": 123,
+            "last_used_ms": 456,
+        },
+    )
+
+    assert saved["state"]["evidence_budget"] == "deep"
+    assert saved["state"]["working_thread"] == {
+        "thread_id": "019f2903-7fd2-79b3-9ae0-e46a767c326d",
+        "label": "Verse work",
+        "pinned_at_ms": 123,
+        "last_used_ms": 456,
+    }
+
+    cleared = service.clear_state(session)
+
+    assert cleared["state"]["lane"] == "holistic"
+    assert cleared["state"]["evidence_budget"] == "standard"
+    assert cleared["state"]["working_thread"]["thread_id"] == (
+        "019f2903-7fd2-79b3-9ae0-e46a767c326d"
+    )
+
+    removed = service.save_state(session, working_thread={})
+    assert removed["state"]["working_thread"] is None
+
+
+def test_evidence_budget_rejects_unknown_value(tmp_path):
+    service = ProductionContextService(base_dir=tmp_path)
+
+    try:
+        service.save_state(_session(), evidence_budget="expensive")
+    except ValueError as exc:
+        assert "evidence_budget must be one of" in str(exc)
+    else:
+        raise AssertionError("expected evidence_budget validation error")
+
+
 def test_v1_section_scope_migrates_on_read_without_rewriting(tmp_path):
     session = _session()
     project_id = annotation_project_id_for_session(session, tmp_path)

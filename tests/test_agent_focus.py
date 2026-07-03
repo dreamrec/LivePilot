@@ -492,6 +492,22 @@ def test_focus_panel_serves_dual_use_cockpit(monkeypatch):
             assert dispatch_body["briefs"][0]["dispatch_action"]["deeplink_new_thread"].startswith(
                 "codex://threads/new?prompt="
             )
+            req = request.Request(
+                url + "api/cockpit/brief-dispatch",
+                data=json.dumps({
+                    "brief_id": brief_id,
+                    "method": "deeplink_existing",
+                    "codex_thread_id": "019f2903-7fd2-79b3-9ae0-e46a767c326d",
+                }).encode("utf-8"),
+                headers={"content-type": "application/json"},
+                method="POST",
+            )
+            with request.urlopen(req, timeout=5) as response:
+                existing_dispatch_body = json.loads(response.read().decode("utf-8"))
+            assert existing_dispatch_body["brief_dispatch"]["brief"]["dispatch"]["method"] == "deeplink_existing"
+            assert existing_dispatch_body["brief_dispatch"]["brief"]["dispatch"]["codex_thread_id"] == (
+                "019f2903-7fd2-79b3-9ae0-e46a767c326d"
+            )
 
             req = request.Request(
                 url + "api/cockpit/focus",

@@ -118,6 +118,42 @@
       font-size: 12px;
       white-space: nowrap;
     }
+    .thread-pill {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-top: 8px;
+      padding: 7px 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--input);
+      color: var(--muted);
+      min-width: 0;
+    }
+    .thread-pill b {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--text);
+      font-size: 12px;
+    }
+    .thread-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--muted-2);
+      flex: 0 0 auto;
+    }
+    .thread-pill.live .thread-dot { background: var(--green); }
+    .thread-pill.missing .thread-dot { background: var(--accent); }
+    button.mini {
+      width: auto;
+      padding: 4px 7px;
+      border-radius: 6px;
+      font-size: 11px;
+    }
     .dot {
       width: 7px;
       height: 7px;

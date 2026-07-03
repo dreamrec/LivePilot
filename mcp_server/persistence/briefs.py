@@ -101,9 +101,14 @@ class BriefService:
         brief_id: str,
         *,
         method: str,
+        codex_thread_id: str = "",
     ) -> dict:
         store = self.store_for_session(session_info)
-        brief = store.record_dispatch(brief_id, method=method)
+        brief = store.record_dispatch(
+            brief_id,
+            method=method,
+            codex_thread_id=codex_thread_id,
+        )
         return {
             "status": "ok",
             "project_id": store.project_id,
@@ -266,9 +271,16 @@ class BriefStore:
         self._briefs.update(_update)
         return len(self.list_briefs()) != before
 
-    def record_dispatch(self, brief_id: str, *, method: str) -> dict:
+    def record_dispatch(
+        self,
+        brief_id: str,
+        *,
+        method: str,
+        codex_thread_id: str = "",
+    ) -> dict:
         brief_id = str(brief_id or "").strip()
         method = _normalize_dispatch_method(method)
+        codex_thread_id = str(codex_thread_id or "").strip()
         if not brief_id:
             raise ValueError("brief_id is required")
         now = _now_ms()
@@ -285,6 +297,8 @@ class BriefStore:
                     "method": method,
                     "at_ms": now,
                 }
+                if codex_thread_id:
+                    item["dispatch"]["codex_thread_id"] = codex_thread_id
                 item["updated_at_ms"] = now
                 data["last_updated_ms"] = now
                 return data
@@ -448,6 +462,9 @@ def _normalize_brief(brief: dict, *, now: int, seq: int) -> dict:
         at_ms = dispatch.get("at_ms")
         if method and isinstance(at_ms, int):
             item["dispatch"] = {"method": method, "at_ms": at_ms}
+            codex_thread_id = str(dispatch.get("codex_thread_id") or "").strip()
+            if codex_thread_id:
+                item["dispatch"]["codex_thread_id"] = codex_thread_id
         else:
             item.pop("dispatch", None)
     else:
@@ -536,9 +553,11 @@ def _normalize_string_list(value) -> list[str]:
 
 def _normalize_dispatch_method(value: str) -> str:
     method = str(value or "").strip().lower()
-    if method in {"deeplink", "copy_prompt"}:
+    if method in {"deeplink", "copy_prompt", "deeplink_existing"}:
         return method
-    raise ValueError("dispatch method must be 'deeplink' or 'copy_prompt'")
+    raise ValueError(
+        "dispatch method must be 'deeplink', 'copy_prompt', or 'deeplink_existing'"
+    )
 
 
 def _projects_dir() -> Path:

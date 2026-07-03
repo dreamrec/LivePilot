@@ -364,6 +364,8 @@ class FocusPanelServer:
             "target_group",
             "target_mode",
             "target_layer",
+            "working_thread",
+            "evidence_budget",
             "section",
             "section_scope",
             "section_label",
@@ -395,6 +397,7 @@ class FocusPanelServer:
             self._cockpit_ctx(),
             brief_id=str(payload.get("brief_id") or ""),
             method=str(payload.get("method") or ""),
+            codex_thread_id=str(payload.get("codex_thread_id") or ""),
         )
 
     def save_cockpit_track_intent_payload(self, payload: dict) -> dict:
