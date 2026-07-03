@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog (Generated)
 
-492 tools across 56 domains.
+493 tools across 56 domains.
 
 > Auto-generated from `mcp.list_tools()`. Do not hand-edit.
 > Regenerate: `python3 scripts/generate_tool_catalog.py`
@@ -507,10 +507,11 @@
 | `discard_preview_set` | Discard an entire preview set and all its variants. |
 | `render_preview_variant` | Render a short preview of a specific variant for evaluation. |
 
-## Production Cockpit (3)
+## Production Cockpit (4)
 
 | Tool | Description |
 |------|-------------|
+| `complete_cockpit_brief` | Complete a cockpit brief and write its learnings into song memory. |
 | `get_production_context` | Return focused tracks plus current lane, preserve flags, and track intent. |
 | `list_cockpit_briefs` | List durable cockpit briefs with derived queue status. |
 | `open_livepilot_production_cockpit` | Return the outside-browser LivePilot cockpit URL for selecting focused tracks, workflow lane, preserve flags, and per-tr |
@@ -790,4 +791,4 @@
 | `rank_wonder_variants` | Rank wonder-mode variants by taste + identity + novelty + coherence. |
 
 ---
-*Generated from 492 registered tools.*
+*Generated from 493 registered tools.*

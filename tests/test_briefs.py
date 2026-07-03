@@ -160,6 +160,7 @@ def test_brief_status_and_seen_stamp_progress_from_queue_state(
     assert raw["seen_at_ms"] is None
 
     listed = list_cockpit_briefs(ctx)
+    assert "complete_cockpit_brief" in listed["completion_contract"]
     brief = listed["briefs"][0]
     assert brief["brief_id"] == brief_id
     assert brief["status"] == "queued"
@@ -262,3 +263,37 @@ def test_capture_dispatch_thread_id_preserves_dispatch_stamp(tmp_path):
         "at_ms": at_ms,
         "codex_thread_id": "019f2903-7fd2-79b3-9ae0-e46a767c326d",
     }
+
+
+def test_brief_outcome_overrides_queue_derived_status(tmp_path):
+    service = BriefService(base_dir=tmp_path)
+    session = _session([_track(0, "drums")])
+    created = service.create_brief(
+        session,
+        request_text="make this pop",
+        context_digest={},
+    )["brief"]
+    completed = service.complete_brief(
+        session,
+        created["brief_id"],
+        status="done",
+        summary="Kept the guitar edge.",
+        learnings_count=2,
+    )["brief"]
+
+    listed = service.list_briefs(
+        session,
+        orchestration_state={
+            "tasks": [],
+            "jobs": [{
+                "job_id": "job_1",
+                "status": "running",
+                "scope": {"brief_id": created["brief_id"]},
+            }],
+        },
+    )["briefs"][0]
+
+    assert completed["outcome"]["status"] == "done"
+    assert listed["status"] == "done"
+    assert listed["status_trail"][-1] == "done"
+    assert listed["outcome"]["summary"] == "Kept the guitar edge."

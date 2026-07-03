@@ -407,6 +407,17 @@
       const thread = dispatch.codex_thread_id ? ` - thread ${compactId(dispatch.codex_thread_id)}` : "";
       return `dispatched - ${dispatch.method}${thread} - ${age}`;
     }
+    function briefStatusText(brief) {
+      const outcome = brief.outcome || {};
+      if (outcome.status) {
+        const count = Number(outcome.learnings_count || 0);
+        if (outcome.status === "done") {
+          return `done · ${count} learning${count === 1 ? "" : "s"}`;
+        }
+        return outcome.status;
+      }
+      return (brief.status_trail || [brief.status || "saved"]).join(" -> ");
+    }
     function workingThread() {
       return ctxState().working_thread || null;
     }
@@ -748,7 +759,7 @@
         return;
       }
       feed.innerHTML = briefs.slice(0, 6).map(brief => {
-        const trail = (brief.status_trail || [brief.status || "saved"]).join(" -> ");
+        const trail = briefStatusText(brief);
         const text = brief.request_text || "Untitled brief";
         const dispatchAction = brief.dispatch_action || {};
         const dispatchHref = dispatchAction.deeplink_new_thread || dispatchAction.deeplink_open_thread || "codex://threads/new";

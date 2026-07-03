@@ -22,8 +22,10 @@ _STATUS_ORDER = [
     "running",
     "awaiting_decision",
     "done",
+    "abandoned",
     "failed",
 ]
+_TERMINAL_OUTCOME_STATUSES = {"done", "abandoned"}
 
 
 class BriefService:
@@ -127,6 +129,29 @@ class BriefService:
         brief = store.capture_dispatch_thread_id(
             brief_id,
             codex_thread_id=codex_thread_id,
+        )
+        return {
+            "status": "ok",
+            "project_id": store.project_id,
+            "store_path": str(store.briefs_path),
+            "brief": brief,
+        }
+
+    def complete_brief(
+        self,
+        session_info: dict,
+        brief_id: str,
+        *,
+        status: str,
+        summary: str = "",
+        learnings_count: int = 0,
+    ) -> dict:
+        store = self.store_for_session(session_info)
+        brief = store.complete_brief(
+            brief_id,
+            status=status,
+            summary=summary,
+            learnings_count=learnings_count,
         )
         return {
             "status": "ok",
@@ -360,6 +385,42 @@ class BriefStore:
         data = self._briefs.update(_update)
         return _find_brief(data, brief_id)
 
+    def complete_brief(
+        self,
+        brief_id: str,
+        *,
+        status: str,
+        summary: str = "",
+        learnings_count: int = 0,
+    ) -> dict:
+        brief_id = str(brief_id or "").strip()
+        outcome_status = _normalize_outcome_status(status)
+        if not brief_id:
+            raise ValueError("brief_id is required")
+        now = _now_ms()
+
+        def _update(data: dict) -> dict:
+            data = (
+                data if data.get("version") == _BRIEF_STORE_VERSION
+                else self._brief_default()
+            )
+            for item in data.get("briefs", []):
+                if item.get("brief_id") != brief_id:
+                    continue
+                item["outcome"] = {
+                    "status": outcome_status,
+                    "at_ms": now,
+                    "summary": str(summary or "").strip(),
+                    "learnings_count": max(0, int(learnings_count or 0)),
+                }
+                item["updated_at_ms"] = now
+                data["last_updated_ms"] = now
+                return data
+            raise KeyError(f"brief_id not found: {brief_id}")
+
+        data = self._briefs.update(_update)
+        return _find_brief(data, brief_id)
+
     def stamp_reader(self, reader: str) -> dict:
         now = _now_ms()
         reader = str(reader or "reader").strip() or "reader"
@@ -458,6 +519,24 @@ def brief_status(brief: dict, tasks: list[dict], jobs: list[dict]) -> dict:
         job for job in jobs
         if _job_matches_brief(job, brief_id, linked_job_ids)
     ]
+    outcome = _normalize_outcome(brief.get("outcome"))
+    if outcome:
+        trail = ["saved"]
+        if brief.get("seen_at_ms") is not None:
+            trail.append("seen")
+        trail.append(outcome["status"])
+        return {
+            "status": outcome["status"],
+            "status_trail": trail,
+            "related_task_count": len(related_tasks),
+            "related_job_count": len(related_jobs),
+            "related_tasks": [
+                _compact_task(task) for task in related_tasks
+            ],
+            "related_jobs": [
+                _compact_job(job) for job in related_jobs
+            ],
+        }
     statuses = []
     if brief.get("seen_at_ms") is not None:
         statuses.append("seen")
@@ -522,6 +601,11 @@ def _normalize_brief(brief: dict, *, now: int, seq: int) -> dict:
             item.pop("dispatch", None)
     else:
         item.pop("dispatch", None)
+    outcome = _normalize_outcome(item.get("outcome"))
+    if outcome:
+        item["outcome"] = outcome
+    else:
+        item.pop("outcome", None)
     item.setdefault("created_at_ms", now)
     item["created_at_ms"] = int(item.get("created_at_ms") or now)
     item["updated_at_ms"] = now
@@ -611,6 +695,36 @@ def _normalize_dispatch_method(value: str) -> str:
     raise ValueError(
         "dispatch method must be 'deeplink', 'copy_prompt', or 'deeplink_existing'"
     )
+
+
+def _normalize_outcome_status(value: str) -> str:
+    status = str(value or "").strip().lower()
+    if status in _TERMINAL_OUTCOME_STATUSES:
+        return status
+    raise ValueError("brief outcome status must be 'done' or 'abandoned'")
+
+
+def _normalize_outcome(value) -> Optional[dict]:
+    if not isinstance(value, dict):
+        return None
+    try:
+        status = _normalize_outcome_status(value.get("status"))
+    except ValueError:
+        return None
+    try:
+        at_ms = int(value.get("at_ms") or 0)
+    except (TypeError, ValueError):
+        at_ms = 0
+    try:
+        learnings_count = max(0, int(value.get("learnings_count") or 0))
+    except (TypeError, ValueError):
+        learnings_count = 0
+    return {
+        "status": status,
+        "at_ms": at_ms,
+        "summary": str(value.get("summary") or "").strip(),
+        "learnings_count": learnings_count,
+    }
 
 
 def _projects_dir() -> Path:

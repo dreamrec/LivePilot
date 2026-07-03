@@ -21,6 +21,7 @@ from mcp_server.production_cockpit import (
     _build_section_map,
     _render_intent_first_cockpit_html,
     clear_cockpit_focus,
+    complete_cockpit_brief,
     delete_cockpit_brief,
     get_production_context,
     open_livepilot_production_cockpit,
@@ -199,6 +200,7 @@ def test_cockpit_focus_context_and_track_intent_flow(tmp_path, monkeypatch):
     )
 
     context = get_production_context(ctx, request_text="balance and level this vocal")
+    assert "complete_cockpit_brief" in context["completion_contract"]
     assert context["summary"]["lane"] == "mix"
     assert context["summary"]["target_query"] == "vocals"
     assert context["summary"]["target_track_names"] == [
@@ -752,6 +754,134 @@ def test_brief_dispatch_prompt_links_and_stamp_round_trip(
     assert stamped["briefs"][0]["dispatch_action"]["prompt"] == dispatch["prompt"]
 
 
+def test_complete_cockpit_brief_writes_learnings_and_rejected_options(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
+    ctx = _ctx(
+        tmp_path,
+        _session([
+            {"index": 0, "name": "el-guit-intro", "color_index": 1, "has_audio_input": True},
+        ]),
+    )
+    context = send_cockpit_brief(
+        ctx,
+        lane="mix",
+        workflow_mode="guided",
+        audition_required=False,
+        request_text="make the guitar easier to hear",
+    )
+    brief_id = context["orchestration_submission"]["brief"]["brief_id"]
+
+    completed = complete_cockpit_brief(
+        ctx,
+        brief_id=brief_id,
+        status="done",
+        summary="Kept edge saturation and rejected the chorusy version.",
+        learnings=[{
+            "track_index": 0,
+            "role": "intro_guitar_hook",
+            "priority": "foreground",
+            "mix_intent": "Speak clearly without covering the vocal.",
+            "decision_state": "committed",
+            "rejected_option": {
+                "label": "wide chorus wash",
+                "reason": "Blurred the handoff and felt too polished.",
+            },
+        }],
+    )
+    annotation = completed["context"]["track_intent_map"]["tracks"][0]["annotations"][0]
+
+    assert completed["brief"]["outcome"]["status"] == "done"
+    assert completed["brief"]["outcome"]["learnings_count"] == 1
+    assert completed["learning_results"][0]["ok"] is True
+    assert completed["orchestration_revision"] == 1
+    assert annotation["source"] == "brief_completion"
+    assert annotation["role"] == "intro_guitar_hook"
+    assert annotation["mix_intent"] == "Speak clearly without covering the vocal."
+    assert annotation["decision_state"] == "committed"
+    assert annotation["options"] == [{
+        "label": "wide chorus wash",
+        "decision_state": "rejected",
+        "notes": "Blurred the handoff and felt too polished.",
+    }]
+    assert "Rejected wide chorus wash" in annotation["notes"]
+    assert completed["context"]["briefs"][0]["status"] == "done"
+
+
+def test_complete_cockpit_brief_allows_empty_learnings(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
+    ctx = _ctx(
+        tmp_path,
+        _session([
+            {"index": 0, "name": "drums", "color_index": 1, "has_audio_input": True},
+        ]),
+    )
+    context = send_cockpit_brief(
+        ctx,
+        lane="mix",
+        workflow_mode="guided",
+        audition_required=False,
+        request_text="analyze the balance",
+    )
+    brief_id = context["orchestration_submission"]["brief"]["brief_id"]
+
+    completed = complete_cockpit_brief(
+        ctx,
+        brief_id=brief_id,
+        status="done",
+        summary="Analysis only; no song-memory changes needed.",
+        learnings=[],
+    )
+
+    assert completed["brief"]["outcome"]["status"] == "done"
+    assert completed["brief"]["outcome"]["learnings_count"] == 0
+    assert completed["learning_results"] == []
+    assert completed["context"]["briefs"][0]["status"] == "done"
+
+
+def test_complete_cockpit_brief_isolates_per_learning_errors(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
+    ctx = _ctx(
+        tmp_path,
+        _session([
+            {"index": 0, "name": "drums", "color_index": 1, "has_audio_input": True},
+        ]),
+    )
+    context = send_cockpit_brief(
+        ctx,
+        lane="mix",
+        workflow_mode="guided",
+        audition_required=False,
+        request_text="tighten the drums",
+    )
+    brief_id = context["orchestration_submission"]["brief"]["brief_id"]
+
+    completed = complete_cockpit_brief(
+        ctx,
+        brief_id=brief_id,
+        status="done",
+        summary="Recorded the usable drum learning.",
+        learnings=[
+            {"track_index": 999, "role": "bad"},
+            {"track_index": 0, "role": "drum_foundation", "decision_state": "committed"},
+        ],
+    )
+
+    assert completed["learning_results"][0]["ok"] is False
+    assert "Track index 999" in completed["learning_results"][0]["error"]
+    assert completed["learning_results"][1]["ok"] is True
+    assert completed["brief"]["outcome"]["learnings_count"] == 1
+    assert completed["context"]["track_intent_map"]["tracks"][0]["effective_role"] == "drum_foundation"
+
+
 def test_working_thread_dispatch_actions_and_status(
     tmp_path,
     monkeypatch,
@@ -988,6 +1118,7 @@ def test_cockpit_mcp_read_tools_are_registered_unconditionally():
         assert "open_livepilot_production_cockpit" in names
         assert "get_production_context" in names
         assert "list_cockpit_briefs" in names
+        assert "complete_cockpit_brief" in names
         assert not (set(_backend_tool_map().values()) & names)
 
     asyncio.run(_run())
@@ -1085,6 +1216,8 @@ def test_intent_first_cockpit_renders_http_backend_contract():
     assert "function trackLayerChips(track)" in html
     assert "function renderNeedsYou()" in html
     assert "function renderBriefFeed()" in html
+    assert "function briefStatusText(brief)" in html
+    assert "done · ${count} learning" in html
     assert "button.brief-action" in html
     assert "Pick up" in html
     assert "Delete" in html

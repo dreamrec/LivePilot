@@ -24,6 +24,7 @@ from .persistence.track_annotations import (
     TrackAnnotationStore,
     annotation_project_id_for_session,
     build_track_intent_map as build_track_intent_map_data,
+    find_annotation_for_track,
     make_track_signature,
 )
 from .server import mcp
@@ -105,6 +106,12 @@ _CODEX_DISPATCH_SWEEP_PROMPT_TEMPLATE = (
     "Pick up the unseen LivePilot cockpit briefs - read them with "
     "list_cockpit_briefs / get_production_context, run the queue, then "
     "complete each with complete_cockpit_brief."
+)
+_BRIEF_COMPLETION_CONTRACT = (
+    "When a brief's work is finished, call complete_cockpit_brief with "
+    "learnings: update each touched track's intent fields and decision_state, "
+    "and record rejected alternatives with reasons. A brief without recorded "
+    "learnings is not done."
 )
 _CODEX_DEEPLINK_NEW_THREAD_TEMPLATE = (
     "codex://threads/new?prompt={prompt}&path={path}"
@@ -1439,6 +1446,7 @@ def _build_context(
         "section_map": section_map,
         "capabilities": _cockpit_capabilities(ctx),
         "dispatch": _codex_dispatch_base(),
+        "completion_contract": _BRIEF_COMPLETION_CONTRACT,
         "briefs": _briefs_with_dispatch_actions(
             brief_state.get("briefs", []),
             production_state=production_state,
@@ -1992,6 +2000,7 @@ def list_cockpit_briefs(
         production_state.get("working_thread")
     )
     result["dispatch"] = _codex_dispatch_base()
+    result["completion_contract"] = _BRIEF_COMPLETION_CONTRACT
     result["working_thread_status"] = working_thread_status
     result["briefs"] = _briefs_with_dispatch_actions(
         result.get("briefs", []),
@@ -1999,6 +2008,151 @@ def list_cockpit_briefs(
         working_thread_status=working_thread_status,
     )
     return result
+
+
+def complete_cockpit_brief(
+    ctx: Context,
+    brief_id: str,
+    status: str,
+    summary: str = "",
+    learnings: Optional[list[dict]] = None,
+) -> dict:
+    """Complete a cockpit brief and write its learnings into song memory.
+
+    Work is finished when the song's memory reflects it. Each learning updates
+    the touched track's annotation fields, and rejected options are stored with
+    reasons. Invalid learning rows are reported without rolling back valid rows.
+    """
+    session_info = _require_session_info(ctx)
+    learning_results = []
+    successful_annotations = []
+    for index, learning in enumerate(learnings or []):
+        try:
+            result = _apply_brief_learning(ctx, session_info, learning)
+        except Exception as exc:  # noqa: BLE001 - per-item degradation contract.
+            learning_results.append({
+                "index": index,
+                "ok": False,
+                "error": str(exc),
+            })
+            continue
+        annotation = result.get("annotation") or {}
+        annotation_id = str(annotation.get("annotation_id") or "")
+        successful_annotations.append(annotation_id)
+        learning_results.append({
+            "index": index,
+            "ok": True,
+            "track_index": result.get("track_index"),
+            "annotation_id": annotation_id,
+        })
+
+    successful_count = len([item for item in learning_results if item.get("ok")])
+    outcome = _brief_service(ctx).complete_brief(
+        session_info,
+        brief_id,
+        status=status,
+        summary=summary,
+        learnings_count=successful_count,
+    )
+    _brief_service(ctx).stamp_reader(session_info, "complete_cockpit_brief")
+    revision = _orchestration_service(ctx).store_for_session(
+        session_info
+    ).increment_revision(
+        reason="brief_completed",
+        source_id=str(brief_id or ""),
+        metadata={
+            "outcome": outcome.get("brief", {}).get("outcome") or {},
+            "successful_learning_count": successful_count,
+            "failed_learning_count": len(learning_results) - successful_count,
+        },
+    )
+    context = _build_context(ctx, include_history=False)
+    return {
+        "status": "ok",
+        "brief": outcome.get("brief"),
+        "learning_results": learning_results,
+        "annotation_ids": [
+            annotation_id for annotation_id in successful_annotations
+            if annotation_id
+        ],
+        "orchestration_revision": revision.get("project_revision"),
+        "context": context,
+    }
+
+
+def _apply_brief_learning(ctx: Context, session_info: dict, learning: dict) -> dict:
+    if not isinstance(learning, dict):
+        raise ValueError("learning must be an object")
+    track_index = int(learning.get("track_index"))
+    rejected_option = learning.get("rejected_option")
+    notes = str(learning.get("notes") or "").strip()
+    options = None
+    if rejected_option is not None:
+        if not isinstance(rejected_option, dict):
+            raise ValueError("rejected_option must be an object")
+        option_label = str(rejected_option.get("label") or "").strip()
+        reason = str(rejected_option.get("reason") or "").strip()
+        if not option_label:
+            raise ValueError("rejected_option.label is required")
+        if not reason:
+            raise ValueError("rejected_option.reason is required")
+        existing = find_annotation_for_track(
+            session_info,
+            _annotation_store_for_session(session_info).list_annotations(),
+            track_index,
+        )
+        options = list((existing or {}).get("options") or [])
+        options.append({
+            "label": option_label,
+            "decision_state": "rejected",
+            "notes": reason,
+        })
+        rejected_note = f"Rejected {option_label}: {reason}"
+        notes = f"{notes}\n{rejected_note}".strip() if notes else rejected_note
+
+    meaningful = any(
+        _optional_text(learning.get(key))
+        for key in (
+            "role",
+            "priority",
+            "mix_intent",
+            "sound_design_intent",
+            "composition_intent",
+            "decision_state",
+        )
+    ) or bool(notes) or options is not None
+    if not meaningful:
+        raise ValueError(
+            "learning must update intent fields, notes, decision_state, or rejected_option"
+        )
+
+    from .tools.tracks import set_track_annotation as _set_track_annotation_tool
+
+    set_kwargs = {
+        "track_index": track_index,
+        "role": _optional_text(learning.get("role")),
+        "priority": _optional_text(learning.get("priority")),
+        "mix_intent": _optional_text(learning.get("mix_intent")),
+        "sound_design_intent": _optional_text(learning.get("sound_design_intent")),
+        "composition_intent": _optional_text(learning.get("composition_intent")),
+        "notes": notes if notes else None,
+        "decision_state": _optional_text(learning.get("decision_state")),
+        "options": options,
+        "source": "brief_completion",
+        "confidence": 1.0,
+    }
+    return dict(
+        _set_track_annotation_tool(
+            ctx,
+            **{key: value for key, value in set_kwargs.items() if value is not None},
+        ),
+        track_index=track_index,
+    )
+
+
+def _optional_text(value) -> Optional[str]:
+    text = str(value or "").strip()
+    return text or None
 
 
 def open_livepilot_production_cockpit(
@@ -2028,6 +2182,7 @@ mcp.tool(
 
 mcp.tool()(get_production_context)
 mcp.tool()(list_cockpit_briefs)
+mcp.tool()(complete_cockpit_brief)
 
 
 def get_cockpit_state(ctx: Context) -> dict:
