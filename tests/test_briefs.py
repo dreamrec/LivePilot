@@ -196,3 +196,29 @@ def test_brief_sequence_is_monotonic(tmp_path):
     assert second["seq"] == 2
     assert first["thread_id"] == first["brief_id"]
     assert second["parent_brief_id"] is None
+
+
+def test_brief_dispatch_stamp_is_optional_and_round_trips(tmp_path):
+    service = BriefService(base_dir=tmp_path)
+    session = _session([_track(0, "drums")])
+
+    created = service.create_brief(
+        session,
+        request_text="make this pop",
+        context_digest={},
+    )["brief"]
+
+    assert "dispatch" not in created
+    listed = service.list_briefs(session)["briefs"][0]
+    assert "dispatch" not in listed
+
+    dispatched = service.record_dispatch(
+        session,
+        created["brief_id"],
+        method="copy_prompt",
+    )["brief"]
+
+    assert dispatched["dispatch"]["method"] == "copy_prompt"
+    assert isinstance(dispatched["dispatch"]["at_ms"], int)
+    listed = service.list_briefs(session)["briefs"][0]
+    assert listed["dispatch"]["method"] == "copy_prompt"

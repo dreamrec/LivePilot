@@ -475,6 +475,23 @@ def test_focus_panel_serves_dual_use_cockpit(monkeypatch):
             assert brief_body["orchestration_submission"]["job"]["status"] == "queued"
             assert brief_body["orchestration_submission"]["job"]["scope"]["source_track_indices"] == [1, 2]
             assert brief_body["orchestration"]["counts"]["queued_jobs"] == 1
+            brief_id = brief_body["orchestration_submission"]["brief"]["brief_id"]
+
+            req = request.Request(
+                url + "api/cockpit/brief-dispatch",
+                data=json.dumps({
+                    "brief_id": brief_id,
+                    "method": "copy_prompt",
+                }).encode("utf-8"),
+                headers={"content-type": "application/json"},
+                method="POST",
+            )
+            with request.urlopen(req, timeout=5) as response:
+                dispatch_body = json.loads(response.read().decode("utf-8"))
+            assert dispatch_body["brief_dispatch"]["brief"]["dispatch"]["method"] == "copy_prompt"
+            assert dispatch_body["briefs"][0]["dispatch_action"]["deeplink_new_thread"].startswith(
+                "codex://threads/new?prompt="
+            )
 
             req = request.Request(
                 url + "api/cockpit/focus",

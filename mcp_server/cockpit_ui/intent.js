@@ -398,6 +398,12 @@
       const hours = Math.round(minutes / 60);
       return `${hours}h old`;
     }
+    function dispatchStatusText(brief) {
+      const dispatch = brief.dispatch || {};
+      if (!dispatch.method || !dispatch.at_ms) return "";
+      const age = formatAge(Math.max(0, Date.now() - Number(dispatch.at_ms || 0)));
+      return `dispatched - ${dispatch.method} - ${age}`;
+    }
     function renderSectionMap() {
       const map = sectionMapState();
       const sections = Array.isArray(map.sections) ? map.sections : [];
@@ -716,6 +722,9 @@
       feed.innerHTML = briefs.slice(0, 6).map(brief => {
         const trail = (brief.status_trail || [brief.status || "saved"]).join(" -> ");
         const text = brief.request_text || "Untitled brief";
+        const dispatchAction = brief.dispatch_action || {};
+        const dispatchHref = dispatchAction.deeplink_new_thread || dispatchAction.deeplink_open_thread || "codex://threads/new";
+        const dispatchText = dispatchStatusText(brief);
         const jobs = brief.related_jobs || [];
         const plan = jobs.flatMap(job => job.plan || []).slice(0, 3);
         const variants = jobs.flatMap(job => {
@@ -738,6 +747,11 @@
               <button class="soft brief-action" data-action="pickup" data-brief-id="${escapeHtml(brief.brief_id || "")}">Pick up</button>
               <button class="soft brief-action danger" data-action="delete" data-brief-id="${escapeHtml(brief.brief_id || "")}">Delete</button>
             </span>
+            <span>
+              <a class="link-button brief-dispatch" href="${escapeHtml(dispatchHref)}" data-action="open_codex" data-brief-id="${escapeHtml(brief.brief_id || "")}">Open in Codex</a>
+              <button class="soft brief-dispatch" data-action="copy_prompt" data-brief-id="${escapeHtml(brief.brief_id || "")}">Copy prompt</button>
+            </span>
+            ${dispatchText ? `<span>${escapeHtml(dispatchText)}</span>` : ""}
             ${variants.length ? `<span>${variants.map(variant => `
               ${escapeHtml(variant.letter)} ${escapeHtml(variant.label)}
               <button class="soft audition-action" data-action="play" data-job-id="${escapeHtml(variant.source_job_id)}" data-variant="${escapeHtml(variant.letter)}">Play</button>
@@ -923,6 +937,47 @@
       syncControlsFromState();
       render();
       toast("Brief deleted");
+    }
+    async function recordBriefDispatch(briefId, method) {
+      if (!briefId || !method) return;
+      state = await callTool(BACKEND_TOOLS.record_dispatch, {brief_id: briefId, method});
+      selected = selectionFromState();
+      syncControlsFromState();
+      render();
+    }
+    async function openBriefInCodex(briefId, href) {
+      try {
+        await recordBriefDispatch(briefId, "deeplink");
+      } catch (error) {
+        setStatus(error.message || String(error));
+      }
+      window.location.href = href || "codex://threads/new";
+    }
+    async function copyBriefPrompt(briefId) {
+      const brief = briefById(briefId);
+      const prompt = ((brief || {}).dispatch_action || {}).prompt || "";
+      if (!prompt) {
+        toast("No prompt available");
+        return;
+      }
+      await copyText(prompt);
+      await recordBriefDispatch(briefId, "copy_prompt");
+      toast("Prompt copied");
+    }
+    async function copyText(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+      const node = document.createElement("textarea");
+      node.value = text;
+      node.setAttribute("readonly", "readonly");
+      node.style.position = "fixed";
+      node.style.left = "-9999px";
+      document.body.appendChild(node);
+      node.select();
+      document.execCommand("copy");
+      document.body.removeChild(node);
     }
     async function grabLiveSelection() {
       if (!capabilities().live_pointing) {
@@ -1174,6 +1229,17 @@
       renderBrief();
     });
     $("#briefFeed").addEventListener("click", event => {
+      const dispatchNode = event.target.closest(".brief-dispatch");
+      if (dispatchNode) {
+        const action = dispatchNode.dataset.action || "";
+        const briefId = dispatchNode.dataset.briefId || "";
+        if (action === "open_codex") {
+          event.preventDefault();
+          openBriefInCodex(briefId, dispatchNode.getAttribute("href") || "");
+        }
+        if (action === "copy_prompt") copyBriefPrompt(briefId);
+        return;
+      }
       const briefButton = event.target.closest("button.brief-action");
       if (briefButton) {
         const action = briefButton.dataset.action || "";

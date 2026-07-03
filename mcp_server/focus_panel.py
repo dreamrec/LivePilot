@@ -388,6 +388,15 @@ class FocusPanelServer:
             brief_id=str(payload.get("brief_id") or ""),
         )
 
+    def record_cockpit_brief_dispatch_payload(self, payload: dict) -> dict:
+        from .production_cockpit import record_cockpit_brief_dispatch
+
+        return record_cockpit_brief_dispatch(
+            self._cockpit_ctx(),
+            brief_id=str(payload.get("brief_id") or ""),
+            method=str(payload.get("method") or ""),
+        )
+
     def save_cockpit_track_intent_payload(self, payload: dict) -> dict:
         from .production_cockpit import save_cockpit_track_intent
 
@@ -732,6 +741,10 @@ class _FocusPanelHandler(BaseHTTPRequestHandler):
             if path == "/api/cockpit/briefs/delete":
                 payload = self._read_json_body()
                 self._send_json(self.server.panel.delete_cockpit_brief_payload(payload))
+                return
+            if path == "/api/cockpit/brief-dispatch":
+                payload = self._read_json_body()
+                self._send_json(self.server.panel.record_cockpit_brief_dispatch_payload(payload))
                 return
             if path == "/api/cockpit/track-intent":
                 payload = self._read_json_body()

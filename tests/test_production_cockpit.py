@@ -20,6 +20,7 @@ from mcp_server.production_cockpit import (
     delete_cockpit_brief,
     get_production_context,
     open_livepilot_production_cockpit,
+    record_cockpit_brief_dispatch,
     save_cockpit_track_intent,
     save_cockpit_layer_group,
     save_production_context,
@@ -702,6 +703,50 @@ def test_delete_cockpit_brief_removes_saved_brief(
     assert deleted["briefs"] == []
 
 
+def test_brief_dispatch_prompt_links_and_stamp_round_trip(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
+    ctx = _ctx(
+        tmp_path,
+        _session([
+            {"index": 0, "name": "el-guit-intro", "color_index": 1, "has_audio_input": True},
+        ]),
+    )
+
+    context = send_cockpit_brief(
+        ctx,
+        lane="mix",
+        workflow_mode="guided",
+        audition_required=False,
+        request_text="make the guitar easier to hear",
+        target_mode="query",
+        target_query="el-guit-intro",
+    )
+
+    submission = context["orchestration_submission"]
+    brief = submission["brief"]
+    dispatch = submission["dispatch"]
+    assert context["dispatch"]["prompt_template"].startswith("Pick up LivePilot cockpit brief")
+    assert f"#{brief['seq']}" in dispatch["prompt"]
+    assert brief["brief_id"] in dispatch["prompt"]
+    assert "get_production_context / list_cockpit_briefs" in dispatch["prompt"]
+    assert dispatch["deeplink_new_thread"].startswith("codex://threads/new?prompt=")
+    assert "path=" in dispatch["deeplink_new_thread"]
+    assert context["briefs"][0]["dispatch_action"]["prompt"] == dispatch["prompt"]
+
+    stamped = record_cockpit_brief_dispatch(
+        ctx,
+        brief_id=brief["brief_id"],
+        method="deeplink",
+    )
+
+    assert stamped["brief_dispatch"]["brief"]["dispatch"]["method"] == "deeplink"
+    assert stamped["briefs"][0]["dispatch"]["method"] == "deeplink"
+    assert stamped["briefs"][0]["dispatch_action"]["prompt"] == dispatch["prompt"]
+
+
 def test_send_cockpit_brief_creates_track_scoped_audition_job(
     tmp_path,
     monkeypatch,
@@ -831,6 +876,7 @@ def test_intent_first_cockpit_renders_http_backend_contract():
     assert "/api/cockpit/context" in html
     assert "/api/cockpit/brief" in html
     assert "/api/cockpit/briefs/delete" in html
+    assert "/api/cockpit/brief-dispatch" in html
     assert "/api/cockpit/focus" in html
     assert "/api/cockpit/layers/save" in html
     assert "/api/cockpit/layers/delete" in html
@@ -842,6 +888,11 @@ def test_intent_first_cockpit_renders_http_backend_contract():
     assert "button.brief-action" in html
     assert "Pick up" in html
     assert "Delete" in html
+    assert "Open in Codex" in html
+    assert "Copy prompt" in html
+    assert "function dispatchStatusText(brief)" in html
+    assert "recordBriefDispatch" in html
+    assert "copyBriefPrompt" in html
     assert "async function handleTrackRowClick(index)" in html
     assert "Layer focus updated" in html
     assert "submitAuditionAction" in html

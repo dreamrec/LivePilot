@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from importlib import resources
 import json
+from pathlib import Path
 from typing import Optional
+from urllib.parse import quote
 
 from fastmcp import Context
 from fastmcp.tools.base import ToolResult
@@ -34,6 +36,7 @@ _BACKEND_TOOL_NAMES = {
     "save_layer": "save_cockpit_layer_group",
     "delete_layer": "delete_cockpit_layer_group",
     "delete_brief": "delete_cockpit_brief",
+    "record_dispatch": "record_cockpit_brief_dispatch",
     "audition_action": "submit_cockpit_audition_action",
     "get_live_selection": "get_cockpit_live_selection",
     "select_live_track": "select_live_track",
@@ -90,6 +93,14 @@ _TRACK_GROUPS = [
 _GROUP_LABELS = {item["key"]: item["label"] for item in _TRACK_GROUPS}
 _LAYER_TAG_PREFIX = "layer:"
 _LAYER_STATUS_TAG_PREFIX = "layer_status:"
+_CODEX_DISPATCH_PROMPT_TEMPLATE = (
+    "Pick up LivePilot cockpit brief #{seq} (id {brief_id}) - read it with "
+    "get_production_context / list_cockpit_briefs, then run the queue."
+)
+_CODEX_DEEPLINK_NEW_THREAD_TEMPLATE = (
+    "codex://threads/new?prompt={prompt}&path={path}"
+)
+_CODEX_DEEPLINK_OPEN_THREAD_TEMPLATE = "codex://threads/{thread_id}"
 
 
 def _cockpit_url(ctx: Context) -> Optional[str]:
@@ -97,6 +108,64 @@ def _cockpit_url(ctx: Context) -> Optional[str]:
     if not base:
         return None
     return base.rstrip("/") + "/cockpit/intent"
+
+
+def _codex_dispatch_base() -> dict:
+    return {
+        "deeplink_open_thread": _CODEX_DEEPLINK_OPEN_THREAD_TEMPLATE,
+        "deeplink_new_thread": _CODEX_DEEPLINK_NEW_THREAD_TEMPLATE,
+        "prompt_template": _CODEX_DISPATCH_PROMPT_TEMPLATE,
+        "workspace_path": _codex_dispatch_workspace_path(),
+    }
+
+
+def _codex_dispatch_workspace_path() -> str:
+    return str(Path(__file__).resolve().parents[1])
+
+
+def _brief_dispatch_action(brief: dict) -> dict:
+    prompt = _codex_dispatch_prompt(brief)
+    workspace_path = _codex_dispatch_workspace_path()
+    action = {
+        "prompt": prompt,
+        "prompt_template": _CODEX_DISPATCH_PROMPT_TEMPLATE,
+        "deeplink_new_thread": _CODEX_DEEPLINK_NEW_THREAD_TEMPLATE.format(
+            prompt=quote(prompt, safe=""),
+            path=quote(workspace_path, safe=""),
+        ),
+        "deeplink_open_thread": "",
+    }
+    thread_id = str(brief.get("thread_id") or "").strip()
+    if _looks_like_codex_thread_id(thread_id):
+        action["deeplink_open_thread"] = _CODEX_DEEPLINK_OPEN_THREAD_TEMPLATE.format(
+            thread_id=quote(thread_id, safe=""),
+        )
+    return action
+
+
+def _codex_dispatch_prompt(brief: dict) -> str:
+    return _CODEX_DISPATCH_PROMPT_TEMPLATE.format(
+        seq=brief.get("seq") or "?",
+        brief_id=brief.get("brief_id") or "",
+    )
+
+
+def _looks_like_codex_thread_id(value: str) -> bool:
+    parts = str(value or "").split("-")
+    return (
+        len(parts) == 5
+        and [len(part) for part in parts] == [8, 4, 4, 4, 12]
+        and all(part and all(ch in "0123456789abcdefABCDEF" for ch in part) for part in parts)
+    )
+
+
+def _briefs_with_dispatch_actions(briefs: list[dict]) -> list[dict]:
+    out = []
+    for brief in briefs:
+        item = dict(brief)
+        item["dispatch_action"] = _brief_dispatch_action(item)
+        out.append(item)
+    return out
 
 
 def _backend_tool_map() -> dict[str, str]:
@@ -1209,7 +1278,8 @@ def _build_context(
         "layer_groups": layer_groups,
         "section_map": section_map,
         "capabilities": _cockpit_capabilities(ctx),
-        "briefs": brief_state.get("briefs", []),
+        "dispatch": _codex_dispatch_base(),
+        "briefs": _briefs_with_dispatch_actions(brief_state.get("briefs", [])),
         "brief_count": brief_state.get("brief_count", 0),
         "codex_last_read_ms": brief_state.get("codex_last_read_ms", 0),
         "orchestration": orchestration,
@@ -1620,6 +1690,7 @@ def _submit_cockpit_brief_packet(
     return {
         "status": "ok",
         "brief": attached,
+        "dispatch": _brief_dispatch_action(attached),
         "snapshot": snapshot,
         "task": task,
         "job": job,
@@ -1733,12 +1804,15 @@ def list_cockpit_briefs(
     """List durable cockpit briefs with derived queue status."""
     _stamp_reader(ctx, "list_cockpit_briefs")
     session_info = _require_session_info(ctx)
-    return _brief_service(ctx).list_briefs(
+    result = _brief_service(ctx).list_briefs(
         session_info,
         limit=limit,
         status=status,
         orchestration_state=_orchestration_state_for_briefs(ctx, session_info),
     )
+    result["dispatch"] = _codex_dispatch_base()
+    result["briefs"] = _briefs_with_dispatch_actions(result.get("briefs", []))
+    return result
 
 
 def open_livepilot_production_cockpit(
@@ -1944,6 +2018,23 @@ def delete_cockpit_brief(ctx: Context, brief_id: str) -> dict:
     return context
 
 
+def record_cockpit_brief_dispatch(
+    ctx: Context,
+    brief_id: str,
+    method: str,
+) -> dict:
+    """Record that a cockpit brief was dispatched to Codex."""
+    session_info = _require_session_info(ctx)
+    result = _brief_service(ctx).record_dispatch(
+        session_info,
+        brief_id,
+        method=method,
+    )
+    context = _build_context(ctx, include_history=False)
+    context["brief_dispatch"] = result
+    return context
+
+
 def submit_cockpit_audition_action(
     ctx: Context,
     source_job_id: str,
@@ -2028,6 +2119,7 @@ def _cockpit_call_tool_js(transport: str) -> str:
         [BACKEND_TOOLS.save_layer]: ["POST", "/api/cockpit/layers/save"],
         [BACKEND_TOOLS.delete_layer]: ["POST", "/api/cockpit/layers/delete"],
         [BACKEND_TOOLS.delete_brief]: ["POST", "/api/cockpit/briefs/delete"],
+        [BACKEND_TOOLS.record_dispatch]: ["POST", "/api/cockpit/brief-dispatch"],
         [BACKEND_TOOLS.audition_action]: ["POST", "/api/cockpit/auditions/action"],
         [BACKEND_TOOLS.get_live_selection]: ["GET", "/api/cockpit/live/selection"],
         [BACKEND_TOOLS.select_live_track]: ["POST", "/api/cockpit/live/select-track"],

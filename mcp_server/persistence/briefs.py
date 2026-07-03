@@ -95,6 +95,22 @@ class BriefService:
             "deleted": deleted,
         }
 
+    def record_dispatch(
+        self,
+        session_info: dict,
+        brief_id: str,
+        *,
+        method: str,
+    ) -> dict:
+        store = self.store_for_session(session_info)
+        brief = store.record_dispatch(brief_id, method=method)
+        return {
+            "status": "ok",
+            "project_id": store.project_id,
+            "store_path": str(store.briefs_path),
+            "brief": brief,
+        }
+
     def list_briefs(
         self,
         session_info: dict,
@@ -250,6 +266,33 @@ class BriefStore:
         self._briefs.update(_update)
         return len(self.list_briefs()) != before
 
+    def record_dispatch(self, brief_id: str, *, method: str) -> dict:
+        brief_id = str(brief_id or "").strip()
+        method = _normalize_dispatch_method(method)
+        if not brief_id:
+            raise ValueError("brief_id is required")
+        now = _now_ms()
+
+        def _update(data: dict) -> dict:
+            data = (
+                data if data.get("version") == _BRIEF_STORE_VERSION
+                else self._brief_default()
+            )
+            for item in data.get("briefs", []):
+                if item.get("brief_id") != brief_id:
+                    continue
+                item["dispatch"] = {
+                    "method": method,
+                    "at_ms": now,
+                }
+                item["updated_at_ms"] = now
+                data["last_updated_ms"] = now
+                return data
+            raise KeyError(f"brief_id not found: {brief_id}")
+
+        data = self._briefs.update(_update)
+        return _find_brief(data, brief_id)
+
     def stamp_reader(self, reader: str) -> dict:
         now = _now_ms()
         reader = str(reader or "reader").strip() or "reader"
@@ -399,6 +442,16 @@ def _normalize_brief(brief: dict, *, now: int, seq: int) -> dict:
     item["snapshot_id"] = str(item.get("snapshot_id") or "")
     item["task_id"] = str(item.get("task_id") or "")
     item["job_ids"] = _normalize_string_list(item.get("job_ids"))
+    if isinstance(item.get("dispatch"), dict):
+        dispatch = item["dispatch"]
+        method = str(dispatch.get("method") or "").strip()
+        at_ms = dispatch.get("at_ms")
+        if method and isinstance(at_ms, int):
+            item["dispatch"] = {"method": method, "at_ms": at_ms}
+        else:
+            item.pop("dispatch", None)
+    else:
+        item.pop("dispatch", None)
     item.setdefault("created_at_ms", now)
     item["created_at_ms"] = int(item.get("created_at_ms") or now)
     item["updated_at_ms"] = now
@@ -479,6 +532,13 @@ def _normalize_string_list(value) -> list[str]:
         if text and text not in out:
             out.append(text)
     return out
+
+
+def _normalize_dispatch_method(value: str) -> str:
+    method = str(value or "").strip().lower()
+    if method in {"deeplink", "copy_prompt"}:
+        return method
+    raise ValueError("dispatch method must be 'deeplink' or 'copy_prompt'")
 
 
 def _projects_dir() -> Path:

@@ -25,14 +25,18 @@
       padding: 18px;
     }
     button, input, textarea, select { font: inherit; color: var(--text); }
-    button {
+    button, .link-button {
       border: 1px solid var(--line);
       background: var(--raise);
       border-radius: 8px;
       padding: 8px 11px;
       cursor: pointer;
     }
-    button:hover { border-color: var(--accent); }
+    .link-button {
+      display: inline-block;
+      text-decoration: none;
+    }
+    button:hover, .link-button:hover { border-color: var(--accent); }
     button:disabled,
     button:disabled:hover {
       opacity: 0.45;
