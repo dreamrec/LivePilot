@@ -1769,10 +1769,11 @@ def _submit_cockpit_brief_packet(
     """Create orchestration snapshot/task and optional audition job."""
     session_info = _require_session_info(ctx)
     service = _orchestration_service(ctx)
+    context_digest = _brief_context_digest(context)
     brief_result = _brief_service(ctx).create_brief(
         session_info,
         request_text=request_text,
-        context_digest=_brief_context_digest(context),
+        context_digest=context_digest,
         source="cockpit",
     )
     brief = brief_result["brief"]
@@ -1792,7 +1793,10 @@ def _submit_cockpit_brief_packet(
             {"text": request_text} if request_text else {}
         ) | {"brief_id": brief_id, "seq": brief.get("seq")},
         session_kernel=_compact_session_kernel_for_snapshot(session_kernel),
-        cockpit_context=_compact_cockpit_context_for_snapshot(context),
+        context_digest=context_digest,
+        production_context_state=dict(
+            (context.get("production_context") or {}).get("state") or {}
+        ),
         section_map=(context.get("section_map") or {}).get("sections", []),
         layer_groups=_compact_layer_groups_for_snapshot(
             context.get("layer_groups") or []

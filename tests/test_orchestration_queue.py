@@ -34,7 +34,12 @@ def test_orchestration_service_creates_project_scoped_snapshot(tmp_path):
             "audition_count": 3,
         },
         session_kernel={"kernel_id": "kern_1"},
-        cockpit_context={"target_mode": "layer"},
+        context_digest={
+            "target_mode": "layer",
+            "layer_id": "intro_handoff",
+            "track_indices": [1],
+        },
+        production_context_state={"lane": "sound_design"},
         section_map=[{"id": "intro", "start_bar": 1, "end_bar": 9}],
         layer_groups=[{"id": "intro_handoff", "track_indices": [1]}],
         track_intent_map={"tracks": [{"index": 1, "role": "guitar"}]},
@@ -46,6 +51,9 @@ def test_orchestration_service_creates_project_scoped_snapshot(tmp_path):
     assert snapshot["project_revision"] == 0
     assert snapshot["brief"]["audition_count"] == 3
     assert snapshot["session_kernel"]["kernel_id"] == "kern_1"
+    assert snapshot["context_digest"]["layer_id"] == "intro_handoff"
+    assert snapshot["production_context_state"]["lane"] == "sound_design"
+    assert "cockpit_context" not in snapshot
     assert snapshot["section_map"][0]["id"] == "intro"
 
     state = service.get_state(_session())["state"]
@@ -53,6 +61,33 @@ def test_orchestration_service_creates_project_scoped_snapshot(tmp_path):
 
     other = service.get_state(_session("/Users/me/Song B.als"))["state"]
     assert other["snapshots"] == []
+
+
+def test_legacy_cockpit_context_derives_digest_and_state(tmp_path):
+    store = OrchestrationStore("proj1", base_dir=tmp_path)
+    snapshot = store.save_snapshot({
+        "snapshot_id": "snap_legacy",
+        "cockpit_context": {
+            "target": {
+                "target_mode": "layer",
+                "matched_layer": "intro_handoff",
+                "matched_layer_label": "Intro Handoff",
+                "track_indices": [1, 2],
+            },
+            "production_state": {
+                "lane": "sound_design",
+                "workflow_mode": "audition",
+                "evidence_budget": "deep",
+            },
+        },
+    })
+
+    assert snapshot["cockpit_context"]["target"]["matched_layer"] == "intro_handoff"
+    assert snapshot["context_digest"]["fallback_source"] == "legacy_cockpit_context"
+    assert snapshot["context_digest"]["layer_id"] == "intro_handoff"
+    assert snapshot["context_digest"]["track_indices"] == [1, 2]
+    assert snapshot["context_digest"]["evidence_budget"] == "deep"
+    assert snapshot["production_context_state"]["lane"] == "sound_design"
 
 
 def test_orchestration_store_persists_core_objects(tmp_path):

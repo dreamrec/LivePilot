@@ -9,6 +9,7 @@ Manual checks:
 - H1: `codex://threads/019f28e9-3b8a-7b62-b8af-7abbee5583d5` hung in Codex.app, while other existing app-known threads opened normally.
 - H2: not runnable in the app-server-created gate thread because H1 failed.
 - H3: `codex://threads/new?prompt=GATE-HUMAN-TURN&path=/Users/terencemahon/Documents/audio-assistant/external-research/github/dreamrec/LivePilot` opened a new Codex.app thread and submitted the prompt successfully.
+- H3 follow-up: user confirmed the second new-thread deep-link attempt worked in Codex Desktop and the auto-submitted prompt landed as `Gate Human Turn`.
 
 ## Surface
 
@@ -144,6 +145,14 @@ Completion notifications included `GATE-OK-2`. A direct `turn/start` from a fres
 ## Verdict
 
 Branch 3: `v1.5 ceiling`. Codex.app build 4674 can open `codex://threads/new?prompt=...&path=...` and create a usable user-facing thread, but it does not reliably open an app-server-created thread, and app-server 0.130.0 cannot read the Desktop-created fallback thread because its rollout file lacks the expected session metadata header.
+
+Re-check ritual for future Codex app/CLI versions:
+
+1. Run the isolated app-server mechanics harness and confirm `initialize.result.codexHome` points at the isolated home.
+2. Try opening the app-server-created real-home thread with `codex://threads/<thread-id>`; record whether Codex Desktop loads it.
+3. If existing-thread open succeeds, test `codex://threads/<thread-id>?prompt=<encoded>` and inspect the rollout for auto-submit or composer-prefill behavior.
+4. Always re-run the v1.5 fallback: `codex://threads/new?prompt=<encoded>&path=<repo>` must create a user-visible thread and submit the prompt.
+5. Update this findings file before changing LivePilot dispatch strategy.
 
 ## Marker threads
 

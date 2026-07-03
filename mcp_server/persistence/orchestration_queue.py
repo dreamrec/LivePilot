@@ -62,22 +62,30 @@ class OrchestrationService:
         session_info: dict,
         brief: Optional[dict] = None,
         session_kernel: Optional[dict] = None,
+        context_digest: Optional[dict] = None,
+        production_context_state: Optional[dict] = None,
         cockpit_context: Optional[dict] = None,
         section_map: Optional[list[dict]] = None,
         layer_groups: Optional[list[dict]] = None,
         track_intent_map: Optional[dict] = None,
     ) -> dict:
         store = self.store_for_session(session_info)
-        snapshot = store.save_snapshot({
+        payload = {
             "project_id": store.project_id,
             "project_revision": store.get_revision(),
             "brief": brief or {},
             "session_kernel": session_kernel or {},
-            "cockpit_context": cockpit_context or {},
+            "context_digest": context_digest or {},
+            "production_context_state": production_context_state or {},
             "section_map": section_map or [],
             "layer_groups": layer_groups or [],
             "track_intent_map": track_intent_map or {},
-        })
+        }
+        if cockpit_context is not None:
+            # Legacy/raw snapshot callers may still pass an embedded context.
+            # New cockpit brief snapshots use context_digest + state instead.
+            payload["cockpit_context"] = cockpit_context
+        snapshot = store.save_snapshot(payload)
         return {
             "status": "ok",
             "project_id": store.project_id,
@@ -732,6 +740,7 @@ class OrchestrationStore:
 
 def _normalize_snapshot(snapshot: dict, project_id: str, now: int) -> dict:
     item = dict(snapshot or {})
+    legacy_context = _as_dict(item.get("cockpit_context"))
     item.setdefault("snapshot_id", _new_id("snap"))
     item["snapshot_id"] = _normalize_required_id(item["snapshot_id"], "snapshot_id")
     item["project_id"] = str(item.get("project_id") or project_id)
@@ -740,11 +749,53 @@ def _normalize_snapshot(snapshot: dict, project_id: str, now: int) -> dict:
     item["created_at_ms"] = _as_int(item.get("created_at_ms"), now)
     item["brief"] = _as_dict(item.get("brief"))
     item["session_kernel"] = _as_dict(item.get("session_kernel"))
-    item["cockpit_context"] = _as_dict(item.get("cockpit_context"))
+    item["context_digest"] = _as_dict(item.get("context_digest"))
+    item["production_context_state"] = _as_dict(item.get("production_context_state"))
+    if not item["context_digest"] and legacy_context:
+        item["context_digest"] = _context_digest_from_legacy_context(legacy_context)
+    if not item["production_context_state"] and legacy_context:
+        item["production_context_state"] = _production_state_from_legacy_context(
+            legacy_context
+        )
+    if "cockpit_context" in item:
+        item["cockpit_context"] = legacy_context
     item["section_map"] = _as_list(item.get("section_map"))
     item["layer_groups"] = _as_list(item.get("layer_groups"))
     item["track_intent_map"] = _as_dict(item.get("track_intent_map"))
     return item
+
+
+def _context_digest_from_legacy_context(context: dict) -> dict:
+    target = _as_dict(context.get("target"))
+    state = _production_state_from_legacy_context(context)
+    return {
+        "target_mode": target.get("target_mode", state.get("target_mode", "")),
+        "target_label": (
+            target.get("matched_layer_label")
+            or target.get("matched_group_label")
+            or target.get("query", "")
+        ),
+        "layer_id": target.get("matched_layer") or target.get("target_layer") or "",
+        "track_indices": _as_list(target.get("track_indices")),
+        "track_refs": [],
+        "section": target.get("section") or state.get("section"),
+        "lane": state.get("lane", "holistic"),
+        "workflow_mode": state.get("workflow_mode", "guided"),
+        "audition_count": _as_int(state.get("audition_count"), 3),
+        "audition_scope": state.get("audition_scope", "layer"),
+        "evidence_budget": state.get("evidence_budget", "standard"),
+        "protect": _as_list(state.get("protect")),
+        "reference": state.get("reference", ""),
+        "fallback_source": "legacy_cockpit_context",
+    }
+
+
+def _production_state_from_legacy_context(context: dict) -> dict:
+    state = _as_dict(context.get("production_state"))
+    if state:
+        return state
+    production_context = _as_dict(context.get("production_context"))
+    return _as_dict(production_context.get("state"))
 
 
 def _normalize_task(task: dict, now: int) -> dict:

@@ -64,7 +64,12 @@ def _snapshot_inputs(ctx: Context, request_text: str, mode: str) -> dict:
     return {
         "brief": summary,
         "session_kernel": session_kernel,
-        "cockpit_context": production_context,
+        "context_digest": _context_digest_from_production_context(
+            production_context
+        ),
+        "production_context_state": dict(
+            (production_context.get("production_context") or {}).get("state") or {}
+        ),
         "section_map": production_context.get("section_map") or [],
         "layer_groups": production_context.get("layer_groups") or [],
         "track_intent_map": production_context.get("track_intent_map") or {},
@@ -103,6 +108,36 @@ def _build_session_kernel(ctx: Context, request_text: str, mode: str) -> dict:
         return {
             "status": "degraded",
             "warning": f"session_kernel_unavailable: {exc}",
+        }
+
+
+def _context_digest_from_production_context(production_context: dict) -> dict:
+    try:
+        from .production_cockpit import _brief_context_digest
+
+        return _brief_context_digest(production_context)
+    except Exception as exc:  # noqa: BLE001 - snapshot should degrade.
+        state = (production_context.get("production_context") or {}).get("state") or {}
+        target = (
+            production_context.get("target")
+            if isinstance(production_context.get("target"), dict)
+            else {}
+        )
+        return {
+            "target_mode": target.get("target_mode", state.get("target_mode", "")),
+            "target_label": (
+                target.get("matched_layer_label")
+                or target.get("matched_group_label")
+                or target.get("query", "")
+            ),
+            "layer_id": target.get("matched_layer") or target.get("target_layer") or "",
+            "track_indices": target.get("track_indices") or [],
+            "track_refs": [],
+            "section": target.get("section") or state.get("section"),
+            "lane": state.get("lane", "holistic"),
+            "workflow_mode": state.get("workflow_mode", "guided"),
+            "evidence_budget": state.get("evidence_budget", "standard"),
+            "warning": f"context_digest_degraded: {exc}",
         }
 
 

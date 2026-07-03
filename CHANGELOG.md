@@ -13,6 +13,9 @@
 - New cockpit workflow tools: `list_layer_groups`, `save_layer_group`, `delete_layer_group`, `list_cockpit_briefs`, and `get_live_selection`; `open_livepilot_production_cockpit` and `get_production_context` are now always registered for browser-cockpit use.
 - Browser cockpit is now the only cockpit surface. Legacy `/` and `/cockpit` URLs redirect to `/cockpit/intent`, and the removed Codex MCP Apps cockpit no longer registers embedded resources.
 - Browser cockpit briefs now include v1.5 Codex dispatch actions: `Open in Codex` deep-links to a prefilled pickup prompt, `Copy prompt` provides the fallback, and the brief ledger records the dispatch method.
+- Browser cockpit now supports a pinned working Codex thread, a per-brief evidence budget hint, and captured dispatch thread ids from recent rollout filenames.
+- `complete_cockpit_brief` closes the song-memory loop by marking a brief done only after recording learnings, touched-track intent updates, and rejected alternatives with reasons.
+- Orchestration snapshots now store compact `context_digest` and `production_context_state` fields instead of embedding the full cockpit context for every brief.
 - Agent focus tools remain available through `get_agent_focus`, `set_agent_focus`, `clear_agent_focus`, and `resolve_track_ref`; visual track pointing is now part of the Production Cockpit.
 - `npx livepilot --cockpit` standalone browser sidecar for the Production Cockpit. It uses the latest persisted `get_session_info` snapshot by default, so the browser UI no longer depends on the Codex-managed MCP process lifetime or competes for Ableton's single TCP client.
 - Persistent lifecycle diagnostics at `~/.livepilot/logs/lifecycle.jsonl` for launcher startup, stdin close/end, single-instance cleanup targets, MCP child spawn/exit/error, Python MCP lifespan readiness/shutdown, signals, and cockpit sidecar startup/shutdown.
@@ -21,6 +24,7 @@
 
 - Added `tests/test_realtime_arrangement_automation.py` covering the clean real-time recorder path, M4L scheduler path, record-start re-seeking, existing-automation preflight refusal, and cleanup when Arrangement Record fails to engage.
 - Added cockpit workflow coverage across `tests/test_layer_groups.py`, `tests/test_briefs.py`, `tests/test_production_context_v2.py`, `tests/test_production_cockpit.py`, `tests/test_production_cockpit_orchestration.py`, and focus-panel HTTP route tests, plus npm/MCPB packaging checks for extracted cockpit templates.
+- Added browser-cockpit dispatch, brief-completion write-back, and compact orchestration snapshot regression coverage.
 - Added `tests/test_agent_focus.py` covering focus persistence, track-reorder resolution, MCP track-reference resolution, and the local focus-panel HTTP API.
 - Added snapshot-backed cockpit regression coverage proving the browser sidecar can serve state and save focus without an Ableton socket.
 - Added `tests/test_production_cockpit.py` covering browser cockpit rendering, backend route contracts, context persistence, focus flow, and track-intent writes.

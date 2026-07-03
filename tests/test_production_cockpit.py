@@ -575,9 +575,10 @@ def test_send_cockpit_brief_creates_snapshot_task_and_layer_audition_job(
     assert submission["snapshot"]["brief"]["brief_id"] == brief["brief_id"]
     assert "session_info" not in submission["snapshot"]["session_kernel"]
     assert submission["snapshot"]["session_kernel"]["session_ref"]["embedded"] is False
-    assert "tracks" not in submission["snapshot"]["cockpit_context"]
-    assert "briefs" not in submission["snapshot"]["cockpit_context"]
-    assert submission["snapshot"]["cockpit_context"]["target"]["track_indices"] == [1, 2]
+    assert "cockpit_context" not in submission["snapshot"]
+    assert submission["snapshot"]["context_digest"]["track_indices"] == [1, 2]
+    assert submission["snapshot"]["context_digest"]["layer_id"] == "intro_handoff"
+    assert submission["snapshot"]["production_context_state"]["workflow_mode"] == "audition"
     assert submission["snapshot"]["track_intent_map"]["omitted_full_intent_map"] is True
     assert submission["task"]["agent_role"] == "audition_planner"
     assert submission["task"]["constraints"]["brief_id"] == brief["brief_id"]
@@ -680,7 +681,8 @@ def test_send_cockpit_brief_snapshot_stays_compact_with_large_session(
     assert len(encoded) < 50000
     assert "arrangement_clips" not in encoded
     assert "session_info" not in snapshot["session_kernel"]
-    assert "tracks" not in snapshot["cockpit_context"]
+    assert "cockpit_context" not in snapshot
+    assert 2 in snapshot["context_digest"]["track_indices"]
 
 
 def test_delete_cockpit_brief_removes_saved_brief(

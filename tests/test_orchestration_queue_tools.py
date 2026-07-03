@@ -171,6 +171,20 @@ def _patch_snapshot_builders(monkeypatch):
                 "target_layer": "intro_handoff",
                 "audition_count": 3,
             },
+            "target": {
+                "target_mode": "layer",
+                "matched_layer": "intro_handoff",
+                "matched_layer_label": "Intro Handoff",
+                "track_indices": [1],
+            },
+            "tracks": [{"index": 1, "name": "Guitar"}],
+            "production_context": {
+                "state": {
+                    "lane": "sound_design",
+                    "workflow_mode": "audition",
+                    "evidence_budget": "standard",
+                }
+            },
             "section_map": [{"id": "intro", "start_bar": 1, "end_bar": 9}],
             "layer_groups": [{"id": "intro_handoff", "track_indices": [1]}],
             "track_intent_map": {"tracks": [{"index": 1, "role": "guitar"}]},
@@ -198,6 +212,10 @@ def test_orchestration_mcp_flow_round_trips(tmp_path, monkeypatch):
     assert snapshot["brief"]["text"] == "make the guitar pop out"
     assert snapshot["brief"]["target_layer"] == "intro_handoff"
     assert snapshot["session_kernel"]["kernel_id"] == "kern_1"
+    assert "cockpit_context" not in snapshot
+    assert snapshot["context_digest"]["layer_id"] == "intro_handoff"
+    assert snapshot["context_digest"]["track_indices"] == [1]
+    assert snapshot["production_context_state"]["lane"] == "sound_design"
 
     task = submit_agent_task(
         ctx,
