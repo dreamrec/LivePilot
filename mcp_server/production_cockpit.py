@@ -33,6 +33,7 @@ _BACKEND_TOOL_NAMES = {
     "save_track_intent": "save_cockpit_track_intent",
     "save_layer": "save_cockpit_layer_group",
     "delete_layer": "delete_cockpit_layer_group",
+    "delete_brief": "delete_cockpit_brief",
     "audition_action": "submit_cockpit_audition_action",
     "get_live_selection": "get_cockpit_live_selection",
     "select_live_track": "select_live_track",
@@ -1260,7 +1261,7 @@ def _task_scope_from_context(context: dict) -> dict:
     target = context.get("target") if isinstance(context.get("target"), dict) else {}
     section = target.get("section") if isinstance(target.get("section"), dict) else {}
     scope = {
-        "track_indices": target.get("track_indices") or [],
+        "track_indices": _working_track_indices(context),
         "target_mode": target.get("target_mode", "instrument"),
         "section": section,
     }
@@ -1298,10 +1299,7 @@ def _brief_text_from_payload(payload: dict, context: dict) -> str:
 def _brief_context_digest(context: dict) -> dict:
     state = context.get("production_context", {}).get("state", {})
     target = context.get("target") if isinstance(context.get("target"), dict) else {}
-    target_tracks = [
-        track for track in (context.get("target_tracks") or [])
-        if isinstance(track, dict)
-    ]
+    target_tracks = _working_tracks(context)
     track_refs = [
         {
             "signature": make_track_signature(track),
@@ -1317,7 +1315,7 @@ def _brief_context_digest(context: dict) -> dict:
             or target.get("query", "")
         ),
         "layer_id": target.get("matched_layer") or target.get("target_layer") or "",
-        "track_indices": target.get("track_indices") or [],
+        "track_indices": _working_track_indices(context),
         "track_refs": track_refs,
         "section": target.get("section") or state.get("section"),
         "lane": state.get("lane", "holistic"),
@@ -1326,6 +1324,195 @@ def _brief_context_digest(context: dict) -> dict:
         "audition_scope": state.get("audition_scope", "layer"),
         "protect": state.get("protect", []),
         "reference": state.get("reference", ""),
+    }
+
+
+def _working_track_indices(context: dict) -> list[int]:
+    target = context.get("target") if isinstance(context.get("target"), dict) else {}
+    focus = (context.get("focus") or {}).get("focus")
+    if not isinstance(focus, dict):
+        focus = {}
+    target_indices = [
+        int(index)
+        for index in (target.get("track_indices") or [])
+        if isinstance(index, int)
+    ]
+    focus_indices = [
+        int(index)
+        for index in (focus.get("track_indices") or [])
+        if isinstance(index, int)
+    ]
+    if focus_indices and target_indices:
+        target_set = set(target_indices)
+        if set(focus_indices).issubset(target_set):
+            return focus_indices
+    if target_indices:
+        return target_indices
+    return focus_indices
+
+
+def _working_tracks(context: dict) -> list[dict]:
+    working = set(_working_track_indices(context))
+    return [
+        track for track in (context.get("tracks") or [])
+        if isinstance(track, dict) and track.get("index") in working
+    ]
+
+
+def _compact_session_kernel_for_snapshot(kernel: dict) -> dict:
+    """Keep a durable reference/summary, not the full Live session dump."""
+    if not isinstance(kernel, dict):
+        return {}
+    compact = {
+        "kernel_id": kernel.get("kernel_id", ""),
+        "request_text": kernel.get("request_text", ""),
+        "mode": kernel.get("mode", ""),
+        "aggression": kernel.get("aggression"),
+        "tempo": kernel.get("tempo"),
+        "track_count": kernel.get("track_count"),
+        "capability_state": kernel.get("capability_state") or {},
+        "ledger_summary": _compact_ledger_summary(kernel.get("ledger_summary") or {}),
+        "recommended_engines": kernel.get("recommended_engines") or [],
+        "recommended_workflow": kernel.get("recommended_workflow") or "",
+        "warnings": kernel.get("warnings") or [],
+        "session_ref": {
+            "embedded": False,
+            "reason": "full_session_info_omitted_from_orchestration_snapshot",
+            "track_count": kernel.get("track_count"),
+            "tempo": kernel.get("tempo"),
+        },
+    }
+    if kernel.get("track_intent_map"):
+        compact["track_intent_summary"] = _track_intent_summary(
+            kernel.get("track_intent_map") or {}
+        )
+    return compact
+
+
+def _compact_ledger_summary(ledger: dict) -> dict:
+    return {
+        "total_moves": ledger.get("total_moves", 0),
+        "memory_candidate_count": ledger.get("memory_candidate_count", 0),
+        "last_move": ledger.get("last_move"),
+    }
+
+
+def _compact_cockpit_context_for_snapshot(context: dict) -> dict:
+    state = (context.get("production_context") or {}).get("state") or {}
+    target = context.get("target") if isinstance(context.get("target"), dict) else {}
+    focus = (context.get("focus") or {}).get("focus") or {}
+    return {
+        "project_id": context.get("project_id", ""),
+        "version": context.get("version", ""),
+        "session": dict(context.get("session") or {}),
+        "summary": dict(context.get("summary") or {}),
+        "production_state": dict(state),
+        "target": _compact_target_for_snapshot(target),
+        "focus": {
+            "track_indices": focus.get("track_indices") or [],
+            "label": focus.get("label", ""),
+            "source": focus.get("source", ""),
+        },
+        "route": dict(context.get("route") or {}),
+        "capabilities": dict(context.get("capabilities") or {}),
+    }
+
+
+def _compact_target_for_snapshot(target: dict) -> dict:
+    return {
+        "target_mode": target.get("target_mode", ""),
+        "query": target.get("query", ""),
+        "matched_group": target.get("matched_group", ""),
+        "matched_group_label": target.get("matched_group_label", ""),
+        "matched_layer": target.get("matched_layer", ""),
+        "matched_layer_label": target.get("matched_layer_label", ""),
+        "target_layer": target.get("target_layer", ""),
+        "track_indices": target.get("track_indices") or [],
+        "track_names": target.get("track_names") or [],
+        "track_count": target.get("track_count", 0),
+        "section": target.get("section") or {},
+    }
+
+
+def _compact_layer_groups_for_snapshot(groups: list[dict]) -> list[dict]:
+    compact = []
+    for group in groups:
+        if not isinstance(group, dict):
+            continue
+        compact.append({
+            "key": group.get("key") or group.get("layer_id") or "",
+            "layer_id": group.get("layer_id") or group.get("key") or "",
+            "label": group.get("label", ""),
+            "status": group.get("status", ""),
+            "count": group.get("count", 0),
+            "track_indices": group.get("track_indices") or [],
+            "track_names": group.get("track_names") or [],
+            "unresolved_count": group.get("unresolved_count", 0),
+            "linked_layers": group.get("linked_layers") or [],
+        })
+    return compact
+
+
+def _compact_track_intent_map_for_snapshot(intent_map: dict, context: dict) -> dict:
+    target = context.get("target") if isinstance(context.get("target"), dict) else {}
+    focus = (context.get("focus") or {}).get("focus") or {}
+    relevant_indices = {
+        int(index)
+        for index in (target.get("track_indices") or []) + (focus.get("track_indices") or [])
+        if isinstance(index, int)
+    }
+    tracks = []
+    for track in intent_map.get("tracks") or []:
+        if not isinstance(track, dict):
+            continue
+        index = track.get("index")
+        has_intent = bool(
+            track.get("annotations")
+            or track.get("intent")
+            or track.get("decision_state")
+            or track.get("effective_role")
+        )
+        if relevant_indices and index not in relevant_indices and not has_intent:
+            continue
+        tracks.append({
+            "index": index,
+            "name": track.get("name", ""),
+            "effective_role": track.get("effective_role", ""),
+            "inferred_role": track.get("inferred_role", ""),
+            "priority": track.get("priority", ""),
+            "decision_state": track.get("decision_state", ""),
+            "constraints": track.get("constraints") or [],
+            "tags": _track_intent_tags(track),
+        })
+        if len(tracks) >= 24:
+            break
+    return {
+        "project_id": intent_map.get("project_id", ""),
+        "coverage": dict(intent_map.get("coverage") or {}),
+        "warnings": list(intent_map.get("warnings") or [])[:8],
+        "tracks": tracks,
+        "omitted_full_intent_map": True,
+    }
+
+
+def _track_intent_tags(track: dict) -> list[str]:
+    tags: list[str] = []
+    for annotation in track.get("annotations") or []:
+        if not isinstance(annotation, dict):
+            continue
+        for tag in annotation.get("tags") or []:
+            text = str(tag or "").strip()
+            if text and text not in tags:
+                tags.append(text)
+    return tags[:12]
+
+
+def _track_intent_summary(intent_map: dict) -> dict:
+    return {
+        "project_id": intent_map.get("project_id", ""),
+        "coverage": dict(intent_map.get("coverage") or {}),
+        "warning_count": len(intent_map.get("warnings") or []),
+        "track_count": len(intent_map.get("tracks") or []),
     }
 
 
@@ -1345,24 +1532,30 @@ def _submit_cockpit_brief_packet(
     )
     brief = brief_result["brief"]
     brief_id = brief["brief_id"]
+    session_kernel = _build_session_kernel_for_cockpit(
+        ctx,
+        request_text=request_text,
+        mode=str(
+            context.get("production_context", {})
+            .get("state", {})
+            .get("workflow_mode", "observe")
+        ),
+    )
     snapshot_result = service.create_snapshot(
         session_info,
         brief=dict(context.get("summary") or {}) | (
             {"text": request_text} if request_text else {}
         ) | {"brief_id": brief_id, "seq": brief.get("seq")},
-        session_kernel=_build_session_kernel_for_cockpit(
-            ctx,
-            request_text=request_text,
-            mode=str(
-                context.get("production_context", {})
-                .get("state", {})
-                .get("workflow_mode", "observe")
-            ),
-        ),
-        cockpit_context=context,
+        session_kernel=_compact_session_kernel_for_snapshot(session_kernel),
+        cockpit_context=_compact_cockpit_context_for_snapshot(context),
         section_map=(context.get("section_map") or {}).get("sections", []),
-        layer_groups=context.get("layer_groups") or [],
-        track_intent_map=context.get("track_intent_map") or {},
+        layer_groups=_compact_layer_groups_for_snapshot(
+            context.get("layer_groups") or []
+        ),
+        track_intent_map=_compact_track_intent_map_for_snapshot(
+            context.get("track_intent_map") or {},
+            context,
+        ),
     )
     snapshot = snapshot_result["snapshot"]
     state = context.get("production_context", {}).get("state", {})
@@ -1401,7 +1594,7 @@ def _submit_cockpit_brief_packet(
         if layer_id:
             job_scope["layer_id"] = layer_id
         job_scope.update({
-            "track_indices": target.get("track_indices") or [],
+            "track_indices": _working_track_indices(context),
             "audition_count": int(state.get("audition_count") or 3),
             "brief": request_text,
             "brief_id": brief_id,
@@ -1742,6 +1935,15 @@ def delete_cockpit_layer_group(ctx: Context, layer_id: str) -> dict:
     return context
 
 
+def delete_cockpit_brief(ctx: Context, brief_id: str) -> dict:
+    """Delete a saved cockpit brief from the project brief feed."""
+    session_info = _require_session_info(ctx)
+    result = _brief_service(ctx).delete_brief(session_info, brief_id)
+    context = _build_context(ctx, include_history=False)
+    context["brief_delete"] = result
+    return context
+
+
 def submit_cockpit_audition_action(
     ctx: Context,
     source_job_id: str,
@@ -1825,6 +2027,7 @@ def _cockpit_call_tool_js(transport: str) -> str:
         [BACKEND_TOOLS.save_track_intent]: ["POST", "/api/cockpit/track-intent"],
         [BACKEND_TOOLS.save_layer]: ["POST", "/api/cockpit/layers/save"],
         [BACKEND_TOOLS.delete_layer]: ["POST", "/api/cockpit/layers/delete"],
+        [BACKEND_TOOLS.delete_brief]: ["POST", "/api/cockpit/briefs/delete"],
         [BACKEND_TOOLS.audition_action]: ["POST", "/api/cockpit/auditions/action"],
         [BACKEND_TOOLS.get_live_selection]: ["GET", "/api/cockpit/live/selection"],
         [BACKEND_TOOLS.select_live_track]: ["POST", "/api/cockpit/live/select-track"],

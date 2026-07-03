@@ -13,10 +13,11 @@ from pathlib import Path
 from typing import Optional
 
 from .base_store import PersistentJsonStore
+from .paths import livepilot_projects_dir
 from .track_annotations import annotation_project_id_for_session
 
 
-_PROJECTS_DIR = Path.home() / ".livepilot" / "projects"
+_PROJECTS_DIR: Optional[Path] = None
 _STORE_VERSION = 1
 _REVISION_HISTORY_LIMIT = 100
 
@@ -45,7 +46,7 @@ class OrchestrationService:
     """Resolve a Live session to its project-scoped orchestration store."""
 
     def __init__(self, base_dir: Optional[Path] = None):
-        self._base_dir = base_dir or _PROJECTS_DIR
+        self._base_dir = base_dir or _projects_dir()
 
     def get_state(self, session_info: dict) -> dict:
         store = self.store_for_session(session_info)
@@ -95,7 +96,7 @@ class OrchestrationStore:
     """Atomic JSON store for one project's orchestration queue state."""
 
     def __init__(self, project_id: str, base_dir: Optional[Path] = None):
-        base = base_dir or _PROJECTS_DIR
+        base = base_dir or _projects_dir()
         self._store = PersistentJsonStore(base / project_id / "orchestration.json")
         self._project_id = project_id
 
@@ -996,6 +997,10 @@ def _as_float(
     if maximum is not None:
         out = min(maximum, out)
     return out
+
+
+def _projects_dir() -> Path:
+    return Path(_PROJECTS_DIR) if _PROJECTS_DIR is not None else livepilot_projects_dir()
 
 
 def _now_ms() -> int:

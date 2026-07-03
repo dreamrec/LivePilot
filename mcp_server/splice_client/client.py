@@ -44,6 +44,7 @@ from .models import (
     classify_plan,
 )
 from .quota import DailyQuotaTracker, get_tracker
+from mcp_server.persistence.paths import livepilot_home
 
 logger = logging.getLogger(__name__)
 
@@ -128,7 +129,7 @@ def _read_plan_kind_override() -> Optional[str]:
     Returns None silently on any I/O or JSON error.
     """
     import json
-    path = os.path.expanduser("~/.livepilot/splice.json")
+    path = str(livepilot_home() / "splice.json")
     if not os.path.isfile(path):
         return None
     try:

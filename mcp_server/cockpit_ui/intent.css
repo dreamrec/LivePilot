@@ -33,11 +33,22 @@
       cursor: pointer;
     }
     button:hover { border-color: var(--accent); }
+    button:disabled,
+    button:disabled:hover {
+      opacity: 0.45;
+      cursor: not-allowed;
+      border-color: var(--line);
+      color: var(--muted-2);
+    }
     button.primary {
       background: var(--accent);
       border-color: var(--accent);
       color: #1a1206;
       font-weight: 700;
+    }
+    button.primary:disabled {
+      background: #7a5928;
+      color: #2a2113;
     }
     button.soft { background: transparent; }
     input, textarea, select {

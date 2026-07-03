@@ -14,10 +14,11 @@ from pathlib import Path
 from typing import Optional
 
 from .base_store import PersistentJsonStore
+from .paths import livepilot_projects_dir
 from .track_annotations import annotation_project_id_for_session
 
 
-_PROJECTS_DIR = Path.home() / ".livepilot" / "projects"
+_PROJECTS_DIR: Optional[Path] = None
 _STORE_VERSION = 1
 _HISTORY_LIMIT = 25
 
@@ -26,7 +27,7 @@ class AgentFocusService:
     """Read/write the current user-pointed track focus."""
 
     def __init__(self, base_dir: Optional[Path] = None):
-        self._base_dir = base_dir or _PROJECTS_DIR
+        self._base_dir = base_dir or _projects_dir()
 
     def get_focus(self, session_info: dict) -> dict:
         store = self._store_for_session(session_info)
@@ -104,7 +105,7 @@ class AgentFocusStore:
     """Atomic JSON store for one project's agent focus state."""
 
     def __init__(self, project_id: str, base_dir: Optional[Path] = None):
-        base = base_dir or _PROJECTS_DIR
+        base = base_dir or _projects_dir()
         self._store = PersistentJsonStore(base / project_id / "agent_focus.json")
         self._project_id = project_id
 
@@ -170,6 +171,10 @@ class AgentFocusStore:
             "history": [],
             "last_updated_ms": 0,
         }
+
+
+def _projects_dir() -> Path:
+    return Path(_PROJECTS_DIR) if _PROJECTS_DIR is not None else livepilot_projects_dir()
 
 
 def resolve_focus(session_info: dict, raw_focus: Optional[dict]) -> dict:

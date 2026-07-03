@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from types import SimpleNamespace
 
 import pytest
@@ -16,6 +17,7 @@ from mcp_server.production_cockpit import (
     _build_section_map,
     _render_intent_first_cockpit_html,
     clear_cockpit_focus,
+    delete_cockpit_brief,
     get_production_context,
     open_livepilot_production_cockpit,
     save_cockpit_track_intent,
@@ -563,6 +565,12 @@ def test_send_cockpit_brief_creates_snapshot_task_and_layer_audition_job(
     assert brief["request_text"] == "make the intro handoff pop out"
     assert submission["snapshot"]["brief"]["text"] == "make the intro handoff pop out"
     assert submission["snapshot"]["brief"]["brief_id"] == brief["brief_id"]
+    assert "session_info" not in submission["snapshot"]["session_kernel"]
+    assert submission["snapshot"]["session_kernel"]["session_ref"]["embedded"] is False
+    assert "tracks" not in submission["snapshot"]["cockpit_context"]
+    assert "briefs" not in submission["snapshot"]["cockpit_context"]
+    assert submission["snapshot"]["cockpit_context"]["target"]["track_indices"] == [1, 2]
+    assert submission["snapshot"]["track_intent_map"]["omitted_full_intent_map"] is True
     assert submission["task"]["agent_role"] == "audition_planner"
     assert submission["task"]["constraints"]["brief_id"] == brief["brief_id"]
     assert submission["task"]["scope"]["layer_id"] == "intro_handoff"
@@ -575,6 +583,123 @@ def test_send_cockpit_brief_creates_snapshot_task_and_layer_audition_job(
     assert brief["job_ids"] == [submission["job"]["job_id"]]
     assert context["orchestration"]["counts"]["queued_tasks"] == 1
     assert context["orchestration"]["counts"]["queued_jobs"] == 1
+
+
+def test_layer_brief_uses_focused_subset_for_audition_scope(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
+    ctx = _ctx(
+        tmp_path,
+        _session([
+            {"index": 0, "name": "drums", "color_index": 1, "has_audio_input": True},
+            {"index": 1, "name": "el-guit-intro", "color_index": 2, "has_audio_input": True},
+            {"index": 2, "name": "violins1-intro", "color_index": 3, "has_midi_input": True},
+        ]),
+    )
+    set_track_annotation(
+        ctx,
+        track_index=1,
+        role="intro_handoff_guitar",
+        decision_state="committed",
+        tags=["layer:intro_handoff"],
+    )
+    set_track_annotation(
+        ctx,
+        track_index=2,
+        role="intro_handoff_strings",
+        decision_state="committed",
+        tags=["layer:intro_handoff"],
+    )
+    set_cockpit_focus(ctx, track_indices=[1], label="guitar only")
+
+    context = send_cockpit_brief(
+        ctx,
+        lane="mix",
+        workflow_mode="audition",
+        audition_required=True,
+        audition_count=2,
+        audition_scope="layer",
+        request_text="make only the guitar pop out",
+        target_mode="layer",
+        target_layer="intro_handoff",
+        target_query="Intro Handoff",
+    )
+
+    submission = context["orchestration_submission"]
+    assert submission["snapshot"]["brief"]["target_track_names"] == ["el-guit-intro", "violins1-intro"]
+    assert submission["brief"]["context_digest"]["track_indices"] == [1]
+    assert submission["task"]["scope"]["track_indices"] == [1]
+    assert submission["job"]["scope"]["source_track_indices"] == [1]
+
+
+def test_send_cockpit_brief_snapshot_stays_compact_with_large_session(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
+    tracks = []
+    for index in range(48):
+        tracks.append({
+            "index": index,
+            "name": f"track-{index}",
+            "color_index": index % 8,
+            "has_audio_input": True,
+            "arrangement_clips": [
+                {
+                    "name": f"clip-{clip_index}",
+                    "start_time": clip_index * 4,
+                    "duration": 4,
+                    "notes": "x" * 512,
+                }
+                for clip_index in range(20)
+            ],
+        })
+    ctx = _ctx(tmp_path, _session(tracks))
+
+    context = send_cockpit_brief(
+        ctx,
+        lane="mix",
+        workflow_mode="guided",
+        request_text="make track 2 pop out but keep the notes and timing",
+        target_mode="query",
+        target_query="track-2",
+    )
+
+    snapshot = context["orchestration_submission"]["snapshot"]
+    encoded = json.dumps(snapshot, sort_keys=True)
+    assert len(encoded) < 50000
+    assert "arrangement_clips" not in encoded
+    assert "session_info" not in snapshot["session_kernel"]
+    assert "tracks" not in snapshot["cockpit_context"]
+
+
+def test_delete_cockpit_brief_removes_saved_brief(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
+    ctx = _ctx(
+        tmp_path,
+        _session([
+            {"index": 0, "name": "drums", "color_index": 1, "has_audio_input": True},
+        ]),
+    )
+    context = send_cockpit_brief(
+        ctx,
+        lane="mix",
+        workflow_mode="guided",
+        audition_required=False,
+        request_text="temporary saved brief",
+    )
+    brief_id = context["orchestration_submission"]["brief"]["brief_id"]
+
+    deleted = delete_cockpit_brief(ctx, brief_id=brief_id)
+
+    assert deleted["brief_delete"]["deleted"] is True
+    assert deleted["brief_count"] == 0
+    assert deleted["briefs"] == []
 
 
 def test_send_cockpit_brief_creates_track_scoped_audition_job(
@@ -659,6 +784,8 @@ def test_intent_first_cockpit_renders_http_backend_contract():
 
     assert "LivePilot Intent Cockpit" in html
     assert "id=\"outputModeRow\"" in html
+    assert "let outputModeUserOverride = false" in html
+    assert "if (!outputModeUserOverride) outputMode = outputModeFromWorkflow(ctx.workflow_mode)" in html
     assert "id=\"auditionCount\"" in html
     assert "Choose a layer or track target before saving auditions." in html
     assert "audition_count: auditionCount()" in html
@@ -670,6 +797,13 @@ def test_intent_first_cockpit_renders_http_backend_contract():
     assert "Clear target" in html
     assert "Save selection as layer" in html
     assert "id=\"deleteLayer\"" in html
+    assert "button:disabled" in html
+    assert "function laneInferenceText(text)" in html
+    assert "cut through|stand out" in html
+    assert "pop|punch|forward" in html
+    assert "function previewProtect(text)" in html
+    assert "(inferred)" in html
+    assert "Section: ${" in html
     assert "Song Sections" in html
     assert "id=\"songStrip\"" in html
     assert "id=\"sectionRow\"" not in html
@@ -679,7 +813,10 @@ def test_intent_first_cockpit_renders_http_backend_contract():
     assert "Suggestions" in html
     assert "Song Layers" in html
     assert "function savedPickerMode()" in html
-    assert 'const keepPickerMode = state ? pickerMode() : "";' in html
+    assert "let targetModeUserOverride = false" in html
+    assert "function pickerModeAfterRefresh(modeBeforeRefresh)" in html
+    assert "return targetModeUserOverride ? pickerMode() : (modeBeforeRefresh || savedPickerMode())" in html
+    assert "targetModeUserOverride = true" in html
     assert "targetModeDraft = savedMode" not in html
     assert "Needs you" in html
     assert "id=\"needsYouCard\"" in html
@@ -693,6 +830,7 @@ def test_intent_first_cockpit_renders_http_backend_contract():
     assert "/api/cockpit/state" in html
     assert "/api/cockpit/context" in html
     assert "/api/cockpit/brief" in html
+    assert "/api/cockpit/briefs/delete" in html
     assert "/api/cockpit/focus" in html
     assert "/api/cockpit/layers/save" in html
     assert "/api/cockpit/layers/delete" in html
@@ -701,6 +839,11 @@ def test_intent_first_cockpit_renders_http_backend_contract():
     assert "function trackLayerChips(track)" in html
     assert "function renderNeedsYou()" in html
     assert "function renderBriefFeed()" in html
+    assert "button.brief-action" in html
+    assert "Pick up" in html
+    assert "Delete" in html
+    assert "async function handleTrackRowClick(index)" in html
+    assert "Layer focus updated" in html
     assert "submitAuditionAction" in html
     assert "/api/cockpit/auditions/action" in html
     assert "setInterval(() =>" in html

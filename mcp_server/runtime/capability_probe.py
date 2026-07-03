@@ -11,6 +11,8 @@ from pathlib import Path
 from typing import Any
 import logging
 
+from mcp_server.persistence.paths import livepilot_home
+
 logger = logging.getLogger(__name__)
 
 
@@ -90,7 +92,7 @@ def probe_capabilities(
     }
 
     # 5. Persistence
-    livepilot_dir = Path.home() / ".livepilot"
+    livepilot_dir = livepilot_home()
     persistence_ok = livepilot_dir.exists() and os.access(livepilot_dir, os.W_OK)
     taste_exists = (livepilot_dir / "taste.json").exists()
     techniques_exists = (livepilot_dir / "memory" / "techniques.json").exists()

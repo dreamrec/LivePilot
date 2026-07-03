@@ -25,7 +25,9 @@
     let state = null;
     let selected = new Set();
     let outputMode = "auditions";
+    let outputModeUserOverride = false;
     let targetModeDraft = "instrument";
+    let targetModeUserOverride = false;
 
     function setStatus(text) {
       $("#status").textContent = text;
@@ -146,9 +148,10 @@
       return targetTracks().length > 0;
     }
     function selectionFromState(payload = state) {
+      const focusIndices = ((((payload || {}).focus || {}).focus || {}).track_indices || []).map(Number);
+      if (focusIndices.length) return new Set(focusIndices);
       const targetIndices = (((payload || {}).target || {}).track_indices || []).map(Number);
       if (targetIndices.length) return new Set(targetIndices);
-      const focusIndices = ((((payload || {}).focus || {}).focus || {}).track_indices || []).map(Number);
       return new Set(focusIndices);
     }
     function trackByIndex(index) {
@@ -171,6 +174,14 @@
       if (focused.length) return focused;
       const all = (state || {}).tracks || [];
       return all.filter(track => selected.has(Number(track.index)));
+    }
+    function targetTrackIndices() {
+      return targetTracks().map(track => Number(track.index)).filter(Number.isFinite);
+    }
+    function workingTracks() {
+      const tracks = targetTracks();
+      const focused = tracks.filter(track => selected.has(Number(track.index)));
+      return focused.length ? focused : tracks;
     }
     function hasTarget() {
       const target = targetState();
@@ -203,9 +214,20 @@
       if (mode === "query") return "track";
       return "instrument";
     }
+    function pickerModeAfterRefresh(modeBeforeRefresh) {
+      return targetModeUserOverride ? pickerMode() : (modeBeforeRefresh || savedPickerMode());
+    }
+    function outputModeFromWorkflow(workflowMode) {
+      return workflowMode === "commit" ? "apply" : workflowMode === "guided" ? "ask" : "auditions";
+    }
+    function laneInferenceText(text) {
+      return String(text || "").toLowerCase()
+        .replace(/\b(?:keep|preserve|don't change|do not change|without changing|leave)\b[^.!?;]*(?:notes?|melod(?:y|ies)|harmony|chords?|timing|rhythm|groove|feel)\b/g, " ")
+        .replace(/\b(?:notes?|melod(?:y|ies)|harmony|chords?|timing|rhythm|groove|feel)\b[^.!?;]*\b(?:same|intact|unchanged|safe)\b/g, " ");
+    }
     function inferLane(text) {
-      const lower = String(text || "").toLowerCase();
-      if (/\b(mix|level|balance|eq|compress|reverb|delay|glue|headroom|pan|stereo|tuck)\b/.test(lower)) return "mix";
+      const lower = laneInferenceText(text);
+      if (/\b(mix|level|balance|eq|compress|reverb|delay|glue|headroom|pan|stereo|tuck|pop|punch|forward)\b|cut through|stand out/.test(lower)) return "mix";
       if (/\b(sound|tone|texture|layer|device|synth|patch|distort|raw|glossy|shimmer|dark|bright|grit)\b/.test(lower)) return "sound_design";
       if (/\b(composition|notes|melody|harmony|chord|rhythm|structure|arrange|section|verse|chorus)\b/.test(lower)) return "composition";
       return currentLane();
@@ -229,6 +251,25 @@
       if (/vocal|vox|voice/.test(lower)) flags.push("preserve_vocal");
       if (/level|volume|balance/.test(lower)) flags.push("preserve_level");
       return flags;
+    }
+    function previewProtect(text) {
+      const confirmed = currentProtect();
+      const inferred = inferProtect(text).filter(flag => !confirmed.includes(flag));
+      return {
+        confirmed,
+        inferred,
+        all: mergeUnique(confirmed, inferred)
+      };
+    }
+    function protectDisplay(preview) {
+      const rows = [];
+      (preview.confirmed || []).forEach(flag => {
+        rows.push(`${PROTECT_LABELS[flag] || flag} (confirmed)`);
+      });
+      (preview.inferred || []).forEach(flag => {
+        rows.push(`${PROTECT_LABELS[flag] || flag} (inferred)`);
+      });
+      return rows.length ? rows.join(" / ") : "None";
     }
     function mergeUnique(...lists) {
       const out = new Set();
@@ -267,7 +308,7 @@
         const keepPickerMode = state ? pickerMode() : "";
         state = await callTool(BACKEND_TOOLS.get_state);
         selected = selectionFromState();
-        targetModeDraft = keepPickerMode || savedPickerMode();
+        targetModeDraft = pickerModeAfterRefresh(keepPickerMode);
         syncControlsFromState();
         render();
         setStatus("Ready");
@@ -290,7 +331,7 @@
         const keepPickerMode = state ? pickerMode() : "";
         state = body;
         selected = selectionFromState(body);
-        targetModeDraft = keepPickerMode || savedPickerMode();
+        targetModeDraft = pickerModeAfterRefresh(keepPickerMode);
         syncControlsFromState();
         render();
         setStatus("Ready");
@@ -305,7 +346,7 @@
       const ctx = ctxState();
       const sentence = $("#sentence");
       if (!sentence.value) sentence.value = loadDraft();
-      outputMode = ctx.workflow_mode === "commit" ? "apply" : ctx.workflow_mode === "guided" ? "ask" : "auditions";
+      if (!outputModeUserOverride) outputMode = outputModeFromWorkflow(ctx.workflow_mode);
       $("#auditionCount").value = String(Math.max(1, Math.min(5, Number(ctx.audition_count || 3))));
       $$("#laneRow .opt").forEach(node => node.classList.toggle("on", node.dataset.lane === (ctx.lane || "holistic")));
       $$("#outputModeRow .opt").forEach(node => node.classList.toggle("on", node.dataset.output === outputMode));
@@ -398,7 +439,7 @@
       const target = targetState();
       const label = targetLabel();
       $("#focusTitle").textContent = tracks.length ? `${label} - ${tracks.length} track${tracks.length === 1 ? "" : "s"}` : label;
-      $("#focusSub").textContent = ((target.section || {}).label || selectedSectionLabel());
+      $("#focusSub").textContent = `Section: ${((target.section || {}).label || selectedSectionLabel())}`;
       $("#clearTarget").disabled = !hasTarget();
       $("#contextLine").textContent = [
         `Target: ${hasTarget() ? (targetMode() === "layer" ? "song layer" : targetMode() === "query" ? "track/search" : "auto group") : "none"}`,
@@ -499,7 +540,7 @@
           </div>
         `;
       }).join("");
-      $$("#trackList .track").forEach(node => node.addEventListener("click", () => selectTrackTarget(Number(node.dataset.index))));
+      $$("#trackList .track").forEach(node => node.addEventListener("click", () => handleTrackRowClick(Number(node.dataset.index))));
     }
     function renderQuickMoves() {
       $("#quickMoves").innerHTML = QUICK_MOVES.map(move => `<button class="move" data-label="${escapeHtml(move.label)}">${escapeHtml(move.label)}</button>`).join("");
@@ -508,15 +549,15 @@
     function renderBrief() {
       const text = $("#sentence").value.trim();
       const target = targetState();
-      const tracks = targetTracks();
-      const protect = currentProtect();
+      const tracks = workingTracks();
+      const protect = previewProtect(text);
       const lane = text ? inferLane(text) : currentLane();
       $("#briefTarget").textContent = targetLabel();
       $("#briefTracks").textContent = tracks.map(track => `${Number(track.index) + 1} ${track.name}`).slice(0, 5).join(" / ");
       $("#briefLane").textContent = lane.replace("_", " ");
       $("#briefDirection").textContent = inferDirection(text);
       $("#briefScope").textContent = ((target.section || {}).label || selectedSectionLabel());
-      $("#briefProtect").textContent = protect.length ? protect.map(flag => PROTECT_LABELS[flag] || flag).join(" / ") : "None";
+      $("#briefProtect").textContent = protectDisplay(protect);
       $("#briefOutput").textContent = outputLabel();
       $("#briefOutputSub").textContent = outputMode === "auditions"
         ? (auditionLayerReady() ? "Codex will create visible muted audition lanes." : "Choose a layer or track target before saving auditions.")
@@ -535,7 +576,7 @@
         ? "Choose a Song Layer or Track target before saving audition variants."
         : "Briefs save to LivePilot context; Codex reads the saved state before acting.";
       $("#willList").innerHTML = planWill(text, tracks).map(item => `<li>${escapeHtml(item)}</li>`).join("");
-      $("#wontList").innerHTML = planWont(protect).map(item => `<li>${escapeHtml(item)}</li>`).join("");
+      $("#wontList").innerHTML = planWont(protect.all).map(item => `<li>${escapeHtml(item)}</li>`).join("");
     }
     function orchestrationState() {
       return (state || {}).orchestration || {};
@@ -693,6 +734,10 @@
             <b>${escapeHtml(text)}</b>
             <span>${escapeHtml(trail)} - #${escapeHtml(String(brief.seq || ""))}</span>
             <span>${escapeHtml(planText)}</span>
+            <span>
+              <button class="soft brief-action" data-action="pickup" data-brief-id="${escapeHtml(brief.brief_id || "")}">Pick up</button>
+              <button class="soft brief-action danger" data-action="delete" data-brief-id="${escapeHtml(brief.brief_id || "")}">Delete</button>
+            </span>
             ${variants.length ? `<span>${variants.map(variant => `
               ${escapeHtml(variant.letter)} ${escapeHtml(variant.label)}
               <button class="soft audition-action" data-action="play" data-job-id="${escapeHtml(variant.source_job_id)}" data-variant="${escapeHtml(variant.letter)}">Play</button>
@@ -731,7 +776,7 @@
         target_layer: mode === "layer" ? key || "" : ""
       };
       state = await callTool(BACKEND_TOOLS.save_context, payload);
-      selected = selectionFromState();
+      selected = new Set((((state || {}).target || {}).track_indices || []).map(Number));
       render();
       await saveFocus(label || key || "target");
       toast("Target saved");
@@ -775,9 +820,9 @@
     }
     async function saveCurrentLayer() {
       const tracks = targetTracks();
-      const indices = tracks.length
-        ? tracks.map(track => Number(track.index))
-        : [...selected].map(Number);
+      const indices = selected.size
+        ? [...selected].map(Number)
+        : tracks.map(track => Number(track.index));
       if (!indices.length) {
         toast("Choose tracks first");
         return;
@@ -803,6 +848,7 @@
         target_layer: layerId
       });
       targetModeDraft = "layer";
+      targetModeUserOverride = true;
       selected = selectionFromState();
       syncControlsFromState();
       render();
@@ -820,6 +866,7 @@
         target_layer: ""
       });
       targetModeDraft = "layer";
+      targetModeUserOverride = true;
       selected = selectionFromState();
       syncControlsFromState();
       render();
@@ -836,6 +883,46 @@
       syncControlsFromState();
       render();
       toast(`Queued audition ${action}`);
+    }
+    function briefById(briefId) {
+      return ((state || {}).briefs || []).find(brief => String(brief.brief_id || "") === String(briefId || ""));
+    }
+    function pickUpBrief(briefId) {
+      const brief = briefById(briefId);
+      if (!brief) return;
+      const digest = brief.context_digest || {};
+      $("#sentence").value = brief.request_text || "";
+      saveDraft();
+      if (digest.workflow_mode) {
+        outputMode = outputModeFromWorkflow(digest.workflow_mode);
+        outputModeUserOverride = true;
+      }
+      if (digest.audition_count) {
+        $("#auditionCount").value = String(Math.max(1, Math.min(5, Number(digest.audition_count || 3))));
+      }
+      if (digest.lane) {
+        $$("#laneRow .opt").forEach(node => node.classList.toggle("on", node.dataset.lane === digest.lane));
+      }
+      const protect = new Set(digest.protect || []);
+      if (protect.size) {
+        $$("#protectRow .tog").forEach(node => node.classList.toggle("on", protect.has(node.dataset.protect)));
+      }
+      if ((digest.track_indices || []).length) {
+        selected = new Set((digest.track_indices || []).map(Number));
+      }
+      renderBrief();
+      toast("Brief loaded");
+    }
+    async function deleteBrief(briefId) {
+      if (!briefId) return;
+      const brief = briefById(briefId) || {};
+      const label = brief.request_text || briefId;
+      if (!window.confirm(`Delete saved brief "${label}"?`)) return;
+      state = await callTool(BACKEND_TOOLS.delete_brief, {brief_id: briefId});
+      selected = selectionFromState();
+      syncControlsFromState();
+      render();
+      toast("Brief deleted");
     }
     async function grabLiveSelection() {
       if (!capabilities().live_pointing) {
@@ -955,6 +1042,28 @@
       render();
       toast("Track target saved");
     }
+    async function handleTrackRowClick(index) {
+      const targetIndices = targetTrackIndices();
+      const layerLikeTarget = targetMode() === "layer" && targetIndices.length > 1 && targetIndices.includes(index);
+      if (!layerLikeTarget) {
+        await selectTrackTarget(index);
+        return;
+      }
+      const allTargetSelected = targetIndices.length > 0 &&
+        targetIndices.every(trackIndex => selected.has(trackIndex)) &&
+        selected.size === targetIndices.length;
+      const next = allTargetSelected ? new Set([index]) : new Set(selected);
+      if (!allTargetSelected) {
+        if (next.has(index) && next.size > 1) next.delete(index);
+        else next.add(index);
+      }
+      selected = next;
+      await saveFocus([...selected].map(trackIndex => {
+        const track = trackByIndex(trackIndex);
+        return track ? `${trackIndex + 1} ${track.name}` : `${trackIndex + 1}`;
+      }).join(", "));
+      toast("Layer focus updated");
+    }
     async function saveFocus(label = "") {
       if (!selected.size) return;
       state = await callTool(BACKEND_TOOLS.set_focus, {
@@ -1027,6 +1136,7 @@
       const button = event.target.closest("button[data-mode]");
       if (!button) return;
       targetModeDraft = button.dataset.mode || "instrument";
+      targetModeUserOverride = true;
       renderPicker();
     });
     $("#targetQuery").addEventListener("keydown", event => {
@@ -1060,9 +1170,18 @@
       const button = event.target.closest("button[data-output]");
       if (!button) return;
       outputMode = button.dataset.output || "ask";
+      outputModeUserOverride = true;
       renderBrief();
     });
     $("#briefFeed").addEventListener("click", event => {
+      const briefButton = event.target.closest("button.brief-action");
+      if (briefButton) {
+        const action = briefButton.dataset.action || "";
+        const briefId = briefButton.dataset.briefId || "";
+        if (action === "pickup") pickUpBrief(briefId);
+        if (action === "delete") deleteBrief(briefId);
+        return;
+      }
       const button = event.target.closest("button.audition-action");
       if (!button) return;
       submitAuditionAction(

@@ -8,10 +8,11 @@ from pathlib import Path
 from typing import Optional
 
 from .base_store import PersistentJsonStore
+from .paths import livepilot_projects_dir
 from .track_annotations import annotation_project_id_for_session
 
 
-_PROJECTS_DIR = Path.home() / ".livepilot" / "projects"
+_PROJECTS_DIR: Optional[Path] = None
 _BRIEF_STORE_VERSION = 1
 _READER_STORE_VERSION = 1
 _STATUS_ORDER = [
@@ -29,7 +30,7 @@ class BriefService:
     """Read/write cockpit briefs for one Live project."""
 
     def __init__(self, base_dir: Optional[Path] = None):
-        self._base_dir = base_dir or _PROJECTS_DIR
+        self._base_dir = base_dir or _projects_dir()
 
     def store_for_session(self, session_info: dict) -> "BriefStore":
         return BriefStore(
@@ -83,6 +84,17 @@ class BriefService:
             "brief": brief,
         }
 
+    def delete_brief(self, session_info: dict, brief_id: str) -> dict:
+        store = self.store_for_session(session_info)
+        deleted = store.delete_brief(brief_id)
+        return {
+            "status": "ok",
+            "project_id": store.project_id,
+            "store_path": str(store.briefs_path),
+            "brief_id": str(brief_id or "").strip(),
+            "deleted": deleted,
+        }
+
     def list_briefs(
         self,
         session_info: dict,
@@ -132,7 +144,7 @@ class BriefStore:
     """Atomic JSON stores for one project's briefs and reader stamps."""
 
     def __init__(self, project_id: str, base_dir: Optional[Path] = None):
-        base = base_dir or _PROJECTS_DIR
+        base = base_dir or _projects_dir()
         self._project_id = project_id
         self._briefs = PersistentJsonStore(base / project_id / "briefs.json")
         self._readers = PersistentJsonStore(base / project_id / "reader_stamps.json")
@@ -214,6 +226,29 @@ class BriefStore:
 
         data = self._briefs.update(_update)
         return _find_brief(data, brief_id)
+
+    def delete_brief(self, brief_id: str) -> bool:
+        brief_id = str(brief_id or "").strip()
+        if not brief_id:
+            return False
+
+        def _update(data: dict) -> dict:
+            data = (
+                data if data.get("version") == _BRIEF_STORE_VERSION
+                else self._brief_default()
+            )
+            before = len(data.get("briefs") or [])
+            data["briefs"] = [
+                item for item in (data.get("briefs") or [])
+                if item.get("brief_id") != brief_id
+            ]
+            if len(data["briefs"]) != before:
+                data["last_updated_ms"] = _now_ms()
+            return data
+
+        before = len(self.list_briefs())
+        self._briefs.update(_update)
+        return len(self.list_briefs()) != before
 
     def stamp_reader(self, reader: str) -> dict:
         now = _now_ms()
@@ -444,6 +479,10 @@ def _normalize_string_list(value) -> list[str]:
         if text and text not in out:
             out.append(text)
     return out
+
+
+def _projects_dir() -> Path:
+    return Path(_PROJECTS_DIR) if _PROJECTS_DIR is not None else livepilot_projects_dir()
 
 
 def _find_brief(data: dict, brief_id: str) -> dict:

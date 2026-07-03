@@ -28,15 +28,13 @@ from dataclasses import dataclass, asdict, field
 from datetime import datetime, timezone
 from typing import Optional
 
+from mcp_server.persistence.paths import livepilot_home
+
 logger = logging.getLogger(__name__)
 
 # Splice quota boundaries
 DEFAULT_DAILY_LIMIT = 100
 DEFAULT_WARN_THRESHOLD = 90
-
-# Quota file location — one ledger per user, stored under ~/.livepilot.
-_DEFAULT_QUOTA_PATH = os.path.expanduser("~/.livepilot/splice_quota.json")
-
 
 def _today_utc() -> str:
     """ISO date string in UTC — matches Splice's server-side reset boundary.
@@ -95,7 +93,7 @@ class DailyQuotaTracker:
         daily_limit: int = DEFAULT_DAILY_LIMIT,
         warn_threshold: int = DEFAULT_WARN_THRESHOLD,
     ):
-        self.path = path or _DEFAULT_QUOTA_PATH
+        self.path = path or str(livepilot_home() / "splice_quota.json")
         self.daily_limit = daily_limit
         self.warn_threshold = warn_threshold
         self._lock = threading.Lock()

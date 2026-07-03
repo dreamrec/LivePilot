@@ -11,15 +11,14 @@ import traceback
 from pathlib import Path
 from typing import Optional
 
-
-_DEFAULT_LOG_PATH = Path.home() / ".livepilot" / "logs" / "lifecycle.jsonl"
+from .persistence.paths import livepilot_home
 
 
 def lifecycle_log_path() -> Optional[Path]:
     value = os.environ.get("LIVEPILOT_LIFECYCLE_LOG")
     if value and value.lower() in {"0", "false", "off", "no"}:
         return None
-    return Path(value).expanduser() if value else _DEFAULT_LOG_PATH
+    return Path(value).expanduser() if value else livepilot_home() / "logs" / "lifecycle.jsonl"
 
 
 def lifecycle_event(event: str, **fields) -> None:

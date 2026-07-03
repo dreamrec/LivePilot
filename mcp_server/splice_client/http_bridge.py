@@ -49,13 +49,12 @@ import urllib.request
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
+from mcp_server.persistence.paths import livepilot_home
+
 logger = logging.getLogger(__name__)
 
 
 # ── Configuration ─────────────────────────────────────────────────────
-
-
-_DEFAULT_CONFIG_PATH = os.path.expanduser("~/.livepilot/splice.json")
 
 
 @dataclass
@@ -104,7 +103,7 @@ class SpliceHTTPConfig:
         loaded_from_file = False
 
         # Layer 1: JSON file (persistent user config)
-        path = config_path or _DEFAULT_CONFIG_PATH
+        path = config_path or str(livepilot_home() / "splice.json")
         if os.path.isfile(path):
             try:
                 with open(path, "r", encoding="utf-8") as f:

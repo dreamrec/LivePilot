@@ -13,10 +13,11 @@ from pathlib import Path
 from typing import Optional
 
 from .base_store import PersistentJsonStore
+from .paths import livepilot_projects_dir
 from .track_annotations import annotation_project_id_for_session
 
 
-_PROJECTS_DIR = Path.home() / ".livepilot" / "projects"
+_PROJECTS_DIR: Optional[Path] = None
 _STORE_VERSION = 2
 
 _VALID_LANES = {"holistic", "composition", "sound_design", "mix"}
@@ -39,7 +40,7 @@ class ProductionContextService:
     """Read/write project-scoped production cockpit state."""
 
     def __init__(self, base_dir: Optional[Path] = None):
-        self._base_dir = base_dir or _PROJECTS_DIR
+        self._base_dir = base_dir or _projects_dir()
 
     def get_state(self, session_info: dict) -> dict:
         store = self._store_for_session(session_info)
@@ -121,7 +122,7 @@ class ProductionContextStore:
     """Atomic JSON store for one project's production cockpit state."""
 
     def __init__(self, project_id: str, base_dir: Optional[Path] = None):
-        base = base_dir or _PROJECTS_DIR
+        base = base_dir or _projects_dir()
         self._store = PersistentJsonStore(base / project_id / "production_context.json")
         self._project_id = project_id
 
@@ -442,6 +443,10 @@ def _beats_per_bar(session_info: dict) -> float:
         or session_info.get("time_signature_numerator")
         or 4.0
     )
+
+
+def _projects_dir() -> Path:
+    return Path(_PROJECTS_DIR) if _PROJECTS_DIR is not None else livepilot_projects_dir()
 
 
 def _normalize_protect_flags(value) -> list[str]:

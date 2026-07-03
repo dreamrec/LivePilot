@@ -12,16 +12,14 @@ from pathlib import Path
 from typing import Optional
 
 from .base_store import PersistentJsonStore
-
-
-_DEFAULT_PATH = Path.home() / ".livepilot" / "taste.json"
+from .paths import livepilot_home
 
 
 class PersistentTasteStore:
     """Persistent backing for TasteGraph data."""
 
     def __init__(self, path: Optional[Path] = None):
-        self._store = PersistentJsonStore(path or _DEFAULT_PATH)
+        self._store = PersistentJsonStore(path or livepilot_home() / "taste.json")
 
     def get_all(self) -> dict:
         """Get all persisted taste data."""

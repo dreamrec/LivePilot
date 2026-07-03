@@ -16,9 +16,10 @@ from pathlib import Path
 from typing import Optional
 
 from .base_store import PersistentJsonStore
+from .paths import livepilot_projects_dir
 
 
-_PROJECTS_DIR = Path.home() / ".livepilot" / "projects"
+_PROJECTS_DIR: Optional[Path] = None
 _STORE_VERSION = 1
 _VALID_SCOPES = {"track", "relationship", "section", "project"}
 _ACTIVE_DECISION_STATES = {"committed", "open", "hypothesis"}
@@ -211,7 +212,7 @@ def annotation_project_id_for_session(
     """
     direct_id = annotation_project_hash(session_info)
     identity = _project_marker_identity(session_info, direct_id)
-    base = base_dir or _PROJECTS_DIR
+    base = base_dir or _projects_dir()
     direct_annotations = _read_annotation_file(
         base / direct_id / "track_annotations.json"
     )
@@ -383,7 +384,7 @@ class TrackAnnotationStore:
     """Project-scoped JSON sidecar for track annotations."""
 
     def __init__(self, project_id: str, base_dir: Optional[Path] = None):
-        base = base_dir or _PROJECTS_DIR
+        base = base_dir or _projects_dir()
         self._store = PersistentJsonStore(base / project_id / "track_annotations.json")
         self._project_id = project_id
 
@@ -463,6 +464,10 @@ def _track_hash_fragment(track: dict) -> str:
         str(int(bool(track.get("has_midi_input", False)))),
         str(int(bool(track.get("has_audio_input", False)))),
     ])
+
+
+def _projects_dir() -> Path:
+    return Path(_PROJECTS_DIR) if _PROJECTS_DIR is not None else livepilot_projects_dir()
 
 
 def _read_annotation_file(path: Path) -> list[dict]:

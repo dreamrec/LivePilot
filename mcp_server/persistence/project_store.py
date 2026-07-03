@@ -12,9 +12,10 @@ from pathlib import Path
 from typing import Optional
 
 from .base_store import PersistentJsonStore
+from .paths import livepilot_projects_dir
 
 
-_PROJECTS_DIR = Path.home() / ".livepilot" / "projects"
+_PROJECTS_DIR: Optional[Path] = None
 _MAX_TURNS = 50
 _MAX_WONDER_OUTCOMES = 10
 
@@ -115,7 +116,7 @@ class ProjectStore:
     """Persistent per-project state."""
 
     def __init__(self, project_id: str, base_dir: Optional[Path] = None):
-        base = base_dir or _PROJECTS_DIR
+        base = base_dir or _projects_dir()
         self._store = PersistentJsonStore(base / project_id / "state.json")
         self._project_id = project_id
 
@@ -183,3 +184,7 @@ class ProjectStore:
             "wonder_outcomes": [],
             "last_updated_ms": 0,
         }
+
+
+def _projects_dir() -> Path:
+    return Path(_PROJECTS_DIR) if _PROJECTS_DIR is not None else livepilot_projects_dir()

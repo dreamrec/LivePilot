@@ -9,6 +9,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
+from ..persistence.paths import livepilot_memory_dir
+
 
 VALID_TYPES = frozenset(
     ["beat_pattern", "device_chain", "mix_template", "browser_pin", "preference",
@@ -25,7 +27,7 @@ class TechniqueStore:
 
     def __init__(self, base_dir: Optional[str] = None):
         if base_dir is None:
-            base_dir = os.path.join(os.path.expanduser("~"), ".livepilot", "memory")
+            base_dir = str(livepilot_memory_dir())
         self._base_dir = Path(base_dir)
         self._file = self._base_dir / "techniques.json"
         self._lock = threading.Lock()

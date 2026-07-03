@@ -8,10 +8,11 @@ from pathlib import Path
 from typing import Optional
 
 from .base_store import PersistentJsonStore
+from .paths import livepilot_home
 from .track_annotations import annotation_project_id_for_session
 
 
-_LIVEPILOT_DIR = Path.home() / ".livepilot"
+_LIVEPILOT_DIR: Optional[Path] = None
 _STORE_VERSION = 1
 
 
@@ -19,7 +20,7 @@ class SessionSnapshotStore:
     """Atomic JSON store for the most recent get_session_info result."""
 
     def __init__(self, path: Optional[Path] = None):
-        self._store = PersistentJsonStore(path or _LIVEPILOT_DIR / "current_session.json")
+        self._store = PersistentJsonStore(path or _livepilot_dir() / "current_session.json")
 
     @property
     def path(self) -> Path:
@@ -65,6 +66,10 @@ def save_session_snapshot(session_info: dict, source: str = "mcp") -> Optional[d
 
 def load_session_snapshot() -> Optional[dict]:
     return SessionSnapshotStore().load()
+
+
+def _livepilot_dir() -> Path:
+    return Path(_LIVEPILOT_DIR) if _LIVEPILOT_DIR is not None else livepilot_home()
 
 
 def _looks_like_session_info(value) -> bool:

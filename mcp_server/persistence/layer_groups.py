@@ -7,13 +7,14 @@ from pathlib import Path
 from typing import Optional
 
 from .base_store import PersistentJsonStore
+from .paths import livepilot_projects_dir
 from .track_annotations import (
     annotation_project_id_for_session,
     make_track_signature,
 )
 
 
-_PROJECTS_DIR = Path.home() / ".livepilot" / "projects"
+_PROJECTS_DIR: Optional[Path] = None
 _STORE_VERSION = 1
 _VALID_STATUSES = {"layered", "singleton", "potential"}
 
@@ -22,7 +23,7 @@ class LayerGroupService:
     """Read/write project-scoped musical layer groups."""
 
     def __init__(self, base_dir: Optional[Path] = None):
-        self._base_dir = base_dir or _PROJECTS_DIR
+        self._base_dir = base_dir or _projects_dir()
 
     def store_for_session(self, session_info: dict) -> "LayerGroupStore":
         return LayerGroupStore(
@@ -102,7 +103,7 @@ class LayerGroupStore:
     """Atomic JSON store for one project's musical layer groups."""
 
     def __init__(self, project_id: str, base_dir: Optional[Path] = None):
-        base = base_dir or _PROJECTS_DIR
+        base = base_dir or _projects_dir()
         self._store = PersistentJsonStore(base / project_id / "layer_groups.json")
         self._project_id = project_id
 
@@ -341,6 +342,10 @@ def _normalize_key(value) -> str:
         .replace("/", "_")
         .replace(" ", "_")
     )
+
+
+def _projects_dir() -> Path:
+    return Path(_PROJECTS_DIR) if _PROJECTS_DIR is not None else livepilot_projects_dir()
 
 
 def _humanize_key(value) -> str:
