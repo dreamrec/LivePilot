@@ -2,7 +2,13 @@
 
 Date: 2026-07-03
 Spec: `docs/specs/2026-07-03-codex-dispatch-spec-a-gate-and-deeplink.md`
-Status: Phase 2 started; manual gate checks pending.
+Status: v1.5 dispatch shipped; manual interop gate checks pending.
+
+Pending manual checks:
+
+- H1: confirm Codex.app opened thread `019f28e9-3b8a-7b62-b8af-7abbee5583d5`.
+- H2: send exactly `GATE-HUMAN-TURN` in that app thread and confirm it completes.
+- H3: from the cockpit, save a small brief and click `Open in Codex`; confirm the app opens with the pickup prompt prefilled.
 
 ## Surface
 
@@ -66,6 +72,7 @@ Successful isolated model turns: 2 (`GATE-OK`, `GATE-OK-2`)
 - The successful thread rollout path was `/Users/terencemahon/.livepilot/tmp/codex-gate-home/sessions/2026/07/03/rollout-2026-07-03T12-51-47-019f28e4-bdab-7f20-919e-10449da66d45.jsonl`.
 - `find /Users/terencemahon/.codex/sessions -name '*019f28e4-bdab-7f20-919e-10449da66d45*'` returned no matches; the matching rollout exists only under the isolated home.
 - The literal sentinel check against all of `/Users/terencemahon/.codex` was noisy because this active Codex thread and local caches wrote shell snapshots, logs, and cache files during the same period. Treat the targeted thread-id and `initialize.codexHome` evidence as the meaningful isolation check for this interactive run.
+- Phase 4 cleanup deleted `/Users/terencemahon/.livepilot/tmp/codex-gate-home`, including the copied `auth.json`.
 
 ### Observed request/response contract
 
@@ -141,7 +148,7 @@ Pending Phase 2. Spec B must not choose a branch until this section names Branch
 
 | Thread id | Created | Purpose |
 |-----------|---------|---------|
-| 019f28e4-bdab-7f20-919e-10449da66d45 | 2026-07-03 | Isolated-home mechanics rehearsal; disposable under `/Users/terencemahon/.livepilot/tmp/codex-gate-home`. |
+| 019f28e4-bdab-7f20-919e-10449da66d45 | 2026-07-03 | Isolated-home mechanics rehearsal; isolated home deleted in Phase 4 cleanup. |
 | 019f28e8-daa4-7501-b4d4-6b1ecc715c4c | 2026-07-03 | Real-home Phase 2 attempt; first turn failed because upstream rejected `service_tier=flex`. Disposable test thread, safe to delete. |
 | 019f28e9-3b8a-7b62-b8af-7abbee5583d5 | 2026-07-03 | Real-home Phase 2 gate thread; first turn returned `GATE-OK`. Disposable test thread, safe to delete after gate. |
 
