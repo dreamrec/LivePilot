@@ -234,3 +234,31 @@ def test_brief_dispatch_stamp_is_optional_and_round_trips(tmp_path):
     assert existing["dispatch"]["codex_thread_id"] == (
         "019f2903-7fd2-79b3-9ae0-e46a767c326d"
     )
+
+
+def test_capture_dispatch_thread_id_preserves_dispatch_stamp(tmp_path):
+    service = BriefService(base_dir=tmp_path)
+    session = _session([_track(0, "drums")])
+    created = service.create_brief(
+        session,
+        request_text="make this pop",
+        context_digest={},
+    )["brief"]
+    dispatched = service.record_dispatch(
+        session,
+        created["brief_id"],
+        method="deeplink",
+    )["brief"]
+    at_ms = dispatched["dispatch"]["at_ms"]
+
+    captured = service.capture_dispatch_thread_id(
+        session,
+        created["brief_id"],
+        codex_thread_id="019f2903-7fd2-79b3-9ae0-e46a767c326d",
+    )["brief"]
+
+    assert captured["dispatch"] == {
+        "method": "deeplink",
+        "at_ms": at_ms,
+        "codex_thread_id": "019f2903-7fd2-79b3-9ae0-e46a767c326d",
+    }

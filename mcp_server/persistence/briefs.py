@@ -116,6 +116,25 @@ class BriefService:
             "brief": brief,
         }
 
+    def capture_dispatch_thread_id(
+        self,
+        session_info: dict,
+        brief_id: str,
+        *,
+        codex_thread_id: str,
+    ) -> dict:
+        store = self.store_for_session(session_info)
+        brief = store.capture_dispatch_thread_id(
+            brief_id,
+            codex_thread_id=codex_thread_id,
+        )
+        return {
+            "status": "ok",
+            "project_id": store.project_id,
+            "store_path": str(store.briefs_path),
+            "brief": brief,
+        }
+
     def list_briefs(
         self,
         session_info: dict,
@@ -299,6 +318,40 @@ class BriefStore:
                 }
                 if codex_thread_id:
                     item["dispatch"]["codex_thread_id"] = codex_thread_id
+                item["updated_at_ms"] = now
+                data["last_updated_ms"] = now
+                return data
+            raise KeyError(f"brief_id not found: {brief_id}")
+
+        data = self._briefs.update(_update)
+        return _find_brief(data, brief_id)
+
+    def capture_dispatch_thread_id(
+        self,
+        brief_id: str,
+        *,
+        codex_thread_id: str,
+    ) -> dict:
+        brief_id = str(brief_id or "").strip()
+        codex_thread_id = str(codex_thread_id or "").strip()
+        if not brief_id:
+            raise ValueError("brief_id is required")
+        if not codex_thread_id:
+            raise ValueError("codex_thread_id is required")
+        now = _now_ms()
+
+        def _update(data: dict) -> dict:
+            data = (
+                data if data.get("version") == _BRIEF_STORE_VERSION
+                else self._brief_default()
+            )
+            for item in data.get("briefs", []):
+                if item.get("brief_id") != brief_id:
+                    continue
+                dispatch = item.get("dispatch")
+                if not isinstance(dispatch, dict):
+                    raise ValueError(f"brief has no dispatch: {brief_id}")
+                dispatch["codex_thread_id"] = codex_thread_id
                 item["updated_at_ms"] = now
                 data["last_updated_ms"] = now
                 return data

@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import builtins
 import json
+import os
+import time
 from types import SimpleNamespace
 
 import pytest
@@ -26,6 +29,7 @@ from mcp_server.production_cockpit import (
     save_cockpit_layer_group,
     save_production_context,
     send_cockpit_brief,
+    set_cockpit_working_thread,
     set_cockpit_focus,
 )
 from mcp_server.tools.tracks import set_track_annotation
@@ -827,6 +831,121 @@ def test_working_thread_status_missing_when_rollout_absent(
     assert context["briefs"] == []
 
 
+def test_dispatched_thread_id_is_captured_from_single_recent_rollout(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
+    sessions_dir = tmp_path / "codex_sessions"
+    rollout_dir = sessions_dir / "2026" / "07" / "03"
+    rollout_dir.mkdir(parents=True)
+    monkeypatch.setattr(production_cockpit, "_CODEX_SESSIONS_DIR", sessions_dir)
+    ctx = _ctx(
+        tmp_path,
+        _session([
+            {"index": 0, "name": "el-guit-intro", "color_index": 1, "has_audio_input": True},
+        ]),
+    )
+    context = send_cockpit_brief(
+        ctx,
+        lane="mix",
+        workflow_mode="guided",
+        audition_required=False,
+        request_text="make the guitar easier to hear",
+    )
+    brief_id = context["orchestration_submission"]["brief"]["brief_id"]
+    stamped = record_cockpit_brief_dispatch(ctx, brief_id=brief_id, method="deeplink")
+    at_ms = stamped["brief_dispatch"]["brief"]["dispatch"]["at_ms"]
+    thread_id = "019f2903-7fd2-79b3-9ae0-e46a767c326d"
+    path = rollout_dir / f"rollout-2026-07-03T13-25-23-{thread_id}.jsonl"
+    path.write_text("not parsed\n")
+    os.utime(path, ((at_ms + 1000) / 1000.0, (at_ms + 1000) / 1000.0))
+
+    captured = get_production_context(ctx)
+
+    assert captured["captured_thread"] == {
+        "brief_id": brief_id,
+        "thread_id": thread_id,
+    }
+    brief = captured["briefs"][0]
+    assert brief["dispatch"]["codex_thread_id"] == thread_id
+    assert brief["dispatch_action"]["prompt"].startswith("Pick up LivePilot cockpit brief")
+
+
+def test_rollout_capture_ignores_ambiguous_and_old_candidates(
+    tmp_path,
+    monkeypatch,
+):
+    sessions_dir = tmp_path / "codex_sessions"
+    rollout_dir = sessions_dir / "2026" / "07" / "03"
+    rollout_dir.mkdir(parents=True)
+    monkeypatch.setattr(production_cockpit, "_CODEX_SESSIONS_DIR", sessions_dir)
+    now_ms = int(time.time() * 1000)
+    first = "019f2903-7fd2-79b3-9ae0-e46a767c326d"
+    second = "019f2904-7fd2-79b3-9ae0-e46a767c326d"
+    old = "019f2905-7fd2-79b3-9ae0-e46a767c326d"
+    for thread_id in (first, second, old):
+        path = rollout_dir / f"rollout-2026-07-03T13-25-23-{thread_id}.jsonl"
+        path.write_text("not parsed\n")
+        mtime = (now_ms + 1000) / 1000.0
+        if thread_id == old:
+            mtime = (now_ms - 10_000) / 1000.0
+        os.utime(path, (mtime, mtime))
+
+    assert sorted(production_cockpit._recent_rollout_thread_candidates(now_ms)) == [
+        first,
+        second,
+    ]
+    for path in rollout_dir.glob(f"*-{second}.jsonl"):
+        path.unlink()
+    assert production_cockpit._recent_rollout_thread_candidates(now_ms) == [first]
+
+
+def test_rollout_scan_does_not_open_rollout_contents(tmp_path, monkeypatch):
+    sessions_dir = tmp_path / "codex_sessions"
+    rollout_dir = sessions_dir / "2026" / "07" / "03"
+    rollout_dir.mkdir(parents=True)
+    monkeypatch.setattr(production_cockpit, "_CODEX_SESSIONS_DIR", sessions_dir)
+    thread_id = "019f2903-7fd2-79b3-9ae0-e46a767c326d"
+    path = rollout_dir / f"rollout-2026-07-03T13-25-23-{thread_id}.jsonl"
+    path.write_text("would fail if read\n")
+    now_ms = int(time.time() * 1000)
+    os.utime(path, ((now_ms + 1000) / 1000.0, (now_ms + 1000) / 1000.0))
+
+    def forbidden_open(*_args, **_kwargs):
+        raise AssertionError("rollout contents must not be opened")
+
+    monkeypatch.setattr(builtins, "open", forbidden_open)
+
+    assert production_cockpit._recent_rollout_thread_candidates(now_ms) == [thread_id]
+
+
+def test_set_cockpit_working_thread_round_trips_pin_and_clear(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
+    ctx = _ctx(
+        tmp_path,
+        _session([
+            {"index": 0, "name": "drums", "color_index": 1, "has_audio_input": True},
+        ]),
+    )
+    thread_id = "019f2903-7fd2-79b3-9ae0-e46a767c326d"
+
+    pinned = set_cockpit_working_thread(
+        ctx,
+        thread_id=thread_id,
+        label="Intro pass",
+    )
+    cleared = set_cockpit_working_thread(ctx, clear=True)
+
+    assert pinned["working_thread_update"]["status"] == "pinned"
+    assert pinned["production_context"]["state"]["working_thread"]["thread_id"] == thread_id
+    assert cleared["working_thread_update"]["status"] == "cleared"
+    assert cleared["production_context"]["state"]["working_thread"] is None
+
+
 def test_send_cockpit_brief_creates_track_scoped_audition_job(
     tmp_path,
     monkeypatch,
@@ -957,6 +1076,7 @@ def test_intent_first_cockpit_renders_http_backend_contract():
     assert "/api/cockpit/brief" in html
     assert "/api/cockpit/briefs/delete" in html
     assert "/api/cockpit/brief-dispatch" in html
+    assert "/api/cockpit/working-thread" in html
     assert "/api/cockpit/focus" in html
     assert "/api/cockpit/layers/save" in html
     assert "/api/cockpit/layers/delete" in html
@@ -972,6 +1092,7 @@ def test_intent_first_cockpit_renders_http_backend_contract():
     assert "Open working thread" in html
     assert "Copy prompt" in html
     assert "id=\"workingThreadPill\"" in html
+    assert "id=\"pinCapturedThread\"" in html
     assert "id=\"clearWorkingThread\"" in html
     assert "id=\"evidenceBudget\"" in html
     assert "Evidence budget" in html
@@ -980,6 +1101,7 @@ def test_intent_first_cockpit_renders_http_backend_contract():
     assert "function dispatchStatusText(brief)" in html
     assert "recordBriefDispatch" in html
     assert "function renderWorkingThread()" in html
+    assert "function pinCapturedThread()" in html
     assert "function openWorkingThread(briefId, href)" in html
     assert "copyBriefPrompt" in html
     assert "async function handleTrackRowClick(index)" in html

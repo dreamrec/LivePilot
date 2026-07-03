@@ -400,6 +400,16 @@ class FocusPanelServer:
             codex_thread_id=str(payload.get("codex_thread_id") or ""),
         )
 
+    def set_cockpit_working_thread_payload(self, payload: dict) -> dict:
+        from .production_cockpit import set_cockpit_working_thread
+
+        return set_cockpit_working_thread(
+            self._cockpit_ctx(),
+            thread_id=str(payload.get("thread_id") or ""),
+            label=str(payload.get("label") or ""),
+            clear=bool(payload.get("clear", False)),
+        )
+
     def save_cockpit_track_intent_payload(self, payload: dict) -> dict:
         from .production_cockpit import save_cockpit_track_intent
 
@@ -748,6 +758,10 @@ class _FocusPanelHandler(BaseHTTPRequestHandler):
             if path == "/api/cockpit/brief-dispatch":
                 payload = self._read_json_body()
                 self._send_json(self.server.panel.record_cockpit_brief_dispatch_payload(payload))
+                return
+            if path == "/api/cockpit/working-thread":
+                payload = self._read_json_body()
+                self._send_json(self.server.panel.set_cockpit_working_thread_payload(payload))
                 return
             if path == "/api/cockpit/track-intent":
                 payload = self._read_json_body()

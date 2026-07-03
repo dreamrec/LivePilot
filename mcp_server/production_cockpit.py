@@ -6,6 +6,8 @@ from importlib import resources
 import json
 import os
 from pathlib import Path
+import re
+import time
 from typing import Optional
 from urllib.parse import quote
 
@@ -38,6 +40,7 @@ _BACKEND_TOOL_NAMES = {
     "delete_layer": "delete_cockpit_layer_group",
     "delete_brief": "delete_cockpit_brief",
     "record_dispatch": "record_cockpit_brief_dispatch",
+    "set_working_thread": "set_cockpit_working_thread",
     "audition_action": "submit_cockpit_audition_action",
     "get_live_selection": "get_cockpit_live_selection",
     "select_live_track": "select_live_track",
@@ -109,6 +112,13 @@ _CODEX_DEEPLINK_NEW_THREAD_TEMPLATE = (
 _CODEX_DEEPLINK_OPEN_THREAD_TEMPLATE = "codex://threads/{thread_id}"
 _CODEX_EXISTING_THREAD_PREFILL = False
 _CODEX_SESSIONS_DIR: Optional[Path] = None
+_CODEX_CAPTURE_WINDOW_MS = 120_000
+_CODEX_CAPTURE_MTIME_FUZZ_MS = 2_000
+_CODEX_THREAD_ID_RE = re.compile(
+    r"(?P<thread_id>[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-"
+    r"[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})"
+    r"\.jsonl$"
+)
 
 
 def _cockpit_url(ctx: Context) -> Optional[str]:
@@ -208,6 +218,84 @@ def _working_thread_status(working_thread) -> str:
     except OSError:
         return "missing"
     return "missing"
+
+
+def _capture_pending_dispatch_thread(
+    ctx: Context,
+    session_info: dict,
+    brief_state: dict,
+) -> Optional[dict]:
+    pending = _pending_thread_capture_briefs(brief_state.get("briefs") or [])
+    if not pending:
+        return None
+    brief = pending[0]
+    dispatch = brief.get("dispatch") or {}
+    candidates = _recent_rollout_thread_candidates(
+        int(dispatch.get("at_ms") or 0)
+    )
+    if len(candidates) != 1:
+        return None
+    thread_id = candidates[0]
+    result = _brief_service(ctx).capture_dispatch_thread_id(
+        session_info,
+        brief.get("brief_id", ""),
+        codex_thread_id=thread_id,
+    )
+    return {
+        "brief_id": result.get("brief", {}).get("brief_id", brief.get("brief_id", "")),
+        "thread_id": thread_id,
+    }
+
+
+def _pending_thread_capture_briefs(briefs: list[dict]) -> list[dict]:
+    now = int(time.time() * 1000)
+    pending: list[dict] = []
+    for brief in briefs:
+        if not isinstance(brief, dict):
+            continue
+        dispatch = brief.get("dispatch")
+        if not isinstance(dispatch, dict):
+            continue
+        if dispatch.get("method") != "deeplink":
+            continue
+        if dispatch.get("codex_thread_id"):
+            continue
+        try:
+            at_ms = int(dispatch.get("at_ms") or 0)
+        except (TypeError, ValueError):
+            continue
+        if at_ms <= 0 or now - at_ms > _CODEX_CAPTURE_WINDOW_MS:
+            continue
+        pending.append(brief)
+    return sorted(
+        pending,
+        key=lambda item: int((item.get("dispatch") or {}).get("at_ms") or 0),
+        reverse=True,
+    )
+
+
+def _recent_rollout_thread_candidates(dispatch_at_ms: int) -> list[str]:
+    sessions_dir = _codex_sessions_dir()
+    if not sessions_dir.exists():
+        return []
+    threshold = (dispatch_at_ms - _CODEX_CAPTURE_MTIME_FUZZ_MS) / 1000.0
+    seen: list[str] = []
+    try:
+        for path in sessions_dir.rglob("*.jsonl"):
+            try:
+                if path.stat().st_mtime < threshold:
+                    continue
+            except OSError:
+                continue
+            match = _CODEX_THREAD_ID_RE.search(path.name)
+            if not match:
+                continue
+            thread_id = match.group("thread_id").lower()
+            if thread_id not in seen:
+                seen.append(thread_id)
+    except OSError:
+        return []
+    return seen
 
 
 def _briefs_with_dispatch_actions(
@@ -1312,6 +1400,12 @@ def _build_context(
         session_info,
         orchestration_state=_orchestration_state_for_briefs(ctx, session_info),
     )
+    captured_thread = _capture_pending_dispatch_thread(ctx, session_info, brief_state)
+    if captured_thread:
+        brief_state = _brief_service(ctx).list_briefs(
+            session_info,
+            orchestration_state=_orchestration_state_for_briefs(ctx, session_info),
+        )
     working_thread_status = _working_thread_status(
         production_state.get("working_thread")
     )
@@ -1351,6 +1445,7 @@ def _build_context(
             working_thread_status=working_thread_status,
         ),
         "brief_count": brief_state.get("brief_count", 0),
+        "captured_thread": captured_thread,
         "codex_last_read_ms": brief_state.get("codex_last_read_ms", 0),
         "orchestration": orchestration,
         "target": target,
@@ -2134,6 +2229,36 @@ def record_cockpit_brief_dispatch(
     return context
 
 
+def set_cockpit_working_thread(
+    ctx: Context,
+    thread_id: str = "",
+    label: str = "",
+    clear: bool = False,
+) -> dict:
+    """Pin or clear the Codex working thread for this project."""
+    session_info = _require_session_info(ctx)
+    working_thread: dict = {}
+    if not clear:
+        thread_id = str(thread_id or "").strip()
+        if not thread_id:
+            raise ValueError("thread_id is required unless clear is true")
+        working_thread = {
+            "thread_id": thread_id,
+            "label": str(label or "").strip(),
+            "last_used_ms": int(time.time() * 1000),
+        }
+    _production_context_service(ctx).save_state(
+        session_info,
+        working_thread=working_thread,
+    )
+    context = _build_context(ctx, include_history=False)
+    context["working_thread_update"] = {
+        "status": "cleared" if clear else "pinned",
+        "thread_id": "" if clear else thread_id,
+    }
+    return context
+
+
 def submit_cockpit_audition_action(
     ctx: Context,
     source_job_id: str,
@@ -2219,6 +2344,7 @@ def _cockpit_call_tool_js(transport: str) -> str:
         [BACKEND_TOOLS.delete_layer]: ["POST", "/api/cockpit/layers/delete"],
         [BACKEND_TOOLS.delete_brief]: ["POST", "/api/cockpit/briefs/delete"],
         [BACKEND_TOOLS.record_dispatch]: ["POST", "/api/cockpit/brief-dispatch"],
+        [BACKEND_TOOLS.set_working_thread]: ["POST", "/api/cockpit/working-thread"],
         [BACKEND_TOOLS.audition_action]: ["POST", "/api/cockpit/auditions/action"],
         [BACKEND_TOOLS.get_live_selection]: ["GET", "/api/cockpit/live/selection"],
         [BACKEND_TOOLS.select_live_track]: ["POST", "/api/cockpit/live/select-track"],

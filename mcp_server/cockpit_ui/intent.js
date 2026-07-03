@@ -418,8 +418,10 @@
       if (!pill) return;
       const thread = workingThread();
       const status = workingThreadStatus();
+      const captured = (state || {}).captured_thread || null;
       pill.classList.toggle("live", status === "live");
       pill.classList.toggle("missing", status === "missing");
+      $("#pinCapturedThread").style.display = captured && captured.thread_id ? "" : "none";
       if (!thread || !thread.thread_id) {
         $("#workingThreadLabel").textContent = "No working thread";
         $("#clearWorkingThread").disabled = true;
@@ -1011,11 +1013,26 @@
       toast("Prompt copied");
     }
     async function clearWorkingThread() {
-      state = await callTool(BACKEND_TOOLS.save_context, {working_thread: {}});
+      state = await callTool(BACKEND_TOOLS.set_working_thread, {clear: true});
       selected = selectionFromState();
       syncControlsFromState();
       render();
       toast("Working thread cleared");
+    }
+    async function pinCapturedThread() {
+      const captured = (state || {}).captured_thread || {};
+      if (!captured.thread_id) {
+        toast("No captured thread yet");
+        return;
+      }
+      state = await callTool(BACKEND_TOOLS.set_working_thread, {
+        thread_id: captured.thread_id,
+        label: `Brief ${captured.brief_id || ""}`.trim()
+      });
+      selected = selectionFromState();
+      syncControlsFromState();
+      render();
+      toast("Working thread pinned");
     }
     async function copyText(text) {
       if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -1240,6 +1257,7 @@
     $("#clearTarget").addEventListener("click", clearTarget);
     $("#saveLayer").addEventListener("click", saveCurrentLayer);
     $("#deleteLayer").addEventListener("click", deleteCurrentLayer);
+    $("#pinCapturedThread").addEventListener("click", pinCapturedThread);
     $("#clearWorkingThread").addEventListener("click", clearWorkingThread);
     $("#wholeSongButton").addEventListener("click", chooseWholeSong);
     $("#targetModeRow").addEventListener("click", event => {
