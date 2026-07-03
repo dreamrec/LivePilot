@@ -2,13 +2,13 @@
 
 Date: 2026-07-03
 Spec: `docs/specs/2026-07-03-codex-dispatch-spec-a-gate-and-deeplink.md`
-Status: v1.5 dispatch shipped; manual interop gate checks pending.
+Status: v1.5 dispatch shipped; interop gate complete. Verdict: Branch 3 (`v1.5 ceiling`).
 
-Pending manual checks:
+Manual checks:
 
-- H1: confirm Codex.app opened thread `019f28e9-3b8a-7b62-b8af-7abbee5583d5`.
-- H2: send exactly `GATE-HUMAN-TURN` in that app thread and confirm it completes.
-- H3: from the cockpit, save a small brief and click `Open in Codex`; confirm the app opens with the pickup prompt prefilled.
+- H1: `codex://threads/019f28e9-3b8a-7b62-b8af-7abbee5583d5` hung in Codex.app, while other existing app-known threads opened normally.
+- H2: not runnable in the app-server-created gate thread because H1 failed.
+- H3: `codex://threads/new?prompt=GATE-HUMAN-TURN&path=/Users/terencemahon/Documents/audio-assistant/external-research/github/dreamrec/LivePilot` opened a new Codex.app thread and submitted the prompt successfully.
 
 ## Surface
 
@@ -134,15 +134,15 @@ Completion notifications included `GATE-OK-2`. A direct `turn/start` from a fres
 
 | ID | Verdict | Evidence excerpt |
 |----|---------|------------------|
-| A | pending-human | Real-home gate thread `019f28e9-3b8a-7b62-b8af-7abbee5583d5` was created and `open codex://threads/019f28e9-3b8a-7b62-b8af-7abbee5583d5` was fired. Producer confirmation pending. |
-| B | pending-human | Producer has not yet sent `GATE-HUMAN-TURN` in the app. |
-| C | pending-human | Backend polling waits on B. |
-| D | pending-human | Backend push test waits on C. |
-| E | pending-human | Resume/read/write-after-app-touch waits on B/C. |
+| A | no | Real-home app-server gate thread `019f28e9-3b8a-7b62-b8af-7abbee5583d5` was readable by both the harness and Codex Desktop thread API, but `open codex://threads/019f28e9-3b8a-7b62-b8af-7abbee5583d5` hung in Codex.app. Codex Desktop reported the thread as `status: notLoaded`. |
+| B | no | The producer could not continue the app-server-created gate thread in Codex.app because the open-thread deep link never loaded it. |
+| C | no | No app-side turn could be sent in the app-server-created thread. The v1.5 new-thread fallback did create Desktop thread `019f2903-7fd2-79b3-9ae0-e46a767c326d`, but app-server `thread/read` failed on it with `rollout ... does not start with session metadata`. |
+| D | no | Backend push into the same user-visible thread was not attempted because C failed; the backend cannot read the Desktop-created fallback thread through app-server. |
+| E | no | Re-entry after app touch is not available in this version because the app-server cannot read the Desktop-created fallback thread and the app cannot load the app-server-created thread. |
 
 ## Verdict
 
-Pending Phase 2. Spec B must not choose a branch until this section names Branch 1, Branch 2, or Branch 3.
+Branch 3: `v1.5 ceiling`. Codex.app build 4674 can open `codex://threads/new?prompt=...&path=...` and create a usable user-facing thread, but it does not reliably open an app-server-created thread, and app-server 0.130.0 cannot read the Desktop-created fallback thread because its rollout file lacks the expected session metadata header.
 
 ## Marker threads
 
@@ -151,6 +151,7 @@ Pending Phase 2. Spec B must not choose a branch until this section names Branch
 | 019f28e4-bdab-7f20-919e-10449da66d45 | 2026-07-03 | Isolated-home mechanics rehearsal; isolated home deleted in Phase 4 cleanup. |
 | 019f28e8-daa4-7501-b4d4-6b1ecc715c4c | 2026-07-03 | Real-home Phase 2 attempt; first turn failed because upstream rejected `service_tier=flex`. Disposable test thread, safe to delete. |
 | 019f28e9-3b8a-7b62-b8af-7abbee5583d5 | 2026-07-03 | Real-home Phase 2 gate thread; first turn returned `GATE-OK`. Disposable test thread, safe to delete after gate. |
+| 019f2903-7fd2-79b3-9ae0-e46a767c326d | 2026-07-03 | Desktop-created fallback thread opened by `codex://threads/new?prompt=GATE-HUMAN-TURN&path=...`; prompt completed in Codex.app. Safe to delete. |
 
 ## Anomalies
 
@@ -160,3 +161,4 @@ Pending Phase 2. Spec B must not choose a branch until this section names Branch
 - `turn/start` on a persisted thread from a fresh app-server connection also returned `thread not found` until the harness first called `thread/resume`.
 - The isolated home's fallback model was `gpt-5.3-codex`, which this ChatGPT account rejected. Explicit `model="gpt-5"` was also rejected. Explicit `model="gpt-5.5"` worked.
 - Real-home `thread/start` failed with the user's current config because `service_tier = "default"` is invalid for app-server 0.130.0. The harness now supports `--config`; `--config 'service_tier="fast"'` allowed the real-home gate to run. `service_tier="flex"` parsed but the upstream API rejected it.
+- Codex.app opened the v1.5 new-thread deep link and completed `GATE-HUMAN-TURN`, but app-server `thread/read` for that Desktop-created thread failed with `rollout at /Users/terencemahon/.codex/sessions/2026/07/03/rollout-2026-07-03T13-25-23-019f2903-7fd2-79b3-9ae0-e46a767c326d.jsonl does not start with session metadata`.
