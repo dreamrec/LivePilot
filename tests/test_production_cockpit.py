@@ -20,16 +20,20 @@ from mcp_server.production_cockpit import (
     _backend_tool_map,
     _build_section_map,
     _render_intent_first_cockpit_html,
+    adopt_cockpit_memory,
+    archive_cockpit_brief,
     clear_cockpit_focus,
     complete_cockpit_brief,
     delete_cockpit_brief,
     get_production_context,
+    list_cockpit_briefs,
     open_livepilot_production_cockpit,
     record_cockpit_brief_dispatch,
     save_cockpit_track_intent,
     save_cockpit_layer_group,
     save_production_context,
     send_cockpit_brief,
+    rerun_cockpit_brief,
     set_cockpit_working_thread,
     set_cockpit_focus,
 )
@@ -685,7 +689,206 @@ def test_send_cockpit_brief_snapshot_stays_compact_with_large_session(
     assert 2 in snapshot["context_digest"]["track_indices"]
 
 
-def test_delete_cockpit_brief_removes_saved_brief(
+def test_brief_context_digest_carries_set_identity_and_aim_survives_reorder(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
+    session = _session([
+        {"index": 0, "name": "drums", "color_index": 1, "has_audio_input": True},
+        {"index": 1, "name": "el-guit-intro", "color_index": 2, "has_audio_input": True},
+    ])
+    session["project_identity"] = {
+        "name": "Aim Test",
+        "file_path": "/tmp/aim-test.als",
+    }
+    ctx = _ctx(tmp_path, session)
+
+    context = send_cockpit_brief(
+        ctx,
+        lane="mix",
+        workflow_mode="guided",
+        audition_required=False,
+        request_text="make the guitar easier to hear",
+        target_mode="query",
+        target_query="el-guit-intro",
+    )
+    digest = context["orchestration_submission"]["brief"]["context_digest"]
+    assert digest["set_identity"] == {
+        "name": "Aim Test",
+        "file_path": "/tmp/aim-test.als",
+        "track_count": 2,
+    }
+
+    reordered = _session([
+        {"index": 0, "name": "drums", "color_index": 1, "has_audio_input": True},
+        {"index": 1, "name": "scratch", "color_index": 9, "has_audio_input": True},
+        {"index": 2, "name": "el-guit-intro", "color_index": 2, "has_audio_input": True},
+    ])
+    reordered["project_identity"] = dict(session["project_identity"])
+    ctx.lifespan_context["ableton"].session_info = reordered
+
+    brief = list_cockpit_briefs(ctx)["briefs"][0]
+
+    assert brief["aim_status"]["status"] == "current"
+    assert brief["aim_status"]["resolved_track_indices"] == [2]
+
+
+def test_brief_aim_status_reports_degraded_and_foreign_set(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
+    session = _session([
+        {"index": 0, "name": "el-guit-intro", "color_index": 2, "has_audio_input": True},
+        {"index": 1, "name": "violins1-intro", "color_index": 3, "has_midi_input": True},
+    ])
+    session["project_identity"] = {"file_path": "/tmp/current-song.als"}
+    ctx = _ctx(tmp_path, session)
+
+    send_cockpit_brief(
+        ctx,
+        lane="sound_design",
+        workflow_mode="guided",
+        audition_required=False,
+        request_text="make the intro handoff speak",
+        target_mode="query",
+        target_query="intro",
+    )
+    reduced = _session([
+        {"index": 0, "name": "el-guit-intro", "color_index": 2, "has_audio_input": True},
+        {"index": 1, "name": "bass", "color_index": 8, "has_midi_input": True},
+    ])
+    reduced["project_identity"] = dict(session["project_identity"])
+    ctx.lifespan_context["ableton"].session_info = reduced
+
+    degraded = list_cockpit_briefs(ctx)["briefs"][0]["aim_status"]
+
+    assert degraded["status"] == "degraded"
+    assert degraded["resolved"] == 1
+    assert degraded["total"] == 2
+    assert degraded["unresolved_refs"][0]["name"] == "violins1-intro"
+
+    service = ctx.lifespan_context["briefs"]
+    service.create_brief(
+        reduced,
+        request_text="old sibling-set aim",
+        context_digest={
+            "set_identity": {
+                "name": "Other Song",
+                "file_path": "/tmp/other-song.als",
+                "track_count": 37,
+            },
+            "track_refs": [],
+            "section": {"source": "whole_song", "label": "Whole song"},
+        },
+    )
+
+    foreign = list_cockpit_briefs(ctx)["briefs"][0]["aim_status"]
+
+    assert foreign["status"] == "foreign_set"
+    assert foreign["label"] == "Other Song"
+
+
+def test_rerun_brief_prefills_resolved_aim_and_child_lineage(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
+    session = _session([
+        {"index": 0, "name": "drums", "color_index": 1, "has_audio_input": True},
+        {"index": 1, "name": "el-guit-intro", "color_index": 2, "has_audio_input": True},
+    ])
+    session["project_identity"] = {"file_path": "/tmp/rerun-song.als"}
+    ctx = _ctx(tmp_path, session)
+    context = send_cockpit_brief(
+        ctx,
+        lane="mix",
+        workflow_mode="guided",
+        audition_required=False,
+        request_text="make the guitar easier to hear",
+        target_mode="query",
+        target_query="el-guit-intro",
+        evidence_budget="quick",
+    )
+    source = context["orchestration_submission"]["brief"]
+
+    moved = _session([
+        {"index": 0, "name": "drums", "color_index": 1, "has_audio_input": True},
+        {"index": 1, "name": "bass", "color_index": 5, "has_midi_input": True},
+        {"index": 2, "name": "el-guit-intro", "color_index": 2, "has_audio_input": True},
+    ])
+    moved["project_identity"] = dict(session["project_identity"])
+    ctx.lifespan_context["ableton"].session_info = moved
+
+    package = rerun_cockpit_brief(ctx, source["brief_id"])
+
+    assert package["parent_brief_id"] == source["brief_id"]
+    assert package["thread_id"] == source["thread_id"]
+    assert package["request_text"] == "make the guitar easier to hear"
+    assert package["evidence_budget"] == "quick"
+    assert package["resolved_track_indices"] == [2]
+
+    child_context = send_cockpit_brief(
+        ctx,
+        lane=package["lane"],
+        workflow_mode=package["workflow_mode"],
+        audition_required=False,
+        request_text=package["request_text"],
+        target_mode=package["target_mode"],
+        target_query=package["target_query"],
+        parent_brief_id=package["parent_brief_id"],
+        thread_id=package["thread_id"],
+    )
+    child = child_context["orchestration_submission"]["brief"]
+
+    assert child["parent_brief_id"] == source["brief_id"]
+    assert child["thread_id"] == source["thread_id"]
+
+
+def test_adopt_cockpit_memory_imports_suggested_store(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
+    original = _session([
+        {"index": 0, "name": "Drums", "color_index": 1, "has_midi_input": True},
+        {"index": 1, "name": "Bass", "color_index": 2, "has_audio_input": True},
+        {"index": 2, "name": "Piano", "color_index": 3, "has_midi_input": True},
+        {"index": 3, "name": "Guitar", "color_index": 4, "has_audio_input": True},
+    ])
+    original["project_identity"] = {"file_path": "/tmp/original-memory.als"}
+    original_id = annotation_store.annotation_project_id_for_session(original, tmp_path)
+    store = annotation_store.TrackAnnotationStore(original_id, base_dir=tmp_path)
+    for track in original["tracks"]:
+        store.upsert({
+            "scope": "track",
+            "role": "part",
+            "track_ref": {
+                "last_seen_index": track["index"],
+                "name": track["name"],
+                "signature": annotation_store.make_track_signature(track),
+            },
+        })
+
+    sibling = _session([
+        {"index": 0, "name": "Drums", "color_index": 1, "has_midi_input": True},
+        {"index": 1, "name": "Guide", "color_index": 9, "has_audio_input": True},
+    ])
+    sibling["project_identity"] = {"file_path": "/tmp/sibling-memory.als"}
+    ctx = _ctx(tmp_path, sibling)
+    before = get_production_context(ctx)
+
+    assert before["memory_suggestion"]["project_id"] == original_id
+
+    adopted = adopt_cockpit_memory(ctx, original_id)
+
+    assert adopted["memory_adoption"]["project_id"] == original_id
+    assert adopted["project_id"] == original_id
+    assert adopted["memory_suggestion"] is None
+
+
+def test_archive_cockpit_brief_marks_abandoned_without_revision_bump(
     tmp_path,
     monkeypatch,
 ):
@@ -704,12 +907,21 @@ def test_delete_cockpit_brief_removes_saved_brief(
         request_text="temporary saved brief",
     )
     brief_id = context["orchestration_submission"]["brief"]["brief_id"]
+    store = ctx.lifespan_context["orchestration_queue"].store_for_session(
+        ctx.lifespan_context["ableton"].session_info
+    )
+    before_revision = store.get_revision()
 
-    deleted = delete_cockpit_brief(ctx, brief_id=brief_id)
+    archived = archive_cockpit_brief(ctx, brief_id=brief_id)
 
-    assert deleted["brief_delete"]["deleted"] is True
-    assert deleted["brief_count"] == 0
-    assert deleted["briefs"] == []
+    assert store.get_revision() == before_revision
+    assert archived["brief_archive"]["brief"]["outcome"]["status"] == "abandoned"
+    assert archived["briefs"][0]["status"] == "abandoned"
+    assert archived["briefs"][0]["outcome"]["summary"] == "archived from cockpit"
+
+    compat = delete_cockpit_brief(ctx, brief_id=brief_id)
+
+    assert compat["briefs"][0]["status"] == "abandoned"
 
 
 def test_brief_dispatch_prompt_links_and_stamp_round_trip(
@@ -1225,6 +1437,9 @@ def test_intent_first_cockpit_renders_http_backend_contract():
     assert "/api/cockpit/state" in html
     assert "/api/cockpit/context" in html
     assert "/api/cockpit/brief" in html
+    assert "/api/cockpit/brief-archive" in html
+    assert "/api/cockpit/brief-rerun" in html
+    assert "/api/cockpit/adopt-memory" in html
     assert "/api/cockpit/briefs/delete" in html
     assert "/api/cockpit/brief-dispatch" in html
     assert "/api/cockpit/working-thread" in html
@@ -1239,8 +1454,8 @@ def test_intent_first_cockpit_renders_http_backend_contract():
     assert "function briefStatusText(brief)" in html
     assert "done · ${count} learning" in html
     assert "button.brief-action" in html
-    assert "Pick up" in html
-    assert "Delete" in html
+    assert "Re-run" in html
+    assert "Archive" in html
     assert "New Codex thread" in html
     assert "Open working thread" in html
     assert "Copy prompt" in html

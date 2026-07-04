@@ -10,6 +10,7 @@ from __future__ import annotations
 import ast
 import hashlib
 import json
+from math import ceil
 import time
 import uuid
 from pathlib import Path
@@ -220,32 +221,84 @@ def annotation_project_id_for_session(
         _ensure_project_marker(base / direct_id, identity=identity)
         return direct_id
 
-    best_id = ""
-    best_score: tuple[int, int, int, int, float] = (0, 0, 0, 0, 0.0)
-    for path in base.glob("*/track_annotations.json"):
-        project_id = path.parent.name
-        if project_id == direct_id:
-            continue
-        annotations = _read_annotation_file(path)
-        if not annotations:
-            continue
-        score = _score_annotation_project(session_info, annotations, path)
-        if score > best_score:
-            best_id = project_id
-            best_score = score
+    alias_id = _project_id_for_known_alias(base, direct_id, identity)
+    if alias_id:
+        return alias_id
 
-    resolved_tracks, resolved_annotations, layer_tags, _active, _mtime = best_score
-    if resolved_tracks >= 2 or (
-        resolved_tracks >= 1 and resolved_annotations >= 1 and layer_tags >= 1
-    ):
+    candidate = _best_annotation_project_candidate(session_info, base, direct_id)
+
+    if candidate and _should_auto_adopt_candidate(session_info, identity, candidate):
         _ensure_project_marker(
-            base / best_id,
-            identity=_read_project_marker_identity(base / best_id) or f"structural={best_id}",
+            base / candidate["project_id"],
+            identity=candidate["identity"] or f"structural={candidate['project_id']}",
             alias=identity,
         )
-        return best_id
+        return candidate["project_id"]
     _ensure_project_marker(base / direct_id, identity=identity)
     return direct_id
+
+
+def annotation_memory_suggestion_for_session(
+    session_info: dict,
+    base_dir: Optional[Path] = None,
+) -> Optional[dict]:
+    """Return an explicit-memory-import suggestion for weak saved-set matches."""
+    direct_id = annotation_project_hash(session_info)
+    identity = _project_marker_identity(session_info, direct_id)
+    base = base_dir or _projects_dir()
+    if _read_annotation_file(base / direct_id / "track_annotations.json"):
+        return None
+    if _project_id_for_known_alias(base, direct_id, identity):
+        return None
+    candidate = _best_annotation_project_candidate(session_info, base, direct_id)
+    if not candidate:
+        return None
+    if _should_auto_adopt_candidate(session_info, identity, candidate):
+        return None
+    if not _is_different_saved_path_identity(identity, candidate["identity"]):
+        return None
+    if int(candidate["resolved_tracks"] or 0) <= 0:
+        return None
+    return {
+        "project_id": candidate["project_id"],
+        "identity": candidate["identity"],
+        "resolved_tracks": int(candidate["resolved_tracks"] or 0),
+        "annotation_count": int(candidate["annotation_count"] or 0),
+    }
+
+
+def adopt_annotation_memory_for_session(
+    session_info: dict,
+    project_id: str,
+    base_dir: Optional[Path] = None,
+) -> dict:
+    """Explicitly alias the current session identity with an existing store."""
+    project_id = str(project_id or "").strip()
+    if not project_id:
+        raise ValueError("project_id is required")
+    base = base_dir or _projects_dir()
+    target_dir = base / project_id
+    if not target_dir.exists():
+        raise KeyError(f"project_id not found: {project_id}")
+    direct_id = annotation_project_hash(session_info)
+    identity = _project_marker_identity(session_info, direct_id)
+    target_identity = (
+        _read_project_marker_identity(target_dir)
+        or f"structural={project_id}"
+    )
+    _ensure_project_marker(target_dir, identity=target_identity, alias=identity)
+    _ensure_project_marker(
+        base / direct_id,
+        identity=identity,
+        alias=target_identity,
+    )
+    return {
+        "status": "ok",
+        "project_id": project_id,
+        "current_project_id": direct_id,
+        "identity": identity,
+        "adopted_identity": target_identity,
+    }
 
 
 def normalize_annotation(annotation: dict) -> dict:
@@ -486,13 +539,44 @@ def _project_marker_identity(session_info: dict, project_id: str) -> str:
 
 
 def _read_project_marker_identity(project_dir: Path) -> str:
+    marker = _read_project_marker(project_dir)
+    return str(marker.get("identity") or "").strip()
+
+
+def _read_project_marker(project_dir: Path) -> dict:
     try:
         data = json.loads((project_dir / "project.json").read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
-        return ""
+        return {}
     if not isinstance(data, dict) or data.get("version") != 1:
+        return {}
+    return data
+
+
+def _project_id_for_known_alias(
+    base: Path,
+    direct_id: str,
+    identity: str,
+) -> str:
+    identity = str(identity or "").strip()
+    if not identity:
         return ""
-    return str(data.get("identity") or "").strip()
+    for marker_path in base.glob("*/project.json"):
+        project_id = marker_path.parent.name
+        if project_id == direct_id:
+            continue
+        marker = _read_project_marker(marker_path.parent)
+        if _marker_contains_identity(marker, identity):
+            return project_id
+    return ""
+
+
+def _marker_contains_identity(marker: dict, identity: str) -> bool:
+    values = [str(marker.get("identity") or "").strip()]
+    aliases = marker.get("aliases")
+    if isinstance(aliases, list):
+        values.extend(str(item or "").strip() for item in aliases)
+    return identity in {value for value in values if value}
 
 
 def _ensure_project_marker(
@@ -581,6 +665,82 @@ def _score_annotation_project(
         len(active_annotations),
         mtime,
     )
+
+
+def _best_annotation_project_candidate(
+    session_info: dict,
+    base: Path,
+    direct_id: str,
+) -> Optional[dict]:
+    best: Optional[dict] = None
+    best_score: tuple[int, int, int, int, float] = (0, 0, 0, 0, 0.0)
+    for path in base.glob("*/track_annotations.json"):
+        project_id = path.parent.name
+        if project_id == direct_id:
+            continue
+        annotations = _read_annotation_file(path)
+        if not annotations:
+            continue
+        score = _score_annotation_project(session_info, annotations, path)
+        if score <= best_score:
+            continue
+        best_score = score
+        resolved_tracks, resolved_annotations, layer_tags, active, mtime = score
+        best = {
+            "project_id": project_id,
+            "identity": _read_project_marker_identity(path.parent),
+            "resolved_tracks": resolved_tracks,
+            "resolved_annotations": resolved_annotations,
+            "layer_tags": layer_tags,
+            "active_annotations": active,
+            "mtime": mtime,
+            "annotation_count": len(annotations),
+        }
+    return best
+
+
+def _should_auto_adopt_candidate(
+    session_info: dict,
+    identity: str,
+    candidate: dict,
+) -> bool:
+    resolved_tracks = int(candidate.get("resolved_tracks") or 0)
+    resolved_annotations = int(candidate.get("resolved_annotations") or 0)
+    layer_tags = int(candidate.get("layer_tags") or 0)
+    candidate_identity = str(candidate.get("identity") or "").strip()
+    if _is_different_saved_path_identity(identity, candidate_identity):
+        return resolved_tracks >= max(3, ceil(0.5 * _musical_track_count(session_info)))
+    return (
+        resolved_tracks >= 2
+        or (
+            resolved_tracks >= 1
+            and resolved_annotations >= 1
+            and layer_tags >= 1
+        )
+    )
+
+
+def _is_different_saved_path_identity(left: str, right: str) -> bool:
+    left_path = _saved_path_from_identity(left)
+    right_path = _saved_path_from_identity(right)
+    return bool(left_path and right_path and left_path != right_path)
+
+
+def _saved_path_from_identity(identity: str) -> str:
+    prefix = "saved_path="
+    text = str(identity or "").strip()
+    return text[len(prefix):] if text.startswith(prefix) else ""
+
+
+def _musical_track_count(session_info: dict) -> int:
+    count = 0
+    for track in session_info.get("tracks") or []:
+        if not isinstance(track, dict) or not isinstance(track.get("index"), int):
+            continue
+        if bool(track.get("is_foldable", False)):
+            continue
+        count += 1
+    return max(1, count)
 
 
 def _new_annotation_id() -> str:

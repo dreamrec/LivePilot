@@ -82,6 +82,7 @@ __INTENT_CSS__
         <div class="card">
           <p class="prompt-line" id="promptLine">Say what should happen to the focused target.</p>
           <textarea id="sentence" class="sentence" spellcheck="false" placeholder="Make the focused part rawer and darker, but keep the notes and timing."></textarea>
+          <div class="rerun-banner" id="rerunBanner" style="display: none"></div>
           <div class="moves" id="quickMoves"></div>
           <div class="actions">
             <div class="seg-row" id="outputModeRow">
@@ -135,6 +136,7 @@ __INTENT_CSS__
                 <option value="deep">Deep</option>
               </select>
             </label>
+            <div class="memory-suggestion" id="memorySuggestion" style="display: none"></div>
           </div>
         </div>
       </main>
@@ -157,8 +159,12 @@ __INTENT_CSS__
           <div class="queue-list" id="queueItems"></div>
         </div>
         <div class="queue-card" id="briefFeedCard">
-          <div class="queue-head"><b>Briefs</b><span class="queue-badge" id="briefBadge">None</span></div>
-          <div class="queue-list" id="briefFeed"></div>
+          <div class="queue-head"><b>Pending</b><span class="queue-badge" id="pendingBriefBadge">None</span></div>
+          <div class="queue-list" id="pendingBriefFeed"></div>
+        </div>
+        <div class="queue-card" id="recentBriefFeedCard">
+          <div class="queue-head"><b>Recent</b><span class="queue-badge" id="recentBriefBadge">None</span></div>
+          <div class="queue-list" id="recentBriefFeed"></div>
         </div>
         <div class="plan" id="plan">
           <div class="k">Codex will</div>

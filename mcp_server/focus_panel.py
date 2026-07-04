@@ -390,6 +390,30 @@ class FocusPanelServer:
             brief_id=str(payload.get("brief_id") or ""),
         )
 
+    def archive_cockpit_brief_payload(self, payload: dict) -> dict:
+        from .production_cockpit import archive_cockpit_brief
+
+        return archive_cockpit_brief(
+            self._cockpit_ctx(),
+            brief_id=str(payload.get("brief_id") or ""),
+        )
+
+    def rerun_cockpit_brief_payload(self, payload: dict) -> dict:
+        from .production_cockpit import rerun_cockpit_brief
+
+        return rerun_cockpit_brief(
+            self._cockpit_ctx(),
+            brief_id=str(payload.get("brief_id") or ""),
+        )
+
+    def adopt_cockpit_memory_payload(self, payload: dict) -> dict:
+        from .production_cockpit import adopt_cockpit_memory
+
+        return adopt_cockpit_memory(
+            self._cockpit_ctx(),
+            project_id=str(payload.get("project_id") or ""),
+        )
+
     def record_cockpit_brief_dispatch_payload(self, payload: dict) -> dict:
         from .production_cockpit import record_cockpit_brief_dispatch
 
@@ -751,9 +775,21 @@ class _FocusPanelHandler(BaseHTTPRequestHandler):
                 payload = self._read_json_body()
                 self._send_json(self.server.panel.send_cockpit_brief_payload(payload))
                 return
+            if path == "/api/cockpit/brief-archive":
+                payload = self._read_json_body()
+                self._send_json(self.server.panel.archive_cockpit_brief_payload(payload))
+                return
+            if path == "/api/cockpit/brief-rerun":
+                payload = self._read_json_body()
+                self._send_json(self.server.panel.rerun_cockpit_brief_payload(payload))
+                return
             if path == "/api/cockpit/briefs/delete":
                 payload = self._read_json_body()
                 self._send_json(self.server.panel.delete_cockpit_brief_payload(payload))
+                return
+            if path == "/api/cockpit/adopt-memory":
+                payload = self._read_json_body()
+                self._send_json(self.server.panel.adopt_cockpit_memory_payload(payload))
                 return
             if path == "/api/cockpit/brief-dispatch":
                 payload = self._read_json_body()

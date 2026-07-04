@@ -28,6 +28,7 @@
     let outputModeUserOverride = false;
     let targetModeDraft = "instrument";
     let targetModeUserOverride = false;
+    let rerunDraft = null;
 
     function setStatus(text) {
       $("#status").textContent = text;
@@ -364,6 +365,7 @@
       renderTracks();
       renderQuickMoves();
       renderBrief();
+      renderMemorySuggestion();
       renderWorkingThread();
       renderNeedsYou();
       renderOrchestration();
@@ -414,6 +416,7 @@
         if (outcome.status === "done") {
           return `done · ${count} learning${count === 1 ? "" : "s"}`;
         }
+        if (outcome.status === "abandoned") return "archived";
         return outcome.status;
       }
       return (brief.status_trail || [brief.status || "saved"]).join(" -> ");
@@ -591,12 +594,35 @@
       $("#quickMoves").innerHTML = QUICK_MOVES.map(move => `<button class="move" data-label="${escapeHtml(move.label)}">${escapeHtml(move.label)}</button>`).join("");
       $$("#quickMoves .move").forEach((node, index) => node.addEventListener("click", () => applyQuickMove(QUICK_MOVES[index])));
     }
+    function renderMemorySuggestion() {
+      const node = $("#memorySuggestion");
+      if (!node) return;
+      const suggestion = (state || {}).memory_suggestion || null;
+      if (!suggestion || !suggestion.project_id) {
+        node.style.display = "none";
+        node.innerHTML = "";
+        return;
+      }
+      node.style.display = "grid";
+      node.innerHTML = `
+        <div><b>Similar project memory found</b><br>${escapeHtml(suggestion.identity || suggestion.project_id)}</div>
+        <div>${Number(suggestion.resolved_tracks || 0)} matching track${Number(suggestion.resolved_tracks || 0) === 1 ? "" : "s"} / ${Number(suggestion.annotation_count || 0)} saved annotation${Number(suggestion.annotation_count || 0) === 1 ? "" : "s"}</div>
+        <button class="soft mini" id="adoptMemory">Import memory</button>
+      `;
+      $("#adoptMemory").addEventListener("click", adoptMemorySuggestion);
+    }
     function renderBrief() {
       const text = $("#sentence").value.trim();
       const target = targetState();
       const tracks = workingTracks();
       const protect = previewProtect(text);
       const lane = text ? inferLane(text) : currentLane();
+      const banner = $("#rerunBanner");
+      if (banner) {
+        const showBanner = Boolean(rerunDraft && rerunDraft.banner);
+        banner.style.display = showBanner ? "" : "none";
+        banner.textContent = showBanner ? rerunDraft.banner : "";
+      }
       $("#briefTarget").textContent = targetLabel();
       $("#briefTracks").textContent = tracks.map(track => `${Number(track.index) + 1} ${track.name}`).slice(0, 5).join(" / ");
       $("#briefLane").textContent = lane.replace("_", " ");
@@ -614,6 +640,7 @@
         : outputMode === "auditions"
           ? `Save ${auditionLabel()} for Codex`
           : "Save brief for Codex";
+      if (rerunDraft) $("#runBrief").textContent = "Send re-run to Codex";
       $("#runBrief").disabled = outputMode === "auditions" && !auditionLayerReady();
       $("#auditionCount").disabled = outputMode !== "auditions";
       $("#auditionControl").style.display = outputMode === "auditions" ? "inline-flex" : "none";
@@ -750,58 +777,104 @@
     }
     function renderBriefFeed() {
       const briefs = Array.isArray((state || {}).briefs) ? state.briefs : [];
-      const badge = $("#briefBadge");
-      const feed = $("#briefFeed");
+      const pending = briefs.filter(isPendingBrief);
+      const recent = briefs.filter(brief => !isPendingBrief(brief));
+      renderBriefGroup("#pendingBriefBadge", "#pendingBriefFeed", pending, {
+        emptyTitle: "No pending briefs",
+        emptyDetail: "Saved briefs that have not been queued or archived will stay here.",
+        pending: true
+      });
+      renderBriefGroup("#recentBriefBadge", "#recentBriefFeed", recent, {
+        emptyTitle: "No recent brief activity",
+        emptyDetail: "Queued, running, done, and archived briefs will appear here.",
+        pending: false
+      });
+    }
+    function renderBriefGroup(badgeSelector, feedSelector, briefs, options) {
+      const badge = $(badgeSelector);
+      const feed = $(feedSelector);
       if (!badge || !feed) return;
-      badge.textContent = briefs.length ? `${briefs.length} saved` : "None";
+      badge.textContent = briefs.length ? `${briefs.length}` : "None";
       if (!briefs.length) {
-        feed.innerHTML = '<div class="queue-item"><b>No briefs yet</b><span>Save a brief and tell Codex to pick it up.</span></div>';
+        feed.innerHTML = `<div class="queue-item"><b>${escapeHtml(options.emptyTitle)}</b><span>${escapeHtml(options.emptyDetail)}</span></div>`;
         return;
       }
-      feed.innerHTML = briefs.slice(0, 6).map(brief => {
-        const trail = briefStatusText(brief);
-        const text = brief.request_text || "Untitled brief";
-        const dispatchAction = brief.dispatch_action || {};
-        const dispatchHref = dispatchAction.deeplink_new_thread || dispatchAction.deeplink_open_thread || "codex://threads/new";
-        const workingHref = dispatchAction.deeplink_working_thread || "";
-        const dispatchText = dispatchStatusText(brief);
-        const jobs = brief.related_jobs || [];
-        const plan = jobs.flatMap(job => job.plan || []).slice(0, 3);
-        const variants = jobs.flatMap(job => {
-          const manifest = job.audition_manifest || {};
-          return (manifest.variants || []).map(variant => ({
-            source_job_id: job.job_id,
-            letter: variant.letter || "",
-            label: variant.label || "",
-          }));
-        }).slice(0, 8);
-        const planText = plan.length
-          ? plan.map(step => step.summary || step.tool || "step").join(" / ")
-          : `${brief.related_task_count || 0} task${brief.related_task_count === 1 ? "" : "s"} / ${brief.related_job_count || 0} job${brief.related_job_count === 1 ? "" : "s"}`;
-        return `
-          <div class="queue-item">
-            <b>${escapeHtml(text)}</b>
-            <span>${escapeHtml(trail)} - #${escapeHtml(String(brief.seq || ""))}</span>
-            <span>${escapeHtml(planText)}</span>
-            <span>
-              <button class="soft brief-action" data-action="pickup" data-brief-id="${escapeHtml(brief.brief_id || "")}">Pick up</button>
-              <button class="soft brief-action danger" data-action="delete" data-brief-id="${escapeHtml(brief.brief_id || "")}">Delete</button>
-            </span>
-            <span>
-              <a class="link-button brief-dispatch" href="${escapeHtml(dispatchHref)}" data-action="open_codex" data-brief-id="${escapeHtml(brief.brief_id || "")}">New Codex thread</a>
-              ${workingHref ? `<a class="link-button brief-dispatch" href="${escapeHtml(workingHref)}" data-action="open_working_thread" data-brief-id="${escapeHtml(brief.brief_id || "")}">Open working thread</a>` : ""}
-              <button class="soft brief-dispatch" data-action="copy_prompt" data-brief-id="${escapeHtml(brief.brief_id || "")}">Copy prompt</button>
-            </span>
-            ${dispatchText ? `<span>${escapeHtml(dispatchText)}</span>` : ""}
-            ${variants.length ? `<span>${variants.map(variant => `
-              ${escapeHtml(variant.letter)} ${escapeHtml(variant.label)}
-              <button class="soft audition-action" data-action="play" data-job-id="${escapeHtml(variant.source_job_id)}" data-variant="${escapeHtml(variant.letter)}">Play</button>
-              <button class="soft audition-action" data-action="promote" data-job-id="${escapeHtml(variant.source_job_id)}" data-variant="${escapeHtml(variant.letter)}">Promote</button>
-              <button class="soft audition-action" data-action="discard" data-job-id="${escapeHtml(variant.source_job_id)}" data-variant="${escapeHtml(variant.letter)}">Discard</button>
-            `).join(" ")}</span>` : ""}
-          </div>
-        `;
-      }).join("");
+      feed.innerHTML = briefs.slice(0, 8).map(brief => briefCardHtml(brief, options)).join("");
+    }
+    function isPendingBrief(brief) {
+      const status = String((brief || {}).status || "").toLowerCase();
+      const outcome = ((brief || {}).outcome || {}).status;
+      return !outcome && (status === "saved" || status === "seen");
+    }
+    function aimBadgeHtml(brief) {
+      const aim = (brief || {}).aim_status || {};
+      const status = aim.status || "";
+      if (!status || status === "current" || status === "no_aim") return "";
+      if (status === "foreign_set") {
+        return `<span class="badge aim foreign">aimed at: ${escapeHtml(aim.label || "other set")}</span>`;
+      }
+      if (status === "degraded") {
+        return `<span class="badge aim">aim: ${Number(aim.resolved || 0)} of ${Number(aim.total || 0)} tracks</span>`;
+      }
+      if (status === "unresolved") {
+        return '<span class="badge aim">aim: no matching tracks</span>';
+      }
+      return `<span class="badge aim">aim: ${escapeHtml(status)}</span>`;
+    }
+    function briefCardHtml(brief, options) {
+      const trail = briefStatusText(brief);
+      const text = brief.request_text || "Untitled brief";
+      const dispatchAction = brief.dispatch_action || {};
+      const dispatchHref = dispatchAction.deeplink_new_thread || dispatchAction.deeplink_open_thread || "codex://threads/new";
+      const workingHref = dispatchAction.deeplink_working_thread || "";
+      const dispatchText = dispatchStatusText(brief);
+      const jobs = brief.related_jobs || [];
+      const plan = jobs.flatMap(job => job.plan || []).slice(0, 3);
+      const variants = jobs.flatMap(job => {
+        const manifest = job.audition_manifest || {};
+        return (manifest.variants || []).map(variant => ({
+          source_job_id: job.job_id,
+          letter: variant.letter || "",
+          label: variant.label || "",
+        }));
+      }).slice(0, 8);
+      const planText = plan.length
+        ? plan.map(step => step.summary || step.tool || "step").join(" / ")
+        : `${brief.related_task_count || 0} task${brief.related_task_count === 1 ? "" : "s"} / ${brief.related_job_count || 0} job${brief.related_job_count === 1 ? "" : "s"}`;
+      const aim = ((brief || {}).aim_status || {}).status || "";
+      const archiveFirst = aim === "foreign_set";
+      const pendingActions = options.pending ? `
+        <span>
+          ${archiveFirst ? `<button class="soft brief-action danger" data-action="archive" data-brief-id="${escapeHtml(brief.brief_id || "")}">Archive</button>` : ""}
+          <button class="soft brief-action" data-action="rerun" data-brief-id="${escapeHtml(brief.brief_id || "")}">Re-run</button>
+          ${archiveFirst ? "" : `<button class="soft brief-action danger" data-action="archive" data-brief-id="${escapeHtml(brief.brief_id || "")}">Archive</button>`}
+        </span>
+      ` : "";
+      const dispatchActions = !options.pending ? `
+        <span>
+          <a class="link-button brief-dispatch" href="${escapeHtml(dispatchHref)}" data-action="open_codex" data-brief-id="${escapeHtml(brief.brief_id || "")}">New Codex thread</a>
+          ${workingHref ? `<a class="link-button brief-dispatch" href="${escapeHtml(workingHref)}" data-action="open_working_thread" data-brief-id="${escapeHtml(brief.brief_id || "")}">Open working thread</a>` : ""}
+          <button class="soft brief-dispatch" data-action="copy_prompt" data-brief-id="${escapeHtml(brief.brief_id || "")}">Copy prompt</button>
+        </span>
+      ` : "";
+      const variantsHtml = variants.length ? `<span>${variants.map(variant => `
+        ${escapeHtml(variant.letter)} ${escapeHtml(variant.label)}
+        <button class="soft audition-action" data-action="play" data-job-id="${escapeHtml(variant.source_job_id)}" data-variant="${escapeHtml(variant.letter)}">Play</button>
+        <button class="soft audition-action" data-action="promote" data-job-id="${escapeHtml(variant.source_job_id)}" data-variant="${escapeHtml(variant.letter)}">Promote</button>
+        <button class="soft audition-action" data-action="discard" data-job-id="${escapeHtml(variant.source_job_id)}" data-variant="${escapeHtml(variant.letter)}">Discard</button>
+      `).join(" ")}</span>` : "";
+      return `
+        <div class="queue-item">
+          <b>${escapeHtml(text)}</b>
+          <span>${escapeHtml(trail)} - #${escapeHtml(String(brief.seq || ""))}</span>
+          ${aimBadgeHtml(brief)}
+          <span>${escapeHtml(planText)}</span>
+          ${pendingActions}
+          ${dispatchActions}
+          ${dispatchText ? `<span>${escapeHtml(dispatchText)}</span>` : ""}
+          ${variantsHtml}
+        </div>
+      `;
     }
     function planWill(text, tracks) {
       const direction = inferDirection(text).toLowerCase();
@@ -942,42 +1015,79 @@
     function briefById(briefId) {
       return ((state || {}).briefs || []).find(brief => String(brief.brief_id || "") === String(briefId || ""));
     }
-    function pickUpBrief(briefId) {
-      const brief = briefById(briefId);
-      if (!brief) return;
-      const digest = brief.context_digest || {};
-      $("#sentence").value = brief.request_text || "";
+    async function rerunBrief(briefId) {
+      if (!briefId) return;
+      const pack = await callTool(BACKEND_TOOLS.rerun_brief, {brief_id: briefId});
+      rerunDraft = {
+        parent_brief_id: pack.parent_brief_id || briefId,
+        thread_id: pack.thread_id || "",
+        banner: pack.banner || ""
+      };
+      $("#sentence").value = pack.request_text || "";
       saveDraft();
-      if (digest.workflow_mode) {
-        outputMode = outputModeFromWorkflow(digest.workflow_mode);
+      if (pack.workflow_mode) {
+        outputMode = outputModeFromWorkflow(pack.workflow_mode);
         outputModeUserOverride = true;
       }
-      if (digest.audition_count) {
-        $("#auditionCount").value = String(Math.max(1, Math.min(5, Number(digest.audition_count || 3))));
+      if (pack.audition_count) {
+        $("#auditionCount").value = String(Math.max(1, Math.min(5, Number(pack.audition_count || 3))));
       }
-      if (digest.lane) {
-        $$("#laneRow .opt").forEach(node => node.classList.toggle("on", node.dataset.lane === digest.lane));
+      if (pack.lane) {
+        $$("#laneRow .opt").forEach(node => node.classList.toggle("on", node.dataset.lane === pack.lane));
       }
-      const protect = new Set(digest.protect || []);
+      if (pack.evidence_budget) $("#evidenceBudget").value = pack.evidence_budget;
+      const protect = new Set(pack.protect || []);
       if (protect.size) {
         $$("#protectRow .tog").forEach(node => node.classList.toggle("on", protect.has(node.dataset.protect)));
       }
-      if ((digest.track_indices || []).length) {
-        selected = new Set((digest.track_indices || []).map(Number));
+      const contextPayload = {
+        target_mode: pack.target_mode || "query",
+        target_query: pack.target_query || "",
+        target_group: pack.target_group || "",
+        target_layer: pack.target_layer || "",
+        lane: pack.lane || "holistic",
+        workflow_mode: pack.workflow_mode || "guided",
+        audition_count: pack.audition_count || 3,
+        audition_scope: pack.audition_scope || "layer",
+        evidence_budget: pack.evidence_budget || "standard",
+        protect: pack.protect || []
+      };
+      if (pack.section) contextPayload.section = pack.section;
+      else contextPayload.section_scope = "whole_song";
+      const nextState = await callTool(BACKEND_TOOLS.save_context, contextPayload);
+      state = nextState;
+      selected = new Set((pack.resolved_track_indices || []).map(Number));
+      if (selected.size) {
+        state = await callTool(BACKEND_TOOLS.set_focus, {
+          track_indices: [...selected],
+          label: (pack.resolved_track_names || []).join(", ") || "re-run aim"
+        });
       }
-      renderBrief();
-      toast("Brief loaded");
+      targetModeDraft = pack.target_mode === "layer" ? "layer" : pack.target_mode === "query" ? "track" : "instrument";
+      targetModeUserOverride = true;
+      syncControlsFromState();
+      render();
+      toast("Brief loaded for re-run");
     }
-    async function deleteBrief(briefId) {
+    async function archiveBrief(briefId) {
       if (!briefId) return;
       const brief = briefById(briefId) || {};
       const label = brief.request_text || briefId;
-      if (!window.confirm(`Delete saved brief "${label}"?`)) return;
-      state = await callTool(BACKEND_TOOLS.delete_brief, {brief_id: briefId});
+      if (!window.confirm(`Archive brief "${label}"?`)) return;
+      state = await callTool(BACKEND_TOOLS.archive_brief, {brief_id: briefId});
       selected = selectionFromState();
       syncControlsFromState();
       render();
-      toast("Brief deleted");
+      toast("Brief archived");
+    }
+    async function adoptMemorySuggestion() {
+      const suggestion = (state || {}).memory_suggestion || {};
+      if (!suggestion.project_id) return;
+      state = await callTool(BACKEND_TOOLS.adopt_memory, {project_id: suggestion.project_id});
+      selected = selectionFromState();
+      syncControlsFromState();
+      render();
+      toast("Project memory imported");
     }
     async function recordBriefDispatch(briefId, method, codexThreadId = "") {
       if (!briefId || !method) return;
@@ -1245,6 +1355,10 @@
         target_layer: targetMode() === "layer" ? (targetState().matched_layer || ctx.target_layer || "") : "",
         section: savedSection()
       };
+      if (rerunDraft) {
+        payload.parent_brief_id = rerunDraft.parent_brief_id || "";
+        payload.thread_id = rerunDraft.thread_id || "";
+      }
       if (selected.size) {
         state = await callTool(BACKEND_TOOLS.set_focus, {
           track_indices: [...selected],
@@ -1255,6 +1369,7 @@
       selected = selectionFromState();
       $("#sentence").value = "";
       clearDraft();
+      rerunDraft = null;
       render();
       const queued = (((state || {}).orchestration_submission || {}).job || {}).title;
       toast(queued ? `Queued: ${queued}` : "Brief sent to Codex");
@@ -1313,7 +1428,7 @@
       outputModeUserOverride = true;
       renderBrief();
     });
-    $("#briefFeed").addEventListener("click", event => {
+    function handleBriefFeedClick(event) {
       const dispatchNode = event.target.closest(".brief-dispatch");
       if (dispatchNode) {
         const action = dispatchNode.dataset.action || "";
@@ -1333,8 +1448,8 @@
       if (briefButton) {
         const action = briefButton.dataset.action || "";
         const briefId = briefButton.dataset.briefId || "";
-        if (action === "pickup") pickUpBrief(briefId);
-        if (action === "delete") deleteBrief(briefId);
+        if (action === "rerun") rerunBrief(briefId);
+        if (action === "archive") archiveBrief(briefId);
         return;
       }
       const button = event.target.closest("button.audition-action");
@@ -1344,7 +1459,9 @@
         button.dataset.jobId || "",
         button.dataset.variant || ""
       );
-    });
+    }
+    $("#pendingBriefFeed").addEventListener("click", handleBriefFeedClick);
+    $("#recentBriefFeed").addEventListener("click", handleBriefFeedClick);
     $("#fineTuneHead").addEventListener("click", () => $("#fineTune").classList.toggle("open"));
     $("#laneRow").addEventListener("click", event => {
       const button = event.target.closest("button[data-lane]");

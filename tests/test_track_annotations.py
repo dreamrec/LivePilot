@@ -7,8 +7,10 @@ from types import SimpleNamespace
 from mcp_server.persistence import track_annotations as annotation_store
 from mcp_server.persistence.track_annotations import (
     TrackAnnotationStore,
+    adopt_annotation_memory_for_session,
     annotation_project_hash,
     annotation_project_id_for_session,
+    annotation_memory_suggestion_for_session,
     make_track_signature,
 )
 from mcp_server.tools.tracks import (
@@ -175,6 +177,130 @@ def test_annotation_project_marker_not_rewritten_for_noop_resolution(tmp_path):
 
     assert annotation_project_id_for_session(session, tmp_path) == project_id
     assert marker_path.stat().st_mtime_ns == before
+
+
+def test_saved_path_weak_overlap_suggests_memory_instead_of_auto_adopting(tmp_path):
+    full = _session([
+        {
+            "index": index,
+            "name": "Drums" if index == 0 else "Bass" if index == 1 else f"Full Track {index}",
+            "color_index": index % 8,
+            "has_midi_input": index % 2 == 0,
+            "has_audio_input": index % 2 == 1,
+        }
+        for index in range(37)
+    ])
+    full["project_identity"] = {"file_path": "/tmp/full-song.als"}
+    full_id = annotation_project_id_for_session(full, tmp_path)
+    store = TrackAnnotationStore(full_id, base_dir=tmp_path)
+    for index in range(4):
+        store.upsert({
+            "scope": "track",
+            "role": f"role_{index}",
+            "track_ref": {
+                "last_seen_index": index,
+                "name": full["tracks"][index]["name"],
+                "signature": make_track_signature(full["tracks"][index]),
+            },
+        })
+
+    karaoke = _session([
+        {"index": 0, "name": "Drums", "color_index": 0, "has_midi_input": True},
+        {"index": 1, "name": "Bass", "color_index": 1, "has_audio_input": True},
+        *[
+            {
+                "index": index,
+                "name": f"Karaoke Track {index}",
+                "color_index": 10 + index,
+                "has_audio_input": True,
+            }
+            for index in range(2, 8)
+        ],
+    ])
+    karaoke["project_identity"] = {"file_path": "/tmp/karaoke-song.als"}
+    direct_id = annotation_project_hash(karaoke)
+
+    resolved_id = annotation_project_id_for_session(karaoke, tmp_path)
+    suggestion = annotation_memory_suggestion_for_session(karaoke, tmp_path)
+
+    assert resolved_id == direct_id
+    assert resolved_id != full_id
+    assert suggestion == {
+        "project_id": full_id,
+        "identity": "saved_path=/tmp/full-song.als",
+        "resolved_tracks": 2,
+        "annotation_count": 4,
+    }
+
+
+def test_saved_path_strong_overlap_still_auto_adopts_renamed_set(tmp_path):
+    original = _session([
+        {
+            "index": index,
+            "name": f"Song Track {index}",
+            "color_index": index,
+            "has_midi_input": index % 2 == 0,
+            "has_audio_input": index % 2 == 1,
+        }
+        for index in range(6)
+    ])
+    original["project_identity"] = {"file_path": "/tmp/song-a.als"}
+    original_id = annotation_project_id_for_session(original, tmp_path)
+    store = TrackAnnotationStore(original_id, base_dir=tmp_path)
+    for track in original["tracks"]:
+        store.upsert({
+            "scope": "track",
+            "role": "part",
+            "track_ref": {
+                "last_seen_index": track["index"],
+                "name": track["name"],
+                "signature": make_track_signature(track),
+            },
+        })
+
+    renamed = _session([
+        dict(track, index=len(original["tracks"]) - 1 - track["index"])
+        for track in reversed(original["tracks"])
+    ])
+    renamed["project_identity"] = {"file_path": "/tmp/song-b.als"}
+
+    assert annotation_project_id_for_session(renamed, tmp_path) == original_id
+    assert annotation_memory_suggestion_for_session(renamed, tmp_path) is None
+
+
+def test_explicit_memory_adoption_aliases_saved_path_projects(tmp_path):
+    original = _session([
+        {"index": 0, "name": "Drums", "color_index": 1, "has_midi_input": True},
+        {"index": 1, "name": "Bass", "color_index": 2, "has_audio_input": True},
+    ])
+    original["project_identity"] = {"file_path": "/tmp/original.als"}
+    original_id = annotation_project_id_for_session(original, tmp_path)
+    TrackAnnotationStore(original_id, base_dir=tmp_path).upsert({
+        "scope": "track",
+        "role": "drums",
+        "track_ref": {
+            "last_seen_index": 0,
+            "name": "Drums",
+            "signature": make_track_signature(original["tracks"][0]),
+        },
+    })
+
+    sibling = _session([
+        {"index": 0, "name": "Drums", "color_index": 1, "has_midi_input": True},
+        {"index": 1, "name": "Guide", "color_index": 9, "has_audio_input": True},
+    ])
+    sibling["project_identity"] = {"file_path": "/tmp/sibling.als"}
+    direct_id = annotation_project_hash(sibling)
+    assert annotation_project_id_for_session(sibling, tmp_path) == direct_id
+
+    adopted = adopt_annotation_memory_for_session(sibling, original_id, tmp_path)
+
+    assert adopted["status"] == "ok"
+    assert annotation_project_id_for_session(sibling, tmp_path) == original_id
+    original_marker = json.loads((tmp_path / original_id / "project.json").read_text())
+    direct_marker = json.loads((tmp_path / direct_id / "project.json").read_text())
+    assert "saved_path=/tmp/sibling.als" in original_marker["aliases"]
+    assert "saved_path=/tmp/original.als" in direct_marker["aliases"]
 
 
 def test_track_annotation_resolves_after_track_move(tmp_path, monkeypatch):

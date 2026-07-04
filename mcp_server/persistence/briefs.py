@@ -48,6 +48,7 @@ class BriefService:
         context_digest: Optional[dict] = None,
         source: str = "cockpit",
         parent_brief_id: Optional[str] = None,
+        thread_id: Optional[str] = None,
     ) -> dict:
         store = self.store_for_session(session_info)
         brief = store.create_brief({
@@ -55,6 +56,7 @@ class BriefService:
             "context_digest": context_digest or {},
             "source": source,
             "parent_brief_id": parent_brief_id,
+            "thread_id": thread_id,
         })
         return {
             "status": "ok",

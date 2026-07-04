@@ -338,6 +338,17 @@
       color: #bfe8e8;
       background: rgba(91, 184, 184, 0.09);
     }
+    .badge.aim {
+      border-color: rgba(240, 163, 58, 0.55);
+      color: #f5d9aa;
+      background: rgba(240, 163, 58, 0.1);
+      width: fit-content;
+    }
+    .badge.aim.foreign {
+      border-color: rgba(224, 102, 102, 0.55);
+      color: #ffd0d0;
+      background: rgba(224, 102, 102, 0.08);
+    }
     .target-picker {
       margin-top: 10px;
       display: grid;
@@ -387,6 +398,16 @@
       font-size: 13px;
     }
     .moves { margin-top: 12px; }
+    .rerun-banner {
+      margin-top: 10px;
+      border: 1px solid rgba(240, 163, 58, 0.55);
+      background: rgba(240, 163, 58, 0.1);
+      color: #f5d9aa;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 12px;
+      line-height: 1.35;
+    }
     .move {
       border-radius: 999px;
       font-size: 12px;
@@ -432,6 +453,17 @@
     }
     .drawer.open .drawer-body { display: grid; }
     .drawer.open .chev { transform: rotate(90deg); }
+    .memory-suggestion {
+      border: 1px solid rgba(240, 163, 58, 0.45);
+      background: rgba(240, 163, 58, 0.08);
+      border-radius: 8px;
+      padding: 9px;
+      color: var(--muted);
+      font-size: 12px;
+      display: grid;
+      gap: 8px;
+    }
+    .memory-suggestion b { color: var(--text); }
     .opt {
       border: 1px solid var(--line);
       border-radius: 8px;

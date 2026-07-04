@@ -22,10 +22,13 @@ from .persistence.orchestration_queue import OrchestrationService
 from .persistence.production_context import ProductionContextService
 from .persistence.track_annotations import (
     TrackAnnotationStore,
+    adopt_annotation_memory_for_session,
     annotation_project_id_for_session,
+    annotation_memory_suggestion_for_session,
     build_track_intent_map as build_track_intent_map_data,
     find_annotation_for_track,
     make_track_signature,
+    resolve_annotation,
 )
 from .server import mcp
 from .tools._conductor import classify_request
@@ -36,10 +39,13 @@ _BACKEND_TOOL_NAMES = {
     "clear_focus": "clear_cockpit_focus",
     "save_context": "save_production_context",
     "send_brief": "send_cockpit_brief",
+    "archive_brief": "archive_cockpit_brief",
+    "rerun_brief": "rerun_cockpit_brief",
     "save_track_intent": "save_cockpit_track_intent",
     "save_layer": "save_cockpit_layer_group",
     "delete_layer": "delete_cockpit_layer_group",
     "delete_brief": "delete_cockpit_brief",
+    "adopt_memory": "adopt_cockpit_memory",
     "record_dispatch": "record_cockpit_brief_dispatch",
     "set_working_thread": "set_cockpit_working_thread",
     "audition_action": "submit_cockpit_audition_action",
@@ -321,6 +327,7 @@ def _rollout_candidate_time_seconds(path: Path) -> Optional[float]:
 
 def _briefs_with_dispatch_actions(
     briefs: list[dict],
+    session_info: Optional[dict] = None,
     production_state: Optional[dict] = None,
     working_thread_status: str = "unset",
 ) -> list[dict]:
@@ -329,6 +336,8 @@ def _briefs_with_dispatch_actions(
     out = []
     for brief in briefs:
         item = dict(brief)
+        if isinstance(session_info, dict):
+            item["aim_status"] = _brief_aim_status(item, session_info)
         item["dispatch_action"] = _brief_dispatch_action(
             item,
             working_thread=working_thread,
@@ -336,6 +345,116 @@ def _briefs_with_dispatch_actions(
         )
         out.append(item)
     return out
+
+
+def _brief_aim_status(brief: dict, session_info: dict) -> dict:
+    digest = brief.get("context_digest") if isinstance(brief.get("context_digest"), dict) else {}
+    refs = [ref for ref in (digest.get("track_refs") or []) if isinstance(ref, dict)]
+    section = digest.get("section") if isinstance(digest.get("section"), dict) else {}
+    digest_identity = digest.get("set_identity") if isinstance(digest.get("set_identity"), dict) else {}
+    current_identity = _set_identity_for_session(session_info)
+    old_path = str(digest_identity.get("file_path") or "").strip()
+    current_path = str(current_identity.get("file_path") or "").strip()
+    if old_path and current_path and old_path != current_path:
+        return {
+            "status": "foreign_set",
+            "label": str(digest_identity.get("name") or old_path),
+            "set_identity": digest_identity,
+            "current_set_identity": current_identity,
+            "resolved": 0,
+            "unresolved": len(refs),
+            "total": len(refs),
+            "resolved_track_indices": [],
+            "resolved_track_names": [],
+            "unresolved_refs": refs,
+        }
+    if not refs:
+        if _section_is_whole_song(section):
+            return {
+                "status": "no_aim",
+                "resolved": 0,
+                "unresolved": 0,
+                "total": 0,
+                "resolved_track_indices": [],
+                "resolved_track_names": [],
+                "unresolved_refs": [],
+            }
+        return {
+            "status": "current",
+            "resolved": 0,
+            "unresolved": 0,
+            "total": 0,
+            "resolved_track_indices": [],
+            "resolved_track_names": [],
+            "unresolved_refs": [],
+        }
+
+    resolved = []
+    unresolved = []
+    tracks = _regular_tracks(session_info)
+    for ref in refs:
+        resolution = resolve_annotation(
+            session_info,
+            {"track_ref": ref},
+            tracks=tracks,
+        )
+        item = {"ref": ref, "resolution": resolution}
+        if resolution.get("status") == "resolved":
+            resolved.append(item)
+        else:
+            unresolved.append(item)
+    resolved_indices = [
+        item["resolution"]["resolved_track_index"]
+        for item in resolved
+        if isinstance(item.get("resolution", {}).get("resolved_track_index"), int)
+    ]
+    resolved_names = [
+        str(item["resolution"].get("resolved_track_name") or "")
+        for item in resolved
+    ]
+    status = (
+        "current"
+        if len(resolved) == len(refs)
+        else "degraded"
+        if resolved
+        else "unresolved"
+    )
+    return {
+        "status": status,
+        "resolved": len(resolved),
+        "unresolved": len(unresolved),
+        "total": len(refs),
+        "resolved_track_indices": resolved_indices,
+        "resolved_track_names": resolved_names,
+        "unresolved_refs": [
+            _compact_aim_ref(item.get("ref") or {}, item.get("resolution") or {})
+            for item in unresolved
+        ],
+        "set_identity": digest_identity,
+        "current_set_identity": current_identity,
+    }
+
+
+def _compact_aim_ref(ref: dict, resolution: dict) -> dict:
+    signature = ref.get("signature") if isinstance(ref.get("signature"), dict) else {}
+    return {
+        "name": str(signature.get("name") or ref.get("name") or ""),
+        "last_seen_index": ref.get("last_seen_index"),
+        "resolution": resolution,
+    }
+
+
+def _section_is_whole_song(section: dict) -> bool:
+    if not section:
+        return True
+    source = str(section.get("source") or "").strip().lower()
+    scope = str(section.get("scope") or section.get("section_id") or "").strip().lower()
+    label = str(section.get("label") or "").strip().lower()
+    return (
+        source == "whole_song"
+        or scope == "whole_song"
+        or label == "whole song"
+    )
 
 
 def _backend_tool_map() -> dict[str, str]:
@@ -1459,10 +1578,12 @@ def _build_context(
         "layer_groups": layer_groups,
         "section_map": section_map,
         "capabilities": _cockpit_capabilities(ctx),
+        "memory_suggestion": annotation_memory_suggestion_for_session(session_info),
         "dispatch": _codex_dispatch_base(),
         "completion_contract": _BRIEF_COMPLETION_CONTRACT,
         "briefs": _briefs_with_dispatch_actions(
             brief_state.get("briefs", []),
+            session_info=session_info,
             production_state=production_state,
             working_thread_status=working_thread_status,
         ),
@@ -1554,7 +1675,7 @@ def _brief_text_from_payload(payload: dict, context: dict) -> str:
     return str(state.get("notes") or "").strip()
 
 
-def _brief_context_digest(context: dict) -> dict:
+def _brief_context_digest(context: dict, session_info: Optional[dict] = None) -> dict:
     state = context.get("production_context", {}).get("state", {})
     target = context.get("target") if isinstance(context.get("target"), dict) else {}
     target_tracks = _working_tracks(context)
@@ -1565,7 +1686,13 @@ def _brief_context_digest(context: dict) -> dict:
         }
         for track in target_tracks
     ]
+    session_info = (
+        session_info
+        if isinstance(session_info, dict)
+        else {"project_identity": (context.get("session") or {}).get("project_identity"), **(context.get("session") or {})}
+    )
     return {
+        "set_identity": _set_identity_for_session(session_info),
         "target_mode": target.get("target_mode", state.get("target_mode", "")),
         "target_label": (
             target.get("matched_layer_label")
@@ -1583,6 +1710,27 @@ def _brief_context_digest(context: dict) -> dict:
         "evidence_budget": state.get("evidence_budget", "standard"),
         "protect": state.get("protect", []),
         "reference": state.get("reference", ""),
+    }
+
+
+def _set_identity_for_session(session_info: dict) -> dict:
+    identity = session_info.get("project_identity")
+    if not isinstance(identity, dict):
+        identity = {}
+    file_path = ""
+    for key in ("file_path", "path", "project_path", "set_path", "live_set_path"):
+        file_path = str(identity.get(key) or session_info.get(key) or "").strip()
+        if file_path:
+            break
+    name = ""
+    for key in ("name", "project_name", "set_name", "live_set_name"):
+        name = str(identity.get(key) or session_info.get(key) or "").strip()
+        if name:
+            break
+    return {
+        "name": name,
+        "file_path": file_path,
+        "track_count": int(session_info.get("track_count") or len(session_info.get("tracks") or [])),
     }
 
 
@@ -1779,16 +1927,20 @@ def _submit_cockpit_brief_packet(
     ctx: Context,
     context: dict,
     request_text: str,
+    parent_brief_id: str = "",
+    thread_id: str = "",
 ) -> dict:
     """Create orchestration snapshot/task and optional audition job."""
     session_info = _require_session_info(ctx)
     service = _orchestration_service(ctx)
-    context_digest = _brief_context_digest(context)
+    context_digest = _brief_context_digest(context, session_info)
     brief_result = _brief_service(ctx).create_brief(
         session_info,
         request_text=request_text,
         context_digest=context_digest,
         source="cockpit",
+        parent_brief_id=parent_brief_id or None,
+        thread_id=thread_id or None,
     )
     brief = brief_result["brief"]
     brief_id = brief["brief_id"]
@@ -1955,7 +2107,13 @@ def _send_cockpit_brief(
     )
     context = _build_context(ctx, include_history=False)
     request_text = _brief_text_from_payload(payload, context)
-    submission = _submit_cockpit_brief_packet(ctx, context, request_text)
+    submission = _submit_cockpit_brief_packet(
+        ctx,
+        context,
+        request_text,
+        parent_brief_id=str(payload.get("parent_brief_id") or "").strip(),
+        thread_id=str(payload.get("thread_id") or "").strip(),
+    )
     context = _build_context(ctx, include_history=False)
     context["orchestration_submission"] = submission
     return context
@@ -2022,6 +2180,7 @@ def list_cockpit_briefs(
     result["working_thread_status"] = working_thread_status
     result["briefs"] = _briefs_with_dispatch_actions(
         result.get("briefs", []),
+        session_info=session_info,
         production_state=production_state,
         working_thread_status=working_thread_status,
     )
@@ -2253,6 +2412,8 @@ def save_production_context(
     section_label: Optional[str] = None,
     section_start_bar: Optional[float] = None,
     section_end_bar: Optional[float] = None,
+    parent_brief_id: Optional[str] = None,
+    thread_id: Optional[str] = None,
 ) -> dict:
     """Production context write used by the browser cockpit UI."""
     session_info = _require_session_info(ctx)
@@ -2302,6 +2463,8 @@ def send_cockpit_brief(
     section_label: Optional[str] = None,
     section_start_bar: Optional[float] = None,
     section_end_bar: Optional[float] = None,
+    parent_brief_id: Optional[str] = None,
+    thread_id: Optional[str] = None,
 ) -> dict:
     """Brief submission that creates orchestration work."""
     return _send_cockpit_brief(
@@ -2326,6 +2489,8 @@ def send_cockpit_brief(
             "section_label": section_label,
             "section_start_bar": section_start_bar,
             "section_end_bar": section_end_bar,
+            "parent_brief_id": parent_brief_id,
+            "thread_id": thread_id,
         },
     )
 
@@ -2374,13 +2539,173 @@ def delete_cockpit_layer_group(ctx: Context, layer_id: str) -> dict:
     return context
 
 
-def delete_cockpit_brief(ctx: Context, brief_id: str) -> dict:
-    """Delete a saved cockpit brief from the project brief feed."""
+def archive_cockpit_brief(ctx: Context, brief_id: str) -> dict:
+    """Archive a saved cockpit brief without incrementing orchestration revision.
+
+    This browser action is a producer inbox cleanup: it marks the brief as
+    abandoned, but it does not mean the song changed. Codex-side
+    complete_cockpit_brief still increments revision because it records finished
+    work and song-memory learnings.
+    """
     session_info = _require_session_info(ctx)
-    result = _brief_service(ctx).delete_brief(session_info, brief_id)
+    result = _brief_service(ctx).complete_brief(
+        session_info,
+        brief_id,
+        status="abandoned",
+        summary="archived from cockpit",
+        learnings_count=0,
+    )
     context = _build_context(ctx, include_history=False)
-    context["brief_delete"] = result
+    context["brief_archive"] = result
     return context
+
+
+def rerun_cockpit_brief(ctx: Context, brief_id: str) -> dict:
+    """Return a composer prefill package for a saved brief re-run."""
+    session_info = _require_session_info(ctx)
+    context = _build_context(ctx, include_history=False)
+    brief = _find_context_brief(context, brief_id)
+    digest = brief.get("context_digest") if isinstance(brief.get("context_digest"), dict) else {}
+    aim = _brief_aim_status(brief, session_info)
+    section = _rerun_section_from_digest(digest, context.get("section_map") or {})
+    package = {
+        "status": "ok",
+        "brief_id": brief.get("brief_id", ""),
+        "seq": brief.get("seq"),
+        "parent_brief_id": brief.get("brief_id", ""),
+        "thread_id": brief.get("thread_id", ""),
+        "request_text": brief.get("request_text", ""),
+        "lane": digest.get("lane", "holistic"),
+        "protect": digest.get("protect", []),
+        "workflow_mode": digest.get("workflow_mode", "guided"),
+        "audition_count": int(digest.get("audition_count") or 3),
+        "audition_scope": digest.get("audition_scope", "layer"),
+        "evidence_budget": digest.get("evidence_budget", "standard"),
+        "aim_status": aim,
+        "resolved_track_indices": aim.get("resolved_track_indices") or [],
+        "resolved_track_names": aim.get("resolved_track_names") or [],
+        "unresolved_refs": aim.get("unresolved_refs") or [],
+        "target_mode": _rerun_target_mode(digest, context, aim),
+        "target_query": _rerun_target_query(digest, aim),
+        "target_group": _rerun_target_group(digest, context, aim),
+        "target_layer": _rerun_target_layer(digest, context, aim),
+        "section": section,
+        "banner": _rerun_banner(brief, aim),
+    }
+    return package
+
+
+def adopt_cockpit_memory(ctx: Context, project_id: str) -> dict:
+    """Explicitly import a similar project memory into the current set identity."""
+    session_info = _require_session_info(ctx)
+    result = adopt_annotation_memory_for_session(session_info, project_id)
+    context = _build_context(ctx, include_history=False)
+    context["memory_adoption"] = result
+    return context
+
+
+def delete_cockpit_brief(ctx: Context, brief_id: str) -> dict:
+    """Backward-compatible browser action; archives because briefs are durable."""
+    return archive_cockpit_brief(ctx, brief_id)
+
+
+def _find_context_brief(context: dict, brief_id: str) -> dict:
+    brief_id = str(brief_id or "").strip()
+    for brief in context.get("briefs") or []:
+        if brief.get("brief_id") == brief_id:
+            return brief
+    raise KeyError(f"brief_id not found: {brief_id}")
+
+
+def _rerun_section_from_digest(digest: dict, section_map: dict) -> Optional[dict]:
+    section = digest.get("section") if isinstance(digest.get("section"), dict) else {}
+    if not section or _section_is_whole_song(section):
+        return None
+    sections = section_map.get("sections") if isinstance(section_map, dict) else []
+    section_id = str(section.get("section_id") or section.get("id") or "")
+    label = _normalize_target_token(str(section.get("label") or ""))
+    for candidate in sections or []:
+        if section_id and section_id == str(candidate.get("id") or candidate.get("section_id") or ""):
+            return _section_prefill(candidate)
+    for candidate in sections or []:
+        if label and label == _normalize_target_token(str(candidate.get("label") or "")):
+            return _section_prefill(candidate)
+    return {
+        "section_id": section_id,
+        "label": str(section.get("label") or "Section"),
+        "start_beat": _float_or_none(section.get("start_beat")),
+        "end_beat": _float_or_none(section.get("end_beat")),
+        "source": str(section.get("source") or "manual"),
+    }
+
+
+def _section_prefill(section: dict) -> dict:
+    return {
+        "section_id": str(section.get("id") or section.get("section_id") or ""),
+        "label": str(section.get("label") or "Section"),
+        "start_beat": _float_or_none(section.get("start_beat")),
+        "end_beat": _float_or_none(section.get("end_beat")),
+        "source": str(section.get("source") or "manual"),
+    }
+
+
+def _rerun_target_mode(digest: dict, context: dict, aim: dict) -> str:
+    if aim.get("status") == "foreign_set":
+        return "query"
+    layer_id = str(digest.get("layer_id") or "").strip()
+    if layer_id and _context_has_layer(context, layer_id):
+        return "layer"
+    if aim.get("resolved_track_indices"):
+        return "query"
+    mode = _normalize_target_mode(digest.get("target_mode"))
+    return mode if mode != "layer" else "query"
+
+
+def _rerun_target_query(digest: dict, aim: dict) -> str:
+    names = aim.get("resolved_track_names") or []
+    if names:
+        return ", ".join(str(name) for name in names if name)
+    return str(digest.get("target_label") or "")
+
+
+def _rerun_target_group(digest: dict, context: dict, aim: dict) -> str:
+    if _rerun_target_mode(digest, context, aim) == "instrument":
+        return str(digest.get("target_label") or "")
+    return ""
+
+
+def _rerun_target_layer(digest: dict, context: dict, aim: dict) -> str:
+    layer_id = _normalize_target_token(str(digest.get("layer_id") or ""))
+    if _rerun_target_mode(digest, context, aim) == "layer" and layer_id:
+        return layer_id
+    return ""
+
+
+def _context_has_layer(context: dict, layer_id: str) -> bool:
+    normalized = _normalize_target_token(layer_id)
+    return any(
+        normalized == _normalize_target_token(str(group.get("key") or group.get("layer_id") or ""))
+        for group in context.get("layer_groups") or []
+        if isinstance(group, dict)
+    )
+
+
+def _rerun_banner(brief: dict, aim: dict) -> str:
+    seq = brief.get("seq") or "?"
+    status = aim.get("status")
+    if status == "foreign_set":
+        return f"Re-running brief #{seq} - aimed at another set; point at a new target."
+    if status == "degraded":
+        return (
+            f"Re-running brief #{seq} - aim re-resolved "
+            f"({aim.get('resolved', 0)} of {aim.get('total', 0)} tracks matched)."
+        )
+    if status == "unresolved":
+        return f"Re-running brief #{seq} - aim could not be re-resolved; point at a new target."
+    if status == "current":
+        total = aim.get("total", 0)
+        return f"Re-running brief #{seq} - aim re-resolved ({total} of {total} tracks matched)."
+    return f"Re-running brief #{seq}."
 
 
 def record_cockpit_brief_dispatch(
@@ -2512,10 +2837,13 @@ def _cockpit_call_tool_js(transport: str) -> str:
         [BACKEND_TOOLS.clear_focus]: ["POST", "/api/cockpit/focus/clear"],
         [BACKEND_TOOLS.save_context]: ["POST", "/api/cockpit/context"],
         [BACKEND_TOOLS.send_brief]: ["POST", "/api/cockpit/brief"],
+        [BACKEND_TOOLS.archive_brief]: ["POST", "/api/cockpit/brief-archive"],
+        [BACKEND_TOOLS.rerun_brief]: ["POST", "/api/cockpit/brief-rerun"],
         [BACKEND_TOOLS.save_track_intent]: ["POST", "/api/cockpit/track-intent"],
         [BACKEND_TOOLS.save_layer]: ["POST", "/api/cockpit/layers/save"],
         [BACKEND_TOOLS.delete_layer]: ["POST", "/api/cockpit/layers/delete"],
         [BACKEND_TOOLS.delete_brief]: ["POST", "/api/cockpit/briefs/delete"],
+        [BACKEND_TOOLS.adopt_memory]: ["POST", "/api/cockpit/adopt-memory"],
         [BACKEND_TOOLS.record_dispatch]: ["POST", "/api/cockpit/brief-dispatch"],
         [BACKEND_TOOLS.set_working_thread]: ["POST", "/api/cockpit/working-thread"],
         [BACKEND_TOOLS.audition_action]: ["POST", "/api/cockpit/auditions/action"],

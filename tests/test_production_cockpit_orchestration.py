@@ -159,15 +159,19 @@ def test_intent_cockpit_renders_orchestration_queue_card():
 
     assert "Agent Queue" in html
     assert "Needs you" in html
-    assert "Briefs" in html
+    assert "Pending" in html
+    assert "Recent" in html
     assert "id=\"queueBadge\"" in html
     assert "id=\"queueItems\"" in html
     assert "id=\"needsYouBadge\"" in html
     assert "id=\"needsYouItems\"" in html
-    assert "id=\"briefFeed\"" in html
+    assert "id=\"pendingBriefFeed\"" in html
+    assert "id=\"recentBriefFeed\"" in html
     assert "function renderOrchestration()" in html
     assert "function renderNeedsYou()" in html
     assert "function renderBriefFeed()" in html
+    assert "function rerunBrief(" in html
+    assert "function archiveBrief(" in html
     assert "awaiting_decision" in html
     assert "unresolved_members" in html
     assert "stale_needs_revalidation" in html
