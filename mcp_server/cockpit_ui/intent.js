@@ -409,6 +409,11 @@
       const thread = dispatch.codex_thread_id ? ` - thread ${compactId(dispatch.codex_thread_id)}` : "";
       return `dispatched - ${dispatch.method}${thread} - ${age}`;
     }
+    function briefAgeText(brief) {
+      const created = Number((brief || {}).created_at_ms || 0);
+      if (!created) return "";
+      return `saved ${formatAge(Math.max(0, Date.now() - created))}`;
+    }
     function briefStatusText(brief) {
       const outcome = brief.outcome || {};
       if (outcome.status) {
@@ -828,6 +833,7 @@
       const dispatchHref = dispatchAction.deeplink_new_thread || dispatchAction.deeplink_open_thread || "codex://threads/new";
       const workingHref = dispatchAction.deeplink_working_thread || "";
       const dispatchText = dispatchStatusText(brief);
+      const ageText = briefAgeText(brief);
       const jobs = brief.related_jobs || [];
       const plan = jobs.flatMap(job => job.plan || []).slice(0, 3);
       const variants = jobs.flatMap(job => {
@@ -867,6 +873,7 @@
         <div class="queue-item">
           <b>${escapeHtml(text)}</b>
           <span>${escapeHtml(trail)} - #${escapeHtml(String(brief.seq || ""))}</span>
+          ${ageText ? `<span>${escapeHtml(ageText)}</span>` : ""}
           ${aimBadgeHtml(brief)}
           <span>${escapeHtml(planText)}</span>
           ${pendingActions}

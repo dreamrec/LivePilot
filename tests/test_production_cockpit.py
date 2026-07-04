@@ -1451,6 +1451,8 @@ def test_intent_first_cockpit_renders_http_backend_contract():
     assert "function trackLayerChips(track)" in html
     assert "function renderNeedsYou()" in html
     assert "function renderBriefFeed()" in html
+    assert "function briefAgeText(brief)" in html
+    assert "saved ${formatAge" in html
     assert "function briefStatusText(brief)" in html
     assert "done · ${count} learning" in html
     assert "button.brief-action" in html
