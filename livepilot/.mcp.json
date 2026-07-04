@@ -2,7 +2,10 @@
   "mcpServers": {
     "livepilot": {
       "command": "npx",
-      "args": ["livepilot"]
+      "args": ["livepilot"],
+      "cwd": ".",
+      "startup_timeout_sec": 60,
+      "tool_timeout_sec": 900
     }
   }
 }

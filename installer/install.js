@@ -11,9 +11,9 @@ const SOURCE_DIR = path.join(ROOT, "remote_script", "LivePilot");
 // Files / dirs to skip during copy
 const SKIP = new Set(["__pycache__", ".DS_Store"]);
 
-// How many previous backups to keep on disk before auto-pruning (the upgrade
-// path renames the old LivePilot dir to LivePilot.backup-<ts>/ so the user can
-// recover a manual edit).
+// How many previous backups to keep on disk before auto-pruning. Backups must
+// live outside Ableton's Remote Scripts directory; folders inside that directory
+// are scanned as importable Python packages on startup.
 const BACKUP_RETENTION = 3;
 
 /**
@@ -83,22 +83,64 @@ function copyDirSync(src, dest) {
   }
 }
 
+function _backupRootForTarget(targetBase) {
+  const safeTarget = targetBase
+    .replace(/[^a-zA-Z0-9._-]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return path.join(os.homedir(), ".livepilot", "remote_script_backups", safeTarget || "default");
+}
+
 /**
- * Prune old LivePilot.backup-<ts>/ dirs, keeping the most recent N.
+ * Prune old LivePilot-<ts>/ dirs, keeping the most recent N.
  */
-function _pruneBackups(parentDir) {
+function _pruneBackups(backupRoot) {
   try {
-    const entries = fs.readdirSync(parentDir, { withFileTypes: true });
+    const entries = fs.readdirSync(backupRoot, { withFileTypes: true });
     const backups = entries
-      .filter((e) => e.isDirectory() && /^LivePilot\.backup-\d+$/.test(e.name))
+      .filter((e) => e.isDirectory() && /^LivePilot-\d+$/.test(e.name))
       .map((e) => e.name)
       .sort();  // lexicographic — timestamps are monotonic, so this is age order
     while (backups.length > BACKUP_RETENTION) {
       const old = backups.shift();
       try {
-        fs.rmSync(path.join(parentDir, old), { recursive: true, force: true });
+        fs.rmSync(path.join(backupRoot, old), { recursive: true, force: true });
       } catch {
         // best effort — don't let cleanup failure break an install
+      }
+    }
+  } catch {
+    // best effort
+  }
+}
+
+/**
+ * Move legacy LivePilot.backup-<ts>/ folders out of Remote Scripts. Older
+ * installers left these beside LivePilot, which makes Ableton try to import
+ * invalid module names like "LivePilot.backup-20260621165449" on startup.
+ */
+function _relocateLegacyBackups(targetBase, backupRoot) {
+  try {
+    const entries = fs.readdirSync(targetBase, { withFileTypes: true });
+    const legacy = entries
+      .filter((e) => e.isDirectory() && /^LivePilot\.backup-\d+$/.test(e.name))
+      .map((e) => e.name)
+      .sort();
+    if (legacy.length === 0) {
+      return;
+    }
+    fs.mkdirSync(backupRoot, { recursive: true });
+    for (const name of legacy) {
+      const src = path.join(targetBase, name);
+      let dest = path.join(backupRoot, `legacy-${name}`);
+      let suffix = 1;
+      while (fs.existsSync(dest)) {
+        dest = path.join(backupRoot, `legacy-${name}-${suffix++}`);
+      }
+      try {
+        fs.renameSync(src, dest);
+        console.log("Moved legacy backup out of Remote Scripts: %s", dest);
+      } catch {
+        // best effort — install can still proceed
       }
     }
   } catch {
@@ -155,18 +197,20 @@ function install() {
   }
   const targetBase = target.path;
   const destDir = path.join(targetBase, "LivePilot");
+  const backupRoot = _backupRootForTarget(targetBase);
 
   // Ensure target base exists
   fs.mkdirSync(targetBase, { recursive: true });
+  fs.mkdirSync(backupRoot, { recursive: true });
 
   // Clear-then-copy upgrade path. Overlay-copying on top of an existing
   // install leaves stale files when a module is removed/renamed upstream.
   // Instead, rename the previous install to a timestamped backup, copy
-  // fresh, then prune old backups. The rename (not delete) preserves any
-  // local edits the user may have made.
+  // fresh, then prune old backups. Backups are stored outside Remote Scripts
+  // so Ableton does not try to import them as Control Surface packages.
   if (fs.existsSync(destDir)) {
     const ts = new Date().toISOString().replace(/[-:T.Z]/g, "").slice(0, 14);
-    const backup = path.join(targetBase, `LivePilot.backup-${ts}`);
+    const backup = path.join(backupRoot, `LivePilot-${ts}`);
     try {
       fs.renameSync(destDir, backup);
       console.log("Existing install backed up to: %s", backup);
@@ -185,7 +229,8 @@ function install() {
   console.log("");
 
   copyDirSync(SOURCE_DIR, destDir);
-  _pruneBackups(targetBase);
+  _relocateLegacyBackups(targetBase, backupRoot);
+  _pruneBackups(backupRoot);
 
   console.log("Done! Next steps:");
   console.log("  1. Restart Ableton Live (or press Cmd+, to open Preferences)");
