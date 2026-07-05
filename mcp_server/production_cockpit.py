@@ -888,6 +888,9 @@ def _target_context(
     target_mode = _normalize_target_mode(state.get("target_mode"))
     target_layer = _normalize_target_token(str(state.get("target_layer") or ""))
     normalized = _normalize_target_token(raw_query)
+    explicit_matches = _saved_target_tracks(state, tracks)
+    explicit_indices = {track.get("index") for track in explicit_matches}
+    section = _section_context(state, beats_per_bar=beats_per_bar)
     layer_lookup = {
         group["key"]: group
         for group in (layer_groups or [])
@@ -907,11 +910,17 @@ def _target_context(
                 track for track in tracks
                 if track.get("index") in matched_indices
             ]
-            section = _section_context(state)
+            if explicit_indices:
+                matches = [
+                    track for track in matches
+                    if track.get("index") in explicit_indices
+                ]
             return {
                 "query": raw_query,
                 "target_mode": target_mode,
                 "target_layer": matched_layer.get("key", ""),
+                "target_label": state.get("target_label")
+                or matched_layer.get("label", ""),
                 "matched_layer": matched_layer.get("key", ""),
                 "matched_layer_label": matched_layer.get("label", ""),
                 "matched_group": "",
@@ -921,11 +930,11 @@ def _target_context(
                 "track_count": len(matches),
                 "section": section,
             }
-        section = _section_context(state)
         return {
             "query": raw_query,
             "target_mode": target_mode,
             "target_layer": target_layer,
+            "target_label": state.get("target_label") or raw_query,
             "matched_layer": "",
             "matched_layer_label": "",
             "matched_group": "",
@@ -933,6 +942,23 @@ def _target_context(
             "track_indices": [],
             "track_names": [],
             "track_count": 0,
+            "section": section,
+        }
+
+    if target_mode in {"track", "tracks"}:
+        label = str(state.get("target_label") or raw_query).strip()
+        return {
+            "query": raw_query,
+            "target_mode": target_mode,
+            "target_layer": target_layer,
+            "target_label": label,
+            "matched_layer": "",
+            "matched_layer_label": "",
+            "matched_group": "",
+            "matched_group_label": "",
+            "track_indices": [track.get("index") for track in explicit_matches],
+            "track_names": [track.get("name", "") for track in explicit_matches],
+            "track_count": len(explicit_matches),
             "section": section,
         }
 
@@ -966,11 +992,11 @@ def _target_context(
     else:
         matches = []
 
-    section = _section_context(state, beats_per_bar=beats_per_bar)
     return {
         "query": raw_query,
         "target_mode": target_mode,
         "target_layer": target_layer,
+        "target_label": state.get("target_label") or raw_query,
         "matched_layer": "",
         "matched_layer_label": "",
         "matched_group": matched_group["key"] if matched_group else "",
@@ -984,9 +1010,39 @@ def _target_context(
 
 def _normalize_target_mode(value) -> str:
     mode = _normalize_target_token(str(value or "instrument"))
-    if mode in {"instrument", "layer", "query"}:
+    if mode in {"instrument", "layer", "track", "tracks", "query"}:
         return mode
     return "instrument"
+
+
+def _saved_target_tracks(state: dict, tracks: list[dict]) -> list[dict]:
+    by_index = {
+        int(track.get("index")): track
+        for track in tracks
+        if isinstance(track, dict) and isinstance(track.get("index"), int)
+    }
+    selected: list[dict] = []
+    seen: set[int] = set()
+    for ref in state.get("target_track_refs") or []:
+        if not isinstance(ref, dict):
+            continue
+        try:
+            resolution = resolve_annotation({}, {"track_ref": ref}, tracks=tracks)
+        except Exception:
+            resolution = {}
+        index = resolution.get("track_index")
+        if isinstance(index, int) and index in by_index and index not in seen:
+            selected.append(by_index[index])
+            seen.add(index)
+    for raw_index in state.get("target_track_indices") or []:
+        try:
+            index = int(raw_index)
+        except (TypeError, ValueError):
+            continue
+        if index in by_index and index not in seen:
+            selected.append(by_index[index])
+            seen.add(index)
+    return selected
 
 
 def _track_matches_terms(track: dict, terms: list[str]) -> bool:
@@ -1705,6 +1761,7 @@ def _summarize_context(
     track_names = [str(track.get("name") or "") for track in focused_tracks]
     return {
         "lane": state.get("lane", "holistic"),
+        "output_mode": state.get("output_mode", "ask"),
         "workflow_mode": state.get("workflow_mode", "guided"),
         "audition_required": bool(state.get("audition_required", True)),
         "audition_count": int(state.get("audition_count") or 3),
@@ -1712,6 +1769,7 @@ def _summarize_context(
         "evidence_budget": state.get("evidence_budget", "standard"),
         "target_query": target.get("query", ""),
         "target_mode": target.get("target_mode", "instrument"),
+        "target_label": target.get("target_label", ""),
         "target_layer": target.get("target_layer", ""),
         "target_layer_label": target.get("matched_layer_label", ""),
         "target_track_names": target.get("track_names", []),
@@ -1783,6 +1841,8 @@ def _brief_context_digest(context: dict, session_info: Optional[dict] = None) ->
         "set_identity": _set_identity_for_session(session_info),
         "target_mode": target.get("target_mode", state.get("target_mode", "")),
         "target_label": (
+            target.get("target_label")
+            or
             target.get("matched_layer_label")
             or target.get("matched_group_label")
             or target.get("query", "")
@@ -1792,6 +1852,7 @@ def _brief_context_digest(context: dict, session_info: Optional[dict] = None) ->
         "track_refs": track_refs,
         "section": target.get("section") or state.get("section"),
         "lane": state.get("lane", "holistic"),
+        "output_mode": state.get("output_mode", ""),
         "workflow_mode": state.get("workflow_mode", "guided"),
         "audition_count": int(state.get("audition_count") or 3),
         "audition_scope": state.get("audition_scope", "layer"),
@@ -2186,6 +2247,10 @@ def _send_cockpit_brief(
         target_group=payload.get("target_group"),
         target_mode=payload.get("target_mode"),
         target_layer=payload.get("target_layer"),
+        target_track_refs=payload.get("target_track_refs"),
+        target_track_indices=payload.get("target_track_indices"),
+        target_label=payload.get("target_label"),
+        output_mode=payload.get("output_mode"),
         evidence_budget=payload.get("evidence_budget"),
         section=payload.get("section"),
         section_scope=payload.get("section_scope"),
@@ -2511,6 +2576,10 @@ def save_production_context(
     target_group: Optional[str] = None,
     target_mode: Optional[str] = None,
     target_layer: Optional[str] = None,
+    target_track_refs: Optional[list[dict]] = None,
+    target_track_indices: Optional[list[int]] = None,
+    target_label: Optional[str] = None,
+    output_mode: Optional[str] = None,
     working_thread: Optional[dict] = None,
     evidence_budget: Optional[str] = None,
     section: Optional[dict] = None,
@@ -2537,6 +2606,10 @@ def save_production_context(
         target_group=target_group,
         target_mode=target_mode,
         target_layer=target_layer,
+        target_track_refs=target_track_refs,
+        target_track_indices=target_track_indices,
+        target_label=target_label,
+        output_mode=output_mode,
         working_thread=working_thread,
         evidence_budget=evidence_budget,
         section=section,
@@ -2563,6 +2636,10 @@ def send_cockpit_brief(
     target_group: Optional[str] = None,
     target_mode: Optional[str] = None,
     target_layer: Optional[str] = None,
+    target_track_refs: Optional[list[dict]] = None,
+    target_track_indices: Optional[list[int]] = None,
+    target_label: Optional[str] = None,
+    output_mode: Optional[str] = None,
     evidence_budget: Optional[str] = None,
     section: Optional[dict] = None,
     section_scope: Optional[str] = None,
@@ -2589,6 +2666,10 @@ def send_cockpit_brief(
             "target_group": target_group,
             "target_mode": target_mode,
             "target_layer": target_layer,
+            "target_track_refs": target_track_refs,
+            "target_track_indices": target_track_indices,
+            "target_label": target_label,
+            "output_mode": output_mode,
             "evidence_budget": evidence_budget,
             "section": section,
             "section_scope": section_scope,

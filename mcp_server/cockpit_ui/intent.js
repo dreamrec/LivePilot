@@ -9,7 +9,7 @@
       {label: "Fix what feels off", text: "Listen in context and fix whatever feels off, keeping the important musical idea intact.", lane: "holistic", protect: []}
     ];
     const OUTPUTS = {
-      ask: {label: "Ask before acting", workflow: "guided", audition: true},
+      ask: {label: "Ask before acting", workflow: "guided", audition: false},
       auditions: {label: "Layer auditions", workflow: "audition", audition: true},
       apply: {label: "Apply carefully", workflow: "commit", audition: false}
     };
@@ -149,10 +149,13 @@
       return targetTracks().length > 0;
     }
     function selectionFromState(payload = state) {
-      const focusIndices = ((((payload || {}).focus || {}).focus || {}).track_indices || []).map(Number);
-      if (focusIndices.length) return new Set(focusIndices);
+      const ctxIndices = (((payload || {}).production_context || {}).state || {}).target_track_indices || [];
+      const savedTargetIndices = ctxIndices.map(Number).filter(Number.isFinite);
+      if (savedTargetIndices.length) return new Set(savedTargetIndices);
       const targetIndices = (((payload || {}).target || {}).track_indices || []).map(Number);
       if (targetIndices.length) return new Set(targetIndices);
+      const focusIndices = ((((payload || {}).focus || {}).focus || {}).track_indices || []).map(Number);
+      if (focusIndices.length) return new Set(focusIndices);
       return new Set(focusIndices);
     }
     function trackByIndex(index) {
@@ -184,6 +187,25 @@
       const focused = tracks.filter(track => selected.has(Number(track.index)));
       return focused.length ? focused : tracks;
     }
+    function currentLayerTracks() {
+      const layerId = targetState().matched_layer || ctxState().target_layer || "";
+      if (!layerId) return [];
+      const group = ((state || {}).layer_groups || []).find(item => String(item.key || item.layer_id || "") === String(layerId));
+      const indices = (group && group.track_indices || []).map(Number).filter(Number.isFinite);
+      if (!indices.length) return targetTracks();
+      return ((state || {}).tracks || []).filter(track => indices.includes(Number(track.index)));
+    }
+    function trackListTracks() {
+      if (pickerMode() === "track") {
+        return ((state || {}).tracks || []).filter(isMusicalTargetTrack);
+      }
+      if (targetMode() === "layer" || pickerMode() === "layer") {
+        const layerTracks = currentLayerTracks();
+        if (layerTracks.length) return layerTracks;
+      }
+      const targeted = targetTracks();
+      return targeted.length ? targeted : ((state || {}).tracks || []);
+    }
     function hasTarget() {
       const target = targetState();
       const ctx = ctxState();
@@ -194,16 +216,17 @@
         target.matched_layer ||
         ctx.target_query ||
         ctx.target_group ||
-        ctx.target_layer
+        ctx.target_layer ||
+        (ctx.target_track_indices || []).length
       );
     }
     function targetLabel() {
       const target = targetState();
-      return target.matched_layer_label || target.matched_group_label || target.query || ctxState().target_query || "No target";
+      return target.target_label || ctxState().target_label || target.matched_layer_label || target.matched_group_label || target.query || ctxState().target_query || "No target";
     }
     function pickerMode() {
       if (targetModeDraft === "layer") return "layer";
-      if (targetModeDraft === "track") return "track";
+      if (targetModeDraft === "track" || targetModeDraft === "tracks") return "track";
       return "instrument";
     }
     function targetMode() {
@@ -212,7 +235,7 @@
     function savedPickerMode() {
       const mode = targetMode();
       if (mode === "layer") return "layer";
-      if (mode === "query") return "track";
+      if (mode === "query" || mode === "track" || mode === "tracks") return "track";
       return "instrument";
     }
     function pickerModeAfterRefresh(modeBeforeRefresh) {
@@ -504,10 +527,7 @@
       $$("#targetModeRow button").forEach(node => node.classList.toggle("active", node.dataset.mode === pickerMode()));
       const mode = pickerMode();
       if (mode === "track") {
-        const activeTracks = targetTracks();
-        const activeTrackKey = activeTracks.length === 1 && targetMode() === "query"
-          ? String(activeTracks[0].index)
-          : "";
+        const activeKeys = new Set([...selected].map(index => String(index)));
         const tracks = ((state || {}).tracks || []).filter(isMusicalTargetTrack);
         if (!tracks.length) {
           $("#groupChips").innerHTML = '<span class="sub">No musical tracks found.</span>';
@@ -518,14 +538,13 @@
           const idx = Number(track.index);
           const label = `${idx + 1} ${track.name || "Track"}`;
           return `
-            <button class="chip ${String(idx) === activeTrackKey ? "active" : ""}" data-track-index="${idx}" title="${escapeHtml(label)}">
+            <button class="chip ${activeKeys.has(String(idx)) ? "active" : ""}" data-track-index="${idx}" title="${escapeHtml(label)}">
               <span class="target-chip-name">${escapeHtml(label)}</span>
             </button>
           `;
         }).join("");
         $$("#groupChips .chip").forEach(node => node.addEventListener("click", () => {
-          if (node.classList.contains("active")) clearTarget();
-          else selectTrackTarget(Number(node.dataset.trackIndex));
+          toggleTrackTarget(Number(node.dataset.trackIndex));
         }));
         renderLayerActions();
         return;
@@ -566,15 +585,18 @@
       $("#deleteLayer").disabled = !canDelete;
     }
     function renderTracks() {
-      const targeted = targetTracks();
-      const showingAll = !targeted.length;
-      const tracks = showingAll ? ((state || {}).tracks || []) : targeted;
+      const tracks = trackListTracks();
+      const showingAll = !targetTracks().length && pickerMode() !== "track" && targetMode() !== "layer";
       if (!tracks.length) {
         $("#trackList").innerHTML = '<div class="sub">No tracks loaded yet.</div>';
         return;
       }
       const intro = showingAll
         ? '<div class="sub">Showing all tracks until a target is chosen.</div>'
+        : pickerMode() === "track"
+          ? '<div class="sub">Select one or more tracks to target.</div>'
+          : targetMode() === "layer"
+            ? '<div class="sub">Showing layer members. Select one or more to narrow the target.</div>'
         : "";
       $("#trackList").innerHTML = intro + tracks.map(track => {
         const idx = Number(track.index);
@@ -908,7 +930,10 @@
         target_mode: mode,
         target_query: label || key || "",
         target_group: mode === "instrument" ? key || "" : "",
-        target_layer: mode === "layer" ? key || "" : ""
+        target_layer: mode === "layer" ? key || "" : "",
+        target_track_indices: [],
+        target_track_refs: [],
+        target_label: label || key || ""
       };
       state = await callTool(BACKEND_TOOLS.save_context, payload);
       selected = new Set((((state || {}).target || {}).track_indices || []).map(Number));
@@ -947,7 +972,10 @@
         target_mode: "query",
         target_query: label,
         target_group: "",
-        target_layer: ""
+        target_layer: "",
+        target_track_indices: [],
+        target_track_refs: [],
+        target_label: label
       });
       selected = selectionFromState();
       await saveFocus(label);
@@ -980,7 +1008,9 @@
         target_mode: "layer",
         target_query: savedLayer.label || label,
         target_group: "",
-        target_layer: layerId
+        target_layer: layerId,
+        target_track_indices: indices,
+        target_label: savedLayer.label || label
       });
       targetModeDraft = "layer";
       targetModeUserOverride = true;
@@ -998,7 +1028,10 @@
         target_mode: "instrument",
         target_query: "",
         target_group: "",
-        target_layer: ""
+        target_layer: "",
+        target_track_indices: [],
+        target_track_refs: [],
+        target_label: ""
       });
       targetModeDraft = "layer";
       targetModeUserOverride = true;
@@ -1242,7 +1275,10 @@
         target_mode: "instrument",
         target_query: "",
         target_group: "",
-        target_layer: ""
+        target_layer: "",
+        target_track_indices: [],
+        target_track_refs: [],
+        target_label: ""
       });
       state = await callTool(BACKEND_TOOLS.clear_focus, {});
       targetModeDraft = keepPickerMode;
@@ -1252,6 +1288,53 @@
       render();
       setStatus("Ready");
       toast("Target cleared");
+    }
+    async function saveExplicitTrackTarget(indices, label = "") {
+      const clean = [...new Set((indices || []).map(Number).filter(Number.isFinite))];
+      if (!clean.length) {
+        await clearTarget();
+        return;
+      }
+      const layerId = targetState().matched_layer || ctxState().target_layer || "";
+      const layerLabel = targetState().matched_layer_label || targetLabel();
+      const layerMode = targetMode() === "layer" && layerId;
+      const mode = layerMode ? "layer" : clean.length === 1 ? "track" : "tracks";
+      const names = clean.map(index => {
+        const track = trackByIndex(index);
+        return track ? `${index + 1} ${track.name}` : `${index + 1}`;
+      });
+      const targetLabelText = label || (layerMode ? layerLabel : names.join(", "));
+      state = await callTool(BACKEND_TOOLS.save_context, {
+        target_mode: mode,
+        target_query: layerMode ? layerLabel : targetLabelText,
+        target_group: "",
+        target_layer: layerMode ? layerId : "",
+        target_track_indices: clean,
+        target_label: targetLabelText
+      });
+      selected = new Set(clean);
+      state = await callTool(BACKEND_TOOLS.set_focus, {
+        track_indices: clean,
+        label: targetLabelText
+      });
+      syncControlsFromState();
+      render();
+    }
+    async function toggleTrackTarget(index) {
+      const track = trackByIndex(index);
+      if (!isMusicalTargetTrack(track)) {
+        setStatus("That row is a folder or map, not a musical target.");
+        toast("Choose a musical track");
+        return;
+      }
+      const next = new Set(selected);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      await saveExplicitTrackTarget([...next], [...next].map(trackIndex => {
+        const item = trackByIndex(trackIndex);
+        return item ? `${trackIndex + 1} ${item.name}` : `${trackIndex + 1}`;
+      }).join(", "));
+      toast(next.size ? "Track target updated" : "Target cleared");
     }
     async function selectTrackTarget(index) {
       const track = trackByIndex(index);
@@ -1270,17 +1353,7 @@
         return;
       }
       const label = track.name || String(index + 1);
-      state = await callTool(BACKEND_TOOLS.save_context, {
-        target_mode: "query",
-        target_query: label,
-        target_group: "",
-        target_layer: ""
-      });
-      selected = new Set([index]);
-      state = await callTool(BACKEND_TOOLS.set_focus, {
-        track_indices: [index],
-        label: `${index + 1} ${label}`
-      });
+      await saveExplicitTrackTarget([index], `${index + 1} ${label}`);
       if (capabilities().live_pointing) {
         try {
           state = await callTool(BACKEND_TOOLS.select_live_track, {
@@ -1291,27 +1364,23 @@
           toast("Cockpit target saved; Live selection not changed");
         }
       }
-      syncControlsFromState();
-      render();
       toast("Track target saved");
     }
     async function handleTrackRowClick(index) {
-      const targetIndices = targetTrackIndices();
+      if (pickerMode() === "track" || targetMode() === "track" || targetMode() === "tracks") {
+        await toggleTrackTarget(index);
+        return;
+      }
+      const targetIndices = currentLayerTracks().map(track => Number(track.index));
       const layerLikeTarget = targetMode() === "layer" && targetIndices.length > 1 && targetIndices.includes(index);
       if (!layerLikeTarget) {
         await selectTrackTarget(index);
         return;
       }
-      const allTargetSelected = targetIndices.length > 0 &&
-        targetIndices.every(trackIndex => selected.has(trackIndex)) &&
-        selected.size === targetIndices.length;
-      const next = allTargetSelected ? new Set([index]) : new Set(selected);
-      if (!allTargetSelected) {
-        if (next.has(index) && next.size > 1) next.delete(index);
-        else next.add(index);
-      }
-      selected = next;
-      await saveFocus([...selected].map(trackIndex => {
+      const next = new Set(selected);
+      if (next.has(index) && next.size > 1) next.delete(index);
+      else next.add(index);
+      await saveExplicitTrackTarget([...next], [...next].map(trackIndex => {
         const track = trackByIndex(trackIndex);
         return track ? `${trackIndex + 1} ${track.name}` : `${trackIndex + 1}`;
       }).join(", "));
@@ -1351,6 +1420,7 @@
         lane,
         workflow_mode: OUTPUTS[outputMode].workflow,
         audition_required: OUTPUTS[outputMode].audition,
+        output_mode: outputMode,
         audition_count: auditionCount(),
         audition_scope: targetMode() === "layer" ? "layer" : "track",
         evidence_budget: $("#evidenceBudget").value || ctx.evidence_budget || "standard",
@@ -1360,6 +1430,8 @@
         target_mode: targetMode(),
         target_group: targetMode() === "instrument" ? (targetState().matched_group || ctx.target_group || "") : "",
         target_layer: targetMode() === "layer" ? (targetState().matched_layer || ctx.target_layer || "") : "",
+        target_track_indices: [...selected].map(Number).filter(Number.isFinite),
+        target_label: targetLabel() === "No target" ? "" : targetLabel(),
         section: savedSection()
       };
       if (rerunDraft) {

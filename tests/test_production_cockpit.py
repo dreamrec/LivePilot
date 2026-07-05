@@ -447,10 +447,6 @@ def test_foreign_set_brief_is_not_normal_current_pending_work(tmp_path, monkeypa
     assert context["stale_memory"]["briefs"][0]["aim_status"]["status"] == "foreign_set"
 
 
-@pytest.mark.xfail(
-    reason="Phase 0 regression: explicit multi-track target state is not resolved yet",
-    strict=True,
-)
 def test_multi_track_context_uses_saved_target_indices_and_refs(tmp_path, monkeypatch):
     monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
     ctx = _ctx(

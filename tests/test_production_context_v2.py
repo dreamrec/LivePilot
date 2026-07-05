@@ -175,10 +175,6 @@ def test_v1_section_scope_migration_uses_session_meter(tmp_path):
     }
 
 
-@pytest.mark.xfail(
-    reason="Phase 0 regression: v3 multi-track/output_mode state is not implemented yet",
-    strict=True,
-)
 def test_v3_target_tracks_and_output_mode_contract(tmp_path):
     service = ProductionContextService(base_dir=tmp_path)
 

@@ -14,17 +14,18 @@ from typing import Optional
 
 from .base_store import PersistentJsonStore
 from .paths import livepilot_projects_dir
-from .track_annotations import annotation_project_id_for_session
+from .track_annotations import annotation_project_id_for_session, make_track_signature
 
 
 _PROJECTS_DIR: Optional[Path] = None
-_STORE_VERSION = 2
+_STORE_VERSION = 3
 
 _VALID_LANES = {"holistic", "composition", "sound_design", "mix"}
 _VALID_WORKFLOW_MODES = {"observe", "guided", "audition", "commit"}
 _VALID_AUDITION_SCOPES = {"layer", "track"}
 _VALID_SECTION_SOURCES = {"cue_points", "section_track", "manual", "whole_song"}
-_VALID_TARGET_MODES = {"instrument", "layer", "query"}
+_VALID_TARGET_MODES = {"instrument", "layer", "track", "tracks", "query"}
+_VALID_OUTPUT_MODES = {"ask", "auditions", "apply"}
 _VALID_EVIDENCE_BUDGETS = {"quick", "standard", "deep"}
 _VALID_PROTECT_FLAGS = {
     "preserve_arrangement",
@@ -68,6 +69,10 @@ class ProductionContextService:
         target_group: Optional[str] = None,
         target_mode: Optional[str] = None,
         target_layer: Optional[str] = None,
+        target_track_refs: Optional[list[dict]] = None,
+        target_track_indices: Optional[list[int]] = None,
+        target_label: Optional[str] = None,
+        output_mode: Optional[str] = None,
         working_thread: Optional[dict] = None,
         evidence_budget: Optional[str] = None,
         section: Optional[dict] = None,
@@ -77,6 +82,16 @@ class ProductionContextService:
         section_end_bar: Optional[float] = None,
     ) -> dict:
         store = self._store_for_session(session_info)
+        normalized_target_indices = (
+            _normalize_track_indices(target_track_indices)
+            if target_track_indices is not None else None
+        )
+        normalized_target_refs = target_track_refs
+        if normalized_target_indices is not None and target_track_refs is None:
+            normalized_target_refs = _track_refs_for_indices(
+                session_info,
+                normalized_target_indices,
+            )
         state = store.save_state(
             beats_per_bar=_beats_per_bar(session_info),
             lane=lane,
@@ -91,6 +106,10 @@ class ProductionContextService:
             target_group=target_group,
             target_mode=target_mode,
             target_layer=target_layer,
+            target_track_refs=normalized_target_refs,
+            target_track_indices=normalized_target_indices,
+            target_label=target_label,
+            output_mode=output_mode,
             working_thread=working_thread,
             evidence_budget=evidence_budget,
             section=section,
@@ -143,8 +162,12 @@ class ProductionContextStore:
         data = self._store.read()
         if data.get("version") == _STORE_VERSION:
             return data
+        if data.get("version") == 2:
+            return self._migrate_v2(data)
         if data.get("version") == 1:
-            return self._migrate_v1(data, beats_per_bar=beats_per_bar)
+            return self._migrate_v2(
+                self._migrate_v1(data, beats_per_bar=beats_per_bar)
+            )
         return self._default()
 
     def get_state(self, beats_per_bar: float = 4.0) -> dict:
@@ -167,6 +190,10 @@ class ProductionContextStore:
         target_group: Optional[str] = None,
         target_mode: Optional[str] = None,
         target_layer: Optional[str] = None,
+        target_track_refs: Optional[list[dict]] = None,
+        target_track_indices: Optional[list[int]] = None,
+        target_label: Optional[str] = None,
+        output_mode: Optional[str] = None,
         working_thread: Optional[dict] = None,
         evidence_budget: Optional[str] = None,
         section: Optional[dict] = None,
@@ -180,17 +207,25 @@ class ProductionContextStore:
         def _update(data: dict) -> dict:
             if data.get("version") == _STORE_VERSION:
                 data = data
+            elif data.get("version") == 2:
+                data = self._migrate_v2(data)
             elif data.get("version") == 1:
-                data = self._migrate_v1(data, beats_per_bar=beats_per_bar)
+                data = self._migrate_v2(
+                    self._migrate_v1(data, beats_per_bar=beats_per_bar)
+                )
             else:
                 data = self._default()
+            previous_state = _state_with_defaults(data.get("state"))
             state = _state_with_defaults(data.get("state"))
+            legacy_output_fields_changed = False
             if lane is not None:
                 state["lane"] = _normalize_lane(lane)
             if workflow_mode is not None:
                 state["workflow_mode"] = _normalize_workflow_mode(workflow_mode)
+                legacy_output_fields_changed = True
             if audition_required is not None:
                 state["audition_required"] = bool(audition_required)
+                legacy_output_fields_changed = True
             if audition_count is not None:
                 state["audition_count"] = _normalize_audition_count(audition_count)
             if audition_scope is not None:
@@ -209,6 +244,25 @@ class ProductionContextStore:
                 state["target_mode"] = _normalize_target_mode(target_mode)
             if target_layer is not None:
                 state["target_layer"] = _normalize_key(target_layer)
+            if target_track_indices is not None:
+                state["target_track_indices"] = _normalize_track_indices(
+                    target_track_indices
+                )
+            if target_track_refs is not None:
+                state["target_track_refs"] = _normalize_track_refs(
+                    target_track_refs
+                )
+            if target_label is not None:
+                state["target_label"] = str(target_label).strip()
+            if output_mode is not None:
+                state["output_mode"] = _normalize_output_mode(output_mode)
+                _apply_output_mode_compat(state)
+            elif legacy_output_fields_changed:
+                state["output_mode"] = _output_mode_from_legacy(
+                    state.get("workflow_mode"),
+                    state.get("audition_required"),
+                )
+                _apply_output_mode_compat(state)
             if working_thread is not None:
                 state["working_thread"] = _normalize_working_thread(working_thread)
             if evidence_budget is not None:
@@ -232,6 +286,10 @@ class ProductionContextStore:
                     beats_per_bar=beats_per_bar,
                 )
             state["updated_at_ms"] = now
+            if state != previous_state:
+                state["activity_revision"] = int(
+                    previous_state.get("activity_revision") or 0
+                ) + 1
             data["state"] = state
             data["last_updated_ms"] = now
             return data
@@ -269,6 +327,11 @@ class ProductionContextStore:
             "target_group": "",
             "target_mode": "instrument",
             "target_layer": "",
+            "target_track_refs": [],
+            "target_track_indices": [],
+            "target_label": "",
+            "output_mode": "ask",
+            "activity_revision": 0,
             "working_thread": None,
             "evidence_budget": "standard",
             "section": None,
@@ -314,6 +377,56 @@ class ProductionContextStore:
             beats_per_bar=beats_per_bar,
         )
         return {
+            "version": 2,
+            "state": state,
+            "last_updated_ms": data.get("last_updated_ms", 0),
+        }
+
+    @classmethod
+    def _migrate_v2(cls, data: dict) -> dict:
+        old_state = data.get("state") if isinstance(data.get("state"), dict) else {}
+        state = cls._default_state()
+        for key in (
+            "lane",
+            "workflow_mode",
+            "audition_required",
+            "audition_count",
+            "audition_scope",
+            "protect",
+            "reference",
+            "notes",
+            "target_query",
+            "target_group",
+            "target_mode",
+            "target_layer",
+            "working_thread",
+            "evidence_budget",
+            "section",
+            "updated_at_ms",
+        ):
+            if key in old_state:
+                state[key] = old_state[key]
+        state["target_mode"] = _normalize_target_mode(state.get("target_mode"))
+        state["target_track_refs"] = _normalize_track_refs(
+            old_state.get("target_track_refs")
+        )
+        state["target_track_indices"] = _normalize_track_indices(
+            old_state.get("target_track_indices")
+        )
+        state["target_label"] = str(old_state.get("target_label") or "").strip()
+        if old_state.get("output_mode"):
+            state["output_mode"] = _normalize_output_mode(old_state.get("output_mode"))
+        else:
+            state["output_mode"] = _output_mode_from_legacy(
+                state.get("workflow_mode"),
+                state.get("audition_required"),
+            )
+        state["activity_revision"] = _normalize_nonnegative_int(
+            old_state.get("activity_revision"),
+            fallback=0,
+        )
+        _apply_output_mode_compat(state)
+        return {
             "version": _STORE_VERSION,
             "state": state,
             "last_updated_ms": data.get("last_updated_ms", 0),
@@ -321,9 +434,29 @@ class ProductionContextStore:
 
 
 def _state_with_defaults(value) -> dict:
+    raw = value if isinstance(value, dict) else {}
     state = ProductionContextStore._default_state()
-    if isinstance(value, dict):
-        state.update(value)
+    state.update(raw)
+    state["target_mode"] = _normalize_target_mode(state.get("target_mode"))
+    state["target_track_refs"] = _normalize_track_refs(state.get("target_track_refs"))
+    state["target_track_indices"] = _normalize_track_indices(
+        state.get("target_track_indices")
+    )
+    state["target_label"] = str(state.get("target_label") or "").strip()
+    if raw and raw.get("output_mode") not in (None, ""):
+        state["output_mode"] = _normalize_output_mode(state.get("output_mode"))
+    elif raw:
+        state["output_mode"] = _output_mode_from_legacy(
+            state.get("workflow_mode"),
+            state.get("audition_required"),
+        )
+    else:
+        state["output_mode"] = _normalize_output_mode(state.get("output_mode"))
+    state["activity_revision"] = _normalize_nonnegative_int(
+        state.get("activity_revision"),
+        fallback=0,
+    )
+    _apply_output_mode_compat(state)
     state["working_thread"] = _normalize_working_thread(state.get("working_thread"))
     state["evidence_budget"] = _normalize_evidence_budget(
         state.get("evidence_budget") or "standard"
@@ -372,12 +505,127 @@ def _normalize_audition_scope(value: str) -> str:
 
 def _normalize_target_mode(value: str) -> str:
     mode = _normalize_key(value)
+    if mode == "track":
+        return "track"
     if mode not in _VALID_TARGET_MODES:
         raise ValueError(
             "target_mode must be one of: "
             + ", ".join(sorted(_VALID_TARGET_MODES))
         )
     return mode
+
+
+def _normalize_output_mode(value: str) -> str:
+    mode = _normalize_key(value or "ask")
+    if mode == "audition":
+        mode = "auditions"
+    if mode == "commit":
+        mode = "apply"
+    if mode == "guided":
+        mode = "ask"
+    if mode not in _VALID_OUTPUT_MODES:
+        raise ValueError(
+            "output_mode must be one of: "
+            + ", ".join(sorted(_VALID_OUTPUT_MODES))
+        )
+    return mode
+
+
+def _output_mode_from_legacy(workflow_mode, audition_required) -> str:
+    workflow = _normalize_key(workflow_mode or "")
+    if workflow == "audition" or audition_required is True:
+        return "auditions"
+    if workflow == "commit":
+        return "apply"
+    return "ask"
+
+
+def _apply_output_mode_compat(state: dict) -> None:
+    mode = _normalize_output_mode(state.get("output_mode") or "ask")
+    state["output_mode"] = mode
+    if mode == "auditions":
+        state["workflow_mode"] = "audition"
+        state["audition_required"] = True
+    elif mode == "apply":
+        state["workflow_mode"] = "commit"
+        state["audition_required"] = False
+    else:
+        state["workflow_mode"] = "guided"
+        state["audition_required"] = False
+
+
+def _normalize_track_indices(value) -> list[int]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        text = value.strip()
+        if text.startswith("["):
+            import json
+
+            try:
+                value = json.loads(text)
+            except json.JSONDecodeError:
+                value = []
+        elif text:
+            value = [part.strip() for part in text.split(",")]
+        else:
+            value = []
+    if not isinstance(value, list):
+        return []
+    out: list[int] = []
+    for item in value:
+        try:
+            index = int(item)
+        except (TypeError, ValueError):
+            continue
+        if index < 0:
+            continue
+        if index not in out:
+            out.append(index)
+    return out
+
+
+def _normalize_track_refs(value) -> list[dict]:
+    if value is None:
+        return []
+    if isinstance(value, dict):
+        value = [value]
+    if not isinstance(value, list):
+        return []
+    refs = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        ref = dict(item)
+        if isinstance(ref.get("signature"), dict) or ref.get("last_seen_index") is not None:
+            refs.append(ref)
+    return refs
+
+
+def _track_refs_for_indices(session_info: dict, indices: list[int]) -> list[dict]:
+    tracks = {
+        int(track.get("index")): track
+        for track in (session_info.get("tracks") or [])
+        if isinstance(track, dict) and isinstance(track.get("index"), int)
+    }
+    refs = []
+    for index in indices:
+        track = tracks.get(index)
+        if not track:
+            continue
+        refs.append({
+            "signature": make_track_signature(track),
+            "last_seen_index": index,
+        })
+    return refs
+
+
+def _normalize_nonnegative_int(value, *, fallback: int) -> int:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return int(fallback)
+    return parsed if parsed >= 0 else int(fallback)
 
 
 def _normalize_evidence_budget(value: str) -> str:
