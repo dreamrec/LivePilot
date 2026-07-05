@@ -1850,16 +1850,33 @@ def _brief_context_digest(context: dict, session_info: Optional[dict] = None) ->
         "layer_id": target.get("matched_layer") or target.get("target_layer") or "",
         "track_indices": _working_track_indices(context),
         "track_refs": track_refs,
+        "target_track_refs": track_refs,
         "section": target.get("section") or state.get("section"),
         "lane": state.get("lane", "holistic"),
-        "output_mode": state.get("output_mode", ""),
+        "output_mode": _output_mode_for_state(state),
         "workflow_mode": state.get("workflow_mode", "guided"),
-        "audition_count": int(state.get("audition_count") or 3),
+        "audition_count": (
+            int(state.get("audition_count") or 3)
+            if _output_mode_for_state(state) == "auditions"
+            else None
+        ),
         "audition_scope": state.get("audition_scope", "layer"),
         "evidence_budget": state.get("evidence_budget", "standard"),
         "protect": state.get("protect", []),
         "reference": state.get("reference", ""),
     }
+
+
+def _output_mode_for_state(state: dict) -> str:
+    mode = str(state.get("output_mode") or "").strip().lower()
+    if mode in {"ask", "auditions", "apply"}:
+        return mode
+    workflow = str(state.get("workflow_mode") or "").strip().lower()
+    if workflow == "audition" or state.get("audition_required") is True:
+        return "auditions"
+    if workflow == "commit":
+        return "apply"
+    return "ask"
 
 
 def _set_identity_for_session(session_info: dict) -> dict:
@@ -2123,6 +2140,8 @@ def _submit_cockpit_brief_packet(
     )
     snapshot = snapshot_result["snapshot"]
     state = context.get("production_context", {}).get("state", {})
+    output_mode = _output_mode_for_state(state)
+    is_audition = output_mode == "auditions"
     target = context.get("target") if isinstance(context.get("target"), dict) else {}
     scope = _task_scope_from_context(context)
     scope["brief_id"] = brief_id
@@ -2130,16 +2149,18 @@ def _submit_cockpit_brief_packet(
     task = store.save_task({
         "snapshot_id": snapshot["snapshot_id"],
         "agent_role": "audition_planner"
-        if state.get("workflow_mode") == "audition"
+        if is_audition
         else "production_conductor",
         "instruction": request_text or "Review the saved cockpit brief.",
         "scope": scope,
         "constraints": {
+            "output_mode": output_mode,
             "workflow_mode": state.get("workflow_mode", "guided"),
             "lane": state.get("lane", "holistic"),
             "protect": state.get("protect", []),
-            "audition_required": bool(state.get("audition_required", True)),
-            "audition_count": int(state.get("audition_count") or 3),
+            "audition_required": is_audition,
+            "audition_count": int(state.get("audition_count") or 3)
+            if is_audition else None,
             "audition_scope": state.get("audition_scope", "layer"),
             "evidence_budget": state.get("evidence_budget", "standard"),
             "brief_id": brief_id,
@@ -2148,10 +2169,7 @@ def _submit_cockpit_brief_packet(
     })
 
     job = None
-    if (
-        state.get("workflow_mode") == "audition"
-        and (target.get("track_indices") or [])
-    ):
+    if is_audition and (target.get("track_indices") or []):
         from .orchestration_queue_tools import submit_ableton_job
 
         job_scope = dict(scope)
@@ -2764,6 +2782,7 @@ def rerun_cockpit_brief(ctx: Context, brief_id: str) -> dict:
         "request_text": brief.get("request_text", ""),
         "lane": digest.get("lane", "holistic"),
         "protect": digest.get("protect", []),
+        "output_mode": digest.get("output_mode", "ask"),
         "workflow_mode": digest.get("workflow_mode", "guided"),
         "audition_count": int(digest.get("audition_count") or 3),
         "audition_scope": digest.get("audition_scope", "layer"),

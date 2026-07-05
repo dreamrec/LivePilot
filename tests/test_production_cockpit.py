@@ -651,9 +651,14 @@ def test_send_cockpit_brief_creates_snapshot_task_and_layer_audition_job(
     assert "cockpit_context" not in submission["snapshot"]
     assert submission["snapshot"]["context_digest"]["track_indices"] == [1, 2]
     assert submission["snapshot"]["context_digest"]["layer_id"] == "intro_handoff"
+    assert submission["snapshot"]["context_digest"]["output_mode"] == "auditions"
+    assert submission["snapshot"]["context_digest"]["audition_count"] == 3
     assert submission["snapshot"]["production_context_state"]["workflow_mode"] == "audition"
+    assert submission["snapshot"]["production_context_state"]["output_mode"] == "auditions"
     assert submission["snapshot"]["track_intent_map"]["omitted_full_intent_map"] is True
     assert submission["task"]["agent_role"] == "audition_planner"
+    assert submission["task"]["constraints"]["output_mode"] == "auditions"
+    assert submission["task"]["constraints"]["audition_required"] is True
     assert submission["task"]["constraints"]["brief_id"] == brief["brief_id"]
     assert submission["task"]["scope"]["layer_id"] == "intro_handoff"
     assert submission["task"]["scope"]["brief_id"] == brief["brief_id"]
@@ -1463,7 +1468,10 @@ def test_intent_first_cockpit_renders_http_backend_contract():
     assert "LivePilot Intent Cockpit" in html
     assert "id=\"outputModeRow\"" in html
     assert "let outputModeUserOverride = false" in html
-    assert "if (!outputModeUserOverride) outputMode = outputModeFromWorkflow(ctx.workflow_mode)" in html
+    assert "function outputModeFromState(ctx)" in html
+    assert "if (!outputModeUserOverride || ctx.output_mode) outputMode = outputModeFromState(ctx)" in html
+    assert "function scheduleOutputPersist()" in html
+    assert "output_mode: mode" in html
     assert "id=\"auditionCount\"" in html
     assert "Choose a layer or track target before saving auditions." in html
     assert "audition_count: auditionCount()" in html

@@ -111,7 +111,13 @@ def test_send_brief_creates_linked_ledger_record_without_mutating_notes(
     assert brief["request_text"] == "make it pop out more"
     assert brief["snapshot_id"] == snapshot["snapshot_id"]
     assert brief["task_id"] == task["task_id"]
+    assert context["orchestration_submission"]["job"] is None
+    assert brief["context_digest"]["output_mode"] == "ask"
+    assert brief["context_digest"]["audition_count"] is None
     assert task["constraints"]["brief_id"] == brief["brief_id"]
+    assert task["constraints"]["output_mode"] == "ask"
+    assert task["constraints"]["audition_required"] is False
+    assert task["constraints"]["audition_count"] is None
     assert task["scope"]["brief_id"] == brief["brief_id"]
     assert get_production_context(ctx)["production_context"]["state"]["notes"] == (
         "Long-lived project note."

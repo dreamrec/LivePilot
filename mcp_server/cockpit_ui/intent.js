@@ -24,8 +24,9 @@
     };
     let state = null;
     let selected = new Set();
-    let outputMode = "auditions";
+    let outputMode = "ask";
     let outputModeUserOverride = false;
+    let outputPersistTimer = null;
     let targetModeDraft = "instrument";
     let targetModeUserOverride = false;
     let rerunDraft = null;
@@ -244,6 +245,11 @@
     function outputModeFromWorkflow(workflowMode) {
       return workflowMode === "commit" ? "apply" : workflowMode === "guided" ? "ask" : "auditions";
     }
+    function outputModeFromState(ctx) {
+      const explicit = String((ctx || {}).output_mode || "").toLowerCase();
+      if (OUTPUTS[explicit]) return explicit;
+      return outputModeFromWorkflow((ctx || {}).workflow_mode);
+    }
     function laneInferenceText(text) {
       return String(text || "").toLowerCase()
         .replace(/\b(?:keep|preserve|don't change|do not change|without changing|leave)\b[^.!?;]*(?:notes?|melod(?:y|ies)|harmony|chords?|timing|rhythm|groove|feel)\b/g, " ")
@@ -370,7 +376,7 @@
       const ctx = ctxState();
       const sentence = $("#sentence");
       if (!sentence.value) sentence.value = loadDraft();
-      if (!outputModeUserOverride) outputMode = outputModeFromWorkflow(ctx.workflow_mode);
+      if (!outputModeUserOverride || ctx.output_mode) outputMode = outputModeFromState(ctx);
       $("#auditionCount").value = String(Math.max(1, Math.min(5, Number(ctx.audition_count || 3))));
       $("#evidenceBudget").value = ctx.evidence_budget || "standard";
       $$("#laneRow .opt").forEach(node => node.classList.toggle("on", node.dataset.lane === (ctx.lane || "holistic")));
@@ -378,6 +384,32 @@
       const protect = new Set(ctx.protect || []);
       $$("#protectRow .tog").forEach(node => node.classList.toggle("on", protect.has(node.dataset.protect)));
       $("#targetQuery").value = ctx.target_query || targetState().query || "";
+    }
+    function outputPayload(mode = outputMode) {
+      return {
+        output_mode: mode,
+        workflow_mode: OUTPUTS[mode].workflow,
+        audition_required: OUTPUTS[mode].audition,
+        audition_count: auditionCount(),
+        audition_scope: targetMode() === "layer" ? "layer" : "track"
+      };
+    }
+    function scheduleOutputPersist() {
+      clearTimeout(outputPersistTimer);
+      outputPersistTimer = setTimeout(persistOutputSettings, 180);
+    }
+    async function persistOutputSettings() {
+      try {
+        const mode = outputMode;
+        state = await callTool(BACKEND_TOOLS.save_context, outputPayload(mode));
+        outputModeUserOverride = false;
+        selected = selectionFromState();
+        syncControlsFromState();
+        render();
+      } catch (error) {
+        setStatus(error.message || String(error));
+        toast("Output mode not saved");
+      }
     }
 
     function render() {
@@ -1065,8 +1097,10 @@
       };
       $("#sentence").value = pack.request_text || "";
       saveDraft();
-      if (pack.workflow_mode) {
-        outputMode = outputModeFromWorkflow(pack.workflow_mode);
+      if (pack.output_mode || pack.workflow_mode) {
+        outputMode = OUTPUTS[pack.output_mode]
+          ? pack.output_mode
+          : outputModeFromWorkflow(pack.workflow_mode);
         outputModeUserOverride = true;
       }
       if (pack.audition_count) {
@@ -1086,7 +1120,9 @@
         target_group: pack.target_group || "",
         target_layer: pack.target_layer || "",
         lane: pack.lane || "holistic",
+        output_mode: outputMode,
         workflow_mode: pack.workflow_mode || "guided",
+        audition_required: OUTPUTS[outputMode].audition,
         audition_count: pack.audition_count || 3,
         audition_scope: pack.audition_scope || "layer",
         evidence_budget: pack.evidence_budget || "standard",
@@ -1417,12 +1453,8 @@
       const protect = mergeUnique(currentProtect(), inferProtect(text));
       $$("#protectRow .tog").forEach(node => node.classList.toggle("on", protect.includes(node.dataset.protect)));
       const payload = {
+        ...outputPayload(outputMode),
         lane,
-        workflow_mode: OUTPUTS[outputMode].workflow,
-        audition_required: OUTPUTS[outputMode].audition,
-        output_mode: outputMode,
-        audition_count: auditionCount(),
-        audition_scope: targetMode() === "layer" ? "layer" : "track",
         evidence_budget: $("#evidenceBudget").value || ctx.evidence_budget || "standard",
         protect,
         request_text: text,
@@ -1498,13 +1530,17 @@
       saveDraft();
       renderBrief();
     });
-    $("#auditionCount").addEventListener("change", renderBrief);
+    $("#auditionCount").addEventListener("change", () => {
+      renderBrief();
+      if (outputMode === "auditions") scheduleOutputPersist();
+    });
     $("#evidenceBudget").addEventListener("change", renderBrief);
     $("#outputModeRow").addEventListener("click", event => {
       const button = event.target.closest("button[data-output]");
       if (!button) return;
       outputMode = button.dataset.output || "ask";
       outputModeUserOverride = true;
+      scheduleOutputPersist();
       renderBrief();
     });
     function handleBriefFeedClick(event) {
