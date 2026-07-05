@@ -404,6 +404,64 @@ def test_cockpit_store_defined_layer_can_be_targeted(tmp_path, monkeypatch):
     assert context["summary"]["target_track_names"] == ["lead vox", "harm vox"]
 
 
+@pytest.mark.xfail(
+    reason="Phase 0 regression: foreign saved-path briefs still render as normal current work",
+    strict=True,
+)
+def test_foreign_set_brief_is_not_normal_current_pending_work(tmp_path, monkeypatch):
+    monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
+    session = _session([
+        {"index": 0, "name": "drums", "color_index": 1, "has_audio_input": True},
+    ]) | {"project_identity": {"file_path": "/tmp/current-song.als"}}
+    ctx = _ctx(tmp_path, session)
+
+    ctx.lifespan_context["briefs"].create_brief(
+        session,
+        request_text="old sibling instruction",
+        context_digest={
+            "set_identity": {"name": "Old Song", "file_path": "/tmp/old-song.als"},
+            "track_refs": [],
+            "section": {"source": "whole_song", "label": "Whole song"},
+        },
+    )
+
+    context = get_production_context(ctx)
+
+    assert context["memory_health"]["foreign_or_unresolved_briefs"] == 1
+    assert context["briefs"] == []
+    assert context["stale_memory"]["briefs"][0]["aim_status"]["status"] == "foreign_set"
+
+
+@pytest.mark.xfail(
+    reason="Phase 0 regression: explicit multi-track target state is not resolved yet",
+    strict=True,
+)
+def test_multi_track_context_uses_saved_target_indices_and_refs(tmp_path, monkeypatch):
+    monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
+    ctx = _ctx(
+        tmp_path,
+        _session([
+            {"index": 0, "name": "drums", "color_index": 1, "has_audio_input": True},
+            {"index": 1, "name": "bass", "color_index": 2, "has_midi_input": True},
+            {"index": 2, "name": "guitar", "color_index": 3, "has_audio_input": True},
+        ]),
+    )
+
+    save_production_context(
+        ctx,
+        target_mode="tracks",
+        target_label="rhythm section",
+        target_track_indices=[0, 1],
+    )
+
+    context = get_production_context(ctx)
+
+    assert context["target"]["target_mode"] == "tracks"
+    assert context["target"]["track_indices"] == [0, 1]
+    assert context["target"]["track_names"] == ["drums", "bass"]
+    assert context["summary"]["target_track_names"] == ["drums", "bass"]
+
+
 def test_cockpit_section_map_uses_cue_points(tmp_path, monkeypatch):
     monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
     ctx = _ctx(

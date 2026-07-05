@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from mcp_server.persistence.production_context import (
     ProductionContextService,
     ProductionContextStore,
@@ -171,3 +173,39 @@ def test_v1_section_scope_migration_uses_session_meter(tmp_path):
         "end_beat": 24.0,
         "source": "manual",
     }
+
+
+@pytest.mark.xfail(
+    reason="Phase 0 regression: v3 multi-track/output_mode state is not implemented yet",
+    strict=True,
+)
+def test_v3_target_tracks_and_output_mode_contract(tmp_path):
+    service = ProductionContextService(base_dir=tmp_path)
+
+    saved = service.save_state(
+        _session(),
+        target_mode="tracks",
+        target_query="low end",
+        target_label="Low end subset",
+        target_track_indices=[0],
+        target_track_refs=[{
+            "signature": {"name": "Drums", "color_index": 1},
+            "last_seen_index": 0,
+        }],
+        output_mode="auditions",
+        audition_count=4,
+        audition_scope="track",
+    )["state"]
+
+    assert saved["target_mode"] == "tracks"
+    assert saved["target_label"] == "Low end subset"
+    assert saved["target_track_indices"] == [0]
+    assert saved["target_track_refs"][0]["signature"]["name"] == "Drums"
+    assert saved["output_mode"] == "auditions"
+    assert saved["audition_required"] is True
+    assert saved["activity_revision"] == 1
+
+    ask = service.save_state(_session(), output_mode="ask")["state"]
+    assert ask["output_mode"] == "ask"
+    assert ask["audition_required"] is False
+    assert ask["activity_revision"] == 2

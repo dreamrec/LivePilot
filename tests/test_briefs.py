@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import pytest
+
 from mcp_server.persistence.agent_focus import AgentFocusService
 from mcp_server.persistence.briefs import BriefService
 from mcp_server.persistence.layer_groups import LayerGroupService
@@ -9,6 +11,7 @@ from mcp_server.persistence.orchestration_queue import OrchestrationService
 from mcp_server.persistence.production_context import ProductionContextService
 from mcp_server.persistence import track_annotations as annotation_store
 from mcp_server.production_cockpit import (
+    complete_cockpit_brief,
     get_production_context,
     list_cockpit_briefs,
     save_cockpit_layer_group,
@@ -297,3 +300,77 @@ def test_brief_outcome_overrides_queue_derived_status(tmp_path):
     assert listed["status"] == "done"
     assert listed["status_trail"][-1] == "done"
     assert listed["outcome"]["summary"] == "Kept the guitar edge."
+
+
+@pytest.mark.xfail(
+    reason="Phase 0 regression: brief delete still archives/removes instead of tombstoning",
+    strict=True,
+)
+def test_brief_delete_tombstones_without_breaking_lineage(tmp_path):
+    service = BriefService(base_dir=tmp_path)
+    session = _session([_track(0, "drums")])
+    parent = service.create_brief(
+        session,
+        request_text="test junk",
+        context_digest={},
+    )["brief"]
+    child = service.create_brief(
+        session,
+        request_text="follow-up",
+        context_digest={},
+        parent_brief_id=parent["brief_id"],
+    )["brief"]
+
+    deleted = service.delete_brief(session, parent["brief_id"])["brief"]
+    visible = service.list_briefs(session)["briefs"]
+    ledger = service.store_for_session(session).list_briefs(include_hidden=True)
+
+    assert deleted["hidden"] is True
+    assert deleted["outcome"]["status"] == "deleted"
+    assert [brief["brief_id"] for brief in visible] == [child["brief_id"]]
+    assert {brief["brief_id"] for brief in ledger} == {
+        parent["brief_id"],
+        child["brief_id"],
+    }
+    assert child["parent_brief_id"] == parent["brief_id"]
+
+
+@pytest.mark.xfail(
+    reason="Phase 0 regression: no-op brief completion currently bumps project_revision",
+    strict=True,
+)
+def test_noop_completion_does_not_stale_proposals(tmp_path, monkeypatch):
+    monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
+    ctx = _ctx(tmp_path, _session([_track(0, "el-guit-intro")]))
+    sent = send_cockpit_brief(
+        ctx,
+        lane="mix",
+        workflow_mode="guided",
+        request_text="just checking the workflow",
+        target_mode="query",
+        target_query="el-guit-intro",
+    )
+    submission = sent["orchestration_submission"]
+    store = ctx.lifespan_context["orchestration_queue"].store_for_session(
+        ctx.lifespan_context["ableton"].session_info
+    )
+    proposal = store.save_proposal({
+        "snapshot_id": submission["snapshot"]["snapshot_id"],
+        "agent_role": "mix_critic",
+        "summary": "No-op proposal should stay fresh.",
+        "status": "proposed",
+    })
+
+    result = complete_cockpit_brief(
+        ctx,
+        brief_id=submission["brief"]["brief_id"],
+        status="done",
+        summary="No changes needed.",
+        learnings=[],
+    )
+
+    assert result["orchestration_revision"] == 0
+    state = store.get_all()
+    assert state["project_revision"] == 0
+    proposals = {item["proposal_id"]: item for item in state["proposals"]}
+    assert proposals[proposal["proposal_id"]]["status"] == "proposed"

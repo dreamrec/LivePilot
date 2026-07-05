@@ -321,6 +321,68 @@ def test_focus_panel_http_api_sets_focus():
             panel.stop()
 
 
+@pytest.mark.xfail(
+    reason="Phase 0 regression: /api/session is still v1 and lacks readiness fields",
+    strict=True,
+)
+def test_focus_panel_session_v2_readiness_payload(monkeypatch):
+    with tempfile.TemporaryDirectory() as directory:
+        base = Path(directory)
+        monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", base)
+        session = _session([
+            _track(0, "drums"),
+            _track(1, "bass", midi=True, audio=False),
+        ]) | {
+            "project_identity": {
+                "name": "Current Song",
+                "file_path": "/tmp/current-song.als",
+            },
+            "track_count": 2,
+            "is_playing": False,
+            "current_song_time": 4.0,
+            "loop": True,
+            "loop_start": 0.0,
+            "loop_length": 8.0,
+            "arrangement_override": False,
+            "cue_points": [{"name": "Intro", "time": 0.0}],
+        }
+        panel = FocusPanelServer(
+            _LivePanelAbleton(session),
+            AgentFocusService(base_dir=base),
+            ProductionContextService(base_dir=base),
+            snapshot_store=SessionSnapshotStore(base / "current_session.json"),
+            orchestration_service=OrchestrationService(base_dir=base),
+            brief_service=BriefService(base_dir=base),
+            port=0,
+        )
+        try:
+            url = panel.start()
+            assert url
+            with request.urlopen(url + "api/session", timeout=5) as response:
+                body = json.loads(response.read().decode("utf-8"))
+
+            assert body["contract_version"] == 2
+            assert body["project_identity"]["file_path"] == "/tmp/current-song.als"
+            assert body["project_id"]
+            assert body["transport"]["loop"] is True
+            assert body["section_map"]["sections_count"] == 1
+            assert body["analyzer"]["status"] in {
+                "online",
+                "offline",
+                "stale",
+                "missing_device",
+                "not_last",
+                "bridge_unavailable",
+            }
+            assert body["memory_health"]["briefs_count"] == 0
+            assert body["tracks"] == [
+                {"index": 0, "name": "drums"},
+                {"index": 1, "name": "bass"},
+            ]
+        finally:
+            panel.stop()
+
+
 def test_focus_panel_serves_dual_use_cockpit(monkeypatch):
     class Ableton:
         def __init__(self, session_info):
