@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import tempfile
+import time
 from pathlib import Path
 from types import SimpleNamespace
 from urllib import error, request
@@ -60,6 +61,7 @@ class _LivePanelAbleton:
         self.session_info = dict(session_info)
         self.commands = []
         self.selected_track_index = 0
+        self.master_devices = list(self.session_info.pop("master_devices", []))
 
     def send_command(self, command, params=None):
         params = params or {}
@@ -70,6 +72,8 @@ class _LivePanelAbleton:
             return {"cue_points": self.session_info.get("cue_points", [])}
         if command == "get_arrangement_clips":
             return {"clips": []}
+        if command == "get_master_track":
+            return {"name": "Master", "devices": self.master_devices}
         if command == "get_track_info":
             track_index = int(params["track_index"])
             track = next(
@@ -375,6 +379,90 @@ def test_focus_panel_session_v2_readiness_payload(monkeypatch):
                 {"index": 0, "name": "drums"},
                 {"index": 1, "name": "bass"},
             ]
+        finally:
+            panel.stop()
+
+
+def test_analyzer_health_reports_missing_not_last_and_stale(monkeypatch):
+    with tempfile.TemporaryDirectory() as directory:
+        base = Path(directory)
+        monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", base)
+        session = _session([_track(0, "drums")])
+        ableton = _LivePanelAbleton(session)
+        panel = FocusPanelServer(
+            ableton,
+            AgentFocusService(base_dir=base),
+            ProductionContextService(base_dir=base),
+            snapshot_store=SessionSnapshotStore(base / "current_session.json"),
+            orchestration_service=OrchestrationService(base_dir=base),
+            port=0,
+        )
+        try:
+            url = panel.start()
+            assert url
+
+            with request.urlopen(url + "api/analyzer/health", timeout=5) as response:
+                missing = json.loads(response.read().decode("utf-8"))
+            assert missing["status"] == "missing_device"
+
+            ableton.master_devices = [
+                {"index": 0, "name": "LivePilot_Analyzer"},
+                {"index": 1, "name": "Limiter"},
+            ]
+            with request.urlopen(url + "api/analyzer/health", timeout=5) as response:
+                not_last = json.loads(response.read().decode("utf-8"))
+            assert not_last["status"] == "not_last"
+
+            ableton.master_devices = [{"index": 0, "name": "LivePilot_Analyzer"}]
+            ableton.session_info["analyzer_last_seen_ms"] = int(time.time() * 1000) - 20000
+            with request.urlopen(url + "api/analyzer/health", timeout=5) as response:
+                stale = json.loads(response.read().decode("utf-8"))
+            assert stale["status"] == "stale"
+            assert stale["judgment_only"] is True
+        finally:
+            panel.stop()
+
+
+def test_analyzer_repair_calls_ensure_and_verifies_freshness(monkeypatch):
+    with tempfile.TemporaryDirectory() as directory:
+        base = Path(directory)
+        monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", base)
+        session = _session([_track(0, "drums")])
+        ableton = _LivePanelAbleton(session)
+        panel = FocusPanelServer(
+            ableton,
+            AgentFocusService(base_dir=base),
+            ProductionContextService(base_dir=base),
+            snapshot_store=SessionSnapshotStore(base / "current_session.json"),
+            orchestration_service=OrchestrationService(base_dir=base),
+            port=0,
+        )
+        calls = []
+
+        def fake_ensure(ctx):
+            calls.append(ctx)
+            ableton.master_devices = [{"index": 0, "name": "LivePilot_Analyzer"}]
+            ableton.session_info["analyzer_last_seen_ms"] = int(time.time() * 1000)
+            return {
+                "status": "loaded",
+                "device_index": 0,
+                "is_last_on_master": True,
+            }
+
+        monkeypatch.setattr("mcp_server.tools.analyzer.ensure_analyzer_on_master", fake_ensure)
+        try:
+            url = panel.start()
+            assert url
+            status, body = _post_json(url + "api/analyzer/repair", {})
+
+            assert status == 200
+            assert len(calls) == 1
+            assert body["status"] == "ok"
+            assert body["before"]["status"] == "missing_device"
+            assert body["ensure_analyzer_on_master"]["status"] == "loaded"
+            assert body["analyzer"]["status"] == "online"
+            assert body["analyzer"]["judgment_only"] is False
+            assert body["remaining_reason"] is None
         finally:
             panel.stop()
 

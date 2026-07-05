@@ -132,6 +132,40 @@ def _analyzer_message(status: str) -> str:
     }.get(status, "Analyzer status unknown")
 
 
+def _status_payload(status: str, *, message: str = "", last_seen_ms=None) -> dict:
+    return {
+        "status": status,
+        "last_seen_ms": last_seen_ms,
+        "message": message or _analyzer_message(status),
+        "judgment_only": status != "online",
+    }
+
+
+def _analyzer_loaded_from_master(master: dict) -> tuple[bool, bool, Optional[int]]:
+    devices = (master or {}).get("devices") or []
+    if not isinstance(devices, list) or not devices:
+        return False, False, None
+    matches = [
+        device for device in devices
+        if isinstance(device, dict) and device.get("name") == "LivePilot_Analyzer"
+    ]
+    generic = (
+        len(devices) == 1
+        and isinstance(devices[0], dict)
+        and devices[0].get("name") == "Max Audio Effect"
+        and devices[0].get("class_name") == "MxDeviceAudioEffect"
+        and devices[0].get("is_active") is not False
+    )
+    if generic:
+        matches = [devices[0]]
+    if not matches:
+        return False, False, None
+    first = matches[0]
+    last = devices[-1]
+    is_last = last is first or last.get("name") == "LivePilot_Analyzer"
+    return True, bool(is_last), first.get("index")
+
+
 class FocusPanelServer:
     """Small localhost HTTP server for the focus panel."""
 
@@ -245,7 +279,7 @@ class FocusPanelServer:
                 "current_section_id": section_map.get("current_section_id", ""),
                 "sections_count": len(section_map.get("sections") or []),
             },
-            "analyzer": _session_analyzer_payload(session_info, live=self._is_live_mode()),
+            "analyzer": self._analyzer_health(session_info),
             "memory_health": {
                 "briefs_count": int(memory_health.get("briefs_count") or 0),
                 "foreign_or_unresolved_briefs": int(
@@ -268,6 +302,112 @@ class FocusPanelServer:
             "session_updated_at_ms": session_meta.get("updated_at_ms"),
             "session_error": session_meta.get("error"),
         }
+
+    def get_analyzer_health_payload(self) -> dict:
+        session_info = self._session_info()
+        return self._analyzer_health(session_info)
+
+    def repair_analyzer_payload(self) -> dict:
+        if not self._is_live_mode():
+            return {
+                "status": "error",
+                "reason": "snapshot_mode",
+                "error": "Analyzer repair requires a live Ableton connection.",
+                "analyzer": _status_payload("bridge_unavailable"),
+                "_http_status": 409,
+            }
+        session_info = self._session_info()
+        store = self.orchestration_service.store_for_session(session_info)
+        active_jobs = [
+            job for job in store.list_jobs(ordered=True)
+            if job.get("status") in {"queued", "running", "awaiting_decision"}
+        ]
+        if active_jobs:
+            return {
+                "status": "blocked",
+                "reason": "active_ableton_jobs",
+                "message": "Finish or cancel queued Ableton jobs before analyzer repair.",
+                "active_job_count": len(active_jobs),
+                "analyzer": self._analyzer_health(session_info),
+                "_http_status": 409,
+            }
+        owner = "cockpit_analyzer_repair"
+        claim = store.claim_resource("project", owner=owner, ttl_ms=60000)
+        if claim.get("status") == "blocked":
+            return {
+                "status": "blocked",
+                "reason": "lease_conflict",
+                "message": "Another LivePilot writer currently holds the project lease.",
+                "claim": claim,
+                "analyzer": self._analyzer_health(session_info),
+                "_http_status": 409,
+            }
+        before = self._analyzer_health(session_info)
+        ensure_result = {}
+        try:
+            from .tools.analyzer import ensure_analyzer_on_master
+
+            ensure_result = ensure_analyzer_on_master(self._cockpit_ctx())
+            after_session = self._session_info()
+            after = self._analyzer_health(after_session)
+            return {
+                "status": "ok",
+                "changed": ensure_result.get("status") in {"loaded"},
+                "before": before,
+                "ensure_analyzer_on_master": ensure_result,
+                "analyzer": after,
+                "remaining_reason": None if after.get("status") == "online" else after.get("status"),
+            }
+        except Exception as exc:  # noqa: BLE001 - browser API returns JSON.
+            return {
+                "status": "error",
+                "error": str(exc),
+                "before": before,
+                "ensure_analyzer_on_master": ensure_result,
+                "analyzer": self._analyzer_health(session_info),
+                "_http_status": 500,
+            }
+        finally:
+            store.release_resource("project", owner=owner)
+
+    def _analyzer_health(self, session_info: dict) -> dict:
+        if not self._is_live_mode():
+            return _status_payload("bridge_unavailable")
+        try:
+            master = self.ableton.send_command("get_master_track", {}) or {}
+        except Exception as exc:  # noqa: BLE001 - read-only health degrades.
+            return _status_payload(
+                "offline",
+                message=f"Could not read master track: {exc}",
+            )
+        loaded, is_last, device_index = _analyzer_loaded_from_master(master)
+        if not loaded:
+            return _status_payload("missing_device")
+        if not is_last:
+            payload = _status_payload("not_last")
+            payload["device_index"] = device_index
+            return payload
+        raw = _session_analyzer_payload(session_info, live=True)
+        last_seen = raw.get("last_seen_ms")
+        if last_seen:
+            try:
+                age_ms = int(time.time() * 1000) - int(last_seen)
+            except (TypeError, ValueError):
+                age_ms = None
+            if age_ms is not None and age_ms <= 5000:
+                payload = _status_payload("online", last_seen_ms=last_seen)
+                payload["device_index"] = device_index
+                return payload
+            payload = _status_payload("stale", last_seen_ms=last_seen)
+            payload["device_index"] = device_index
+            return payload
+        if raw.get("status") == "online":
+            payload = _status_payload("online", last_seen_ms=last_seen)
+            payload["device_index"] = device_index
+            return payload
+        payload = _status_payload("bridge_unavailable")
+        payload["device_index"] = device_index
+        return payload
 
     def set_focus_payload(self, payload: dict) -> dict:
         session_info = self._session_info()
@@ -835,6 +975,9 @@ class _FocusPanelHandler(BaseHTTPRequestHandler):
         if path == "/api/session":
             self._send_json(self.server.panel.get_session_payload())
             return
+        if path == "/api/analyzer/health":
+            self._send_json(self.server.panel.get_analyzer_health_payload())
+            return
         if path == "/api/cockpit/state":
             self._send_json(self.server.panel.get_cockpit_payload())
             return
@@ -953,6 +1096,9 @@ class _FocusPanelHandler(BaseHTTPRequestHandler):
                 return
             if path == "/api/cockpit/refresh-live":
                 self._send_json(self.server.panel.refresh_live_payload())
+                return
+            if path == "/api/analyzer/repair":
+                self._send_panel_payload(self.server.panel.repair_analyzer_payload())
                 return
             self._send_json({"status": "error", "error": "not_found"}, status=404)
         except Exception as exc:  # noqa: BLE001 - browser API should return JSON

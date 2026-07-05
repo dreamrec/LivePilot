@@ -450,6 +450,8 @@
       const ready = readinessText();
       $("#sessionPill").textContent = `${tempo} - ${count} tracks - ${project}${source ? " - " + source : ""}${ready ? " - " + ready : ""} - ${codexText}`;
       $("#refreshLive").style.display = HTTP_REFRESH_AVAILABLE ? "" : "none";
+      const analyzerStatus = ((sessionReadiness || {}).analyzer || {}).status || "";
+      $("#repairAnalyzer").style.display = HTTP_REFRESH_AVAILABLE && analyzerStatus && analyzerStatus !== "online" ? "" : "none";
     }
     function readinessText() {
       const readiness = sessionReadiness || {};
@@ -1343,6 +1345,29 @@
       render();
       toast("Locator written");
     }
+    async function repairAnalyzer() {
+      if (!HTTP_REFRESH_AVAILABLE) {
+        toast("Analyzer repair is only available in the browser cockpit.");
+        return;
+      }
+      setStatus("Repairing analyzer");
+      try {
+        const response = await fetch("/api/analyzer/repair", { method: "POST" });
+        const body = await response.json();
+        if (!response.ok || body.status === "error" || body.status === "blocked") {
+          throw new Error(body.message || body.error || body.reason || `Request failed: ${response.status}`);
+        }
+        sessionReadiness = await fetchSessionReadiness();
+        renderTop();
+        setStatus("Ready");
+        toast(body.analyzer && body.analyzer.status === "online" ? "Analyzer online" : `Analyzer ${body.analyzer.status}`);
+      } catch (error) {
+        setStatus(error.message || String(error));
+        sessionReadiness = await fetchSessionReadiness();
+        renderTop();
+        toast("Analyzer repair blocked");
+      }
+    }
     async function clearTarget() {
       const keepPickerMode = pickerMode();
       setStatus("Clearing target");
@@ -1528,6 +1553,7 @@
 
     $("#refresh").addEventListener("click", refresh);
     $("#refreshLive").addEventListener("click", refreshLive);
+    $("#repairAnalyzer").addEventListener("click", repairAnalyzer);
     $("#grabLiveSelection").addEventListener("click", grabLiveSelection);
     $("#loopSectionLive").addEventListener("click", loopSelectedSectionLive);
     $("#writeSectionLocator").addEventListener("click", writeSelectedSectionLocator);

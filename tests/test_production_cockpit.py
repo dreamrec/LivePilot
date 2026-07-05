@@ -1495,6 +1495,8 @@ def test_intent_first_cockpit_renders_http_backend_contract():
     assert "Song Sections" in html
     assert "fetch(\"/api/session\")" in html
     assert "analyzer ${analyzer}" in html
+    assert "id=\"repairAnalyzer\"" in html
+    assert "fetch(\"/api/analyzer/repair\"" in html
     assert "id=\"songStrip\"" in html
     assert "id=\"sectionRow\"" not in html
     assert "async function chooseSection(sectionId)" in html
