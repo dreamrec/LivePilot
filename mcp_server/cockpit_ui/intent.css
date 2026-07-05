@@ -566,6 +566,12 @@
       font-size: 11px;
       line-height: 1.25;
     }
+    .queue-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 6px;
+      margin-top: 3px;
+    }
     .queue-item.stale {
       border-color: rgba(240, 163, 58, 0.5);
       background: rgba(240, 163, 58, 0.08);

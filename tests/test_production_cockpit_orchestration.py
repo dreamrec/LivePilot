@@ -10,6 +10,9 @@ from mcp_server.persistence.production_context import ProductionContextService
 from mcp_server.persistence import track_annotations as annotation_store
 from mcp_server.production_cockpit import (
     _render_intent_first_cockpit_html,
+    cancel_cockpit_queue_job,
+    cancel_cockpit_queue_task,
+    dismiss_cockpit_queue_proposal,
     get_production_context,
 )
 
@@ -138,6 +141,7 @@ def test_cockpit_context_includes_orchestration_queue_summary(
     assert orchestration["counts"]["pending_proposals"] == 2
     assert orchestration["counts"]["stale_proposals"] == 1
     assert orchestration["warnings"] == ["stale_proposals_need_revalidation"]
+    assert orchestration["active_tasks"][0]["agent_role"] == "mix_critic"
     assert orchestration["next_queued_job"]["title"] == "Audition C edge saturation"
     assert [
         job["title"] for job in orchestration["active_jobs"]
@@ -152,6 +156,59 @@ def test_cockpit_context_includes_orchestration_queue_summary(
         "Use edge saturation on the intro guitar.",
         "Older balance idea.",
     ]
+
+
+def test_cockpit_queue_actions_cancel_and_dismiss_without_revision_bump(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
+    session = _session([
+        {"index": 0, "name": "drums", "color_index": 1, "has_audio_input": True},
+    ])
+    ctx = _ctx(tmp_path, session)
+    store = ctx.lifespan_context["orchestration_queue"].store_for_session(session)
+    snapshot = store.save_snapshot({"brief": {"text": "queue cleanup"}})
+    task = store.save_task({
+        "snapshot_id": snapshot["snapshot_id"],
+        "agent_role": "mix_critic",
+        "instruction": "Check the mix.",
+        "status": "queued",
+    })
+    queued_job = store.save_job({
+        "snapshot_id": snapshot["snapshot_id"],
+        "title": "Queued audition",
+        "job_type": "audition",
+        "status": "queued",
+    })
+    running_job = store.save_job({
+        "snapshot_id": snapshot["snapshot_id"],
+        "title": "Running playback",
+        "job_type": "playback_analysis",
+        "status": "running",
+    })
+    proposal = store.save_proposal({
+        "snapshot_id": snapshot["snapshot_id"],
+        "agent_role": "sound_designer",
+        "summary": "Try brighter saturation.",
+        "status": "stale_needs_revalidation",
+    })
+    before_revision = store.get_revision()
+
+    canceled_task = cancel_cockpit_queue_task(ctx, task["task_id"])
+    canceled_job = cancel_cockpit_queue_job(ctx, queued_job["job_id"])
+    blocked_running = cancel_cockpit_queue_job(ctx, running_job["job_id"])
+    dismissed = dismiss_cockpit_queue_proposal(ctx, proposal["proposal_id"])
+
+    assert store.get_revision() == before_revision
+    assert canceled_task["queue_action"]["task"]["status"] == "canceled"
+    assert canceled_job["queue_action"]["job"]["status"] == "canceled"
+    assert blocked_running["queue_action"]["status"] == "blocked"
+    assert blocked_running["queue_action"]["current_status"] == "running"
+    assert dismissed["queue_action"]["proposal"]["status"] == "superseded"
+    assert dismissed["queue_action"]["proposal"]["status_reason"] == (
+        "dismissed from cockpit"
+    )
 
 
 def test_intent_cockpit_renders_orchestration_queue_card():
@@ -170,6 +227,10 @@ def test_intent_cockpit_renders_orchestration_queue_card():
     assert "function renderOrchestration()" in html
     assert "function renderNeedsYou()" in html
     assert "function renderBriefFeed()" in html
+    assert "button.queue-action" in html
+    assert "cancel_queue_task" in html
+    assert "cancel_queue_job" in html
+    assert "dismiss_queue_proposal" in html
     assert "function rerunBrief(" in html
     assert "function archiveBrief(" in html
     assert "awaiting_decision" in html

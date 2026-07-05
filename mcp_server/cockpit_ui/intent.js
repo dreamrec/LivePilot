@@ -751,6 +751,16 @@
       if (typeof value !== "object") return String(value);
       return value.track_name || value.name || value.label || value.track_ref || value.signature_key || value.id || JSON.stringify(value).slice(0, 96);
     }
+    function queueActionHtml(row) {
+      if (!row || !row.action) return "";
+      return `
+        <div class="queue-actions">
+          <button class="soft mini queue-action" data-action="${escapeHtml(row.action)}" data-id="${escapeHtml(row.id || "")}">
+            ${escapeHtml(row.action_label || "Clear")}
+          </button>
+        </div>
+      `;
+    }
     function needsYouRows() {
       const orchestration = orchestrationState();
       const rows = [];
@@ -759,7 +769,10 @@
         rows.push({
           kind: "blocked",
           title: job.title || job.job_type || "Ableton job needs a decision",
-          detail: `${job.status} - ${job.job_type || "job"} ${compactId(job.job_id) ? "#" + compactId(job.job_id) : ""}`
+          detail: `${job.status} - ${job.job_type || "job"} ${compactId(job.job_id) ? "#" + compactId(job.job_id) : ""}`,
+          action: "cancel_job",
+          action_label: "Cancel job",
+          id: job.job_id || ""
         });
       });
       (orchestration.pending_proposals || []).forEach(proposal => {
@@ -767,7 +780,10 @@
         rows.push({
           kind: "needs",
           title: proposal.summary || "Proposal needs revalidation",
-          detail: `stale proposal - ${proposal.agent_role || "agent"} ${compactId(proposal.proposal_id) ? "#" + compactId(proposal.proposal_id) : ""}`
+          detail: `stale proposal - ${proposal.agent_role || "agent"} ${compactId(proposal.proposal_id) ? "#" + compactId(proposal.proposal_id) : ""}`,
+          action: "dismiss_proposal",
+          action_label: "Dismiss",
+          id: proposal.proposal_id || ""
         });
       });
       const focus = (((state || {}).focus || {}).focus) || {};
@@ -775,7 +791,9 @@
         rows.push({
           kind: "blocked",
           title: compactObjectLabel(ref),
-          detail: "Focused track reference no longer resolves"
+          detail: "Focused track reference no longer resolves",
+          action: "clear_focus",
+          action_label: "Clear target"
         });
       });
       ((state || {}).layer_groups || []).forEach(group => {
@@ -803,6 +821,7 @@
         <div class="queue-item ${escapeHtml(row.kind || "needs")}">
           <b>${escapeHtml(row.title)}</b>
           <span>${escapeHtml(row.detail)}</span>
+          ${queueActionHtml(row)}
         </div>
       `).join("");
     }
@@ -840,12 +859,25 @@
         leases ? `${leases} lease${leases === 1 ? "" : "s"}` : ""
       ].filter(Boolean).join(" - ");
       const rows = [];
+      (orchestration.active_tasks || []).slice(0, 4).forEach(task => {
+        const title = task.instruction || task.agent_role || "Agent task";
+        const canCancel = task.status === "queued";
+        rows.push(`
+          <div class="queue-item">
+            <b>${escapeHtml(title)}</b>
+            <span>${escapeHtml(task.status || "queued")} - ${escapeHtml(task.agent_role || "agent")} ${compactId(task.task_id) ? "#" + escapeHtml(compactId(task.task_id)) : ""}</span>
+            ${canCancel ? queueActionHtml({action: "cancel_task", action_label: "Cancel task", id: task.task_id || ""}) : ""}
+          </div>
+        `);
+      });
       (orchestration.active_jobs || []).slice(0, 4).forEach(job => {
         const title = job.title || job.job_type || "Ableton job";
+        const canCancel = job.status === "queued" || job.status === "awaiting_decision";
         rows.push(`
           <div class="queue-item">
             <b>${escapeHtml(title)}</b>
             <span>${escapeHtml(job.status || "queued")} - ${escapeHtml(job.job_type || "job")} ${compactId(job.job_id) ? "#" + escapeHtml(compactId(job.job_id)) : ""}</span>
+            ${canCancel ? queueActionHtml({action: "cancel_job", action_label: "Cancel job", id: job.job_id || ""}) : ""}
           </div>
         `);
       });
@@ -855,6 +887,7 @@
           <div class="queue-item${staleClass}">
             <b>${escapeHtml(proposal.summary || proposal.agent_role || "Agent proposal")}</b>
             <span>${escapeHtml(proposal.status || "proposed")} - ${escapeHtml(proposal.agent_role || "agent")} ${compactId(proposal.proposal_id) ? "#" + escapeHtml(compactId(proposal.proposal_id)) : ""}</span>
+            ${queueActionHtml({action: "dismiss_proposal", action_label: "Dismiss", id: proposal.proposal_id || ""})}
           </div>
         `);
       });
@@ -1201,6 +1234,44 @@
       } catch (error) {
         setStatus(error.message || String(error));
         toast("Delete blocked");
+      }
+    }
+    async function performQueueAction(action, id) {
+      try {
+        if (action === "clear_focus") {
+          await clearTarget();
+          return;
+        }
+        if (action === "cancel_task") {
+          if (!id || !window.confirm("Cancel this queued agent task?")) return;
+          state = await callTool(BACKEND_TOOLS.cancel_queue_task, {
+            task_id: id,
+            reason: "canceled from cockpit"
+          });
+          toast("Task canceled");
+        } else if (action === "cancel_job") {
+          if (!id || !window.confirm("Cancel this queued Ableton job?")) return;
+          state = await callTool(BACKEND_TOOLS.cancel_queue_job, {
+            job_id: id,
+            reason: "canceled from cockpit"
+          });
+          toast("Job canceled");
+        } else if (action === "dismiss_proposal") {
+          if (!id || !window.confirm("Dismiss this agent proposal?")) return;
+          state = await callTool(BACKEND_TOOLS.dismiss_queue_proposal, {
+            proposal_id: id,
+            reason: "dismissed from cockpit"
+          });
+          toast("Proposal dismissed");
+        } else {
+          return;
+        }
+        selected = selectionFromState();
+        syncControlsFromState();
+        render();
+      } catch (error) {
+        setStatus(error.message || String(error));
+        toast("Queue action blocked");
       }
     }
     async function adoptMemorySuggestion() {
@@ -1649,6 +1720,13 @@
     }
     $("#pendingBriefFeed").addEventListener("click", handleBriefFeedClick);
     $("#recentBriefFeed").addEventListener("click", handleBriefFeedClick);
+    function handleQueueClick(event) {
+      const button = event.target.closest("button.queue-action");
+      if (!button) return;
+      performQueueAction(button.dataset.action || "", button.dataset.id || "");
+    }
+    $("#needsYouItems").addEventListener("click", handleQueueClick);
+    $("#queueItems").addEventListener("click", handleQueueClick);
     $("#fineTuneHead").addEventListener("click", () => $("#fineTune").classList.toggle("open"));
     $("#laneRow").addEventListener("click", event => {
       const button = event.target.closest("button[data-lane]");

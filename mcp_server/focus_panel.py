@@ -743,6 +743,33 @@ class FocusPanelServer:
             variant_letter=str(payload.get("variant_letter") or ""),
         )
 
+    def cancel_cockpit_queue_task_payload(self, payload: dict) -> dict:
+        from .production_cockpit import cancel_cockpit_queue_task
+
+        return cancel_cockpit_queue_task(
+            self._cockpit_ctx(),
+            task_id=str(payload.get("task_id") or ""),
+            reason=str(payload.get("reason") or "canceled from cockpit"),
+        )
+
+    def cancel_cockpit_queue_job_payload(self, payload: dict) -> dict:
+        from .production_cockpit import cancel_cockpit_queue_job
+
+        return cancel_cockpit_queue_job(
+            self._cockpit_ctx(),
+            job_id=str(payload.get("job_id") or ""),
+            reason=str(payload.get("reason") or "canceled from cockpit"),
+        )
+
+    def dismiss_cockpit_queue_proposal_payload(self, payload: dict) -> dict:
+        from .production_cockpit import dismiss_cockpit_queue_proposal
+
+        return dismiss_cockpit_queue_proposal(
+            self._cockpit_ctx(),
+            proposal_id=str(payload.get("proposal_id") or ""),
+            reason=str(payload.get("reason") or "dismissed from cockpit"),
+        )
+
     def _cockpit_ctx(self):
         return SimpleNamespace(
             lifespan_context={
@@ -1076,6 +1103,24 @@ class _FocusPanelHandler(BaseHTTPRequestHandler):
                 payload = self._read_json_body()
                 self._send_json(
                     self.server.panel.submit_cockpit_audition_action_payload(payload)
+                )
+                return
+            if path == "/api/cockpit/queue/task-cancel":
+                payload = self._read_json_body()
+                self._send_panel_payload(
+                    self.server.panel.cancel_cockpit_queue_task_payload(payload)
+                )
+                return
+            if path == "/api/cockpit/queue/job-cancel":
+                payload = self._read_json_body()
+                self._send_panel_payload(
+                    self.server.panel.cancel_cockpit_queue_job_payload(payload)
+                )
+                return
+            if path == "/api/cockpit/queue/proposal-dismiss":
+                payload = self._read_json_body()
+                self._send_panel_payload(
+                    self.server.panel.dismiss_cockpit_queue_proposal_payload(payload)
                 )
                 return
             if path == "/api/cockpit/live/select-track":

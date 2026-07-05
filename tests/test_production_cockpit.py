@@ -1553,6 +1553,9 @@ def test_intent_first_cockpit_renders_http_backend_contract():
     assert "/api/cockpit/state" in html
     assert "/api/cockpit/context" in html
     assert "/api/cockpit/brief" in html
+    assert "/api/cockpit/queue/task-cancel" in html
+    assert "/api/cockpit/queue/job-cancel" in html
+    assert "/api/cockpit/queue/proposal-dismiss" in html
     assert "/api/cockpit/brief-archive" in html
     assert "/api/cockpit/brief-rerun" in html
     assert "/api/cockpit/adopt-memory" in html

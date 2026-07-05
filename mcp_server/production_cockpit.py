@@ -49,6 +49,9 @@ _BACKEND_TOOL_NAMES = {
     "record_dispatch": "record_cockpit_brief_dispatch",
     "set_working_thread": "set_cockpit_working_thread",
     "audition_action": "submit_cockpit_audition_action",
+    "cancel_queue_task": "cancel_cockpit_queue_task",
+    "cancel_queue_job": "cancel_cockpit_queue_job",
+    "dismiss_queue_proposal": "dismiss_cockpit_queue_proposal",
     "get_live_selection": "get_cockpit_live_selection",
     "select_live_track": "select_live_track",
     "loop_live_section": "loop_live_section",
@@ -1430,6 +1433,17 @@ def _compact_orchestration_job(job: dict) -> dict:
     }
 
 
+def _compact_orchestration_task(task: dict) -> dict:
+    return {
+        "task_id": task.get("task_id", ""),
+        "snapshot_id": task.get("snapshot_id", ""),
+        "agent_role": task.get("agent_role", ""),
+        "instruction": task.get("instruction", ""),
+        "status": task.get("status", ""),
+        "updated_at_ms": task.get("updated_at_ms"),
+    }
+
+
 def _compact_orchestration_proposal(proposal: dict) -> dict:
     return {
         "proposal_id": proposal.get("proposal_id", ""),
@@ -1472,6 +1486,10 @@ def _orchestration_summary(ctx: Context, session_info: dict) -> dict:
         proposals = store.list_proposals()
         jobs = store.list_jobs(ordered=True)
         active_leases = store.list_leases(include_expired=False)
+        active_tasks = [
+            task for task in tasks
+            if task.get("status") in {"queued", "running"}
+        ]
         queued_jobs = [
             job for job in jobs
             if job.get("status") == "queued"
@@ -1530,6 +1548,10 @@ def _orchestration_summary(ctx: Context, session_info: dict) -> dict:
             "next_queued_job": (
                 _compact_orchestration_job(next_job) if next_job else None
             ),
+            "active_tasks": [
+                _compact_orchestration_task(task)
+                for task in active_tasks[:8]
+            ],
             "active_jobs": [
                 _compact_orchestration_job(job)
                 for job in active_jobs[:8]
@@ -1568,6 +1590,7 @@ def _orchestration_summary(ctx: Context, session_info: dict) -> dict:
                 "awaiting_decision_jobs": 0,
                 "active_leases": 0,
             },
+            "active_tasks": [],
             "active_jobs": [],
             "recent_jobs": [],
             "pending_proposals": [],
@@ -2866,6 +2889,133 @@ def _active_brief_work(brief: dict) -> list[dict]:
     return active
 
 
+def cancel_cockpit_queue_task(
+    ctx: Context,
+    task_id: str,
+    reason: str = "canceled from cockpit",
+) -> dict:
+    """Cancel a queued orchestration task from the browser cockpit."""
+    session_info = _require_session_info(ctx)
+    store = _orchestration_service(ctx).store_for_session(session_info)
+    task_id = str(task_id or "").strip()
+    current = next(
+        (task for task in store.list_tasks() if task.get("task_id") == task_id),
+        None,
+    )
+    if current is None:
+        raise KeyError(f"task_id not found: {task_id}")
+    if current.get("status") != "queued":
+        context = _build_context(ctx, include_history=False)
+        context["queue_action"] = {
+            "status": "blocked",
+            "kind": "task",
+            "task_id": task_id,
+            "reason": "not_queued",
+            "current_status": current.get("status", ""),
+            "message": "Only queued tasks can be canceled from the cockpit.",
+        }
+        context["_http_status"] = 409
+        return context
+    task = store.update_task_status(task_id, "canceled")
+    context = _build_context(ctx, include_history=False)
+    context["queue_action"] = {
+        "status": "ok",
+        "kind": "task",
+        "action": "canceled",
+        "reason": str(reason or "").strip(),
+        "task": task,
+    }
+    return context
+
+
+def cancel_cockpit_queue_job(
+    ctx: Context,
+    job_id: str,
+    reason: str = "canceled from cockpit",
+) -> dict:
+    """Cancel a queued or decision-waiting Ableton job from the browser cockpit."""
+    session_info = _require_session_info(ctx)
+    store = _orchestration_service(ctx).store_for_session(session_info)
+    job_id = str(job_id or "").strip()
+    current = store.get_job(job_id)
+    if current is None:
+        raise KeyError(f"job_id not found: {job_id}")
+    status = str(current.get("status") or "")
+    if status not in {"queued", "awaiting_decision"}:
+        context = _build_context(ctx, include_history=False)
+        context["queue_action"] = {
+            "status": "blocked",
+            "kind": "job",
+            "job_id": job_id,
+            "reason": "not_cancelable",
+            "current_status": status,
+            "message": "Only queued or awaiting-decision jobs can be canceled.",
+        }
+        context["_http_status"] = 409
+        return context
+    job = store.update_job_status(
+        job_id,
+        "canceled",
+        result={"reason": str(reason or "").strip()} if reason else {},
+    )
+    context = _build_context(ctx, include_history=False)
+    context["queue_action"] = {
+        "status": "ok",
+        "kind": "job",
+        "action": "canceled",
+        "reason": str(reason or "").strip(),
+        "job": job,
+    }
+    return context
+
+
+def dismiss_cockpit_queue_proposal(
+    ctx: Context,
+    proposal_id: str,
+    reason: str = "dismissed from cockpit",
+) -> dict:
+    """Dismiss a cockpit-visible proposal without changing project revision."""
+    session_info = _require_session_info(ctx)
+    store = _orchestration_service(ctx).store_for_session(session_info)
+    proposal_id = str(proposal_id or "").strip()
+    current = next(
+        (
+            proposal for proposal in store.list_proposals()
+            if proposal.get("proposal_id") == proposal_id
+        ),
+        None,
+    )
+    if current is None:
+        raise KeyError(f"proposal_id not found: {proposal_id}")
+    status = str(current.get("status") or "")
+    if status not in {"proposed", "approved", "stale_needs_revalidation"}:
+        context = _build_context(ctx, include_history=False)
+        context["queue_action"] = {
+            "status": "blocked",
+            "kind": "proposal",
+            "proposal_id": proposal_id,
+            "reason": "terminal_status",
+            "current_status": status,
+            "message": "Only pending proposals can be dismissed.",
+        }
+        context["_http_status"] = 409
+        return context
+    proposal = store.update_proposal_status(
+        proposal_id,
+        "superseded",
+        reason=str(reason or "").strip(),
+    )
+    context = _build_context(ctx, include_history=False)
+    context["queue_action"] = {
+        "status": "ok",
+        "kind": "proposal",
+        "action": "dismissed",
+        "reason": str(reason or "").strip(),
+        "proposal": proposal,
+    }
+    return context
+
+
 def _find_context_brief(context: dict, brief_id: str) -> dict:
     brief_id = str(brief_id or "").strip()
     for brief in context.get("briefs") or []:
@@ -3104,6 +3254,9 @@ def _cockpit_call_tool_js(transport: str) -> str:
         [BACKEND_TOOLS.record_dispatch]: ["POST", "/api/cockpit/brief-dispatch"],
         [BACKEND_TOOLS.set_working_thread]: ["POST", "/api/cockpit/working-thread"],
         [BACKEND_TOOLS.audition_action]: ["POST", "/api/cockpit/auditions/action"],
+        [BACKEND_TOOLS.cancel_queue_task]: ["POST", "/api/cockpit/queue/task-cancel"],
+        [BACKEND_TOOLS.cancel_queue_job]: ["POST", "/api/cockpit/queue/job-cancel"],
+        [BACKEND_TOOLS.dismiss_queue_proposal]: ["POST", "/api/cockpit/queue/proposal-dismiss"],
         [BACKEND_TOOLS.get_live_selection]: ["GET", "/api/cockpit/live/selection"],
         [BACKEND_TOOLS.select_live_track]: ["POST", "/api/cockpit/live/select-track"],
         [BACKEND_TOOLS.loop_live_section]: ["POST", "/api/cockpit/live/loop-section"],
