@@ -1192,11 +1192,16 @@
       const brief = briefById(briefId) || {};
       const label = brief.request_text || briefId;
       if (!window.confirm(`Delete brief "${label}"? This hides test junk but keeps lineage.`)) return;
-      state = await callTool(BACKEND_TOOLS.delete_brief, {brief_id: briefId});
-      selected = selectionFromState();
-      syncControlsFromState();
-      render();
-      toast("Brief deleted");
+      try {
+        state = await callTool(BACKEND_TOOLS.delete_brief, {brief_id: briefId});
+        selected = selectionFromState();
+        syncControlsFromState();
+        render();
+        toast("Brief deleted");
+      } catch (error) {
+        setStatus(error.message || String(error));
+        toast("Delete blocked");
+      }
     }
     async function adoptMemorySuggestion() {
       const suggestion = (state || {}).memory_suggestion || {};

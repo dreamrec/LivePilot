@@ -1002,6 +1002,37 @@ def test_archive_cockpit_brief_marks_abandoned_without_revision_bump(
     assert compat["briefs"] == []
 
 
+def test_delete_cockpit_brief_blocks_active_jobs(tmp_path, monkeypatch):
+    monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
+    ctx = _ctx(
+        tmp_path,
+        _session([
+            {"index": 0, "name": "drums", "color_index": 1, "has_audio_input": True},
+            {"index": 1, "name": "bass", "color_index": 2, "has_audio_input": True},
+        ]),
+    )
+    context = send_cockpit_brief(
+        ctx,
+        lane="mix",
+        workflow_mode="audition",
+        audition_required=True,
+        audition_count=2,
+        audition_scope="track",
+        request_text="make a quick audition",
+        target_mode="query",
+        target_query="bass",
+    )
+    brief_id = context["orchestration_submission"]["brief"]["brief_id"]
+
+    blocked = delete_cockpit_brief(ctx, brief_id=brief_id)
+
+    assert blocked["brief_delete"]["status"] == "blocked"
+    assert blocked["brief_delete"]["reason"] == "active_work"
+    assert blocked["brief_delete"]["active_work"][0]["kind"] == "job"
+    assert blocked["briefs"][0]["brief_id"] == brief_id
+    assert blocked["briefs"][0]["hidden"] is False
+
+
 def test_brief_dispatch_prompt_links_and_stamp_round_trip(
     tmp_path,
     monkeypatch,

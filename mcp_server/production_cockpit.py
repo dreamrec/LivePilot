@@ -2815,10 +2815,55 @@ def adopt_cockpit_memory(ctx: Context, project_id: str) -> dict:
 def delete_cockpit_brief(ctx: Context, brief_id: str) -> dict:
     """Hide test-junk briefs with an append-only tombstone."""
     session_info = _require_session_info(ctx)
+    brief_id = str(brief_id or "").strip()
+    orchestration_state = _orchestration_state_for_briefs(ctx, session_info)
+    listing = _brief_service(ctx).list_briefs(
+        session_info,
+        limit=100,
+        orchestration_state=orchestration_state,
+    )
+    current = next(
+        (
+            brief for brief in listing.get("briefs") or []
+            if brief.get("brief_id") == brief_id
+        ),
+        None,
+    )
+    active_work = _active_brief_work(current or {})
+    if active_work:
+        context = _build_context(ctx, include_history=False)
+        context["brief_delete"] = {
+            "status": "blocked",
+            "brief_id": brief_id,
+            "reason": "active_work",
+            "message": (
+                "Cancel, finish, or archive queued/running Ableton work before "
+                "deleting this brief."
+            ),
+            "active_work": active_work,
+        }
+        context["_http_status"] = 409
+        return context
     result = _brief_service(ctx).delete_brief(session_info, brief_id)
     context = _build_context(ctx, include_history=False)
     context["brief_delete"] = result
     return context
+
+
+def _active_brief_work(brief: dict) -> list[dict]:
+    active_statuses = {"queued", "running", "awaiting_decision"}
+    active = []
+    for job in brief.get("related_jobs") or []:
+        status = str(job.get("status") or "").strip().lower()
+        if status not in active_statuses:
+            continue
+        active.append({
+            "kind": "job",
+            "id": job.get("job_id", ""),
+            "status": status,
+            "label": job.get("title") or job.get("job_type") or "job",
+        })
+    return active
 
 
 def _find_context_brief(context: dict, brief_id: str) -> dict:

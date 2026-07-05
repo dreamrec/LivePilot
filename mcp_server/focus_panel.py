@@ -1044,7 +1044,9 @@ class _FocusPanelHandler(BaseHTTPRequestHandler):
                 return
             if path == "/api/cockpit/briefs/delete":
                 payload = self._read_json_body()
-                self._send_json(self.server.panel.delete_cockpit_brief_payload(payload))
+                self._send_panel_payload(
+                    self.server.panel.delete_cockpit_brief_payload(payload)
+                )
                 return
             if path == "/api/cockpit/adopt-memory":
                 payload = self._read_json_body()
