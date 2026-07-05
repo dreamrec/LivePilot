@@ -997,7 +997,9 @@ def test_archive_cockpit_brief_marks_abandoned_without_revision_bump(
 
     compat = delete_cockpit_brief(ctx, brief_id=brief_id)
 
-    assert compat["briefs"][0]["status"] == "abandoned"
+    assert compat["brief_delete"]["brief"]["hidden"] is True
+    assert compat["brief_delete"]["brief"]["outcome"]["status"] == "deleted"
+    assert compat["briefs"] == []
 
 
 def test_brief_dispatch_prompt_links_and_stamp_round_trip(

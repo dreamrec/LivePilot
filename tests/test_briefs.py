@@ -308,10 +308,6 @@ def test_brief_outcome_overrides_queue_derived_status(tmp_path):
     assert listed["outcome"]["summary"] == "Kept the guitar edge."
 
 
-@pytest.mark.xfail(
-    reason="Phase 0 regression: brief delete still archives/removes instead of tombstoning",
-    strict=True,
-)
 def test_brief_delete_tombstones_without_breaking_lineage(tmp_path):
     service = BriefService(base_dir=tmp_path)
     session = _session([_track(0, "drums")])
@@ -341,10 +337,6 @@ def test_brief_delete_tombstones_without_breaking_lineage(tmp_path):
     assert child["parent_brief_id"] == parent["brief_id"]
 
 
-@pytest.mark.xfail(
-    reason="Phase 0 regression: no-op brief completion currently bumps project_revision",
-    strict=True,
-)
 def test_noop_completion_does_not_stale_proposals(tmp_path, monkeypatch):
     monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
     ctx = _ctx(tmp_path, _session([_track(0, "el-guit-intro")]))

@@ -908,6 +908,7 @@
           ${archiveFirst ? `<button class="soft brief-action danger" data-action="archive" data-brief-id="${escapeHtml(brief.brief_id || "")}">Archive</button>` : ""}
           <button class="soft brief-action" data-action="rerun" data-brief-id="${escapeHtml(brief.brief_id || "")}">Re-run</button>
           ${archiveFirst ? "" : `<button class="soft brief-action danger" data-action="archive" data-brief-id="${escapeHtml(brief.brief_id || "")}">Archive</button>`}
+          <button class="soft brief-action danger" data-action="delete" data-brief-id="${escapeHtml(brief.brief_id || "")}">Delete</button>
         </span>
       ` : "";
       const dispatchActions = !options.pending ? `
@@ -915,6 +916,7 @@
           <a class="link-button brief-dispatch" href="${escapeHtml(dispatchHref)}" data-action="open_codex" data-brief-id="${escapeHtml(brief.brief_id || "")}">New Codex thread</a>
           ${workingHref ? `<a class="link-button brief-dispatch" href="${escapeHtml(workingHref)}" data-action="open_working_thread" data-brief-id="${escapeHtml(brief.brief_id || "")}">Open working thread</a>` : ""}
           <button class="soft brief-dispatch" data-action="copy_prompt" data-brief-id="${escapeHtml(brief.brief_id || "")}">Copy prompt</button>
+          <button class="soft brief-action danger" data-action="delete" data-brief-id="${escapeHtml(brief.brief_id || "")}">Delete</button>
         </span>
       ` : "";
       const variantsHtml = variants.length ? `<span>${variants.map(variant => `
@@ -1155,6 +1157,17 @@
       syncControlsFromState();
       render();
       toast("Brief archived");
+    }
+    async function deleteBrief(briefId) {
+      if (!briefId) return;
+      const brief = briefById(briefId) || {};
+      const label = brief.request_text || briefId;
+      if (!window.confirm(`Delete brief "${label}"? This hides test junk but keeps lineage.`)) return;
+      state = await callTool(BACKEND_TOOLS.delete_brief, {brief_id: briefId});
+      selected = selectionFromState();
+      syncControlsFromState();
+      render();
+      toast("Brief deleted");
     }
     async function adoptMemorySuggestion() {
       const suggestion = (state || {}).memory_suggestion || {};
@@ -1565,6 +1578,7 @@
         const briefId = briefButton.dataset.briefId || "";
         if (action === "rerun") rerunBrief(briefId);
         if (action === "archive") archiveBrief(briefId);
+        if (action === "delete") deleteBrief(briefId);
         return;
       }
       const button = event.target.closest("button.audition-action");

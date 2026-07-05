@@ -2421,17 +2421,19 @@ def complete_cockpit_brief(
         learnings_count=successful_count,
     )
     _brief_service(ctx).stamp_reader(session_info, "complete_cockpit_brief")
-    revision = _orchestration_service(ctx).store_for_session(
-        session_info
-    ).increment_revision(
-        reason="brief_completed",
-        source_id=str(brief_id or ""),
-        metadata={
-            "outcome": outcome.get("brief", {}).get("outcome") or {},
-            "successful_learning_count": successful_count,
-            "failed_learning_count": len(learning_results) - successful_count,
-        },
-    )
+    orchestration_store = _orchestration_service(ctx).store_for_session(session_info)
+    if successful_count > 0:
+        revision_number = orchestration_store.increment_revision(
+            reason="brief_completed",
+            source_id=str(brief_id or ""),
+            metadata={
+                "outcome": outcome.get("brief", {}).get("outcome") or {},
+                "successful_learning_count": successful_count,
+                "failed_learning_count": len(learning_results) - successful_count,
+            },
+        ).get("project_revision")
+    else:
+        revision_number = orchestration_store.get_revision()
     context = _build_context(ctx, include_history=False)
     return {
         "status": "ok",
@@ -2441,7 +2443,7 @@ def complete_cockpit_brief(
             annotation_id for annotation_id in successful_annotations
             if annotation_id
         ],
-        "orchestration_revision": revision.get("project_revision"),
+        "orchestration_revision": revision_number,
         "context": context,
     }
 
@@ -2749,8 +2751,8 @@ def archive_cockpit_brief(ctx: Context, brief_id: str) -> dict:
 
     This browser action is a producer inbox cleanup: it marks the brief as
     abandoned, but it does not mean the song changed. Codex-side
-    complete_cockpit_brief still increments revision because it records finished
-    work and song-memory learnings.
+    complete_cockpit_brief increments revision only when it records song-memory
+    learnings.
     """
     session_info = _require_session_info(ctx)
     result = _brief_service(ctx).complete_brief(
@@ -2811,8 +2813,12 @@ def adopt_cockpit_memory(ctx: Context, project_id: str) -> dict:
 
 
 def delete_cockpit_brief(ctx: Context, brief_id: str) -> dict:
-    """Backward-compatible browser action; archives because briefs are durable."""
-    return archive_cockpit_brief(ctx, brief_id)
+    """Hide test-junk briefs with an append-only tombstone."""
+    session_info = _require_session_info(ctx)
+    result = _brief_service(ctx).delete_brief(session_info, brief_id)
+    context = _build_context(ctx, include_history=False)
+    context["brief_delete"] = result
+    return context
 
 
 def _find_context_brief(context: dict, brief_id: str) -> dict:

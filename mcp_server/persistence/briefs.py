@@ -23,9 +23,10 @@ _STATUS_ORDER = [
     "awaiting_decision",
     "done",
     "abandoned",
+    "deleted",
     "failed",
 ]
-_TERMINAL_OUTCOME_STATUSES = {"done", "abandoned"}
+_TERMINAL_OUTCOME_STATUSES = {"done", "abandoned", "deleted"}
 
 
 class BriefService:
@@ -90,13 +91,15 @@ class BriefService:
 
     def delete_brief(self, session_info: dict, brief_id: str) -> dict:
         store = self.store_for_session(session_info)
-        deleted = store.delete_brief(brief_id)
+        brief = store.delete_brief(brief_id)
+        deleted = bool(brief)
         return {
             "status": "ok",
             "project_id": store.project_id,
             "store_path": str(store.briefs_path),
             "brief_id": str(brief_id or "").strip(),
             "deleted": deleted,
+            "brief": brief,
         }
 
     def record_dispatch(
@@ -235,8 +238,11 @@ class BriefStore:
             else self._brief_default()
         )
 
-    def list_briefs(self) -> list[dict]:
-        return list(self.get_all().get("briefs") or [])
+    def list_briefs(self, *, include_hidden: bool = False) -> list[dict]:
+        items = list(self.get_all().get("briefs") or [])
+        if include_hidden:
+            return items
+        return [item for item in items if not item.get("hidden")]
 
     def create_brief(self, brief: dict) -> dict:
         now = _now_ms()
@@ -294,28 +300,35 @@ class BriefStore:
         data = self._briefs.update(_update)
         return _find_brief(data, brief_id)
 
-    def delete_brief(self, brief_id: str) -> bool:
+    def delete_brief(self, brief_id: str) -> Optional[dict]:
         brief_id = str(brief_id or "").strip()
         if not brief_id:
-            return False
+            return None
+        now = _now_ms()
 
         def _update(data: dict) -> dict:
             data = (
                 data if data.get("version") == _BRIEF_STORE_VERSION
                 else self._brief_default()
             )
-            before = len(data.get("briefs") or [])
-            data["briefs"] = [
-                item for item in (data.get("briefs") or [])
-                if item.get("brief_id") != brief_id
-            ]
-            if len(data["briefs"]) != before:
-                data["last_updated_ms"] = _now_ms()
-            return data
+            for item in data.get("briefs", []):
+                if item.get("brief_id") != brief_id:
+                    continue
+                item["hidden"] = True
+                item["deleted_at_ms"] = now
+                item["outcome"] = {
+                    "status": "deleted",
+                    "at_ms": now,
+                    "summary": "deleted from cockpit",
+                    "learnings_count": 0,
+                }
+                item["updated_at_ms"] = now
+                data["last_updated_ms"] = now
+                return data
+            raise KeyError(f"brief_id not found: {brief_id}")
 
-        before = len(self.list_briefs())
-        self._briefs.update(_update)
-        return len(self.list_briefs()) != before
+        data = self._briefs.update(_update)
+        return _find_brief(data, brief_id)
 
     def record_dispatch(
         self,
@@ -608,6 +621,12 @@ def _normalize_brief(brief: dict, *, now: int, seq: int) -> dict:
         item["outcome"] = outcome
     else:
         item.pop("outcome", None)
+    item["hidden"] = bool(item.get("hidden"))
+    if item.get("deleted_at_ms") is not None:
+        try:
+            item["deleted_at_ms"] = int(item.get("deleted_at_ms") or 0)
+        except (TypeError, ValueError):
+            item.pop("deleted_at_ms", None)
     item.setdefault("created_at_ms", now)
     item["created_at_ms"] = int(item.get("created_at_ms") or now)
     item["updated_at_ms"] = now
@@ -703,7 +722,7 @@ def _normalize_outcome_status(value: str) -> str:
     status = str(value or "").strip().lower()
     if status in _TERMINAL_OUTCOME_STATUSES:
         return status
-    raise ValueError("brief outcome status must be 'done' or 'abandoned'")
+    raise ValueError("brief outcome status must be 'done', 'abandoned', or 'deleted'")
 
 
 def _normalize_outcome(value) -> Optional[dict]:
