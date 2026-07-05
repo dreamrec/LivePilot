@@ -347,6 +347,42 @@ def _briefs_with_dispatch_actions(
     return out
 
 
+def _partition_briefs_for_session(
+    briefs: list[dict],
+    session_info: dict,
+) -> dict:
+    current: list[dict] = []
+    stale: list[dict] = []
+    unresolved = 0
+    foreign = 0
+    degraded = 0
+    for brief in briefs:
+        if not isinstance(brief, dict):
+            continue
+        aim = _brief_aim_status(brief, session_info)
+        item = dict(brief)
+        item["aim_status"] = aim
+        status = str(aim.get("status") or "")
+        if status == "foreign_set":
+            foreign += 1
+            stale.append(item)
+            continue
+        if status == "unresolved":
+            unresolved += 1
+            stale.append(item)
+            continue
+        if status == "degraded":
+            degraded += 1
+        current.append(item)
+    return {
+        "current": current,
+        "stale": stale,
+        "foreign_count": foreign,
+        "unresolved_count": unresolved,
+        "degraded_count": degraded,
+    }
+
+
 def _brief_aim_status(brief: dict, session_info: dict) -> dict:
     digest = brief.get("context_digest") if isinstance(brief.get("context_digest"), dict) else {}
     refs = [ref for ref in (digest.get("track_refs") or []) if isinstance(ref, dict)]
@@ -712,6 +748,27 @@ def _build_layer_groups(
         by_key.values(),
         key=lambda item: str(item.get("label") or "").lower(),
     )
+
+
+def _partition_layer_groups(groups: list[dict]) -> dict:
+    current: list[dict] = []
+    stale: list[dict] = []
+    unresolved_members = 0
+    for group in groups:
+        if not isinstance(group, dict):
+            continue
+        unresolved = int(group.get("unresolved_count") or 0)
+        count = int(group.get("count") or 0)
+        unresolved_members += unresolved
+        if count <= 0 and unresolved > 0:
+            stale.append(group)
+            continue
+        current.append(group)
+    return {
+        "current": current,
+        "stale": stale,
+        "unresolved_member_count": unresolved_members,
+    }
 
 
 def _annotation_layer_groups(tracks: list[dict]) -> list[dict]:
@@ -1524,10 +1581,12 @@ def _build_context(
     production_state = production_context.get("state") or {}
     track_groups = _build_track_groups(tracks)
     layer_result = _layer_group_service(ctx).list_groups(session_info)
-    layer_groups = _build_layer_groups(
+    all_layer_groups = _build_layer_groups(
         tracks,
         layer_result.get("layer_groups") or [],
     )
+    layer_partition = _partition_layer_groups(all_layer_groups)
+    layer_groups = layer_partition["current"]
     target = _target_context(
         production_state,
         tracks,
@@ -1549,6 +1608,34 @@ def _build_context(
     working_thread_status = _working_thread_status(
         production_state.get("working_thread")
     )
+    brief_partition = _partition_briefs_for_session(
+        brief_state.get("briefs", []),
+        session_info,
+    )
+    current_briefs = _briefs_with_dispatch_actions(
+        brief_partition["current"],
+        session_info=session_info,
+        production_state=production_state,
+        working_thread_status=working_thread_status,
+    )
+    stale_briefs = _briefs_with_dispatch_actions(
+        brief_partition["stale"],
+        session_info=session_info,
+        production_state=production_state,
+        working_thread_status=working_thread_status,
+    )
+    memory_health = {
+        "briefs_count": len(current_briefs),
+        "foreign_or_unresolved_briefs": (
+            int(brief_partition["foreign_count"])
+            + int(brief_partition["unresolved_count"])
+        ),
+        "degraded_briefs": int(brief_partition["degraded_count"]),
+        "annotation_warnings": len(intent_map.get("warnings") or []),
+        "layer_groups_count": len(layer_groups),
+        "stale_layer_groups": len(layer_partition["stale"]),
+        "unresolved_layer_members": int(layer_partition["unresolved_member_count"]),
+    }
     production_context = dict(production_context)
     production_context["working_thread_status"] = working_thread_status
     payload = {
@@ -1577,17 +1664,18 @@ def _build_context(
         "track_groups": track_groups,
         "layer_groups": layer_groups,
         "section_map": section_map,
+        "memory_health": memory_health,
+        "stale_memory": {
+            "briefs": stale_briefs,
+            "layer_groups": layer_partition["stale"],
+        },
         "capabilities": _cockpit_capabilities(ctx),
         "memory_suggestion": annotation_memory_suggestion_for_session(session_info),
         "dispatch": _codex_dispatch_base(),
         "completion_contract": _BRIEF_COMPLETION_CONTRACT,
-        "briefs": _briefs_with_dispatch_actions(
-            brief_state.get("briefs", []),
-            session_info=session_info,
-            production_state=production_state,
-            working_thread_status=working_thread_status,
-        ),
-        "brief_count": brief_state.get("brief_count", 0),
+        "briefs": current_briefs,
+        "brief_count": len(current_briefs),
+        "all_brief_count": brief_state.get("brief_count", 0),
         "captured_thread": captured_thread,
         "codex_last_read_ms": brief_state.get("codex_last_read_ms", 0),
         "orchestration": orchestration,
@@ -2178,12 +2266,30 @@ def list_cockpit_briefs(
     result["dispatch"] = _codex_dispatch_base()
     result["completion_contract"] = _BRIEF_COMPLETION_CONTRACT
     result["working_thread_status"] = working_thread_status
+    partition = _partition_briefs_for_session(result.get("briefs", []), session_info)
     result["briefs"] = _briefs_with_dispatch_actions(
-        result.get("briefs", []),
+        partition["current"],
         session_info=session_info,
         production_state=production_state,
         working_thread_status=working_thread_status,
     )
+    result["stale_briefs"] = _briefs_with_dispatch_actions(
+        partition["stale"],
+        session_info=session_info,
+        production_state=production_state,
+        working_thread_status=working_thread_status,
+    )
+    result["brief_count"] = len(result["briefs"])
+    result["all_brief_count"] = (
+        len(result["briefs"]) + len(result["stale_briefs"])
+    )
+    result["memory_health"] = {
+        "briefs_count": len(result["briefs"]),
+        "foreign_or_unresolved_briefs": (
+            int(partition["foreign_count"]) + int(partition["unresolved_count"])
+        ),
+        "degraded_briefs": int(partition["degraded_count"]),
+    }
     return result
 
 

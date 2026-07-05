@@ -404,10 +404,25 @@ def test_cockpit_store_defined_layer_can_be_targeted(tmp_path, monkeypatch):
     assert context["summary"]["target_track_names"] == ["lead vox", "harm vox"]
 
 
-@pytest.mark.xfail(
-    reason="Phase 0 regression: foreign saved-path briefs still render as normal current work",
-    strict=True,
-)
+def test_unresolved_store_layer_is_stale_not_normal_layer_chip(tmp_path, monkeypatch):
+    monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
+    original = _session([
+        {"index": 0, "name": "vanished pad", "color_index": 7, "has_midi_input": True},
+    ]) | {"project_identity": {"file_path": "/tmp/current-song.als"}}
+    ctx = _ctx(tmp_path, original)
+    save_cockpit_layer_group(ctx, label="Old Pad", track_indices=[0])
+
+    ctx.lifespan_context["ableton"].session_info = _session([
+        {"index": 0, "name": "drums", "color_index": 1, "has_audio_input": True},
+    ]) | {"project_identity": {"file_path": "/tmp/current-song.als"}}
+
+    context = get_production_context(ctx)
+
+    assert "old_pad" not in {group["key"] for group in context["layer_groups"]}
+    assert context["stale_memory"]["layer_groups"][0]["key"] == "old_pad"
+    assert context["memory_health"]["stale_layer_groups"] == 1
+
+
 def test_foreign_set_brief_is_not_normal_current_pending_work(tmp_path, monkeypatch):
     monkeypatch.setattr(annotation_store, "_PROJECTS_DIR", tmp_path)
     session = _session([
@@ -842,10 +857,12 @@ def test_brief_aim_status_reports_degraded_and_foreign_set(
         },
     )
 
-    foreign = list_cockpit_briefs(ctx)["briefs"][0]["aim_status"]
+    brief_listing = list_cockpit_briefs(ctx)
+    foreign = brief_listing["stale_briefs"][0]["aim_status"]
 
     assert foreign["status"] == "foreign_set"
     assert foreign["label"] == "Other Song"
+    assert brief_listing["briefs"][0]["aim_status"]["status"] == "degraded"
 
 
 def test_rerun_brief_prefills_resolved_aim_and_child_lineage(
