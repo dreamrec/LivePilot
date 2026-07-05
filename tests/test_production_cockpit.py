@@ -1493,6 +1493,8 @@ def test_intent_first_cockpit_renders_http_backend_contract():
     assert "(inferred)" in html
     assert "Section: ${" in html
     assert "Song Sections" in html
+    assert "fetch(\"/api/session\")" in html
+    assert "analyzer ${analyzer}" in html
     assert "id=\"songStrip\"" in html
     assert "id=\"sectionRow\"" not in html
     assert "async function chooseSection(sectionId)" in html

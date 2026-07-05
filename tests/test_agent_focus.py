@@ -310,7 +310,7 @@ def test_focus_panel_http_api_sets_focus():
                 body = json.loads(response.read().decode("utf-8"))
 
             assert body["focus"]["label"] == "intro"
-            assert body["tracks"][1]["focused"] is True
+            assert body["focus"]["track_indices"] == [1]
 
             with request.urlopen(url + "api/cockpit/briefs", timeout=5) as response:
                 body = json.loads(response.read().decode("utf-8"))
@@ -321,10 +321,6 @@ def test_focus_panel_http_api_sets_focus():
             panel.stop()
 
 
-@pytest.mark.xfail(
-    reason="Phase 0 regression: /api/session is still v1 and lacks readiness fields",
-    strict=True,
-)
 def test_focus_panel_session_v2_readiness_payload(monkeypatch):
     with tempfile.TemporaryDirectory() as directory:
         base = Path(directory)

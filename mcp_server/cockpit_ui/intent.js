@@ -30,6 +30,7 @@
     let targetModeDraft = "instrument";
     let targetModeUserOverride = false;
     let rerunDraft = null;
+    let sessionReadiness = null;
 
     function setStatus(text) {
       $("#status").textContent = text;
@@ -337,6 +338,7 @@
         setStatus("Refreshing");
         const keepPickerMode = state ? pickerMode() : "";
         state = await callTool(BACKEND_TOOLS.get_state);
+        sessionReadiness = await fetchSessionReadiness();
         selected = selectionFromState();
         targetModeDraft = pickerModeAfterRefresh(keepPickerMode);
         syncControlsFromState();
@@ -360,6 +362,7 @@
         }
         const keepPickerMode = state ? pickerMode() : "";
         state = body;
+        sessionReadiness = await fetchSessionReadiness();
         selected = selectionFromState(body);
         targetModeDraft = pickerModeAfterRefresh(keepPickerMode);
         syncControlsFromState();
@@ -369,6 +372,16 @@
       } catch (error) {
         setStatus(error.message || String(error));
         toast("Snapshot not refreshed");
+      }
+    }
+    async function fetchSessionReadiness() {
+      if (!HTTP_REFRESH_AVAILABLE) return sessionReadiness;
+      try {
+        const response = await fetch("/api/session");
+        if (!response.ok) return sessionReadiness;
+        return await response.json();
+      } catch (_error) {
+        return sessionReadiness;
       }
     }
 
@@ -434,8 +447,22 @@
       const project = compactId(projectId());
       const codex = Number((state || {}).codex_last_read_ms || 0);
       const codexText = codex ? `Codex ${formatAge(Date.now() - codex)}` : "Codex never";
-      $("#sessionPill").textContent = `${tempo} - ${count} tracks - ${project}${source ? " - " + source : ""} - ${codexText}`;
+      const ready = readinessText();
+      $("#sessionPill").textContent = `${tempo} - ${count} tracks - ${project}${source ? " - " + source : ""}${ready ? " - " + ready : ""} - ${codexText}`;
       $("#refreshLive").style.display = HTTP_REFRESH_AVAILABLE ? "" : "none";
+    }
+    function readinessText() {
+      const readiness = sessionReadiness || {};
+      const analyzer = (readiness.analyzer || {}).status || "";
+      const memory = readiness.memory_health || {};
+      const warningCount = Number(memory.foreign_or_unresolved_briefs || 0) +
+        Number(memory.annotation_warnings || 0) +
+        Number(memory.stale_layer_groups || 0) +
+        Number(memory.unresolved_layer_members || 0);
+      return [
+        analyzer ? `analyzer ${analyzer}` : "",
+        warningCount ? `memory ${warningCount}` : ""
+      ].filter(Boolean).join(" - ");
     }
     function sessionSourceLabel() {
       const source = (state || {}).session_source || "";

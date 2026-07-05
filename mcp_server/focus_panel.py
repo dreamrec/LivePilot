@@ -45,6 +45,93 @@ def _float_or_none(value) -> Optional[float]:
         return None
 
 
+def _bounded_session_tracks(session_info: dict) -> list[dict]:
+    tracks = []
+    for track in session_info.get("tracks") or []:
+        if not isinstance(track, dict):
+            continue
+        tracks.append({
+            "index": track.get("index"),
+            "name": track.get("name", ""),
+        })
+    return tracks
+
+
+def _session_project_identity(session_info: dict) -> dict:
+    identity = session_info.get("project_identity")
+    if not isinstance(identity, dict):
+        identity = {}
+    name = ""
+    for key in ("name", "project_name", "set_name", "live_set_name"):
+        name = str(identity.get(key) or session_info.get(key) or "").strip()
+        if name:
+            break
+    file_path = ""
+    for key in ("file_path", "path", "project_path", "set_path", "live_set_path"):
+        file_path = str(identity.get(key) or session_info.get(key) or "").strip()
+        if file_path:
+            break
+    return {
+        "name": name,
+        "file_path": file_path,
+        "track_count": int(
+            session_info.get("track_count")
+            or len(session_info.get("tracks") or [])
+        ),
+    }
+
+
+def _session_store_paths(production_context: dict) -> dict:
+    store_path = str(production_context.get("store_path") or "").strip()
+    if not store_path:
+        return {}
+    try:
+        project_dir = os.path.dirname(store_path)
+        return {
+            "project": os.path.join(project_dir, "project.json"),
+            "production_context": store_path,
+        }
+    except Exception:
+        return {"production_context": store_path}
+
+
+def _session_analyzer_payload(session_info: dict, *, live: bool) -> dict:
+    raw = str(
+        session_info.get("analyzer_status")
+        or session_info.get("m4l_analyzer_status")
+        or ""
+    ).strip().lower()
+    allowed = {
+        "online",
+        "offline",
+        "stale",
+        "missing_device",
+        "not_last",
+        "bridge_unavailable",
+    }
+    status = raw if raw in allowed else ("offline" if live else "bridge_unavailable")
+    last_seen = (
+        session_info.get("analyzer_last_seen_ms")
+        or session_info.get("m4l_last_seen_ms")
+    )
+    return {
+        "status": status,
+        "last_seen_ms": last_seen,
+        "message": _analyzer_message(status),
+    }
+
+
+def _analyzer_message(status: str) -> str:
+    return {
+        "online": "Analyzer online",
+        "offline": "Analyzer offline",
+        "stale": "Analyzer data stale",
+        "missing_device": "Analyzer device missing",
+        "not_last": "Analyzer is not last on master",
+        "bridge_unavailable": "Analyzer bridge unavailable",
+    }.get(status, "Analyzer status unknown")
+
+
 class FocusPanelServer:
     """Small localhost HTTP server for the focus panel."""
 
@@ -127,28 +214,53 @@ class FocusPanelServer:
     def get_session_payload(self) -> dict:
         session_info, session_meta = self._session_info_with_meta()
         focus = self.focus_service.get_focus(session_info)
-        focused = set(focus.get("focus", {}).get("track_indices") or [])
-        tracks = []
-        for track in session_info.get("tracks") or []:
-            if not isinstance(track, dict):
-                continue
-            entry = {
-                "index": track.get("index"),
-                "name": track.get("name", ""),
-                "color_index": track.get("color_index"),
-                "mute": track.get("mute"),
-                "solo": track.get("solo"),
-                "arm": track.get("arm"),
-                "has_midi_input": track.get("has_midi_input"),
-                "has_audio_input": track.get("has_audio_input"),
-            }
-            entry["focused"] = entry["index"] in focused
-            tracks.append(entry)
+        context = self.get_cockpit_payload()
+        section_map = context.get("section_map") or {}
+        memory_health = context.get("memory_health") or {}
+        production_context = context.get("production_context") or {}
+        identity = _session_project_identity(session_info)
         return {
             "status": "ok",
+            "contract_version": 2,
             "tempo": session_info.get("tempo"),
             "track_count": session_info.get("track_count"),
-            "tracks": tracks,
+            "project_id": context.get("project_id") or session_meta.get("project_id"),
+            "project_identity": identity,
+            "store_paths": _session_store_paths(production_context),
+            "transport": {
+                "is_playing": bool(session_info.get("is_playing")),
+                "current_song_time": (
+                    session_info.get("current_song_time")
+                    if session_info.get("current_song_time") is not None
+                    else session_info.get("current_time")
+                ),
+                "loop": bool(session_info.get("loop")),
+                "loop_start": session_info.get("loop_start"),
+                "loop_length": session_info.get("loop_length"),
+                "arrangement_override": bool(session_info.get("arrangement_override")),
+            },
+            "section_map": {
+                "source": section_map.get("source", "none"),
+                "source_label": section_map.get("source_label", ""),
+                "current_section_id": section_map.get("current_section_id", ""),
+                "sections_count": len(section_map.get("sections") or []),
+            },
+            "analyzer": _session_analyzer_payload(session_info, live=self._is_live_mode()),
+            "memory_health": {
+                "briefs_count": int(memory_health.get("briefs_count") or 0),
+                "foreign_or_unresolved_briefs": int(
+                    memory_health.get("foreign_or_unresolved_briefs") or 0
+                ),
+                "annotation_warnings": int(
+                    memory_health.get("annotation_warnings") or 0
+                ),
+                "layer_groups_count": int(memory_health.get("layer_groups_count") or 0),
+                "stale_layer_groups": int(memory_health.get("stale_layer_groups") or 0),
+                "unresolved_layer_members": int(
+                    memory_health.get("unresolved_layer_members") or 0
+                ),
+            },
+            "tracks": _bounded_session_tracks(session_info),
             "focus": focus.get("focus"),
             "focus_panel_url": self.url,
             "session_source": session_meta.get("source"),
