@@ -1,4 +1,4 @@
-"""Verify all 467 MCP tools are registered (v1.27: +2 runtime capability-probe tools)."""
+"""Verify all 469 MCP tools are registered (v1.28: +2 listening tools)."""
 
 import asyncio
 import sys
@@ -631,7 +631,15 @@ def test_control_surfaces_tools_registered():
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 467, f"Expected 467 tools, got {len(tools)}"
+    assert len(tools) == 469, f"Expected 469 tools, got {len(tools)}"
+
+
+def test_listening_tools_registered():
+    """v1.28: Listening Engine — offline perceptual analysis of captures."""
+    names = _get_tool_names()
+    expected = {"listen_capture", "listen_ab"}
+    missing = expected - names
+    assert not missing, f"Missing listening tools: {missing}"
 
 
 def test_grader_tools_registered():

@@ -1,5 +1,29 @@
 # Changelog
 
+## Unreleased
+
+### Added — Listening Engine (new `listening` domain, 469 tools / 57 domains)
+- `listen_capture(file, bpm, seconds)` — full offline perceptual report for a
+  master-bus capture: Parseval-calibrated 9-band spectrum, integrated LUFS /
+  true peak / loudness range, transient character, groove microtiming (~4 ms
+  resolution, multi-candidate grid division), stereo width + bass-mono check,
+  per-band loudness movement, technical polish (clipping/DC/headroom).
+- `listen_ab(before_file, after_file, bpm, seconds)` — empirical before/after
+  comparison of two captures; returns dimension deltas, significant feature
+  changes ranked above measurement-noise thresholds, and canonical snapshots
+  consumable directly by `evaluate_move` for numeric keep/undo verdicts.
+- Canonical dimensions are computed by the evaluation stack's own
+  `extract_dimension_value` (parity by construction); extended measurements
+  use non-canonical names (`width`, `polish`, `motion_cv`, `groove_tightness`).
+- Ground-truth test suite (`tests/test_listening_engine.py`) using synthetic
+  signals with known properties; engine hardened by adversarial review
+  (band calibration, onset-latency bias, grid aliasing, silence/short-input
+  edge cases, LUFS flooring).
+- Verified live end-to-end (2026-07-30): capture → move → capture →
+  `listen_ab` → `evaluate_move` produced correct keep and undo verdicts from
+  rendered audio evidence.
+- New dependency: `librosa>=0.10`.
+
 ## v1.27.3 — 2026-07-10
 
 Deep-review remediation campaign (2026-07-09, on top of the 2026-06-24 fix batch): event-loop

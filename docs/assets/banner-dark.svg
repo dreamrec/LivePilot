@@ -30,6 +30,6 @@
 
   <!-- Stats -->
   <text x="285" y="175" text-anchor="middle" font-family="'SF Mono', 'Fira Code', monospace" font-size="9" font-weight="600" letter-spacing="2" fill="#555555">467 TOOLS</text>
-  <text x="400" y="175" text-anchor="middle" font-family="'SF Mono', 'Fira Code', monospace" font-size="9" font-weight="600" letter-spacing="2" fill="#555555">56 DOMAINS</text>
+  <text x="400" y="175" text-anchor="middle" font-family="'SF Mono', 'Fira Code', monospace" font-size="9" font-weight="600" letter-spacing="2" fill="#555555">57 DOMAINS</text>
   <text x="520" y="175" text-anchor="middle" font-family="'SF Mono', 'Fira Code', monospace" font-size="9" font-weight="600" letter-spacing="2" fill="#555555">3 LAYERS</text>
 </svg>

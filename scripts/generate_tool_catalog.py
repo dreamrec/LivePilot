@@ -98,6 +98,7 @@ DOMAIN_LAYER = {
     "midi_io": 1, "miditool": 1,
 
     "analyzer": 2, "perception": 2, "diagnostics": 2, "evaluation": 2,
+    "listening": 2,
 
     "sample_engine": 3, "hook_hunter": 3, "atlas": 3, "agent_os": 3,
     "session_continuity": 3, "musical_intelligence": 3, "mix_engine": 3,
@@ -147,6 +148,7 @@ DOMAIN_SCOPE = {
     "perception": "Offline loudness, spectral analysis, reference comparison, metadata",
     "diagnostics": "Device/session health verification, test-note fire-and-forget",
     "evaluation": "Before/after evaluation with structured scoring",
+    "listening": "Offline perceptual analysis of master-bus captures — `listen_capture` full report, `listen_ab` before/after comparison with evaluate_move-ready snapshots (v1.28+)",
 
     "sample_engine": "Multi-source search (Splice gRPC + browser + filesystem), Splice catalog hunt, downloads, previews, pack info, collections, presets, describe-a-sound (LIVE), variations (LIVE), http-diagnose (v1.17+)",
     "hook_hunter": "Hook detection, salience scoring, neglect detection, phrase impact",

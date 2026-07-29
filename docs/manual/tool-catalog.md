@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog (Generated)
 
-467 tools across 56 domains.
+469 tools across 57 domains.
 
 > Auto-generated from `mcp.list_tools()`. Do not hand-edit.
 > Regenerate: `python3 scripts/generate_tool_catalog.py`
@@ -25,7 +25,7 @@
 
 | Tool | Description |
 |------|-------------|
-| `add_drum_rack_pad` | Add a new pad (chain) to a Drum Rack and load a sample into it. |
+| `add_drum_rack_pad` | Add a new pad (chain) to a Drum Rack and load a sample into it — atomic. |
 | `add_warp_marker` | Add a warp marker to an audio clip at the specified beat position. |
 | `analyze_loudness_live` | Analyze the currently-playing master output's loudness over a window (LIVE). |
 | `capture_audio` | Capture audio from Ableton Live to a WAV file on disk. |
@@ -42,7 +42,7 @@
 | `get_display_values` | Get human-readable display values for all device parameters. |
 | `get_hidden_parameters` | Get ALL parameters for a device, including hidden ones not accessible |
 | `get_master_rms` | Get real-time RMS and peak levels from the master bus. |
-| `get_master_spectrum` | Get 9-band frequency analysis of the master bus. |
+| `get_master_spectrum` | Get 9-band frequency analysis of the master bus. Values 0.0-1.0. |
 | `get_mel_spectrum` | Get 40-band mel spectrum from FluCoMa (5x resolution of get_master_spectrum). |
 | `get_momentary_loudness` | Get EBU R128 momentary LUFS + true peak from FluCoMa. |
 | `get_novelty` | Get real-time spectral novelty for section boundary detection from FluCoMa. |
@@ -99,7 +99,7 @@
 | `atlas_compare` | Compare two devices — strengths, weaknesses, and recommendation for a role. |
 | `atlas_cross_pack_chain` | Execute a cross-pack signature recipe step-by-step (Pack-Atlas Phase F). |
 | `atlas_demo_story` | Generate a track-by-track narrative + production-sequence for a demo .als (Pack-Atlas Phase E). |
-| `atlas_describe_chain` | Free-text describe-a-chain: "a granular pad that sounds like Tim Hecker" |
+| `atlas_describe_chain` | Free-text describe-a-chain: a sentence like "a warm analog bass for |
 | `atlas_device_info` | Get complete atlas knowledge about a device — parameters, recipes, pairings, gotchas. |
 | `atlas_explore` | v1.25 — Refined per-role atlas candidate query (hybrid surface Layer B). |
 | `atlas_extract_chain` | Rebuild a specific demo track's device chain as an executable plan (Pack-Atlas Phase E). |
@@ -356,6 +356,13 @@
 | `rank_hook_candidates` | List and rank all hook candidates in the session. |
 | `score_phrase_impact` | Score a section's emotional impact as a musical phrase. |
 | `suggest_payoff_repair` | Generate repair strategies for detected payoff failures. |
+
+## Listening (2)
+
+| Tool | Description |
+|------|-------------|
+| `listen_ab` | Compare two captures of the same musical span — what actually |
+| `listen_capture` | Full offline perceptual report for one master-bus capture. |
 
 ## Memory (18)
 
@@ -755,4 +762,4 @@
 | `rank_wonder_variants` | Rank wonder-mode variants by taste + identity + novelty + coherence. |
 
 ---
-*Generated from 467 registered tools.*
+*Generated from 469 registered tools.*
