@@ -1,17 +1,21 @@
 """Guard rail on the total MCP ``tools/list`` wire payload.
 
 Every agent session pays the full ``tools/list`` response before its first
-tool call — currently ~467 tools. Tool *descriptions* make up a large
+tool call — currently ~469 tools. Tool *descriptions* make up a large
 share of that payload (long band tables, historical bug narratives,
 multi-example JSON blocks accumulate silently, one docstring at a time).
 
-This test sums the serialized wire form (name + description + input
-schema) of every registered tool and fails if the total exceeds a
-budget ceiling. The ceiling is set ~10% above the payload size as of the
-2026-07 docstring trim pass (see CHANGELOG / the trim commit for the
-before/after numbers) — enough headroom for normal growth (new tools,
-legitimately expanded schemas) without silently re-accumulating the kind
-of bloat that pass removed.
+This test sums the serialized wire form of every registered tool — the
+full ``mcp.types.Tool`` model each one becomes in the ``tools/list``
+response (name, description, inputSchema, outputSchema, ``_meta``) —
+and fails if the total exceeds a budget ceiling. An earlier version
+hand-built the payload from name + description + inputSchema only, which
+undercounted the real wire size by ~9% (FastMCP derives an outputSchema
+for every tool from its return annotation, and attaches a ``_meta``
+envelope). The ceiling is set ~10% above the corrected full-wire
+measurement (2026-07-30, 469 tools) — enough headroom for normal growth
+(new tools, legitimately expanded schemas) without silently
+re-accumulating the kind of bloat the 2026-07 docstring trim removed.
 
 If this test fails because of deliberate, reviewed growth (a new domain
 of tools, a schema that genuinely needs the extra fields), raise
@@ -25,21 +29,19 @@ historical/narrative bulk to a reference file with a one-line pointer).
 
 from __future__ import annotations
 
-import json
 
-
-# ~10% headroom above the total measured immediately after the 2026-07
-# docstring trim pass (467 tools). Raise deliberately; see module docstring.
-_TOTAL_PAYLOAD_BUDGET_BYTES = 368_000
+# ~10% headroom above the full-wire total measured 2026-07-30 (469 tools,
+# 367,699 bytes with outputSchema + _meta included, post capture-pipeline
+# hardening). Raise deliberately; see module docstring.
+_TOTAL_PAYLOAD_BUDGET_BYTES = 404_500
 
 
 def _serialized_tool_size(tool) -> int:
-    payload = {
-        "name": tool.name,
-        "description": getattr(tool, "description", "") or "",
-        "inputSchema": getattr(tool, "parameters", {}) or {},
-    }
-    return len(json.dumps(payload))
+    # to_mcp_tool() yields the mcp.types.Tool pydantic model the server
+    # actually serializes into tools/list; by_alias maps meta -> "_meta"
+    # exactly as the SDK does on the wire.
+    wire_form = tool.to_mcp_tool()
+    return len(wire_form.model_dump_json(by_alias=True, exclude_none=True))
 
 
 def test_total_tool_payload_under_budget():
