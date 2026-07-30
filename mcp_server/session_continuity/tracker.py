@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import threading
 import time
 from typing import Optional
 
@@ -22,26 +23,44 @@ logger = logging.getLogger(__name__)
 
 
 # ── In-memory state ───────────────────────────────────────────────
+#
+# _threads/_turns/_story/_project_store are mutated from both threadpooled
+# sync tools (the session_continuity tool surface) and callers on the event
+# loop (wonder_mode / preview_studio commit paths, the lifespan bind). The
+# highest-risk interleaving: bind_project_store_from_session's merge reads
+# _threads/_turns, merges with disk, then REASSIGNS both — an open_thread /
+# record_turn_resolution landing between the read and the swap was silently
+# discarded. One module-level lock (mirrors preview_studio/engine.py's
+# _preview_sets_lock) held across each logical operation — the whole
+# merge-and-swap, or an append + its store flush — closes that window.
+#
+# Re-entrancy contract: no function below calls another locked function
+# while holding _state_lock. ensure_project_store_bound() releases the lock
+# before delegating to bind_project_store_from_session() (which re-acquires
+# it), so the lock can stay a plain Lock, not an RLock.
 
 _story = SessionStory()
 _threads: dict[str, CreativeThread] = {}
 _turns: list[TurnResolution] = []
 _project_store = None  # Optional PersistentProjectStore
+_state_lock = threading.Lock()
 
 
 def set_project_store(store) -> None:
     """Attach a persistent project store for flush-on-write."""
     global _project_store
-    _project_store = store
+    with _state_lock:
+        _project_store = store
 
 
 def reset_story() -> None:
     """Reset session story (for testing)."""
     global _story, _threads, _turns, _project_store
-    _story = SessionStory()
-    _threads = {}
-    _turns = []
-    _project_store = None
+    with _state_lock:
+        _story = SessionStory()
+        _threads = {}
+        _turns = []
+        _project_store = None
 
 
 def bind_project_store_from_session(session_info: dict) -> Optional[str]:
@@ -77,87 +96,98 @@ def bind_project_store_from_session(session_info: dict) -> Optional[str]:
         logger.debug("bind_project_store_from_session: hash failed: %s", exc)
         return None
 
-    # Already bound to this project? Nothing to do.
-    if _project_store is not None and getattr(_project_store, "project_id", None) == new_id:
-        return new_id
+    # The whole check → open → read → merge → swap → flush sequence runs
+    # under the state lock so a concurrent open_thread()/record_turn_
+    # resolution() can't land between the merge read and the reassignment
+    # (it would be silently discarded by the swap). Store open/read/flush
+    # are small JSON files and bind fires ~once per project, so the hold
+    # time is acceptable.
+    with _state_lock:
+        # Already bound to this project? Nothing to do.
+        if _project_store is not None and getattr(_project_store, "project_id", None) == new_id:
+            return new_id
 
-    try:
-        store = ProjectStore(new_id)
-    except Exception as exc:
-        logger.debug("bind_project_store_from_session: store open failed: %s", exc)
-        return None
-
-    # Hydrate in-memory threads + turns from the persisted store. We only
-    # rebuild what the tracker keeps live — SessionStory is recomputed on
-    # each get_session_story() call, so it doesn't need a direct restore.
-    try:
-        raw_threads = store.get_threads()
-        raw_turns = store.get_turns()
-    except Exception as exc:
-        logger.debug("bind_project_store_from_session: read failed: %s", exc)
-        raw_threads, raw_turns = [], []
-
-    # MERGE, don't overwrite. The whole reason a lazy/late bind exists is the
-    # startup bind couldn't reach Ableton — during that window the tracker
-    # accepted open_thread()/record_turn_resolution() with no store attached,
-    # so those entries live ONLY in _threads/_turns and were never flushed. A
-    # naive reassignment of _threads/_turns from disk silently discards them
-    # (data loss). Instead: disk is the truth for anything it already holds
-    # (id-keyed), and any in-memory entry whose id is absent on disk is an
-    # unpersisted survivor we keep AND flush so the next bind sees it on disk.
-    disk_threads = {
-        t["thread_id"]: CreativeThread.from_dict(t)
-        for t in raw_threads
-        if isinstance(t, dict) and "thread_id" in t
-    }
-    unflushed_threads = [
-        thread for tid, thread in _threads.items()
-        if tid and tid not in disk_threads
-    ]
-    merged_threads = dict(disk_threads)
-    for thread in unflushed_threads:
-        merged_threads[thread.thread_id] = thread
-
-    disk_turn_ids = {
-        t["turn_id"] for t in raw_turns
-        if isinstance(t, dict) and t.get("turn_id")
-    }
-    disk_turns = [
-        TurnResolution.from_dict(t)
-        for t in raw_turns
-        if isinstance(t, dict)
-    ]
-    # Turns are append-only history: keep disk order, then append any
-    # in-memory turn whose id isn't already on disk (preserve insertion order).
-    unflushed_turns = [
-        turn for turn in _turns
-        if turn.turn_id and turn.turn_id not in disk_turn_ids
-    ]
-    merged_turns = disk_turns + unflushed_turns
-
-    _threads = merged_threads
-    _turns = merged_turns
-    _project_store = store
-
-    # Persist the survivors now that a store is attached. We do this AFTER
-    # binding _project_store so a failure here doesn't leave the survivors
-    # invisible — they're already live in memory; this only writes them
-    # through to disk so a future restart/rebind keeps them.
-    for thread in unflushed_threads:
         try:
-            store.save_thread(thread.to_dict())
+            store = ProjectStore(new_id)
         except Exception as exc:
-            logger.debug("bind_project_store_from_session: thread flush failed: %s", exc)
-    for turn in unflushed_turns:
+            logger.debug("bind_project_store_from_session: store open failed: %s", exc)
+            return None
+
+        # Hydrate in-memory threads + turns from the persisted store. We only
+        # rebuild what the tracker keeps live — SessionStory is recomputed on
+        # each get_session_story() call, so it doesn't need a direct restore.
         try:
-            store.save_turn(turn.to_dict())
+            raw_threads = store.get_threads()
+            raw_turns = store.get_turns()
         except Exception as exc:
-            logger.debug("bind_project_store_from_session: turn flush failed: %s", exc)
+            logger.debug("bind_project_store_from_session: read failed: %s", exc)
+            raw_threads, raw_turns = [], []
+
+        # MERGE, don't overwrite. The whole reason a lazy/late bind exists is the
+        # startup bind couldn't reach Ableton — during that window the tracker
+        # accepted open_thread()/record_turn_resolution() with no store attached,
+        # so those entries live ONLY in _threads/_turns and were never flushed. A
+        # naive reassignment of _threads/_turns from disk silently discards them
+        # (data loss). Instead: disk is the truth for anything it already holds
+        # (id-keyed), and any in-memory entry whose id is absent on disk is an
+        # unpersisted survivor we keep AND flush so the next bind sees it on disk.
+        disk_threads = {
+            t["thread_id"]: CreativeThread.from_dict(t)
+            for t in raw_threads
+            if isinstance(t, dict) and "thread_id" in t
+        }
+        unflushed_threads = [
+            thread for tid, thread in _threads.items()
+            if tid and tid not in disk_threads
+        ]
+        merged_threads = dict(disk_threads)
+        for thread in unflushed_threads:
+            merged_threads[thread.thread_id] = thread
+
+        disk_turn_ids = {
+            t["turn_id"] for t in raw_turns
+            if isinstance(t, dict) and t.get("turn_id")
+        }
+        disk_turns = [
+            TurnResolution.from_dict(t)
+            for t in raw_turns
+            if isinstance(t, dict)
+        ]
+        # Turns are append-only history: keep disk order, then append any
+        # in-memory turn whose id isn't already on disk (preserve insertion order).
+        unflushed_turns = [
+            turn for turn in _turns
+            if turn.turn_id and turn.turn_id not in disk_turn_ids
+        ]
+        merged_turns = disk_turns + unflushed_turns
+
+        _threads = merged_threads
+        _turns = merged_turns
+        _project_store = store
+
+        # Persist the survivors now that a store is attached. We do this AFTER
+        # binding _project_store so a failure here doesn't leave the survivors
+        # invisible — they're already live in memory; this only writes them
+        # through to disk so a future restart/rebind keeps them. Flushing while
+        # still holding the lock keeps a concurrent writer from double-flushing
+        # the same entry through the freshly-bound store.
+        for thread in unflushed_threads:
+            try:
+                store.save_thread(thread.to_dict())
+            except Exception as exc:
+                logger.debug("bind_project_store_from_session: thread flush failed: %s", exc)
+        for turn in unflushed_turns:
+            try:
+                store.save_turn(turn.to_dict())
+            except Exception as exc:
+                logger.debug("bind_project_store_from_session: turn flush failed: %s", exc)
+
+        thread_count, turn_count = len(_threads), len(_turns)
 
     logger.info(
         "session_continuity: bound project %s "
         "(%d threads, %d turns; %d threads + %d turns merged from memory)",
-        new_id, len(_threads), len(_turns),
+        new_id, thread_count, turn_count,
         len(unflushed_threads), len(unflushed_turns),
     )
     return new_id
@@ -171,8 +201,16 @@ def ensure_project_store_bound(ctx) -> Optional[str]:
     hash. Safe to call on every turn — if already bound to this project, it's
     a no-op. Returns the project_id or ``None`` on failure.
     """
-    if _project_store is not None:
-        return getattr(_project_store, "project_id", None)
+    # Fast-path read under the lock, then RELEASE before delegating to
+    # bind_project_store_from_session (which re-acquires it) — holding it
+    # across the call would deadlock the plain (non-reentrant) _state_lock,
+    # and across send_command would serialize unrelated tools behind TCP I/O.
+    # Two racing callers may both reach bind; its own locked already-bound
+    # check makes the loser a no-op.
+    with _state_lock:
+        store = _project_store
+    if store is not None:
+        return getattr(store, "project_id", None)
     try:
         ableton = ctx.lifespan_context.get("ableton")
         if ableton is None:
@@ -201,33 +239,35 @@ def get_session_story(
     """
     song_brain = song_brain or {}
 
-    _story.identity_summary = song_brain.get("identity_core", "")
-    _story.song_brain_id = str(song_brain.get("brain_id", "") or "")
-    # Carry song_id through when present on the brain — fresh sessions
-    # leave this empty, which is documented below.
-    if not _story.song_id and song_brain.get("song_id"):
-        _story.song_id = str(song_brain.get("song_id"))
+    with _state_lock:
+        _story.identity_summary = song_brain.get("identity_core", "")
+        _story.song_brain_id = str(song_brain.get("brain_id", "") or "")
+        # Carry song_id through when present on the brain — fresh sessions
+        # leave this empty, which is documented below.
+        if not _story.song_id and song_brain.get("song_id"):
+            _story.song_id = str(song_brain.get("song_id"))
 
-    _story.threads = [t for t in _threads.values() if t.status == "open"]
-    _story.turns = _turns
-    _story.what_still_feels_open = [
-        t.description for t in _threads.values()
-        if t.status == "open" and not t.is_stale
-    ]
+        _story.threads = [t for t in _threads.values() if t.status == "open"]
+        _story.turns = _turns
+        _story.what_still_feels_open = [
+            t.description for t in _threads.values()
+            if t.status == "open" and not t.is_stale
+        ]
 
-    if _turns:
-        last = _turns[-1]
-        _story.what_changed_last = f"{last.request_text} → {last.outcome}"
+        if _turns:
+            last = _turns[-1]
+            _story.what_changed_last = f"{last.request_text} → {last.outcome}"
 
-    return _story
+        return _story
 
 
 def resume_last_intent() -> dict:
     """Resume the most recent unresolved creative intent."""
-    open_threads = [
-        t for t in _threads.values()
-        if t.status == "open" and not t.is_stale
-    ]
+    with _state_lock:
+        open_threads = [
+            t for t in _threads.values()
+            if t.status == "open" and not t.is_stale
+        ]
 
     if not open_threads:
         return {
@@ -272,22 +312,27 @@ def record_turn_resolution(
         user_sentiment=user_sentiment,
         timestamp_ms=now,
     )
-    _turns.append(turn)
+    # Append + flush under one lock hold: a bind merging concurrently must
+    # see either "not appended yet" (its merge skips it, we append to the
+    # merged list after) or "appended AND flushed" (its merge takes the disk
+    # copy) — never the half-state where it re-flushes what we're flushing.
+    with _state_lock:
+        _turns.append(turn)
 
-    # Update mood arc
-    if user_sentiment in ("loved", "liked"):
-        _story.mood_arc.append("positive")
-    elif user_sentiment in ("disliked", "hated"):
-        _story.mood_arc.append("negative")
-    else:
-        _story.mood_arc.append("neutral")
+        # Update mood arc
+        if user_sentiment in ("loved", "liked"):
+            _story.mood_arc.append("positive")
+        elif user_sentiment in ("disliked", "hated"):
+            _story.mood_arc.append("negative")
+        else:
+            _story.mood_arc.append("neutral")
 
-    # Flush to persistent store
-    if _project_store is not None:
-        try:
-            _project_store.save_turn(turn.to_dict())
-        except Exception as exc:
-            logger.debug("record_turn_resolution failed: %s", exc)
+        # Flush to persistent store
+        if _project_store is not None:
+            try:
+                _project_store.save_turn(turn.to_dict())
+            except Exception as exc:
+                logger.debug("record_turn_resolution failed: %s", exc)
     return turn
 
 
@@ -308,37 +353,40 @@ def open_thread(description: str, domain: str = "", priority: float = 0.5) -> Cr
         created_at_ms=now,
         last_touched_ms=now,
     )
-    _threads[thread_id] = thread
+    with _state_lock:
+        _threads[thread_id] = thread
 
-    # Flush to persistent store
-    if _project_store is not None:
-        try:
-            _project_store.save_thread(thread.to_dict())
-        except Exception as exc:
-            logger.debug("open_thread failed: %s", exc)
+        # Flush to persistent store
+        if _project_store is not None:
+            try:
+                _project_store.save_thread(thread.to_dict())
+            except Exception as exc:
+                logger.debug("open_thread failed: %s", exc)
     return thread
 
 
 def resolve_thread(thread_id: str) -> Optional[CreativeThread]:
     """Mark a creative thread as resolved."""
-    thread = _threads.get(thread_id)
-    if thread:
-        thread.status = "resolved"
-        thread.last_touched_ms = int(time.time() * 1000)
-        if _project_store is not None:
-            try:
-                _project_store.save_thread(thread.to_dict())
-            except Exception as exc:
-                logger.debug("resolve_thread failed: %s", exc)
-    return thread
+    with _state_lock:
+        thread = _threads.get(thread_id)
+        if thread:
+            thread.status = "resolved"
+            thread.last_touched_ms = int(time.time() * 1000)
+            if _project_store is not None:
+                try:
+                    _project_store.save_thread(thread.to_dict())
+                except Exception as exc:
+                    logger.debug("resolve_thread failed: %s", exc)
+        return thread
 
 
 def list_open_threads() -> list[CreativeThread]:
     """List all open (non-stale) creative threads."""
-    return [
-        t for t in _threads.values()
-        if t.status == "open" and not t.is_stale
-    ]
+    with _state_lock:
+        return [
+            t for t in _threads.values()
+            if t.status == "open" and not t.is_stale
+        ]
 
 
 # ── Taste vs Identity ranking ────────────────────────────────────
