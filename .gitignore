@@ -89,6 +89,9 @@ docs/*.md
 !docs/PLUGIN_KNOWLEDGE_ENGINE.md
 !docs/M4L_BRIDGE.md
 !docs/MAX_FREEZE_WORKFLOW.md
+# Pending-work tracker referenced from mcp_server/m4l_bridge.py + server.py —
+# must ride the repo so the batched .amxd re-freeze isn't lost with a worktree.
+!docs/PENDING_AMXD_REFREEZE.md
 .git-backup-full/
 
 # Worktrees

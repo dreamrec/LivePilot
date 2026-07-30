@@ -57,6 +57,36 @@ var current_sample_rate = 44100; // Updated by dspstate~ via inlet 1
 // Base64 encoding table
 var B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 
+// ── Bridge Command Authentication (shared-secret token) ───────────────────
+//
+// Max's [udpreceive 9881] binds on ALL interfaces (no bind-interface
+// argument exists), so a LAN-adjacent host can reach this dispatcher.
+// The MCP server writes a random per-startup token to
+//   ~/Documents/LivePilot/bridge_token
+// (same home derivation as _get_captures_dir()) and prepends
+// "__livepilot_token:<hex>" as the FIRST OSC argument of every command
+// once a ping shows this build validates it.
+//
+// Rules enforced by _auth_check():
+//   * ping / get_version stay exempt — they are the version handshake the
+//     server uses to decide whether to send the token at all.
+//   * Token file present: every other command must carry a matching token.
+//     On mismatch the file is re-read (throttled) before dropping, because
+//     the server rotates the token on every restart.
+//   * Token file absent/unreadable: legacy compat — commands are accepted
+//     untokened (pre-token servers never write the file).
+//   * Rejected commands are dropped with NO reply (a prober gets no
+//     oracle); the console log line is throttled so a packet flood cannot
+//     spam Max's console or turn into a disk-read flood.
+var TOKEN_ARG_PREFIX = "__livepilot_token:";
+var auth_token_cache = null;   // last token read from disk ("" = no file)
+var auth_token_read_ms = 0;    // when the disk was last read (throttle)
+var auth_reject_log_ms = 0;    // when the last rejection was logged
+var auth_reject_count = 0;
+var AUTH_TOKEN_READ_INTERVAL_MS = 2000;
+var AUTH_TOKEN_MISMATCH_REREAD_MS = 500;
+var AUTH_REJECT_LOG_INTERVAL_MS = 5000;
+
 // ── Initialization ─────────────────────────────────────────────────────────
 
 function bang() {
@@ -86,6 +116,19 @@ function anything() {
     var cmd = messagename;
     if (cmd.charAt(0) === "/") cmd = cmd.substring(1);
     var args = _decode_arg_strings(arrayfromargs(arguments));
+
+    // Shared-secret auth: the server prepends the token as the FIRST arg.
+    // Strip it before positional parsing either way; validate below.
+    var supplied_token = null;
+    if (args.length > 0 && typeof args[0] === "string"
+            && args[0].indexOf(TOKEN_ARG_PREFIX) === 0) {
+        supplied_token = args[0].substring(TOKEN_ARG_PREFIX.length);
+        args.shift();
+    }
+    if (!_auth_check(cmd, supplied_token)) {
+        return; // dropped — deliberately no reply (no oracle for probers)
+    }
+
     var request_id = "";
     if (args.length > 0 && typeof args[args.length - 1] === "string") {
         var last_arg = args[args.length - 1];
@@ -1471,6 +1514,9 @@ function cmd_get_display_values(args) {
     var params = [];
     var current = 0;
     var batch_size = 8;
+    // See cmd_get_params: capture the request id so the closure survives the
+    // Task.schedule(20) gaps without being clobbered by an interleaved command.
+    var captured_request_id = current_response_request_id;
 
     function read_batch() {
         try {
@@ -1498,7 +1544,7 @@ function cmd_get_display_values(args) {
                     "device": device_idx,
                     "device_name": device_name,
                     "params": params
-                });
+                }, captured_request_id);
             }
         } catch (e) {
             send_response({
@@ -1507,7 +1553,7 @@ function cmd_get_display_values(args) {
                 "device": device_idx,
                 "device_name": device_name,
                 "partial_params": params
-            });
+            }, captured_request_id);
         }
     }
     read_batch();
@@ -1515,12 +1561,23 @@ function cmd_get_display_values(args) {
 
 // ── Phase 3: Audio Capture ────────────────────────────────────────────
 
+function send_capture_error(message) {
+    // Error replies for capture commands must ride /capture_error: the
+    // Python side (m4l_bridge.py send_capture) only resolves via the
+    // capture future, which listens on /capture_complete + /capture_error.
+    // A reply on the regular /response channel is invisible to it — the
+    // caller eats the full 35s timeout, and the stray packet can even
+    // resolve an UNRELATED pending command's future.
+    var encoded = base64_encode(JSON.stringify({"ok": false, "error": message}));
+    outlet(0, "/capture_error", encoded);
+}
+
 function cmd_capture_audio(args) {
     // args: [duration_ms, filename]
     // duration_ms is the requested record length in milliseconds.
     // filename is the desired output name (empty = auto-generate).
     if (capture_active) {
-        send_response({"error": "Capture already in progress. Call capture_stop first."});
+        send_capture_error("Capture already in progress. Call capture_stop first.");
         return;
     }
 
@@ -1531,7 +1588,7 @@ function cmd_capture_audio(args) {
     if (requested_name.length > 0) {
         requested_name = _safe_filename(requested_name);
         if (!requested_name || requested_name.length === 0) {
-            send_response({"error": "Invalid capture filename (path traversal blocked)"});
+            send_capture_error("Invalid capture filename (path traversal blocked)");
             return;
         }
     }
@@ -1646,6 +1703,9 @@ function cmd_get_plugin_params(args) {
     var params = [];
     var current = 0;
     var batch_size = 8;
+    // See cmd_get_params: capture the request id so the closure survives the
+    // Task.schedule(20) gaps without being clobbered by an interleaved command.
+    var captured_request_id = current_response_request_id;
 
     function read_batch() {
         try {
@@ -1678,7 +1738,7 @@ function cmd_get_plugin_params(args) {
                     "is_plugin": true,
                     "parameter_count": param_count,
                     "parameters": params
-                });
+                }, captured_request_id);
             }
         } catch (e) {
             send_response({
@@ -1687,7 +1747,7 @@ function cmd_get_plugin_params(args) {
                 "device": device_idx,
                 "name": device_name,
                 "partial_params": params
-            });
+            }, captured_request_id);
         }
     }
 
@@ -1702,7 +1762,7 @@ function cmd_get_plugin_params(args) {
             "is_plugin": true,
             "parameter_count": 0,
             "parameters": []
-        });
+        }, captured_request_id);
     }
 }
 
@@ -1826,6 +1886,73 @@ function _get_captures_dir() {
         // Fallback to patcher directory if home detection fails
         return _get_patcher_dir();
     }
+}
+
+function _auth_token_path() {
+    // Mirrors _get_captures_dir()'s home derivation. The Python side
+    // (mcp_server/m4l_bridge.py default_bridge_token_path) must agree on
+    // this exact path.
+    try {
+        var support = max.appsupportpath;
+        var parts = support.split("/");
+        var home = parts.slice(0, 3).join("/");
+        return home + "/Documents/LivePilot/bridge_token";
+    } catch (e) {
+        return "";
+    }
+}
+
+function _read_auth_token(max_age_ms) {
+    // Returns the cached token, hitting the disk at most once per
+    // max_age_ms. "" means no readable token file → legacy compat mode.
+    var now = Date.now();
+    if (auth_token_cache !== null && (now - auth_token_read_ms) < max_age_ms) {
+        return auth_token_cache;
+    }
+    auth_token_read_ms = now;
+    var token = "";
+    try {
+        var path = _auth_token_path();
+        if (path) {
+            var f = new File(path, "read");
+            if (f.isopen) {
+                token = String(f.readline() || "");
+                f.close();
+            }
+        }
+    } catch (e) {
+        token = "";
+    }
+    auth_token_cache = token.replace(/^\s+|\s+$/g, "");
+    return auth_token_cache;
+}
+
+function _auth_check(cmd, supplied_token) {
+    if (cmd === "ping" || cmd === "get_version") {
+        return true; // version handshake — must stay answerable untokened
+    }
+    var expected = _read_auth_token(AUTH_TOKEN_READ_INTERVAL_MS);
+    if (expected === "") {
+        return true; // no token file on disk — legacy server, accept
+    }
+    if (supplied_token === expected) {
+        return true;
+    }
+    // A mismatch can mean the server restarted and rotated the token —
+    // allow an earlier re-read than the normal interval before rejecting.
+    expected = _read_auth_token(AUTH_TOKEN_MISMATCH_REREAD_MS);
+    if (expected === "" || supplied_token === expected) {
+        return true;
+    }
+    auth_reject_count++;
+    var now = Date.now();
+    if ((now - auth_reject_log_ms) >= AUTH_REJECT_LOG_INTERVAL_MS) {
+        auth_reject_log_ms = now;
+        post("LivePilot Bridge: dropped unauthenticated command '" + cmd
+            + "' (" + (supplied_token === null ? "no token" : "token mismatch")
+            + ", " + auth_reject_count + " dropped since load)\n");
+    }
+    return false;
 }
 
 function _get_patcher_dir() {
