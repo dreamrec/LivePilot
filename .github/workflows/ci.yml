@@ -11,7 +11,8 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        # 3.12 is the MCP-server floor: numpy>=2.5 / scipy>=1.18 dropped 3.11.
+        # 3.12 is the MCP-server floor: scipy>=1.18 dropped 3.11 (numpy is
+        # currently capped <2.5 for numba/librosa — see requirements.txt).
         # NOTE: the Remote Script runs inside Ableton's embedded Python (3.11 on
         # Live 12.3); it must stay 3.11-syntax-compatible even though CI now
         # exercises only 3.12. Add a 3.11 remote_script-only job if that drifts.
@@ -22,6 +23,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
+          cache: pip
       - run: |
           pip install numpy setuptools wheel
           pip install -r requirements.txt pytest pytest-asyncio
@@ -38,6 +40,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+          cache: pip
       - name: Install dependencies
         # The domain-map check regenerates docs/manual/index.md's table from
         # the LIVE tool registry (mcp.list_tools()), which imports

@@ -152,6 +152,12 @@ sculpted.
   `devices[0].name` matches the expected filename stem
   (`feedback_load_browser_item_is_source_of_truth.md` — the bootstrap-and-replace
   flow has a silent failure mode where the wrong sample loads).
+- Before/after a significant move you're about to report as kept →
+  `capture_audio` (before) + `capture_audio` (after) + `listen_ab` → pass its
+  `before_snapshot`/`after_snapshot` straight into `evaluate_move`. Richer
+  than a live `get_master_spectrum` read (adds stereo width, groove
+  tightness, technical polish); reserve for moves worth verifying, not
+  every parameter nudge.
 
 ## §4 — Modulation > Static (no static layers)
 
@@ -175,7 +181,9 @@ volume-per-phrase, send automation on key moments).
 2026-04-25 hi-hat critique to **every** layer of every production. Per-layer
 checklist before declaring it done:
 
-1. **Timbre via spectrum** — solo + `get_master_spectrum`. Hat = AIR + PRESENCE
+1. **Timbre via spectrum** — solo + `get_master_spectrum` (or solo +
+   `capture_audio` + `listen_capture` for the fuller offline report — same
+   bands plus transient character and technical polish). Hat = AIR + PRESENCE
    should dominate (mid-dominant = wrong sample). Snare = MID body +
    PRESENCE/HIGH. Kick = SUB_LOW + MID click. Bass = SUB + LOW + LOW_MID.
 2. **Sequence critique** — swing % (50% = robotic; 55-65% for groove),
@@ -255,6 +263,9 @@ Before declaring done, run the depth audit:
 - `analyze_sound_design` (if synth work touched)
 - `analyze_phrase_arc` (if arrangement work)
 - `get_session_diagnostics`
+- `capture_audio` + `listen_capture` on master — offline ground-truth
+  snapshot (stereo width, groove tightness, technical polish/clipping/
+  headroom) the live analyzer read doesn't cover
 - `evaluate_move` on the last significant change
 
 A good session has analyzed itself. Ship the audit alongside the build.

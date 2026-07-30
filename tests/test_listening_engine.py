@@ -85,6 +85,7 @@ def test_fine_grid_auto_division():
     groove = report.extended["groove"]
     assert groove["microtiming_mad_ms"] is not None
     assert groove["microtiming_mad_ms"] < 5.0, groove
+    assert groove["grid_division"] == 8, groove
 
 
 def test_stereo_field_ground_truth():
@@ -133,7 +134,62 @@ def test_quiet_signal_gates_novelty():
 
 def test_canonical_dimensions_present():
     report = extract_features(_stereo(_sine(700.0, seconds=2.0, amp=0.5)), SR)
+    assert report.channels == 2
     for dim in ("brightness", "punch", "energy", "warmth", "weight"):
         assert dim in report.dimensions, report.dimensions
     for dim in ("width", "polish", "motion_cv"):
         assert dim in report.dimensions, report.dimensions
+
+
+def test_compare_detects_known_perturbation():
+    """compare() must flag a real change above EPSILON and stay silent on
+    an identical pair."""
+    from mcp_server.listening.engine import compare, format_verdict
+
+    rng = np.random.default_rng(11)
+    base = (rng.standard_normal(SR * 5) * 0.2).astype(np.float32)
+    before = extract_features(_stereo(base), SR, bpm=120)
+
+    # identical pair: no significant changes
+    same = compare(before, extract_features(_stereo(base), SR, bpm=120))
+    assert same["unchanged"], same["significant_changes"]
+    assert format_verdict(same) == "No significant perceptual change detected."
+
+    # -6 dB gain drop: loudness must dominate the ranked changes
+    after = extract_features(_stereo(base * 0.5), SR, bpm=120)
+    result = compare(before, after)
+    assert not result["unchanged"]
+    lufs = [c for c in result["significant_changes"]
+            if c["metric"] == "integrated_lufs"]
+    assert lufs and abs(lufs[0]["delta"] + 6.0) < 0.5, lufs
+    assert "energy" in result["dimension_deltas"]
+    assert result["dimension_deltas"]["energy"]["delta"] < 0
+    # snapshots ready for evaluate_move
+    for side in ("before_snapshot", "after_snapshot"):
+        assert set(result[side]["spectrum"]) == {
+            "sub_low", "sub", "low", "low_mid", "mid",
+            "high_mid", "high", "presence", "air",
+        }
+    assert "integrated_lufs" in format_verdict(result)
+
+
+def test_tools_path_resolution_rejects_directories(tmp_path, monkeypatch):
+    """Directories, empty names, and missing files must produce the clean
+    ValueError — never a raw soundfile error (regression: review 2026-07-30)."""
+    import soundfile as sf
+
+    from mcp_server.listening import tools as listening_tools
+
+    monkeypatch.setattr(listening_tools, "CAPTURE_DIR", str(tmp_path))
+    (tmp_path / "subdir").mkdir()
+    wav = tmp_path / "real.wav"
+    sf.write(wav, np.zeros((SR, 2), dtype=np.float32), SR)
+
+    resolve = listening_tools._resolve_capture_path
+    assert resolve("real") == str(wav)
+    assert resolve("real.wav") == str(wav)
+    assert resolve(str(wav)) == str(wav)
+
+    for bad in ("", "subdir", str(tmp_path), "nope"):
+        with pytest.raises(ValueError, match="not found"):
+            resolve(bad)

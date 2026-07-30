@@ -74,6 +74,7 @@ Take measurements appropriate to the engine context:
 - **Sound design**: `get_device_parameters` + `get_master_spectrum`
 - **Composition**: `get_notes` or `get_arrangement_notes` + `get_section_graph`
 - **Universal**: `get_mix_snapshot` for full session state
+- **Significant/audible move** (one you're about to report as kept): `capture_audio(filename="before")` — WAV-grounded and richer than a live snapshot (adds stereo width, groove tightness, technical polish); works even when the live bridge is degraded
 
 Always capture before executing. Without a before snapshot, evaluation is meaningless.
 
@@ -84,6 +85,7 @@ Apply the planned change using the appropriate tool. Execute exactly one move, t
 ### Step 6 — Capture After
 
 Repeat the same measurements from Step 4. Use identical tool calls to ensure comparable data.
+If Step 4 used `capture_audio`, capture the after side the same way, then call `listen_ab("before", "after", bpm=<session tempo>)` instead of hand-comparing — it returns `before_snapshot`/`after_snapshot` already shaped for `evaluate_move`.
 
 ### Step 7 — Evaluate
 

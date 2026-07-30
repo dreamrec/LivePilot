@@ -24,6 +24,20 @@
   rendered audio evidence.
 - New dependency: `librosa>=0.10`.
 
+### Fixed — post-graduation review remediation (2026-07-30)
+- `listen_capture`/`listen_ab` path resolution rejected directories and empty
+  names cleanly (`os.path.isfile`) instead of leaking a raw soundfile error.
+- Launcher venv-stamp regression test added (`venvStampPath` doubled-path bug
+  class is now CI-guarded); engine `compare()`/path-resolution tests added.
+- Guidance integration: the capture → `listen_ab` → `evaluate_move` loop is
+  now taught in livepilot-core (reference corpus + speed tiers +
+  perception.md section), livepilot-evaluation (steps 4/6),
+  livepilot-mixing (escalation ladder), livepilot-sound-design-engine,
+  `/evaluate`, and CLAUDE.md §3/§5/§9.
+- Docs: manual perception/evaluation pages cover the listening loop;
+  tool-reference gains a Listening section; stale historical counts and the
+  numpy-based Python-floor rationale corrected; CI pip caching enabled.
+
 ## v1.27.3 — 2026-07-10
 
 Deep-review remediation campaign (2026-07-09, on top of the 2026-06-24 fix batch): event-loop

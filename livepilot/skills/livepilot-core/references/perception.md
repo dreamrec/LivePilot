@@ -7,6 +7,32 @@ thresholds, and historical bug context that motivated each behavior.
 Read this before deep spectral/health-check work — the tool docstrings
 point back here for the parts that don't change from call to call.
 
+## `listen_capture` / `listen_ab` — offline perception loop
+
+Live in `mcp_server/listening/` (v1.28+, domain `listening`, not
+`analyzer`), but complete the perception picture: everything below this
+section is *real-time* — bridge-dependent, read while the session plays.
+`listen_capture`/`listen_ab` are *offline* — librosa/soundfile analysis of
+a WAV/AIFF already on disk (a `capture_audio` output or any absolute
+path); only the capture step itself needs the Analyzer on master.
+
+Canonical ground-truth A/B loop for any significant move:
+`capture_audio(filename="before")` → apply the move →
+`capture_audio(filename="after")` →
+`listen_ab("before", "after", bpm=<session tempo>)` → pass its
+`before_snapshot`/`after_snapshot` straight into `evaluate_move` for a
+numeric keep/undo verdict grounded in rendered audio.
+
+What the offline report adds over any live read: stereo width +
+correlation + bass-mono check, groove microtiming (~4 ms resolution,
+auto grid division — pass `bpm`), transient character, per-band loudness
+movement, technical polish (clipping/DC/true-peak headroom). Canonical
+dimensions are computed by the evaluation stack's own extractor, so the
+numbers ARE what `evaluate_move` scores. Caveats: captures are whole-clip
+statistics — never diff one against a single live meter read; capture
+start is not beat-quantized, so loop the section and capture the same
+musical span on both sides.
+
 ## `get_master_spectrum` — 9-band table
 
 Band energies (fffb~ center frequencies shown in parens), values 0.0-1.0:

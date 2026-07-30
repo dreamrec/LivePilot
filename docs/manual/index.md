@@ -48,7 +48,7 @@ These tools do exactly what you ask. No interpretation, no judgment. They are th
 
 ### Layer 2: Perception
 
-The M4L Analyzer on the master track gives LivePilot ears: 9-band FFT spectrum (v1.17+), true RMS/peak metering, Krumhansl-Schmuckler key detection, pitch tracking, FluCoMa mel-spectrum + chroma + onset detection + spectral shape. Plus deep LOM access for hidden parameters, automation state, Simpler internals, and warp markers. Offline perception adds loudness analysis (integrated LUFS, LRA), spectral analysis, and reference comparison.
+The M4L Analyzer on the master track gives LivePilot ears: 9-band FFT spectrum (v1.17+), true RMS/peak metering, Krumhansl-Schmuckler key detection, pitch tracking, FluCoMa mel-spectrum + chroma + onset detection + spectral shape. Plus deep LOM access for hidden parameters, automation state, Simpler internals, and warp markers. Offline perception adds loudness analysis (integrated LUFS, LRA), spectral analysis, and reference comparison. A second, capture-based path (v1.28+) runs the same evaluation-stack feature extraction offline against rendered WAV/AIFF files — `listen_capture` for a full report, `listen_ab` for a before/after delta — producing canonical snapshots `evaluate_move` can score directly, independent of the M4L bridge.
 
 Perception closes the feedback loop. Without it, the AI is blind to the result of its own changes. With it, the AI can verify that a mix move actually reduced masking, that a filter sweep landed at the right frequency, that the overall loudness is broadcast-ready.
 

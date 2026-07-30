@@ -58,7 +58,10 @@ All 469 tools plus M4L perception tools.
 `analyze_loudness` · `analyze_mix` · `analyze_sound_design`
 
 ### Slow (5-15s) — Tell the user first
-`compare_to_reference` · `analyze_spectrum_offline` · `read_audio_metadata`
+`compare_to_reference` · `analyze_spectrum_offline` · `read_audio_metadata` · `capture_audio` · `listen_capture` · `listen_ab`
+
+`capture_audio`'s real cost is `duration_seconds` of actual playback
+(default 10s, up to 300s), not a fixed 5-15s — say so before a long capture.
 
 **Escalation pattern:** Start fast, escalate only with consent:
 ```
@@ -186,6 +189,7 @@ Deep production knowledge in `references/`:
 | `references/sound-design.md` | Synth recipes, device chain patterns |
 | `references/mixing-patterns.md` | Gain staging, compression, EQ, stereo |
 | `references/automation-atlas.md` | 16 curve types, 15 recipes, spectral mapping |
+| `references/perception.md` | Real-time (M4L bridge) vs offline (`listen_capture`/`listen_ab`) perception — 9-band tables, classification thresholds, and the `capture_audio` → `listen_ab` → `evaluate_move` ground-truth A/B loop |
 | `references/ableton-workflow-patterns.md` | Session/arrangement workflows |
 | `references/memory-guide.md` | Technique memory usage and quality templates |
 | `references/m4l-devices.md` | M4L bridge command reference |

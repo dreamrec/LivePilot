@@ -154,6 +154,7 @@ Follow this progression — start fast, go deeper only when needed:
 2. **Fast character:** `get_spectral_shape` + `get_novelty` + `get_onsets` when available — decide whether the next move belongs to sound design, arrangement, or mix.
 3. **Fast mix (1-5s):** `analyze_loudness` + `analyze_mix` — LUFS, true peak, and full mix analysis. For mastering prep or explicit mix critique.
 4. **Slow (5-15s):** `compare_to_reference` + `analyze_spectrum_offline` — reference matching, offline spectral analysis. Ask the user first.
+5. **Ground-truth A/B (significant moves):** `capture_audio` before and after the move, then `listen_ab` — WAV-grounded before/after with stereo width, groove tightness, and technical-polish evidence the live spectrum snapshot can't give; its `before_snapshot`/`after_snapshot` feed `evaluate_move`/`evaluate_mix_move` directly. Reserve for a move worth reporting as kept, not routine level nudges.
 
 Never skip safety context. Do not let safety context become a long volume-tweaking session unless the user asked for that.
 

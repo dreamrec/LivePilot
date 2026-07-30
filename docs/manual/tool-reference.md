@@ -3438,6 +3438,35 @@ Rapid catalog exploration — batched sample search with fitness-critic ranking.
 
 ---
 
+## Listening
+
+**[v1.28+]** Offline perceptual analysis of master-bus captures — the perception loop's reflex arc. Both tools analyze WAV/AIFF files on disk (no live bridge needed for the analysis itself); bare file names resolve against `~/Documents/LivePilot/captures/` with `.wav`/`.aiff`/`.aif` extension probing, absolute paths pass through.
+
+### listen_capture
+
+Full offline perceptual report for one capture: Parseval-calibrated 9-band spectrum, integrated LUFS / true peak / loudness range, transient character, groove microtiming (~4 ms resolution, auto grid division), stereo width + correlation + bass-mono check, per-band loudness movement, and technical polish (clipping/DC/headroom).
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `file` | string | required | Capture name or absolute WAV/AIFF path |
+| `bpm` | float | None | Session tempo for grid-based groove metrics (omitted/0 = estimate) |
+| `seconds` | float | None | Cap analysis to the first N seconds (omitted/0 = full file) |
+
+Returns `snapshot` (canonical sonic snapshot usable as `evaluate_move`'s before/after), `extended` (loudness/transients/groove/stereo/motion/polish), and `dimensions` (0–1; the nine canonical values computed by the evaluation stack's own extractor, plus non-canonical `width`, `polish`, `motion_cv`, `groove_tightness`).
+
+### listen_ab
+
+Before/after comparison of two captures of the same musical span. Returns `verdict` (human-readable summary), `dimension_deltas`, `significant_changes` (ranked above measurement-noise thresholds), `before_snapshot`/`after_snapshot` (pass directly to `evaluate_move`), and per-side `*_extended`/`*_dimensions`.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `before_file` | string | required | Capture name or absolute path (pre-move) |
+| `after_file` | string | required | Capture name or absolute path (post-move) |
+| `bpm` | float | None | Session tempo for groove metrics |
+| `seconds` | float | None | Cap analysis to the first N seconds of both files |
+
+Canonical loop: `capture_audio(filename="before")` → apply move → `capture_audio(filename="after")` → `listen_ab("before", "after", bpm=…)` → `evaluate_move(goal_vector=…, before_snapshot=…, after_snapshot=…)`.
+
 ## Diagnostics
 
 Session-wide health verification added late 2026-04 to catch silent-device failures (the "Simpler Snap bug" class: track meter reads normal, master reads silence).

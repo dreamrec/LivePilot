@@ -108,8 +108,9 @@ modifying state. Critics are the foundation of evaluation loops.
 `get_recent_actions` and `get_action_ledger_summary`. Drives `undo`,
 `redo`, and post-hoc analysis.
 
-**Tool count** — 465 tools across 56 domains. Source of truth lives in the
-release-checklist skill (`livepilot-release`).
+**Tool count** — see `scripts/sync_metadata.py --check` / the
+`livepilot-release` skill for the current count (this file is not swept
+automatically, so no number is hardcoded here).
 
 ## Relationships
 

@@ -151,3 +151,21 @@ def test_requirements_hash_matches_repo_requirements_txt():
     )
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == expected
+
+
+def test_venv_stamp_path_no_doubling():
+    """Regression guard for the 7977cff bug: venvStampPath() previously did
+    path.join(ROOT, VENV_DIR, ...) with VENV_DIR already absolute, producing
+    a doubled nonexistent path — the stamp was never readable/writable, so
+    ensureVenv re-ran pip on EVERY launch (surfacing as MCP handshake
+    timeouts once the dependency graph grew). Pin the real return value."""
+    result = subprocess.run(
+        [NODE, "-e", "console.log(require('./bin/livepilot.js').venvStampPath())"],
+        cwd=_repo_root(),
+        text=True,
+        capture_output=True,
+        timeout=10,
+    )
+    assert result.returncode == 0, result.stderr
+    stamp_path = Path(result.stdout.strip())
+    assert stamp_path == _repo_root() / ".venv" / ".requirements-sha256"

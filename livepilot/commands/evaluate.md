@@ -29,7 +29,11 @@ Run the universal evaluation loop on recent production changes.
    - `get_master_spectrum` + `get_master_rms` (if analyzer available)
    - `get_track_meters(include_stereo=true)` — verify all tracks producing audio
    - `get_mix_snapshot` — full volume/pan/send state
-   - Optionally: `capture_audio` + `analyze_loudness` + `analyze_spectrum_offline` for ground truth
+   - Optionally: `capture_audio` + `listen_capture` for ground truth (adds
+     stereo width, groove tightness, transient character, technical polish
+     beyond `analyze_loudness`/`analyze_spectrum_offline`) — repeat after
+     step 9's `redo()` and diff with `listen_ab` for snapshots pre-shaped
+     for step 10's `evaluate_move`
 
 7. **Undo the change** — `undo()` to restore the before state
 

@@ -225,6 +225,19 @@ evaluate_move(
 → reasoning: "punch improvement outweighs slight headroom reduction"
 ```
 
+Since v1.28, the before/after snapshots don't have to be hand-assembled
+from live analyzer reads — the Listening domain produces them from
+rendered audio:
+
+```
+capture_audio(filename="before")   # 8 bars of the actual master output
+# ... apply the creative move ...
+capture_audio(filename="after")
+listen_ab(before_file="before", after_file="after", bpm=128)
+→ verdict, dimension deltas, and before_snapshot/after_snapshot
+  ready to pass straight into evaluate_move
+```
+
 If a change made things worse, the system flags it before you move on.
 
 ---

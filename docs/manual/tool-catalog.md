@@ -361,7 +361,7 @@
 
 | Tool | Description |
 |------|-------------|
-| `listen_ab` | Compare two captures of the same musical span — what actually |
+| `listen_ab` | Compare two captures of the same musical span — what changed after a creative move. |
 | `listen_capture` | Full offline perceptual report for one master-bus capture. |
 
 ## Memory (18)

@@ -19,6 +19,7 @@ When the analyzer is available, read character, not just level:
 - `get_onsets` for transient/envelope decisions
 - `get_novelty` for movement/staticness decisions
 - `get_momentary_loudness` only for safety/headroom/loudness context
+- For the full §5 per-layer pass (not quick in-loop checks): solo the track, `capture_audio`, then `listen_capture` — one offline report bundles the spectrum/spectral_shape/onset/novelty above plus what the live bridge can't give: stereo width, transient character, per-band loudness movement, technical polish (clipping/DC/headroom)
 
 Translate those measurements into musical moves:
 

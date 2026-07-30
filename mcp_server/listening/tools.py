@@ -31,7 +31,7 @@ def _resolve_capture_path(file: str) -> str:
     extension) resolved against ~/Documents/LivePilot/captures/."""
     expanded = os.path.expanduser(file)
     if os.path.isabs(expanded):
-        if os.path.exists(expanded):
+        if os.path.isfile(expanded):
             return expanded
         raise ValueError(f"Audio file not found: {expanded}")
 
@@ -40,7 +40,7 @@ def _resolve_capture_path(file: str) -> str:
         candidates += [os.path.join(CAPTURE_DIR, file + ext)
                        for ext in _AUDIO_EXTS]
     for path in candidates:
-        if os.path.exists(path):
+        if os.path.isfile(path):
             return path
     raise ValueError(
         f"Capture '{file}' not found in {CAPTURE_DIR} "
@@ -94,7 +94,11 @@ def listen_capture(
       the evaluation stack's own extractor, extended ones (width, polish,
       motion_cv, groove_tightness) use non-canonical names
 
-    ``seconds`` caps analysis to the first N seconds of the file.
+    ``seconds`` caps analysis to the first N seconds of the file
+    (omitted/0 analyzes the full file); ``bpm`` omitted/0 falls back to
+    tempo estimation. See livepilot-core references/perception.md
+    #listen_capture--listen_ab--offline-perception-loop for the full
+    offline-vs-real-time model.
     """
     report = _analyze(file, bpm, seconds)
     return asdict(report)
@@ -107,12 +111,13 @@ def listen_ab(
     bpm: Optional[float] = None,
     seconds: Optional[float] = None,
 ) -> dict[str, Any]:
-    """Compare two captures of the same musical span — what actually
-    changed in the sound after a creative move.
+    """Compare two captures of the same musical span — what changed after a creative move.
 
     This is the perception loop's reflex arc: capture before a move,
     capture after, and this tool reports the empirical perceptual delta.
-    Pass ``bpm`` = session tempo for reliable groove metrics.
+    Pass ``bpm`` = session tempo for reliable groove metrics (``bpm``
+    omitted/0 falls back to tempo estimation; ``seconds`` omitted/0
+    analyzes the full files).
 
     Returns:
     - ``verdict`` — human-readable summary of significant changes
@@ -127,7 +132,10 @@ def listen_ab(
       per side (groove, stereo, loudness, transients, motion, polish)
 
     Both captures should cover the same musical material at the same
-    session position (loop the section, capture, move, capture).
+    session position (loop the section, capture, move, capture). See
+    livepilot-core references/perception.md
+    #listen_capture--listen_ab--offline-perception-loop for the full
+    offline-vs-real-time model.
     """
     before = _analyze(before_file, bpm, seconds)
     after = _analyze(after_file, bpm, seconds)
