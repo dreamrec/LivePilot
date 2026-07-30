@@ -2,7 +2,7 @@
 numpy>=2.5.1
 fastmcp>=3.4.4,<3.5.0  # pinned upper bound — _get_all_tools() accesses private internals
 midiutil>=1.2.1
-pretty_midi>=0.2.11
+pretty_midi>=0.2.11.post0
 # v1.8 Perception Layer (offline analysis)
 pyloudnorm>=0.2.0
 soundfile>=0.14.0
