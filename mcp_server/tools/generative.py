@@ -92,6 +92,15 @@ def layer_euclidean_rhythms(
     max_duration = 0.0
 
     for layer in layers:
+        if not isinstance(layer, dict):
+            raise ValueError(
+                f"each layer must be a dict with pulses, steps, pitch — got {type(layer).__name__}"
+            )
+        missing = [key for key in ("pulses", "steps", "pitch") if key not in layer]
+        if missing:
+            raise ValueError(
+                f"each layer must include pulses, steps, pitch (missing: {', '.join(missing)})"
+            )
         p = int(layer["pulses"])
         s = int(layer["steps"])
         if s < 1 or s > 64:

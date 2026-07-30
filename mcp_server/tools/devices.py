@@ -785,6 +785,10 @@ def set_simpler_playback_mode(
     _validate_device_index(device_index)
     if playback_mode not in (0, 1, 2):
         raise ValueError("playback_mode must be 0 (Classic), 1 (One-Shot), or 2 (Slice)")
+    if slice_by is not None and slice_by not in (0, 1, 2, 3):
+        raise ValueError("slice_by must be 0 (Transient), 1 (Beat), 2 (Region), or 3 (Manual)")
+    if sensitivity is not None and not 0.0 <= sensitivity <= 1.0:
+        raise ValueError("sensitivity must be between 0.0 and 1.0")
     params = {
         "track_index": track_index,
         "device_index": device_index,

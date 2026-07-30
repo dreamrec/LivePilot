@@ -1210,6 +1210,21 @@ async def warp_simpler(
 # ── Phase 2: Warp Markers ──────────────────────────────────────────────
 
 
+def _validate_track_index(track_index: int):
+    if track_index < 0:
+        raise ValueError("track_index must be >= 0")
+
+
+def _validate_clip_index(clip_index: int):
+    if clip_index < 0:
+        raise ValueError("clip_index must be >= 0")
+
+
+def _validate_beat_time(beat_time: float, name: str = "beat_time"):
+    if beat_time < 0:
+        raise ValueError(f"{name} must be >= 0")
+
+
 @mcp.tool()
 async def get_warp_markers(
     ctx: Context,
@@ -1242,6 +1257,9 @@ async def add_warp_marker(
     regions. Add at downbeats to lock timing, then move them for tempo changes.
     Only works on audio clips. Requires LivePilot Analyzer on master track.
     """
+    _validate_track_index(track_index)
+    _validate_clip_index(clip_index)
+    _validate_beat_time(beat_time)
     cache = _get_spectral(ctx)
     _require_analyzer(cache)
     bridge = _get_m4l(ctx)
@@ -1265,6 +1283,10 @@ async def move_warp_marker(
     tape-stop effects, tempo ramps, and groove manipulation.
     Only works on audio clips. Requires LivePilot Analyzer on master track.
     """
+    _validate_track_index(track_index)
+    _validate_clip_index(clip_index)
+    _validate_beat_time(old_beat_time, "old_beat_time")
+    _validate_beat_time(new_beat_time, "new_beat_time")
     cache = _get_spectral(ctx)
     _require_analyzer(cache)
     bridge = _get_m4l(ctx)
@@ -1284,6 +1306,9 @@ async def remove_warp_marker(
 
     Only works on audio clips. Requires LivePilot Analyzer on master track.
     """
+    _validate_track_index(track_index)
+    _validate_clip_index(clip_index)
+    _validate_beat_time(beat_time)
     cache = _get_spectral(ctx)
     _require_analyzer(cache)
     bridge = _get_m4l(ctx)
@@ -1307,6 +1332,9 @@ async def scrub_clip(
     audition sections, preview slices, or find the right warp marker spot.
     Requires LivePilot Analyzer on master track.
     """
+    _validate_track_index(track_index)
+    _validate_clip_index(clip_index)
+    _validate_beat_time(beat_time)
     cache = _get_spectral(ctx)
     _require_analyzer(cache)
     bridge = _get_m4l(ctx)
