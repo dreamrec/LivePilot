@@ -180,6 +180,11 @@ async def lifespan(server):
     miditool = MidiToolCache()
     receiver = SpectralReceiver(spectral, miditool_cache=miditool)
     m4l = M4LBridge(spectral, receiver, miditool_cache=miditool)
+    # Publish the shared-secret token that 1.28+ frozen analyzers validate
+    # on every OSC 9881 command (LAN-exposure fix). Legacy devices ignore
+    # the file entirely; a failed write just keeps the untokened path.
+    # See docs/PENDING_AMXD_REFREEZE.md.
+    await asyncio.to_thread(m4l.publish_auth_token)
     mcp_dispatch = build_mcp_dispatch_registry()
 
     # Splice gRPC client — graceful degradation if Splice desktop isn't

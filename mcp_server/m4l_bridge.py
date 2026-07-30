@@ -26,13 +26,75 @@ import asyncio
 import atexit
 import base64
 import json
+import os
 import random
+import re
+import secrets
 import socket
 import struct
 import threading
 import time
 import uuid
+from pathlib import Path
 from typing import Any, Callable, Optional
+
+
+# ─── Bridge command authentication (shared-secret token) ─────────────────────
+#
+# Max's `udpreceive 9881` binds on ALL interfaces (it takes no bind-interface
+# argument), so a LAN-adjacent host can blindly fire any of the bridge
+# commands. Defense: this server generates a random token per startup,
+# publishes it to a file only local processes can read, and prepends
+# ``__livepilot_token:<hex>`` as the FIRST OSC argument of every command.
+# The frozen JS (livepilot_bridge.js `_auth_check`) validates and drops
+# non-matching commands. The token itself only ever travels over loopback
+# UDP and the local filesystem — it is never exposed to the LAN.
+#
+# Compatibility (the reason for the version gate): a pre-token frozen .amxd
+# would consume the token as its first positional argument and misparse the
+# command, so the token is only attached once the device's ping response
+# reports a build that strips it. See docs/PENDING_AMXD_REFREEZE.md.
+
+BRIDGE_TOKEN_ARG_PREFIX = "__livepilot_token:"
+
+# First frozen livepilot_bridge.js build that validates the token. If the
+# re-freeze ships in a later release than 1.28.0, bump this to the actual
+# first frozen version (tracked in docs/PENDING_AMXD_REFREEZE.md).
+TOKEN_AUTH_MIN_BRIDGE_VERSION = (1, 28, 0)
+
+_VERSION_RE = re.compile(r"^(\d+)\.(\d+)(?:\.(\d+))?")
+
+
+def default_bridge_token_path() -> Path:
+    """~/Documents/LivePilot/bridge_token.
+
+    Must mirror ``_auth_token_path()`` in m4l_device/livepilot_bridge.js,
+    which derives the same home directory from ``max.appsupportpath`` (the
+    ``_get_captures_dir()`` pattern).
+    """
+    return Path.home() / "Documents" / "LivePilot" / "bridge_token"
+
+
+def parse_bridge_version(version: Any) -> Optional[tuple[int, int, int]]:
+    """Parse a ping ``version`` string into a comparable (major, minor, patch).
+
+    Tolerates suffixes ("1.28.0-beta") and a missing patch ("1.28").
+    Returns None for anything that doesn't start with digits — an
+    unparseable version must never enable token auth.
+    """
+    if not isinstance(version, str):
+        return None
+    match = _VERSION_RE.match(version.strip())
+    if not match:
+        return None
+    major, minor, patch = match.group(1), match.group(2), match.group(3)
+    return (int(major), int(minor), int(patch or 0))
+
+
+def _token_auth_disabled_by_env() -> bool:
+    """Manual kill switch: LIVEPILOT_BRIDGE_TOKEN_DISABLE=1 keeps the wire
+    format exactly as pre-1.28 (no token arg, no token file)."""
+    return os.environ.get("LIVEPILOT_BRIDGE_TOKEN_DISABLE", "").strip() not in ("", "0")
 
 
 def _encode_string_arg(value: str) -> str:
@@ -495,6 +557,10 @@ class SpectralReceiver(asyncio.DatagramProtocol):
                                      per-response request id so chunks of
                                      different commands never share a bucket;
                                      legacy builds omit it: (index, total, data)
+        /capture_error s           — capture command rejected (busy guard /
+                                     invalid filename). Resolves the capture
+                                     future; legacy builds wrongly replied on
+                                     /response, which send_capture never sees.
     """
 
     # Band names keyed by how many bands the .amxd emits. 8 bands is the v1.x
@@ -694,6 +760,14 @@ class SpectralReceiver(asyncio.DatagramProtocol):
             })
 
         elif address == "/capture_complete" and len(args) >= 1:
+            self._handle_capture_complete(str(args[0]))
+
+        elif address == "/capture_error" and len(args) >= 1:
+            # Busy-guard / invalid-filename rejections from cmd_capture_audio.
+            # Same payload shape and same resolution target as
+            # /capture_complete — what matters is the CHANNEL: send_capture
+            # only resolves via the capture future, so a /response reply here
+            # would be dropped (or worse, resolve an unrelated command).
             self._handle_capture_complete(str(args[0]))
 
         elif address == "/response" and len(args) >= 1:
@@ -912,10 +986,27 @@ class M4LBridge:
         cache: SpectralCache,
         receiver: Optional[SpectralReceiver] = None,
         miditool_cache: Optional[MidiToolCache] = None,
+        *,
+        auth_token: Optional[str] = None,
+        token_file_path: Optional[Path] = None,
     ):
         self.cache = cache
         self.receiver = receiver
         self.miditool_cache = miditool_cache
+
+        # Shared-secret command auth (see module header). The token is
+        # generated here but only WRITTEN to disk by publish_auth_token() —
+        # the server lifespan calls that explicitly, so unit tests can
+        # construct bridges without touching ~/Documents.
+        self._auth_token = auth_token if auth_token else secrets.token_hex(16)
+        self._token_file_path = (
+            Path(token_file_path) if token_file_path else default_bridge_token_path()
+        )
+        # Compat flag: no token on the wire until the device's ping version
+        # proves the frozen build strips + validates it. None = version not
+        # yet learned (triggers the ping handshake on the first command).
+        self._auth_enabled = False
+        self._bridge_version: Optional[str] = None
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         # Non-blocking so a momentarily-full send buffer never stalls the
         # asyncio event loop. The miditool response path sends from inside a
@@ -964,6 +1055,102 @@ class M4LBridge:
                 "LivePilot: M4L UDP send buffer full — packet dropped",
                 file=sys.stderr,
             )
+
+    # ── Shared-secret token auth ────────────────────────────────────────
+
+    @property
+    def auth_token(self) -> str:
+        return self._auth_token
+
+    @property
+    def token_auth_enabled(self) -> bool:
+        return self._auth_enabled
+
+    @property
+    def bridge_version(self) -> Optional[str]:
+        """Last version string reported by the analyzer's ping (None until
+        the first successful ping)."""
+        return self._bridge_version
+
+    def publish_auth_token(self) -> Optional[Path]:
+        """Write the token file the frozen .amxd validates against.
+
+        Called from the server lifespan, NOT __init__ (tests construct
+        bridges freely and must not touch ~/Documents). Non-fatal on
+        failure: the JS treats a missing/unreadable token file as legacy
+        compat mode and keeps accepting untokened commands, so a failed
+        write degrades to pre-1.28 behavior rather than breaking the bridge.
+        """
+        if _token_auth_disabled_by_env():
+            return None
+        path = self._token_file_path
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            # Create with 0600 atomically so the token is never readable by
+            # other users, even transiently; re-chmod covers a pre-existing
+            # file from an earlier run with different permissions.
+            fd = os.open(str(path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            try:
+                os.write(fd, (self._auth_token + "\n").encode("ascii"))
+            finally:
+                os.close(fd)
+            os.chmod(str(path), 0o600)
+            return path
+        except OSError as exc:
+            import sys
+            print(
+                f"LivePilot: could not write bridge token file {path} ({exc}) — "
+                "bridge commands stay on the legacy untokened path",
+                file=sys.stderr,
+            )
+            return None
+
+    def note_bridge_version(self, version: Any) -> None:
+        """Record the analyzer's self-reported ping version and flip the
+        token-auth compat flag when the frozen build is new enough."""
+        if version is None:
+            # Ping succeeded but carried no version — an unknown build.
+            # Remember that we asked (stops the per-command handshake) but
+            # keep auth off: we cannot prove the device strips the token.
+            self._bridge_version = ""
+            self._auth_enabled = False
+            return
+        self._bridge_version = str(version)
+        if _token_auth_disabled_by_env():
+            self._auth_enabled = False
+            return
+        parsed = parse_bridge_version(self._bridge_version)
+        self._auth_enabled = bool(
+            parsed is not None and parsed >= TOKEN_AUTH_MIN_BRIDGE_VERSION
+        )
+
+    def _with_auth_token(self, args: tuple) -> tuple:
+        """Prepend the token as the FIRST OSC argument when auth is active.
+
+        The frozen JS strips it in anything() before positional parsing;
+        pre-token devices never get it (see note_bridge_version)."""
+        if not self._auth_enabled:
+            return args
+        return (BRIDGE_TOKEN_ARG_PREFIX + self._auth_token, *args)
+
+    async def _ensure_bridge_version_known(self) -> None:
+        """Ping handshake before the first real command of a session.
+
+        Untokened commands are dropped by a 1.28+ device once its token file
+        exists, and tokened commands break a pre-1.28 device — so the very
+        first command must learn which build is on the other side. Ping is
+        exempt from the JS token check precisely so this probe always works.
+        A failed ping leaves the version unknown (retried on the next
+        command) and the command proceeds untokened, matching legacy
+        behavior.
+        """
+        if self._bridge_version is None and not _token_auth_disabled_by_env():
+            # `bridge = self` keeps scripts/scan_async_blocking.py accurate:
+            # its receiver heuristic exempts *bridge*/m4l/spectral chains, and
+            # this send_command is the async-native M4L one, not the blocking
+            # AbletonConnection.send_command the scanner hunts.
+            bridge = self
+            await bridge.send_command("ping", timeout=2.0)
 
     def _dispatch_miditool_request(
         self, request_id: str, context: dict, notes: list,
@@ -1040,6 +1227,11 @@ class M4LBridge:
                          "for a bind failure on port 9880."
             }
 
+        # Learn the frozen build's version before the first real command so
+        # the token compat flag is set correctly (see _ensure_bridge_version_known).
+        if command != "ping":
+            await self._ensure_bridge_version_known()
+
         if self._cmd_lock is None:
             self._cmd_lock = asyncio.Lock()
         async with self._cmd_lock:
@@ -1052,12 +1244,20 @@ class M4LBridge:
             # Build and send OSC message (no leading / — Max udpreceive
             # passes messagename with / intact to JS, breaking dispatch)
             request_arg = f"__livepilot_request_id:{request_id}"
-            osc_data = self._build_osc(command, (*args, request_arg))
+            osc_data = self._build_osc(
+                command, self._with_auth_token((*args, request_arg))
+            )
             self._safe_sendto(osc_data)
 
             # Wait for response with timeout
             try:
                 result = await asyncio.wait_for(future, timeout=timeout)
+                if command == "ping" and isinstance(result, dict) \
+                        and not result.get("error"):
+                    # The ping response is the version oracle that gates the
+                    # token compat flag — the frozen .amxd, not the repo JS,
+                    # is authoritative for what's actually running.
+                    self.note_bridge_version(result.get("version"))
                 return result
             except asyncio.TimeoutError:
                 return {"error": "M4L bridge timeout — device may be busy or removed"}
@@ -1085,6 +1285,10 @@ class M4LBridge:
                          "for a bind failure on port 9880."
             }
 
+        # Same version handshake as send_command — a capture command is just
+        # as version-sensitive as any other (token vs no token on the wire).
+        await self._ensure_bridge_version_known()
+
         # BUG-audit-C1: use a dedicated _capture_lock (not _cmd_lock) so
         # concurrent send_command calls are not blocked for the full
         # recording duration. _capture_future and _response_callback are
@@ -1100,7 +1304,7 @@ class M4LBridge:
             future = loop.create_future()
             self.receiver.set_capture_future(future)
 
-            osc_data = self._build_osc(command, args)
+            osc_data = self._build_osc(command, self._with_auth_token(args))
             self._safe_sendto(osc_data)
 
             try:

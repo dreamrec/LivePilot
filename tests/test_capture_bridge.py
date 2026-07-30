@@ -173,6 +173,10 @@ async def test_bridge_send_capture_uses_capture_future():
 
     receiver = SpectralReceiver(cache)
     bridge = M4LBridge(cache, receiver)
+    # Pin the device version so send_capture skips the token-auth ping
+    # handshake — this test exercises capture-future semantics, and the
+    # mocked socket below would never answer the handshake ping.
+    bridge.note_bridge_version("1.27.3")
 
     # We'll simulate the M4L response by resolving the future directly
     # after a tiny delay, instead of sending real UDP.
@@ -285,6 +289,10 @@ async def test_send_capture_does_not_block_send_command():
     receiver = SpectralReceiver(cache)
     bridge = M4LBridge(cache, receiver)
     bridge._sock = mock.MagicMock()
+    # Pin the device version so neither call runs the token-auth ping
+    # handshake — this test measures lock independence, and the mocked
+    # socket would never answer the handshake ping.
+    bridge.note_bridge_version("1.27.3")
 
     # Kick off a send_capture that we will NEVER resolve — it must sit
     # on its future until timeout. If it holds _cmd_lock, the concurrent
