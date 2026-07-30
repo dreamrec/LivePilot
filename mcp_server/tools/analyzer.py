@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import time
 from typing import Optional
 
 from fastmcp import Context
@@ -1350,28 +1351,104 @@ async def get_display_values(
 # ── Phase 3: Audio Capture ─────────────────────────────────────────────
 
 
-def _relocate_capture_file(src: str) -> Optional[str]:
+# The M4L device reports /capture_complete on an elapsed-time timer, not a
+# disk-flush confirmation — on a loaded disk the file may not be visible or
+# fully written yet when the report arrives (review 2026-07-30). Poll briefly
+# with a size-stability check before giving up.
+_RELOCATE_ATTEMPTS = 6
+_RELOCATE_DELAY_S = 0.08  # ~480 ms total worst case
+
+# Eviction cap for CAPTURE_DIR — the listen_ab workflow captures on every
+# significant move, and unbounded per-session growth is the same class this
+# codebase caps everywhere else (threads/turns/wonder_outcomes/previews).
+MAX_CAPTURE_FILES = 200
+_CAPTURE_EXTS = (".wav", ".aiff", ".aif")
+
+
+def _relocate_capture_file(src: str) -> tuple[Optional[str], Optional[str]]:
     """Move a bridge-captured audio file into CAPTURE_DIR (blocking file I/O).
 
-    Tries common extensions the bridge might have produced. Returns the
-    new path on success, or None if no matching file was found or the
-    move failed (caller should leave the original path unchanged in the
-    latter case). Run via asyncio.to_thread — never call directly from
-    an async def.
+    Tries common extensions the bridge might have produced, polling briefly
+    for the file to appear and its size to stabilize (the bridge's completion
+    report is timer-based, not flush-based). Returns ``(new_path, warning)``:
+    ``new_path`` is None if no file was found or the move failed (caller
+    should keep the original path); ``warning`` is set when the file was
+    still growing when moved, or never appeared. Run via asyncio.to_thread —
+    never call directly from an async def.
     """
-    for ext in ("", ".aiff", ".wav", ".aif"):
-        src_path = src + ext if not src.endswith(ext) else src
-        if os.path.isfile(src_path):
-            dst_name = os.path.basename(src_path)
-            dst_path = os.path.join(CAPTURE_DIR, dst_name)
-            try:
-                import shutil
+    import shutil
 
-                shutil.move(src_path, dst_path)
-                return dst_path
+    src_path = None
+    last_size = -1
+    warning: Optional[str] = None
+
+    for attempt in range(_RELOCATE_ATTEMPTS):
+        if src_path is None:
+            for ext in ("", ".aiff", ".wav", ".aif"):
+                candidate = src + ext if not src.endswith(ext) else src
+                if os.path.isfile(candidate):
+                    src_path = candidate
+                    break
+        if src_path is not None:
+            try:
+                size = os.path.getsize(src_path)
             except OSError:
-                return None
-    return None
+                size = -1
+            if size > 0 and size == last_size:
+                break  # two consecutive stable reads — flushed
+            last_size = size
+        if attempt < _RELOCATE_ATTEMPTS - 1:
+            time.sleep(_RELOCATE_DELAY_S)
+    else:
+        if src_path is not None:
+            warning = (
+                "capture file size was still changing when relocated — "
+                "it may be partially flushed"
+            )
+
+    if src_path is None:
+        return None, (
+            "capture file did not appear on disk within "
+            f"{int(_RELOCATE_ATTEMPTS * _RELOCATE_DELAY_S * 1000)} ms — "
+            "the device may not have flushed it; original path kept"
+        )
+
+    dst_path = os.path.join(CAPTURE_DIR, os.path.basename(src_path))
+    try:
+        shutil.move(src_path, dst_path)
+        return dst_path, warning
+    except OSError:
+        return None, warning
+
+
+def _prune_capture_dir() -> int:
+    """Evict oldest captures beyond MAX_CAPTURE_FILES (blocking file I/O).
+
+    Returns the number of files removed. Run via asyncio.to_thread.
+    """
+    try:
+        entries = [
+            os.path.join(CAPTURE_DIR, name)
+            for name in os.listdir(CAPTURE_DIR)
+            if name.lower().endswith(_CAPTURE_EXTS)
+            and os.path.isfile(os.path.join(CAPTURE_DIR, name))
+        ]
+    except OSError:
+        return 0
+    if len(entries) <= MAX_CAPTURE_FILES:
+        return 0
+    entries.sort(key=lambda p: os.path.getmtime(p), reverse=True)
+    removed = 0
+    for path in entries[MAX_CAPTURE_FILES:]:
+        try:
+            os.remove(path)
+            removed += 1
+        except OSError:
+            continue
+    if removed:
+        logger.info("capture dir pruned: %d file(s) evicted (cap %d)",
+                    removed, MAX_CAPTURE_FILES)
+    return removed
 
 
 @mcp.tool()
@@ -1386,8 +1463,11 @@ async def capture_audio(
     Records from the specified source (currently 'master') for the given
     duration. Files are written to ~/Documents/LivePilot/captures/.
     If filename is empty, a timestamped name is generated automatically.
+    The captures folder keeps the newest 200 audio files — older captures
+    are evicted automatically after each new capture.
 
-    Returns the path to the written file and capture metadata.
+    Returns the path to the written file and capture metadata (plus a
+    ``warning`` field if the file could not be confirmed flushed).
     Requires LivePilot Analyzer on master track.
     """
     cache = _get_spectral(ctx)
@@ -1420,9 +1500,16 @@ async def capture_audio(
 
     # Move captured file from M4L device directory to CAPTURE_DIR
     if result.get("ok") and result.get("file_path"):
-        new_path = await asyncio.to_thread(_relocate_capture_file, result["file_path"])
+        new_path, warning = await asyncio.to_thread(
+            _relocate_capture_file, result["file_path"]
+        )
         if new_path:
             result["file_path"] = new_path
+        if warning:
+            result["warning"] = warning
+        evicted = await asyncio.to_thread(_prune_capture_dir)
+        if evicted:
+            result["evicted_old_captures"] = evicted
 
     return result
 
@@ -1431,17 +1518,35 @@ async def capture_audio(
 async def capture_stop(ctx: Context) -> dict:
     """Stop an in-progress audio capture early.
 
-    Tells the M4L bridge to stop buffer~ recording and resolves the
-    in-flight capture_audio call with a partial result (stopped_early=True).
-    The partial file is still written to disk by the bridge.
+    Tells the M4L bridge to stop recording, relocates the partial file
+    into the captures directory, and resolves the in-flight capture_audio
+    call with a partial result (stopped_early=True) carrying the final
+    file_path — so both this call and the original capture_audio call
+    learn where the partial recording landed (review 2026-07-30).
     Requires LivePilot Analyzer on master track.
     """
     cache = _get_spectral(ctx)
     _require_analyzer(cache)
     bridge = _get_m4l(ctx)
-    # Resolve the capture future so send_capture returns cleanly
-    await bridge.cancel_capture_future()
-    return await bridge.send_command("capture_stop")
+
+    # Ask the device first — its response carries the partial file's path.
+    device_result = await bridge.send_command("capture_stop")
+
+    # Relocate BEFORE resolving the in-flight future so the capture_audio
+    # coroutine wakes to a final path (its own relocate call is then an
+    # idempotent same-path rename, not a race on the source file).
+    if device_result.get("ok") and device_result.get("file_path"):
+        new_path, warning = await asyncio.to_thread(
+            _relocate_capture_file, device_result["file_path"]
+        )
+        if new_path:
+            device_result["file_path"] = new_path
+        if warning:
+            device_result["warning"] = warning
+
+    # Resolve the in-flight capture_audio future with the merged result
+    await bridge.cancel_capture_future(device_result)
+    return device_result
 
 # ── Phase 4: FluCoMa Real-Time ───────────────────────────────────────────
 #

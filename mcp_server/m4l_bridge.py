@@ -1105,19 +1105,26 @@ class M4LBridge:
                 self.receiver._capture_future = None
                 return {"error": "M4L capture timeout — device may be busy or removed"}
 
-    async def cancel_capture_future(self) -> None:
+    async def cancel_capture_future(self, device_result: Optional[dict] = None) -> None:
         """Resolve any in-progress capture future with a stopped result.
 
         Does NOT acquire _capture_lock — send_capture holds it during recording.
         Resolving (not cancelling) the future lets send_capture return a
         clean partial-result dict instead of raising CancelledError.
+
+        ``device_result`` is the M4L device's own capture_stop response —
+        its file/file_path are merged into the resolved result so the
+        in-flight capture_audio caller learns where the partial recording
+        landed (review 2026-07-30: previously the path was silently dropped).
         """
         if self.receiver and self.receiver._capture_future \
                 and not self.receiver._capture_future.done():
-            self.receiver._capture_future.set_result({
-                "ok": True,
-                "stopped_early": True,
-            })
+            result = {"ok": True, "stopped_early": True}
+            if device_result and device_result.get("ok"):
+                for key in ("file", "file_path"):
+                    if device_result.get(key):
+                        result[key] = device_result[key]
+            self.receiver._capture_future.set_result(result)
             self.receiver._capture_future = None
 
     def _build_osc(self, address: str, args: tuple) -> bytes:

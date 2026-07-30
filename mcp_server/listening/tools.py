@@ -132,7 +132,10 @@ def listen_ab(
       per side (groove, stereo, loudness, transients, motion, polish)
 
     Both captures should cover the same musical material at the same
-    session position (loop the section, capture, move, capture). See
+    session position (loop the section, capture, move, capture). Note:
+    reusing fixed names like "before"/"after" across rounds intentionally
+    overwrites the previous round's captures — use distinct names if you
+    need to keep earlier rounds. See
     livepilot-core references/perception.md
     #listen_capture--listen_ab--offline-perception-loop for the full
     offline-vs-real-time model.
