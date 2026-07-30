@@ -152,7 +152,7 @@ function requirementsHash() {
 }
 
 function venvStampPath() {
-  return path.join(ROOT, VENV_DIR, ".requirements-sha256");
+  return path.join(VENV_DIR, ".requirements-sha256");
 }
 
 function writeVenvStamp() {
