@@ -96,9 +96,14 @@ class SpectralCache:
 
     def update(self, key: str, value: Any) -> None:
         with self._lock:
+            prev = self._data.get(key)
             self._data[key] = {
                 "value": value,
                 "time": time.monotonic(),
+                # Per-key frame counter — lets windowed readers tell
+                # "same value, new frame" apart from "same frame re-read"
+                # when the OSC stream stalls for less than max_age.
+                "generation": (prev.get("generation", 0) + 1) if prev else 1,
             }
             self._last_seen = time.monotonic()
             self._connected = True
@@ -114,6 +119,7 @@ class SpectralCache:
             return {
                 "value": entry["value"],
                 "age_ms": int(age * 1000),
+                "generation": entry.get("generation"),
             }
 
     @property
