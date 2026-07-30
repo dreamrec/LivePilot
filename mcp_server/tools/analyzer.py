@@ -29,6 +29,7 @@ from ._analyzer_engine import (
     _is_warped_loop,
     _require_analyzer,
     _simpler_post_load_hygiene,
+    _WindowedFrameTracker,
 )
 
 logger = logging.getLogger(__name__)
@@ -246,7 +247,10 @@ async def get_master_spectrum(
     >0 (max 10000) mean-pools `samples` readings (default window_ms/50,
     min 3, max 100) over that window instead — use for a stable mix read
     since single frames swing wildly on transients. Also returns
-    bands_min/bands_max/bands_std for variance across the window.
+    bands_min/bands_max/bands_std for variance across the window, plus
+    distinct_frames (unique analyzer frames seen — duplicates re-read
+    from a stalled stream don't count) and a warning when duplicates
+    dominate, since bands_std reads 0 over a stalled stream.
 
     sub_detail=True: attaches sub_detail {sub_deep 20-45Hz, sub_mid
     45-60Hz, sub_high 60-80Hz} derived from the FluCoMa 40-band mel
@@ -266,10 +270,12 @@ async def get_master_spectrum(
         n = min(n, 100)
         interval = (window_ms / 1000.0) / max(n - 1, 1)
         bands_acc: list[dict] = []
+        tracker = _WindowedFrameTracker()
         for i in range(n):
             snap = cache.get("spectrum")
             if snap and snap.get("value"):
                 bands_acc.append(snap["value"])
+                tracker.observe(snap)
             if i < n - 1:
                 await asyncio.sleep(interval)
         if not bands_acc:
@@ -304,7 +310,11 @@ async def get_master_spectrum(
             "bands_std": bands_std,
             "window_ms": window_ms,
             "samples_collected": len(bands_acc),
+            "distinct_frames": tracker.distinct_frames,
         }
+        stall = tracker.stall_warning("spectrum")
+        if stall:
+            result["warning"] = stall
         key_data = cache.get("key")
         if key_data:
             result["detected_key"] = key_data["value"]
@@ -1957,6 +1967,10 @@ async def analyze_loudness_live(
       "range_lu": float,             # max - min (proxy for LRA)
       "max_true_peak_dbtp": float,   # max true peak across window
       "samples_collected": int,
+      "distinct_frames": int,        # unique analyzer frames (duplicates
+                                     # re-read from a stalled stream don't
+                                     # count; a warning is attached when
+                                     # duplicates dominate)
       "window_sec": float,
       "is_playing": bool,
     }
@@ -1986,11 +2000,13 @@ async def analyze_loudness_live(
     total_samples = max(1, int(window_sec / interval_s))
     lufs_vals: list[float] = []
     peak_vals: list[float] = []
+    tracker = _WindowedFrameTracker()
 
     for i in range(total_samples):
         snap = cache.get("loudness")
         if snap and snap.get("value"):
             v = snap["value"]
+            tracker.observe(snap)
             if "momentary_lufs" in v:
                 lufs_vals.append(float(v["momentary_lufs"]))
             elif "lufs" in v:
@@ -2012,17 +2028,24 @@ async def analyze_loudness_live(
         "min_momentary_lufs": round(min(lufs_vals), 2),
         "range_lu": round(max(lufs_vals) - min(lufs_vals), 2),
         "samples_collected": len(lufs_vals),
+        "distinct_frames": tracker.distinct_frames,
         "window_sec": window_sec,
         "sample_interval_ms": sample_interval_ms,
         "is_playing": is_playing,
     }
     if peak_vals:
         result["max_true_peak_dbtp"] = round(max(peak_vals), 2)
+    warnings = []
     if is_playing is False:
-        result["warning"] = (
+        warnings.append(
             "Playback was not running — readings reflect stale cache. "
             "Start playback and call again for accurate live analysis."
         )
+    stall = tracker.stall_warning("loudness")
+    if stall:
+        warnings.append(stall)
+    if warnings:
+        result["warning"] = " ".join(warnings)
     return result
 
 

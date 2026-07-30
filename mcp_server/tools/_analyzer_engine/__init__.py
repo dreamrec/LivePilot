@@ -10,6 +10,8 @@ supporting code that ``analyzer.py`` used to carry inline:
 - ``sample``   — Simpler post-load hygiene (Snap=0, warped-loop defaults,
                  sample-name verification) + filename helpers.
 - ``flucoma``  — FluCoMa-specific hint formatting + pitch-name tables.
+- ``windowed`` — duplicate-frame detection for windowed cache sampling
+                 loops (distinct_frames + stall warnings).
 
 Re-exports the public-ish helpers (``_`` prefix is intentional — these
 are implementation details of ``analyzer.py``, not tools in their own
@@ -27,8 +29,10 @@ from .sample import (
     _simpler_post_load_hygiene,
 )
 from .flucoma import PITCH_NAMES, _flucoma_hint
+from .windowed import _WindowedFrameTracker
 
 __all__ = [
+    "_WindowedFrameTracker",
     "_get_spectral",
     "_get_m4l",
     "_require_analyzer",

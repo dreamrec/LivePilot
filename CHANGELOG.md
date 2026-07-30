@@ -37,6 +37,14 @@
 - Docs: manual perception/evaluation pages cover the listening loop;
   tool-reference gains a Listening section; stale historical counts and the
   numpy-based Python-floor rationale corrected; CI pip caching enabled.
+- Windowed analyzer readers (`get_master_spectrum` with `window_ms`,
+  `analyze_loudness_live`) no longer report false stability when the OSC
+  stream stalls for less than the 5s staleness ceiling: `SpectralCache`
+  tracks a per-key frame generation, both loops report `distinct_frames`
+  alongside `samples_collected`, and a `warning` is attached when duplicate
+  re-reads of the same cached frame dominate the window (previously
+  `bands_std=0` over a stalled stream was indistinguishable from a genuinely
+  stable mix). The default single-read path is unchanged.
 
 ## v1.27.3 — 2026-07-10
 
