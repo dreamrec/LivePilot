@@ -90,10 +90,15 @@ def _require_analyzer(cache) -> None:
         if holder:
             detail += (
                 "UDP port 9880 is currently held by another LivePilot instance "
-                f"({holder}). Close the other client/server, then retry."
+                f"({holder}). Close the other client/server, then call the "
+                "reconnect_bridge tool (safe no-op when already connected)."
             )
         else:
-            detail += "Reload the analyzer device or restart the MCP server."
+            detail += (
+                "Call the reconnect_bridge tool first (the port may have been "
+                "busy at server startup); if that fails, reload the analyzer "
+                "device or restart the MCP server."
+            )
         raise ValueError(detail)
 
     raise ValueError(
