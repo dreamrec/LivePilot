@@ -294,10 +294,18 @@ VERSION_FILES = [
     # Licensed Work", so the `Licensed Work:` line must name the shipping
     # version. It said 1.10.0 while the repo was at 1.28.0 — eighteen releases
     # of drift, because nothing enforced it. Added 2026-07-31.
-    # NOTE: only the version is enforced here. The `Change Date` is a
-    # deliberate licensing decision, not a derived value — leaving it earlier
-    # than a per-version recomputation is the user-favourable direction (the
-    # work converts to MIT sooner), so it is intentionally NOT auto-synced.
+    # NOTE: only the `Licensed Work:` version is enforced here. The
+    # `Change Date` is NOT auto-synced and must not be — it is a licensing
+    # decision, not a derived value.
+    #
+    # Confirmed by the licensor 2026-07-31: keep April 13, 2030 rather than
+    # recomputing it per release. BSL converts on the Change Date "or the
+    # fourth anniversary of the first publicly available distribution of a
+    # specific version ... whichever comes first". April 2030 is earlier than
+    # the fourth anniversary of every version shipped so far, so it governs,
+    # and the work reaches MIT sooner than canonical per-version practice
+    # would allow. Do not "fix" this to match the release date — that would
+    # silently delay the conversion.
     "LICENSE",
     "livepilot/skills/livepilot-core/references/overview.md",
     # capability-modes.md ships example JSON with a version string that must
