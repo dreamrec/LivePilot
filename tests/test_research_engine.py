@@ -142,6 +142,32 @@ class TestTargetedResearch:
         )
         assert result.confidence > 0.0
 
+    @pytest.fixture(autouse=True)
+    def _isolate_from_device_atlas(self, monkeypatch):
+        """Score the entries this class actually passes in, nothing else.
+
+        `targeted_research` enriches each entry from the process-wide device
+        atlas singleton (`from ..atlas import _atlas_instance`) before scoring,
+        folding in the real device's parameter list and tags. These tests hand
+        write `description` fields precisely to control the scored text, so
+        that enrichment is an undeclared dependency on global state — and on
+        whether some earlier test in the run happened to load the atlas.
+
+        Concretely (2026-07-31): with the atlas loaded, the enriched text for
+        Utility ends "...Channel Mode, Width, Bass Mono, Bass Mono On/Off",
+        which matches the keyword "bass" in "sidechain on bass" and scores
+        0.667 — outranking Compressor's 0.3 and inverting the assertion below.
+        The tests passed or failed purely on execution order.
+
+        NOTE this pins a no-atlas world. With a populated atlas the prediction
+        boost genuinely can be outranked by keyword matches on an unrelated
+        device's parameter names; that is a ranking-quality question for
+        `_score_finding_relevance`, deliberately not changed here.
+        """
+        import mcp_server.atlas as _atlas_mod
+
+        monkeypatch.setattr(_atlas_mod, "_atlas_instance", None, raising=False)
+
     def test_boosts_predicted_devices(self):
         # "sidechain" should predict Compressor → boost its relevance
         result = targeted_research(
