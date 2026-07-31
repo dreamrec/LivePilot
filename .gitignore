@@ -119,3 +119,11 @@ atlas-overlays/user/
 **/identity.yaml
 corpus_output/
 user_corpus_output/
+
+# Beta-SDK spike vendoring. The Ableton Extensions SDK tarballs are
+# Centercode-gated beta distribution and must never enter this public repo.
+# The spike/12.4.5 branch ignores these; main did not, so `git add spikes/`
+# here would have published them. (2026-07-31)
+spikes/**/vendor/*.tgz
+spikes/**/dist/
+spikes/**/__pycache__/

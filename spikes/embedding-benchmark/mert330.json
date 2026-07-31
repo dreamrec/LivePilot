@@ -1,0 +1,90 @@
+[
+  {
+    "backend": "m-a-p/MERT-v1-330M",
+    "dim": 1024,
+    "files_embedded": 23,
+    "ms_per_window": 52.622041806107916,
+    "families": [
+      {
+        "family": "music_C",
+        "n_files": 4,
+        "within_spread": 0.008990223209063211,
+        "between_dist": 0.014086259735955132,
+        "snr": 1.5668420470088564,
+        "synthetic": false
+      },
+      {
+        "family": "synthetic_4",
+        "n_files": 2,
+        "within_spread": 0.0013846854368845622,
+        "between_dist": 0.006861075758934021,
+        "snr": 4.954970693106244,
+        "synthetic": true
+      },
+      {
+        "family": "synthetic_5",
+        "n_files": 2,
+        "within_spread": 0.0034051785866419473,
+        "between_dist": 0.0043558962643146515,
+        "snr": 1.2791975966847202,
+        "synthetic": true
+      },
+      {
+        "family": "synthetic_1",
+        "n_files": 5,
+        "within_spread": 0.04540043075879415,
+        "between_dist": 0.12289543487131596,
+        "snr": 2.706922221162205,
+        "synthetic": true
+      },
+      {
+        "family": "synthetic_2",
+        "n_files": 3,
+        "within_spread": 0.0032947825060950387,
+        "between_dist": 0.004133955885966619,
+        "snr": 1.2546976555566833,
+        "synthetic": true
+      },
+      {
+        "family": "synthetic_3",
+        "n_files": 2,
+        "within_spread": 0.003531773885091146,
+        "between_dist": 0.003625422716140747,
+        "snr": 1.026516089108911,
+        "synthetic": true
+      },
+      {
+        "family": "music_B",
+        "n_files": 2,
+        "within_spread": 0.014055157701174418,
+        "between_dist": 0.05474298447370529,
+        "snr": 3.8948680361751538,
+        "synthetic": false
+      },
+      {
+        "family": "music_A",
+        "n_files": 3,
+        "within_spread": 0.008185386657714844,
+        "between_dist": 0.042483473817507424,
+        "snr": 5.190160904306963,
+        "synthetic": false
+      }
+    ],
+    "summary": {
+      "music": {
+        "n_families": 3,
+        "mean_snr": 3.550623662496991,
+        "min_snr": 1.5668420470088564,
+        "mean_within": 0.010410255855984157,
+        "mean_between": 0.03710423934238929
+      },
+      "synthetic": {
+        "n_families": 5,
+        "mean_snr": 2.2444608511237525,
+        "min_snr": 1.026516089108911,
+        "mean_within": 0.011403370234701369,
+        "mean_between": 0.0283743570993344
+      }
+    }
+  }
+]
