@@ -11,7 +11,8 @@ from typing import Any, Optional
 
 from fastmcp import Context
 
-from ..server import mcp, _identify_port_holder
+from ..server import mcp
+from ._analyzer_engine import _require_analyzer_async
 import logging
 
 logger = logging.getLogger(__name__)
@@ -877,46 +878,13 @@ def _get_spectral(ctx: Context):
     return cache
 
 
-def _require_analyzer(cache) -> None:
-    if not cache.is_connected:
-        ctx = getattr(cache, "_livepilot_ctx", None)
-        try:
-            track = (
-                ctx.lifespan_context["ableton"].send_command("get_master_track")
-                if ctx else {}
-            )
-        except Exception as exc:
-            logger.debug("_require_analyzer failed: %s", exc)
-            track = {}
-
-        devices = track.get("devices", []) if isinstance(track, dict) else []
-        analyzer_loaded = False
-        for device in devices:
-            normalized = " ".join(
-                str(device.get("name") or "").replace("_", " ").replace("-", " ").lower().split()
-            )
-            if normalized == "livepilot analyzer":
-                analyzer_loaded = True
-                break
-
-        if analyzer_loaded:
-            holder = _identify_port_holder(9880)
-            detail = (
-                "LivePilot Analyzer is loaded on the master track, but its UDP bridge is not connected. "
-            )
-            if holder:
-                detail += (
-                    "UDP port 9880 is currently held by another LivePilot instance "
-                    f"({holder}). Close the other client/server, then retry."
-                )
-            else:
-                detail += "Reload the analyzer device or restart the MCP server."
-            raise ValueError(detail)
-
-        raise ValueError(
-            "LivePilot Analyzer not detected. "
-            "Drag 'LivePilot Analyzer' onto the master track."
-        )
+# _require_analyzer used to be duplicated here. The copy had drifted to
+# strictly worse remedy text — it told users to "retry" or "restart the MCP
+# server" without ever naming `reconnect_bridge`, which is the actual fix when
+# a stale instance holds UDP 9880, and it omitted the browser path for loading
+# the device. Deduplicated onto the canonical implementation in
+# _analyzer_engine/context.py (2026-07-31); use `_require_analyzer_async` here,
+# which skips the thread hop when the bridge is already connected.
 
 
 @mcp.tool()
@@ -936,7 +904,7 @@ async def get_plugin_parameters(
     _validate_track_index(track_index)
     _validate_device_index(device_index)
     cache = _get_spectral(ctx)
-    await asyncio.to_thread(_require_analyzer, cache)
+    await _require_analyzer_async(cache)
     bridge = _get_m4l(ctx)
     return await bridge.send_command("get_plugin_params", track_index, device_index, timeout=20.0)
 
@@ -960,7 +928,7 @@ async def map_plugin_parameter(
     if parameter_index < 0:
         raise ValueError("parameter_index must be >= 0")
     cache = _get_spectral(ctx)
-    await asyncio.to_thread(_require_analyzer, cache)
+    await _require_analyzer_async(cache)
     bridge = _get_m4l(ctx)
     return await bridge.send_command("map_plugin_param", track_index, device_index, parameter_index, timeout=10.0)
 
@@ -980,7 +948,7 @@ async def get_plugin_presets(
     _validate_track_index(track_index)
     _validate_device_index(device_index)
     cache = _get_spectral(ctx)
-    await asyncio.to_thread(_require_analyzer, cache)
+    await _require_analyzer_async(cache)
     bridge = _get_m4l(ctx)
     return await bridge.send_command("get_plugin_presets", track_index, device_index, timeout=15.0)
 

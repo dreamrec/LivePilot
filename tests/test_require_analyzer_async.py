@@ -133,6 +133,56 @@ def test_error_text_still_names_the_remedy():
     assert "master track" in str(err2.value)
 
 
+# --- one implementation, not two --------------------------------------------
+
+
+def test_only_one_require_analyzer_implementation_exists():
+    """`mcp_server/tools/devices.py` used to carry its own copy.
+
+    The copies drifted, and the duplicate drifted *worse*: it told users to
+    "retry" or "restart the MCP server" without ever naming `reconnect_bridge`
+    — the actual fix when a stale instance is holding UDP 9880 — and dropped
+    the browser path for loading the device. Which advice you got depended on
+    whether the tool you happened to call lived in analyzer.py or devices.py.
+
+    Deduplicated 2026-07-31 onto _analyzer_engine/context.py. A second
+    definition reopens exactly that drift, so fail loudly instead.
+    """
+    import ast
+
+    found = []
+    for path in sorted((REPO_ROOT / "mcp_server").rglob("*.py")):
+        if "__pycache__" in path.parts:
+            continue
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, SyntaxError):  # pragma: no cover
+            continue
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                and node.name == "_require_analyzer"
+            ):
+                found.append(path.relative_to(REPO_ROOT).as_posix())
+
+    # File, not line — a line number would break on any unrelated edit above it.
+    assert found == ["mcp_server/tools/_analyzer_engine/context.py"], (
+        "_require_analyzer must have exactly one definition, in "
+        f"_analyzer_engine/context.py. Found: {found}"
+    )
+
+
+def test_devices_tools_use_the_shared_async_guard():
+    """devices.py must route through the shared guard, not re-roll one."""
+    import mcp_server.tools.devices as devices
+    from mcp_server.tools._analyzer_engine import context
+
+    assert not hasattr(devices, "_require_analyzer"), (
+        "devices.py re-introduced a local _require_analyzer"
+    )
+    assert devices._require_analyzer_async is context._require_analyzer_async
+
+
 # --- the call sites actually migrated ---------------------------------------
 
 
