@@ -13,6 +13,7 @@ librosa = pytest.importorskip("librosa")
 
 from mcp_server.listening.engine import (  # noqa: E402
     LUFS_FLOOR,
+    STEREO_RATIO_CEILING,
     extract_features,
 )
 
@@ -193,3 +194,84 @@ def test_tools_path_resolution_rejects_directories(tmp_path, monkeypatch):
     for bad in ("", "subdir", str(tmp_path), "nope"):
         with pytest.raises(ValueError, match="not found"):
             resolve(bad)
+
+
+def test_true_peak_uses_per_channel_max_not_mono_downmix():
+    """Regression (review finding [1]): true peak must be measured per
+    channel and maxed, not from the L+R mono downmix — _stereo() in this
+    file duplicates L into R, so this test deliberately builds L != R."""
+    tone = _sine(1000.0, seconds=2.0, amp=0.95)
+    panned = np.stack([tone, np.zeros_like(tone)], axis=1).astype(np.float32)
+    report = extract_features(panned, SR)
+    true_peak_dbtp = report.extended["loudness"]["true_peak_dbtp"]
+    # ~0.95 amplitude -> ~-0.45 dBTP; the mono downmix (silent right channel)
+    # halves the peak first and reads ~-6.5 dBTP instead.
+    assert true_peak_dbtp > -2.0, true_peak_dbtp
+
+
+def test_true_peak_anti_phase_not_reported_as_silence():
+    """Regression (review finding [1]): anti-phase L/-R cancels to exact
+    silence on a mono downmix, but the true peak (and the fact the clip is
+    audibly loud per LUFS) must not be lost."""
+    tone = _sine(1000.0, seconds=2.0, amp=0.9)
+    anti_phase = np.stack([tone, -tone], axis=1).astype(np.float32)
+    report = extract_features(anti_phase, SR)
+    loudness = report.extended["loudness"]
+    # ~0.9 amplitude -> ~-0.9 dBTP; the mono downmix is exact zero and would
+    # floor to -120 dBTP while integrated_lufs correctly reads well above floor.
+    assert loudness["true_peak_dbtp"] > -5.0, loudness
+    assert loudness["integrated_lufs"] > LUFS_FLOOR + 5.0, loudness
+
+
+def test_stereo_ratios_clamped_on_phase_cancellation():
+    """Regression (review finding [5]): near-total mid cancellation must not
+    blow the side/mid and low-side ratios up to physically meaningless
+    values that would dominate compare()'s ranking."""
+    tone = _sine(300.0, seconds=2.0, amp=0.9)
+    anti_phase = np.stack([tone, -tone], axis=1).astype(np.float32)
+    stereo = extract_features(anti_phase, SR).extended["stereo"]
+    assert stereo["side_mid_ratio"] <= STEREO_RATIO_CEILING + 1e-9, stereo
+    assert stereo["low_side_ratio"] <= STEREO_RATIO_CEILING + 1e-9, stereo
+
+
+def test_compare_reports_centroid_change_from_silence():
+    """Regression (review finding [6]): a silence -> bright transition must
+    still surface a spectral_shape/centroid entry in significant_changes,
+    even though the relative-ratio test's denominator (bc) is 0."""
+    from mcp_server.listening.engine import compare
+
+    silence = extract_features(_stereo(np.zeros(SR * 6, dtype=np.float32)), SR)
+    bright = extract_features(_stereo(_sine(9000.0, seconds=6.0, amp=0.5)), SR)
+    assert silence.snapshot["spectral_shape"]["centroid"] == 0.0
+
+    result = compare(silence, bright)
+    centroid_changes = [
+        c for c in result["significant_changes"]
+        if c["area"] == "spectral_shape" and c["metric"] == "centroid"
+    ]
+    assert centroid_changes, result["significant_changes"]
+    assert centroid_changes[0]["after"] > 5000.0, centroid_changes
+
+
+def test_extract_features_rejects_non_finite_audio():
+    """Regression (review finding [7a]): NaN/Inf samples must raise a clean
+    ValueError, never a raw librosa.ParameterError from deep in the stack."""
+    bad = _stereo(_sine(300.0, seconds=1.0))
+    bad[100, 0] = np.nan
+    with pytest.raises(ValueError, match="non-finite"):
+        extract_features(bad, SR)
+
+
+def test_tools_analyze_wraps_soundfile_read_errors(tmp_path, monkeypatch):
+    """Regression (review finding [7b]): a 0-byte/truncated-header capture
+    must raise a clean ValueError from _analyze(), never a raw
+    soundfile.LibsndfileError — reachable per _relocate_capture_file's
+    documented ~480ms race with a still-writing capture."""
+    from mcp_server.listening import tools as listening_tools
+
+    monkeypatch.setattr(listening_tools, "CAPTURE_DIR", str(tmp_path))
+    truncated = tmp_path / "truncated.wav"
+    truncated.write_bytes(b"")
+
+    with pytest.raises(ValueError, match="Could not read audio file"):
+        listening_tools._analyze(str(truncated), None, None)

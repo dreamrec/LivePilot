@@ -155,3 +155,56 @@ def test_write_during_bind_merge_window_is_not_lost():
             )
         finally:
             ps_mod.ProjectStore = orig_store
+
+
+def test_get_session_story_returns_isolated_snapshot_not_shared_singleton():
+    """A caller's get_session_story() result must survive a concurrent
+    second call, not get overwritten by it.
+
+    get_session_story() mutates the module-level ``_story`` singleton
+    under the lock, then (pre-fix) returned that same object by
+    reference — the mutation is locked, but callers serialize it
+    (``.to_dict()``) *after* the lock is released. Since every call
+    reuses the one singleton, caller B's get_session_story() landing
+    between caller A getting its result and A calling ``.to_dict()`` on
+    it would overwrite identity_summary/song_brain_id/threads/turns
+    before A ever reads them — a cross-request data leak, not a stale
+    read. This test drives that exact interleave with explicit
+    synchronization (not timing luck): A gets its result, signals, waits
+    for B to run its own call and mutate the singleton, THEN A
+    serializes. Pre-fix this observes B's data; post-fix (isolated
+    deepcopy snapshot taken under the lock) it must still observe A's.
+    """
+    a_got_result = threading.Event()
+    b_done = threading.Event()
+    result_holder: dict = {}
+
+    def caller_a():
+        story = get_session_story({"identity_core": "A-identity", "brain_id": "brainA"})
+        a_got_result.set()
+        # Give caller B a chance to run its own get_session_story() and
+        # mutate the shared singleton before A finally serializes what it
+        # believes is ITS OWN view.
+        b_done.wait(timeout=5)
+        result_holder["dict"] = story.to_dict()
+
+    def caller_b():
+        a_got_result.wait(timeout=5)
+        get_session_story({"identity_core": "B-identity", "brain_id": "brainB"})
+        b_done.set()
+
+    ta = threading.Thread(target=caller_a)
+    tb = threading.Thread(target=caller_b)
+    ta.start()
+    tb.start()
+    ta.join(timeout=10)
+    tb.join(timeout=10)
+
+    assert "dict" in result_holder, "caller A never completed"
+    serialized = result_holder["dict"]
+    assert serialized["identity_summary"] == "A-identity", (
+        f"caller A's serialized story leaked caller B's identity_summary: {serialized}"
+    )
+    assert serialized["song_brain_id"] == "brainA", (
+        f"caller A's serialized story leaked caller B's song_brain_id: {serialized}"
+    )

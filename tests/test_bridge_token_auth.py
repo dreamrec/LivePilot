@@ -458,6 +458,52 @@ def test_bridge_js_validates_token():
     assert '"ping"' in body
 
 
+def _strip_line_comments(text: str) -> str:
+    """Drop full-line `//` comments so a commented-out call site does not
+    satisfy a plain substring/regex search over the raw function body."""
+    return "\n".join(
+        line for line in text.splitlines() if not line.strip().startswith("//")
+    )
+
+
+def test_bridge_js_anything_calls_auth_check():
+    """anything() — the actual OSC command dispatcher — must call
+    _auth_check(cmd, supplied_token) and drop the message on failure.
+
+    test_bridge_js_validates_token (above) only checks that the token
+    prefix / bridge_token / _auth_check strings exist SOMEWHERE in the
+    file; it would still pass if the call site inside anything() were
+    deleted or commented out while the standalone _auth_check function
+    definition and the string literals were left intact — i.e. the
+    security check goes dead while every existing assertion stays green.
+    This test pins the call site itself, mirroring
+    test_bridge_js_capture_errors_use_capture_error_channel's pattern of
+    extracting a specific function's body and asserting on it.
+    """
+    source = _js_source()
+    body = _js_function_body(source, "anything")
+    active_code = _strip_line_comments(body)
+
+    guard = re.search(
+        r"if\s*\(\s*!\s*_auth_check\s*\(\s*cmd\s*,\s*supplied_token\s*\)\s*\)",
+        active_code,
+    )
+    assert guard, (
+        "anything() must call `if (!_auth_check(cmd, supplied_token))` and "
+        "return early — the auth check exists elsewhere in the file but "
+        "the dispatcher no longer enforces it, so every OSC command would "
+        "run unauthenticated"
+    )
+
+    # The guard must actually short-circuit the message, not just be called
+    # for effect — the next non-comment line dropping into the dispatcher
+    # must be a bare `return;` (no reply, per the anti-oracle comment).
+    guard_tail = active_code[guard.end():]
+    assert re.match(r"\s*\{\s*return\s*;", guard_tail), (
+        "the _auth_check guard in anything() must return early on failure"
+    )
+
+
 def test_bridge_js_capture_errors_use_capture_error_channel():
     source = _js_source()
     assert '"/capture_error"' in source

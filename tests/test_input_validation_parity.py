@@ -12,6 +12,12 @@ the same files validated theirs:
   P3-13  analyzer warp/scrub bridge tools forwarded track_index/clip_index/
          beat_time to the M4L bridge with zero validation, unlike their
          clips.py TCP siblings (_validate_track_index/_validate_clip_index).
+  P9     get_warp_markers and stop_scrub — the first function in the "Phase
+         2: Warp Markers" section and the function immediately after
+         scrub_clip in "Phase 2: Clip & Display" — were missed by the
+         P3-13 sweep despite taking the identical track_index/clip_index
+         pair and building the identical bridge path as their now-guarded
+         siblings.
 
 Each guard must fire BEFORE any connection/bridge access, so all tests use
 dummy contexts that would explode if touched.
@@ -24,9 +30,11 @@ import pytest
 
 from mcp_server.tools.analyzer import (
     add_warp_marker,
+    get_warp_markers,
     move_warp_marker,
     remove_warp_marker,
     scrub_clip,
+    stop_scrub,
 )
 from mcp_server.tools.devices import set_simpler_playback_mode
 from mcp_server.tools.generative import layer_euclidean_rhythms
@@ -207,3 +215,28 @@ def test_scrub_clip_rejects_negative_indices():
         _run(scrub_clip(_ExplodingCtx(), track_index=-3, clip_index=0, beat_time=0.0))
     with pytest.raises(ValueError, match="beat_time"):
         _run(scrub_clip(_ExplodingCtx(), track_index=0, clip_index=0, beat_time=-4.0))
+
+
+# ---------------------------------------------------------------------------
+# P9: get_warp_markers / stop_scrub — missed siblings of the P3-13 sweep
+# ---------------------------------------------------------------------------
+
+
+def test_get_warp_markers_rejects_negative_track_index():
+    with pytest.raises(ValueError, match="track_index"):
+        _run(get_warp_markers(_ExplodingCtx(), track_index=-5, clip_index=0))
+
+
+def test_get_warp_markers_rejects_negative_clip_index():
+    with pytest.raises(ValueError, match="clip_index"):
+        _run(get_warp_markers(_ExplodingCtx(), track_index=0, clip_index=-5))
+
+
+def test_stop_scrub_rejects_negative_track_index():
+    with pytest.raises(ValueError, match="track_index"):
+        _run(stop_scrub(_ExplodingCtx(), track_index=-5, clip_index=0))
+
+
+def test_stop_scrub_rejects_negative_clip_index():
+    with pytest.raises(ValueError, match="clip_index"):
+        _run(stop_scrub(_ExplodingCtx(), track_index=0, clip_index=-5))

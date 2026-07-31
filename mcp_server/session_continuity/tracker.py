@@ -6,6 +6,7 @@ Separates taste (cross-session) from identity (in-song) ranking.
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import logging
 import threading
@@ -236,6 +237,19 @@ def get_session_story(
     Previously the field was empty and users got a half-populated
     response that read as "something's wrong" even though the partial
     data was correct for a fresh session.
+
+    Returns an isolated snapshot, not the shared module-level singleton.
+    ``_story`` is one process-wide object reused by every call (these
+    tools run threadpooled — see the module comment). A caller that took
+    the raw object would be racing every other in-flight call: a second
+    caller could overwrite identity_summary/song_brain_id/threads/turns
+    on the same object before the first caller serializes it (its own
+    ``to_dict()`` runs after this function — and this lock — returns).
+    ``_story.threads``/``.turns`` are also freshly-built lists of
+    CreativeThread/TurnResolution objects aliased from ``_threads``, which
+    ``resolve_thread()`` mutates in place — a shallow copy of ``_story``
+    would still leak that mutation into an already-returned snapshot, so
+    this deep-copies while still holding the lock.
     """
     song_brain = song_brain or {}
 
@@ -258,7 +272,7 @@ def get_session_story(
             last = _turns[-1]
             _story.what_changed_last = f"{last.request_text} → {last.outcome}"
 
-        return _story
+        return copy.deepcopy(_story)
 
 
 def resume_last_intent() -> dict:
@@ -366,7 +380,14 @@ def open_thread(description: str, domain: str = "", priority: float = 0.5) -> Cr
 
 
 def resolve_thread(thread_id: str) -> Optional[CreativeThread]:
-    """Mark a creative thread as resolved."""
+    """Mark a creative thread as resolved.
+
+    Returns a copy, not the object stored in ``_threads`` — same reasoning
+    as get_session_story(): the stored object is one this module mutates
+    in place (here and via any future resolve_thread on the same id), so
+    handing back the live reference would let a later mutation bleed into
+    a caller that hasn't finished using the value it already got back.
+    """
     with _state_lock:
         thread = _threads.get(thread_id)
         if thread:
@@ -377,6 +398,7 @@ def resolve_thread(thread_id: str) -> Optional[CreativeThread]:
                     _project_store.save_thread(thread.to_dict())
                 except Exception as exc:
                     logger.debug("resolve_thread failed: %s", exc)
+            return copy.deepcopy(thread)
         return thread
 
 

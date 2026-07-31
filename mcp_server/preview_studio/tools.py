@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Optional
 
 from fastmcp import Context
@@ -443,9 +444,20 @@ async def commit_preview_variant(
         ws.transition_to("resolved")
 
         # Record accepted turn resolution
+        # record_turn_resolution/resolve_thread are synchronous: they take
+        # session_continuity's module-level threading.Lock and, while
+        # holding it, do blocking disk I/O (save_turn/save_thread ->
+        # os.fsync). Calling them directly here would block the asyncio
+        # event loop for the duration of that lock hold — including
+        # whenever bind_project_store_from_session's merge loop is holding
+        # the same lock across a run of sequential disk writes — stalling
+        # every other in-flight MCP request. Offload via asyncio.to_thread,
+        # matching the established idiom for sync blocking calls in async
+        # tool handlers (see scripts/scan_async_blocking.py).
         try:
             from ..session_continuity.tracker import record_turn_resolution, resolve_thread
-            record_turn_resolution(
+            await asyncio.to_thread(
+                record_turn_resolution,
                 request_text=ws.request_text,
                 outcome="accepted",
                 move_applied=chosen.move_id,
@@ -453,7 +465,7 @@ async def commit_preview_variant(
                 user_sentiment="liked",
             )
             if ws.creative_thread_id:
-                resolve_thread(ws.creative_thread_id)
+                await asyncio.to_thread(resolve_thread, ws.creative_thread_id)
         except Exception as exc:
             logger.debug("commit_preview_variant failed: %s", exc)
 

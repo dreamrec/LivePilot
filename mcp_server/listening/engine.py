@@ -59,6 +59,12 @@ CLIP_THRESHOLD = 0.999
 GRID_DIVISIONS = (3, 4, 6, 8)  # per-beat subdivisions tried for microtiming grid
 LUFS_FLOOR = -70.0  # silence sentinel; pyloudnorm returns -inf on digital silence
 NOVELTY_LUFS_GATE = -60.0  # below this, flux/onset ratios are numerical noise
+STEREO_RATIO_CEILING = 10.0  # +20 dB side-over-mid; beyond this the ratio is a
+# near-total-cancellation degeneracy (mid_rms -> ~0), not a meaningfully
+# "wider" mix — saturate instead of reporting an unbounded/billions-scale value
+CENTROID_FLOOR_HZ = 20.0  # BANDS[0] low edge; floors the centroid-ratio
+# denominator so a silent 'before' (centroid gated to 0.0) doesn't divide by
+# zero and skip the comparison entirely
 
 CANONICAL_DIMENSIONS = (
     "brightness", "warmth", "weight", "clarity", "density",
@@ -166,9 +172,16 @@ def _loudness(audio: np.ndarray, sr: int) -> dict:
     from scipy.signal import resample_poly
 
     mono = _mono(audio)
-    oversampled = resample_poly(mono, 4, 1)
-    true_peak = float(np.abs(oversampled).max())
     rms = float(np.sqrt((mono ** 2).mean()))
+
+    # True peak is a per-channel quantity: panned or decorrelated content
+    # (the normal case for a stereo master) averages away on a mono downmix,
+    # systematically understating it (or reading silence on perfectly
+    # anti-phase material). Oversample every channel independently and take
+    # the max across channels, not the mono sum.
+    channels = audio if audio.ndim == 2 else audio[:, None]
+    oversampled = resample_poly(channels, 4, 1, axis=0)
+    true_peak = float(np.abs(oversampled).max())
 
     # pyloudnorm's gating block is 400 ms; shorter input raises ValueError
     if len(mono) < int(0.5 * sr):
@@ -317,11 +330,16 @@ def _stereo(audio: np.ndarray, sr: int) -> dict:
     low_mid_rms = float(np.sqrt((sosfilt(sos, mid) ** 2).mean())) + 1e-12
     low_side_rms = float(np.sqrt((sosfilt(sos, side) ** 2).mean()))
 
+    # The +1e-12 floor only guards 0/0 on digital silence; it does not keep
+    # the ratio physical once mid nearly cancels (phase-invert / anti-phase
+    # content), where mid_rms can collapse to ~1e-9..1e-12 while side_rms
+    # stays normal. Saturate at a documented ceiling instead of letting the
+    # ratio explode into the billions and dominate compare()'s ranking.
     return {
         "is_stereo": True,
         "correlation": correlation,
-        "side_mid_ratio": side_rms / mid_rms,
-        "low_side_ratio": low_side_rms / low_mid_rms,
+        "side_mid_ratio": min(side_rms / mid_rms, STEREO_RATIO_CEILING),
+        "low_side_ratio": min(low_side_rms / low_mid_rms, STEREO_RATIO_CEILING),
     }
 
 
@@ -403,6 +421,13 @@ def extract_features(
 ) -> ClipFeatures:
     """Extract the full clip report from float32 samples (n,) or (n, ch)."""
     import librosa
+
+    if not np.all(np.isfinite(audio)):
+        raise ValueError(
+            "Audio buffer contains non-finite samples (NaN/Inf) — likely a "
+            "misbehaving plugin, a divide-by-zero in a synth, or an "
+            "interrupted capture write. Re-capture and retry."
+        )
 
     mono = _mono(audio)
     mono22 = librosa.resample(mono, orig_sr=sr, target_sr=RHYTHM_SR) \
@@ -507,12 +532,17 @@ def compare(before: ClipFeatures, after: ClipFeatures) -> dict:
 
     bc = before.snapshot["spectral_shape"]["centroid"]
     ac = after.snapshot["spectral_shape"]["centroid"]
-    if bc > 0 and abs(ac - bc) / bc >= EPSILON["centroid_ratio"]:
+    # bc == 0 means 'before' was silence (centroid gated to 0.0 upstream) —
+    # the relative-ratio test would divide by zero and silently skip a
+    # silence -> bright transition no matter how loud 'after' is. Floor the
+    # denominator instead of guarding on bc > 0.
+    centroid_denom = bc if bc > 0 else CENTROID_FLOOR_HZ
+    if abs(ac - bc) / centroid_denom >= EPSILON["centroid_ratio"]:
         changes.append({
             "area": "spectral_shape", "metric": "centroid",
             "before": round(bc, 1), "after": round(ac, 1),
             "delta": round(ac - bc, 1), "unit": "Hz",
-            "magnitude": abs(ac - bc) / bc / EPSILON["centroid_ratio"],
+            "magnitude": abs(ac - bc) / centroid_denom / EPSILON["centroid_ratio"],
         })
 
     bs, as_ = before.extended["stereo"], after.extended["stereo"]

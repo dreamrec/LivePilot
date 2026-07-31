@@ -1248,6 +1248,8 @@ async def get_warp_markers(
     understand timing, extract groove templates, or prepare for manipulation.
     Only works on audio clips. Requires LivePilot Analyzer on master track.
     """
+    _validate_track_index(track_index)
+    _validate_clip_index(clip_index)
     cache = _get_spectral(ctx)
     _require_analyzer(cache)
     bridge = _get_m4l(ctx)
@@ -1363,6 +1365,8 @@ async def stop_scrub(
 
     Requires LivePilot Analyzer on master track.
     """
+    _validate_track_index(track_index)
+    _validate_clip_index(clip_index)
     cache = _get_spectral(ctx)
     _require_analyzer(cache)
     bridge = _get_m4l(ctx)

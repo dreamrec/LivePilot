@@ -70,6 +70,17 @@ def test_cancel_capture_future_without_device_result_keeps_old_shape():
 
 
 def test_cancel_capture_future_ignores_error_device_result():
+    """A bridge-level error/timeout device_result carries no confirmation
+    that a real capture was stopped, so it must NOT resolve whatever
+    capture future happens to be live (review 2026-07-31, finding #3).
+
+    This test previously asserted the opposite (that the future got
+    resolved anyway, just without a file_path) — that encoded the buggy
+    contract where cancel_capture_future() resolved ANY live future on
+    an ok-ish reply. Updated to require the future is left untouched so
+    the real capture_audio caller can complete normally or time out on
+    its own instead of waking up early to a phantom "stopped_early".
+    """
     bridge = _bridge_with_receiver()
 
     async def scenario():
@@ -77,11 +88,37 @@ def test_cancel_capture_future_ignores_error_device_result():
         future = loop.create_future()
         bridge.receiver.set_capture_future(future)
         await bridge.cancel_capture_future({"error": "M4L capture timeout"})
-        return await future
+        assert not future.done()
+        assert bridge.receiver._capture_future is future
 
-    result = asyncio.run(scenario())
-    assert result == {"ok": True, "stopped_early": True}
-    assert "file_path" not in result
+    asyncio.run(scenario())
+
+
+def test_cancel_capture_future_ignores_unrelated_stopped_false_result():
+    """Reproduces the exact race from review finding #3: a defensive/retried
+    capture_stop whose device round-trip reports {"ok": true, "stopped":
+    false, "message": "No capture was active"} lands while an UNRELATED,
+    still-recording capture_audio owns the live future. Grafting onto that
+    future would resolve it with stopped_early while the device keeps
+    recording — the caller believes the capture stopped early, and the
+    genuine final file_path is silently dropped when /capture_complete
+    later finds ``_capture_future`` already cleared.
+    """
+    bridge = _bridge_with_receiver()
+
+    async def scenario():
+        loop = asyncio.get_running_loop()
+        future = loop.create_future()
+        bridge.receiver.set_capture_future(future)
+        await bridge.cancel_capture_future({
+            "ok": True,
+            "stopped": False,
+            "message": "No capture was active",
+        })
+        assert not future.done()
+        assert bridge.receiver._capture_future is future
+
+    asyncio.run(scenario())
 
 
 def test_cancel_capture_future_noop_when_future_already_done():

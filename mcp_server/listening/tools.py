@@ -64,7 +64,15 @@ def _analyze(file: str, bpm: Optional[float],
         ) from exc
 
     path = _resolve_capture_path(file)
-    audio, sr = sf.read(path, dtype="float32", always_2d=True)
+    try:
+        audio, sr = sf.read(path, dtype="float32", always_2d=True)
+    except Exception as exc:
+        raise ValueError(
+            f"Could not read audio file {path}: {exc}. A 0-byte or "
+            "truncated-header file usually means the capture is still being "
+            "written (capture_audio can take up to ~480ms to finish); wait "
+            "briefly and retry."
+        ) from exc
     if seconds:
         audio = audio[: int(sr * float(seconds))]
     if len(audio) == 0:

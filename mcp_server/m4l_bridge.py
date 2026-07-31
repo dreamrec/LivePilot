@@ -1326,9 +1326,23 @@ class M4LBridge:
         its file/file_path are merged into the resolved result so the
         in-flight capture_audio caller learns where the partial recording
         landed (review 2026-07-30: previously the path was silently dropped).
+
+        capture_stop's own ``_cmd_lock`` and capture_audio's ``_capture_lock``
+        are deliberately independent (BUG-audit-C1), so a capture_stop can
+        land while an UNRELATED, still-recording capture_audio owns the live
+        future. When ``device_result`` is supplied it must actually confirm
+        the device stopped a capture (``stopped=True``) before we graft onto
+        that future — a "nothing to stop" reply ({"ok": true, "stopped":
+        false}) or a bridge-level error/timeout dict must leave the in-flight
+        future untouched so it completes normally or times out on its own
+        (review 2026-07-31: previously any ``ok``-ish reply resolved
+        whichever future happened to be live, silently truncating an
+        unrelated recording).
         """
         if self.receiver and self.receiver._capture_future \
                 and not self.receiver._capture_future.done():
+            if device_result is not None and not device_result.get("stopped"):
+                return
             result = {"ok": True, "stopped_early": True}
             if device_result and device_result.get("ok"):
                 for key in ("file", "file_path"):
