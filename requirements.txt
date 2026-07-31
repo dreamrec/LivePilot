@@ -4,9 +4,9 @@
 # to build numba from source and fails. Full suite verified green on 2.4.x.
 # Lift the cap when numba ships numpy-2.5 wheels.
 numpy>=2.3,<2.5
-fastmcp>=3.4.4,<3.5.0  # pinned upper bound — _get_all_tools() accesses private internals
+fastmcp>=3.4.5,<3.5.0  # pinned upper bound — _get_all_tools() accesses private internals
 midiutil>=1.2.1
-pretty_midi>=0.2.11
+pretty_midi>=0.2.11.post0
 # v1.8 Perception Layer (offline analysis)
 pyloudnorm>=0.2.0
 soundfile>=0.14.0
@@ -18,7 +18,7 @@ librosa>=0.10
 # Without these, SpliceGRPCClient silently disables itself and search_samples
 # falls back to the SQLite sounds.db which only returns locally downloaded
 # samples (see docs/2026-04-14-bugs-discovered.md — P0-2).
-grpcio>=1.82.1
+grpcio>=1.83.0
 protobuf>=7.35.1
 
 # Known benign warning during install:
