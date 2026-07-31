@@ -290,6 +290,15 @@ VERSION_FILES = [
     # The check_version() regex matches any 1.X.Y — so a CHANGELOG that still
     # says "## 1.10.6" at the top while the repo is 1.10.7 will now fail.
     "CHANGELOG.md",
+    # BSL 1.1 states "This License applies separately for each version of the
+    # Licensed Work", so the `Licensed Work:` line must name the shipping
+    # version. It said 1.10.0 while the repo was at 1.28.0 — eighteen releases
+    # of drift, because nothing enforced it. Added 2026-07-31.
+    # NOTE: only the version is enforced here. The `Change Date` is a
+    # deliberate licensing decision, not a derived value — leaving it earlier
+    # than a per-version recomputation is the user-favourable direction (the
+    # work converts to MIT sooner), so it is intentionally NOT auto-synced.
+    "LICENSE",
     "livepilot/skills/livepilot-core/references/overview.md",
     # capability-modes.md ships example JSON with a version string that must
     # match the frozen bridge — caught during v1.10.7 audit.

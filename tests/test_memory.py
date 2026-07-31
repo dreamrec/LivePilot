@@ -507,7 +507,13 @@ class TestEdgeCases:
         old_updated = store.get(tid)["updated_at"]
         import time
 
-        time.sleep(0.01)  # ensure timestamp differs
+        # NOTE: this sleep does NOT reliably make the timestamp differ —
+        # datetime.now() resolution on Windows is ~15.6 ms, so 10 ms can
+        # produce an identical ISO string. The assertion below is deliberately
+        # >= rather than > for that reason, which means it verifies
+        # "updated_at did not go backwards", not "favorite() bumped it".
+        # Strengthening it to > would need a deterministic clock, not a sleep.
+        time.sleep(0.01)
         store.favorite(tid)
         assert store.get(tid)["updated_at"] >= old_updated
 

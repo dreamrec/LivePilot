@@ -174,8 +174,14 @@ def test_miditool_heartbeat_does_not_resurrect_expired_request():
     notes = [{"pitch": 60}]
     cache.set_request(ctx, notes)
 
-    # Wait just a hair to ensure age > 0
-    time.sleep(0.01)
+    # Backdate the request instead of sleeping. Expiry is `age > max_age`, so
+    # with max_age=0 the monotonic clock must STRICTLY advance — and Windows'
+    # time.monotonic() ticks at ~15.6 ms, so a 10 ms sleep can leave age
+    # exactly 0.0 and the payload reads as fresh. That flaked the Windows CI
+    # leg on 2026-07-31 (passed on macOS/Linux, failed intermittently on
+    # Windows). Controlling the timestamp makes the test deterministic
+    # everywhere and removes the sleep from the suite's runtime.
+    cache._request_time -= 1.0
 
     # Confirm the request has expired
     assert cache.get_last_context() is None, (
@@ -248,11 +254,18 @@ def test_miditool_request_time_not_updated_by_mark_ready():
 
     # After set_request, _request_time must be set
     cache.set_request({"grid": 1.0}, [])
+    assert cache._request_time > 0.0
+
+    # Backdate rather than sleep. This is not cosmetic: if the clock does not
+    # advance (Windows monotonic ticks at ~15.6 ms, swallowing a 10 ms sleep),
+    # then a BUGGY mark_ready() that did reset _request_time to "now" would
+    # still compare equal to t1 and the assertion would pass spuriously — the
+    # guard silently stops guarding. Backdating guarantees any reset is
+    # detectable.
+    cache._request_time -= 1.0
     t1 = cache._request_time
-    assert t1 > 0.0
 
     # Another heartbeat must not change _request_time
-    time.sleep(0.01)
     cache.mark_ready()
     assert cache._request_time == t1, (
         "mark_ready() updated _request_time after set_request(). "
