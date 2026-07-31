@@ -19,7 +19,12 @@ right) so existing ``from .tools.analyzer import _foo`` imports in tests
 continue to resolve via the thin analyzer module.
 """
 
-from .context import _get_spectral, _get_m4l, _require_analyzer
+from .context import (
+    _get_spectral,
+    _get_m4l,
+    _require_analyzer,
+    _require_analyzer_async,
+)
 from .sample import (
     _BPM_IN_FILENAME_RE,
     _DRUM_ROOT_MAP,
@@ -36,6 +41,7 @@ __all__ = [
     "_get_spectral",
     "_get_m4l",
     "_require_analyzer",
+    "_require_analyzer_async",
     "_BPM_IN_FILENAME_RE",
     "_DRUM_ROOT_MAP",
     "_detect_drum_root_note",

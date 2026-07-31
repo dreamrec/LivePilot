@@ -1,7 +1,6 @@
 {
   "_comment": "Known pre-existing 'blocking call on the event loop' sites, recorded so CI fails on NEW violations instead of the backlog. Keyed by (repo-relative file, function, kind, target) \u2014 not line number, and not an absolute path, so the baseline matches on CI and on every developer machine. Shrinking this list is the goal; adding to it needs a reason. Regenerate with: python3 scripts/scan_async_blocking.py --update-baseline",
   "_root_causes": {
-    "_require_analyzer() -> send_command": 24,
     "_capture_snapshot() -> send_command": 2,
     "_capture_snapshot_with_render_verify() -> send_command": 2,
     "_load_graphql_query() -> file_io:read_text": 2,
@@ -35,30 +34,6 @@
     "mcp_server/tools/agent_os.py::_run::via_chain::_capture_snapshot_with_render_verify",
     "mcp_server/tools/agent_os.py::iterate_toward_goal::via_chain::_capture_snapshot",
     "mcp_server/tools/agent_os.py::iterate_toward_goal::via_chain::_capture_snapshot_with_render_verify",
-    "mcp_server/tools/analyzer.py::add_warp_marker::via_chain::_require_analyzer",
-    "mcp_server/tools/analyzer.py::analyze_loudness_live::via_chain::_require_analyzer",
-    "mcp_server/tools/analyzer.py::capture_audio::via_chain::_require_analyzer",
-    "mcp_server/tools/analyzer.py::capture_stop::via_chain::_require_analyzer",
-    "mcp_server/tools/analyzer.py::classify_simpler_slices::via_chain::_require_analyzer",
-    "mcp_server/tools/analyzer.py::crop_simpler::via_chain::_require_analyzer",
-    "mcp_server/tools/analyzer.py::get_automation_state::via_chain::_require_analyzer",
-    "mcp_server/tools/analyzer.py::get_clip_file_path::via_chain::_require_analyzer",
-    "mcp_server/tools/analyzer.py::get_detected_key::via_chain::_require_analyzer",
-    "mcp_server/tools/analyzer.py::get_display_values::via_chain::_require_analyzer",
-    "mcp_server/tools/analyzer.py::get_hidden_parameters::via_chain::_require_analyzer",
-    "mcp_server/tools/analyzer.py::get_master_spectrum::via_chain::_require_analyzer",
-    "mcp_server/tools/analyzer.py::get_simpler_slices::via_chain::_require_analyzer",
-    "mcp_server/tools/analyzer.py::get_warp_markers::via_chain::_require_analyzer",
-    "mcp_server/tools/analyzer.py::load_sample_to_simpler::via_chain::_require_analyzer",
-    "mcp_server/tools/analyzer.py::move_warp_marker::via_chain::_require_analyzer",
-    "mcp_server/tools/analyzer.py::reconnect_bridge::via_chain::_identify_port_holder",
-    "mcp_server/tools/analyzer.py::remove_warp_marker::via_chain::_require_analyzer",
-    "mcp_server/tools/analyzer.py::replace_simpler_sample::via_chain::_require_analyzer",
-    "mcp_server/tools/analyzer.py::reverse_simpler::via_chain::_require_analyzer",
-    "mcp_server/tools/analyzer.py::scrub_clip::via_chain::_require_analyzer",
-    "mcp_server/tools/analyzer.py::simpler_set_warp::via_chain::_require_analyzer",
-    "mcp_server/tools/analyzer.py::stop_scrub::via_chain::_require_analyzer",
-    "mcp_server/tools/analyzer.py::walk_device_tree::via_chain::_require_analyzer",
-    "mcp_server/tools/analyzer.py::warp_simpler::via_chain::_require_analyzer"
+    "mcp_server/tools/analyzer.py::reconnect_bridge::via_chain::_identify_port_holder"
   ]
 }

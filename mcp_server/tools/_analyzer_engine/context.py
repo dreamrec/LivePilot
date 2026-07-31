@@ -6,6 +6,7 @@ BUG-C1 so the tool file contains only ``@mcp.tool()`` definitions.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import TYPE_CHECKING
 
@@ -106,3 +107,28 @@ def _require_analyzer(cache) -> None:
         "Drag 'LivePilot Analyzer' onto the master track from "
         "Audio Effects > Max Audio Effect."
     )
+
+
+async def _require_analyzer_async(cache) -> None:
+    """``async def`` form of :func:`_require_analyzer`.
+
+    Same guard, same error text — but safe to call from an async tool handler.
+
+    Why this exists: ``_require_analyzer``'s *diagnostic* path is expensive. To
+    tell "not loaded" from "loaded but port held" it does a synchronous TCP
+    round-trip (``get_master_track``) and a ``subprocess`` port-holder probe.
+    Called bare from an ``async def``, both run on the event loop and freeze
+    every other in-flight MCP request — and they fire exactly when the session
+    is already unhealthy and the user is most likely retrying. (Found by the
+    2026-07-31 review; 24 analyzer tools were affected.)
+
+    The connected fast path returns WITHOUT a thread hop. That is the
+    overwhelmingly common case, and these guards sit at the top of ~24 hot
+    tools that run in tight evaluation loops, so paying a threadpool
+    round-trip per call to re-check an in-memory flag would be pure waste.
+    ``cache.is_connected`` is a timestamp comparison under a briefly-held
+    lock — it never touches I/O.
+    """
+    if cache.is_connected:
+        return
+    await asyncio.to_thread(_require_analyzer, cache)

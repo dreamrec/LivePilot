@@ -86,13 +86,18 @@ async def _call_get_master_spectrum_with_bad_window(ctx):
     orig = _mod._get_spectral
     _mod._get_spectral = lambda c: {"analyzer_available": True}
 
-    orig_require = _mod._require_analyzer
-    _mod._require_analyzer = lambda c: None
+    # async tools call the async guard (_require_analyzer_async); the sync
+    # _require_analyzer is still used by the sync analyzer tools.
+    async def _noop_require(_cache):
+        return None
+
+    orig_require = _mod._require_analyzer_async
+    _mod._require_analyzer_async = _noop_require
     try:
         return await get_master_spectrum(ctx, window_ms=99999)
     finally:
         _mod._get_spectral = orig
-        _mod._require_analyzer = orig_require
+        _mod._require_analyzer_async = orig_require
 
 
 # ---------------------------------------------------------------------------

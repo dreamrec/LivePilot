@@ -28,6 +28,7 @@ from ._analyzer_engine import (
     _get_spectral,
     _is_warped_loop,
     _require_analyzer,
+    _require_analyzer_async,
     _simpler_post_load_hygiene,
     _WindowedFrameTracker,
 )
@@ -258,7 +259,7 @@ async def get_master_spectrum(
     otherwise).
     """
     cache = _get_spectral(ctx)
-    _require_analyzer(cache)
+    await _require_analyzer_async(cache)
 
     if window_ms and window_ms > 0:
         # Windowed sampling — mean-pool N readings across the window.
@@ -446,7 +447,7 @@ async def get_detected_key(ctx: Context) -> dict:
     Requires LivePilot Analyzer on master track.
     """
     cache = _get_spectral(ctx)
-    _require_analyzer(cache)
+    await _require_analyzer_async(cache)
 
     # First check the streaming cache for a recent key detection
     key_data = cache.get("key")
@@ -478,7 +479,7 @@ async def get_hidden_parameters(
     Requires LivePilot Analyzer on master track.
     """
     cache = _get_spectral(ctx)
-    _require_analyzer(cache)
+    await _require_analyzer_async(cache)
     bridge = _get_m4l(ctx)
     return await bridge.send_command("get_hidden_params", track_index, device_index, timeout=15.0)
 
@@ -499,7 +500,7 @@ async def get_automation_state(
     Requires LivePilot Analyzer on master track.
     """
     cache = _get_spectral(ctx)
-    _require_analyzer(cache)
+    await _require_analyzer_async(cache)
     bridge = _get_m4l(ctx)
     return await bridge.send_command("get_auto_state", track_index, device_index, timeout=10.0)
 
@@ -518,7 +519,7 @@ async def walk_device_tree(
     Requires LivePilot Analyzer on master track.
     """
     cache = _get_spectral(ctx)
-    _require_analyzer(cache)
+    await _require_analyzer_async(cache)
     bridge = _get_m4l(ctx)
     return await bridge.send_command("walk_rack", track_index, device_index)
 
@@ -539,7 +540,7 @@ async def get_clip_file_path(
     Requires LivePilot Analyzer on master track.
     """
     cache = _get_spectral(ctx)
-    _require_analyzer(cache)
+    await _require_analyzer_async(cache)
     bridge = _get_m4l(ctx)
     return await bridge.send_command("get_clip_file_path", track_index, clip_index)
 
@@ -610,7 +611,7 @@ async def replace_simpler_sample(
     Requires LivePilot Analyzer on master track.
     """
     cache = _get_spectral(ctx)
-    _require_analyzer(cache)
+    await _require_analyzer_async(cache)
     bridge = _get_m4l(ctx)
     ableton = ctx.lifespan_context["ableton"]
 
@@ -700,7 +701,7 @@ async def load_sample_to_simpler(
     Requires LivePilot Analyzer on master track.
     """
     cache = _get_spectral(ctx)
-    _require_analyzer(cache)
+    await _require_analyzer_async(cache)
     bridge = _get_m4l(ctx)
     ableton = ctx.lifespan_context["ableton"]
 
@@ -1011,7 +1012,7 @@ async def get_simpler_slices(
     Analyzer on master track.
     """
     cache = _get_spectral(ctx)
-    _require_analyzer(cache)
+    await _require_analyzer_async(cache)
     bridge = _get_m4l(ctx)
     raw = await bridge.send_command("get_simpler_slices", track_index, device_index)
     return _enrich_slice_response(raw)
@@ -1062,7 +1063,7 @@ async def classify_simpler_slices(
     from ..sample_engine.slice_classifier import classify_slices
 
     cache = _get_spectral(ctx)
-    _require_analyzer(cache)
+    await _require_analyzer_async(cache)
     bridge = _get_m4l(ctx)
 
     # 1. Get slice positions
@@ -1177,7 +1178,7 @@ async def crop_simpler(
     Requires LivePilot Analyzer on master track.
     """
     cache = _get_spectral(ctx)
-    _require_analyzer(cache)
+    await _require_analyzer_async(cache)
     bridge = _get_m4l(ctx)
     return await bridge.send_command("crop_simpler", track_index, device_index)
 
@@ -1194,7 +1195,7 @@ async def reverse_simpler(
     Requires LivePilot Analyzer on master track.
     """
     cache = _get_spectral(ctx)
-    _require_analyzer(cache)
+    await _require_analyzer_async(cache)
     bridge = _get_m4l(ctx)
     return await bridge.send_command("reverse_simpler", track_index, device_index)
 
@@ -1213,7 +1214,7 @@ async def warp_simpler(
     Requires LivePilot Analyzer on master track.
     """
     cache = _get_spectral(ctx)
-    _require_analyzer(cache)
+    await _require_analyzer_async(cache)
     bridge = _get_m4l(ctx)
     return await bridge.send_command("warp_simpler", track_index, device_index, beats)
 
@@ -1251,7 +1252,7 @@ async def get_warp_markers(
     _validate_track_index(track_index)
     _validate_clip_index(clip_index)
     cache = _get_spectral(ctx)
-    _require_analyzer(cache)
+    await _require_analyzer_async(cache)
     bridge = _get_m4l(ctx)
     return await bridge.send_command("get_warp_markers", track_index, clip_index)
 
@@ -1273,7 +1274,7 @@ async def add_warp_marker(
     _validate_clip_index(clip_index)
     _validate_beat_time(beat_time)
     cache = _get_spectral(ctx)
-    _require_analyzer(cache)
+    await _require_analyzer_async(cache)
     bridge = _get_m4l(ctx)
     return await bridge.send_command(
         "add_warp_marker", track_index, clip_index, beat_time
@@ -1300,7 +1301,7 @@ async def move_warp_marker(
     _validate_beat_time(old_beat_time, "old_beat_time")
     _validate_beat_time(new_beat_time, "new_beat_time")
     cache = _get_spectral(ctx)
-    _require_analyzer(cache)
+    await _require_analyzer_async(cache)
     bridge = _get_m4l(ctx)
     return await bridge.send_command(
         "move_warp_marker", track_index, clip_index, old_beat_time, new_beat_time
@@ -1322,7 +1323,7 @@ async def remove_warp_marker(
     _validate_clip_index(clip_index)
     _validate_beat_time(beat_time)
     cache = _get_spectral(ctx)
-    _require_analyzer(cache)
+    await _require_analyzer_async(cache)
     bridge = _get_m4l(ctx)
     return await bridge.send_command(
         "remove_warp_marker", track_index, clip_index, beat_time
@@ -1348,7 +1349,7 @@ async def scrub_clip(
     _validate_clip_index(clip_index)
     _validate_beat_time(beat_time)
     cache = _get_spectral(ctx)
-    _require_analyzer(cache)
+    await _require_analyzer_async(cache)
     bridge = _get_m4l(ctx)
     return await bridge.send_command(
         "scrub_clip", track_index, clip_index, beat_time
@@ -1368,7 +1369,7 @@ async def stop_scrub(
     _validate_track_index(track_index)
     _validate_clip_index(clip_index)
     cache = _get_spectral(ctx)
-    _require_analyzer(cache)
+    await _require_analyzer_async(cache)
     bridge = _get_m4l(ctx)
     return await bridge.send_command("stop_scrub", track_index, clip_index)
 
@@ -1386,7 +1387,7 @@ async def get_display_values(
     Requires LivePilot Analyzer on master track.
     """
     cache = _get_spectral(ctx)
-    _require_analyzer(cache)
+    await _require_analyzer_async(cache)
     bridge = _get_m4l(ctx)
     return await bridge.send_command("get_display_values", track_index, device_index, timeout=15.0)
 
@@ -1513,7 +1514,7 @@ async def capture_audio(
     Requires LivePilot Analyzer on master track.
     """
     cache = _get_spectral(ctx)
-    _require_analyzer(cache)
+    await _require_analyzer_async(cache)
 
     if duration_seconds < 1 or duration_seconds > 300:
         raise ValueError("duration_seconds must be between 1 and 300")
@@ -1568,7 +1569,7 @@ async def capture_stop(ctx: Context) -> dict:
     Requires LivePilot Analyzer on master track.
     """
     cache = _get_spectral(ctx)
-    _require_analyzer(cache)
+    await _require_analyzer_async(cache)
     bridge = _get_m4l(ctx)
 
     # Ask the device first — its response carries the partial file's path.
@@ -1985,7 +1986,7 @@ async def analyze_loudness_live(
         return {"error": "sample_interval_ms must be 50..5000", "code": "INVALID_PARAM"}
 
     cache = _get_spectral(ctx)
-    _require_analyzer(cache)
+    await _require_analyzer_async(cache)
     ableton = ctx.lifespan_context["ableton"]
 
     # Verify FluCoMa is alive — otherwise there's no stream to sample.
@@ -2104,7 +2105,7 @@ async def simpler_set_warp(
     if warp_mode is not None and warp_mode not in (0, 1, 2, 3, 4, 6):
         raise ValueError("warp_mode must be 0,1,2,3,4,6 (no 5 — Live skips it)")
     cache = _get_spectral(ctx)
-    _require_analyzer(cache)
+    await _require_analyzer_async(cache)
     bridge = _get_m4l(ctx)
     return await bridge.send_command(
         "simpler_set_warp",

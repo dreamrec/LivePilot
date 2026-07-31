@@ -230,7 +230,7 @@ def test_classify_simpler_slices_end_to_end(tmp_path):
     ctx = MagicMock()
     with patch("mcp_server.tools.analyzer._get_m4l", return_value=bridge), patch(
         "mcp_server.tools.analyzer._get_spectral", return_value={"analyzer": True}
-    ), patch("mcp_server.tools.analyzer._require_analyzer"):
+    ), patch("mcp_server.tools.analyzer._require_analyzer_async"):
         import asyncio
 
         result = asyncio.run(
@@ -272,7 +272,7 @@ def test_classify_simpler_slices_returns_error_on_missing_wav(tmp_path):
     ctx = MagicMock()
     with patch("mcp_server.tools.analyzer._get_m4l", return_value=bridge), patch(
         "mcp_server.tools.analyzer._get_spectral", return_value={"analyzer": True}
-    ), patch("mcp_server.tools.analyzer._require_analyzer"):
+    ), patch("mcp_server.tools.analyzer._require_analyzer_async"):
         import asyncio
 
         missing = tmp_path / "does_not_exist.wav"
@@ -312,7 +312,7 @@ def test_classify_simpler_slices_returns_error_on_corrupt_wav(tmp_path):
     ctx = MagicMock()
     with patch("mcp_server.tools.analyzer._get_m4l", return_value=bridge), patch(
         "mcp_server.tools.analyzer._get_spectral", return_value={"analyzer": True}
-    ), patch("mcp_server.tools.analyzer._require_analyzer"):
+    ), patch("mcp_server.tools.analyzer._require_analyzer_async"):
         import asyncio
 
         result = asyncio.run(
@@ -369,7 +369,7 @@ def test_classify_simpler_slices_returns_error_when_no_file_path():
 
     with patch("mcp_server.tools.analyzer._get_m4l", return_value=bridge), patch(
         "mcp_server.tools.analyzer._get_spectral", return_value={"analyzer": True}
-    ), patch("mcp_server.tools.analyzer._require_analyzer"):
+    ), patch("mcp_server.tools.analyzer._require_analyzer_async"):
         import asyncio
 
         result = asyncio.run(
