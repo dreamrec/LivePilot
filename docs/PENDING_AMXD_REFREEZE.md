@@ -1,19 +1,45 @@
-# Pending .amxd Re-Freeze Batch — LivePilot_Analyzer
+# .amxd Re-Freeze Batch — LivePilot_Analyzer — SHIPPED 2026-07-31
 
-**Status: PREP COMPLETE — awaiting the Max export (a USER action).**
+**Status: FROZEN AND SHIPPED at 1.28.0.** Everything below is now live in the
+frozen device; the note is kept for the procedure and the follow-up list.
 
-Everything that can be done outside Max is done as of 2026-07-31:
-
-| Prep step | State |
+| Result | |
 |---|---|
-| Version bumped to 1.28.0 across all enforced files | DONE (`sync_metadata.py --check` clean) |
-| `var VERSION` in `livepilot_bridge.js` bumped to 1.28.0 | DONE |
-| JS synced to all 5 Max search-path locations | DONE (MD5-identical to repo) |
-| Token scheme documented in `docs/M4L_BRIDGE.md` | DONE |
-| `CHANGELOG.md` v1.28.0 entry | DONE |
-| Freeze-chain verifier `scripts/sync_amxd_targets.sh` | DONE (wired into CI) |
-| **Max export (Consolidate → Freeze Device → Save As)** | **REMAINING — user action** |
-| Propagate to 3 install targets + verify | blocked on the export |
+| `var VERSION` | 1.27.3 → **1.28.0** |
+| size | 6,758,818 → 6,764,431 bytes (+5,613 = exactly the JS delta) |
+| `_auth_check` / `_auth_token_path` / `__livepilot_token` / `send_capture_error` | 0 → 3 / 2 / 2 / 3 occurrences |
+| freeze type | FAT retained (macho=12, pe=24) |
+| install targets | all 3 MD5-identical |
+
+## How it was frozen (standalone Max was unusable)
+
+Standalone Max 9.1.4 could not do it: `maxauth.txt` reports **"Your license has
+expired"**, which surfaces as every patcher opening titled *"(saving disabled)"*
+with Save, Save As, and Export Max for Live Device all greyed out. If you ever
+see that title, check the license before debugging anything else.
+
+Use **Ableton's embedded Max** instead, which is licensed via Live:
+
+1. Right-click the device's title bar in Live → **"Edit in Max"**. It lives in
+   the `...` overflow menu, *not* on the title bar — the circle icon beside it
+   is HOT-SWAP and merely opens the browser in swap mode.
+2. In the Max window, click the **snowflake** in the bottom toolbar to unfreeze
+   (Max re-resolves dependencies from the search path), then click it again to
+   re-freeze.
+3. `Cmd-S`.
+
+Saving writes to the **loaded instance's own path**, not the repo — here
+`~/Music/Ableton/User Library/Presets/Audio Effects/Max Audio Effect/`. Copy it
+into `m4l_device/` afterwards, then:
+
+```bash
+bash scripts/sync_amxd_targets.sh --apply
+```
+
+That verifies the JS version matches the repo, the binary embeds it, every
+bridge command **and** every top-level JS identifier made it into the freeze
+(catching a stale freeze a version patch would hide), the freeze is still FAT,
+then copies to all install targets and re-verifies by MD5.
 
 > The stale Max search-path cache was the live trap here: before the sync it was
 > 67,300 bytes against the repo's 72,913 and contained **none** of `_auth_check`,
@@ -22,23 +48,9 @@ Everything that can be done outside Max is done as of 2026-07-31:
 > manifest reported 1.28.0. Backups of the previous copies are alongside each
 > file as `*.pre-1.28.0.bak`.
 
-CI's `amxd-freeze-drift` gate is RED until the export lands. That is the
-interlock working, not a regression.
-
-After exporting from Max, run:
-
-```bash
-bash scripts/sync_amxd_targets.sh --apply
-```
-
-It verifies the JS version matches the repo, the binary embeds it, every bridge
-command **and** every top-level JS identifier made it into the freeze (catching a
-stale freeze a version patch would hide), the freeze is still FAT, then copies to
-all install targets and re-verifies by MD5.
-
 The frozen JS inside `LivePilot_Analyzer.amxd` is authoritative at runtime —
-nothing below takes effect until that export happens. This note exists so that
-ONE re-freeze ships the whole batch.
+loose edits to `livepilot_bridge.js` change nothing until a re-freeze. This note
+exists so that ONE re-freeze ships a whole batch.
 
 Freeze procedure: `docs/MAX_FREEZE_WORKFLOW.md`. Remember the two classic
 traps: Max freezes JS from its search-path cache (sync the copy in
