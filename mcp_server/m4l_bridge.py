@@ -1080,6 +1080,15 @@ class M4LBridge:
         failure: the JS treats a missing/unreadable token file as legacy
         compat mode and keeps accepting untokened commands, so a failed
         write degrades to pre-1.28 behavior rather than breaking the bridge.
+
+        PLATFORM NOTE: the 0600 mode below is only meaningful on POSIX.
+        Python's ``os.chmod`` on Windows toggles the read-only bit and
+        nothing else, so the file lands at 0o666 there and confidentiality
+        rests on the default ACLs of the user profile directory instead.
+        That is acceptable for the threat model this token addresses — a
+        LAN-adjacent host firing blind OSC at UDP 9881, not a hostile local
+        user — but it is an assumption worth knowing about, and it is why
+        the mode assertion in tests/test_bridge_token_auth.py is POSIX-only.
         """
         if _token_auth_disabled_by_env():
             return None

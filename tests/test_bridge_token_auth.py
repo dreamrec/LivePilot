@@ -28,6 +28,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import os
 import re
 import stat
 import struct
@@ -355,7 +356,9 @@ def test_init_does_not_touch_disk(tmp_path):
     )
 
 
-def test_publish_auth_token_writes_file_0600(tmp_path):
+def test_publish_auth_token_writes_file(tmp_path):
+    """The functional contract, on every platform: the file is created
+    (including missing parents) and holds exactly the live token."""
     token_path = tmp_path / "nested" / "bridge_token"
     cache = SpectralCache()
     bridge = M4LBridge(cache, SpectralReceiver(cache), token_file_path=token_path)
@@ -363,6 +366,27 @@ def test_publish_auth_token_writes_file_0600(tmp_path):
     written = bridge.publish_auth_token()
     assert written == token_path
     assert token_path.read_text(encoding="utf-8").strip() == bridge.auth_token
+
+
+@pytest.mark.skipif(
+    os.name != "posix",
+    reason=(
+        "POSIX file modes only. Python's os.chmod on Windows toggles the "
+        "read-only bit and nothing else, so the file lands at 0o666 there "
+        "and confidentiality rests on the user-profile ACLs instead — see "
+        "the PLATFORM NOTE on M4LBridge.publish_auth_token. Asserting 0600 "
+        "unconditionally just fails the Windows CI leg for a property that "
+        "platform cannot express."
+    ),
+)
+def test_publish_auth_token_is_owner_only_on_posix(tmp_path):
+    """The token is a shared secret — on POSIX it must not be group/world
+    readable, or any local user could read it and drive the bridge."""
+    token_path = tmp_path / "nested" / "bridge_token"
+    cache = SpectralCache()
+    bridge = M4LBridge(cache, SpectralReceiver(cache), token_file_path=token_path)
+
+    bridge.publish_auth_token()
     mode = stat.S_IMODE(token_path.stat().st_mode)
     assert mode == 0o600, f"token file mode is {oct(mode)}, expected 0o600"
 
