@@ -17,7 +17,7 @@
 
 <p align="center">
   An agentic production system for Ableton Live 12.<br>
-  469 tools. 57 domains. Device atlas. Plan-aware Splice integration. Auto-composition. Spectral perception. Technique memory. Drum-rack pad builder. Live dead-device detection.
+  472 tools. 57 domains. Device atlas. Plan-aware Splice integration. Auto-composition. Spectral perception. Technique memory. Drum-rack pad builder. Live dead-device detection.
 </p>
 
 <br>
@@ -40,7 +40,7 @@
 
 ## What's New in v1.28.0
 
-A new perception domain plus the bridge authentication batch (469 tools / 57 domains):
+A new perception domain plus the bridge authentication batch (472 tools / 57 domains):
 
 - **Listening Engine** — `listen_capture` and `listen_ab` analyze a rendered capture off disk
   (librosa/soundfile) instead of reading a live meter. You get stereo width and bass-mono
@@ -96,7 +96,7 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 
 ## Two Ways to Talk to LivePilot
 
-Pick whichever is faster for the idea in your head — both reach the same 469-tool surface.
+Pick whichever is faster for the idea in your head — both reach the same 472-tool surface.
 
 ### Route A — Artist / aesthetic shorthand
 
@@ -149,7 +149,7 @@ Most sessions do both. Lead with shorthand to anchor the aesthetic, then refine 
 │         └─────────────────┼──────────────────┘                       │
 │                           ▼                                          │
 │                  ┌─────────────────┐                                  │
-│                  │   469 MCP Tools  │                                  │
+│                  │   472 MCP Tools  │                                  │
 │                  │   57 domains     │                                  │
 │                  └────────┬────────┘                                  │
 │                           │                                          │
@@ -190,7 +190,7 @@ Most sessions do both. Lead with shorthand to anchor the aesthetic, then refine 
 
 ## The Intelligence Layer
 
-12 engines sit on top of the 469 tools. They give the AI musical judgment, not just musical execution.
+12 engines sit on top of the 472 tools. They give the AI musical judgment, not just musical execution.
 
 ### SongBrain — What the Song Is
 
@@ -242,7 +242,7 @@ Every engine follows: **measure before → act → measure after → compare**. 
 
 ## Tools
 
-469 tools across 57 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
+472 tools across 57 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
 
 <br>
 
@@ -577,7 +577,7 @@ The V2 intelligence layer. These tools analyze, diagnose, plan, evaluate, and le
 | Creative Constraints | 5 | constraint activation, reference-inspired variants |
 | Preview Studio | 5 | variant creation, preview rendering, comparison, commit |
 
-> **[View all 469 tools →](docs/manual/tool-catalog.md)**
+> **[View all 472 tools →](docs/manual/tool-catalog.md)**
 
 <br>
 
@@ -810,7 +810,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for architecture details, code guidelines
 
 | Document | What's inside |
 |----------|---------------|
-| [Manual](docs/manual/index.md) | Complete reference: architecture, all 469 tools, workflows |
+| [Manual](docs/manual/index.md) | Complete reference: architecture, all 472 tools, workflows |
 | [Intelligence Layer](docs/manual/intelligence.md) | How the 12 engines connect — conductor, moves, preview, evaluation |
 | [Device Atlas](docs/manual/device-atlas.md) | 5264 devices indexed — search, suggest, chain building |
 | [Samples & Slicing](docs/manual/samples.md) | 3-source search, fitness critics, slice workflows |

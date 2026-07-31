@@ -1,7 +1,7 @@
 # LivePilot Context
 
 > Shared language and stable architectural decisions for LivePilot — the
-> Ableton Live MCP plugin (469 tools, three-layer architecture: Device
+> Ableton Live MCP plugin (472 tools, three-layer architecture: Device
 > Atlas + M4L Analyzer + Technique Memory). Consumed by Claude Code
 > sessions before any work on this repo.
 >

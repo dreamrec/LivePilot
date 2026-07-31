@@ -52,6 +52,44 @@ its text side was verified unreliable on this material (asked for "white noise
 hiss" it ranked an actual white-noise capture 4th of 5), so it is not exposed.
 Audio-to-audio only.
 
+### `taste_record_pair` / `taste_train` / `taste_rank` — the learned head
+
+The taste anchor above, turned into a model. Every kept-over-discarded decision
+is a pairwise preference; enough of them fit a Bradley-Terry head that scores
+future candidates.
+
+```
+capture_audio(before) → move → capture_audio(after)
+listen_ab(...)                       # did it change, and how
+<decide: keep or undo>
+taste_record_pair(kept, discarded)   # the decision becomes data
+taste_train()                        # once there are enough pairs
+taste_rank([candidates...])          # future moves ranked by taste
+```
+
+Record at the moment of decision — a pair is cheap, and the model is only as
+good as the honesty of the labels. This complements the symbolic taste system
+(`get_taste_profile`, dimension weights, anti-preferences): that side explains
+*why* in named qualities, this side notices *that* in audio nobody has a word
+for. Neither replaces the other.
+
+**Read the verdict, not the accuracy.** Three things the head does to avoid
+overstating itself, each added after it caught a real failure:
+
+- Training accuracy is never reported. With 512 dimensions and tens of pairs a
+  linear head separates almost any labelling, so it reads ~100% regardless.
+- `significant: false` means the accuracy carries no information *however high
+  it looks* — 20 pairs of random labels measured 65% held-out.
+- Cross-validation holds out whole **groups**, because several pairs from one
+  session make each other trivially predictable. On 7 real capture pairs from 3
+  sessions: leave-one-pair-out 100%, leave-one-session-out 57%. Record pairs
+  from at least two sessions, and set `group` explicitly whenever the capture
+  filenames do not reflect the true grouping.
+
+Scores are comparable to each other and to nothing else — Bradley-Terry is
+shift-invariant, so there is no meaningful threshold on a single value. Rank
+candidates; never gate on a score.
+
 What the offline report adds over any live read: stereo width +
 correlation + bass-mono check, groove microtiming (~4 ms resolution,
 auto grid division — pass `bpm`), transient character, per-band loudness

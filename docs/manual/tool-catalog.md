@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog (Generated)
 
-469 tools across 57 domains.
+472 tools across 57 domains.
 
 > Auto-generated from `mcp.list_tools()`. Do not hand-edit.
 > Regenerate: `python3 scripts/generate_tool_catalog.py`
@@ -357,12 +357,15 @@
 | `score_phrase_impact` | Score a section's emotional impact as a musical phrase. |
 | `suggest_payoff_repair` | Generate repair strategies for detected payoff failures. |
 
-## Listening (2)
+## Listening (5)
 
 | Tool | Description |
 |------|-------------|
 | `listen_ab` | Compare two captures of the same musical span — what changed after a creative move. |
 | `listen_capture` | Full offline perceptual report for one master-bus capture. |
+| `taste_rank` | Rank captures by the learned taste head — best first. |
+| `taste_record_pair` | Record one kept-over-discarded decision as training data. |
+| `taste_train` | Fit the taste head and report how much it actually learned. |
 
 ## Memory (18)
 
@@ -762,4 +765,4 @@
 | `rank_wonder_variants` | Rank wonder-mode variants by taste + identity + novelty + coherence. |
 
 ---
-*Generated from 469 registered tools.*
+*Generated from 472 registered tools.*

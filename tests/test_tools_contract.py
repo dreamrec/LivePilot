@@ -1,4 +1,4 @@
-"""Verify all 469 MCP tools are registered (v1.28: +2 listening tools)."""
+"""Verify all 472 MCP tools are registered (v1.28: +2 listening, +3 taste head)."""
 
 import asyncio
 import sys
@@ -631,7 +631,7 @@ def test_control_surfaces_tools_registered():
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 469, f"Expected 469 tools, got {len(tools)}"
+    assert len(tools) == 472, f"Expected 472 tools, got {len(tools)}"
 
 
 def test_listening_tools_registered():
@@ -640,6 +640,14 @@ def test_listening_tools_registered():
     expected = {"listen_capture", "listen_ab"}
     missing = expected - names
     assert not missing, f"Missing listening tools: {missing}"
+
+
+def test_taste_head_tools_registered():
+    """v1.28: learned taste head — pairwise preferences over CLAP embeddings."""
+    names = _get_tool_names()
+    expected = {"taste_record_pair", "taste_train", "taste_rank"}
+    missing = expected - names
+    assert not missing, f"Missing taste head tools: {missing}"
 
 
 def test_grader_tools_registered():

@@ -23,6 +23,36 @@
 - Tool count unchanged at 469 — existing tools gained an optional parameter rather than
   adding a surface.
 
+### Added — learned taste head (3 tools, 469 → 472)
+- `taste_record_pair` / `taste_train` / `taste_rank`. Every kept-over-discarded decision
+  is a pairwise preference; recorded, they fit a Bradley-Terry head over CLAP embeddings —
+  a model of what gets kept, learned from audio rather than from named qualities. This
+  complements the symbolic taste system in `memory/`: that side explains *why*, this side
+  notices *that*.
+- Linear head, so fitting is logistic regression on difference vectors — convex, no GPU,
+  milliseconds on tens of pairs. No bias term: Bradley-Terry is shift-invariant, so scores
+  are comparable to each other and to nothing else. `taste_rank` therefore ranks and never
+  thresholds.
+- **Training accuracy is never reported.** With 512 dimensions and tens of pairs a linear
+  head separates almost any labelling, including random noise, so the number would read
+  ~100% regardless. Reported instead: cross-validated accuracy, an exact binomial p-value
+  against chance, and a plain-language verdict.
+- Three measured honesty guards, each added after it caught a real failure:
+  - **Significance.** 20 pairs of random labels produced 65% held-out accuracy —
+    indistinguishable from a genuinely learnable signal at that sample size. Without the
+    binomial test the head called pure noise "a weak but real signal".
+  - **Grouped cross-validation.** On 7 real capture pairs from 3 sessions, leave-one-pair-out
+    read 100% where leave-one-session-out read 57%: the head was learning session identity,
+    not preference. Whole groups are held out whenever there are ≥2; the single-group
+    fallback is labelled OPTIMISTIC and withholds its p-value rather than certifying a leak.
+  - **Degenerate grouping.** If every pair lands in its own group the grouping constrains
+    nothing and the scheme says so, instead of letting the reassuring name stand alone.
+- Group defaults to the longest shared prefix of the two capture names, which collapses
+  iterations of one session (`set3_bright_…` / `set3_darker_…` → `set3`); override with
+  `group` when filenames do not reflect the real grouping.
+- Same optional backend as above — absent `torch`/`transformers`, all three tools return
+  the install hint and nothing else changes.
+
 ## v1.28.0 — 2026-07-31
 
 Listening Engine (new `listening` domain, 469 tools / 57 domains) plus the OSC 9881

@@ -28,20 +28,20 @@ Run this checklist EVERY time the user says "update everything", "push", "releas
 
 ## 2. Tool Count (must ALL match)
 
-Current: **469 tools across 57 domains**.
+Current: **472 tools across 57 domains**.
 Spectral/analyzer (bridge-only): **38**. The remaining tool surface works without the bridge or degrades gracefully. Backed by 32 bridge commands.
 
 Verify: `python3 scripts/sync_metadata.py --check`
 
 Files that reference tool count:
-- [ ] `README.md` — header ("469 tools. 57 domains"), bridge section ("38 spectral/analyzer tools require bridge")
+- [ ] `README.md` — header ("472 tools. 57 domains"), bridge section ("38 spectral/analyzer tools require bridge")
 - [ ] `package.json` → `"description"`
 - [ ] `server.json` → `"description"`
 - [ ] `manifest.json` → `"description"`
 - [ ] `livepilot/.Codex-plugin/plugin.json` → `"description"` (primary Codex manifest)
 - [ ] `livepilot/.claude-plugin/plugin.json` → `"description"` (must match Codex plugin)
 - [ ] `.claude-plugin/marketplace.json` → `"description"`
-- [ ] `CLAUDE.md` → "469 tools across 57 domains"
+- [ ] `CLAUDE.md` → "472 tools across 57 domains"
 - [ ] `CONTRIBUTING.md` → tool count in intro
 - [ ] `livepilot/skills/livepilot-core/SKILL.md` — tool/domain count
 - [ ] `livepilot/skills/livepilot-core/references/overview.md` — tool/domain count
@@ -100,7 +100,7 @@ Current: **57 domains**: transport, tracks, clips, notes, devices, scenes, mixin
 
 - [ ] `README.md` — features match current capabilities, "Coming" section is accurate
 - [ ] `docs/manual/getting-started.md` — install instructions current
-- [ ] `docs/manual/tool-reference.md` — all 57 domains listed, all 469 tools present
+- [ ] `docs/manual/tool-reference.md` — all 57 domains listed, all 472 tools present
 - [ ] `docs/M4L_BRIDGE.md` — architecture accurate, core/bridge counts correct
 
 ## 9. Derived Artifacts
