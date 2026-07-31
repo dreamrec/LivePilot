@@ -319,6 +319,10 @@ TOOL_COUNT_FILES = [
     "CONTRIBUTING.md",
     "livepilot/.claude-plugin/plugin.json",
     "livepilot/.Codex-plugin/plugin.json",
+    # The bundled producer agent opens by stating its own tool surface, so a
+    # stale number there is a lie the agent tells itself on every invocation.
+    # Added 2026-07-31 with the v1.28 agent rebuild that introduced the claim.
+    "livepilot/agents/livepilot-producer/AGENT.md",
     "livepilot/skills/livepilot-core/SKILL.md",
     "livepilot/skills/livepilot-core/references/overview.md",
     "livepilot/skills/livepilot-release/SKILL.md",
