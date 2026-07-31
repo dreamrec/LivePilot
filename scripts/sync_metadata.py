@@ -305,6 +305,11 @@ VERSION_FILES = [
 # a stale count.
 TOOL_COUNT_FILES = [
     "README.md",
+    # CONTEXT.md states the tool count in its header and is read by Claude Code
+    # sessions before any work on the repo — a stale number there misleads every
+    # session that starts. It was NOT on this list and silently drifted two
+    # releases (still said 465 at v1.28.0); added 2026-07-31.
+    "CONTEXT.md",
     "package.json",
     "server.json",
     "manifest.json",
