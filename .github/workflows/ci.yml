@@ -106,6 +106,13 @@ jobs:
               sys.exit(1)
           print(f"All {len(cmds)} bridge commands present in the frozen .amxd.")
           PYEOF
+      - name: Full freeze-chain verification
+        # Superset of the two checks above. The `case "<command>":` diff cannot see a batch that
+        # adds no NEW command — the v1.28 token auth wraps the existing dispatcher, so a binary
+        # containing none of its code still passes that check. This script additionally diffs
+        # top-level JS identifiers against the binary, and asserts the freeze is still FAT.
+        # No untrusted inputs — repo-local files only. Install targets are absent on CI and skip.
+        run: bash scripts/sync_amxd_targets.sh
 
   remote-script-py311:
     # The Remote Script runs inside Ableton's embedded Python (3.11 on Live

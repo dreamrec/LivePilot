@@ -180,3 +180,24 @@ routing is transparent.
   `manual_only`, `callable`, or `unavailable`.
 - Write workflows are intentionally absent unless a real Live probe proves
   a stable non-UI-scripted route.
+
+**Offline perception is bridge-independent (v1.28.0):**
+
+`listen_capture` / `listen_ab` (domain `listening`) read a WAV/AIFF off disk
+with librosa/soundfile. They do **not** touch the M4L bridge, so they stay
+fully available in `measured_degraded` and `judgment_only` — the modes where
+live spectral reads are exactly what you cannot trust.
+
+Only the `capture_audio` step needs the Analyzer on master. So the practical
+degradation ladder for evidence is:
+
+| Capability mode | Live reads | `capture_audio` | `listen_capture` / `listen_ab` |
+|---|---|---|---|
+| `normal` | trustworthy | available | available |
+| `measured_degraded` | **stale/suspect** | available | available — prefer these |
+| `judgment_only` | unavailable | unavailable | available on any pre-existing capture |
+| `read_only` | trustworthy | available | available (analysis only, no writes) |
+
+In `measured_degraded`, prefer a capture-based A/B over a live spectrum diff:
+the capture is rendered audio, not a possibly-stalled analyzer frame. See
+`livepilot-core` → `references/perception.md` for the full offline model.

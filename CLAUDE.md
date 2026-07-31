@@ -1,4 +1,4 @@
-# LivePilot v1.27.3 — Ableton Live 12
+# LivePilot v1.28.0 — Ableton Live 12
 
 ## Project
 - **Repo:** This directory (LivePilot)
@@ -54,7 +54,47 @@ When modifying .amxd attributes that Max editor won't persist (e.g., `openinpres
 4. Structure: 24-byte `ampf` header + `ptch` chunk + `mx@c` header + JSON patcher + frozen deps
 
 ## Version Bump
-If bumping the version, update ALL of these: package.json, server.json (Marketplace reads this), livepilot/.Codex-plugin/plugin.json, livepilot/.claude-plugin/plugin.json, .claude-plugin/marketplace.json, mcp_server/__init__.py, remote_script/LivePilot/__init__.py, CLAUDE.md, AGENTS.md, CHANGELOG.md, livepilot/skills/livepilot-core/references/overview.md, docs/M4L_BRIDGE.md (ping version string)
+
+**Do not hand-maintain this list — verify with `python3 scripts/sync_metadata.py --check`.** That
+script is the enforced source of truth and CI runs it (`metadata-drift`). The list below is a
+reading aid; if the two ever disagree, the script wins.
+
+Auto-enforced by `sync_metadata.py`: `package.json`, `package-lock.json` (must match
+package.json), `server.json` (Marketplace reads this), `manifest.json`,
+`livepilot/.Codex-plugin/plugin.json`, `livepilot/.claude-plugin/plugin.json`,
+`.claude-plugin/marketplace.json`, `mcp_server/__init__.py`,
+`remote_script/LivePilot/__init__.py`, `CLAUDE.md`, `AGENTS.md`, `CHANGELOG.md`,
+`README.md` ("What's New" header), `livepilot/skills/livepilot-core/references/overview.md`,
+`livepilot/skills/livepilot-evaluation/references/capability-modes.md`, `docs/M4L_BRIDGE.md`
+(ping version string).
+
+**NOT covered by `--check`, and the one that silently breaks a release:**
+
+- **`m4l_device/livepilot_bridge.js` — the `var VERSION` const.** This is the version the frozen
+  device reports on `ping`, and Python gates capabilities on it
+  (`TOKEN_AUTH_MIN_BRIDGE_VERSION` in `mcp_server/m4l_bridge.py`). **Bump it BEFORE freezing.**
+  Freezing while it still holds the old string bakes that string into the binary permanently and
+  silently disables every version-gated feature, while every manifest correctly reports the new
+  version. This is the failure mode; treat it as step 1, not step 12.
+- **`m4l_device/LivePilot_Analyzer.amxd`** — must be re-frozen in Max from the bumped JS. A
+  version-string-only delta can be a 6-byte in-place binary patch (`docs/` has the procedure), but
+  any real JS change requires a genuine re-freeze.
+
+Verify the whole freeze chain with:
+
+```bash
+bash scripts/sync_amxd_targets.sh          # verify only
+bash scripts/sync_amxd_targets.sh --apply  # propagate to all install targets
+```
+
+That script checks JS version == repo version, the frozen binary embeds it, every bridge command
+AND every top-level JS identifier is present in the binary (catching a stale freeze that a version
+patch would otherwise hide), the freeze is still FAT, and all install targets match.
+
+**Ordering:** bump every file above (including `var VERSION`) → re-freeze in Max → run
+`sync_amxd_targets.sh --apply` → then tag/release. The CI `amxd-freeze-drift` gate stays RED
+between the bump and the freeze. That is intentional — it is the interlock that stops a release
+shipping an unfrozen device.
 
 ### MCPB bundle (REQUIRED for every release)
 After version files are synced and the GitHub release is created, build + attach the MCPB bundle. The README promises a `.mcpb` one-click install; from v1.17–v1.20.2 every release silently shipped without it. Never ship a release without this step:

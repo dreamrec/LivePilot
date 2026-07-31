@@ -1,10 +1,44 @@
 # Pending .amxd Re-Freeze Batch — LivePilot_Analyzer
 
-**Status: PREPARED, NOT FROZEN.** All JS source changes below are committed in
-`m4l_device/livepilot_bridge.js`, but the frozen JS inside
-`LivePilot_Analyzer.amxd` is authoritative at runtime — nothing here takes
-effect until the device is re-frozen in Max (a USER action). This note exists
-so that ONE re-freeze ships the whole batch.
+**Status: PREP COMPLETE — awaiting the Max export (a USER action).**
+
+Everything that can be done outside Max is done as of 2026-07-31:
+
+| Prep step | State |
+|---|---|
+| Version bumped to 1.28.0 across all enforced files | DONE (`sync_metadata.py --check` clean) |
+| `var VERSION` in `livepilot_bridge.js` bumped to 1.28.0 | DONE |
+| JS synced to all 5 Max search-path locations | DONE (MD5-identical to repo) |
+| Token scheme documented in `docs/M4L_BRIDGE.md` | DONE |
+| `CHANGELOG.md` v1.28.0 entry | DONE |
+| Freeze-chain verifier `scripts/sync_amxd_targets.sh` | DONE (wired into CI) |
+| **Max export (Consolidate → Freeze Device → Save As)** | **REMAINING — user action** |
+| Propagate to 3 install targets + verify | blocked on the export |
+
+> The stale Max search-path cache was the live trap here: before the sync it was
+> 67,300 bytes against the repo's 72,913 and contained **none** of `_auth_check`,
+> `_auth_token_path`, `__livepilot_token`, or `send_capture_error`. Freezing in
+> that state would have shipped a device with zero authentication while every
+> manifest reported 1.28.0. Backups of the previous copies are alongside each
+> file as `*.pre-1.28.0.bak`.
+
+CI's `amxd-freeze-drift` gate is RED until the export lands. That is the
+interlock working, not a regression.
+
+After exporting from Max, run:
+
+```bash
+bash scripts/sync_amxd_targets.sh --apply
+```
+
+It verifies the JS version matches the repo, the binary embeds it, every bridge
+command **and** every top-level JS identifier made it into the freeze (catching a
+stale freeze a version patch would hide), the freeze is still FAT, then copies to
+all install targets and re-verifies by MD5.
+
+The frozen JS inside `LivePilot_Analyzer.amxd` is authoritative at runtime —
+nothing below takes effect until that export happens. This note exists so that
+ONE re-freeze ships the whole batch.
 
 Freeze procedure: `docs/MAX_FREEZE_WORKFLOW.md`. Remember the two classic
 traps: Max freezes JS from its search-path cache (sync the copy in

@@ -73,11 +73,57 @@ Sampling rate: 5 Hz (200ms snapshots). CPU impact: ~3-4% total.
 /key       s s                Key name, scale name
 /response  s                  Base64-encoded JSON (single packet)
 /response_chunk  i i s        Chunk index, total chunks, base64 data
+/capture_error   s            Capture failed (busy / invalid filename) — v1.28.0+
 ```
+
+`/capture_error` exists because `send_capture` on the Python side resolves only via the
+capture future. Replying to a failed capture on the generic `/response` address made the
+caller wait out the full 35 s timeout, and the stray un-id'd reply could resolve an
+*unrelated* pending command's future. Failures now land on their own address, which
+`SpectralReceiver._handle_message` routes to the capture future.
 
 ### Incoming (Server -> M4L, OSC 9881)
 
 Commands are sent WITHOUT a leading `/` in the OSC address. This is critical — see "OSC Address Dispatch" below.
+
+#### Token authentication (v1.28.0+)
+
+`udpreceive 9881` takes no bind-interface argument, so it listens on **all interfaces** —
+verifiable with `lsof -nP -iUDP:9881`. UDP 9880 and TCP 9878 are loopback-only; this was the
+one channel a LAN-adjacent host could reach, and every one of the 32 commands was reachable
+blind (re-sample a Simpler, remap plugin parameters, trigger WAV writes).
+
+Every command therefore carries a shared secret as its **first OSC argument**:
+
+```
+<command> __livepilot_token:<hex> <arg1> <arg2> ...
+```
+
+- The server generates the token once per startup (`secrets.token_hex(16)`) and publishes it
+  to `~/Documents/LivePilot/bridge_token` at mode `0600` for the process lifetime.
+- The device derives the same path from `max.appsupportpath`, strips and validates the token
+  in `anything()` (`_auth_check`), and silently drops mismatches with a throttled `post()`.
+- The secret only ever crosses loopback UDP and the local filesystem, so a LAN host can
+  neither sniff nor read it.
+- `ping` and `get_version` are exempt — they are the version handshake that decides whether
+  to send a token at all.
+
+**Version gate.** The token is attached only once the device's `ping` reports a build >=
+`TOKEN_AUTH_MIN_BRIDGE_VERSION` (`(1, 28, 0)`, in `mcp_server/m4l_bridge.py`). A pre-token
+frozen device would misparse the token as its first positional argument, so old devices never
+receive one. A non-ping command against a bridge of unknown version runs a one-time ping
+handshake first. `LIVEPILOT_BRIDGE_TOKEN_DISABLE=1` restores the pre-1.28 wire format exactly.
+
+**Compatibility fallback.** If the token file is absent or unreadable the device accepts
+untokened commands, because pre-token servers never wrote the file. **This means an
+unauthenticated state is reachable** — if `ping` reports >= 1.28.0 but bridge commands are
+being accepted without a token, check that the token file exists and is readable from Max.
+
+**Rotation.** On a token mismatch the device re-reads the file (throttled, 500 ms floor)
+before rejecting, so restarting the MCP server mid-session self-heals rather than wedging.
+
+> The frozen JS inside the `.amxd` is what runs. Editing `livepilot_bridge.js` changes
+> nothing until the device is re-frozen in Max — see "Max JS Freeze/Cache Behavior".
 
 ## Bridge Commands (32 total)
 
@@ -85,7 +131,7 @@ Commands are sent WITHOUT a leading `/` in the OSC address. This is critical —
 
 | Command | Args | Description |
 |---------|------|-------------|
-| `ping` | (none) | Health check, returns `{ok: true, version: "1.27.3"}` |
+| `ping` | (none) | Health check, returns `{ok: true, version: "1.28.0"}` |
 | `get_version` | (none) | **Internal-only — no OSC response.** Emits the current bridge version on the Max-internal `livepilot_version` named bus so a `[r livepilot_version]` receiver in the patcher can drive the in-UI version label without touching the OSC response outlet. Whitelisted in `tests/test_bridge_parity.py:internal_only`; not in `BRIDGE_COMMANDS` (Python plans never invoke it) |
 | `get_params` | track_idx, device_idx | All parameters with value, range, automation state |
 | `get_hidden_params` | track_idx, device_idx | All parameters including hidden ones, with display string |
@@ -290,7 +336,7 @@ function anything() {
 
 ## File Locations
 
-- `m4l_device/LivePilot_Analyzer.amxd` — compiled M4L device (binary). Ping returns `{ok: true, version: "1.27.3"}`
+- `m4l_device/LivePilot_Analyzer.amxd` — compiled M4L device (binary). Ping returns `{ok: true, version: "1.28.0"}`
 - `m4l_device/livepilot_bridge.js` — bridge JS source (32 commands)
 - `m4l_device/LivePilot_MIDITool_Generate.amxd` / `LivePilot_MIDITool_Transform.amxd` — separate Live 12.0+ MIDI Tool devices for in-clip generators (euclidean_rhythm, tintinnabuli, humanize)
 - `m4l_device/miditool_bridge.js` — MIDI Tool bridge JS source

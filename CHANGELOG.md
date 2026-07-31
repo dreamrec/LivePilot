@@ -1,8 +1,54 @@
 # Changelog
 
-## Unreleased
+## v1.28.0 — 2026-07-31
 
-### Added — Listening Engine (new `listening` domain, 469 tools / 57 domains)
+Listening Engine (new `listening` domain, 469 tools / 57 domains) plus the OSC 9881
+authentication batch. **This release requires a Max re-freeze of
+`LivePilot_Analyzer.amxd`** — the bridge token gate activates only on a device whose
+`ping` reports >= 1.28.0 (`TOKEN_AUTH_MIN_BRIDGE_VERSION` in `mcp_server/m4l_bridge.py`).
+
+### Security — OSC 9881 shared-secret token authentication
+- `udpreceive 9881` binds on all interfaces (it accepts no bind-interface argument), so a
+  LAN-adjacent host could previously fire any of the 32 bridge commands blind. TCP 9878 and
+  UDP 9880 are loopback-only; this was the one exposed channel.
+- The server now generates a per-startup token (`secrets.token_hex(16)`), publishes it to
+  `~/Documents/LivePilot/bridge_token` (mode 0600) for the lifespan of the process, and
+  attaches it as the first OSC argument of every command. The device validates and silently
+  drops non-matching commands with a throttled log line. The token travels only over
+  loopback UDP and the local filesystem.
+- `ping` / `get_version` stay exempt as the version handshake. Pre-1.28 frozen devices never
+  receive a token (they would misparse it as a positional argument), so the wire format is
+  unchanged for them. `LIVEPILOT_BRIDGE_TOKEN_DISABLE=1` restores the pre-1.28 format exactly.
+- Token rotation self-heals: on mismatch the device re-reads the token file (throttled,
+  500 ms floor) before rejecting, so restarting the server mid-session does not wedge it.
+- Known follow-up (unchanged in this release): MIDITool devices and the Elektron bridge
+  listen on the same exposed class of port and remain untokened — they have no version
+  handshake, so tokening them would break every existing frozen device. Tracked in
+  `docs/PENDING_AMXD_REFREEZE.md`.
+
+### Fixed — capture pipeline
+- `capture_audio`'s busy and invalid-filename branches replied on the generic `/response`
+  address while the caller was waiting on the capture future. The caller ate the full 35 s
+  timeout, and the stray un-id'd reply could resolve an unrelated pending command's future.
+  Both branches now reply via a dedicated `/capture_error` address routed to the capture
+  future. Degrades safely in both directions across the device/server version boundary.
+- The batched readers `cmd_get_display_values` and `cmd_get_plugin_params` reschedule via
+  `Task.schedule(20)`; an interleaved command in that gap clobbered the module-level response
+  id, so the final reply went out mis-id'd and was dropped by the correlator. Both now capture
+  the id in a closure, matching the other batch handlers.
+
+### Fixed — concurrency and validation
+- `session_continuity` tracker module globals are now lock-guarded.
+- Input-validation parity across Simpler slice parameters, euclidean rhythm layering, and the
+  warp bridge tools — bounds that existed on one tool but not its siblings.
+- Bridge-offline analyzer errors now name `reconnect_bridge` as the remedy.
+
+### Changed — dependencies
+- `fastmcp>=3.4.5` (upper bound `<3.5.0` unchanged — the tool registry probe reads private
+  internals), `grpcio>=1.83.0`, `pretty_midi>=0.2.11.post0`, and CI moves to
+  `actions/setup-python@v7` / `actions/setup-node@v7`.
+
+### Added — Listening Engine
 - `listen_capture(file, bpm, seconds)` — full offline perceptual report for a
   master-bus capture: Parseval-calibrated 9-band spectrum, integrated LUFS /
   true peak / loudness range, transient character, groove microtiming (~4 ms

@@ -15,9 +15,38 @@ release. Always ship fat for a version bump.
 
 ## Prerequisites
 
-Before freezing, the JS source must be correct AND the Max 9 search path
-must have the JS file that matches the repo source. This catches
-`feedback_amxd_freeze_drift` (Max freezes from the search-path cache,
+### Step 0 — BUMP `var VERSION` FIRST (do this before anything else)
+
+**The freeze bakes `var VERSION` into the binary permanently.** Whatever string is in
+`m4l_device/livepilot_bridge.js` at freeze time becomes the version the device reports on `ping`
+forever, and Python gates capabilities on that reported version — e.g.
+`TOKEN_AUTH_MIN_BRIDGE_VERSION` in `mcp_server/m4l_bridge.py` decides whether OSC 9881 token
+authentication activates at all.
+
+Freezing with a stale `var VERSION` fails **silently**: the device works, every manifest reports
+the new version, and the version-gated feature is simply never enabled. There is no error at
+freeze time. This has cost releases before.
+
+```bash
+cd /path/to/LivePilot
+
+# These two MUST match before you freeze.
+python3 -c "import sys; sys.path.insert(0,'.'); from mcp_server import __version__; print('repo:', __version__)"
+grep -oE 'var VERSION[[:space:]]*=[[:space:]]*"[0-9.]+"' m4l_device/livepilot_bridge.js
+```
+
+If they differ, stop and complete the version bump (see the "Version Bump" section of
+`CLAUDE.md` / `AGENTS.md`) before continuing. `scripts/sync_amxd_targets.sh` checks this as its
+Gate 1 — run it now to confirm:
+
+```bash
+bash scripts/sync_amxd_targets.sh   # verify-only; Gate 1 fails if the JS version is stale
+```
+
+### Step 1 — sync the JS to every Max search path
+
+The JS source must be correct AND the Max 9 search path must have the JS file that matches the
+repo source. This catches `feedback_amxd_freeze_drift` (Max freezes from the search-path cache,
 not the source directory).
 
 ```bash

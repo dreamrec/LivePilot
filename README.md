@@ -38,9 +38,29 @@
 
 ---
 
-## What's New in v1.27.3
+## What's New in v1.28.0
 
-A deep-review remediation release — ~150 fixes across two audit campaigns, no change to the tool surface (counts as of that release are in the [CHANGELOG](CHANGELOG.md)):
+A new perception domain plus the bridge authentication batch (469 tools / 57 domains):
+
+- **Listening Engine** — `listen_capture` and `listen_ab` analyze a rendered capture off disk
+  (librosa/soundfile) instead of reading a live meter. You get stereo width and bass-mono
+  checks, groove microtiming, transient character, integrated LUFS/true-peak, and clipping/DC
+  headroom — then hand the returned snapshots straight to `evaluate_move` for a keep/undo
+  verdict grounded in audio rather than vibes. Because it reads a file, it keeps working when
+  the live analyzer is stale or offline.
+- **OSC 9881 is authenticated** — the Max device's UDP port binds on all interfaces, so a
+  LAN-adjacent host could previously fire any bridge command blind. Commands now carry a
+  per-startup shared secret published to a 0600 file on the local filesystem; unauthenticated
+  commands are dropped. **Requires a re-freeze of `LivePilot_Analyzer.amxd`** — the gate
+  activates only on a device reporting >= 1.28.0.
+- **Capture pipeline fixes** — a busy `capture_audio` now returns its error immediately instead
+  of hanging for the full 35 s timeout, and can no longer resolve an unrelated pending
+  command's reply.
+- **Stalled-stream detection** — windowed analyzer reads no longer report confident stability
+  from a frozen OSC stream; duplicate frames are counted and surfaced as a warning.
+
+Previous release (v1.27.3) was a deep-review remediation — ~150 fixes across two audit
+campaigns, no change to the tool surface:
 
 - **Event-loop blocking eliminated tree-wide** — every remaining blocking call in async tool paths (composer apply executors, the shared plan-step executor, preview/experiment paths, ~80 sites in 13 files) now offloads to a worker thread; a repo-wide AST regression guard keeps it that way. Long composes no longer freeze concurrent tools or the analyzer bridge.
 - **Atlas scans no longer truncate** — library scans previously capped each category at 1,000 entries alphabetically (most drum one-shots were unreachable); the cap is now 25,000 with per-category truncation flags and rescan warnings. Run `scan_full_library(force=True)` once to rebuild your atlas.
