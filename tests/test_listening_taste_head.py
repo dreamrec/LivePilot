@@ -38,7 +38,17 @@ if str(REPO_ROOT) not in sys.path:
 from mcp_server.listening import taste_head  # noqa: E402
 from mcp_server.listening import taste_tools  # noqa: E402
 
-DIM = 32
+# Match production: CLAP is 512-dim and L2-NORMALISED (embedding.py). Both
+# matter. An earlier version of this file used 32 dims of raw gaussian, giving
+# difference vectors of norm ~6.7 where real ones are 0.3-1.4 — a regime the
+# deployed code never enters, and the reason a guard that closed only a quarter
+# of its defect passed a full green suite.
+DIM = 512
+
+
+def _unit(rng, n=None):
+    v = rng.normal(size=DIM if n is None else (n, DIM))
+    return v / np.linalg.norm(v, axis=-1, keepdims=True)
 
 
 def _store(tmp_path, name="taste.json"):
@@ -51,21 +61,21 @@ def _add(store, pref, rej, group="g", model="test-model"):
 
 
 def _signal_pairs(store, n=12, groups=6, seed=0):
-    """One preference direction shared across sessions, plus per-pair noise.
+    """One preference direction shared across sessions, in production geometry.
 
-    The noise is not decoration. Without it (pref = base+d, rej = base-d) the
-    base cancels and EVERY difference vector is byte-identical — one observation
-    repeated n times, not n observations. A helper without noise would test a
-    corpus no real session produces.
+    Every capture is an independent unit vector pushed along a shared quality
+    direction — so the pairs differ from each other (n observations, not one
+    repeated), no capture is reused, and the difference vectors land in the
+    0.3-1.4 norm band real CLAP produces.
     """
     rng = np.random.default_rng(seed)
-    direction = np.zeros(DIM)
-    direction[0] = 3.0
+    quality = _unit(rng)
     for i in range(n):
-        base = rng.normal(size=DIM)
-        pref = base + direction + rng.normal(size=DIM) * 0.4
-        rej = base - direction + rng.normal(size=DIM) * 0.4
-        _add(store, pref, rej, group=f"g{i % groups}")
+        base = _unit(rng)
+        pref = base + quality * 0.3
+        rej = base - quality * 0.3
+        _add(store, pref / np.linalg.norm(pref), rej / np.linalg.norm(rej),
+             group=f"g{i % groups}")
 
 
 def _noise_pairs(store, n=18, groups=6, seed=1):
@@ -73,8 +83,7 @@ def _noise_pairs(store, n=18, groups=6, seed=1):
     a preference. Anything the head 'learns' here is memorisation."""
     rng = np.random.default_rng(seed)
     for i in range(n):
-        _add(store, rng.normal(size=DIM), rng.normal(size=DIM),
-             group=f"g{i % groups}")
+        _add(store, _unit(rng), _unit(rng), group=f"g{i % groups}")
 
 
 # --- store contract ----------------------------------------------------------
@@ -187,9 +196,9 @@ def test_grouped_cv_is_stricter_than_leave_one_pair_out(tmp_path):
         # partly anti-correlated, which makes the corpus unlearnable under BOTH
         # schemes and hides the very gap under test.
         direction = np.zeros(DIM)
-        direction[g] = 4.0
+        direction[g] = 0.6                     # realistic ||diff||
         for _ in range(4):
-            diffs.append(direction + rng.normal(size=DIM) * 0.05)
+            diffs.append(direction + _unit(rng) * 0.02)
             groups.append(f"session{g}")
     diffs = np.array(diffs)
 
@@ -218,9 +227,9 @@ def test_reused_baseline_capture_cannot_be_certified(tmp_path):
     """
     rng = np.random.default_rng(3)
     s = _store(tmp_path)
-    anchor = rng.normal(size=DIM)                     # ONE baseline, reused
+    anchor = _unit(rng)                               # ONE baseline, reused
     for i in range(6):
-        _add(s, rng.normal(size=DIM), anchor, group=f"session{i % 3}")
+        _add(s, _unit(rng), anchor, group=f"session{i % 3}")
 
     r = taste_head.train(s)
     assert r["n_groups_recorded"] == 3, "three sessions were genuinely recorded"
@@ -235,12 +244,15 @@ def test_reused_baseline_surfaces_in_the_verdict(tmp_path):
     sessions and must be told why they scored as one."""
     rng = np.random.default_rng(4)
     s = _store(tmp_path)
-    anchor = rng.normal(size=DIM)
+    anchor = _unit(rng)
     for i in range(6):
-        _add(s, rng.normal(size=DIM), anchor, group=f"session{i % 3}")
-    verdict = taste_head.train(s)["verdict"]
-    assert "share a capture" in verdict
-    assert "merged" in verdict
+        _add(s, _unit(rng), anchor, group=f"session{i % 3}")
+    r = taste_head.train(s)
+    # A byte-identical anchor trips BOTH guards; the asymmetry message wins
+    # because it is the one that names the remedy.
+    assert r["groups_merged"] >= 1 and r["shared_reference_detected"] is True
+    assert "against EACH OTHER" in r["verdict"]
+    assert "one piece of evidence" in r["verdict"]
 
 
 def test_distinct_captures_are_never_merged(tmp_path):
@@ -258,15 +270,89 @@ def test_shared_capture_merges_only_the_groups_that_share(tmp_path):
     stay separate evidence."""
     rng = np.random.default_rng(5)
     s = _store(tmp_path)
-    shared = rng.normal(size=DIM)
-    _add(s, rng.normal(size=DIM), shared, group="a")
-    _add(s, rng.normal(size=DIM), shared, group="b")
+    shared = _unit(rng)
+    _add(s, _unit(rng), shared, group="a")
+    _add(s, _unit(rng), shared, group="b")
     for g in ("c", "d", "e", "f"):
-        _add(s, rng.normal(size=DIM), rng.normal(size=DIM), group=g)
+        _add(s, _unit(rng), _unit(rng), group=g)
     r = taste_head.train(s)
     assert r["n_groups_recorded"] == 6
     assert r["n_groups"] == 5, "only a and b collapse"
     assert r["groups_merged"] == 1
+
+
+def test_rerecorded_reference_is_caught_by_asymmetry(tmp_path):
+    """The half of guard 4 that exact matching misses, and the reason there was
+    a round 3.
+
+    `capture_audio` records live playback, so a producer who re-captures their
+    reference each session produces a NEW file every time — never byte-identical,
+    always the same material. Measured at production geometry before this guard,
+    6 sessions x 2 pairs, no genuine quality signal:
+
+        re-recorded anchor cosine   0.98  0.95  0.90  0.85  0.80  0.70
+        certified as real taste     100%  100%  100%  100%  100%  100%
+        captures merged                0     0     0     0     0     0
+
+    versus 1% for a control with an independent reference per session.
+    """
+    rng = np.random.default_rng(11)
+    s = _store(tmp_path)
+    base = _unit(rng)
+    for g in range(6):
+        # a re-recording of the same reference: same material, different file
+        perp = _unit(rng)
+        perp = perp - (perp @ base) * base
+        perp /= np.linalg.norm(perp)
+        anchor = 0.9 * base + np.sqrt(1 - 0.81) * perp
+        for _ in range(2):
+            _add(s, _unit(rng), anchor, group=f"s{g}")
+
+    r = taste_head.train(s)
+    assert r["groups_merged"] == 0, "not byte-identical — exact matching cannot see it"
+    assert r["shared_reference_detected"] is True
+    assert r["anchor_asymmetry"] > taste_head.ANCHOR_ASYMMETRY_LIMIT
+    assert r["significant"] is not True
+
+
+def test_asymmetry_guard_names_the_side_and_the_remedy(tmp_path):
+    rng = np.random.default_rng(12)
+    s = _store(tmp_path)
+    anchor = _unit(rng)
+    for g in range(6):
+        for _ in range(2):
+            _add(s, _unit(rng), anchor, group=f"s{g}")
+    verdict = taste_head.train(s)["verdict"]
+    assert "rejected" in verdict
+    assert "against EACH OTHER" in verdict
+
+
+def test_asymmetry_guard_is_symmetric_in_which_side_is_anchored(tmp_path):
+    """A shared reference on the PREFERRED side is the same defect mirrored, and
+    measured the same magnitude with the opposite sign (-0.81)."""
+    rng = np.random.default_rng(13)
+    s = _store(tmp_path)
+    anchor = _unit(rng)
+    for g in range(6):
+        for _ in range(2):
+            _add(s, anchor, _unit(rng), group=f"s{g}")
+    r = taste_head.train(s)
+    assert r["shared_reference_detected"] is True
+    assert r["anchor_asymmetry"] < -taste_head.ANCHOR_ASYMMETRY_LIMIT
+    assert "preferred" in r["verdict"]
+
+
+def test_a_real_preference_signal_does_not_trip_the_asymmetry_guard(tmp_path):
+    """The guard must not cost the tool its purpose. A genuine direction moves
+    preferred and rejected captures APART symmetrically, leaving the statistic
+    near zero — measured +0.002 (sd 0.011) against +0.47 or worse for anchored
+    corpora."""
+    s = _store(tmp_path)
+    _signal_pairs(s, n=12, groups=6)
+    r = taste_head.train(s)
+    assert r["shared_reference_detected"] is False
+    assert abs(r["anchor_asymmetry"]) < taste_head.ANCHOR_ASYMMETRY_LIMIT
+    assert r["significant"] is True, "a real signal must still certify"
 
 
 def test_degenerate_grouping_is_called_out(tmp_path):

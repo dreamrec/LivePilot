@@ -87,11 +87,15 @@ itself — every item below was added after it was caught doing exactly that:
 - Significance counts **sessions, not pairs** — five or more separate sessions,
   or nothing can be certified however good the accuracy looks. Counting pairs
   put the false-positive rate at ~25% against a nominal 5%.
-- **Do not A/B every candidate against one fixed baseline.** Pairs sharing a
-  capture are one piece of evidence, not several; they are merged before
-  scoring, and `groups_merged` in the report says when that happened. Before
-  this guard existed, 6 such pairs across 3 labelled sessions reported "a real
-  preference signal" in 40 of 40 runs — for a head scoring 50.7% on fresh pairs.
+- **Do not A/B every candidate against one fixed baseline** — not even a
+  re-captured one. Pairs sharing a reference are one piece of evidence, not
+  several. Two guards catch it: `groups_merged` for a reused file,
+  `shared_reference_detected` / `anchor_asymmetry` for a re-recorded one (which
+  is what `capture_audio` produces — it records live playback, so the file
+  differs every time even when the material does not). Before these, a
+  re-recorded reference certified as real taste in **100%** of runs at every
+  anchor similarity from 0.70 to 0.98, against 1% for an honest control.
+  Compare candidates against **each other**.
 
 `significant: null` means "could not be tested" (too few sessions, or captures
 shared). Treat it exactly as `false`.

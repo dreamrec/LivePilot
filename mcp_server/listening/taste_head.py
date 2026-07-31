@@ -28,7 +28,7 @@ including random noise. Training accuracy is therefore meaningless — it will
 read ~100% whether or not the head learned anything real.
 
 So this module never reports training accuracy. It reports cross-validated
-accuracy, a p-value against chance, and a verdict in words. Four corrections
+accuracy, a p-value against chance, and a verdict in words. Five corrections
 make that honest, each added after it was caught misreporting:
 
 1. GROUPED cross-validation. A session yields several pairs from the same
@@ -43,20 +43,37 @@ make that honest, each added after it was caught misreporting:
    learnable signal at the same n. `significant: false` means the number
    carries no information however high it looks.
 
-3. SHARED-CAPTURE merging, before the split. Grouping trusts a label, and no
-   label can say "these pairs share a baseline". Keep one reference render and
-   A/B candidates against it — the most natural way anyone compares anything —
-   and every pair carries the same anchor, so every fold learns "not the
-   anchor" and scores perfectly. Measured: 6 pairs over 3 labelled sessions
-   sharing one anchor reported 100% / p=0.016 / significant in 40 of 40 runs,
-   for a head that scores 0.507 on fresh pairs. See
-   `_merge_groups_sharing_a_capture`.
+3. SHARED-REFERENCE detection, before the split. Grouping trusts a label, and
+   no label can say "these pairs share a baseline". Keep one reference render
+   and A/B candidates against it — the most natural way anyone compares
+   anything — and every pair carries the same anchor, so every fold learns "not
+   the anchor" and scores perfectly. Two guards, because the obvious one closes
+   only a quarter of it: `_merge_groups_sharing_a_capture` catches a re-USED
+   file, and `_anchor_asymmetry` catches a re-RECORDED one, which is what
+   `capture_audio` actually produces. Measured at production geometry, 6
+   sessions x 2 pairs, before the second guard existed:
+
+       re-recorded anchor cosine   0.98  0.95  0.90  0.85  0.80  0.70
+       certified as real taste     100%  100%  100%  100%  100%  100%
+       captures merged                0     0     0     0     0     0
+
+   (honest control, own reference per session: 1%.) After: 0% certified at
+   every cosine, control untouched, and a genuine quality signal still
+   certifies at 100%.
 
 4. Significance over SESSIONS. Correction 1 grouped the cross-validation split
    but left the test counting pairs as independent trials. False-positive rate
    on corpora with no transferable signal, nominal 5%: 25% counting pairs, ~9%
    counting sessions. See `_group_sign_test`, which also records why the
    textbook permutation fix was built and rejected.
+
+5. Measuring any of this in the geometry the code ACTUALLY RUNS IN. Real CLAP
+   embeddings are L2-normalised, so a difference vector has norm 0.3-1.4. The
+   first two rounds of measurement used raw gaussians at norm ~30, where
+   `_fit_weights` returns near-zero and every corpus looks clean. That is how a
+   guard closing a quarter of its defect passed a full green suite with a
+   docstring claiming it was measured. The test helpers now generate unit-norm
+   captures at production dimension; see `_unit` in the test module.
 
 The cost of 3 and 4 is a higher bar: significance needs decisions from
 MIN_GROUPS_FOR_SIGNIFICANCE separate sessions with no shared captures, and below
@@ -153,8 +170,21 @@ class TasteHeadStore:
 def _fit_weights(diffs: np.ndarray, l2: float) -> np.ndarray:
     """Logistic regression on difference vectors, all labels positive.
 
-    Minimises  -sum(log sigmoid(w.d)) + l2*||w||^2  by gradient descent.
-    Convex, so the optimum is unique and plain GD is sufficient at this size.
+    Targets  -sum(log sigmoid(w.d)) + l2*||w||^2, which is convex.
+
+    Note what the iteration actually is at the default settings. The update
+    w -= _LR * (-mean(d*p_wrong) + 2*l2*w) has memory coefficient
+    (1 - _LR*2*l2), which is EXACTLY 0 at _LR=0.5 and l2=1.0 — so w is
+    discarded and recomputed each step rather than accumulated. It is a fixed
+    point iteration, not gradient descent, and it converges in one step for
+    well-scaled inputs.
+
+    That is fine in the deployed regime (unit-norm CLAP embeddings, ||d|| in
+    0.3-1.4, giving ||w|| ~ 0.03-0.26 and clean margins) but it is fragile: at
+    ||d|| ~ 30 the same code returns ~1e-8 and every corpus scores at chance.
+    Anything that changes _LR or DEFAULT_L2 changes the character of this
+    function, not just its speed. Measure in production geometry — see
+    correction 5 in the module docstring for what happens when you do not.
     """
     w = np.zeros(diffs.shape[1], dtype=np.float64)
     n = len(diffs)
@@ -281,8 +311,12 @@ def _group_sign_test(per_group: list[tuple[int, int]]) -> Optional[float]:
     A session counts once, as a win or a loss depending on whether the head beat
     chance on it. Ties carry no directional evidence and are dropped.
 
-    KNOWN RESIDUAL, measured not assumed: ~9% against a nominal 5%, because the
-    CV folds share training data so sessions are not fully independent either.
+    KNOWN RESIDUAL, re-measured at production geometry (unit-norm CLAP, 512-d):
+    5.8% at 6 sessions x 4 pairs, 6.7% at 5 x 4, and 12.5% at 8 x 3 — against a
+    nominal 5%. It degrades as sessions get thinner, because the CV folds share
+    training data so sessions are not fully independent either. Power is
+    unaffected: 100% on a genuine shared direction at >= 5 sessions, 0% at 4
+    (structurally impossible, not a failure).
     The textbook fix — a group sign-flip permutation test — was built and
     REJECTED: `_fit_weights` is deliberately robust (`p_wrong` downweights
     already-correct points), so on the bimodal +/-d data that sign-flipping
@@ -304,13 +338,23 @@ def _group_sign_test(per_group: list[tuple[int, int]]) -> Optional[float]:
 
 def _verdict(loo: Optional[float], n_pairs: int, scheme: str = "",
              n_groups: int = 0, p: Optional[float] = None,
-             n_decisive: int = 0, merged: int = 0) -> str:
+             n_decisive: int = 0, merged: int = 0, anchored: bool = False,
+             asymmetry: float = 0.0) -> str:
     if loo is None:
         return (f"Only {n_pairs} pair(s). Need at least {MIN_PAIRS} before "
                 "cross-validation says anything; the head is not usable yet.")
 
     prefix = ""
-    if merged:
+    if anchored:
+        side = "rejected" if asymmetry > 0 else "preferred"
+        prefix = (f"Every session's {side} captures are far more alike than "
+                  f"chance (asymmetry {asymmetry:+.2f} against ~0.00 for "
+                  "independent material), which is the signature of one shared "
+                  "reference compared against over and over. Those decisions are "
+                  "one piece of evidence, not several, so they were scored as a "
+                  "single session. Compare candidates against EACH OTHER, not "
+                  "against a fixed baseline. ")
+    elif merged:
         prefix = (f"{merged + 1} of the recorded groups share a capture — a "
                   "reused baseline makes those pairs one piece of evidence, not "
                   "several — so they were merged before scoring. ")
@@ -411,6 +455,59 @@ def _merge_groups_sharing_a_capture(pairs: list[dict],
     return [find(g) for g in groups], merged
 
 
+# Honest corpora measure 0.000 +/- 0.008 (max 0.030 over 60 runs, including
+# corpora carrying a genuine quality signal). The weakest anchoring that still
+# certified at 100% measures 0.473. This sits >13 sd above honest and far below
+# the weakest real offender — a gap wide enough that the exact value is not
+# load-bearing.
+ANCHOR_ASYMMETRY_LIMIT = 0.15
+
+
+def _anchor_asymmetry(pairs: list[dict], groups: list[str]) -> float:
+    """How much more alike the REJECTED captures are than the preferred ones,
+    measured only ACROSS sessions, using the groups AS RECORDED. Positive means a shared reference on the
+    rejected side; negative means one on the preferred side.
+
+    Guard 4 keyed on exact vector equality, which turned out to close a far
+    narrower hole than it claimed. `capture_audio` records live playback, so a
+    producer who re-captures their reference each session produces a NEW file
+    every time — never byte-identical, always the same material. Measured at
+    realistic CLAP geometry, 6 sessions x 2 pairs, no genuine quality signal:
+
+        re-recorded anchor cosine   0.98  0.95  0.90  0.85  0.80  0.70
+        certified as real taste     100%  100%  100%  100%  100%  100%
+        captures merged by guard 4     0     0     0     0     0     0
+        (honest control, own anchor per session: 1%)
+
+    A cosine threshold cannot fix that: at anchor cosine 0.70 the two anchors are
+    less alike (0.49) than two independent captures from one project, so any
+    cutoff strict enough to catch it merges every real corpus. This statistic is
+    relative instead, so it needs no notion of "how similar is one project":
+
+        anchored 0.70 .. 1.00            +0.473 .. +1.000  (sd ~0.006)
+        honest, own anchor per session   -0.000            (sd  0.008)
+        honest + a real quality signal   +0.002            (sd  0.011)
+        anchor on the PREFERRED side     -0.810            (sd  0.005)
+
+    A real preference direction moves preferred and rejected captures APART
+    symmetrically, leaving this near zero — which is why a genuine signal does
+    not trip it.
+    """
+    def mean_cross(key: str) -> float:
+        vs = np.array([p[key] for p in pairs], dtype=np.float64)
+        norms = np.linalg.norm(vs, axis=1, keepdims=True)
+        norms[norms == 0] = 1.0
+        vs = vs / norms
+        sims = []
+        for i in range(len(vs)):
+            for j in range(i + 1, len(vs)):
+                if groups[i] != groups[j]:
+                    sims.append(float(vs[i] @ vs[j]))
+        return float(np.mean(sims)) if sims else 0.0
+
+    return mean_cross("rejected") - mean_cross("preferred")
+
+
 def train(store: TasteHeadStore, l2: float = DEFAULT_L2) -> dict:
     """Fit the head and report cross-validated skill (never training fit)."""
     data = store.get_all()
@@ -428,6 +525,15 @@ def train(store: TasteHeadStore, l2: float = DEFAULT_L2) -> dict:
     # Guard #4 runs BEFORE the split: a label cannot express "these pairs share
     # a baseline capture", and grouped CV is blind to it.
     groups, merged = _merge_groups_sharing_a_capture(pairs, raw_groups)
+    # ...and exact equality only catches a re-USED file, not a re-RECORDED one,
+    # which is what capture_audio actually produces. This catches the rest.
+    # Measured against the groups as RECORDED, not the merged ones: the merge
+    # can already have collapsed everything into a single group, leaving no
+    # cross-group pairs and a statistic of 0.0 that would read as "clean".
+    asymmetry = _anchor_asymmetry(pairs, raw_groups)
+    anchored = abs(asymmetry) > ANCHOR_ASYMMETRY_LIMIT
+    if anchored:
+        groups = ["_shared_reference"] * n
     n_groups = len(set(groups))
     weights = _fit_weights(diffs, l2)
     loo, scheme, per_group = _cv_accuracy(diffs, groups, l2)
@@ -454,6 +560,8 @@ def train(store: TasteHeadStore, l2: float = DEFAULT_L2) -> dict:
         "n_groups": n_groups,
         "n_groups_recorded": len({g for g in raw_groups if g}),
         "groups_merged": merged,
+        "anchor_asymmetry": round(asymmetry, 4),
+        "shared_reference_detected": bool(anchored),
         "n_decisive_groups": n_decisive,
         "sessions_needed_for_significance": MIN_GROUPS_FOR_SIGNIFICANCE,
         "baseline_accuracy": 0.5,
@@ -461,7 +569,7 @@ def train(store: TasteHeadStore, l2: float = DEFAULT_L2) -> dict:
         "significant": (None if not certifiable
                         else bool(p_value <= SIGNIFICANCE_ALPHA)),
         "verdict": _verdict(loo, n, scheme, n_groups, p_value, n_decisive,
-                            merged),
+                            merged, anchored, asymmetry),
         "trained_at": int(time.time()),
     }
     # Training accuracy is deliberately absent: with n << d it is ~100%

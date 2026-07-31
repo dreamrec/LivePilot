@@ -116,12 +116,15 @@ def taste_record_pair(
     reflect the true grouping.
 
     Two things about HOW you compare, which matter more than how many pairs you
-    record. Do not A/B every candidate against one fixed baseline: pairs that
-    share a capture are one piece of evidence, not several, and they are merged
-    before scoring (the head cannot be certified on them at all). And record
-    from at least ``taste_head.MIN_GROUPS_FOR_SIGNIFICANCE`` separate sessions —
-    significance counts sessions, not pairs, so more pairs from the sessions you
-    already have will not move it.
+    record. Do not A/B every candidate against one fixed baseline — not even a
+    re-captured one, since ``capture_audio`` records live playback and produces
+    a different file each time for the same material. Pairs sharing a reference
+    are one piece of evidence, not several, and a corpus built that way cannot
+    be certified at all (see ``anchor_asymmetry`` in the train report). Compare
+    candidates against EACH OTHER. And record from at least
+    ``taste_head.MIN_GROUPS_FOR_SIGNIFICANCE`` separate sessions — significance
+    counts sessions, not pairs, so more pairs from the sessions you already have
+    will not move it.
 
     Recording invalidates any previously fitted head — rerun ``taste_train``.
     """
@@ -180,9 +183,11 @@ def taste_train(l2: float = taste_head.DEFAULT_L2) -> dict[str, Any]:
     turned out to share captures. Treat ``null`` exactly as you would
     ``false``: as no evidence.
 
-    ``groups_merged`` is worth reading. It is non-zero when sessions you
-    recorded separately shared a capture and were collapsed, which is the
-    single most common way a corpus looks bigger than the evidence in it.
+    ``groups_merged`` and ``shared_reference_detected`` are worth reading. They
+    fire when sessions you recorded separately turn out to share a reference —
+    byte-identical for the first, merely the same material for the second —
+    which is the single most common way a corpus looks bigger than the evidence
+    in it.
 
     ``l2`` raises or lowers regularisation. The default is strong on purpose —
     with far more dimensions than pairs, the penalty is what stops the head

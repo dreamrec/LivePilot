@@ -67,7 +67,8 @@ looking. Both defects are measured, not argued.
   of 40 runs, for a head scoring 50.7% on fresh pairs. The identical corpus without a
   shared anchor: 3 of 40. Groups sharing a capture are now merged before scoring, which
   routes them to the existing OPTIMISTIC path, withholds the p-value and makes
-  `taste_rank` warn. After the fix: 0 of 40. Reported as `groups_merged`.
+  `taste_rank` warn. Reported as `groups_merged`. **Superseded below — that fix closed
+  only the re-USED-file case, roughly a quarter of the defect.**
 - **Significance counted pairs as independent trials.** Grouping the CV split left the
   test itself ungrouped, but every pair in a held-out session is scored by one fitted `w`
   against correlated material, so a session is one observation rather than k. False
@@ -86,7 +87,41 @@ looking. Both defects are measured, not argued.
   regardless of corpus size). A test that cannot certify anything is not conservative, it
   is broken — and it would have looked more rigorous than what it replaced. The reasoning
   is recorded in `_group_sign_test` so it is not re-attempted blind.
-- 5 new regression tests pin the two defects; the suite is 4780 passed / 2 skipped.
+- 5 new regression tests pin the two defects.
+
+### Fixed — the shared-reference guard closed a quarter of its defect, and the measurements said otherwise
+A third audit round, aimed at the previous round's own fixes.
+
+- **Exact-match merging only catches a re-USED file.** `capture_audio` records live
+  playback, so a producer who re-captures their reference each session produces a new
+  file every time — same material, never byte-identical. Measured at production geometry,
+  6 sessions x 2 pairs: a re-recorded anchor at cosine 0.98 / 0.95 / 0.90 / 0.85 / 0.80 /
+  0.70 certified as real taste in **100%** of runs at every one, merging **nothing**,
+  against 1% for a control with an independent reference per session. A cosine threshold
+  cannot fix it: at 0.70 the two anchors are less alike than two independent captures from
+  one project, so any cutoff strict enough would merge every real corpus.
+- Added `_anchor_asymmetry` — mean cross-session cosine among rejected captures minus the
+  same among preferred. It needs no calibration constant because it is relative: anchored
+  corpora measure **+0.47 to +1.00** (sd ~0.006), honest ones **-0.000** (sd 0.008), and a
+  corpus carrying a genuine quality signal **+0.002** (sd 0.011) — a real preference moves
+  both sides apart symmetrically, so it does not trip. Symmetric in which side is anchored
+  (a shared preferred capture measures -0.81). After: 0% certified at every cosine, control
+  untouched, genuine signal still certifies at 100%. Reported as `anchor_asymmetry` and
+  `shared_reference_detected`.
+- **The measurements themselves were the deeper defect.** Real CLAP embeddings are
+  L2-normalised, so difference vectors have norm 0.3-1.4. Every number quoted for the
+  earlier guards was measured on raw gaussians at norm ~30, where `_fit_weights` returns
+  ~1e-8 and every corpus scores at chance. That regime is why a guard closing a quarter of
+  its defect passed a full green suite with a docstring claiming it was measured. Test
+  helpers now generate unit-norm captures at production dimension, and every documented
+  number was re-measured: the session-level false-positive residual is **5.8-12.5%**
+  (previously documented as ~9%), degrading as sessions get thinner; power is unchanged at
+  100% for >=5 sessions.
+- `_fit_weights` is documented for what it is. At `_LR=0.5` and `l2=1.0` the memory
+  coefficient `1 - _LR*2*l2` is exactly 0, so it is a fixed-point iteration rather than
+  gradient descent. Correct in the deployed regime, fragile to any change in those two
+  constants.
+- 4 new regression tests; the suite is 4784 passed / 2 skipped.
 
 ## v1.28.0 — 2026-07-31
 
