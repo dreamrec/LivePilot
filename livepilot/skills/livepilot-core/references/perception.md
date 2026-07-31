@@ -23,6 +23,35 @@ Canonical ground-truth A/B loop for any significant move:
 `before_snapshot`/`after_snapshot` straight into `evaluate_move` for a
 numeric keep/undo verdict grounded in rendered audio.
 
+### Optional: learned perceptual distance (`embed=True`)
+
+`listen_capture(embed=True)` and `listen_ab(embed=True)` add a CLAP embedding
+on top of the DSP measurements. Off by default; needs the optional
+`pip install torch transformers` extra (~2 GB). Without it both tools behave
+exactly as before and return an install hint rather than failing.
+
+Why it is worth the extra when you have it: every measurement below is a
+*hand-designed* feature — a band level, a LUFS number, a groove deviation. They
+tell you **what** changed numerically. None of them answers "do these two
+renders sound like different *things*", because that judgement is holistic. The
+embedding gives exactly one number for it.
+
+- `listen_ab(embed=True)` → `perceptual_distance.distance`, a cosine distance.
+  Calibrated on real capture families (2026-07-31): **<0.05** is
+  indistinguishable from re-rendering the same take, **0.05–0.10** a real but
+  modest change, **>0.10** clearly a different version.
+- `listen_capture(embed=True)` → a 512-dim `embedding.vector`. This is the
+  **taste anchor**: persist it next to the kept/undone outcome so a preference
+  model can later be trained on what you actually kept.
+
+Two honest limits. A genuinely subtle change can land *at* the noise floor
+(~0.045) and read as "indistinguishable" — that is the model saying it cannot
+call this one, not that nothing changed; trust the DSP deltas there. And there
+is deliberately **no text-query surface**: CLAP is a joint text-audio model, but
+its text side was verified unreliable on this material (asked for "white noise
+hiss" it ranked an actual white-noise capture 4th of 5), so it is not exposed.
+Audio-to-audio only.
+
 What the offline report adds over any live read: stereo width +
 correlation + bass-mono check, groove microtiming (~4 ms resolution,
 auto grid division — pass `bpm`), transient character, per-band loudness

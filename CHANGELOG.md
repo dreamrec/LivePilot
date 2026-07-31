@@ -1,5 +1,28 @@
 # Changelog
 
+## Unreleased
+
+### Added — optional learned perceptual distance in the Listening Engine
+- `listen_capture(embed=True)` returns a 512-dim CLAP embedding; `listen_ab(embed=True)`
+  returns a `perceptual_distance` block. The DSP measurements answer "what changed,
+  numerically"; the embedding answers "do these sound like different *things*", which no
+  single hand-designed feature captures.
+- Calibrated on real capture families: `<0.05` is indistinguishable from re-rendering the
+  same take, `0.05–0.10` a real but modest change, `>0.10` clearly a different version.
+- **Optional by design.** `torch`+`transformers` are ~2 GB and are NOT added to
+  `requirements.txt`. Absent, both tools behave exactly as before and return an install
+  hint. Weights download from HuggingFace on first use and are never redistributed.
+- Backend is `laion/clap-htsat-fused` (Apache-2.0 / CC0), selected over MERT on measured
+  quality as well as licensing: benchmarked on real capture families, MERT won mean SNR
+  (3.71 vs 2.96) but collapsed on the subtlest family to 1.07 — barely above its own
+  within-take noise — where CLAP held 3.00 and stayed in a 2.71–3.17 band throughout.
+  A preference model has to work on the subtle pairs. See `spikes/embedding-benchmark/`.
+- **No text-query surface**, deliberately. CLAP is a joint text-audio model but its text
+  tower proved unreliable on this material (asked for "white noise hiss" it ranked an
+  actual white-noise capture 4th of 5), so it is not exposed. Audio-to-audio only.
+- Tool count unchanged at 469 — existing tools gained an optional parameter rather than
+  adding a surface.
+
 ## v1.28.0 — 2026-07-31
 
 Listening Engine (new `listening` domain, 469 tools / 57 domains) plus the OSC 9881

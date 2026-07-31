@@ -50,6 +50,15 @@ def _resolve_capture_path(file: str) -> str:
 
 def _analyze(file: str, bpm: Optional[float],
              seconds: Optional[float]) -> engine.ClipFeatures:
+    """Feature-only view. Kept as the narrow entry point callers already use."""
+    features, _audio, _sr = _analyze_ex(file, bpm, seconds)
+    return features
+
+
+def _analyze_ex(file: str, bpm: Optional[float], seconds: Optional[float]):
+    """Features plus the decoded audio, so an optional embedding pass does not
+    re-read and re-decode the same file (and cannot drift from what was
+    measured)."""
     try:
         import soundfile as sf
     except ImportError as exc:  # pragma: no cover
@@ -77,7 +86,33 @@ def _analyze(file: str, bpm: Optional[float],
         audio = audio[: int(sr * float(seconds))]
     if len(audio) == 0:
         raise ValueError(f"Audio file is empty: {path}")
-    return engine.extract_features(audio, sr, bpm=float(bpm) if bpm else None)
+    features = engine.extract_features(audio, sr, bpm=float(bpm) if bpm else None)
+    return features, audio, sr
+
+
+def _embedding_block(audio, sr, include_vector: bool) -> dict:
+    """Optional CLAP block. Never raises — absent deps degrade to a reason."""
+    from . import embedding  # noqa: PLC0415 — optional, import at call time
+
+    if not embedding.is_available():
+        return {
+            "available": False,
+            "reason": (
+                "Optional embedding backend not installed. "
+                "pip install torch transformers  (~2 GB; weights download from "
+                "HuggingFace on first use and are not redistributed by LivePilot)"
+            ),
+            "detail": embedding.last_error(),
+        }
+    vec = embedding.embed_audio(audio, sr)
+    if vec is None:
+        return {"available": False,
+                "reason": "embedding backend present but returned nothing",
+                "detail": embedding.last_error()}
+    block = {"available": True, "model": embedding.DEFAULT_MODEL, "dim": int(vec.shape[0])}
+    if include_vector:
+        block["vector"] = [round(float(x), 6) for x in vec]
+    return block
 
 
 @mcp.tool()
@@ -85,6 +120,7 @@ def listen_capture(
     file: str,
     bpm: Optional[float] = None,
     seconds: Optional[float] = None,
+    embed: bool = False,
 ) -> dict[str, Any]:
     """Full offline perceptual report for one master-bus capture.
 
@@ -107,9 +143,20 @@ def listen_capture(
     tempo estimation. See livepilot-core references/perception.md
     #listen_capture--listen_ab--offline-perception-loop for the full
     offline-vs-real-time model.
+
+    ``embed=True`` additionally returns an ``embedding`` block with a
+    512-dim CLAP vector — the taste anchor to persist alongside a
+    kept/undone outcome so a preference model can be trained on real
+    outcomes later. Off by default: it needs the optional
+    ``torch``+``transformers`` extra and adds ~6 KB to the response.
+    Reports ``available: false`` with an install hint when absent — the
+    DSP measurements above are unaffected either way.
     """
-    report = _analyze(file, bpm, seconds)
-    return asdict(report)
+    report, audio, sr = _analyze_ex(file, bpm, seconds)
+    out = asdict(report)
+    if embed:
+        out["embedding"] = _embedding_block(audio, sr, include_vector=True)
+    return out
 
 
 @mcp.tool()
@@ -118,6 +165,7 @@ def listen_ab(
     after_file: str,
     bpm: Optional[float] = None,
     seconds: Optional[float] = None,
+    embed: bool = False,
 ) -> dict[str, Any]:
     """Compare two captures of the same musical span — what changed after a creative move.
 
@@ -147,13 +195,61 @@ def listen_ab(
     livepilot-core references/perception.md
     #listen_capture--listen_ab--offline-perception-loop for the full
     offline-vs-real-time model.
+
+    ``embed=True`` adds a ``perceptual_distance`` block: one learned
+    cosine distance for "do these sound like different things", which the
+    per-feature deltas above cannot express on their own. Calibration from
+    the 2026-07-31 benchmark — <0.05 is indistinguishable from re-rendering
+    the same take, 0.05-0.1 is a real but modest change, >0.1 is clearly a
+    different version. Needs the optional ``torch``+``transformers`` extra;
+    reports ``available: false`` with an install hint otherwise.
     """
-    before = _analyze(before_file, bpm, seconds)
-    after = _analyze(after_file, bpm, seconds)
+    before, before_audio, before_sr = _analyze_ex(before_file, bpm, seconds)
+    after, after_audio, after_sr = _analyze_ex(after_file, bpm, seconds)
     result = engine.compare(before, after)
     result["verdict"] = engine.format_verdict(result)
     result["before_extended"] = before.extended
     result["after_extended"] = after.extended
     result["before_dimensions"] = before.dimensions
     result["after_dimensions"] = after.dimensions
+    if embed:
+        result["perceptual_distance"] = _perceptual_distance(
+            before_audio, before_sr, after_audio, after_sr)
     return result
+
+
+def _perceptual_distance(a_audio, a_sr, b_audio, b_sr) -> dict:
+    """Learned holistic distance between two captures. Never raises."""
+    from . import embedding  # noqa: PLC0415 — optional, import at call time
+
+    if not embedding.is_available():
+        return {
+            "available": False,
+            "reason": (
+                "Optional embedding backend not installed. "
+                "pip install torch transformers  (~2 GB; weights download from "
+                "HuggingFace on first use and are not redistributed by LivePilot)"
+            ),
+            "detail": embedding.last_error(),
+        }
+    va = embedding.embed_audio(a_audio, a_sr)
+    vb = embedding.embed_audio(b_audio, b_sr)
+    dist = embedding.distance(va, vb)
+    if dist is None:
+        return {"available": False, "reason": "embedding backend returned nothing",
+                "detail": embedding.last_error()}
+    # Calibration from spikes/embedding-benchmark (2026-07-31): within-take
+    # spread averaged ~0.045, between-iteration ~0.136 on clap-htsat-fused.
+    if dist < 0.05:
+        reading = "indistinguishable from re-rendering the same take"
+    elif dist < 0.10:
+        reading = "a real but modest perceptual change"
+    else:
+        reading = "clearly a different version"
+    return {
+        "available": True,
+        "model": embedding.DEFAULT_MODEL,
+        "distance": round(dist, 5),
+        "similarity": round(1.0 - dist, 5),
+        "reading": reading,
+    }

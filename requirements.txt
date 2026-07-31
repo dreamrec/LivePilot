@@ -14,6 +14,16 @@ scipy>=1.18.0
 mutagen>=1.48.1
 # v1.28 Listening Engine (listen_capture / listen_ab offline capture analysis)
 librosa>=0.10
+
+# OPTIONAL — learned perceptual embeddings for listen_capture(embed=True) /
+# listen_ab(embed=True). Deliberately NOT a hard dependency: torch pulls ~2 GB
+# and most users never need it. Without it the tools behave exactly as before
+# and report an install hint instead of an embedding.
+#   pip install torch transformers
+# Backend is laion/clap-htsat-fused (Apache-2.0 / CC0). Weights download from
+# HuggingFace on first use; LivePilot never redistributes them. Chosen over
+# MERT on both licensing (MERT is CC-BY-NC) and measured quality on the hardest
+# capture family — see spikes/embedding-benchmark/.
 # v1.10.5 Splice online catalog integration — required, not optional.
 # Without these, SpliceGRPCClient silently disables itself and search_samples
 # falls back to the SQLite sounds.db which only returns locally downloaded
