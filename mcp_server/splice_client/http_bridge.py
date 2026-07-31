@@ -605,7 +605,10 @@ class SpliceHTTPBridge:
                 endpoint=f"{self.config.base_url}{self.config.describe_endpoint}",
             )
 
-        query = _load_graphql_query("samples_search")
+        # Memoized in _QUERY_CACHE, so this reads disk once per query name per
+        # process — but that once still lands on the event loop. The thread hop
+        # is negligible next to the HTTPS round-trip this query feeds.
+        query = await asyncio.to_thread(_load_graphql_query, "samples_search")
         variables: dict = {
             "query": str(description),
             "limit": int(limit),
@@ -673,7 +676,7 @@ class SpliceHTTPBridge:
                 message="uuid must be a non-empty string",
                 endpoint=self.config.variation_endpoint,
             )
-        query = _load_graphql_query("asset_similar_sounds")
+        query = await asyncio.to_thread(_load_graphql_query, "asset_similar_sounds")
         body = {
             "operationName": "AssetSimilarSoundsQuery",
             "variables": {

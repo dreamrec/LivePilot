@@ -13,6 +13,7 @@ list (skips per-track monitoring set, but still calls back_to_arranger).
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from typing import Any
@@ -34,7 +35,9 @@ async def _ensure_analyzer_stub(ctx: Any) -> dict:
     """
     try:
         from ...tools.analyzer import ensure_analyzer_on_master  # type: ignore
-        result = ensure_analyzer_on_master(ctx)
+        # Synchronous — it does Remote Script round-trips to inspect and
+        # repair the master chain. Offloaded so it cannot stall the loop.
+        result = await asyncio.to_thread(ensure_analyzer_on_master, ctx)
         if isinstance(result, dict):
             return result
         return {"status": "unknown"}

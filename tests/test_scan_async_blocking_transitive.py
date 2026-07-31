@@ -210,6 +210,70 @@ def test_exempt_bridge_receiver_is_not_flagged_transitively(tmp_path):
     )
 
 
+def test_lambda_bodies_are_not_treated_as_inline_code(tmp_path):
+    """A lambda body is a DEFERRED execution context.
+
+    `agent_os.py` builds `capture_fn = lambda: _capture_snapshot(ctx)` and hands
+    it to `experiment/engine.py`, which invokes it via
+    `await asyncio.to_thread(capture_fn)`. The work is already offloaded — at
+    the consumer, not the definition site. Treating the lambda body as inline
+    code of the defining function reported 4 already-correct calls as
+    violations, which is exactly how a lint loses its credibility.
+    """
+    pkg = tmp_path / "pkg"
+    pkg.mkdir()
+    (pkg / "prim.py").write_text(
+        'from pathlib import Path\n'
+        'def snapshot(ctx):\n'
+        '    Path("/tmp/s").write_text(str(ctx), encoding="utf-8")\n',
+        encoding="utf-8",
+    )
+    (pkg / "use.py").write_text(
+        'async def handler(ctx):\n'
+        '    capture_fn = lambda: snapshot(ctx)\n'   # deferred — not a call here
+        '    return await run_it(capture_fn)\n'
+        'async def run_it(fn):\n'
+        '    import asyncio\n'
+        '    return await asyncio.to_thread(fn)\n',
+        encoding="utf-8",
+    )
+    violations = _transitive(pkg)
+    assert not violations, (
+        "a call inside a lambda body must not be attributed to the defining "
+        f"function: {[v.to_dict() for v in violations]}"
+    )
+
+
+def test_nested_function_calls_are_not_double_reported(tmp_path):
+    """`ast.walk` is breadth-first over ALL descendants, so `continue` on a
+    nested def does not stop it yielding that def's children. The original
+    walk claimed (in its docstring) not to descend but actually did, so a
+    blocking call inside a nested `async def` was reported twice — once for
+    the nested function, once for its parent.
+    """
+    pkg = tmp_path / "pkg"
+    pkg.mkdir()
+    (pkg / "prim.py").write_text(
+        'from pathlib import Path\n'
+        'def persist(x):\n'
+        '    Path("/tmp/p").write_text(str(x), encoding="utf-8")\n',
+        encoding="utf-8",
+    )
+    (pkg / "use.py").write_text(
+        'async def outer(x):\n'
+        '    async def inner(y):\n'
+        '        return persist(y)\n'
+        '    return await inner(x)\n',
+        encoding="utf-8",
+    )
+    violations = _transitive(pkg)
+    assert len(violations) == 1, (
+        "the blocking call belongs to `inner` only — reporting it for `outer` "
+        f"too is double-counting: {[v.to_dict() for v in violations]}"
+    )
+    assert violations[0].func_name == "inner", violations[0].to_dict()
+
+
 def test_self_referential_wrapper_resolves_instead_of_deadlocking(tmp_path):
     """A thin wrapper delegating to a same-named implementation in another
     module (session_continuity/tools.py -> tracker.py::record_turn_resolution)
@@ -285,3 +349,21 @@ def test_baseline_file_is_well_formed_and_shrinking_is_possible():
     keys = data["known_violations"]
     assert keys == sorted(set(keys)), "baseline must be sorted and de-duplicated"
     assert all(k.count("::") == 3 for k in keys), "unexpected baseline key shape"
+
+
+def test_baseline_is_empty():
+    """The backlog was driven to zero on 2026-07-31 (42 -> 0: 6 were scanner
+    false positives, 36 were real and fixed).
+
+    Keeping it at zero is the point. If this fails, someone baselined a new
+    blocking call instead of offloading it — `asyncio.to_thread`,
+    `run_in_executor`, or `send_command_async` is almost always the right
+    answer. Deliberately re-baselining is a decision worth recording here with
+    a reason, not a silent `--update-baseline`.
+    """
+    keys = load_baseline(DEFAULT_BASELINE)
+    assert not keys, (
+        "the async-blocking baseline is no longer empty — these sites block "
+        f"the event loop and should be offloaded rather than suppressed:\n"
+        + "\n".join(f"  {k}" for k in sorted(keys))
+    )

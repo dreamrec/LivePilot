@@ -216,7 +216,11 @@ async def reconnect_bridge(ctx: Context) -> dict:
         bridge_state["transport"] = transport
         return {"ok": True, "message": "Bridge reconnected on UDP 9880"}
     except OSError:
-        holder = _identify_port_holder(9880)
+        # _identify_port_holder shells out (lsof) to name the process holding
+        # the port. Bare, that subprocess round-trip runs on the event loop —
+        # in the error path, exactly when the user is retrying and every other
+        # request is already contending.
+        holder = await asyncio.to_thread(_identify_port_holder, 9880)
         return {
             "ok": False,
             "code": "STATE_ERROR",

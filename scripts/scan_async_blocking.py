@@ -54,14 +54,31 @@ The receiver exemptions (`bridge`/`m4l`/`spectral`) apply to transitively
 resolved calls too — without that, resolving `send_command` by bare name
 re-flags every already-exempt `bridge.send_command(...)` call site.
 
+Deferred scopes
+---------------
+A call inside a nested `def`/`async def`/`lambda` is NOT attributed to the
+enclosing function — that body runs whenever and wherever the resulting
+callable is invoked, which this analysis cannot see. `agent_os.py` builds
+`capture_fn = lambda: _capture_snapshot(ctx)` and hands it to code that runs
+`await asyncio.to_thread(capture_fn)`: already offloaded, at the consumer.
+This needs real subtree pruning — `ast.walk` is breadth-first over ALL
+descendants, so `continue` on a nested def still yields its children, which
+double-reported nested async defs against their parent.
+
 Baseline
 --------
-Widening the rule surfaced 42 genuine pre-existing sites (8 distinct root
-causes). They are recorded in `scripts/async_blocking_baseline.json` so CI
-fails on NEW violations rather than on the backlog. Entries are keyed by
-(file, function, target) — not line number — so they survive code movement.
+`scripts/async_blocking_baseline.json` records known-and-accepted sites so CI
+fails on NEW violations rather than on a backlog. Entries are keyed by
+(repo-relative file, function, kind, target) — not line number, and not an
+absolute path — so they survive code movement and match on any checkout.
 Regenerate with `--update-baseline`; use `--no-baseline` to see everything.
-Shrinking that file is the point; growing it should need a good reason.
+
+**It is currently EMPTY and should stay that way.** Widening the rule first
+surfaced 42 sites: 6 were scanner false positives (deferred scopes, fixed
+above) and the other 36 were real and have been offloaded.
+`tests/test_scan_async_blocking_transitive.py::test_baseline_is_empty`
+enforces this — baselining a new blocking call instead of offloading it is a
+decision that needs a stated reason, not a silent `--update-baseline`.
 
 Usage:
     python3 scripts/scan_async_blocking.py [root] [--exclude path1 path2 ...] [--json]
@@ -258,21 +275,34 @@ def _is_exempt_call(call: ast.Call) -> bool:
     return isinstance(func, ast.Attribute) and _is_exempt_receiver(func)
 
 
+# Node types whose body is a SEPARATE execution context: the code inside runs
+# whenever/wherever the resulting callable is invoked, which this analysis
+# cannot see. A nested def gets scanned as its own top-level finding; a lambda
+# is typically handed to someone else to call — `asyncio.to_thread(capture_fn)`
+# in experiment/engine.py is exactly that, and treating the lambda body as
+# inline code of the defining function reported 4 already-offloaded calls as
+# violations.
+DEFERRED_SCOPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)
+
+
 def _own_calls(func_node: ast.AST, parents: ParentIndex) -> list[ast.Call]:
     """Unwrapped calls made lexically BY func_node itself.
 
-    Skips anything inside a nested `def`/`async def` (that body belongs to the
-    nested function, not this one) and anything already inside a to_thread /
-    run_in_executor wrapper.
+    Prunes deferred scopes (nested def / async def / lambda) rather than merely
+    skipping the node: `ast.walk` is breadth-first over ALL descendants, so
+    `continue` on a nested def still yields everything inside it. That bug made
+    a call in a nested `async def` get reported twice — once for the nested
+    function and once for its parent.
     """
     out: list[ast.Call] = []
-    for sub in ast.walk(func_node):
-        if sub is func_node:
-            continue
-        if isinstance(sub, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            continue
-        if isinstance(sub, ast.Call) and not _is_wrapped(sub, parents, func_node):
-            out.append(sub)
+    stack: list[ast.AST] = list(ast.iter_child_nodes(func_node))
+    while stack:
+        node = stack.pop()
+        if isinstance(node, DEFERRED_SCOPES):
+            continue  # do not descend — separate execution context
+        if isinstance(node, ast.Call) and not _is_wrapped(node, parents, func_node):
+            out.append(node)
+        stack.extend(ast.iter_child_nodes(node))
     return out
 
 

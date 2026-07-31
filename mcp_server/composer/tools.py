@@ -269,10 +269,18 @@ async def compose(
     if mode == "develop":
         from .develop.seed_introspector import introspect_seed
         from .develop.brief_builder import build_develop_brief
-        seed = introspect_seed(ctx, scene_index=seed_scene_index)
+        # Both are synchronous and heavy: introspect_seed does Remote Script
+        # round-trips, and the brief builders read the reference corpus off
+        # disk. Offloaded to match the `fast` branch below — bare, they block
+        # the event loop for every other in-flight MCP request.
+        seed = await asyncio.to_thread(
+            introspect_seed, ctx, scene_index=seed_scene_index
+        )
         if seed.get("error"):
             return {"status": "error", "error": seed["error"], "phase": "introspect_seed"}
-        brief = build_develop_brief(ctx, seed, prompt_directive=prompt or None)
+        brief = await asyncio.to_thread(
+            build_develop_brief, ctx, seed, prompt_directive=prompt or None
+        )
         brief["prompt"] = prompt
         return brief
 
@@ -290,7 +298,9 @@ async def compose(
     # The old deterministic engine path (step_plan) is deprecated
     # (BUG-FULL-MODE-18: flat single-pattern arrangements).
     from .full.brief_builder import build_full_brief
-    brief = build_full_brief(ctx, prompt=prompt, seed_state=None)
+    brief = await asyncio.to_thread(
+        build_full_brief, ctx, prompt=prompt, seed_state=None
+    )
     brief["prompt"] = prompt
     return brief
 
@@ -838,7 +848,8 @@ async def analyze_loop_for_extension(
     No writes to the session.
     """
     from .develop.seed_introspector import introspect_seed
-    return introspect_seed(ctx, scene_index=scene_index)
+    # Remote Script round-trips — keep them off the event loop.
+    return await asyncio.to_thread(introspect_seed, ctx, scene_index=scene_index)
 
 
 @mcp.tool()

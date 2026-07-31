@@ -180,12 +180,14 @@ class SpliceGRPCClient:
             logger.info("Splice gRPC not available (grpcio missing or Splice not installed)")
             return False
 
-        port = self._read_port()
+        # Both read files off disk (port.conf, the self-signed TLS cert).
+        # Bare, they block the event loop for every other in-flight request.
+        port = await asyncio.to_thread(self._read_port)
         if not port:
             logger.info("Cannot read Splice port from port.conf")
             return False
 
-        cert_pem = self._read_cert()
+        cert_pem = await asyncio.to_thread(self._read_cert)
         if not cert_pem:
             logger.info("Cannot read Splice TLS certificate")
             return False
@@ -405,7 +407,8 @@ class SpliceGRPCClient:
             # against the eventual `record_download()` call — that gap is
             # inherent (the actual download is a network round-trip away)
             # and this is a client-side warning, not a hard server limit.
-            budget = self._quota.check_budget(additional=1)
+            # The daily-quota tracker is a JSON store on disk — offload the read.
+            budget = await asyncio.to_thread(self._quota.check_budget, additional=1)
             if budget["would_exceed"]:
                 return DownloadDecision(
                     allowed=False,
@@ -517,7 +520,9 @@ class SpliceGRPCClient:
         # Splice server-side (our credit count will reflect on next fetch).
         if decision.gating_mode == "daily_quota":
             try:
-                self._quota.record_download(
+                # Read-modify-write of the quota store (fsync) — offload it.
+                await asyncio.to_thread(
+                    self._quota.record_download,
                     file_hash=file_hash,
                     filename=os.path.basename(local_path),
                 )
