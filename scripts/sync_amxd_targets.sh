@@ -34,10 +34,16 @@ if [ "$JS_VERSION" != "$VERSION" ]; then
 fi
 
 # --- Gate 2: the frozen binary must embed that same version -----------------
-if strings "$SRC" | grep -qE "var VERSION[[:space:]]*=[[:space:]]*\"$VERSION\""; then
+# Extract once into a variable and match with a here-string. Do NOT write this
+# as `strings "$SRC" | grep -q ...`: under `set -o pipefail`, grep -q exits on
+# the first match and SIGPIPEs strings, so the pipeline reports failure exactly
+# when the match SUCCEEDS. That inverts the gate — it passed only while the
+# version was wrong, and blocked the release the moment the freeze was correct.
+FROZEN_STRINGS=$(strings "$SRC")
+if grep -qE "var VERSION[[:space:]]*=[[:space:]]*\"$VERSION\"" <<<"$FROZEN_STRINGS"; then
   echo "freeze version    : OK ($VERSION embedded)"
 else
-  FROZEN=$(strings "$SRC" | grep -oE 'var VERSION[[:space:]]*=[[:space:]]*"[0-9.]+"' | head -1)
+  FROZEN=$(grep -oE 'var VERSION[[:space:]]*=[[:space:]]*"[0-9.]+"' <<<"$FROZEN_STRINGS" | head -1)
   echo "::error::$SRC embeds [$FROZEN], expected $VERSION — the device has NOT been re-frozen."
   fail=1
 fi
