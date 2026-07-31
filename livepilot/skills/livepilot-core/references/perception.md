@@ -73,8 +73,8 @@ good as the honesty of the labels. This complements the symbolic taste system
 *why* in named qualities, this side notices *that* in audio nobody has a word
 for. Neither replaces the other.
 
-**Read the verdict, not the accuracy.** Three things the head does to avoid
-overstating itself, each added after it caught a real failure:
+**Read the verdict, not the accuracy.** What the head does to avoid overstating
+itself — every item below was added after it was caught doing exactly that:
 
 - Training accuracy is never reported. With 512 dimensions and tens of pairs a
   linear head separates almost any labelling, so it reads ~100% regardless.
@@ -82,9 +82,19 @@ overstating itself, each added after it caught a real failure:
   it looks* — 20 pairs of random labels measured 65% held-out.
 - Cross-validation holds out whole **groups**, because several pairs from one
   session make each other trivially predictable. On 7 real capture pairs from 3
-  sessions: leave-one-pair-out 100%, leave-one-session-out 57%. Record pairs
-  from at least two sessions, and set `group` explicitly whenever the capture
-  filenames do not reflect the true grouping.
+  sessions: leave-one-pair-out 100%, leave-one-session-out 57%. Set `group`
+  explicitly whenever the capture filenames do not reflect the true grouping.
+- Significance counts **sessions, not pairs** — five or more separate sessions,
+  or nothing can be certified however good the accuracy looks. Counting pairs
+  put the false-positive rate at ~25% against a nominal 5%.
+- **Do not A/B every candidate against one fixed baseline.** Pairs sharing a
+  capture are one piece of evidence, not several; they are merged before
+  scoring, and `groups_merged` in the report says when that happened. Before
+  this guard existed, 6 such pairs across 3 labelled sessions reported "a real
+  preference signal" in 40 of 40 runs — for a head scoring 50.7% on fresh pairs.
+
+`significant: null` means "could not be tested" (too few sessions, or captures
+shared). Treat it exactly as `false`.
 
 Scores are comparable to each other and to nothing else — Bradley-Terry is
 shift-invariant, so there is no meaningful threshold on a single value. Rank

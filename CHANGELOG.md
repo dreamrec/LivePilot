@@ -53,6 +53,41 @@
 - Same optional backend as above — absent `torch`/`transformers`, all three tools return
   the install hint and nothing else changes.
 
+### Fixed — two ways the taste head certified confidence it had not earned
+Found by an adversarial audit run against the head immediately after it shipped, on the
+theory that the first three guards were each discovered by accident rather than by
+looking. Both defects are measured, not argued.
+
+- **A reused baseline capture was certified as taste.** Keeping one reference render and
+  A/B-ing candidates against it — the most natural way anyone compares anything — puts the
+  same anchor on every pair, so every cross-validation fold learns "not the anchor" and
+  scores perfectly. Grouped CV could not see it, because the anchor sits inside every
+  group. Measured: 6 pairs across 3 explicitly-labelled sessions reported 100% accuracy,
+  p=0.016, `significant: true`, *"the head has learned a real preference signal"* — in 40
+  of 40 runs, for a head scoring 50.7% on fresh pairs. The identical corpus without a
+  shared anchor: 3 of 40. Groups sharing a capture are now merged before scoring, which
+  routes them to the existing OPTIMISTIC path, withholds the p-value and makes
+  `taste_rank` warn. After the fix: 0 of 40. Reported as `groups_merged`.
+- **Significance counted pairs as independent trials.** Grouping the CV split left the
+  test itself ungrouped, but every pair in a held-out session is scored by one fitted `w`
+  against correlated material, so a session is one observation rather than k. False
+  positives on corpora built to contain no transferable signal, nominal 5%: **25%**,
+  rising with how alike a session's pairs are. Significance now counts sessions. After:
+  6.7–8.0%, with power unchanged (100% on a genuine signal at ≥5 sessions).
+- Consequence, deliberate: certification now requires decisions from at least 5 separate
+  sessions with no shared captures. Below that nothing can be certified however good the
+  accuracy looks, and the verdict says so — more pairs from the sessions already recorded
+  will not help. `significant` gained a third state: `null` means "could not be tested",
+  and callers must treat it as `false`.
+- The textbook fix for the residual (a group sign-flip permutation test) was built,
+  measured and **rejected**: `_fit_weights` is deliberately robust, so on the bimodal data
+  sign-flipping creates it settles on the minority direction, 20 of 64 flip patterns score
+  a perfect 1.0, and the test loses essentially all power (p=0.17–0.34 on a clean signal
+  regardless of corpus size). A test that cannot certify anything is not conservative, it
+  is broken — and it would have looked more rigorous than what it replaced. The reasoning
+  is recorded in `_group_sign_test` so it is not re-attempted blind.
+- 5 new regression tests pin the two defects; the suite is 4780 passed / 2 skipped.
+
 ## v1.28.0 — 2026-07-31
 
 Listening Engine (new `listening` domain, 469 tools / 57 domains) plus the OSC 9881

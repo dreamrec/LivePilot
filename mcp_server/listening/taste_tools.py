@@ -113,8 +113,15 @@ def taste_record_pair(
     cross-validation holds out whole groups, because several pairs from one
     session make each other trivially easy to predict. On real captures that
     difference was 100% versus 57%. Set it explicitly if the filenames do not
-    reflect the true grouping, and record pairs from at least two different
-    sessions before trusting any score.
+    reflect the true grouping.
+
+    Two things about HOW you compare, which matter more than how many pairs you
+    record. Do not A/B every candidate against one fixed baseline: pairs that
+    share a capture are one piece of evidence, not several, and they are merged
+    before scoring (the head cannot be certified on them at all). And record
+    from at least ``taste_head.MIN_GROUPS_FOR_SIGNIFICANCE`` separate sessions —
+    significance counts sessions, not pairs, so more pairs from the sessions you
+    already have will not move it.
 
     Recording invalidates any previously fitted head — rerun ``taste_train``.
     """
@@ -156,8 +163,8 @@ def taste_record_pair(
 def taste_train(l2: float = taste_head.DEFAULT_L2) -> dict[str, Any]:
     """Fit the taste head and report how much it actually learned.
 
-    Returns leave-one-out cross-validated accuracy, an exact binomial p-value
-    against chance, and a plain-language verdict.
+    Returns cross-validated accuracy, a p-value against chance, and a
+    plain-language verdict.
 
     Read the verdict, not the accuracy. Training accuracy is deliberately NOT
     reported: CLAP embeddings are 512-dimensional and a realistic corpus is
@@ -165,8 +172,17 @@ def taste_train(l2: float = taste_head.DEFAULT_L2) -> dict[str, Any]:
     not it learned anything — including on random labels. Even held-out
     accuracy needs the significance test: measured on synthetic data, 20 pairs
     of pure noise produced 65% leave-one-out accuracy, indistinguishable from a
-    genuinely learnable signal at that sample size. ``significant: false``
-    means the number carries no information yet, however high it looks.
+    genuinely learnable signal at that sample size.
+
+    ``significant`` has three states and they are not interchangeable.
+    ``true`` is earned. ``false`` means tested and failed. ``null`` means it
+    could not be tested at all — too few independent sessions, or the pairs
+    turned out to share captures. Treat ``null`` exactly as you would
+    ``false``: as no evidence.
+
+    ``groups_merged`` is worth reading. It is non-zero when sessions you
+    recorded separately shared a capture and were collapsed, which is the
+    single most common way a corpus looks bigger than the evidence in it.
 
     ``l2`` raises or lowers regularisation. The default is strong on purpose —
     with far more dimensions than pairs, the penalty is what stops the head

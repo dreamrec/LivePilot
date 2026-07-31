@@ -6,12 +6,21 @@ CI; the embed step is monkeypatched.
 
 Most of this file is not testing "does it fit" — a convex logistic regression
 fits. It is testing that the head cannot OVERSTATE what it learned, which is
-the only way a preference model does real damage. Two live regression guards:
+the only way a preference model does real damage. Four live regression guards,
+each pinning a way it was caught doing exactly that:
 
-  * random labels must not be reported as signal (test_random_labels_*)
+  * random labels must not be reported as signal (test_random_labels_*) —
+    20 pairs of noise once measured 65% held-out.
   * a single-group corpus must not be reported as generalisation
-    (test_single_group_*), because leave-one-pair-out read 100% on real
-    captures where leave-one-group-out read 57%.
+    (test_single_group_*) — leave-one-pair-out read 100% on real captures
+    where leave-one-group-out read 57%.
+  * a reused baseline capture must not be certified
+    (test_reused_baseline_*) — 6 pairs over 3 labelled sessions sharing one
+    anchor reported "a real preference signal" in 40 of 40 runs, for a head
+    scoring 0.507 on fresh pairs.
+  * significance must count sessions, not pairs
+    (test_significance_counts_sessions_not_pairs) — counting pairs put the
+    false-positive rate at ~25% against a nominal 5%.
 """
 
 from __future__ import annotations
@@ -41,19 +50,25 @@ def _add(store, pref, rej, group="g", model="test-model"):
                           np.asarray(rej, dtype=float), model, group=group)
 
 
-def _signal_pairs(store, n=8, groups=2, seed=0):
-    """Pairs where dimension 0 alone decides the preference — a signal any
-    linear head should generalise across groups."""
+def _signal_pairs(store, n=12, groups=6, seed=0):
+    """One preference direction shared across sessions, plus per-pair noise.
+
+    The noise is not decoration. Without it (pref = base+d, rej = base-d) the
+    base cancels and EVERY difference vector is byte-identical — one observation
+    repeated n times, not n observations. A helper without noise would test a
+    corpus no real session produces.
+    """
     rng = np.random.default_rng(seed)
+    direction = np.zeros(DIM)
+    direction[0] = 3.0
     for i in range(n):
         base = rng.normal(size=DIM)
-        pref, rej = base.copy(), base.copy()
-        pref[0] += 3.0
-        rej[0] -= 3.0
+        pref = base + direction + rng.normal(size=DIM) * 0.4
+        rej = base - direction + rng.normal(size=DIM) * 0.4
         _add(store, pref, rej, group=f"g{i % groups}")
 
 
-def _noise_pairs(store, n=20, groups=2, seed=1):
+def _noise_pairs(store, n=18, groups=6, seed=1):
     """Pairs with no consistent direction — pure noise, correctly labelled as
     a preference. Anything the head 'learns' here is memorisation."""
     rng = np.random.default_rng(seed)
@@ -95,7 +110,7 @@ def test_new_pair_invalidates_the_fitted_head(tmp_path):
 
 def test_pairs_survive_a_reopened_store(tmp_path):
     _signal_pairs(_store(tmp_path))
-    assert len(_store(tmp_path).get_all()["pairs"]) == 8
+    assert len(_store(tmp_path).get_all()["pairs"]) == 12
 
 
 # --- the honesty guarantees --------------------------------------------------
@@ -113,7 +128,7 @@ def test_training_accuracy_is_never_reported(tmp_path):
 
 def test_real_signal_is_recognised_across_groups(tmp_path):
     s = _store(tmp_path)
-    _signal_pairs(s, n=10, groups=2)
+    _signal_pairs(s, n=12, groups=6)
     r = taste_head.train(s)
     assert r["cv_scheme"] == "leave-one-group-out"
     assert r["cv_accuracy"] == 1.0
@@ -125,18 +140,18 @@ def test_random_labels_are_not_reported_as_signal(tmp_path):
     """THE regression guard. Before the binomial test, 20 pairs of pure noise
     produced 65% held-out accuracy and a verdict of 'a weak but real signal'."""
     s = _store(tmp_path)
-    _noise_pairs(s, n=20, groups=4)
+    _noise_pairs(s, n=18, groups=6)
     r = taste_head.train(s)
-    assert r["significant"] is False
-    assert "not distinguishable from chance" in r["verdict"].lower()
+    assert r["significant"] is not True
+    assert "chance" in r["verdict"].lower()
 
 
 def test_random_labels_verdict_says_do_not_use(tmp_path):
     s = _store(tmp_path)
-    _noise_pairs(s, n=20, groups=4)
+    _noise_pairs(s, n=18, groups=6)
     verdict = taste_head.train(s)["verdict"]
     assert "do not use" in verdict.lower()
-    assert "pairs to become significant" in verdict
+    assert "no information" in verdict.lower()
 
 
 def test_single_group_is_labelled_optimistic(tmp_path):
@@ -178,14 +193,80 @@ def test_grouped_cv_is_stricter_than_leave_one_pair_out(tmp_path):
             groups.append(f"session{g}")
     diffs = np.array(diffs)
 
-    grouped, grouped_scheme = taste_head._cv_accuracy(
+    grouped, grouped_scheme, _pg = taste_head._cv_accuracy(
         diffs, groups, taste_head.DEFAULT_L2)
-    leaky, leaky_scheme = taste_head._cv_accuracy(
+    leaky, leaky_scheme, _pg2 = taste_head._cv_accuracy(
         diffs, ["one"] * len(diffs), taste_head.DEFAULT_L2)
 
     assert grouped_scheme == "leave-one-group-out"
     assert "OPTIMISTIC" in leaky_scheme
     assert leaky > grouped
+
+
+def test_reused_baseline_capture_cannot_be_certified(tmp_path):
+    """GUARD #4, and the whole reason for the audit that found it.
+
+    Keep one reference render and A/B candidates against it — the most natural
+    way anyone compares anything — and every pair carries the same anchor on the
+    rejected side. Every fold then learns "not the anchor" and scores perfectly,
+    no matter which session labels the pairs carry. Grouped CV is blind to it
+    because the anchor sits inside every group.
+
+    Measured before the fix, 512-d: 100% accuracy, leave-one-group-out,
+    p=0.0156, significant TRUE, "the head has learned a real preference signal"
+    — in 40 of 40 runs, for a head scoring 0.507 on fresh pairs.
+    """
+    rng = np.random.default_rng(3)
+    s = _store(tmp_path)
+    anchor = rng.normal(size=DIM)                     # ONE baseline, reused
+    for i in range(6):
+        _add(s, rng.normal(size=DIM), anchor, group=f"session{i % 3}")
+
+    r = taste_head.train(s)
+    assert r["n_groups_recorded"] == 3, "three sessions were genuinely recorded"
+    assert r["groups_merged"] >= 1
+    assert r["n_groups"] == 1, "sharing an anchor makes them one piece of evidence"
+    assert r["significant"] is not True
+    assert r["p_value"] is None
+
+
+def test_reused_baseline_surfaces_in_the_verdict(tmp_path):
+    """Silently merging would be its own dishonesty — the user recorded three
+    sessions and must be told why they scored as one."""
+    rng = np.random.default_rng(4)
+    s = _store(tmp_path)
+    anchor = rng.normal(size=DIM)
+    for i in range(6):
+        _add(s, rng.normal(size=DIM), anchor, group=f"session{i % 3}")
+    verdict = taste_head.train(s)["verdict"]
+    assert "share a capture" in verdict
+    assert "merged" in verdict
+
+
+def test_distinct_captures_are_never_merged(tmp_path):
+    """The guard must not fire on healthy corpora, or it would quietly destroy
+    every legitimate grouping."""
+    s = _store(tmp_path)
+    _signal_pairs(s, n=12, groups=6)
+    r = taste_head.train(s)
+    assert r["groups_merged"] == 0
+    assert r["n_groups"] == r["n_groups_recorded"] == 6
+
+
+def test_shared_capture_merges_only_the_groups_that_share(tmp_path):
+    """Merging is surgical: two sessions sharing a capture collapse, the rest
+    stay separate evidence."""
+    rng = np.random.default_rng(5)
+    s = _store(tmp_path)
+    shared = rng.normal(size=DIM)
+    _add(s, rng.normal(size=DIM), shared, group="a")
+    _add(s, rng.normal(size=DIM), shared, group="b")
+    for g in ("c", "d", "e", "f"):
+        _add(s, rng.normal(size=DIM), rng.normal(size=DIM), group=g)
+    r = taste_head.train(s)
+    assert r["n_groups_recorded"] == 6
+    assert r["n_groups"] == 5, "only a and b collapse"
+    assert r["groups_merged"] == 1
 
 
 def test_degenerate_grouping_is_called_out(tmp_path):
@@ -209,14 +290,14 @@ def test_degenerate_verdict_hands_the_check_to_the_user(tmp_path):
     _signal_pairs(s, n=8, groups=8)
     verdict = taste_head.train(s)["verdict"]
     assert "own group" in verdict
-    assert "set `group` explicitly" in verdict
+    assert "separate sessions" in verdict
     # still reports the underlying result, not just the caveat
     assert "%" in verdict
 
 
 def test_healthy_grouping_carries_no_degenerate_warning(tmp_path):
     s = _store(tmp_path)
-    _signal_pairs(s, n=10, groups=2)
+    _signal_pairs(s, n=12, groups=6)
     r = taste_head.train(s)
     assert r["cv_scheme"] == "leave-one-group-out"
     assert "DEGENERATE" not in r["verdict"]
@@ -242,21 +323,38 @@ def test_head_is_not_persisted_when_unmeasurable(tmp_path):
 
 # --- statistics --------------------------------------------------------------
 
-def test_binomial_p_value_matches_hand_computation():
-    # P(X >= 5 | n=5, p=0.5) = 1/32
-    assert taste_head._binomial_p_value(5, 5) == pytest.approx(1 / 32)
-    # P(X >= 0) is the whole distribution
-    assert taste_head._binomial_p_value(0, 10) == pytest.approx(1.0)
-    # Chance itself is never significant
-    assert taste_head._binomial_p_value(5, 10) > taste_head.SIGNIFICANCE_ALPHA
+def test_sessions_for_significance_is_derived_not_chosen():
+    """A clean sweep of G sessions gives p = 2**-G, so the session bar falls
+    out of how much evidence G sessions carry rather than being picked."""
+    n = taste_head._sessions_for_significance(0.05)
+    assert 0.5 ** n <= 0.05
+    assert 0.5 ** (n - 1) > 0.05
+    assert taste_head.MIN_GROUPS_FOR_SIGNIFICANCE == n
+    # a stricter alpha demands more sessions
+    assert taste_head._sessions_for_significance(0.01) > n
 
 
-def test_pairs_for_significance_is_monotone_in_accuracy():
-    strong = taste_head._pairs_for_significance(0.95)
-    weak = taste_head._pairs_for_significance(0.60)
-    assert strong < weak
-    # Chance can never become significant, however many pairs.
-    assert taste_head._pairs_for_significance(0.5) == 400
+def test_significance_counts_sessions_not_pairs():
+    """The correction itself. Ten pairs from four sessions cannot be certified
+    however perfect, because four sessions is four observations — while the
+    superseded pair-level test would have read p=0.001 on the same data."""
+    per_group = [(3, 3), (3, 3), (3, 3), (3, 3)]          # flawless, 4 sessions
+    assert taste_head._group_sign_test(per_group) == pytest.approx(1 / 16)
+    assert taste_head._group_sign_test(per_group) > taste_head.SIGNIFICANCE_ALPHA
+    # one more session is what buys significance, not more pairs per session
+    assert taste_head._group_sign_test(per_group + [(3, 3)]) <= \
+        taste_head.SIGNIFICANCE_ALPHA
+    assert taste_head._group_sign_test([(30, 30)] * 4) > \
+        taste_head.SIGNIFICANCE_ALPHA
+
+
+def test_split_sessions_are_dropped_not_credited():
+    """A session the head got exactly half right carries no directional
+    evidence. Counting it as a win would manufacture confidence."""
+    assert taste_head._group_sign_test([(1, 2), (1, 2)]) is None
+    # ties reduce the observation count rather than padding it
+    decisive = taste_head._group_sign_test([(2, 2)] * 5 + [(1, 2)] * 3)
+    assert decisive == pytest.approx(1 / 32)
 
 
 # --- scoring -----------------------------------------------------------------
@@ -276,7 +374,7 @@ def test_score_rejects_dimension_mismatch(tmp_path):
 
 def test_score_carries_the_heads_own_confidence(tmp_path):
     s = _store(tmp_path)
-    _signal_pairs(s, n=10, groups=2)
+    _signal_pairs(s, n=12, groups=6)
     taste_head.train(s)
     entry = taste_head.score(s, np.ones(DIM))
     assert entry["comparable_only"] is True
@@ -287,7 +385,7 @@ def test_score_carries_the_heads_own_confidence(tmp_path):
 
 def test_score_ordering_follows_the_learned_direction(tmp_path):
     s = _store(tmp_path)
-    _signal_pairs(s, n=10, groups=2)
+    _signal_pairs(s, n=12, groups=6)
     taste_head.train(s)
     high, low = np.zeros(DIM), np.zeros(DIM)
     high[0], low[0] = 5.0, -5.0
@@ -296,7 +394,7 @@ def test_score_ordering_follows_the_learned_direction(tmp_path):
 
 def test_preference_probability_is_symmetric(tmp_path):
     s = _store(tmp_path)
-    _signal_pairs(s, n=10, groups=2)
+    _signal_pairs(s, n=12, groups=6)
     taste_head.train(s)
     a, b = np.zeros(DIM), np.zeros(DIM)
     a[0], b[0] = 4.0, -4.0
@@ -316,7 +414,7 @@ def test_shift_invariance_leaves_the_comparison_unchanged(tmp_path):
     """Bradley-Terry has no bias term because it is unidentifiable — adding a
     constant to both candidates must not move the probability."""
     s = _store(tmp_path)
-    _signal_pairs(s, n=10, groups=2)
+    _signal_pairs(s, n=12, groups=6)
     taste_head.train(s)
     a, b = np.zeros(DIM), np.zeros(DIM)
     a[0], b[0] = 4.0, -4.0
@@ -428,7 +526,7 @@ def test_rank_rejects_an_empty_request(monkeypatch, tmp_path):
 
 def _trained(monkeypatch, tmp_path, kind="signal"):
     s = _store(tmp_path)
-    (_signal_pairs if kind == "signal" else _noise_pairs)(s, n=10, groups=2)
+    (_signal_pairs if kind == "signal" else _noise_pairs)(s, n=12, groups=6)
     taste_head.train(s)
     _use_store(monkeypatch, s)
     high, low = np.zeros(DIM), np.zeros(DIM)
@@ -467,7 +565,7 @@ def test_rank_warns_when_the_head_is_not_better_than_chance(
     warning is the only thing standing between the two."""
     _trained(monkeypatch, tmp_path, kind="noise")
     out = taste_tools.taste_rank(["good.wav", "bad.wav"])
-    assert out["significant"] is False
+    assert out["significant"] is not True
     assert "not trustworthy" in out["warning"].lower()
 
 

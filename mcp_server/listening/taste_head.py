@@ -28,8 +28,8 @@ including random noise. Training accuracy is therefore meaningless — it will
 read ~100% whether or not the head learned anything real.
 
 So this module never reports training accuracy. It reports cross-validated
-accuracy, plus an exact binomial p-value against chance, plus a verdict in
-words. Two corrections make that honest:
+accuracy, a p-value against chance, and a verdict in words. Four corrections
+make that honest, each added after it was caught misreporting:
 
 1. GROUPED cross-validation. A session yields several pairs from the same
    material, so holding out one PAIR leaves its siblings in training and the
@@ -38,13 +38,33 @@ words. Two corrections make that honest:
    are held out whenever there are >= 2 of them; the single-group fallback is
    labelled OPTIMISTIC rather than quietly substituted.
 
-2. Significance. Accuracy alone is uninterpretable at this sample size: 20
-   pairs of RANDOM labels produced 65% leave-one-out, matching a genuinely
+2. Significance at all. Accuracy alone is uninterpretable at this sample size:
+   20 pairs of RANDOM labels produced 65% leave-one-out, matching a genuinely
    learnable signal at the same n. `significant: false` means the number
    carries no information however high it looks.
 
-Regularisation is strong by default for the same reason: with n << d the
-penalty is what stops the head memorising.
+3. SHARED-CAPTURE merging, before the split. Grouping trusts a label, and no
+   label can say "these pairs share a baseline". Keep one reference render and
+   A/B candidates against it — the most natural way anyone compares anything —
+   and every pair carries the same anchor, so every fold learns "not the
+   anchor" and scores perfectly. Measured: 6 pairs over 3 labelled sessions
+   sharing one anchor reported 100% / p=0.016 / significant in 40 of 40 runs,
+   for a head that scores 0.507 on fresh pairs. See
+   `_merge_groups_sharing_a_capture`.
+
+4. Significance over SESSIONS. Correction 1 grouped the cross-validation split
+   but left the test counting pairs as independent trials. False-positive rate
+   on corpora with no transferable signal, nominal 5%: 25% counting pairs, ~9%
+   counting sessions. See `_group_sign_test`, which also records why the
+   textbook permutation fix was built and rejected.
+
+The cost of 3 and 4 is a higher bar: significance needs decisions from
+MIN_GROUPS_FOR_SIGNIFICANCE separate sessions with no shared captures, and below
+that nothing can be certified however good it looks. That bar is derived from
+how much evidence that many sessions carry, not chosen.
+
+Regularisation is strong by default for the same reason as all of the above:
+with n << d the penalty is what stops the head memorising.
 """
 
 from __future__ import annotations
@@ -150,10 +170,13 @@ def _fit_weights(diffs: np.ndarray, l2: float) -> np.ndarray:
 
 
 def _cv_accuracy(diffs: np.ndarray, groups: list[str],
-                 l2: float) -> tuple[Optional[float], str]:
+                 l2: float) -> tuple[Optional[float], str, list[tuple[int, int]]]:
     """Cross-validated accuracy, holding out whole GROUPS where possible.
 
-    Returns (accuracy, scheme).
+    Returns (accuracy, scheme, per_group), where per_group is one
+    (correct, total) tuple per held-out group. The caller needs that breakdown
+    because the SESSION, not the pair, is the independent unit — see
+    `_group_sign_test`.
 
     Why grouping is not optional. A session yields several pairs from the same
     material, and plain leave-one-pair-out leaves siblings from that session in
@@ -172,18 +195,21 @@ def _cv_accuracy(diffs: np.ndarray, groups: list[str],
     """
     n = len(diffs)
     if n < MIN_PAIRS:
-        return None, "insufficient"
+        return None, "insufficient", []
 
     distinct = sorted(set(groups))
     if len(distinct) >= 2:
         correct = total = 0
+        per_group: list[tuple[int, int]] = []
         for g in distinct:
             train_idx = [i for i, gg in enumerate(groups) if gg != g]
             test_idx = [i for i, gg in enumerate(groups) if gg == g]
             if not train_idx:
                 continue
             w = _fit_weights(diffs[train_idx], l2)
-            correct += int(((diffs[test_idx] @ w) > 0).sum())
+            hits = int(((diffs[test_idx] @ w) > 0).sum())
+            per_group.append((hits, len(test_idx)))
+            correct += hits
             total += len(test_idx)
         if total:
             # Degenerate case: every group holds exactly one pair, so holding
@@ -195,8 +221,8 @@ def _cv_accuracy(diffs: np.ndarray, groups: list[str],
             if len(distinct) == n:
                 return correct / total, ("leave-one-group-out (DEGENERATE — "
                                          "every pair is its own group, so this "
-                                         "equals leave-one-pair-out)")
-            return correct / total, "leave-one-group-out"
+                                         "equals leave-one-pair-out)"), per_group
+            return correct / total, "leave-one-group-out", per_group
 
     # Single group (or none recorded): no honest generalisation estimate is
     # available. Report the optimistic number, clearly labelled.
@@ -206,88 +232,183 @@ def _cv_accuracy(diffs: np.ndarray, groups: list[str],
         w = _fit_weights(rest, l2)
         if float(diffs[i] @ w) > 0:
             correct += 1
-    return correct / n, "leave-one-pair-out (OPTIMISTIC — single group)"
-
-
-def _binomial_p_value(correct: int, n: int) -> float:
-    """One-sided exact P(X >= correct) under the null that the head is guessing.
-
-    Accuracy alone is NOT interpretable at this sample size. Measured on
-    synthetic data: 20 pairs of RANDOM labels produced a leave-one-out accuracy
-    of 65% — identical to a genuinely learnable signal at the same n. Without
-    this test the head reports "a weak but real signal" for pure noise, which
-    is the single most dangerous thing a preference model can do.
-    """
-    from math import comb  # noqa: PLC0415
-    return sum(comb(n, i) for i in range(correct, n + 1)) / (2 ** n)
+    return correct / n, "leave-one-pair-out (OPTIMISTIC — single group)", []
 
 
 SIGNIFICANCE_ALPHA = 0.05
 
+def _sessions_for_significance(alpha: float = SIGNIFICANCE_ALPHA) -> int:
+    """Fewest sessions at which a flawless result could clear alpha.
+
+    A clean sweep of G sessions gives p = 2**-G, so below the G this returns NO
+    result — not even a perfect one — can clear alpha. That is a property of how
+    much evidence G sessions carry, not a threshold anyone picked.
+    """
+    n = 1
+    while 0.5 ** n > alpha:
+        n += 1
+    return n
+
+
+MIN_GROUPS_FOR_SIGNIFICANCE = _sessions_for_significance()
+
+
+def _binomial_p_value(correct: int, n: int) -> float:
+    """One-sided exact P(X >= correct) under the null that the head is guessing."""
+    from math import comb  # noqa: PLC0415
+    return sum(comb(n, i) for i in range(correct, n + 1)) / (2 ** n)
+
+
+def _group_sign_test(per_group: list[tuple[int, int]]) -> Optional[float]:
+    """Significance counting SESSIONS, not pairs — the independent unit.
+
+    Guard 3 grouped the cross-validation split but left significance counting
+    every PAIR as an independent coin flip. It is not: all pairs in a held-out
+    session are scored by one fitted `w` against correlated material, so a
+    session is ONE observation, not k. Counting them individually inflates
+    confidence in proportion to how alike a session's pairs are.
+
+    Measured false-positive rate on corpora built to contain NO transferable
+    signal (each session gets its own direction), nominal alpha = 0.05:
+
+        within-session diff cosine   1.00   0.92   0.67   0.41   0.20   0.06
+        pair-level binomial (old)     25%    28%    22%    18%    11%     6%
+
+    It was only honest at the right edge, where a session's pairs are unrelated
+    to each other — precisely what real sessions are not, and the reason guard 3
+    exists. Counting sessions instead brings this to ~9%.
+
+    A session counts once, as a win or a loss depending on whether the head beat
+    chance on it. Ties carry no directional evidence and are dropped.
+
+    KNOWN RESIDUAL, measured not assumed: ~9% against a nominal 5%, because the
+    CV folds share training data so sessions are not fully independent either.
+    The textbook fix — a group sign-flip permutation test — was built and
+    REJECTED: `_fit_weights` is deliberately robust (`p_wrong` downweights
+    already-correct points), so on the bimodal +/-d data that sign-flipping
+    creates it settles on the MINORITY direction. CV accuracy then stops being
+    monotone in the sign pattern, 20 of 64 flip patterns score a perfect 1.0,
+    and the test loses essentially all power (a clean synthetic signal over 6-8
+    sessions measured p=0.17-0.34 regardless of how many pairs were added).
+    A test that cannot certify anything is not conservative, it is broken —
+    and it would have looked more rigorous than what it replaced. Prefer the
+    honest 9% until the estimator itself is revisited.
+    """
+    wins = sum(1 for c, t in per_group if t and c / t > 0.5)
+    losses = sum(1 for c, t in per_group if t and c / t < 0.5)
+    decisive = wins + losses
+    if decisive == 0:
+        return None
+    return _binomial_p_value(wins, decisive)
+
 
 def _verdict(loo: Optional[float], n_pairs: int, scheme: str = "",
-             n_groups: int = 0) -> str:
+             n_groups: int = 0, p: Optional[float] = None,
+             n_decisive: int = 0, merged: int = 0) -> str:
     if loo is None:
         return (f"Only {n_pairs} pair(s). Need at least {MIN_PAIRS} before "
                 "cross-validation says anything; the head is not usable yet.")
 
-    optimistic = "OPTIMISTIC" in scheme
     prefix = ""
-    if optimistic:
-        prefix = (f"All pairs share one group, so this is leave-one-pair-out "
-                  f"and is OPTIMISTIC — on real data that read 100% where "
-                  f"leave-one-group-out read 57%. Record pairs from a second "
-                  f"session before believing it. ")
+    if merged:
+        prefix = (f"{merged + 1} of the recorded groups share a capture — a "
+                  "reused baseline makes those pairs one piece of evidence, not "
+                  "several — so they were merged before scoring. ")
 
-    correct = int(round(loo * n_pairs))
-    p = _binomial_p_value(correct, n_pairs)
-    if optimistic:
-        return prefix + (f"Uncorrected held-out accuracy {loo:.0%} on "
-                         f"{n_pairs} pairs.")
+    if "OPTIMISTIC" in scheme:
+        return prefix + (
+            "All pairs now sit in one group, so this is leave-one-pair-out and "
+            "is OPTIMISTIC — on real data that read 100% where "
+            "leave-one-group-out read 57%. Uncorrected held-out accuracy "
+            f"{loo:.0%} on {n_pairs} pairs. Record pairs from a genuinely "
+            "separate session, with no capture in common, before believing it.")
 
     if "DEGENERATE" in scheme:
-        # Valid if the pairs really are from that many sessions; inflated if
-        # the group labels merely failed to notice shared material. The user
-        # is the only one who can tell, so hand them the check.
-        prefix = (f"Each of the {n_pairs} pairs sits in its own group, so no "
-                  "siblings were held out and this equals leave-one-pair-out. "
-                  "Trust it only if these really are that many separate "
-                  "sessions; if any share material, set `group` explicitly and "
-                  "retrain. ")
+        prefix += (f"Each of the {n_pairs} pairs sits in its own group, so no "
+                   "siblings were held out and this equals leave-one-pair-out. "
+                   "Trust it only if these really are that many separate "
+                   "sessions. ")
 
-    # Significance first, accuracy second. A high score on few pairs is luck
-    # far more often than skill, and saying so is the whole job here.
-    if p > SIGNIFICANCE_ALPHA:
-        needed = _pairs_for_significance(loo)
+    # Significance counts SESSIONS, so too few sessions means nothing can be
+    # certified — however good the accuracy looks. Say that plainly instead of
+    # reporting an un-clearable p-value.
+    if p is None or n_decisive < MIN_GROUPS_FOR_SIGNIFICANCE:
+        need = MIN_GROUPS_FOR_SIGNIFICANCE
         return prefix + (
-            f"Held-out accuracy {loo:.0%} on {n_pairs} pairs, but that is "
-            f"NOT distinguishable from chance (p={p:.2f}). At this sample "
-            "size the number carries no information — do not use these "
-            f"scores. Sustaining this accuracy would need ~{needed} pairs "
-            "to become significant.")
+            f"Held-out accuracy {loo:.0%} across {n_groups} session(s), but "
+            f"nothing can be certified yet: significance counts SESSIONS, not "
+            f"pairs, and {n_decisive} gave a decisive result where {need} are "
+            "needed. Even a flawless score over four sessions cannot clear "
+            "p<0.05. Record decisions from more separate sessions — more pairs "
+            "from the ones you have will not help.")
+
+    if p > SIGNIFICANCE_ALPHA:
+        return prefix + (
+            f"Held-out accuracy {loo:.0%} across {n_groups} session(s), but "
+            f"that is NOT distinguishable from chance (p={p:.2f} over "
+            f"{n_decisive} sessions). The number carries no information — do "
+            "not use these scores.")
     if loo >= 0.80:
         return prefix + (
-            f"Held-out accuracy {loo:.0%} on {n_pairs} pairs, significantly "
-            f"above chance (p={p:.3f}) — the head has learned a real "
-            "preference signal.")
+            f"Held-out accuracy {loo:.0%} across {n_groups} session(s), "
+            f"significantly above chance (p={p:.3f} over {n_decisive} "
+            "sessions) — the head has learned a real preference signal.")
     return prefix + (
-        f"Held-out accuracy {loo:.0%} on {n_pairs} pairs, above chance "
-        f"(p={p:.3f}) but modest. Treat scores as a tiebreaker between "
-        "close candidates, not as a verdict.")
+        f"Held-out accuracy {loo:.0%} across {n_groups} session(s), above "
+        f"chance (p={p:.3f} over {n_decisive} sessions) but modest. Treat "
+        "scores as a tiebreaker between close candidates, not as a verdict.")
 
 
-def _pairs_for_significance(accuracy: float, alpha: float = SIGNIFICANCE_ALPHA,
-                            cap: int = 400) -> int:
-    """Smallest n at which this accuracy would beat chance. Turns 'add more
-    pairs' into an actionable number instead of vague encouragement."""
-    if accuracy <= 0.5:
-        return cap
-    n = MIN_PAIRS
-    while n < cap:
-        if _binomial_p_value(int(round(accuracy * n)), n) <= alpha:
-            return n
-        n += 1
-    return cap
+def _merge_groups_sharing_a_capture(pairs: list[dict],
+                                    groups: list[str]) -> tuple[list[str], int]:
+    """Union any groups that share a capture. Returns (groups, n_merged).
+
+    GUARD #4, and the one the group *labels* cannot express. Grouping trusts a
+    string; this checks the vectors underneath it.
+
+    The failure it closes is the most natural way anyone A/Bs anything: keep one
+    baseline and run candidates against it. Every pair then carries the same
+    anchor on the rejected side, so the mean difference vector is dominated by
+    "not-the-anchor", every fold learns that, and every fold predicts perfectly
+    — no matter which session labels the pairs carry. Grouped CV cannot see it,
+    because the anchor is inside every group.
+
+    Measured, 512-d, 6 pairs across 3 explicitly-labelled sessions sharing one
+    anchor: cv_accuracy 1.0, leave-one-group-out, p=0.0156, significant TRUE,
+    verdict "the head has learned a real preference signal" — in 40 of 40 runs.
+    That same fitted head scores 0.507 on fresh candidate-vs-candidate pairs.
+    The identical corpus without a shared anchor: significant in 3 of 40.
+
+    Merging is the honest response rather than refusing outright: the pairs are
+    real evidence, they are just not independent evidence. Collapsed into one
+    group they take the existing OPTIMISTIC path, which withholds the p-value
+    and makes `taste_rank` warn.
+    """
+    key_to_groups: dict[tuple, set[str]] = {}
+    for p, g in zip(pairs, groups):
+        for side in ("preferred", "rejected"):
+            key_to_groups.setdefault(tuple(p[side]), set()).add(g)
+
+    parent = {g: g for g in set(groups)}
+
+    def find(x: str) -> str:
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    merged = 0
+    for shared in key_to_groups.values():
+        if len(shared) < 2:
+            continue
+        it = iter(shared)
+        root = find(next(it))
+        for other in it:
+            r2 = find(other)
+            if r2 != root:
+                parent[r2] = root
+                merged += 1
+    return [find(g) for g in groups], merged
 
 
 def train(store: TasteHeadStore, l2: float = DEFAULT_L2) -> dict:
@@ -303,18 +424,26 @@ def train(store: TasteHeadStore, l2: float = DEFAULT_L2) -> dict:
     diffs = np.array([np.array(p["preferred"], dtype=np.float64)
                       - np.array(p["rejected"], dtype=np.float64)
                       for p in pairs])
-    groups = [p.get("group") or "" for p in pairs]
-    n_groups = len({g for g in groups if g})
+    raw_groups = [p.get("group") or "" for p in pairs]
+    # Guard #4 runs BEFORE the split: a label cannot express "these pairs share
+    # a baseline capture", and grouped CV is blind to it.
+    groups, merged = _merge_groups_sharing_a_capture(pairs, raw_groups)
+    n_groups = len(set(groups))
     weights = _fit_weights(diffs, l2)
-    loo, scheme = _cv_accuracy(diffs, groups, l2)
+    loo, scheme, per_group = _cv_accuracy(diffs, groups, l2)
     # A p-value computed on the optimistic (single-group) accuracy would be a
     # significance test of leakage, and `significant: true` is exactly what
     # suppresses the untrustworthy-ranking warning downstream. Withhold both
     # until whole groups can be held out.
     if loo is None or "OPTIMISTIC" in scheme:
         p_value = None
+        n_decisive = 0
     else:
-        p_value = _binomial_p_value(int(round(loo * n)), n)
+        # Sessions, not pairs — see _group_sign_test.
+        p_value = _group_sign_test(per_group)
+        n_decisive = sum(1 for c, t in per_group if t and c / t != 0.5)
+    certifiable = (p_value is not None
+                   and n_decisive >= MIN_GROUPS_FOR_SIGNIFICANCE)
     report = {
         "trained": True,
         "n_pairs": n,
@@ -323,10 +452,16 @@ def train(store: TasteHeadStore, l2: float = DEFAULT_L2) -> dict:
         "cv_accuracy": None if loo is None else round(loo, 4),
         "cv_scheme": scheme,
         "n_groups": n_groups,
+        "n_groups_recorded": len({g for g in raw_groups if g}),
+        "groups_merged": merged,
+        "n_decisive_groups": n_decisive,
+        "sessions_needed_for_significance": MIN_GROUPS_FOR_SIGNIFICANCE,
         "baseline_accuracy": 0.5,
-        "p_value": None if p_value is None else round(p_value, 4),
-        "significant": None if p_value is None else bool(p_value <= SIGNIFICANCE_ALPHA),
-        "verdict": _verdict(loo, n, scheme, n_groups),
+        "p_value": None if not certifiable else round(p_value, 4),
+        "significant": (None if not certifiable
+                        else bool(p_value <= SIGNIFICANCE_ALPHA)),
+        "verdict": _verdict(loo, n, scheme, n_groups, p_value, n_decisive,
+                            merged),
         "trained_at": int(time.time()),
     }
     # Training accuracy is deliberately absent: with n << d it is ~100%
