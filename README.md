@@ -1,3 +1,5 @@
+[![MCP Toplist](https://mcptoplist.com/badge/io.github.dreamrec%2Flivepilot.svg)](https://mcptoplist.com/server/io.github.dreamrec%2Flivepilot)
+
 ```
 ██╗     ██╗██╗   ██╗███████╗██████╗ ██╗██╗      ██████╗ ████████╗
 ██║     ██║██║   ██║██╔════╝██╔══██╗██║██║     ██╔═══██╗╚══██╔══╝
