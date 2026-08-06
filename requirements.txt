@@ -13,7 +13,7 @@ soundfile>=0.14.0
 scipy>=1.18.0
 mutagen>=1.48.1
 # v1.28 Listening Engine (listen_capture / listen_ab offline capture analysis)
-librosa>=0.10
+librosa>=0.11.0
 
 # OPTIONAL — learned perceptual embeddings for listen_capture(embed=True) /
 # listen_ab(embed=True). Deliberately NOT a hard dependency: torch pulls ~2 GB
