@@ -3,7 +3,7 @@
 # numpy <2.5 only — without the cap, `pip install -r requirements.txt` tries
 # to build numba from source and fails. Full suite verified green on 2.4.x.
 # Lift the cap when numba ships numpy-2.5 wheels.
-numpy>=2.3,<2.5
+numpy>=2.5.1,<2.6
 fastmcp>=3.4.5,<3.5.0  # pinned upper bound — _get_all_tools() accesses private internals
 midiutil>=1.2.1
 pretty_midi>=0.2.11.post0
