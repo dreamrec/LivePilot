@@ -7,8 +7,8 @@
   `set_cue_point_name(cue_index, name)` renames an existing one. `get_cue_points`
   already read `cue.name`, but nothing could set it, so every locator made through
   `toggle_cue_point` kept Live's default name — "1", "2", "3".
-- **Creation lives in the MCP tool, not the Remote Script handler, and that is
-  load-bearing.** Live's `Song` offers exactly one way to make a locator —
+- **Creation lives in the MCP tool, not the Remote Script handler, and the split
+  is required rather than stylistic.** Live's `Song` offers exactly one way to make a locator —
   `set_or_delete_cue()`, which acts at `current_song_time` and *toggles* — and
   `CuePoint.time` has no setter, so reaching a chosen beat means moving the playhead
   there. Assigning `song.current_song_time` does not take effect until control returns
