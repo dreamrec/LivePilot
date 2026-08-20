@@ -4,7 +4,7 @@
 # to build numba from source and fails. Full suite verified green on 2.4.x.
 # Lift the cap when numba ships numpy-2.5 wheels.
 numpy>=2.3,<2.5
-fastmcp>=3.4.5,<3.5.0  # pinned upper bound — _get_all_tools() accesses private internals
+fastmcp>=3.4.7,<3.5.0  # pinned upper bound — _get_all_tools() accesses private internals
 midiutil>=1.2.1
 pretty_midi>=0.2.11.post0
 # v1.8 Perception Layer (offline analysis)
