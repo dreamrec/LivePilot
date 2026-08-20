@@ -1,13 +1,13 @@
 # LivePilot Manual
 
 An agentic production system for Ableton Live 12.
-472 tools. 57 domains. Device atlas. Sample intelligence. Auto-composition. Spectral perception. Technique memory. Creative intelligence.
+474 tools. 57 domains. Device atlas. Sample intelligence. Auto-composition. Spectral perception. Technique memory. Creative intelligence.
 
 ---
 
 ## What LivePilot Is
 
-LivePilot is not a tool collection with an AI wrapper. It is a **production system** — three perception layers feed into 472 tools, which are orchestrated by a dozen creative engines that understand song identity, learn your taste, diagnose session problems, and generate real musical options.
+LivePilot is not a tool collection with an AI wrapper. It is a **production system** — three perception layers feed into 474 tools, which are orchestrated by a dozen creative engines that understand song identity, learn your taste, diagnose session problems, and generate real musical options.
 
 The difference: a tool collection executes "set volume to -6dB." LivePilot understands that turning down the drums might kill the groove that defines the track, suggests three genuinely different ways to create space instead, lets you preview each one, and remembers which approach you preferred.
 
@@ -34,7 +34,7 @@ The **user corpus** (v1.23.4+) extends the atlas with whatever's installed on YO
 The **analyzer** feeds back spectral data from the master bus so the AI hears its own changes — **9 frequency bands** (sub_low / sub / low / low_mid / mid / high_mid / high / presence / air); the sub_low band (20-60 Hz) separates kick fundamental from DC rumble. From v1.20.3 the analyzer is auto-loaded via `ensure_analyzer_on_master` — the Creative Director skill calls this at the top of every turn's Phase 1 ground read.
 The **memory** persists production decisions across sessions as searchable, replayable data structures.
 
-All 472 tools execute as deterministic LOM calls on Ableton's main thread. Live-session mutations (clips, devices, mixer, arrangement) route through Ableton's undo stack; side effects that touch state outside the Live project — Splice downloads, memory/ledger writes, installer actions, atlas scans, filesystem writes — persist beyond undo.
+All 474 tools execute as deterministic LOM calls on Ableton's main thread. Live-session mutations (clips, devices, mixer, arrangement) route through Ableton's undo stack; side effects that touch state outside the Live project — Splice downloads, memory/ledger writes, installer actions, atlas scans, filesystem writes — persist beyond undo.
 
 ---
 
@@ -134,14 +134,14 @@ if this block drifts from the registry.
 
 <!-- DOMAIN_MAP:AUTO-GENERATED START -->
 
-All 472 tools across 57 domains, in source-truth per-domain counts:
+All 474 tools across 57 domains, in source-truth per-domain counts:
 
-### Core Ableton Control (Layer 1 — 245 tools)
+### Core Ableton Control (Layer 1 — 247 tools)
 
 | Domain | # | Scope |
 |--------|:-:|-------|
 | Devices | 42 | Load by name/URI, insert native (12.3+), params, racks, chains, drum pads, plugins, presets, wavetable mod matrix, replace_sample (12.4+), `add_drum_rack_pad`, `verify_device_alive` (v1.16+) |
-| Arrangement | 21 | Timeline editing, arrangement notes, native clips (12.1.10+), cue points, recording, capture, `set_arrangement_automation_via_session_record` (v1.17+) |
+| Arrangement | 23 | Timeline editing, arrangement notes, native clips (12.1.10+), cue points, recording, capture, `set_arrangement_automation_via_session_record` (v1.17+) |
 | Tracks | 21 | Create MIDI/audio/return, delete, duplicate, arm, mute, solo, routing, sends, monitoring |
 | Transport | 21 | Playback, tempo, time sig, loop, metronome, undo/redo, diagnostics, capture MIDI |
 | Memory | 18 | Save, recall, replay, session memory, list/favorite/delete, update |
