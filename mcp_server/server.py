@@ -267,7 +267,13 @@ async def lifespan(server):
             await splice_client.disconnect()
         except Exception as exc:
             logger.debug("lifespan failed: %s", exc)
-mcp = FastMCP("LivePilot", lifespan=lifespan)
+# Report LivePilot's own version in the MCP initialize handshake. Without
+# this, serverInfo.version reports the FastMCP *library* version (e.g.
+# "3.4.7"), which clients reasonably mistake for the LivePilot build --
+# making a stock install look like an unknown fork.
+from . import __version__ as _livepilot_version  # noqa: E402
+
+mcp = FastMCP("LivePilot", lifespan=lifespan, version=_livepilot_version)
 
 # Import tool modules so they register with `mcp`
 from .tools import transport    # noqa: F401, E402
