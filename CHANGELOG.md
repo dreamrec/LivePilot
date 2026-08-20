@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+### Added — named locators (2 tools, 472 → 474)
+- `create_cue_point(time, name)` places a **named** section marker at a beat;
+  `set_cue_point_name(cue_index, name)` renames an existing one. `get_cue_points`
+  already read `cue.name`, but nothing could set it, so every locator made through
+  `toggle_cue_point` kept Live's default name — "1", "2", "3".
+- **Creation lives in the MCP tool, not the Remote Script handler, and that is
+  load-bearing.** Live's `Song` offers exactly one way to make a locator —
+  `set_or_delete_cue()`, which acts at `current_song_time` and *toggles* — and
+  `CuePoint.time` has no setter, so reaching a chosen beat means moving the playhead
+  there. Assigning `song.current_song_time` does not take effect until control returns
+  to Live's main loop, so a seek-then-toggle inside one handler toggles at the **old**
+  playhead: requesting beats 0 and 64 both produced a locator at beat 20. Splitting the
+  seek and the toggle into separate round trips gives Live a chance to apply the seek.
+- Idempotent by necessity: `toggle_cue_point` on an existing locator **deletes** it, so
+  `create_cue_point` checks first and renames instead. It also restores the playhead.
+- `tests/test_cue_point_tools.py` models toggle-at-playhead semantics against a stateful
+  fake, so dropping the seek or toggling blind fails in CI rather than in a live set.
+- Verified on Live 12.4.3.
+
+### Fixed — `serverInfo.version` reported FastMCP's version, not LivePilot's
+- `FastMCP()` defaults `serverInfo.version` to the **fastmcp library** version, so a
+  stock 1.28.0 install announced itself over the wire as `3.4.7` (the current fastmcp
+  release). That is indistinguishable from an unknown fork, and it cost us a long detour
+  second-guessing which build was actually running before we checked `package.json`.
+  Now passes `version=` explicitly.
+
 ### Added — optional learned perceptual distance in the Listening Engine
 - `listen_capture(embed=True)` returns a 512-dim CLAP embedding; `listen_ab(embed=True)`
   returns a `perceptual_distance` block. The DSP measurements answer "what changed,

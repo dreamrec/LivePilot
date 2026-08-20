@@ -197,6 +197,8 @@ def test_arrangement_tools_registered():
         "get_cue_points",
         "jump_to_cue",
         "toggle_cue_point",
+        "set_cue_point_name",
+        "create_cue_point",
         # 12.1.10+ native arrangement clips
         "create_native_arrangement_clip",
     }

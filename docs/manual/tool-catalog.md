@@ -1,6 +1,6 @@
 # LivePilot — Full Tool Catalog (Generated)
 
-472 tools across 57 domains.
+474 tools across 57 domains.
 
 > Auto-generated from `mcp.list_tools()`. Do not hand-edit.
 > Regenerate: `python3 scripts/generate_tool_catalog.py`
@@ -64,7 +64,7 @@
 | `walk_device_tree` | Walk the full device chain tree including nested racks, drum pads, |
 | `warp_simpler` | Warp a Simpler's sample to fit the specified number of beats. |
 
-## Arrangement (21)
+## Arrangement (23)
 
 | Tool | Description |
 |------|-------------|
@@ -72,6 +72,7 @@
 | `back_to_arranger` | Switch playback from session clips back to the arrangement timeline. |
 | `capture_midi` | Capture recently played MIDI notes into a new clip. |
 | `create_arrangement_clip` | Duplicate a session clip into Arrangement View at a specific beat position. |
+| `create_cue_point` | Create a named locator at a beat position in the Arrangement. |
 | `create_native_arrangement_clip` | Create an empty MIDI clip directly in Arrangement View (Live 12.1.10+). |
 | `duplicate_arrangement_notes` | Duplicate specific notes in an arrangement clip by ID, with optional time offset (beats). |
 | `force_arrangement` | Force ALL tracks to follow the arrangement and start playback. |
@@ -85,6 +86,7 @@
 | `remove_arrangement_notes_by_id` | Remove specific MIDI notes from an arrangement clip by their IDs. |
 | `set_arrangement_automation` | Write automation envelope points into an arrangement clip. |
 | `set_arrangement_clip_name` | Rename an arrangement clip by its index in the track's arrangement_clips list. |
+| `set_cue_point_name` | Rename an existing cue point (locator) by index. |
 | `start_recording` | Start recording. arrangement=True for arrangement, False for session. |
 | `stop_recording` | Stop all recording (both session and arrangement). |
 | `toggle_cue_point` | Set or delete a cue point at the current playback position. |
@@ -765,4 +767,4 @@
 | `rank_wonder_variants` | Rank wonder-mode variants by taste + identity + novelty + coherence. |
 
 ---
-*Generated from 472 registered tools.*
+*Generated from 474 registered tools.*
