@@ -1,6 +1,6 @@
 """Arrangement MCP tools — clips, recording, cue points, navigation.
 
-19 tools matching the Remote Script arrangement domain.
+21 tools matching the Remote Script arrangement domain.
 """
 
 from __future__ import annotations
@@ -503,3 +503,91 @@ def duplicate_arrangement_notes(
         "note_ids": note_ids,
         "time_offset": time_offset,
     })
+
+
+_CUE_EPS = 1e-3
+
+
+@mcp.tool()
+def set_cue_point_name(ctx: Context, cue_index: int, name: str) -> dict:
+    """Rename an existing cue point (locator) by index.
+
+    Indices match the order returned by get_cue_points() and are positional --
+    they shift whenever a locator is added or removed. Re-read immediately
+    before calling, or use create_cue_point(), which addresses by beat.
+    """
+    if cue_index < 0:
+        raise ValueError("cue_index must be >= 0")
+    return _get_ableton(ctx).send_command("set_cue_point_name", {
+        "cue_index": cue_index,
+        "name": name,
+    })
+
+
+@mcp.tool()
+def create_cue_point(ctx: Context, time: float, name: str) -> dict:
+    """Create a named locator at a beat position in the Arrangement.
+
+    time: beats from song start. In 4/4, bar N starts at beat (N-1)*4 --
+    so bar 1 = 0.0, bar 17 = 64.0, bar 49 = 192.0.
+
+    Idempotent: if a locator already sits at that beat it is renamed rather
+    than deleted (toggle_cue_point on an existing locator DELETES it).
+
+    Moves the playhead and restores it, so stop transport first if you do not
+    want to hear the jump.
+    """
+    if time < 0:
+        raise ValueError("time must be >= 0")
+    ableton = _get_ableton(ctx)
+
+    def _cues():
+        return ableton.send_command("get_cue_points")["cue_points"]
+
+    before = _cues()
+    for cue in before:
+        if abs(float(cue["time"]) - time) < _CUE_EPS:
+            result = ableton.send_command("set_cue_point_name", {
+                "cue_index": cue["index"],
+                "name": name,
+            })
+            result["created"] = False
+            return result
+
+    restore_to = ableton.send_command("get_session_info")["current_song_time"]
+
+    # Separate round trips on purpose. Assigning song.current_song_time inside
+    # a single Remote Script handler does not take effect before
+    # set_or_delete_cue() runs in that same handler, so the locator lands at
+    # the old playhead. Going back out to the MCP server between the seek and
+    # the toggle gives Live's main loop a chance to apply the seek.
+    ableton.send_command("jump_to_time", {"beat_time": time})
+    ableton.send_command("toggle_cue_point")
+
+    after = _cues()
+    if len(after) != len(before) + 1:
+        ableton.send_command("jump_to_time", {"beat_time": restore_to})
+        raise RuntimeError(
+            "toggle_cue_point did not add a locator at beat %g (count %d -> %d)"
+            % (time, len(before), len(after))
+        )
+
+    match = None
+    for cue in after:
+        if abs(float(cue["time"]) - time) < _CUE_EPS:
+            match = cue
+            break
+    if match is None:
+        ableton.send_command("jump_to_time", {"beat_time": restore_to})
+        raise RuntimeError(
+            "a locator was created but none is at beat %g -- got %r"
+            % (time, [c["time"] for c in after])
+        )
+
+    result = ableton.send_command("set_cue_point_name", {
+        "cue_index": match["index"],
+        "name": name,
+    })
+    ableton.send_command("jump_to_time", {"beat_time": restore_to})
+    result["created"] = True
+    return result
