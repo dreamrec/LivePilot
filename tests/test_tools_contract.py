@@ -197,6 +197,8 @@ def test_arrangement_tools_registered():
         "get_cue_points",
         "jump_to_cue",
         "toggle_cue_point",
+        "set_cue_point_name",
+        "create_cue_point",
         # 12.1.10+ native arrangement clips
         "create_native_arrangement_clip",
     }
@@ -631,7 +633,7 @@ def test_control_surfaces_tools_registered():
 def test_total_tool_count():
     from mcp_server.server import mcp
     tools = asyncio.run(mcp.list_tools())
-    assert len(tools) == 472, f"Expected 472 tools, got {len(tools)}"
+    assert len(tools) == 474, f"Expected 474 tools, got {len(tools)}"
 
 
 def test_listening_tools_registered():

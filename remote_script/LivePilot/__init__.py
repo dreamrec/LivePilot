@@ -28,6 +28,7 @@ from . import take_lanes        # noqa: F401  — registers take lane handlers (
 from . import clip_automation   # noqa: F401  — registers clip automation handlers
 from . import simpler_sample    # noqa: F401  — registers replace_sample_native (12.4+)
 from . import version_detect    # noqa: F401  — version detection
+from . import cue_points        # noqa: F401  — registers cue point naming handler
 
 
 # ── Reload plumbing (BUG-B-reload, Batch 20) ──────────────────────────────
