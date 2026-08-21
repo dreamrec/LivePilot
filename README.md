@@ -16,50 +16,58 @@
 </p>
 
 <p align="center">
-  An agentic production system for Ableton Live 12.<br>
-  474 tools. 57 domains. Device atlas. Plan-aware Splice integration. Auto-composition. Spectral perception. Technique memory. Drum-rack pad builder. Live dead-device detection.
+  <strong>Make the change. Hear what happened. Keep what works.</strong><br>
+  LivePilot connects an AI client to Ableton Live 12. Sketch ideas, edit the set,
+  compare versions, and learn from the choices you keep.<br><br>
+  474 tools · 57 domains · macOS + Windows
 </p>
 
 <br>
 
 > [!NOTE]
-> LivePilot works with **any MCP client** — Claude Code, Claude Desktop, Cursor, VS Code, Windsurf.
-> All tools execute on Ableton's main thread through the official Live Object Model API.
-> Live-session mutations (clips, devices, mixer, arrangement) route through Ableton's undo stack.
-> Side effects that touch state outside the Live project — Splice downloads, memory/ledger writes,
-> installer actions, atlas scans, filesystem writes — persist beyond undo.
+> LivePilot works with any MCP client, including Claude Code, Claude Desktop, Codex,
+> Cursor, VS Code, and Windsurf. Changes inside the Live set use Ableton's undo stack.
+> Downloads, saved memory, library scans, and installer changes happen outside the set
+> and cannot be undone from Ableton.
 
 > [!WARNING]
-> LivePilot is actively in development. Tools, behavior, and APIs change frequently between versions.
-> Pin to a specific version for stable work. Known gaps and in-progress features are documented in
-> each release's CHANGELOG entry.
+> LivePilot is moving quickly. Pin a version for repeatable studio or live-performance setups,
+> and check the [changelog](CHANGELOG.md) before updating.
 
 <br>
 
 ---
 
+## Start Here
+
+The setup wizard installs the Ableton Remote Script, creates the Python environment,
+copies the Max for Live Analyzer, and checks the connection:
+
+```bash
+npx livepilot --setup
+```
+
+Using Claude Desktop? Download the latest `livepilot-<version>.mcpb` from
+[Releases](https://github.com/dreamrec/LivePilot/releases/latest) and double-click it.
+
+See [Install](#install) for client-specific setup and manual options.
+
+---
+
 ## What's New in v1.29.0
 
-Perceptual taste learning plus named Arrangement locators (474 tools / 57 domains):
+LivePilot now learns from comparisons instead of inventing absolute taste scores, and it
+adds named Arrangement locators.
 
-- **A learned taste head** — `taste_record_pair`, `taste_train`, and `taste_rank` learn from
-  kept-versus-discarded audio decisions using a Bradley–Terry model over CLAP embeddings. It
-  ranks alternatives without pretending that an absolute score is meaningful.
-- **Confidence that has to be earned** — validation is grouped by session, shared and
-  re-recorded reference anchors are detected, significance is withheld when the evidence is
-  too thin, and certification requires at least five independent sessions. These guards were
-  calibrated against adversarial corpora, not assumed from training accuracy.
-- **Optional perceptual distance** — `listen_capture(embed=True)` and `listen_ab(embed=True)`
-  can now report whether two renders sound like genuinely different things alongside their DSP
-  measurements. The CLAP backend remains optional; the core install does not pull in Torch or
-  model weights.
-- **Named Arrangement locators** — `create_cue_point(time, name)` creates an idempotent named
-  marker at a beat, while `set_cue_point_name(cue_index, name)` renames an existing locator.
-  Creation preserves the user's playhead even when verification or naming fails.
-- **Correct MCP identity** — the initialize handshake now reports LivePilot's version instead
-  of FastMCP's library version, removing ambiguity in remote and custom-transport setups.
-- **Current dependency compatibility** — FastMCP 3.4.7 is the minimum security baseline, and
-  NumPy 2.5 is supported without unnecessarily dropping compatible NumPy 2.3/2.4 installs.
+- **Taste from real choices.** `taste_record_pair`, `taste_train`, and `taste_rank` learn from
+  audio you kept versus audio you discarded.
+- **Honest confidence.** Results are grouped by session, weak evidence stays inconclusive,
+  and certification requires at least five independent sessions.
+- **A better answer to “did this actually change?”** Optional CLAP embeddings add perceptual
+  distance to `listen_capture` and `listen_ab` without adding model dependencies to the core install.
+- **Named locators.** Create or rename Arrangement markers without moving the playhead.
+- **Cleaner plumbing.** The MCP handshake reports LivePilot's own version, FastMCP 3.4.7 is the
+  security baseline, and NumPy 2.5 is supported.
 
 Previous release v1.28.0 introduced the offline Listening Engine, authenticated OSC 9881 bridge
 commands, capture-pipeline fixes, and stalled-stream detection.
@@ -70,18 +78,21 @@ Full details in the [CHANGELOG](CHANGELOG.md).
 
 ## What LivePilot Does
 
-Most MCP servers are tool collections — they execute commands. LivePilot is an **agentic production system**. It has eight layers that work together:
+LivePilot works at two levels: exact control when you know what you want, and informed
+help when you do not.
 
-| Layer | What it provides |
-|-------|-----------------|
-| **Deterministic Tools** | Direct control: transport, tracks, clips, notes, devices, scenes, mixing, arrangement, browser, automation |
-| **Device Atlas** | Knowledge of every device in Ableton's library — 5264 devices indexed 7 ways (by_id, by_name, by_uri, by_category, by_tag, by_genre, by_pack). 120 enriched with YAML sonic intelligence (47 with aesthetic-tagged `signature_techniques`). 683 drum kits mapped. Free-text `atlas_describe_chain` ("a granular pad like Tim Hecker") and reverse-lookup `atlas_techniques_for_device` cross-reference 146 techniques across 58 devices |
-| **User Corpus** `[v1.23.4+]` | Detects YOUR third-party plugins (VST3 / AU / AUv3 / VST2 / AAX / CLAP / LV2) via filesystem walk + `auval -a`, then auto-synthesizes per-plugin identity profiles (sonic_fingerprint, reach_for, avoid, key_techniques) into the same overlay system the factory atlas uses. The brain stops being limited to Ableton's shipped devices and learns *your* library — Valhalla, Glitchmachines, Cem Olcay, ChowDSP, Moog, your custom .adg racks, your Max for Live devices. Same query → different recommendations per user. **14 `corpus_*` tools.** See [User Corpus](#user-corpus--14-tools-v1234) below |
-| **Concept Surface** | Two reference files let the LLM's training translate into LivePilot: `artist-vocabularies.md` maps ~25 producers (Villalobos, Hawtin, Basic Channel, Gas, Basinski, Hecker, Aphex, Autechre, Dilla, Burial, Henke, Daft Punk, …) to `reach_for` / `avoid` / `key_techniques`; `genre-vocabularies.md` maps 15 genres to tempo / kick / bass / percussion / harmonic / texture / devices. The LLM reads "sound like Gas" and gets a concrete device chain, not guesswork |
-| **Sample Engine** | Three-source sample intelligence — Ableton's browser, your filesystem, and Splice's catalog (plan-aware: Ableton Live plan uses daily quota, Sounds+/Creator uses credits, free samples bypass both). 6 fitness critics. 29 processing techniques. Collections, presets, preview-URL audition, LIVE Describe-a-Sound + Variations via Splice GraphQL |
-| **Spectral Perception** | Real-time ears via M4L — 9-band FFT (with sub_low split at 20-60 Hz for kick fundamentals), RMS/peak metering, Krumhansl-Schmuckler key detection, pitch tracking, FluCoMa mel/chroma/onset. Auto-loaded via `ensure_analyzer_on_master` (v1.20.3) — no more silently-degraded mix moves from forgotten analyzer |
-| **Technique Memory** | Persistent library of production decisions. Save a beat pattern, device chain, or mix template. Recall by mood, genre, or texture across sessions |
-| **Creative Intelligence** | 12 engines on top of the tools: SongBrain, Taste Graph, Wonder Mode, Mix/Sound-Design/Transition/Reference/Translation engines, Hook Hunter, Stuckness Detector, Session Continuity, Preview Studio. **44 semantic moves** (v1.26) — musical intents like "tighten the low end" or "make kick and bass lock" that compile into tool sequences with risk levels and target dimensions |
+| Job | What LivePilot brings |
+|-----|-----------------------|
+| **Work directly in Live** | Control transport, tracks, clips, notes, devices, routing, mixing, automation, and Arrangement View through explicit tools. |
+| **Find the right sound** | Search Ableton's library, your own plugins and racks, local samples, and Splice before loading anything. |
+| **Listen before judging** | Read live spectral data or analyze rendered audio, then compare the result with the state before the edit. |
+| **Explore safely** | Preview alternatives, keep the winner, and route changes inside the set through Ableton's undo stack. |
+| **Learn your taste** | Remember which moves, devices, and versions you keep across sessions without treating taste as a universal score. |
+| **Stay aware of the song** | Track identity, open creative threads, section roles, and protected elements so local fixes do not flatten the whole piece. |
+
+Under the hood: a 5,264-device atlas, 683 mapped drum kits, 29 sample-processing
+techniques, 44 semantic moves, real-time and offline listening, and 12 planning and
+evaluation systems. The sections below show how each part works.
 
 <br>
 
@@ -89,23 +100,27 @@ Most MCP servers are tool collections — they execute commands. LivePilot is an
 
 ## Two Ways to Talk to LivePilot
 
-Pick whichever is faster for the idea in your head — both reach the same 474-tool surface.
+Start with the language that fits the moment. Both routes reach the same tool surface.
 
 ### Route A — Artist / aesthetic shorthand
 
 > *"Sound like J Dilla."* &nbsp; *"Make this feel more like Burial."* &nbsp; *"BoC-style pads."*
 
-The Concept Surface (`artist-vocabularies.md` + `genre-vocabularies.md`) maps ~25 producers and 15 genres to concrete `reach_for` / `avoid` / `key_techniques` lists. An artist name becomes a queryable label for a cluster of techniques. Useful when you know the aesthetic but not the parameters, or when one word is faster than the half-paragraph of reverb / sidechain / pitch-bend settings it implies.
+Use a producer or genre as shorthand for rhythm, density, space, texture, and device
+choices. LivePilot translates the reference into techniques rather than pretending to clone
+someone's identity.
 
 ### Route B — Direct musical intent
 
-> *"Humanize the drum loop: 62% swing on the 16th hats, snare landing 4 ms ahead of the 2 and 4 for forward push, ghost snares filling every off-16th at velocity 25–40, kick locked to the grid, and add ±2 ms timing jitter to everything except the kick. EQ a 3 dB notch at 380 Hz on the snare to pull it back from the bass."*
+> *"Push the snare 4 ms early, keep the kick on-grid, add ±2 ms timing variation to the hats,
+> and cut 3 dB around 380 Hz on the snare."*
 
-The full Live Object Model is exposed. Swing percentages, micro-timing offsets in milliseconds, dB cuts, frequency ranges, modulation depths, envelope shapes, send levels, automation curves, scale degrees, voice leading — anything the LOM allows, plus the 44 semantic moves on top.
+When the detail matters, name it: notes, milliseconds, dB, frequency, modulation depth,
+envelope shape, send level, automation curve, scale degree, or voice leading.
 
 ### Mixing the routes
 
-Most sessions do both. Lead with shorthand to anchor the aesthetic, then refine with millisecond-precision intent once the shape is roughed in. Every artist tag resolves to moves you can also call directly — the shorthand is a convenience layer over the same parameters you reach with Route B.
+Most sessions use both. Start broad, listen, then get specific where the track needs it.
 
 <br>
 
@@ -161,11 +176,11 @@ Most sessions do both. Lead with shorthand to anchor the aesthetic, then refine 
 
 **Remote Script** (`remote_script/LivePilot/`) — A Python ControlSurface that runs inside Ableton's process. Listens on TCP 9878. All Live Object Model calls execute on Ableton's main thread via `schedule_message`. Detects Ableton version at startup and enables four capability tiers: Core (12.0+), Enhanced Arrangement (12.1.10+), Full Intelligence (12.3+), Collaborative (12.4+).
 
-**MCP Server** (`mcp_server/`) — Python FastMCP server. Validates inputs, routes commands to the Remote Script over TCP, manages the M4L bridge, runs the atlas, sample engine, composer, and all intelligence engines. This is what your AI client connects to.
+**MCP Server** (`mcp_server/`) — Python FastMCP server. Validates inputs, routes commands to the Remote Script over TCP, manages the M4L bridge, and runs the atlas, sample engine, composer, planning, and evaluation systems. This is what your AI client connects to.
 
 **M4L Bridge** (`m4l_device/`) — Optional Max for Live Audio Effect on the master track. Provides deep LOM access through Max's LiveAPI that the ControlSurface API can't reach. UDP 9880 (M4L to server) carries spectral data and LiveAPI responses. OSC 9881 (server to M4L) sends commands. The 38 spectral/analyzer tools strictly require the bridge; device and sample tools that call the bridge also have graceful fallbacks, so core functionality works without it. Backed by 32 bridge commands for hidden parameters, Simpler internals, warp markers, display values, and Simpler warp / Compressor sidechain writes that live on child objects Python can't reach.
 
-**Device Atlas** (`mcp_server/atlas/`) — In-memory indexed JSON database. 5264 devices with browser URIs (bundled baseline), 120 enriched with YAML sonic intelligence profiles (mood, genre, texture, recommended chains). 7 indexes: by_id, by_name, by_uri, by_category, by_tag, by_genre, by_pack. Reverse-index `device_techniques_index.json` powers `atlas_techniques_for_device` (146 cross-references across 58 devices). The AI never hallucinates a device name or preset — it always resolves against the atlas first. **v1.22.0+**: run `scan_full_library` after install to index YOUR packs + User Library + plugins into `~/.livepilot/atlas/device_atlas.json` — your personal atlas overrides the baseline and survives npm updates.
+**Device Atlas** (`mcp_server/atlas/`) — In-memory indexed JSON database. 5264 devices with browser URIs (bundled baseline), 120 enriched with YAML sonic profiles (mood, genre, texture, recommended chains). 7 indexes: by_id, by_name, by_uri, by_category, by_tag, by_genre, by_pack. Reverse-index `device_techniques_index.json` powers `atlas_techniques_for_device` (146 cross-references across 58 devices). Device and preset choices resolve against the atlas before loading, which reduces guessed names and dead ends. **v1.22.0+**: run `scan_full_library` after install to index your packs, User Library, and plugins into `~/.livepilot/atlas/device_atlas.json` — your personal atlas overrides the baseline and survives npm updates.
 
 **Sample Engine** (`mcp_server/sample_engine/`) — Searches three sources simultaneously: BrowserSource (Ableton's library), SpliceSource (local Splice catalog via SQLite), FilesystemSource (user directories). Every result passes through a 6-critic fitness battery (key, tempo, spectral, genre, mood, technical). 29 processing techniques (Surgeon precision vs. Alchemist experimentation). Builds complete sample processing plans with warp, slice, and effect recommendations.
 
@@ -173,7 +188,7 @@ Most sessions do both. Lead with shorthand to anchor the aesthetic, then refine 
 
 **Composer** (`mcp_server/composer/`) — Prompt-to-plan pipeline. Parses natural language ("dark minimal techno 128bpm with industrial textures") into a CompositionIntent (genre, mood, tempo, key). Plans layers using role templates (kick, bass, percussion, texture, lead, pad, fx). Compiles to a step-by-step plan of tool calls that the agent executes. Does not execute autonomously — returns the plan. 4 genre defaults (house, techno, trap, ambient) — genres outside this set fall back to a neutral layer plan.
 
-**Corpus** (`mcp_server/corpus/`) — Parsed device-knowledge markdown converted to queryable Python structures: EmotionalRecipe, GenreChain, PhysicalModelRecipe, AutomationGesture. Feeds Wonder Mode, Sound Design critics, and the Composer with deep creative knowledge at runtime — not just LLM prompts, actual structured data.
+**Corpus** (`mcp_server/corpus/`) — Parsed device-knowledge markdown converted to queryable Python structures: EmotionalRecipe, GenreChain, PhysicalModelRecipe, AutomationGesture. Feeds Wonder Mode, Sound Design critics, and the Composer with structured production references at runtime.
 
 **Execution Router** (`mcp_server/runtime/execution_router.py`) — Classifies each step in a multi-step plan as remote_command (TCP to Ableton), bridge_command (OSC to M4L), or mcp_tool (internal), then dispatches it through the correct channel.
 
@@ -181,9 +196,10 @@ Most sessions do both. Lead with shorthand to anchor the aesthetic, then refine 
 
 ---
 
-## The Intelligence Layer
+## How LivePilot Makes Decisions
 
-12 engines sit on top of the 474 tools. They give the AI musical judgment, not just musical execution.
+Tools make the edit. These 12 systems help decide what to try, what to protect, what to
+compare, and what to remember.
 
 ### SongBrain — What the Song Is
 
@@ -195,7 +211,7 @@ Learns your production preferences across sessions. Tracks which move families y
 
 ### Semantic Moves — Musical Actions, Not Parameters
 
-**44 high-level intents** across 7 families (mix, arrangement, transition, sound_design, performance, device_creation, sample) — "add contrast," "tighten the low end," "make kick and bass lock," "sample vocal ghost," "destroy then rebuild." Each move compiles into a concrete tool sequence with risk level, target dimensions, and protection thresholds. Analyzer-gated moves (`tighten_low_end`, `make_kick_bass_lock`) mark their spectrum pre-reads as optional so the plan continues even when the analyzer isn't available. The AI knows what it's risking with every action.
+**44 high-level intents** across 7 families (mix, arrangement, transition, sound_design, performance, device_creation, sample) — "add contrast," "tighten the low end," "make kick and bass lock," "sample vocal ghost," "destroy then rebuild." Each move compiles into a concrete tool sequence with risk level, target dimensions, and protection thresholds. Analyzer-gated moves (`tighten_low_end`, `make_kick_bass_lock`) mark their spectrum pre-reads as optional so the plan continues even when the analyzer isn't available. The plan shows its tradeoffs before anything changes.
 
 ### Wonder Mode — Stuck-Rescue Workflow
 
@@ -335,9 +351,11 @@ atlas_cross_pack_chain         [v1.23.4+] Execute any of 15 cross-pack workflow 
 
 ### User Corpus — 14 tools `[v1.23.4+]`
 
-> **Why this exists.** The factory atlas (5264 devices, 33 packs) is what *Ableton ships*. Your real library is bigger — your VST/AU plugins, your Max for Live devices, your `.adg` racks, your custom presets, your Splice packs. Without the corpus builder, all of that is invisible to LivePilot. With it, the same query that previously routed to Operator + Saturator can route to *your* Valhalla Supermassive, *your* CHOWTapeModel, *your* Moog Model D — because LivePilot now knows what you have, what each tool sounds like, and which producer aesthetics it supports.
+> **Why this exists.** The factory atlas covers what Ableton ships. Most studios also have
+> third-party plugins, Max for Live devices, custom racks, presets, and sample packs. The corpus
+> builder indexes that local library so recommendations can use tools you actually own.
 
-The corpus builder is a 4-phase pipeline that turns "what's installed on this Mac" into AI-queryable knowledge:
+The corpus builder turns what is installed on your machine into searchable production context:
 
 ```
 Phase 1 — DETECT      Walk plugin folders + run `auval -a` for AUv3 / Mac Catalyst
@@ -349,16 +367,16 @@ Phase 2 — CANONICALIZE Dedupe by vendor+name, prefer VST3 over AU, strip vendo
                        "Valhalla DSP"). Cluster by vendor for batch research.
 
 Phase 3 — RESEARCH    Discover local manual files (PDFs, READMEs) per plugin.
-                       Emit WebSearch task packets for plugin+technique research.
+                       Prepare focused plugin and technique research tasks.
 
-Phase 4 — SYNTHESIZE  Sonnet subagent dispatch — write per-plugin identity.yaml
+Phase 4 — SYNTHESIZE  Build a per-plugin identity.yaml
                        with sonic_fingerprint / reach_for / avoid / key_techniques /
                        parameter_glossary / comparable_plugins / genre_affinity /
-                       producer_anchors. EXACTLY ONE primary format tag (no
+                       producer_anchors. Keep one primary format tag (no
                        dual-indexing across formats).
 ```
 
-The result lives at `~/.livepilot/atlas-overlays/user/plugins/<plugin_id>/identity.yaml` and is loaded by every reasoning tool — `atlas_search`, `atlas_chain_suggest`, `atlas_macro_fingerprint`, `atlas_describe_chain` — alongside the factory atlas. Each result is tagged with its source (`factory_atlas` vs `user_overlay:user`), so the agent always knows whether it's recommending Ableton stock or your own gear.
+The result lives at `~/.livepilot/atlas-overlays/user/plugins/<plugin_id>/identity.yaml` and is available to `atlas_search`, `atlas_chain_suggest`, `atlas_macro_fingerprint`, and `atlas_describe_chain` alongside the factory atlas. Every result names its source (`factory_atlas` or `user_overlay:user`), so you can see whether a recommendation comes from Ableton stock or your own gear.
 
 ```
 corpus_setup_wizard            One-shot orchestration — runs the full pipeline
@@ -373,13 +391,14 @@ corpus_canonicalize_plugins    Phase 2 — dedupe + VST3-preferred + suffix stri
 corpus_cluster_plugins         Phase 2.5 — group by vendor for efficient research dispatch
 corpus_trim_plugin_identity    Slim a yaml to the overlay-required minimum
 corpus_discover_manuals        Phase 3 — locate local PDFs / READMEs per plugin
-corpus_research_targets        Phase 3 — emit WebSearch task packet for the agent
-corpus_emit_synthesis_briefs   Phase 4 — emit sonnet-subagent briefs per plugin
+corpus_research_targets        Phase 3 — prepare research tasks for the agent
+corpus_emit_synthesis_briefs   Phase 4 — prepare identity briefs per plugin
 ```
 
-**Why versatility outside Ableton matters.** A static knowledge base ages out the day you install a new plugin. The corpus builder makes LivePilot's knowledge boundary equal to *your library*, not *Ableton's library*. Every plugin you add can be re-scanned and synthesized in minutes; every saved `.adg` rack you build can be indexed alongside Ableton's factory chains. The brain becomes specifically yours.
+**Why this matters.** A static index goes stale when your library changes. Re-scan after adding
+a plugin or rack and LivePilot can consider it alongside Ableton's factory devices.
 
-**Quick start (3 commands):**
+**Quick start:**
 
 ```bash
 # In your MCP client (Claude Code / Desktop / Cursor):
@@ -388,8 +407,8 @@ corpus_setup_wizard                              # one-shot orchestration
 corpus_detect_plugins use_auval=true             # finds AUv3 / Mac Catalyst plugins
 corpus_canonicalize_plugins                      # VST3 preference + vendor dedup
 corpus_cluster_plugins                           # vendor-grouped clusters
-corpus_research_targets                          # → agent runs WebSearch
-corpus_emit_synthesis_briefs                     # → sonnet writes identity.yamls
+corpus_research_targets                          # → agent researches the plugins
+corpus_emit_synthesis_briefs                     # → agent writes identity profiles
 ```
 
 See [`docs/USER_CORPUS_GUIDE.md`](docs/USER_CORPUS_GUIDE.md) for full walk-through, [`docs/PLUGIN_KNOWLEDGE_ENGINE.md`](docs/PLUGIN_KNOWLEDGE_ENGINE.md) for engine internals, and [`livepilot/skills/livepilot-corpus-builder/SKILL.md`](livepilot/skills/livepilot-corpus-builder/SKILL.md) for the agent skill that drives the pipeline.
@@ -398,7 +417,8 @@ See [`docs/USER_CORPUS_GUIDE.md`](docs/USER_CORPUS_GUIDE.md) for full walk-throu
 
 ### Sample Engine — 23 tools
 
-Three-source sample intelligence with critic-driven fitness scoring, plus deep Splice integration (catalog search, preview, collections, preset downloads).
+Search Ableton, local folders, and Splice together, then rank results against the musical
+role instead of returning a pile of filenames.
 
 ```
 SOURCES ─────────── BrowserSource  (Ableton's built-in library)
@@ -462,7 +482,9 @@ LivePilot reads Splice's local SQLite database to search your downloaded samples
 
 ### Composer — three modes (v1.25.0)
 
-Prompt-to-plan auto-composition engine. Three modes share a common Applier substrate (preflight: bridge handshake retry + analyzer load; postflight: monitoring=Auto on new tracks + back_to_arranger). All modes return executable plans — the agent executes each step, it does not run autonomously.
+Prompt-to-plan composition workflow. Three modes share the same safety checks: reconnect the
+bridge, load the analyzer when needed, set monitoring correctly on new tracks, and return to
+Arrangement View after the build. The work stays visible as a sequence of tool calls.
 
 ```
 "dark minimal techno 128bpm with industrial textures and ghostly vocals"
@@ -547,9 +569,10 @@ forge_install          Install generated device to browser
 
 <br>
 
-### Agentic Intelligence — 79 tools
+### Planning, Evaluation, and Learning — 79 tools
 
-The V2 intelligence layer. These tools analyze, diagnose, plan, evaluate, and learn.
+These tools read the session, diagnose problems, plan changes, compare results, and carry
+useful context into the next decision.
 
 | Domain | # | What it does |
 |--------|:-:|-------------|
@@ -578,7 +601,7 @@ The V2 intelligence layer. These tools analyze, diagnose, plan, evaluate, and le
 
 ## Install
 
-### Easiest: Claude Desktop Extension (1 click)
+### Claude Desktop: one-click install
 
 Download the latest `livepilot-<version>.mcpb` from the [Releases page](https://github.com/dreamrec/LivePilot/releases/latest) and double-click it.
 Claude Desktop installs everything automatically. Then:
@@ -590,7 +613,7 @@ Claude Desktop installs everything automatically. Then:
 > [!TIP]
 > The Desktop Extension auto-installs the Remote Script and M4L Analyzer on first launch.
 
-### Quick: One Command Setup
+### Terminal: one-command setup
 
 ```bash
 npx livepilot --setup
@@ -729,16 +752,12 @@ claude plugin install livepilot@dreamrec-LivePilot
 | `/evaluate` | Before/after evaluation of recent changes |
 | `/memory` | Technique library management |
 
-**Producer Agent** — an orchestrated multi-step assistant for building,
-layering and refining sessions. Consults memory for style context, searches
-the atlas for instruments, searches samples, creates tracks, programs MIDI,
-chains effects, reads the spectrum to verify, and arranges sections. The
-agent proposes plans; the user confirms and listens. LivePilot is a high-
-trust operator, not an autonomous producer.
+**Producer Agent** — handles longer jobs in visible stages: reads the session,
+checks what you kept, searches the library, proposes a plan, applies edits, and
+listens back. You stay in charge of what remains in the set.
 
-**Core Skill** — operational discipline connecting all layers.
-Consult atlas before loading. Read analyzer after mixing.
-Check memory before creative decisions. Verify every mutation.
+**Core Skill** — keeps the work disciplined: search before loading, measure before
+and after, preserve undo, and verify every change.
 
 <br>
 
@@ -804,7 +823,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for architecture details, code guidelines
 | Document | What's inside |
 |----------|---------------|
 | [Manual](docs/manual/index.md) | Complete reference: architecture, all 474 tools, workflows |
-| [Intelligence Layer](docs/manual/intelligence.md) | How the 12 engines connect — conductor, moves, preview, evaluation |
+| [Planning & evaluation](docs/manual/intelligence.md) | How the 12 decision systems connect — conductor, moves, preview, evaluation |
 | [Device Atlas](docs/manual/device-atlas.md) | 5264 devices indexed — search, suggest, chain building |
 | [Samples & Slicing](docs/manual/samples.md) | 3-source search, fitness critics, slice workflows |
 | [Automation](docs/manual/automation.md) | 16 curve types, 15 recipes, spectral suggestions |
@@ -835,13 +854,15 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for architecture details, code guidelines
 
 ## Support
 
-LivePilot is source-available under the [Business Source License 1.1](LICENSE). If it saves you time in your sessions:
+LivePilot is source-available under the [Business Source License 1.1](LICENSE).
+If it earns a place in your sessions, you can support its continued development:
 
 <p align="center">
   <a href="https://github.com/sponsors/dreamrec"><strong>Sponsor on GitHub</strong></a>
 </p>
 
-Sponsors get early access to new features, premium skills, curated technique libraries, and direct support.
+Sponsorship funds deeper Ableton coverage, cross-platform testing, and maintained technique
+libraries. Sponsors also get early builds and direct support.
 
 <br>
 
