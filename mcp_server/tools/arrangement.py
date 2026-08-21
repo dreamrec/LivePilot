@@ -561,33 +561,38 @@ def create_cue_point(ctx: Context, time: float, name: str) -> dict:
     # set_or_delete_cue() runs in that same handler, so the locator lands at
     # the old playhead. Going back out to the MCP server between the seek and
     # the toggle gives Live's main loop a chance to apply the seek.
-    ableton.send_command("jump_to_time", {"beat_time": time})
-    ableton.send_command("toggle_cue_point")
+    did_seek = False
+    try:
+        ableton.send_command("jump_to_time", {"beat_time": time})
+        did_seek = True
+        ableton.send_command("toggle_cue_point")
 
-    after = _cues()
-    if len(after) != len(before) + 1:
-        ableton.send_command("jump_to_time", {"beat_time": restore_to})
-        raise RuntimeError(
-            "toggle_cue_point did not add a locator at beat %g (count %d -> %d)"
-            % (time, len(before), len(after))
-        )
+        after = _cues()
+        if len(after) != len(before) + 1:
+            raise RuntimeError(
+                "toggle_cue_point did not add a locator at beat %g "
+                "(count %d -> %d)" % (time, len(before), len(after))
+            )
 
-    match = None
-    for cue in after:
-        if abs(float(cue["time"]) - time) < _CUE_EPS:
-            match = cue
-            break
-    if match is None:
-        ableton.send_command("jump_to_time", {"beat_time": restore_to})
-        raise RuntimeError(
-            "a locator was created but none is at beat %g -- got %r"
-            % (time, [c["time"] for c in after])
-        )
+        match = None
+        for cue in after:
+            if abs(float(cue["time"]) - time) < _CUE_EPS:
+                match = cue
+                break
+        if match is None:
+            raise RuntimeError(
+                "a locator was created but none is at beat %g -- got %r"
+                % (time, [c["time"] for c in after])
+            )
 
-    result = ableton.send_command("set_cue_point_name", {
-        "cue_index": match["index"],
-        "name": name,
-    })
-    ableton.send_command("jump_to_time", {"beat_time": restore_to})
-    result["created"] = True
-    return result
+        result = ableton.send_command("set_cue_point_name", {
+            "cue_index": match["index"],
+            "name": name,
+        })
+        result["created"] = True
+        return result
+    finally:
+        # Do not strand the user's playhead at the target if the toggle,
+        # verification, or rename step fails after the initial seek.
+        if did_seek:
+            ableton.send_command("jump_to_time", {"beat_time": restore_to})

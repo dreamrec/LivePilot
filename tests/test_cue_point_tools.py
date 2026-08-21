@@ -136,6 +136,22 @@ async def test_restores_the_playhead(mcp_client_factory):
     assert arr.playhead == 17.5
 
 
+async def test_restores_the_playhead_when_rename_fails(mcp_client_factory):
+    arr = FakeArrangement(playhead=17.5)
+
+    def fail_rename(params):
+        raise RuntimeError("rename failed")
+
+    overrides = arr.overrides()
+    overrides["set_cue_point_name"] = fail_rename
+    async with mcp_client_factory(overrides) as client:
+        with pytest.raises(Exception, match="rename failed"):
+            await client.call_tool(
+                "create_cue_point", {"time": 192.0, "name": "BREAKDOWN 1"})
+
+    assert arr.playhead == 17.5
+
+
 async def test_names_the_new_locator_not_a_neighbour(mcp_client_factory):
     """Indices are positional; inserting renumbers. The tool must resolve the
     new locator by beat, or it renames whichever one happens to share its old
