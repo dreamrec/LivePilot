@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v1.29.0 — 2026-08-21
+
+Perceptual taste learning, named Arrangement locators, and dependency/runtime
+compatibility updates. The public surface is now 474 tools across 57 domains.
+
 ### Added — named locators (2 tools, 472 → 474)
 - `create_cue_point(time, name)` places a **named** section marker at a beat;
   `set_cue_point_name(cue_index, name)` renames an existing one. `get_cue_points`
