@@ -38,38 +38,31 @@
 
 ---
 
-## What's New in v1.28.0
+## What's New in v1.29.0
 
-A new perception domain plus the bridge authentication batch (474 tools / 57 domains):
+Perceptual taste learning plus named Arrangement locators (474 tools / 57 domains):
 
-- **Listening Engine** — `listen_capture` and `listen_ab` analyze a rendered capture off disk
-  (librosa/soundfile) instead of reading a live meter. You get stereo width and bass-mono
-  checks, groove microtiming, transient character, integrated LUFS/true-peak, and clipping/DC
-  headroom — then hand the returned snapshots straight to `evaluate_move` for a keep/undo
-  verdict grounded in audio rather than vibes. Because it reads a file, it keeps working when
-  the live analyzer is stale or offline.
-- **OSC 9881 is authenticated** — the Max device's UDP port binds on all interfaces, so a
-  LAN-adjacent host could previously fire any bridge command blind. Commands now carry a
-  per-startup shared secret published to a 0600 file on the local filesystem; unauthenticated
-  commands are dropped. **Requires a re-freeze of `LivePilot_Analyzer.amxd`** — the gate
-  activates only on a device reporting >= 1.28.0.
-- **Capture pipeline fixes** — a busy `capture_audio` now returns its error immediately instead
-  of hanging for the full 35 s timeout, and can no longer resolve an unrelated pending
-  command's reply.
-- **Stalled-stream detection** — windowed analyzer reads no longer report confident stability
-  from a frozen OSC stream; duplicate frames are counted and surfaced as a warning.
+- **A learned taste head** — `taste_record_pair`, `taste_train`, and `taste_rank` learn from
+  kept-versus-discarded audio decisions using a Bradley–Terry model over CLAP embeddings. It
+  ranks alternatives without pretending that an absolute score is meaningful.
+- **Confidence that has to be earned** — validation is grouped by session, shared and
+  re-recorded reference anchors are detected, significance is withheld when the evidence is
+  too thin, and certification requires at least five independent sessions. These guards were
+  calibrated against adversarial corpora, not assumed from training accuracy.
+- **Optional perceptual distance** — `listen_capture(embed=True)` and `listen_ab(embed=True)`
+  can now report whether two renders sound like genuinely different things alongside their DSP
+  measurements. The CLAP backend remains optional; the core install does not pull in Torch or
+  model weights.
+- **Named Arrangement locators** — `create_cue_point(time, name)` creates an idempotent named
+  marker at a beat, while `set_cue_point_name(cue_index, name)` renames an existing locator.
+  Creation preserves the user's playhead even when verification or naming fails.
+- **Correct MCP identity** — the initialize handshake now reports LivePilot's version instead
+  of FastMCP's library version, removing ambiguity in remote and custom-transport setups.
+- **Current dependency compatibility** — FastMCP 3.4.7 is the minimum security baseline, and
+  NumPy 2.5 is supported without unnecessarily dropping compatible NumPy 2.3/2.4 installs.
 
-Previous release (v1.27.3) was a deep-review remediation — ~150 fixes across two audit
-campaigns, no change to the tool surface:
-
-- **Event-loop blocking eliminated tree-wide** — every remaining blocking call in async tool paths (composer apply executors, the shared plan-step executor, preview/experiment paths, ~80 sites in 13 files) now offloads to a worker thread; a repo-wide AST regression guard keeps it that way. Long composes no longer freeze concurrent tools or the analyzer bridge.
-- **Atlas scans no longer truncate** — library scans previously capped each category at 1,000 entries alphabetically (most drum one-shots were unreachable); the cap is now 25,000 with per-category truncation flags and rescan warnings. Run `scan_full_library(force=True)` once to rebuild your atlas.
-- **Splice self-heals** — a Splice desktop restart no longer silently turns every search into fake "0 results"; the client marks itself degraded and reconnects on the next call.
-- **Safer state** — cached preview/wonder plans carry a session fingerprint and refuse to replay against a session that changed shape; persisted taste/project stores back up before any reset.
-- **Stronger release gates** — the MCPB bundle, .amxd freeze content, and Python 3.11 Remote Script compatibility are now all CI-enforced.
-- **Python 3.12 floor** for the MCP server (scipy ≥1.18 requires 3.12; numpy is currently capped <2.5 for numba/librosa compatibility — see requirements.txt); the Remote Script stays 3.11-compatible for Ableton's embedded Python.
-- **v1.27.1** fixed 35 issues from a deep audit and restored tools that had silently broken (`augment_with_samples`, `get_composition_plan`, `propose_composer_branches`, `check_clip_key_consistency`, `compare_phrase_renders`), plus recursive installed-plugin scanning.
-- **v1.27.0** added two read-only Live 12.4 capability-probe tools (`probe_link_audio`, `probe_stem_workflow`).
+Previous release v1.28.0 introduced the offline Listening Engine, authenticated OSC 9881 bridge
+commands, capture-pipeline fixes, and stalled-stream detection.
 
 Full details in the [CHANGELOG](CHANGELOG.md).
 

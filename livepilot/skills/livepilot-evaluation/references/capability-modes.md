@@ -1,4 +1,4 @@
-# Capability Modes Reference
+# Capability Modes Reference — LivePilot v1.29.0
 
 The evaluation engine adapts its behavior based on what measurement capabilities are available. Call `get_capability_state` to determine the current mode.
 
