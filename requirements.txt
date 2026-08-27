@@ -9,7 +9,7 @@ pretty_midi>=0.2.11.post0
 # v1.8 Perception Layer (offline analysis)
 pyloudnorm>=0.2.0
 soundfile>=0.14.0
-scipy>=1.18.0
+scipy>=1.18.1
 mutagen>=1.48.1
 # v1.28 Listening Engine (listen_capture / listen_ab offline capture analysis)
 librosa>=0.10
