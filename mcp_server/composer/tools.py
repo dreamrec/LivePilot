@@ -211,10 +211,7 @@ async def compose(
     prompt: str,
     mode: str = "full",
     bars: int = 4,
-    target_scene: Optional[int] = None,
     seed_scene_index: int = 0,
-    max_credits: int = 50,
-    dry_run: bool = False,
     reference: Optional[str] = None,
 ) -> dict:
     """Plan, brief, or execute a multi-layer composition from a text prompt
@@ -222,10 +219,10 @@ async def compose(
 
     Three modes:
 
-    ``mode="full"`` (default) — plan-only. Parses prompt into genre/mood/
-    tempo/key, plans layers using role templates, returns an executable
-    plan of tool calls for the agent to step through. This is the rich
-    composition path.
+    ``mode="full"`` (default) — creative two-phase flow. Parses the prompt
+    and returns a FullBrief with form, vocabulary, device, and reference
+    context. The agent designs a concrete plan and submits it to
+    ``compose_full_apply``.
 
     ``mode="fast"`` — **LLM-creative two-phase flow** (2026-05-01 redesign):
         Phase 1 (this call): returns a CREATIVE BRIEF with parsed intent,
@@ -251,18 +248,15 @@ async def compose(
     prompt: "dark minimal techno 128bpm" / "downtempo lo-fi Cm" / "trap"
     mode: "full" | "fast" | "develop"
     bars: clip length in bars (fast mode only — default 4)
-    target_scene: scene index to populate (full mode legacy param; fast
-                  mode now lets the agent pick via compose_fast_apply)
     seed_scene_index: scene to read as the seed (develop mode only,
                       default 0)
-    max_credits: max Splice credits budget for full-mode plans (default 50)
-    dry_run: full-mode only — skip credit checks
 
     Fast mode returns: a brief dict with creative context. Call
     compose_fast_apply with your designed plan to actually create tracks.
     Develop mode returns: a brief dict with seed_state + design_targets.
     Call develop_apply with your designed variant plan.
-    Full mode returns the existing plan dict.
+    Full mode returns a creative brief. Call compose_full_apply with a
+    concrete plan to build it.
     """
     intent = parse_prompt(prompt)
 
@@ -293,7 +287,7 @@ async def compose(
 
     # mode == "full" — v1.24 LLM-creative two-phase flow
     # Phase 1: return a FullBrief vocabulary so the agent can design form +
-    # variants + events. Phase 3: agent submits the designed plan to
+    # variants. Phase 3: agent submits the designed plan to
     # compose_full_apply → apply_full_plan_v2.
     # The old deterministic engine path (step_plan) is deprecated
     # (BUG-FULL-MODE-18: flat single-pattern arrangements).

@@ -521,6 +521,15 @@ def _validate_v2_plan(plan: dict) -> str | None:
         return "plan must be a dict"
     if plan.get("scope") not in (None, "full"):
         return f"plan scope must be 'full' (got {plan.get('scope')!r})"
+    events = plan.get("events")
+    if events:
+        return (
+            "plan.events is not supported by compose_full_apply. Translate "
+            "each structural idea into concrete arrangement clips, device "
+            "parameters, sends, or automation before submitting the plan."
+        )
+    if events is not None and not isinstance(events, list):
+        return "plan.events must be a list when present"
     form = plan.get("form")
     if not isinstance(form, list) or len(form) == 0:
         return "plan.form must be a non-empty list of section descriptors"
@@ -554,7 +563,7 @@ def _validate_v2_plan(plan: dict) -> str | None:
 async def apply_full_plan_v2(ctx: Context, plan: dict) -> dict:
     """Apply an agent-designed full-mode plan to the live session.
 
-    The agent designs form + variants + events from the brief returned by
+    The agent designs form + variants from the brief returned by
     compose(mode="full"); this function validates + executes. Replaces the
     deterministic engine path that was prone to flat single-pattern
     arrangements (BUG-FULL-MODE-18).
@@ -585,7 +594,6 @@ async def apply_full_plan_v2(ctx: Context, plan: dict) -> dict:
         },
         ...
       ],
-      "events": [...],          # Phase 4 structural events — accepted, not applied in Phase 3
     }
 
     Returns:
@@ -1064,10 +1072,6 @@ async def apply_full_plan_v2(ctx: Context, plan: dict) -> dict:
                     "phase": "arrangement_clip",
                     "reason": str(exc),
                 })
-
-    # Events — Phase 4 will populate real apply paths; Phase 3 stubs this
-    for _event in plan.get("events", []):
-        pass  # Phase 3 no-op — events accepted but not applied
 
     # Phase 4 Task 20: mix-level analysis post-apply. Master-spectrum view +
     # cross-layer masking detection. Best-effort, non-fatal — same pattern as

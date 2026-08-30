@@ -65,6 +65,30 @@ class TestClassifyRequest:
         plan = classify_request("help me with my live set")
         assert plan.routes[0].engine == "performance_engine"
 
+    def test_set_is_not_mistaken_for_live_performance(self):
+        for request in (
+            "set tempo to 128",
+            "set filter cutoff to 2 kHz",
+            "reset bass volume",
+            "load a warm pad preset",
+        ):
+            plan = classify_request(request)
+            assert plan.routes[0].engine != "performance_engine", request
+            assert plan.workflow_mode != "performance_safe", request
+
+    def test_arrangement_object_beats_dynamics_verb(self):
+        plan = classify_request("compress the arrangement into 32 bars")
+        assert plan.routes[0].engine == "composition"
+
+    def test_finish_mix_routes_to_mix(self):
+        plan = classify_request("finish the mix")
+        assert plan.routes[0].engine == "mix_engine"
+
+    def test_loop_into_song_is_arrangement_workflow(self):
+        plan = classify_request("turn this loop into a song")
+        assert plan.routes[0].engine == "composition"
+        assert plan.workflow_mode == "sample_plus_arrangement"
+
     def test_research_request(self):
         plan = classify_request("research how to sidechain properly")
         assert plan.routes[0].engine == "research"

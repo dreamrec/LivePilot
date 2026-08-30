@@ -56,6 +56,16 @@ _ROLE_TAGS: dict[str, tuple[str, ...]] = {
 
 _MELODIC_ROLES: frozenset[str] = frozenset({"bass", "lead", "pad", "atmos", "vocal_chop"})
 
+_TASTE_TAG_HINTS: dict[str, tuple[str, ...]] = {
+    "warmth": ("warm", "rounded", "analog", "soft"),
+    "width": ("wide", "stereo", "spacious"),
+    "width_preference": ("wide", "stereo", "spacious"),
+    "punch": ("punch", "punchy", "transient", "impact"),
+    "brightness": ("bright", "airy", "crisp"),
+    "darkness": ("dark", "muted", "shadowy"),
+    "texture": ("textured", "grain", "organic"),
+}
+
 # pack_aware_compose's coarse roles → brief's finer roles.
 # Used in resolve_anchors to spread one cohort pick across multiple fine roles.
 _COARSE_TO_FINE_ROLES: dict[str, tuple[str, ...]] = {
@@ -473,10 +483,34 @@ class AtlasResolver:
             score += 0.10
             reasons.append("curated .adg sidecar")
 
-        # +0.10 recent positive preference
-        if name and self._taste_profile.get(name, {}).get("score", 0) > 0:
+        # +0.10 learned device affinity (plus legacy profile compatibility)
+        affinities = self._taste_profile.get("device_affinities", {})
+        affinity = (affinities.get(name, {}) or {}).get("affinity", 0)
+        legacy_affinity = (self._taste_profile.get(name, {}) or {}).get("score", 0)
+        if name and max(affinity, legacy_affinity) > 0:
             score += 0.10
             reasons.append("recent positive preference")
+
+        # Small, bounded character bias from explicit quality preferences.
+        # This makes "more warmth/width/punch" useful to Composer without
+        # allowing taste memory to overpower role and genre fitness.
+        searchable = " ".join(
+            str(value).lower()
+            for value in (
+                name,
+                dev.get("sonic_description", ""),
+                " ".join(dev.get("tags") or []),
+                " ".join(dev.get("character_tags") or []),
+                " ".join(dev.get("use_cases") or []),
+            )
+        )
+        dimension_weights = self._taste_profile.get("dimension_weights", {})
+        for dimension, hints in _TASTE_TAG_HINTS.items():
+            weight = float(dimension_weights.get(dimension, 0.0) or 0.0)
+            if weight and any(hint in searchable for hint in hints):
+                bias = max(-0.08, min(0.08, weight * 0.2))
+                score += bias
+                reasons.append(f"taste {dimension} {bias:+.2f}")
 
         # +0.10/+0.05 genre primary/secondary
         if genre_lower:

@@ -127,6 +127,39 @@ class TasteMemoryStore:
                     dim.evidence_count += 1
                     dim.last_updated_ms = now_ms
 
+    def record_preference(
+        self,
+        dimension: str,
+        direction: str,
+        amount: float = 0.15,
+    ) -> TasteDimension:
+        """Record an explicit preference on any named quality dimension.
+
+        Explicit user language such as "I like more warmth" should not depend
+        on a closed vocabulary of inferred outcome signals. The signal map
+        remains useful for automatic learning; this path is the direct source
+        of truth for an explicit preference.
+        """
+        name = dimension.strip().lower().replace(" ", "_")
+        if not name:
+            raise ValueError("dimension must not be empty")
+        if direction not in ("increase", "decrease"):
+            raise ValueError("direction must be 'increase' or 'decrease'")
+        if not 0.0 < amount <= 1.0:
+            raise ValueError("amount must be greater than 0 and at most 1")
+
+        dim = self._dims.get(name)
+        if dim is None:
+            dim = TasteDimension(
+                name=name, value=0.0, evidence_count=0, last_updated_ms=0,
+            )
+            self._dims[name] = dim
+        adjustment = amount if direction == "increase" else -amount
+        dim.value = max(-1.0, min(1.0, dim.value + adjustment))
+        dim.evidence_count += 1
+        dim.last_updated_ms = int(time.time() * 1000)
+        return dim
+
     def get_taste_dimensions(self) -> list[TasteDimension]:
         """Return all taste dimensions."""
         return list(self._dims.values())

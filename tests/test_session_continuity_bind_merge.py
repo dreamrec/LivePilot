@@ -159,3 +159,43 @@ def test_disk_wins_on_thread_id_conflict():
         # Disk truth wins on conflict.
         assert tracker._threads["shared"].description == "DISK"
         assert tracker._threads["shared"].status == "resolved"
+
+
+def test_same_session_identity_survives_mutable_edits_and_new_set_rebinds():
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d)
+        first = {
+            "session_instance_id": "song-1",
+            "tempo": 120.0,
+            "tracks": [{"index": 0, "name": "Bass"}],
+        }
+        first_id = _bind_with_tempdir(base, first)
+        first_store = tracker._project_store
+
+        edited = {
+            "session_instance_id": "song-1",
+            "tempo": 132.0,
+            "tracks": [{"index": 0, "name": "Renamed Bass"}],
+        }
+        assert _bind_with_tempdir(base, edited) == first_id
+        assert tracker._project_store is first_store
+
+        new_set = {
+            "session_instance_id": "song-2",
+            "tempo": 132.0,
+            "tracks": [{"index": 0, "name": "Renamed Bass"}],
+        }
+        second_id = _bind_with_tempdir(base, new_set)
+        assert second_id != first_id
+        assert tracker._bound_session_instance_id == "song-2"
+
+
+def test_new_session_does_not_inherit_previous_project_threads():
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d)
+        _bind_with_tempdir(base, {"session_instance_id": "song-a"})
+        open_thread("belongs only to A", domain="arrangement")
+        assert tracker._threads
+
+        _bind_with_tempdir(base, {"session_instance_id": "song-b"})
+        assert not tracker._threads

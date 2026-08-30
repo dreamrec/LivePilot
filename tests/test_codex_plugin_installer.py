@@ -121,6 +121,40 @@ def test_help_mentions_codex_plugin_installer():
     assert "--uninstall-codex-plugin" in result.stdout
 
 
+def test_codex_installer_rejects_broad_recursive_delete_targets():
+    result = subprocess.run(
+        [
+            NODE,
+            "-e",
+            "try { require('./installer/codex.js').assertSafeRemovalTarget('/'); process.exit(2); } catch (e) { console.log(e.message); }",
+        ],
+        cwd=_repo_root(),
+        env=os.environ.copy(),
+        text=True,
+        capture_output=True,
+    )
+    assert result.returncode == 0
+    assert "Refusing unsafe recursive removal" in result.stdout
+
+
+def test_codex_installer_rejects_targets_inside_source_repository():
+    unsafe = _repo_root() / "livepilot" / "accidental-delete-target"
+    script = (
+        "try { require('./installer/codex.js').assertSafeRemovalTarget("
+        + json.dumps(str(unsafe))
+        + "); process.exit(2); } catch (e) { console.log(e.message); }"
+    )
+    result = subprocess.run(
+        [NODE, "-e", script],
+        cwd=_repo_root(),
+        env=os.environ.copy(),
+        text=True,
+        capture_output=True,
+    )
+    assert result.returncode == 0
+    assert "Refusing unsafe recursive removal" in result.stdout
+
+
 def test_npm_package_includes_codex_plugin_payload():
     package_json = json.loads((_repo_root() / "package.json").read_text(encoding="utf-8"))
     assert "livepilot/**" in package_json["files"]

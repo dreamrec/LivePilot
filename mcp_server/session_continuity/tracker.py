@@ -44,24 +44,31 @@ _story = SessionStory()
 _threads: dict[str, CreativeThread] = {}
 _turns: list[TurnResolution] = []
 _project_store = None  # Optional PersistentProjectStore
+_bound_session_instance_id: Optional[str] = None
+_bound_file_path: str = ""
 _state_lock = threading.Lock()
 
 
 def set_project_store(store) -> None:
     """Attach a persistent project store for flush-on-write."""
-    global _project_store
+    global _project_store, _bound_session_instance_id, _bound_file_path
     with _state_lock:
         _project_store = store
+        _bound_session_instance_id = None
+        _bound_file_path = ""
 
 
 def reset_story() -> None:
     """Reset session story (for testing)."""
     global _story, _threads, _turns, _project_store
+    global _bound_session_instance_id, _bound_file_path
     with _state_lock:
         _story = SessionStory()
         _threads = {}
         _turns = []
         _project_store = None
+        _bound_session_instance_id = None
+        _bound_file_path = ""
 
 
 def bind_project_store_from_session(session_info: dict) -> Optional[str]:
@@ -84,6 +91,7 @@ def bind_project_store_from_session(session_info: dict) -> Optional[str]:
     only and reset on every server restart.
     """
     global _threads, _turns, _project_store
+    global _bound_session_instance_id, _bound_file_path
 
     try:
         from ..persistence.project_store import ProjectStore, project_hash
@@ -97,6 +105,11 @@ def bind_project_store_from_session(session_info: dict) -> Optional[str]:
         logger.debug("bind_project_store_from_session: hash failed: %s", exc)
         return None
 
+    session_instance_id = str(
+        (session_info or {}).get("session_instance_id") or ""
+    ).strip() or None
+    file_path = str((session_info or {}).get("file_path") or "").strip()
+
     # The whole check → open → read → merge → swap → flush sequence runs
     # under the state lock so a concurrent open_thread()/record_turn_
     # resolution() can't land between the merge read and the reassignment
@@ -104,9 +117,34 @@ def bind_project_store_from_session(session_info: dict) -> Optional[str]:
     # are small JSON files and bind fires ~once per project, so the hold
     # time is acceptable.
     with _state_lock:
-        # Already bound to this project? Nothing to do.
-        if _project_store is not None and getattr(_project_store, "project_id", None) == new_id:
+        # Same loaded set and same save path: mutable tempo/track/scene edits
+        # must never rotate persistence identity. A newly assigned path (Save
+        # As) intentionally rebinds from the instance id to the stable path id.
+        if (
+            _project_store is not None
+            and session_instance_id
+            and _bound_session_instance_id == session_instance_id
+            and _bound_file_path == file_path
+        ):
+            return getattr(_project_store, "project_id", new_id)
+        # Compatibility for older Remote Scripts that expose neither identity
+        # field and still rely on the structural hash.
+        if (
+            _project_store is not None
+            and not session_instance_id
+            and getattr(_project_store, "project_id", None) == new_id
+        ):
             return new_id
+
+        # Carry live memory into the first late bind, and across Save As for
+        # the same loaded set. Do not leak one project's threads into a newly
+        # opened set just because both are handled by the same server process.
+        same_loaded_session = bool(
+            _project_store is not None
+            and session_instance_id
+            and _bound_session_instance_id == session_instance_id
+        )
+        carry_memory = _project_store is None or same_loaded_session
 
         try:
             store = ProjectStore(new_id)
@@ -140,7 +178,7 @@ def bind_project_store_from_session(session_info: dict) -> Optional[str]:
         unflushed_threads = [
             thread for tid, thread in _threads.items()
             if tid and tid not in disk_threads
-        ]
+        ] if carry_memory else []
         merged_threads = dict(disk_threads)
         for thread in unflushed_threads:
             merged_threads[thread.thread_id] = thread
@@ -159,12 +197,14 @@ def bind_project_store_from_session(session_info: dict) -> Optional[str]:
         unflushed_turns = [
             turn for turn in _turns
             if turn.turn_id and turn.turn_id not in disk_turn_ids
-        ]
+        ] if carry_memory else []
         merged_turns = disk_turns + unflushed_turns
 
         _threads = merged_threads
         _turns = merged_turns
         _project_store = store
+        _bound_session_instance_id = session_instance_id
+        _bound_file_path = file_path
 
         # Persist the survivors now that a store is attached. We do this AFTER
         # binding _project_store so a failure here doesn't leave the survivors
@@ -210,18 +250,20 @@ def ensure_project_store_bound(ctx) -> Optional[str]:
     # check makes the loser a no-op.
     with _state_lock:
         store = _project_store
-    if store is not None:
+        identity_supported = _bound_session_instance_id is not None
+        current_id = getattr(store, "project_id", None) if store is not None else None
+    if store is not None and not identity_supported:
         return getattr(store, "project_id", None)
     try:
         ableton = ctx.lifespan_context.get("ableton")
         if ableton is None:
-            return None
+            return current_id
         info = ableton.send_command("get_session_info")
         if isinstance(info, dict) and not info.get("error"):
             return bind_project_store_from_session(info)
     except Exception as exc:
         logger.debug("ensure_project_store_bound: %s", exc)
-    return None
+    return current_id
 
 
 # ── Session story ─────────────────────────────────────────────────

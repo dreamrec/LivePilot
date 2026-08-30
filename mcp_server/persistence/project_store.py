@@ -41,13 +41,19 @@ _MIGRATIONS: dict[int, Callable[[dict], dict]] = {}
 def project_hash(session_info: dict) -> str:
     """Compute a project fingerprint from session info.
 
+    Identity preference order:
+      1. Saved Live Set path — stable across edits and restarts.
+      2. Remote-Script session instance — stable for an unsaved set across
+         MCP restarts, distinct when the user opens/creates another set.
+      3. Legacy structural fingerprint — compatibility with older scripts.
+
     v1.10.3 Truth Release: this used to use `tempo + len(tracks) + sorted
     track names`, which had obvious collisions — any two songs at the same
     tempo with the same track names collided even if the tracks were in
     different order, the scenes were different, or the arrangement length
     differed. The author's own comment acknowledged the weakness.
 
-    The new hash uses a lot more entropy from the session:
+    The legacy fallback uses a lot more entropy from the session:
       * tempo (1 decimal)
       * time signature (num/denom)
       * song_length (arrangement length in beats) — very distinguishing
@@ -55,15 +61,29 @@ def project_hash(session_info: dict) -> str:
       * ORDERED scene list: (index, name, color_index)
       * return track count + names
 
-    This is still a fingerprint, not a true project ID (for that we'd need
-    the Live set file path, which requires a new Remote Script handler).
-    But it's collision-resistant across the common failure modes:
+    It is used only when neither modern identity field is available.
       * template-based starts diverge once the user renames a track, adds
         a scene, or adjusts the arrangement length
       * track reordering produces a new hash (correctly — it's a real edit)
       * two songs at 128 BPM with tracks named Drums/Bass no longer collide
         unless they also share identical scene lists AND song length
     """
+    file_path = str(session_info.get("file_path") or "").strip()
+    if file_path:
+        try:
+            normalized_path = str(Path(file_path).expanduser().resolve(strict=False))
+        except (OSError, RuntimeError, ValueError):
+            normalized_path = file_path
+        return hashlib.sha256(
+            f"live-set-path:{normalized_path.casefold()}".encode()
+        ).hexdigest()[:12]
+
+    session_instance_id = str(session_info.get("session_instance_id") or "").strip()
+    if session_instance_id:
+        return hashlib.sha256(
+            f"live-set-instance:{session_instance_id}".encode()
+        ).hexdigest()[:12]
+
     tempo = session_info.get("tempo", 120.0)
     sig_num = session_info.get("signature_numerator", 4)
     sig_denom = session_info.get("signature_denominator", 4)

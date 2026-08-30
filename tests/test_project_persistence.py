@@ -23,6 +23,34 @@ def test_project_hash_differs():
     assert project_hash(info1) != project_hash(info2)
 
 
+def test_saved_project_path_is_stable_across_mutable_edits():
+    before = {
+        "file_path": "/Music/Projects/Night Drive.als",
+        "tempo": 120.0,
+        "tracks": [{"name": "Bass"}],
+    }
+    after = {
+        "file_path": "/Music/Projects/Night Drive.als",
+        "tempo": 132.0,
+        "tracks": [{"name": "SUB FINAL"}, {"name": "Lead"}],
+    }
+    assert project_hash(before) == project_hash(after)
+
+
+def test_saved_project_paths_are_distinct():
+    a = {"file_path": "/Music/Projects/A.als"}
+    b = {"file_path": "/Music/Projects/B.als"}
+    assert project_hash(a) != project_hash(b)
+
+
+def test_unsaved_session_instance_is_stable_across_mutable_edits():
+    before = {"session_instance_id": "song-object-1", "tracks": [{"name": "Bass"}]}
+    after = {"session_instance_id": "song-object-1", "tracks": [{"name": "Renamed"}]}
+    other = {"session_instance_id": "song-object-2", "tracks": [{"name": "Bass"}]}
+    assert project_hash(before) == project_hash(after)
+    assert project_hash(before) != project_hash(other)
+
+
 # ── v1.10.3 Truth Release: collision-resistance regressions ──
 
 def test_project_hash_distinguishes_track_order():

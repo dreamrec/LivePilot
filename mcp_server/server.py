@@ -18,6 +18,8 @@ from .persistence.taste_store import PersistentTasteStore
 # those helpers fired from a tool module's module-level init.
 logger = logging.getLogger(__name__)
 
+_public_tool_surface_configured = False
+
 
 def _identify_port_holder(port: int) -> str | None:
     """Identify which process holds the given UDP port (for logging only).
@@ -169,6 +171,32 @@ def _bind_session_continuity(ableton: AbletonConnection) -> None:
         logger.debug("_bind_session_continuity: lazy-bind (reason: %s)", exc)
 
 
+async def _run_optional_startup(
+    ableton: AbletonConnection,
+    spectral: SpectralCache,
+    bridge_state: dict,
+    splice_client,
+) -> None:
+    """Prime optional integrations without delaying MCP availability."""
+
+    async def _prime_splice() -> None:
+        try:
+            await splice_client.connect()
+        except Exception as exc:
+            logger.debug("Splice startup connection unavailable: %s", exc)
+
+    async def _prime_ableton() -> None:
+        try:
+            await asyncio.to_thread(_check_remote_script_version, ableton)
+            if bridge_state["transport"] is not None:
+                await _warm_analyzer_bridge(ableton, spectral)
+            await asyncio.to_thread(_bind_session_continuity, ableton)
+        except Exception as exc:
+            logger.debug("Ableton optional startup unavailable: %s", exc)
+
+    await asyncio.gather(_prime_splice(), _prime_ableton())
+
+
 @asynccontextmanager
 async def lifespan(server):
     """Create and yield the shared AbletonConnection + M4L bridge + registries."""
@@ -187,15 +215,10 @@ async def lifespan(server):
     await asyncio.to_thread(m4l.publish_auth_token)
     mcp_dispatch = build_mcp_dispatch_registry()
 
-    # Splice gRPC client — graceful degradation if Splice desktop isn't
-    # running or grpcio isn't installed. .connected will be False in that
-    # case and sample_resolver treats it as "no splice hits".
+    # Splice gRPC client — connected in the optional background primer below.
+    # Sample tools also reconnect lazily, so MCP startup never waits on the
+    # desktop app being unavailable.
     splice_client = SpliceGRPCClient()
-    try:
-        await splice_client.connect()
-    except Exception as exc:
-        logger.debug("lifespan failed: %s", exc)
-        pass  # client remains in disconnected state
 
     # Start UDP listener for incoming M4L spectral data (port 9880)
     loop = asyncio.get_running_loop()
@@ -231,18 +254,14 @@ async def lifespan(server):
         "receiver": receiver,
     }
 
+    # Version check, analyzer warm-up, project binding, and Splice discovery
+    # are valuable but optional. Run them after the server becomes callable;
+    # every dependent tool already has a lazy/degraded path.
+    startup_task = asyncio.create_task(
+        _run_optional_startup(ableton, spectral, bridge_state, splice_client)
+    )
+
     try:
-        # BUG-A1: detect stale Remote Script installs early so the user
-        # sees a clear message instead of cryptic "Unknown command type" errors.
-        await asyncio.to_thread(_check_remote_script_version, ableton)
-        if bridge_state["transport"] is not None:
-            await _warm_analyzer_bridge(ableton, spectral)
-        # Bind per-project persistent store so creative threads and turn
-        # history survive server restarts. Until v1.10.9 this was plumbed
-        # through the tracker but never called — threads/turns were effectively
-        # in-memory only. If Ableton isn't reachable yet, tools will lazy-bind
-        # on first write via ensure_project_store_bound().
-        await asyncio.to_thread(_bind_session_continuity, ableton)
         yield {
             "ableton": ableton,
             "spectral": spectral,
@@ -251,6 +270,7 @@ async def lifespan(server):
             "_bridge_state": bridge_state,
             "mcp_dispatch": mcp_dispatch,
             "splice_client": splice_client,
+            "_startup_task": startup_task,
             # Persistent taste backing so dimension weights / anti-preferences
             # survive a server restart (P2-29). Keyed "persistent_taste" to match
             # the existing wonder/runtime/preview_studio setdefault callers so all
@@ -259,6 +279,12 @@ async def lifespan(server):
             "persistent_taste": PersistentTasteStore(),
         }
     finally:
+        # Let the bounded transport checks settle before closing shared clients.
+        # This affects shutdown only; initial MCP availability is immediate.
+        try:
+            await startup_task
+        except Exception as exc:
+            logger.debug("optional startup task ended during shutdown: %s", exc)
         if bridge_state["transport"]:
             bridge_state["transport"].close()
         m4l.close()
@@ -541,6 +567,36 @@ def _patch_tool_schemas() -> None:
             if isinstance(definition, dict):
                 _coerce_schema_property(definition)
 
+
+def _configure_public_tool_surface() -> str:
+    """Install the compact search-first catalog used by real MCP sessions.
+
+    ``LIVEPILOT_TOOL_PROFILE=full`` preserves the historical 474-tool
+    listing for diagnostics and older clients. Other supported values are
+    ``producer`` (default), ``composition``, ``mixing``, and ``sampling``.
+    Hidden tools remain directly callable by name.
+    """
+    global _public_tool_surface_configured
+    if _public_tool_surface_configured:
+        return os.environ.get("LIVEPILOT_TOOL_PROFILE", "producer").strip().lower()
+
+    requested = os.environ.get("LIVEPILOT_TOOL_PROFILE", "producer").strip().lower()
+    if requested == "full":
+        _public_tool_surface_configured = True
+        return requested
+
+    from .runtime.tool_surface import build_tool_search_transform
+
+    try:
+        transform = build_tool_search_transform(requested)
+    except ValueError as exc:
+        logger.warning("%s; falling back to producer", exc)
+        requested = "producer"
+        transform = build_tool_search_transform(requested)
+    mcp.add_transform(transform)
+    _public_tool_surface_configured = True
+    return requested
+
 _assert_tool_registry_accessible()
 _patch_tool_schemas()
 
@@ -570,6 +626,8 @@ def main():
     # so all tool-module imports have completed regardless of the import path
     # that brought server.py in. See _assert_tool_registry_accessible() docstring.
     _assert_expected_tool_count()
+    profile = _configure_public_tool_surface()
+    logger.info("LivePilot public tool profile: %s", profile)
     mcp.run(transport="stdio")
 
 if __name__ == "__main__":

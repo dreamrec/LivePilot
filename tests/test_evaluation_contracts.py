@@ -109,3 +109,8 @@ class TestEvaluationResult:
     def test_hard_rule_failures_empty_by_default(self):
         res = EvaluationResult(engine="test")
         assert res.hard_rule_failures == []
+
+    def test_evidence_defaults_are_honest(self):
+        res = EvaluationResult(engine="test")
+        assert res.evidence_type == "judgment"
+        assert res.confidence == 0.0

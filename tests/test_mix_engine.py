@@ -100,6 +100,20 @@ class TestMixModels:
         assert "dynamics" in d
         assert "stereo" in d
         assert "depth" in d
+        assert d["analysis_scope"] == "mix_setup_audit"
+        assert d["evidence"]["stereo"] == "pan_position_proxy"
+        assert d["evidence"]["depth"] == "send_level_proxy"
+
+    def test_mix_state_labels_measured_and_heuristic_masking(self):
+        ms = MixState(masking=MaskingMap(entries=[
+            MaskingEntry(track_a=0, track_b=1, measured=True),
+            MaskingEntry(track_a=2, track_b=3, measured=False),
+        ]))
+        evidence = ms.evidence_summary()
+        assert evidence["analysis_scope"] == "per_track_audio_and_mix_setup"
+        assert evidence["masking"] == "mixed_per_track_audio_and_role_heuristic"
+        assert evidence["measured_masking_entries"] == 1
+        assert evidence["heuristic_masking_entries"] == 1
 
 
 # ── TestStateBuilder ────────────────────────────────────────────────

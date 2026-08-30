@@ -198,6 +198,37 @@ def test_kp_build_with_artists_populates_artist_context():
     assert has_burial, f"Expected Burial in artist_context, got keys: {list(result['artist_context'].keys())}"
 
 
+def test_kp_passes_live_taste_graph_to_atlas_resolver(monkeypatch):
+    from types import SimpleNamespace
+    from mcp_server.composer.framework import atlas_resolver
+    from mcp_server.memory.taste_memory import TasteMemoryStore
+
+    captured = {}
+
+    class CapturingResolver:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+        def resolve_anchors(self, **kwargs):
+            return atlas_resolver.AtlasAnchors()
+
+    monkeypatch.setattr(atlas_resolver, "AtlasResolver", CapturingResolver)
+    taste_store = TasteMemoryStore()
+    taste_store.record_preference("warmth", "increase")
+    ctx = SimpleNamespace(lifespan_context={"taste_memory": taste_store})
+
+    KnowledgePack().build(
+        {"genre": "techno"},
+        mode="full",
+        atlas=object(),
+        ctx=ctx,
+        brief_text="warm minimal techno",
+    )
+
+    assert captured["taste_profile"] is not None
+    assert captured["taste_profile"]["dimension_weights"]["warmth"] > 0
+
+
 def test_kp_build_genre_context_populated_for_known_genre():
     """build() populates genre_context for known genres."""
     kp = KnowledgePack()

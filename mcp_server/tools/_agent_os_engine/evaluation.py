@@ -75,6 +75,7 @@ def compute_evaluation_score(
                 "before": round(before_val, 4),
                 "after": round(after_val, 4),
                 "delta": round(delta, 4),
+                "desired_direction": "increase" if weight >= 0 else "decrease",
             }
             total_goal_progress += delta * weight
             measurable_count += 1
@@ -162,6 +163,12 @@ def compute_evaluation_score(
         "measurable_delta": round(measurable_delta, 4),
         "measurable_dimensions": measurable_count,
         "total_dimensions": len(goal.targets),
+        "evidence_type": (
+            "measured_audio" if measurable_count == len(goal.targets) and measurable_count
+            else "mixed" if measurable_count
+            else "judgment_required"
+        ),
+        "confidence": round(measurable_count / max(len(goal.targets), 1), 3),
         "dimension_changes": dimension_changes,
         "notes": notes,
         # I5: hint for the agent to track consecutive undos

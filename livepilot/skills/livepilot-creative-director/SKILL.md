@@ -10,26 +10,41 @@ description: >
   mixing to explicit targets, or performance-safe contexts.
 ---
 
-# Creative Director — Divergence-First Routing
+# Creative Director — Proportional Creative Routing
 
-Routes creative intent through MANDATORY divergence before any commit.
-Three plans with distinct `move.family` are the minimum output. Critics
-defer until after selection. No new tools — this skill enforces a
-discipline on top of existing `experiment`, `wonder_mode`, `preview_studio`,
-`semantic_moves`, `evaluation`, and `memory` machinery.
+Turn open-ended intent into a musical decision with enough exploration for
+the uncertainty at hand. Do not make a two-minute adjustment pay for a full
+creative workshop. Safety, user locks, inspect-before-load, and post-change
+evaluation remain invariant; branch count and evidence depth are proportional.
 
-## Atlas-first reflex (v1.23.x+, MANDATORY before any creative move)
+## Choose the operating lane first
 
-Before producing ANY creative response, query the user's atlas overlays. The corpus contains 337 entries across 3 namespaces, plus 3,917 parameter-level JSON sidecars — far richer than anything inferable from training data alone.
+| Lane | Use when | Grounding | Options | Typical cost |
+|---|---|---|---|---|
+| **FAST** | User says quick/just/direct, the target is clear, and the move is reversible | session + at most one relevant analyzer/read | one strong plan | 1–3 tool calls before verification |
+| **NORMAL** | Default open-ended creative work | session, relevant memory, 1–2 evidence reads | one plan; offer a second only when it changes the decision | 3–7 tool calls before verification |
+| **DEEP** | User asks to explore/surprise, references conflict, stuckness is high, or the structural choice is consequential | full identity, memory, reference, and evidence pass | three genuinely distinct families | experiment/preview workflow |
 
-**Query order:**
+Explicit speed language selects FAST. Do not reinterpret it as permission to
+write shorter prose while running the same expensive workflow. Escalate a lane
+only when a discovered ambiguity, safety issue, or irreversible choice requires
+it, and say why.
+
+## Atlas when the decision needs a source
+
+Query the atlas before choosing or replacing an instrument, preset, sample,
+device, or chain. Skip atlas work for a purely structural/rhythmic decision that
+does not select a source. FAST uses the single most relevant query; NORMAL uses
+one primary query plus a drill-down when needed; DEEP may use the full order:
+
+**Deep query order:**
 
 1. **`extension_atlas_search(namespace="packs", query=<intent>)`** — pack identity, signature workflows, hidden gems, anti-patterns, notable presets with macro deep-data, demo projects
 2. **`extension_atlas_search(namespace="packs", query=<intent>, entity_type="cross_pack_workflow")`** — multi-pack signature recipes (15 entries: dub-techno spectral drone bed, BoC decayed pad, Mica Levi orchestral dread, etc.)
 3. **`extension_atlas_search(namespace="m4l-devices", query=<sonic descriptor>)`** — M4L instrument/effect/midi-effect device catalog (155 entries)
 4. **`atlas_search(...)`** — bundled atlas (Core Library, fallback)
 
-**Multi-grain traversal:**
+**Drill-down rule:**
 
 When an aesthetic-level query lands a pack-level result, AUTO-DRILL: pack → its `notable_presets` → those preset macro states → load via `load_browser_item`. Don't stop at "I found a relevant pack" — drill to the actual preset/parameter level the user can immediately use.
 
@@ -67,9 +82,9 @@ Every pack entry has an `anti_patterns` body field listing "don't reach for this
 The agent repeats patterns when divergence is optional and convergence
 is default. This skill inverts the defaults for creative intent:
 
-- Wonder / experiment branching becomes REQUIRED, not rescue-only
-- `get_anti_preferences`, `get_action_ledger_summary(limit=10)`, and `get_last_move` are READ before generating
-- Three plans must differ by `move.family` (not by parameter values)
+- Wonder / experiment branching is available when ambiguity benefits from it
+- memory and recent moves prevent repetition at NORMAL/DEEP depth
+- DEEP plans differ by `move.family`, not cosmetic parameter values
 - Mix / sound-design critics wait until AFTER selection
 - Concept packets (`artist-vocabularies.md` / `genre-vocabularies.md`)
   are consulted when a reference is named
@@ -105,7 +120,8 @@ this skill. No → divergence path.
 
 ## The Contract
 
-When triggered, these phases are REQUIRED in order. Skip none.
+Follow these phases in order, applying the selected lane's depth. Conditional
+reads and branches are not requirements when they cannot affect the decision.
 
 ## Character-First Bias
 
@@ -115,9 +131,11 @@ The `mix` family is dominant only when the user asks for balance, loudness, head
 
 ## Producer Decision Center
 
-Before choosing any instrument, preset, sample, or dominant move, run a
-producer decision center pass. This pass exists to prevent generic AI synth
-choices and effects-only "sound design".
+Before choosing any instrument, preset, or sample, run the library pass below.
+For a structural, rhythmic, or routing-only move, skip library hunting and use
+the relevant session evidence instead. This pass exists to prevent generic AI
+synth choices and effects-only "sound design", not to add ceremony to every
+creative decision.
 
 **Library hunt order:**
 
@@ -144,24 +162,34 @@ effects: envelopes, LFO routing, filter envelope, oscillator/wavetable/FM
 position, pitch modulation, sample start, slice selection, velocity mapping,
 spread, detune, or sampler playback mode.
 
-**Layer precision gate:** before declaring a plan or execution complete,
-each active layer needs a role and an evidence path: timbre/spectrum,
-sequence feel, stereo placement, movement/automation, and parameter
-programming. Low-volume buried layers do not count as solved layers.
+**Layer precision gate:** inspect every layer the move materially touches. A
+FAST single-layer edit checks that layer; a full production pass checks every
+active layer. Relevant evidence can include timbre/spectrum, sequence feel,
+stereo placement, movement/automation, and parameter programming. Do not add
+low-volume layers merely to hide an unresolved choice.
 
 ### Phase 1 — Ground
 
-Read in parallel (all are fast). All of these are REQUIRED, not
-advisory — skipping them is how pattern-repetition survives:
+Always read `get_session_info`. Then select only evidence that can change the
+move:
 
-- **`ensure_analyzer_on_master` (v1.20.3)** — idempotent pre-flight. Call this FIRST (before or alongside `get_session_info`), every turn, whether the project looks empty or not. The tool short-circuits when the analyzer is already loaded, so it's free to call repeatedly. Skipping it is how the v1.20.1 live-test campaign produced basic mixes — the analyzer-gated moves (`tighten_low_end`, `sculpt_midrange`, `balance_stereo_image`, etc.) degrade silently when there's no master spectrum to read. If the tool returns `install_required`, call `install_m4l_device(source_path="<repo>/m4l_device/LivePilot_Analyzer.amxd")` and retry. If it returns `warning: "not LAST on master"`, surface that to the user — the invariant is theirs to repair in Ableton's GUI.
-- `get_session_info` · `get_capability_state`
+- **FAST:** one relevant state/analyzer read at most. Call
+  `ensure_analyzer_on_master` first only when the move or verification depends
+  on audio evidence.
+- **NORMAL:** `get_last_move`, relevant taste/anti-preference memory, and 1–2
+  analyzer or identity reads.
+- **DEEP:** use the full set below, parallelized where independent.
+
+Deep/reference-sensitive reads:
+
+- **`ensure_analyzer_on_master` (v1.20.3)** — call before audio-dependent reads. If it reports `install_required`, install the bundled analyzer and retry. Surface a "not LAST on master" warning because that invalidates final-output measurement.
+- `get_capability_state`
 - `memory_recall` (taste + recent context)
 - `get_anti_preferences` — what the user has rejected before (HARD filter)
 - `get_action_ledger_summary(limit=10)` — recent committed moves (repeat detection, see `references/anti-repetition-rules.md` for the recency threshold table). **v1.20 correction**: previous docs pointed at `memory_list`, which actually reads the persistent technique library (opt-in `memory_learn` writes) — a DIFFERENT store. The action ledger is the authoritative source; `apply_semantic_move` in explore mode populates it automatically.
 - `get_last_move` — the single most recent committed move; populate the brief's `last_move_target` field so Phase 3 cannot repeat it
 - `get_project_brain_summary` (or `build_project_brain` if absent) — track identity, accepted novelty band
-- Analyzer character read when available: `get_master_spectrum`, `get_spectral_shape`, `get_onsets`, `get_novelty`, and `get_momentary_loudness` for evidence about brightness, flatness, motion, transient shape, and loudness safety. Use these to bias Phase 3 toward instrument/device/parameter decisions, not low-value level tweaks.
+- Analyzer character reads when relevant: choose from `get_master_spectrum`, `get_spectral_shape`, `get_onsets`, `get_novelty`, and `get_momentary_loudness`. Do not fetch all five by habit.
 - `explain_song_identity` when the project has one
 - `detect_stuckness` — cheap; its confidence drives escalation decisions (see §Anti-Repetition Protocol below)
 - **Concept packet load (HARD filter when present):** if the user named an artist or genre, or if `project_brain` has a genre identity, retrieve the structured YAML packet from `livepilot-core/references/concepts/artists/<slug>.yaml` or `livepilot-core/references/concepts/genres/<slug>.yaml`. Fall back to the narrative .md entry only if no matching YAML exists. The packet's `avoid` list is a HARD filter on Phase 3 candidates. The packet's `reach_for` lists seed the candidate device pool. The packet's `key_techniques` list resolves to atlas `signature_techniques` or `sample-techniques.md` / `sound-design-deep.md` entries. If NO reference is named and `project_brain` has no genre identity, skip packet loading — do not infer. See `livepilot-core/references/concepts/_schema.md` for the full packet structure and loading rules.
@@ -170,14 +198,10 @@ advisory — skipping them is how pattern-repetition survives:
 
 ### Phase 2 — Compile the Creative Brief
 
-**Timing:** after Phase 1 parallel reads complete, before any Phase 3
-tool call. The brief appears ONCE per creative turn, inline in the
-assistant message, at the top of the response body.
-
-Emit an inline YAML block (not a tool call) with: identity, reference
-anchors, protected qualities, anti-patterns, novelty budget, target
-dimensions, `last_move_target` (from Phase 1 `get_last_move`),
-locked dimensions, recommended skill chain.
+Keep the brief as compact internal state: identity, protected qualities,
+anti-patterns, novelty budget, targets, last move, and locked dimensions.
+Show it to the user only when it clarifies a consequential choice; do not emit
+ceremonial YAML on routine FAST/NORMAL work.
 
 **On `locked_dimensions` when user is silent:** the DEFAULT is to
 leave `locked_dimensions: []` (nothing locked). Silence = permission
@@ -199,10 +223,10 @@ line needs the disclosure. Structural changes are hard to reverse,
 which is why disclosure exists — but only when they're actually going
 to happen.
 
-See `references/creative-brief-template.md` for the schema and filled
-examples.
+DEEP experiments may use the full schema in
+`references/creative-brief-template.md`.
 
-### Phase 3 — Generate three plans with distinct `move.family`
+### Phase 3 — Generate the smallest honest plan set
 
 The SEVEN canonical families (from `semantic_moves/` + `sample_engine/moves.py`):
 
@@ -210,8 +234,10 @@ The SEVEN canonical families (from `semantic_moves/` + `sample_engine/moves.py`)
 mix · arrangement · transition · sound_design · performance · device_creation · sample
 ```
 
-Each plan's dominant move MUST come from a different family. Two plans
-in the same family is fabricated distinctness — see Honesty Rule below.
+FAST produces one strong plan. NORMAL produces one plan unless a second option
+would expose a real tradeoff. DEEP produces three plans whose dominant moves
+come from different families. Two DEEP plans in the same family are fabricated
+distinctness.
 
 The `sample` family lives in `mcp_server/sample_engine/moves.py` (not
 `semantic_moves/`) but registers into the same move registry.
@@ -235,23 +261,22 @@ steps. Use `enter_wonder_mode` when the problem is diffuse. Use
 See `references/move-family-diversity-rule.md` for edge cases (fewer
 than 3 plausible families, user pre-locked a dimension).
 
-### Phase 4 — Cover the four dimensions
+### Phase 4 — Cover dimensions when exploring
 
-A creative pass should distribute the three plans across structural +
-rhythmic + timbral + spatial. See `references/the-four-move-rule.md`
-for the family-to-dimension map.
+DEEP exploration should distribute its plan set across structural, rhythmic,
+timbral, and spatial dimensions where relevant. FAST does not manufacture
+coverage; NORMAL uses the dimension map only to catch an obvious blind spot.
 
 If the user pre-locked a dimension ("don't touch the arrangement"),
 drop that dimension and widen coverage across the remaining three.
 
-### Phase 5 — Preview or rank
+### Phase 5 — Preview, rank, or apply
 
-Audible → `create_preview_set` + `render_preview_variant` for each plan,
-then `compare_preview_variants`.
-
-Non-audible or fast → `rank_by_taste_and_identity`.
-
-Never silently skip preview / ranking. Either run it or document why.
+- **FAST:** apply one reversible move, then verify it. Preview first only when
+  the move is risky or hard to undo.
+- **NORMAL:** preview audible alternatives when the choice is perceptually
+  ambiguous; otherwise rank once by taste/identity and proceed.
+- **DEEP:** render or rank every honest branch before selection.
 
 ### Phase 6 — Select and execute
 
@@ -282,27 +307,12 @@ Pick the right one:
 - `commit_experiment(winner)` — when divergence produced multiple
   candidates and the user / taste-ranker picked one.
 
-**v1.20 Phase 6 decision table.** Look up the pattern, use the listed
-move. "ESCAPE HATCH" means no semantic move yet covers this pattern —
-drop to raw tools under the policy below.
-
-| Pattern | Move | Notes |
-|---|---|---|
-| Load device on track | `find_and_load_device` + `add_*_device_*` family | Pre-v1.20, unchanged |
-| Load device chain on a RETURN | `build_send_chain` | NEW — v1.20 |
-| Set multiple params on a device | `configure_device` | NEW — replaces batch `set_device_parameter` |
-| Delete a device (with audit reason) | `remove_device` | NEW — reason auto-logged to session memory |
-| Load a chord-source MIDI clip | `load_chord_source` | NEW — creates + names + voices in one move |
-| Add one pad to a Drum Rack | `create_drum_rack_pad` | NEW — Dilla-style kit building |
-| Set send levels across tracks | `configure_send_architecture` | NEW — one move, N sends |
-| Rewire track output routing | `set_track_routing` | NEW — e.g., "Sends Only" bus |
-| Configure a groove on clips | `configure_groove` | NEW — assign + tune timing_amount |
-| Set scene metadata (name/color/tempo) | `set_scene_metadata` | NEW — conditional per-field |
-| Rename / color a track | `set_track_metadata` | NEW — bundled rename + color |
-| Any other pattern | **ESCAPE HATCH (see policy below)** | v1.21+ closes these as patterns accumulate |
-
-Full contract (seed_args shape, emitted step sequence, verification
-reads) for every NEW move: `references/phase-6-execution.md`.
+Use the semantic move that matches the action. Covered execution primitives
+include `build_send_chain`, `configure_device`, `remove_device`,
+`load_chord_source`, `create_drum_rack_pad`,
+`configure_send_architecture`, `set_track_routing`, `configure_groove`,
+`set_scene_metadata`, and `set_track_metadata`. Read
+`references/phase-6-execution.md` only when one of these contracts is needed.
 
 **Affordance lookup:** before executing any plan that LOADS a device,
 check if the device has an affordance YAML in
@@ -314,103 +324,43 @@ and to queue the required `remeasure` diagnostics for Phase 7. See
 structure. The affordance's resolved parameter dict is the ergonomic
 input to `configure_device` (via `apply_semantic_move("configure_device", args={"param_overrides": ...})`).
 
-**Brief compliance check (v1.18.3, still required under v1.20):**
-before any tool call that could plausibly violate the brief's
-`anti_patterns` or `locked_dimensions`, call
-`check_brief_compliance(brief, tool_name, tool_args)`. This fires
-even when you dispatch via `apply_semantic_move` — the compliance
-check inspects each compiled plan step's per-tool signature against
-the brief. A compiled plan CAN violate the brief (e.g., a
-`configure_device` preset that reaches for "bright top-end" when the
-brief forbids it). Check each step.
+Before a step that could violate `anti_patterns` or `locked_dimensions`, run
+`check_brief_compliance(brief, tool_name, tool_args)`, including compiled
+semantic-move steps. If it flags a violation, stop, explain it, and either
+adjust the call or obtain an explicit override; record an override with
+`add_session_memory(category="override")`. An empty brief is permissive.
 
-The tool returns `{"ok": bool, "violations": [...]}` — best-effort
-keyword heuristic, NOT semantic understanding. Use it especially for:
+**Escape hatch:** use raw tools only after `list_semantic_moves` confirms no
+move covers the pattern. Then write both ledger records:
 
-- `set_device_parameter` / `batch_set_parameters` calls on EQ /
-  saturation / filter parameters (catches "bright top-end",
-  "aggressive transient" style anti_patterns)
-- `load_browser_item` / `find_and_load_device` for new devices
-  (check against `avoid` device lists in concept packets)
-- `create_scene` / `set_scene_*` / `set_scene_metadata` /
-  `refresh_repeated_section` (catches `locked_dimensions:
-  [structural]` violations)
-- `add_notes` / `modify_notes` / `quantize_clip` / `assign_clip_groove`
-  when `locked_dimensions: [rhythmic]` is set
-- `set_track_routing` (changing a routing to "Sends Only" can silence
-  a track — treat as structural under locked_dimensions)
+1. `add_session_memory(category="move_executed", content="<family + target>")`
+2. `add_session_memory(category="tech_debt", content="no semantic_move for <pattern>")`
 
-When a violation fires:
-1. **Do NOT auto-proceed.** Surface the violation to the user with
-   the reason + suggestion from the check response.
-2. Offer three paths: (a) adjust the call to avoid the pattern,
-   (b) user explicitly overrides this anti_pattern for this turn,
-   (c) pick a different tool/plan.
-3. Record the user's choice via `add_session_memory(category="override")`
-   so future anti-preference writes know this was an explicit decision.
-
-The check is STATELESS — you pass the brief each time. Empty brief
-(no anti_patterns, no locked_dimensions) always returns ok=True.
-
-**Escape hatch policy (v1.20).** When no semantic move in the
-decision table covers the pattern, raw tools remain permitted — BUT
-only with the following mandatory logging contract. The hatch exists
-because v1.20 ships a phased cutover, not a hard cutover; v1.21+
-closes patterns as they accumulate.
-
-Using the hatch requires ALL THREE, in this order:
-
-1. The raw tool call itself (e.g., `set_device_parameter(...)`).
-2. `add_session_memory(category="move_executed", content="...")` —
-   one-line ledger entry covering family + target + brief identity.
-   Without this, the next creative turn's anti-repetition read goes
-   blind (`get_last_move` / `get_action_ledger_summary` see nothing).
-3. `add_session_memory(category="tech_debt", content="no semantic_move
-   for <pattern>", ...)` — tracking log that says "a semantic move
-   should exist for this." The content should name the pattern
-   precisely enough that a future commit can add the move.
-
-**Both category="move_executed" AND category="tech_debt" are
-required** — they serve different consumers:
-
-- `move_executed` is consumed by anti-repetition (recency table,
-  Phase 3 hard-bias rule).
-- `tech_debt` is consumed by release planning — v1.21 scope is driven
-  by the tech_debt log's contents. If patterns accumulate with
-  identical phrasing, they graduate to semantic moves in the next
-  minor release.
-
-After the hatch write, propose adding the missing semantic move in
-a follow-up turn. Do NOT silently continue using the hatch — that's
-how the cutover stalls.
-
-**Default-preference rule.** In doubt between `apply_semantic_move`
-and the escape hatch: default to `apply_semantic_move`. Skip to the
-hatch ONLY if the decision table has no row for the pattern AND
-`list_semantic_moves(domain="<family>")` confirms no existing move
-matches. The `apply_semantic_move` + `commit_experiment` pair is the
-production-line; the hatch is an explicitly-logged branch, not a
-shortcut.
-
-**State-inference fallback is DEPRECATED** (see
-`references/anti-repetition-rules.md` §v1.20 update). Pre-v1.20, the
-director used "scan loaded devices + non-default mixer values to
-guess recent moves" when the recency read came back empty. With
-`apply_semantic_move` as default, that heuristic routes around the
-real ledger and can double-count. Keep it documented ONLY for the
-escape-hatch case where both memory entries were accidentally dropped.
+The first powers anti-repetition; the second identifies a missing primitive.
+State inference is a last-resort recovery only when those records were lost.
 
 ### Phase 7 — Evaluate (critics fire HERE, not earlier)
 
-`evaluate_move` with artistic dimensions (`style_fit`, `distinctiveness`,
-`motif_coherence`, `section_contrast`, `restraint`) in addition to the
-technical goal vector.
+Evaluate at the same depth as the operating lane:
+
+- **FAST:** one relevant before/after check. Use a measured analyzer value when
+  the goal is measurable; otherwise ask for or clearly label artistic judgment.
+- **NORMAL:** evaluate the relevant technical goal plus the one or two artistic
+  dimensions that could overturn the decision.
+- **DEEP:** use `evaluate_move` with the full relevant technical vector and
+  artistic dimensions such as `style_fit`, `distinctiveness`,
+  `motif_coherence`, `section_contrast`, and `restraint`.
+
+Never present a heuristic or an unmeasured artistic score as audio evidence.
 
 If the evaluation fails protected qualities → `undo` and return to
 Phase 3 with the failure recorded.
 
 ### Phase 8 — Record
 
+Record only evidence worth reusing: explicit user feedback, a measured win or
+failure, an undo, or a genuinely novel decision. Routine successful edits do
+not need a new long-term memory. When the result is reusable, call
 `memory_learn` with a verdict:
 
 - `safe_win` — low novelty, confirmed
@@ -419,23 +369,28 @@ Phase 3 with the failure recorded.
 - `identity_break` — violated protected qualities
 - `generic_fallback` — collapsed to a pattern; flag for anti-preference
 
-On undo or explicit rejection → `record_anti_preference` with the
-family + context.
+On undo or explicit rejection → `record_anti_preference` with the family +
+context. Keep ordinary move recency in the action ledger rather than duplicating
+it in taste memory.
 
 ## Anti-Repetition Protocol
 
-Before Phase 3 generation, compute the family distribution over the
-last 10 kept moves (`get_action_ledger_summary(limit=10)`). Apply the recency
-threshold table from `references/anti-repetition-rules.md`:
+FAST checks `get_last_move` and avoids repeating the same family/target unless
+the user asked for continuity. NORMAL inspects the recent ledger only when the
+last move or recalled pattern suggests repetition. DEEP computes the family
+distribution over the last 10 kept moves
+(`get_action_ledger_summary(limit=10)`) and applies the recency threshold table
+from `references/anti-repetition-rules.md`:
 
 | Recency count for one family | Rule |
 |---|---|
 | 0–2 of 10 | No penalty |
-| 3–4 of 10 | ALLOWED as a plan's dominant family, but only as the **least-weighted** of the three |
-| ≥ 5 of 10 | EXCLUDED from all three dominant slots (fully hard-biased away) |
+| 3–4 of 10 | ALLOWED, but least-weighted in the DEEP plan set |
+| ≥ 5 of 10 | EXCLUDED from DEEP dominant slots unless the user explicitly wants continuity |
 
-**Borderline stuckness.** After computing the recency penalty, run
-`detect_stuckness`. Its confidence governs which divergence path runs:
+**Borderline stuckness.** Run `detect_stuckness` for DEEP work, or when NORMAL
+work shows a repeated failure pattern. Its confidence governs which divergence
+path runs:
 
 | Confidence | Path |
 |---|---|
@@ -449,23 +404,23 @@ Full rules: `references/anti-repetition-rules.md`.
 
 - Never describe an analytical-only variant as previewable
 - Never fabricate distinctness by relabeling the same move
-- Fewer than 3 variants is ACCEPTABLE only when, after honestly widening
-  across families AND checking concept packets, fewer real options exist
-- On first-pass creative-director calls, actively widen BEFORE accepting
-  a smaller variant set (stuck-rescue is a separate context)
+- FAST intentionally produces one plan; NORMAL produces one or two only when a
+  real tradeoff exists
+- When DEEP is selected, widen across families and concept packets before
+  accepting fewer than three honest variants
 
 ## Red Flags — STOP If You Catch Yourself Thinking
 
 | Rationalization | Reality |
 |---|---|
 | "The user just wants one thing fixed" | Did they name exact parameters? If no, that's creative intent. |
-| "I'll skip the brief, I know what they mean" | The brief pins protected qualities. Skipping them = pattern repetition. |
-| "Three variants are overkill for this" | That's the collapse-to-mode instinct. Generate them anyway, then honestly cull. |
+| "I'll skip all intent checks, I know what they mean" | Keep a compact internal brief. FAST does not need ceremonial output. |
+| "Three variants are overkill for this" | They are overkill in FAST and often NORMAL. They are required only after DEEP is justified. |
 | "I'll run `analyze_mix` first to see what's needed" | Critics before divergence pre-converge the answer. Defer. |
-| "The first plan looks good enough" | That's the most-likely completion, by definition. Generate two more. |
-| "Fewer than 3 is fine per Wonder's honesty rule" | True for stuck-rescue. On first-pass, widen FIRST across families, fall back only after. |
-| "Reading anti-preferences is slow" | It's an instant tool. The alternative is generating a rejected pattern. |
-| **User said "quickly" / "just do it" / "don't overthink it" / "I'm in a rush"** | **User pressure framing. The brief is STILL mandatory. Compress PROSE (fewer words around each plan), not STRUCTURE (never skip the brief, Phase 1 reads, 3-family diversity, or preview). Phase 1 reads are instant — "quickly" buys nothing by skipping them.** |
+| "The first plan looks good enough" | In FAST that is expected. In NORMAL/DEEP, ask whether a second branch would expose a real tradeoff. |
+| "Fewer than 3 is always fine" | Only FAST/NORMAL are deliberately narrow. Once DEEP is justified, widen across families before settling. |
+| "Reading anti-preferences is slow" | Read them when memory can affect the choice; do not fetch unrelated memory by habit. |
+| **User said "quickly" / "just do it" / "don't overthink it" / "I'm in a rush"** | **Select FAST: session grounding, at most one relevant read, one strong reversible move, and verification. Speed language must reduce actual work, not only prose.** |
 | "User said 'a bit more like X' so novelty should be low" | Correct intuition, but the brief still compiles. "A bit more like X" maps to `novelty_budget ≈ 0.45` (see creative-brief-template). |
 | "Two plans that both add sends feel distinct because the sends are different" | Both are `mix` family with spatial dimension. That is not distinctness. Regenerate from a different family. |
 | "The rhythmic plan has to use a non-arrangement family somehow" | No — rhythmic is a DIMENSION, not a family. Rhythmic plans honestly tag `family=arrangement` (clip pattern) or `family=sound_design` (per-hit feel) with `dimension_hint="rhythmic"`. Not a fudge. |

@@ -265,12 +265,11 @@ def test_record_positive_preference_persists_dimension_weight():
         store = PersistentTasteStore(Path(d) / "taste.json")
         ctx = SimpleNamespace(lifespan_context={"persistent_taste": store})
 
-        # 'warmth'/'increase' should match at least one outcome signal.
         result = record_positive_preference(ctx, "warmth", "increase")
-        if result.get("recorded"):
-            assert result.get("persisted") is True
-            persisted = PersistentTasteStore(Path(d) / "taste.json").get_all()
-            assert "warmth" in persisted.get("dimension_weights", {})
+        assert result.get("recorded") is True
+        assert result.get("persisted") is True
+        persisted = PersistentTasteStore(Path(d) / "taste.json").get_all()
+        assert persisted.get("dimension_weights", {})["warmth"] > 0
 
 
 def test_record_positive_preference_session_only_without_store():
@@ -281,4 +280,20 @@ def test_record_positive_preference_session_only_without_store():
 
     ctx = SimpleNamespace(lifespan_context={})
     result = record_positive_preference(ctx, "warmth", "increase")
+    assert result.get("recorded") is True
     assert result.get("persisted") is False
+
+
+def test_record_positive_preference_accepts_open_quality_dimensions():
+    from types import SimpleNamespace
+    from mcp_server.memory.tools import record_positive_preference
+
+    ctx = SimpleNamespace(lifespan_context={})
+    for dimension in ("warmth", "width", "punch"):
+        result = record_positive_preference(ctx, dimension, "increase")
+        assert result["recorded"] is True
+        assert result["dimension"] == dimension
+        assert result["value"] > 0
+
+    invalid = record_positive_preference(ctx, "warmth", "sideways")
+    assert invalid["code"] == "INVALID_PARAM"

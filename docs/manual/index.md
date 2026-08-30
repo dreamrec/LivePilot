@@ -31,10 +31,16 @@ AI Client  ──MCP──►  FastMCP Server  ──TCP/9878──►  Remote S
 
 The **atlas** resolves device names and browser URIs — the AI never hallucinates a preset. 641 devices are indexed by pack (Core Library + explicit-pack assignments) so "what's in Drone Lab?" is an instant lookup. Reverse-index `device_techniques_index.json` cross-references 146 techniques across 58 devices (the `atlas_techniques_for_device` tool).
 The **user corpus** (v1.23.4+) extends the atlas with whatever's installed on YOUR machine — third-party plugins, custom Max devices, your `.adg` racks. Loaded by every reasoning tool with a 50/50 result-budget split alongside the factory atlas, so "sound like Burial" can route to *your* CHOWTapeModel + Splice PHOTEK pack instead of just Ableton's stock saturator. See [User Corpus Guide](../USER_CORPUS_GUIDE.md).
-The **analyzer** feeds back spectral data from the master bus so the AI hears its own changes — **9 frequency bands** (sub_low / sub / low / low_mid / mid / high_mid / high / presence / air); the sub_low band (20-60 Hz) separates kick fundamental from DC rumble. From v1.20.3 the analyzer is auto-loaded via `ensure_analyzer_on_master` — the Creative Director skill calls this at the top of every turn's Phase 1 ground read.
+The **analyzer** feeds back spectral data from the master bus so the AI hears its own changes — **9 frequency bands** (sub_low / sub / low / low_mid / mid / high_mid / high / presence / air); the sub_low band (20-60 Hz) separates kick fundamental from DC rumble. From v1.20.3 the analyzer is auto-loaded via `ensure_analyzer_on_master` when a decision or verification actually needs audio evidence.
 The **memory** persists production decisions across sessions as searchable, replayable data structures.
 
-All 474 tools execute as deterministic LOM calls on Ableton's main thread. Live-session mutations (clips, devices, mixer, arrangement) route through Ableton's undo stack; side effects that touch state outside the Live project — Splice downloads, memory/ledger writes, installer actions, atlas scans, filesystem writes — persist beyond undo.
+LivePilot contains 474 tools. Direct Ableton controls execute through the Live Object Model on Ableton's main thread; planning, search, analysis, memory, filesystem, and network tools run in their appropriate layers. Live-session mutations (clips, devices, mixer, arrangement) normally route through Ableton's undo stack. Side effects outside the Live project — Splice downloads, memory/ledger writes, installer actions, atlas scans, and filesystem writes — persist beyond undo.
+
+To avoid spending context on hundreds of schemas before the first musical
+decision, the default `producer` profile advertises 26 core tools plus
+`search_tools` and `call_tool`. Hidden tools remain searchable and directly
+callable. Set `LIVEPILOT_TOOL_PROFILE` to `composition`, `mixing`, `sampling`,
+or `full` when a client benefits from a wider pinned catalog.
 
 ---
 

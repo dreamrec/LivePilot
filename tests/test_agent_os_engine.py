@@ -58,12 +58,18 @@ class TestGoalVector:
             validate_goal_vector("test", {"punch": 1.0}, {}, "improve", 1.5, "none")
 
     def test_normalizes_weights(self):
-        gv = validate_goal_vector("test", {"punch": 2.0, "weight": 3.0}, {}, "improve", 0.5, "none")
-        assert abs(sum(gv.targets.values()) - 1.0) < 0.02
+        gv = validate_goal_vector("test", {"punch": 0.2, "weight": 0.3}, {}, "improve", 0.5, "none")
+        assert abs(sum(abs(v) for v in gv.targets.values()) - 1.0) < 0.02
 
     def test_weight_range_validation(self):
-        with pytest.raises(ValueError, match=">= 0.0"):
-            validate_goal_vector("test", {"punch": -0.5}, {}, "improve", 0.5, "none")
+        with pytest.raises(ValueError, match="-1.0 to 1.0"):
+            validate_goal_vector("test", {"punch": 1.5}, {}, "improve", 0.5, "none")
+
+    def test_negative_weight_encodes_desired_decrease(self):
+        gv = validate_goal_vector(
+            "less bright", {"brightness": -0.5}, {}, "improve", 0.5, "none"
+        )
+        assert gv.targets == {"brightness": -1.0}
 
     def test_to_dict(self):
         gv = validate_goal_vector("test", {"punch": 1.0}, {}, "improve", 0.5, "none")
@@ -449,6 +455,28 @@ class TestEvaluationScorer:
         result = compute_evaluation_score(goal, before, after)
         assert "energy" in result["dimension_changes"]
         assert result["dimension_changes"]["energy"]["delta"] > 0
+
+    def test_desired_brightness_decrease_is_kept(self):
+        goal = GoalVector(
+            request_text="make it darker", targets={"brightness": -1.0}
+        )
+        before = {"spectrum": {"high": 0.8, "presence": 0.8}}
+        after = {"spectrum": {"high": 0.2, "presence": 0.2}}
+        result = compute_evaluation_score(goal, before, after)
+        assert result["keep_change"] is True
+        assert result["goal_progress"] > 0
+        assert result["dimension_changes"]["brightness"]["desired_direction"] == "decrease"
+        assert result["evidence_type"] == "measured_audio"
+
+    def test_unwanted_brightness_increase_is_rejected(self):
+        goal = GoalVector(
+            request_text="make it darker", targets={"brightness": -1.0}
+        )
+        before = {"spectrum": {"high": 0.2, "presence": 0.2}}
+        after = {"spectrum": {"high": 0.8, "presence": 0.8}}
+        result = compute_evaluation_score(goal, before, after)
+        assert result["keep_change"] is False
+        assert result["goal_progress"] < 0
 
     def test_motion_uses_rich_analyzer_streams(self):
         goal = self._make_goal(motion=1.0)

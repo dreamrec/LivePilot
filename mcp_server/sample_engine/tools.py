@@ -24,6 +24,51 @@ from .techniques import find_techniques, list_techniques, get_technique
 from .sources import BrowserSource, FilesystemSource, SpliceSource, build_search_queries
 
 
+_MATERIAL_ALIASES: dict[str, set[str]] = {
+    "vocal": {"vocal", "vocals", "vox", "voice", "acapella", "phrase"},
+    "drum_loop": {"drum_loop", "drum loop", "drums", "break", "breakbeat", "percussion loop"},
+    "texture": {"texture", "ambient", "atmosphere", "drone", "pad"},
+    "one_shot": {"one_shot", "one shot", "oneshot", "hit", "stab"},
+    "instrument_loop": {"instrument_loop", "instrument loop", "melodic loop", "synth", "keys", "guitar", "bass loop"},
+    "foley": {"foley", "field recording", "found sound"},
+    "fx": {"fx", "effect", "riser", "sweep", "impact", "transition"},
+    "full_mix": {"full_mix", "full mix", "song", "stem"},
+}
+
+_ROLE_SAMPLE_CONTEXT: dict[str, tuple[str, str]] = {
+    "hook_sample": ("melody", "instrument_loop"),
+    "texture_bed": ("texture", "texture"),
+    "break_layer": ("rhythm", "drum_loop"),
+    "fill_one_shot": ("rhythm", "one_shot"),
+    "transition_fx": ("transform", "fx"),
+    "vocal_hook": ("vocal", "vocal"),
+    "atmosphere": ("atmosphere", "texture"),
+    "percussion_layer": ("rhythm", "drum_loop"),
+}
+
+
+def _sample_material_matches(result: dict, requested: str) -> bool:
+    """Return whether a normalized search result matches a material filter."""
+    requested = requested.strip().lower()
+    aliases = _MATERIAL_ALIASES.get(requested, {requested.replace("_", " "), requested})
+    metadata = result.get("metadata") or {}
+    declared = str(
+        result.get("material_type") or metadata.get("material_type") or ""
+    ).strip().lower()
+    if declared and declared != "unknown":
+        return declared == requested or declared in aliases
+
+    searchable = " ".join(
+        str(value).lower()
+        for value in (
+            result.get("name", ""),
+            metadata.get("sample_type", ""),
+            metadata.get("tags", ""),
+        )
+    )
+    return any(alias in searchable for alias in aliases)
+
+
 @mcp.tool()
 async def analyze_sample(
     ctx: Context,
@@ -210,7 +255,7 @@ def evaluate_sample_fit(
 @mcp.tool()
 async def search_samples(
     ctx: Context,
-    query: str,
+    query: Optional[str] = None,
     material_type: Optional[str] = None,
     key: Optional[str] = None,
     bpm_range: Optional[str] = None,
@@ -387,6 +432,12 @@ async def search_samples(
             d["source_priority"] = 3
             results.append(d)
 
+    if material_type:
+        results = [
+            result for result in results
+            if _sample_material_matches(result, material_type)
+        ]
+
     # Sort by source priority (Splice first), then by relevance
     results.sort(key=lambda r: r.get("source_priority", 9))
 
@@ -398,6 +449,7 @@ async def search_samples(
 
     return {
         "query": query,
+        "material_type": material_type,
         "result_count": len(results[:max_results]),
         "source_counts": source_counts,
         "results": results[:max_results],
@@ -483,23 +535,38 @@ def plan_sample_workflow(
     if file_path is None and search_query is None:
         return {"error": "Provide either file_path or search_query"}
 
+    role_key = (desired_role or "").strip().lower()
+    role_intent, role_material = _ROLE_SAMPLE_CONTEXT.get(role_key, (intent, ""))
+    effective_intent = role_intent if desired_role else intent
+    section_label = (section_type or "").strip().replace("_", " ")
+    role_label = role_key.replace("_", " ")
+    context_bits = [search_query or ""]
+    if role_label and role_label not in (search_query or "").lower():
+        context_bits.append(role_label)
+    if section_label and section_label not in (search_query or "").lower():
+        context_bits.append(f"for {section_label}")
+    contextual_query = " ".join(bit for bit in context_bits if bit).strip()
+
     profile = None
     if file_path:
         profile = build_profile_from_filename(file_path)
 
     sample_intent = SampleIntent(
-        intent_type=intent, philosophy=philosophy,
-        description=search_query or f"Process {file_path} for {intent}",
+        intent_type=effective_intent, philosophy=philosophy,
+        description=contextual_query or f"Process {file_path} for {effective_intent}",
         target_track=target_track,
     )
 
     if profile is None:
         # No file yet — return search guidance
-        queries = build_search_queries(search_query or "", material_type=None)
+        queries = build_search_queries(contextual_query, material_type=role_material or None)
         return {
             "status": "search_needed",
             "search_queries": queries,
-            "intent": intent,
+            "intent": effective_intent,
+            "material_type": role_material or None,
+            "section_type": section_type,
+            "desired_role": desired_role,
             "note": "Use search_samples to find a sample, then call again with file_path",
         }
 
@@ -509,7 +576,10 @@ def plan_sample_workflow(
 
     return {
         "sample": profile.to_dict(),
-        "intent": intent,
+        "intent": effective_intent,
+        "material_type": role_material or profile.material_type,
+        "section_type": section_type,
+        "desired_role": desired_role,
         "philosophy": philosophy,
         "technique": technique.name if technique else "fallback",
         "technique_id": technique.technique_id if technique else "",

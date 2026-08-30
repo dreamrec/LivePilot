@@ -202,6 +202,8 @@ class PersistentTasteStore:
         def _update(data: dict) -> dict:
             data = self._coerce(data)
             data.setdefault("dimension_weights", {})[dimension] = round(value, 3)
+            data["evidence_count"] = data.get("evidence_count", 0) + 1
+            data["last_updated_ms"] = int(time.time() * 1000)
             return data
         self._store.update(_update)
 

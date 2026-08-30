@@ -330,14 +330,12 @@ def atlas_suggest(
     intent: str,
     genre: str = "",
     energy: str = "medium",
-    key: str = "",
 ) -> dict:
     """Suggest devices for a production intent.
 
     intent: what you're trying to achieve — "warm bass", "crispy hi-hats", "evolving texture"
     genre:  target genre for better recommendations
     energy: low/medium/high — affects sonic character suggestions
-    key:    musical key context (e.g., "Cm") for tuned percussion suggestions
     """
     atlas = _get_atlas()
     if atlas is None:

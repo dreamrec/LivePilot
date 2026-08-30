@@ -132,6 +132,7 @@ def evaluate_sonic_move(
                 "before": round(before_val, 4),
                 "after": round(after_val, 4),
                 "delta": round(delta, 4),
+                "desired_direction": "increase" if weight >= 0 else "decrease",
             }
             total_goal_progress += delta * weight
             measurable_count += 1
@@ -210,6 +211,12 @@ def evaluate_sonic_move(
         notes=notes,
         decision_mode=decision_mode,
         memory_candidate=keep_change and measurable_count > 0,
+        evidence_type=(
+            "measured_audio" if measurable_count == len(targets) and measurable_count
+            else "mixed" if measurable_count
+            else "judgment_required"
+        ),
+        confidence=round(confidence, 3),
     )
 
 

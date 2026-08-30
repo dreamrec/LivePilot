@@ -39,10 +39,13 @@ def validate_goal_vector(
                 f"Valid: {sorted(QUALITY_DIMENSIONS)}"
             )
 
-    # Validate weights are non-negative
+    # Signed target weights encode desired direction: positive means more,
+    # negative means less. Magnitude expresses importance.
     for dim, w in targets.items():
-        if w < 0.0:
-            raise ValueError(f"Target weight for '{dim}' must be >= 0.0, got {w}")
+        if not -1.0 <= w <= 1.0:
+            raise ValueError(
+                f"Target weight for '{dim}' must be -1.0 to 1.0, got {w}"
+            )
     for dim, w in protect.items():
         if not 0.0 <= w <= 1.0:
             raise ValueError(f"Protect threshold for '{dim}' must be 0.0-1.0, got {w}")
@@ -57,8 +60,8 @@ def validate_goal_vector(
     if not 0.0 <= aggression <= 1.0:
         raise ValueError(f"aggression must be 0.0-1.0, got {aggression}")
 
-    # Normalize target weights to sum to ~1.0 if they don't already
-    total = sum(targets.values())
+    # Normalize magnitudes to sum to ~1.0 while preserving direction.
+    total = sum(abs(value) for value in targets.values())
     if targets and total > 0:
         if abs(total - 1.0) > 0.01:
             targets = {k: v / total for k, v in targets.items()}
@@ -167,4 +170,3 @@ def build_world_model_from_data(
         technical=technical,
         track_roles=track_roles,
     )
-

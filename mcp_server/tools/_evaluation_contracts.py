@@ -66,7 +66,8 @@ class EvaluationResult:
 
     Fields:
         engine: which engine produced this result
-        score: 0-1 composite quality score
+        score: 0-1 goal-fit score for the supplied target, not a universal
+               judgment of musical quality
         keep_change: should the move be kept?
         goal_progress: -1 to 1, how much the goal improved
         collateral_damage: 0-1, harm to protected dimensions
@@ -75,6 +76,8 @@ class EvaluationResult:
         notes: human-readable explanation
         decision_mode: "measured", "judgment", or "deferred"
         memory_candidate: should this outcome be saved to memory?
+        evidence_type: measured_audio, mixed, derived, or judgment
+        confidence: 0-1 evidence coverage, not aesthetic certainty
     """
     engine: str
     score: float = 0.0
@@ -86,6 +89,8 @@ class EvaluationResult:
     notes: list[str] = field(default_factory=list)
     decision_mode: str = "measured"
     memory_candidate: bool = False
+    evidence_type: str = "judgment"
+    confidence: float = 0.0
 
     def to_dict(self) -> dict:
         return asdict(self)

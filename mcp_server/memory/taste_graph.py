@@ -393,6 +393,7 @@ def build_taste_graph(
         for dim in taste_store.get_taste_dimensions():
             if dim.evidence_count > 0:
                 graph.dimension_weights[dim.name] = dim.value
+                graph.evidence_count += dim.evidence_count
 
     if anti_store:
         for pref in anti_store.get_anti_preferences():

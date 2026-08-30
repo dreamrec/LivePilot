@@ -205,6 +205,23 @@ class TestFabricSonicEvaluation:
         assert result.keep_change is True
         assert result.goal_progress > 0
         assert result.score > 0.40
+        assert result.evidence_type == "measured_audio"
+        assert result.confidence == 1.0
+
+    def test_signed_target_can_ask_for_less(self):
+        before = _make_snapshot(high=0.8, presence=0.8)
+        after = _make_snapshot(high=0.2, presence=0.2)
+        req = EvaluationRequest(
+            engine="sonic",
+            goal={"targets": {"brightness": -1.0}},
+            before=before,
+            after=after,
+            protect={},
+        )
+        result = evaluate_sonic_move(req)
+        assert result.keep_change is True
+        assert result.goal_progress > 0
+        assert result.dimension_changes["brightness"]["desired_direction"] == "decrease"
 
     def test_regression_undone(self):
         before = _make_snapshot(high=0.6, presence=0.5)

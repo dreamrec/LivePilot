@@ -47,7 +47,8 @@ VALID_RESEARCH_MODES = frozenset({"none", "targeted", "deep"})
 class GoalVector:
     """Compiled user intent as a machine-usable goal.
 
-    targets: dimension → weight (0-1). Weights should approximately sum to 1.0.
+    targets: dimension → signed weight (-1 to 1). Positive means increase,
+             negative means decrease; absolute weights sum to approximately 1.0.
     protect: dimension → minimum acceptable value (0-1). If a dimension drops
              below this value after a move, the move is undone.
     """

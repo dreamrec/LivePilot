@@ -85,10 +85,11 @@ def _fetch_mix_data(ctx: Context) -> dict:
 
 @mcp.tool()
 def analyze_mix(ctx: Context, target_style: str = "dynamic") -> dict:
-    """Build full mix state and run all critics.
+    """Build the available mix state and run all critics.
 
-    Returns the complete mix analysis including all sub-states
-    (balance, masking, dynamics, stereo, depth) and all detected issues.
+    Returns fader/role setup, available master or per-track measurements,
+    proxy-based stereo/depth views, and all detected issues. Read
+    ``analysis_scope`` and ``evidence`` before treating a finding as audible.
 
     target_style: intended dynamics target for the dynamics critic.
         "dynamic" (default) — standard mix expectations.
@@ -110,8 +111,11 @@ def analyze_mix(ctx: Context, target_style: str = "dynamic") -> dict:
     sonic_snapshot = normalize_sonic_snapshot(data["spectrum"], source="mix_engine")
     sonic_character = extract_character_profile(sonic_snapshot or {})
 
+    mix_payload = mix_state.to_dict()
     return {
-        "mix_state": mix_state.to_dict(),
+        "mix_state": mix_payload,
+        "analysis_scope": mix_payload["analysis_scope"],
+        "evidence": mix_payload["evidence"],
         "sonic_character": sonic_character,
         "issues": [i.to_dict() for i in issues],
         "suggested_moves": [m.to_dict() for m in moves],
@@ -139,8 +143,11 @@ def get_mix_issues(ctx: Context, target_style: str = "dynamic") -> dict:
         mix_state, dynamics_context={"target_style": target_style}
     )
     sonic_snapshot = normalize_sonic_snapshot(data["spectrum"], source="mix_engine")
+    evidence = mix_state.evidence_summary()
 
     return {
+        "analysis_scope": evidence["analysis_scope"],
+        "evidence": evidence,
         "sonic_character": extract_character_profile(sonic_snapshot or {}),
         "issues": [i.to_dict() for i in issues],
         "issue_count": len(issues),
@@ -164,8 +171,11 @@ def plan_mix_move(ctx: Context) -> dict:
     issues = run_all_mix_critics(mix_state)
     moves = plan_mix_moves(issues, mix_state)
     sonic_snapshot = normalize_sonic_snapshot(data["spectrum"], source="mix_engine")
+    evidence = mix_state.evidence_summary()
 
     return {
+        "analysis_scope": evidence["analysis_scope"],
+        "evidence": evidence,
         "sonic_character": extract_character_profile(sonic_snapshot or {}),
         "moves": [m.to_dict() for m in moves],
         "move_count": len(moves),
@@ -190,7 +200,8 @@ def evaluate_mix_move(
     Args:
         before_snapshot: Spectral snapshot before the move.
         after_snapshot: Spectral snapshot after the move.
-        targets: Goal targets {dimension: weight} (e.g. {"clarity": 0.5}).
+        targets: Signed goal targets {dimension: weight}; negative means less
+          (e.g. {"clarity": 0.5, "brightness": -0.5}).
         protect: Protected dimensions {dimension: threshold}.
     """
     targets = targets or {}
@@ -222,8 +233,11 @@ def get_masking_report(ctx: Context) -> dict:
         rms_data=data["rms_data"],
     )
     masking = mix_state.masking
+    evidence = mix_state.evidence_summary()
 
     return {
+        "analysis_scope": evidence["analysis_scope"],
+        "evidence": evidence,
         "masking": masking.to_dict(),
         "collision_count": len(masking.entries),
         "worst_pair": list(masking.worst_pair) if masking.worst_pair else None,
@@ -245,8 +259,11 @@ def get_mix_summary(ctx: Context) -> dict:
     )
     issues = run_all_mix_critics(mix_state)
     sonic_snapshot = normalize_sonic_snapshot(data["spectrum"], source="mix_engine")
+    evidence = mix_state.evidence_summary()
 
     return {
+        "analysis_scope": evidence["analysis_scope"],
+        "evidence": evidence,
         "track_count": len(mix_state.balance.track_states),
         "issue_count": len(issues),
         "sonic_character": extract_character_profile(sonic_snapshot or {}),
