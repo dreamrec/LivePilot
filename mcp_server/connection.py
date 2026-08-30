@@ -74,6 +74,21 @@ def _is_single_client_state_error(response: dict) -> bool:
     )
 
 
+def _can_retry_after_ambiguous_send(command_type: str) -> bool:
+    """Whether replay is safe after bytes were sent but no reply arrived.
+
+    A closed socket does not prove that Live skipped the command. Only reads
+    and explicitly proven overwrite operations may be replayed automatically;
+    create/add/delete mutations must surface an unknown outcome instead of
+    risking a duplicate edit.
+    """
+    if command_type == "ping" or command_type == "set_tempo":
+        return True
+    return command_type.startswith(
+        ("get_", "list_", "search_", "scan_", "check_", "verify_", "detect_")
+    )
+
+
 def _identify_other_tcp_client(host: str, port: int) -> str | None:
     """Return a short description of another established client on the Live port."""
     try:
@@ -218,17 +233,17 @@ class AbletonConnection:
                     # the transition. Retry ONCE with backoff so an
                     # immediate follow-up command survives.
                     #
-                    # Idempotence note: most commands are idempotent
-                    # (set_tempo, set_track_volume overwrite; get_*
-                    # reads are side-effect-free). Non-idempotent
-                    # mutations (add_notes, create_clip) may in theory
-                    # double-apply — but in practice Ableton's
-                    # single-threaded command processing means the
-                    # "Connection closed" happens BEFORE command
-                    # processing begins, not after. Campaign repros
-                    # showed 3/3 set_tempo failures post-Cmd+N that
-                    # would have been fine to retry.
                     if "Connection closed by Ableton" in str(exc):
+                        if not _can_retry_after_ambiguous_send(command_type):
+                            uncertain = AbletonConnectionError(
+                                "Ableton closed the connection after receiving "
+                                f"'{command_type}', so its outcome is unknown. "
+                                "LivePilot did not replay the command because it "
+                                "could duplicate a mutation. Inspect the session "
+                                "state, then retry manually only if needed."
+                            )
+                            uncertain._send_completed = True
+                            raise uncertain from exc
                         logger.warning(
                             "Ableton closed socket mid-%s — likely UI "
                             "state transition. Retrying once after %dms.",

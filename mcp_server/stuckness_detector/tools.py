@@ -183,7 +183,6 @@ def suggest_momentum_rescue(
 def start_rescue_workflow(
     ctx: Context,
     rescue_type: str = "",
-    kernel_id: str = "",
 ) -> dict:
     """Start a structured rescue workflow for a specific stuckness type.
 
@@ -194,7 +193,6 @@ def start_rescue_workflow(
                  "hook_underdeveloped", "transition_not_earned",
                  "overpolished_loop", "identity_unclear",
                  "too_dense_to_progress", "too_safe_to_progress"
-    kernel_id: optional session kernel reference
     """
     from .models import RESCUE_TYPES
 

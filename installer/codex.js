@@ -16,6 +16,27 @@ const DEFAULT_CODEX_CACHE_ROOT = path.join(os.homedir(), ".codex", "plugins", "c
 
 const SKIP = new Set(["__pycache__", ".DS_Store"]);
 
+function assertSafeRemovalTarget(target, label = "path") {
+  if (typeof target !== "string" || !target.trim()) {
+    throw new Error(`Refusing to remove empty ${label}`);
+  }
+  const resolved = path.resolve(target);
+  const filesystemRoot = path.parse(resolved).root;
+  const protectedExact = new Set([
+    filesystemRoot,
+    path.resolve(os.homedir()),
+    path.resolve(process.cwd()),
+    ROOT,
+    SOURCE_DIR,
+  ]);
+  const insideRepository = resolved.startsWith(ROOT + path.sep);
+  const containsRepository = ROOT.startsWith(resolved + path.sep);
+  if (protectedExact.has(resolved) || insideRepository || containsRepository) {
+    throw new Error(`Refusing unsafe recursive removal target for ${label}: ${resolved}`);
+  }
+  return resolved;
+}
+
 function copyDirSync(src, dest) {
   fs.mkdirSync(dest, { recursive: true });
   const entries = fs.readdirSync(src, { withFileTypes: true });
@@ -93,6 +114,7 @@ function ensureLowercaseCodexManifest(destDir) {
 }
 
 function copyPluginTo(destDir) {
+  assertSafeRemovalTarget(destDir, "Codex plugin destination");
   fs.mkdirSync(path.dirname(destDir), { recursive: true });
   fs.rmSync(destDir, { recursive: true, force: true });
   copyDirSync(SOURCE_DIR, destDir);
@@ -115,6 +137,7 @@ function pruneStaleCacheVersions(pluginName, keepVersion) {
       continue;
     }
     const stalePath = path.join(pluginCacheRoot, entry.name);
+    assertSafeRemovalTarget(stalePath, "stale Codex cache");
     fs.rmSync(stalePath, { recursive: true, force: true });
     removed.push(stalePath);
   }
@@ -185,6 +208,8 @@ function installCodexPlugin() {
   const pluginVersion = manifest.version || "unknown";
   const destDir = targetPluginDir();
   const cacheDir = targetCacheDir(pluginName, pluginVersion);
+  assertSafeRemovalTarget(destDir, "Codex plugin destination");
+  assertSafeRemovalTarget(cacheDir, "Codex plugin cache");
   const marketFile = ensureMarketplace(pluginName);
 
   console.log("Installing LivePilot Codex plugin...");
@@ -216,6 +241,7 @@ function uninstallCodexPlugin() {
   const marketFile = removeMarketplaceEntry(pluginName);
 
   if (fs.existsSync(destDir)) {
+    assertSafeRemovalTarget(destDir, "Codex plugin destination");
     console.log("Removing Codex plugin: %s", destDir);
     fs.rmSync(destDir, { recursive: true, force: true });
   } else {
@@ -223,6 +249,7 @@ function uninstallCodexPlugin() {
   }
 
   if (fs.existsSync(cacheDir)) {
+    assertSafeRemovalTarget(cacheDir, "Codex plugin cache");
     console.log("Removing Codex plugin cache: %s", cacheDir);
     fs.rmSync(cacheDir, { recursive: true, force: true });
   }
@@ -234,6 +261,7 @@ function uninstallCodexPlugin() {
 }
 
 module.exports = {
+  assertSafeRemovalTarget,
   installCodexPlugin,
   uninstallCodexPlugin,
 };

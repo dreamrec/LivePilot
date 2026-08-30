@@ -133,6 +133,19 @@ def test_build_taste_graph_integration():
     assert "brightness" in graph.dimension_avoidances
 
 
+def test_session_dimension_evidence_activates_graph():
+    from mcp_server.memory.taste_memory import TasteMemoryStore
+
+    taste_store = TasteMemoryStore()
+    taste_store.record_preference("warmth", "increase")
+    taste_store.record_preference("width", "decrease")
+
+    graph = build_taste_graph(taste_store=taste_store)
+    assert graph.evidence_count == 2
+    assert graph.dimension_weights["warmth"] > 0
+    assert graph.dimension_weights["width"] < 0
+
+
 def test_to_dict_structure():
     graph = TasteGraph()
     graph.record_move_outcome("punchier", "mix", kept=True)

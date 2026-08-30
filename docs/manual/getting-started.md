@@ -182,9 +182,13 @@ Middle C is 60. Standard drum mapping (General MIDI):
 - 46 = Open Hi-Hat
 - 49 = Crash Cymbal
 
-### Undo is your safety net
+### Undo is your safety net inside the Live set
 
-Every destructive operation can be undone. The AI has access to `undo` and `redo`. If something goes wrong, just say "undo that."
+Most clip, device, mixer, and Arrangement edits participate in Ableton's undo
+history, and the AI has access to `undo` and `redo`. Downloads, saved memories,
+library scans, installer changes, and other filesystem actions do not. LivePilot
+previews or asks before a consequential action when undo is not an honest safety
+net.
 
 ### Always verify after changes
 

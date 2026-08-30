@@ -54,23 +54,27 @@ See [Install](#install) for client-specific setup and manual options.
 
 ---
 
-## What's New in v1.29.0
+## What's New in v1.30.0
 
-LivePilot now learns from comparisons instead of inventing absolute taste scores, and it
-adds named Arrangement locators.
+LivePilot now spends far less context describing itself and gives clearer answers about
+what it actually knows.
 
-- **Taste from real choices.** `taste_record_pair`, `taste_train`, and `taste_rank` learn from
-  audio you kept versus audio you discarded.
-- **Honest confidence.** Results are grouped by session, weak evidence stays inconclusive,
-  and certification requires at least five independent sessions.
-- **A better answer to “did this actually change?”** Optional CLAP embeddings add perceptual
-  distance to `listen_capture` and `listen_ab` without adding model dependencies to the core install.
-- **Named locators.** Create or rename Arrangement markers without moving the playhead.
-- **Cleaner plumbing.** The MCP handshake reports LivePilot's own version, FastMCP 3.4.7 is the
-  security baseline, and NumPy 2.5 is supported.
+- **A focused first contact.** Normal sessions advertise 28 useful entry points instead of
+  sending all 474 schemas up front. The rest remain searchable and directly callable.
+- **Options that mean something.** Decorative Composer, Atlas, and routing parameters are gone;
+  sample roles and material filters now change the result; unsupported abstract events fail
+  with concrete guidance instead of disappearing silently.
+- **Evidence with a label.** Mix and evaluation reports separate measured audio, setup-derived
+  heuristics, and artistic judgment. “Less bright” and other reduction goals now score in the
+  right direction.
+- **Depth when it earns its keep.** Quick creative requests take a quick path. Three-way
+  exploration, broad memory reads, and full critic passes are reserved for real ambiguity.
+- **More resilient sessions.** Startup no longer waits on optional services, ambiguous network
+  failures do not replay destructive edits, and project memory follows the Live set rather than
+  ordinary edits inside it.
 
-Previous release v1.28.0 introduced the offline Listening Engine, authenticated OSC 9881 bridge
-commands, capture-pipeline fixes, and stalled-stream detection.
+Previous release v1.29.0 introduced learned perceptual taste, honest confidence gates,
+optional CLAP distance, and named Arrangement locators.
 
 Full details in the [CHANGELOG](CHANGELOG.md).
 
@@ -251,7 +255,15 @@ Every engine follows: **measure before → act → measure after → compare**. 
 
 ## Tools
 
-474 tools across 57 domains. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
+LivePilot has 474 tools across 57 domains, but it no longer sends that entire
+schema to the AI on every connection. The default `producer` profile exposes a
+focused 26-tool production loop plus `search_tools` and `call_tool`; every other
+tool remains searchable and directly callable by name. This keeps the initial
+catalog under 40 KB while preserving the full system.
+
+Use `LIVEPILOT_TOOL_PROFILE=composition`, `mixing`, or `sampling` to pin more
+domain tools. Set `LIVEPILOT_TOOL_PROFILE=full` for legacy clients or catalog
+diagnostics. Highlights below — [full catalog here](docs/manual/tool-catalog.md).
 
 <br>
 
@@ -280,7 +292,7 @@ Every engine follows: **measure before → act → measure after → compare**. 
 
 ### M4L Bridge — 38 analyzer tools `[optional]`, 32 bridge commands
 
-The M4L Analyzer sits on the master track. UDP 9880 carries spectral data to the server. OSC 9881 sends commands back. The `ensure_analyzer_on_master` pre-flight (v1.20.3) loads the analyzer idempotently on first use — call it once at session start and forget about it.
+The M4L Analyzer sits on the master track. UDP 9880 carries spectral data to the server. OSC 9881 sends commands back. The `ensure_analyzer_on_master` pre-flight (v1.20.3) loads the analyzer idempotently when an audio-dependent decision needs it.
 
 > [!TIP]
 > Most tools work without the analyzer — it adds 38 spectral/analyzer tools (frequency, loudness, perception, Simpler, warp) and closes the feedback loop.
@@ -699,7 +711,7 @@ livepilot --install
 <summary><strong>3. M4L Analyzer (optional — adds 38 tools)</strong></summary>
 
 Drag `LivePilot_Analyzer.amxd` onto the master track for real-time spectral analysis.
-The `--setup` wizard and Desktop Extension do this automatically. From v1.20.3, your AI client can also call `ensure_analyzer_on_master` — an idempotent pre-flight that loads the device if missing and no-ops otherwise. The Creative Director skill does this on every session's Phase 1 ground read so you can't forget.
+The `--setup` wizard and Desktop Extension install both the device and its sibling bridge script automatically. From v1.20.3, your AI client can also call `ensure_analyzer_on_master` — an idempotent pre-flight that loads the device if missing and no-ops otherwise. Creative workflows call it only when the decision or verification needs audio evidence.
 
 > **Important:** The Analyzer must be the LAST device on the master track — after all effects (EQ, Compressor, Utility) so it reads the final output signal. The pre-flight tool reports `is_last_on_master: bool` and warns if the invariant is broken.
 

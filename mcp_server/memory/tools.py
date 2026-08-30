@@ -245,20 +245,16 @@ def record_positive_preference(
     Complements record_anti_preference — this records what users LIKE,
     not just what they dislike.
     """
+    if direction not in ("increase", "decrease"):
+        return {
+            "error": "direction must be 'increase' or 'decrease'",
+            "code": "INVALID_PARAM",
+        }
     taste_store = _get_taste_memory(ctx)
-    # Find matching outcome signals for this dimension+direction
-    from ..memory.taste_memory import _OUTCOME_SIGNALS
-    matching_signals = []
-    dim_signals = _OUTCOME_SIGNALS.get(dimension, {})
-    for sig_name, adjustment in dim_signals.items():
-        # "increase" preference → match positive-adjustment signals (kept)
-        # "decrease" preference → match negative-adjustment signals (undone/less)
-        if direction == "increase" and adjustment > 0:
-            matching_signals.append(sig_name)
-        elif direction == "decrease" and adjustment < 0:
-            matching_signals.append(sig_name)
-    if matching_signals:
-        taste_store.update_from_outcome({"signals": matching_signals})
+    try:
+        preference = taste_store.record_preference(dimension, direction)
+    except ValueError as exc:
+        return {"error": str(exc), "code": "INVALID_PARAM"}
     # P2-29 (dimension-weight half): persist the updated dimension weight so it
     # survives a server restart — symmetric with record_anti_preference. Without
     # this the persisted dimension_weights hydration branch in build_taste_graph
@@ -266,20 +262,18 @@ def record_positive_preference(
     # authoritative for the in-session response.
     persisted = False
     persistent = _get_persistent_taste_store(ctx)
-    if persistent is not None and matching_signals:
+    if persistent is not None:
         try:
-            for dim in taste_store.get_taste_dimensions():
-                if dim.name == dimension and dim.evidence_count > 0:
-                    persistent.record_dimension_weight(dimension, dim.value)
-                    persisted = True
-                    break
+            persistent.record_dimension_weight(preference.name, preference.value)
+            persisted = True
         except Exception as exc:  # pragma: no cover - defensive
             logger.debug("persist dimension_weight failed: %s", exc)
     return {
-        "recorded": bool(matching_signals),
-        "dimension": dimension,
+        "recorded": True,
+        "dimension": preference.name,
         "direction": direction,
-        "signals_matched": matching_signals,
+        "value": round(preference.value, 3),
+        "evidence_count": preference.evidence_count,
         "evidence": evidence,
         "persisted": persisted,
     }

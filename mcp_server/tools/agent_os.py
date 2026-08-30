@@ -65,8 +65,9 @@ def compile_goal_vector(
     The agent interprets the user's natural language into quality dimensions,
     then this tool validates the schema and normalizes weights.
 
-    targets: dict of dimension → weight (e.g., {"punch": 0.4, "weight": 0.3, "energy": 0.3}).
-             Weights are normalized to sum to 1.0.
+    targets: dict of dimension → signed weight. Positive asks for more,
+             negative asks for less (e.g., {"brightness": -0.6, "warmth": 0.4}).
+             Absolute weights are normalized to sum to 1.0.
     protect: dict of dimension → minimum threshold (e.g., {"clarity": 0.8}).
              If a dimension drops below this value after a move, the move is undone.
     mode: observe | improve | explore | finish | diagnose

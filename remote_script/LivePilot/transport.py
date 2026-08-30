@@ -2,13 +2,46 @@
 LivePilot - Transport domain handlers (19 commands).
 """
 
+import uuid
+
 from .router import register
 from .version_detect import version_string, get_api_features
+
+
+# ``ControlSurface.song()`` returns a fresh Python proxy on each call in Live
+# 12.4, so ``id(song)`` changes even when the loaded Set has not. Keep one
+# proxy and use Live's underlying-object equality to detect an actual Set
+# change. Preserve these globals across importlib.reload() so the development
+# reload workflow does not split an unsaved project's persistence identity.
+_session_identity_song = globals().get("_session_identity_song")
+_session_identity_token = globals().get("_session_identity_token", "")
+
+
+def _get_session_instance_id(song):
+    """Return a stable token for the currently loaded Live Set."""
+    global _session_identity_song, _session_identity_token
+
+    same_song = False
+    if _session_identity_song is not None:
+        try:
+            same_song = bool(song == _session_identity_song)
+        except Exception:
+            # A proxy for a closed Set can become invalid while comparing.
+            same_song = song is _session_identity_song
+
+    if not same_song or not _session_identity_token:
+        _session_identity_song = song
+        _session_identity_token = uuid.uuid4().hex
+    return _session_identity_token
 
 
 @register("get_session_info")
 def get_session_info(song, params):
     """Return comprehensive session state."""
+    try:
+        file_path = str(song.file_path or "")
+    except Exception:
+        file_path = ""
     tracks_info = []
     for i, track in enumerate(song.tracks):
         track_data = {
@@ -63,6 +96,11 @@ def get_session_info(song, params):
         })
 
     return {
+        # Stable across fresh Python proxies and mutable edits within this
+        # loaded Live Set. Saved sets additionally expose file_path for
+        # persistence across Ableton restarts.
+        "session_instance_id": _get_session_instance_id(song),
+        "file_path": file_path,
         "tempo": song.tempo,
         "signature_numerator": song.signature_numerator,
         "signature_denominator": song.signature_denominator,

@@ -121,10 +121,17 @@ def _safe_get_taste_profile(ctx: Any) -> Optional[dict]:
     if ctx is None:
         return None
     try:
-        # The taste graph tools live under mcp_server/tools/agent_os.py;
-        # importing here would create a cycle, so leave as None for now.
-        # v1.25.x will wire in get_taste_profile() once the cycle is broken.
-        return None
+        lifespan = getattr(ctx, "lifespan_context", ctx)
+        if not isinstance(lifespan, dict):
+            return None
+        from ...memory.taste_graph import build_taste_graph
+
+        graph = build_taste_graph(
+            taste_store=lifespan.get("taste_memory"),
+            anti_store=lifespan.get("anti_memory"),
+            persistent_store=lifespan.get("persistent_taste"),
+        )
+        return graph.to_dict()
     except Exception:
         return None
 

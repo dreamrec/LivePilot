@@ -162,11 +162,52 @@ class MixState:
     stereo: StereoState = field(default_factory=StereoState)
     depth: DepthState = field(default_factory=DepthState)
 
+    def evidence_summary(self) -> dict:
+        """Describe what each sub-state actually measures.
+
+        Fader positions, pan, and sends are useful setup evidence, but they are
+        not interchangeable with hearing each track. This label travels with
+        every public Mix Engine response so callers can calibrate claims.
+        """
+        measured_masking = sum(1 for entry in self.masking.entries if entry.measured)
+        heuristic_masking = len(self.masking.entries) - measured_masking
+        if measured_masking and not heuristic_masking:
+            masking_basis = "per_track_audio"
+        elif measured_masking:
+            masking_basis = "mixed_per_track_audio_and_role_heuristic"
+        elif heuristic_masking:
+            masking_basis = "role_heuristic"
+        else:
+            masking_basis = "unavailable_or_no_candidate_pairs"
+
+        if measured_masking:
+            scope = "per_track_audio_and_mix_setup"
+        elif self.dynamics.headroom is not None:
+            scope = "master_audio_and_mix_setup"
+        else:
+            scope = "mix_setup_audit"
+
+        return {
+            "analysis_scope": scope,
+            "balance": "fader_and_role_setup",
+            "masking": masking_basis,
+            "dynamics": (
+                "master_audio" if self.dynamics.headroom is not None else "unavailable"
+            ),
+            "stereo": "pan_position_proxy",
+            "depth": "send_level_proxy",
+            "measured_masking_entries": measured_masking,
+            "heuristic_masking_entries": heuristic_masking,
+        }
+
     def to_dict(self) -> dict:
+        evidence = self.evidence_summary()
         return {
             "balance": self.balance.to_dict(),
             "masking": self.masking.to_dict(),
             "dynamics": self.dynamics.to_dict(),
             "stereo": self.stereo.to_dict(),
             "depth": self.depth.to_dict(),
+            "analysis_scope": evidence["analysis_scope"],
+            "evidence": evidence,
         }

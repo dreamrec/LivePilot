@@ -841,26 +841,13 @@ async function setup() {
   // 4. Copy M4L Analyzer to User Library
   console.log("");
   console.log("Step 4/5: Installing M4L Analyzer...");
-  const analyzerSrc = path.join(ROOT, "m4l_device", "LivePilot_Analyzer.amxd");
-  if (fs.existsSync(analyzerSrc)) {
-    const home = require("os").homedir();
-    let dest;
-    if (process.platform === "darwin") {
-      dest = path.join(home, "Music", "Ableton", "User Library", "Presets",
-                        "Audio Effects", "Max Audio Effect");
-    } else {
-      dest = path.join(home, "Documents", "Ableton", "User Library", "Presets",
-                        "Audio Effects", "Max Audio Effect");
-    }
-    try {
-      fs.mkdirSync(dest, { recursive: true });
-      fs.copyFileSync(analyzerSrc, path.join(dest, "LivePilot_Analyzer.amxd"));
-      console.log("  ✓ Analyzer copied to %s", dest);
-    } catch (err) {
-      console.log("  ✗ Failed: %s", err.message);
-    }
-  } else {
-    console.log("  ⊘ Analyzer not found in package (optional)");
+  try {
+    const { installAnalyzer } = require(path.join(ROOT, "installer", "analyzer.js"));
+    const result = installAnalyzer();
+    console.log("  ✓ Analyzer + bridge ready at %s", result.destination);
+  } catch (err) {
+    console.log("  ✗ Failed: %s", err.message);
+    ok = false;
   }
 
   // 5. Connection test
@@ -916,7 +903,7 @@ async function main() {
     console.log("Commands:");
     console.log("  (none)        Start the MCP server");
     console.log("  --setup       Full setup wizard (install + configure + test)");
-    console.log("  --install     Install Remote Script into Ableton Live");
+    console.log("  --install     Install Remote Script and M4L Analyzer into Ableton Live");
     console.log("  --uninstall   Remove Remote Script from Ableton Live");
     console.log("  --install-codex-plugin   Install the bundled Codex plugin locally");
     console.log("  --uninstall-codex-plugin Remove the locally installed Codex plugin");
@@ -931,6 +918,7 @@ async function main() {
     console.log("  LIVE_MCP_PORT          Remote Script port (default: 9878)");
     console.log("  LIVEPILOT_AUTO_INSTALL Auto-install Remote Script on launch (set to 'true')");
     console.log("  LIVEPILOT_TCP_PORT     Override Remote Script port (Desktop Extension/MCPB)");
+    console.log("  LIVEPILOT_TOOL_PROFILE Tool catalog: producer (default), composition, mixing, sampling, or full");
     return;
   }
 
@@ -946,6 +934,9 @@ async function main() {
       }
       throw err;
     }
+    const { installAnalyzer } = require(path.join(ROOT, "installer", "analyzer.js"));
+    const analyzer = installAnalyzer();
+    console.log("Analyzer + bridge installed to %s", analyzer.destination);
     return;
   }
 
@@ -998,6 +989,7 @@ async function main() {
   if (process.env.LIVEPILOT_AUTO_INSTALL === "true") {
     try {
       const { install } = require(path.join(ROOT, "installer", "install.js"));
+      const { installAnalyzer } = require(path.join(ROOT, "installer", "analyzer.js"));
       const { findAbletonPaths } = require(path.join(ROOT, "installer", "paths.js"));
       const candidates = findAbletonPaths();
       if (candidates.length > 0) {
@@ -1008,6 +1000,10 @@ async function main() {
           install();
           console.error("LivePilot: Remote Script installed. Select 'LivePilot' in Ableton > Preferences > Link, Tempo & MIDI > Control Surface.");
         }
+      }
+      const analyzer = installAnalyzer();
+      if (analyzer.changed) {
+        console.error("LivePilot: Analyzer + bridge installed to %s", analyzer.destination);
       }
     } catch (err) {
       console.error("LivePilot: auto-install skipped (%s)", err.message);

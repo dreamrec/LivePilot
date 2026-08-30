@@ -31,12 +31,13 @@ def evaluate_with_fabric(
         engine: "sonic", "composition", "mix", "transition", or "translation"
         before_snapshot: State before the move (format depends on engine)
         after_snapshot: State after the move (format depends on engine)
-        targets: Goal targets — for sonic: {dimension: weight}, ignored for others
+        targets: Goal targets — for sonic: {dimension: signed weight}; positive
+          means increase and negative means decrease. Ignored for other engines.
         protect: Protected dimensions — for sonic: {dimension: threshold}
 
     Returns:
         EvaluationResult as dict with score, keep_change, goal_progress,
-        collateral_damage, dimension_changes, notes, etc.
+        collateral_damage, dimension_changes, evidence_type, confidence, notes, etc.
     """
     targets = targets or {}
     protect = protect or {}

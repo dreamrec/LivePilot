@@ -101,6 +101,37 @@ def _load_transport_module():
     return _load("remote_script.LivePilot.transport", REMOTE_ROOT / "transport.py")
 
 
+class _SongProxy:
+    """Fresh wrappers compare equal when they represent the same Live Set."""
+
+    def __init__(self, underlying_id: str):
+        self.underlying_id = underlying_id
+
+    def __eq__(self, other: object) -> bool:
+        return (
+            isinstance(other, _SongProxy)
+            and self.underlying_id == other.underlying_id
+        )
+
+
+def test_session_identity_survives_fresh_proxy_objects():
+    transport = _load_transport_module()
+
+    first = transport._get_session_instance_id(_SongProxy("set-a"))
+    second = transport._get_session_instance_id(_SongProxy("set-a"))
+
+    assert first == second
+
+
+def test_session_identity_changes_for_a_new_live_set():
+    transport = _load_transport_module()
+
+    first = transport._get_session_instance_id(_SongProxy("set-a"))
+    second = transport._get_session_instance_id(_SongProxy("set-b"))
+
+    assert first != second
+
+
 # ─── LOM doubles ────────────────────────────────────────────────────────────
 
 class _Volume:

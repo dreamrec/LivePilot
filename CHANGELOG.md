@@ -2,6 +2,46 @@
 
 ## Unreleased
 
+## v1.30.0 — 2026-08-30
+
+### Changed — smaller context, clearer creative decisions
+- The default MCP catalog is now a search-first `producer` profile: 26 pinned
+  production tools plus `search_tools` and `call_tool`, with all 474 tools still
+  searchable and directly callable. Optional `composition`, `mixing`,
+  `sampling`, and `full` profiles make the tradeoff explicit.
+- Creative Director work now scales through FAST, NORMAL, and DEEP lanes.
+  Quick reversible requests use one grounded plan and one verification; full
+  three-family exploration is reserved for real ambiguity or an explicit ask.
+- Mix and evaluation responses distinguish measured audio, setup-derived
+  heuristics, mixed evidence, and artistic judgment. Signed goals now evaluate
+  “less brightness” and other reductions in the correct direction.
+
+### Fixed — options now do what their schemas imply
+- Removed unused Composer, Atlas, and stuckness parameters; `search_samples.q`
+  works without also supplying `query`; material, role, and section filters now
+  affect sample results and workflow plans.
+- Full Composer plans reject abstract `events` with translation guidance instead
+  of accepting and silently ignoring them. Develop-mode bridge lookup uses the
+  live lifespan key.
+- Routing no longer treats ordinary words such as “set” or “loop” as proof of a
+  live-performance or sampling request when the stronger intent is mixing or
+  arranging a song.
+- Direct taste dimensions persist with evidence and reach Composer device
+  ranking; arbitrary axes such as warmth, width, and punch no longer disappear.
+
+### Fixed — runtime and installation reliability
+- Ambiguous socket failures replay only proven-safe commands; clip, note, track,
+  and delete mutations report an unknown outcome instead of risking duplicates.
+- Optional startup probes run in the background, so a slow or absent Ableton,
+  analyzer, Splice app, or project store no longer delays the MCP handshake.
+- Project continuity uses saved-set path or Live session identity, preventing
+  ordinary edits from creating a new project while keeping newly opened sets
+  isolated. Live testing caught that `ControlSurface.song()` returns a fresh
+  Python proxy on every read; the identity token now follows Live's underlying
+  Song equality instead of the wrapper's changing memory address.
+- The installer copies `livepilot_bridge.js` beside the Analyzer every time,
+  and Codex plugin cleanup refuses repository or broad recursive targets.
+
 ## v1.29.0 — 2026-08-21
 
 Perceptual taste learning, named Arrangement locators, and dependency/runtime

@@ -191,6 +191,8 @@ def make_session_scene_summary(index: int = 0, name: str = "Scene 1", tempo: Opt
 
 def make_session_info(
     *,
+    session_instance_id: str = "test-song-instance",
+    file_path: str = "",
     tempo: float = 120.0,
     signature_numerator: int = 4,
     signature_denominator: int = 4,
@@ -214,6 +216,8 @@ def make_session_info(
     scenes_info = scenes if scenes is not None else [make_session_scene_summary(0)]
 
     return {
+        "session_instance_id": session_instance_id,
+        "file_path": file_path,
         "tempo": tempo,
         "signature_numerator": signature_numerator,
         "signature_denominator": signature_denominator,

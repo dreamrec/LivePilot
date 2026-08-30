@@ -7,12 +7,10 @@ minutes — reliably after each ``Cmd+N`` keystroke followed by an
 immediate ``set_tempo`` call. The Remote Script's socket receive
 returned empty bytes; send_command raised without retry.
 
-Fix: when a command fails with ``Connection closed by Ableton``,
-reconnect and retry ONCE after a 400ms backoff. Idempotent mutations
-(set_tempo, set_track_volume) tolerate the rare double-apply; strict
-callers can layer their own read-first-then-write pattern if they
-care. The retry is capped at one attempt — further failures raise
-and the caller learns there's a real problem beyond a UI transition.
+Fix: when a replay-safe command fails with ``Connection closed by Ableton``,
+reconnect and retry ONCE after a 400ms backoff. Non-idempotent mutations
+surface an unknown outcome and are never replayed automatically. The retry
+is capped at one attempt.
 
 Campaign source: ~/Desktop/DREAM AI/demo Project/REPORT.md
 §"Reproducible race condition".
@@ -70,6 +68,25 @@ class TestUITransitionRetry:
         # Retry path should have disconnected + reconnected once
         assert disc.called
         assert conn_mock.called
+
+    @pytest.mark.parametrize("command_type", ["add_notes", "create_clip", "delete_track"])
+    def test_ambiguous_non_idempotent_mutation_is_not_replayed(self, command_type):
+        from mcp_server.connection import AbletonConnection, AbletonConnectionError
+        conn = AbletonConnection(host="127.0.0.1", port=9878)
+
+        def fake_send_raw(command, recv_timeout=None):
+            fake_send_raw.call_count += 1
+            err = AbletonConnectionError("Connection closed by Ableton")
+            err._send_completed = True
+            raise err
+        fake_send_raw.call_count = 0
+
+        with patch.object(conn, "_send_raw", side_effect=fake_send_raw):
+            with patch.object(conn, "is_connected", return_value=True):
+                with pytest.raises(AbletonConnectionError, match="outcome is unknown"):
+                    conn.send_command(command_type, {})
+
+        assert fake_send_raw.call_count == 1
 
     def test_no_retry_on_timeout(self):
         """Timeout errors are NOT retried — Ableton may have processed

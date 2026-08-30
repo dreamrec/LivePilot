@@ -77,9 +77,10 @@ _ROUTING_PATTERNS: list[tuple[str, str, str, str, list[str]]] = [
     (r"headroom|clip|peak|limit", "mix_engine", "mix", "analyze_mix", ["plan_mix_move"]),
     (r"depth|dry|wet|reverb.?mix|send", "mix_engine", "mix", "analyze_mix", ["plan_mix_move"]),
     (r"mask|frequency.?collis|overlap", "mix_engine", "mix", "get_masking_report", ["plan_mix_move"]),
+    (r"\bmix(?:ing)?\b|\bfader\b|\bvolume\b|louder|quieter", "mix_engine", "mix", "analyze_mix", ["plan_mix_move"]),
 
     # Composition requests
-    (r"arrange|arrangement|song.?structure|loop.?to.?song", "composition", "composition", "plan_arrangement", ["analyze_composition"]),
+    (r"arrange|arrangement|song.?structure|loop.*(?:into|to).*(?:song|arrangement)", "composition", "composition", "plan_arrangement", ["analyze_composition"]),
     (r"section|verse|chorus|drop|intro|outro|bridge|breakdown", "composition", "composition", "analyze_composition", ["get_section_graph"]),
     (r"phrase|motif|pattern|repetit|variation", "composition", "composition", "analyze_composition", ["get_motif_graph"]),
     (r"tension|energy.?arc|emotional|build.?up", "composition", "composition", "get_emotional_arc", ["analyze_composition"]),
@@ -105,7 +106,7 @@ _ROUTING_PATTERNS: list[tuple[str, str, str, str, list[str]]] = [
     (r"harsh|bright.?hurt|sibilant|ear.?fatigue", "translation_engine", "translation", "check_translation", []),
 
     # Performance requests
-    (r"live|perform|set|scene.?steer|safe.?mode|improv", "performance_engine", "performance", "get_performance_state", ["get_performance_safe_moves"]),
+    (r"\b(?:live set|performance|performing|perform|gig|show|on stage|scene.?steer|safe.?mode|improv)\b", "performance_engine", "performance", "get_performance_state", ["get_performance_safe_moves"]),
     (r"scene.?transition|handoff.?scene|energy.?steer", "performance_engine", "performance", "plan_scene_handoff", ["get_performance_safe_moves"]),
 
     # Research requests
@@ -160,7 +161,10 @@ def _find_matching_semantic_moves(request_lower: str) -> list[dict]:
 def _infer_workflow_mode(request_lower: str) -> str:
     """Infer the appropriate workflow mode from request language."""
     # Performance-safe keywords
-    if re.search(r"live|perform|safe|set\b|show\b|gig", request_lower):
+    if re.search(
+        r"\b(?:live set|performance|performing|perform|gig|show|on stage|safe mode)\b",
+        request_lower,
+    ):
         return "performance_safe"
 
     # Creative search keywords
@@ -177,7 +181,7 @@ def _infer_workflow_mode(request_lower: str) -> str:
 
     # Sample workflows
     if re.search(r"sample|splice|foley|found.?sound|one.?shot|break(?:beat)?|flip|loop", request_lower):
-        if re.search(r"arrange|section|verse|chorus|drop|bridge|hook", request_lower):
+        if re.search(r"arrange|arrangement|song|section|verse|chorus|drop|bridge|hook", request_lower):
             return "sample_plus_arrangement"
         return "sample_discovery"
 
@@ -210,6 +214,15 @@ def classify_request(request: str) -> ConductorPlan:
                     "entry_tool": entry_tool, "follow_ups": follow_ups,
                 }
             engine_scores[engine]["score"] += 1
+
+    # Structural nouns are strong context. Without this, words such as
+    # "compress" can accidentally make a 32-bar arrangement request look like
+    # dynamics processing, even though the object of the verb is the song form.
+    if re.search(
+        r"\b(?:arrangement|song structure|section|verse|chorus|drop|intro|outro|breakdown)\b",
+        lower,
+    ) and "composition" in engine_scores:
+        engine_scores["composition"]["score"] += 2
 
     if not engine_scores:
         # No engine matched — but semantic moves might still apply

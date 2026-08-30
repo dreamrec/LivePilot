@@ -64,7 +64,7 @@ async def _bridge_ping_stub(ctx: Any) -> dict:
     """Lightweight bridge ping — develop doesn't need bridge for clip writes."""
     bridge = None
     if hasattr(ctx, "lifespan_context"):
-        bridge = ctx.lifespan_context.get("m4l_bridge")
+        bridge = ctx.lifespan_context.get("m4l")
     if bridge is None:
         raise RuntimeError("bridge not available")
     return await bridge.send_command("ping", timeout=0.5)
