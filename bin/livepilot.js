@@ -1056,18 +1056,76 @@ async function main() {
     process.exit(1);
   }
 
+  // Explicit pipes, NOT stdio:"inherit".
+  //
+  // Claude Desktop hosts `node`-type MCPB extensions inside an Electron
+  // UtilityProcess using its bundled Node, not as a real child process. In
+  // that model the MCP transport is an IPC MessagePort wired to this
+  // process's own `process.stdin` / `process.stdout` — there are no useful
+  // file descriptors 0/1 to inherit. With stdio:"inherit" the Python child
+  // wrote its `initialize` response to a descriptor the host never reads, so
+  // the handshake timed out on every attempt, forever. Forwarding the streams
+  // explicitly works under BOTH hosting models, where "inherit" works under
+  // only one.
   const child = spawn(pythonBin, ["-m", "mcp_server"], {
     cwd: ROOT,
-    stdio: "inherit",
+    stdio: ["pipe", "pipe", "pipe"],
   });
+
+  process.stdin.pipe(child.stdin);
+  child.stdout.pipe(process.stdout);
+  child.stderr.pipe(process.stderr);
+
+  // A client that closes the transport mid-write leaves us writing to a
+  // half-open pipe. EPIPE here is a normal shutdown, not a crash.
+  const ignoreEpipe = (stream) => {
+    stream.on("error", (err) => {
+      if (err && (err.code === "EPIPE" || err.code === "ERR_STREAM_DESTROYED")) return;
+      console.error("LivePilot: stream error (%s)", err && err.message);
+    });
+  };
+  ignoreEpipe(child.stdin);
+  ignoreEpipe(child.stdout);
+  ignoreEpipe(child.stderr);
+  ignoreEpipe(process.stdout);
+
+  // Reap the child. Without this, killing the host process orphans Python,
+  // which keeps holding UDP 9880 (M4L analyzer bridge) and the single TCP
+  // client slot on 9878. Orphans accumulate across restart attempts and
+  // silently disable the bridge for every later instance.
+  let shuttingDown = false;
+  const shutdown = (signal) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    if (child.exitCode === null && child.signalCode === null) {
+      child.kill(signal || "SIGTERM");
+      // Escalate if Python does not go away — a wedged child must not keep
+      // the ports held after we are gone.
+      const force = setTimeout(() => child.kill("SIGKILL"), 5000);
+      force.unref();
+    }
+  };
+
+  for (const signal of ["SIGTERM", "SIGINT", "SIGHUP"]) {
+    process.on(signal, () => shutdown(signal));
+  }
+  process.on("exit", () => shutdown("SIGTERM"));
 
   child.on("error", (err) => {
     console.error("Failed to start MCP server: %s", err.message);
     process.exit(1);
   });
 
-  child.on("exit", (code) => {
-    process.exit(code || 0);
+  // Preserve signal deaths. The previous `process.exit(code || 0)` dropped
+  // the `signal` argument, so a SIGKILLed Python (code === null) was reported
+  // as a clean exit 0 — a crash that looked like a graceful shutdown.
+  child.on("exit", (code, signal) => {
+    shuttingDown = true;
+    if (signal) {
+      console.error("LivePilot: MCP server terminated by %s", signal);
+      process.exit(1);
+    }
+    process.exit(code === null ? 1 : code);
   });
 }
 
