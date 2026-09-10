@@ -2,6 +2,35 @@
 
 ## Unreleased
 
+### Fixed — Claude Desktop extension never completed the handshake
+- The Node entry point spawned the Python server with `stdio: "inherit"`. Claude
+  Desktop hosts `node` extensions inside an Electron UtilityProcess, where the
+  MCP transport is an IPC MessagePort rather than file descriptors 0/1, so the
+  `initialize` response went to a descriptor the host never read and every
+  attempt timed out. Streams are now forwarded explicitly, which works under
+  both hosting models.
+- The Python child is reaped. `SIGTERM`/`SIGINT`/`SIGHUP` are forwarded and
+  escalate to `SIGKILL` after 5s, so a failed or cancelled start no longer
+  leaves an orphan holding UDP 9880 and the single TCP client slot on 9878.
+  Orphans previously accumulated across restarts and silently disabled the
+  analyzer bridge.
+- A signal-killed server reported exit code 0. Signal deaths now exit non-zero
+  and name the signal.
+- Interpreter selection took whatever `python3` resolved to. Under a
+  GUI-launched host that is macOS's 3.9.6 and the CLI aborted despite suitable
+  interpreters being installed; elsewhere it could pick a release with no
+  prebuilt wheels and fall back to compiling from source. Versioned
+  interpreters are tried first, then generic names, then well-known install
+  directories. `LIVEPILOT_PYTHON` overrides the search.
+- Auto-install wrote plain text to stdout while stdout was the JSON-RPC
+  transport, corrupting the stream on exactly the fresh machines that needed
+  the install. That output now goes to stderr.
+- The dependency install timeout was shorter than a real cold install, so pip
+  was killed partway, the venv stamp was never written, and the next launch
+  restarted from scratch — a permanent loop. Raised, and overridable with
+  `LIVEPILOT_PIP_TIMEOUT_MS`.
+- `manifest.json` now declares `compatibility.runtimes.node`.
+
 ## v1.30.0 — 2026-08-30
 
 ### Changed — smaller context, clearer creative decisions
