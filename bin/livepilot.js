@@ -22,12 +22,61 @@ const REQUIREMENTS = path.join(ROOT, "requirements.txt");
 // early with a clear message.
 const MIN_PY_MINOR = 12;
 
-function findPython() {
-  // On Windows, also try the "py -3" launcher which avoids the
-  // Microsoft Store stub that "python3" resolves to.
-  const candidates = process.platform === "win32"
+// Interpreter minor versions we prefer, best first. This is a wheel-coverage
+// order, not a recency order: numpy, scipy, librosa and (transitively)
+// numba/llvmlite ship prebuilt wheels for these well before the newest
+// release. On a bleeding-edge interpreter pip falls back to compiling from
+// source, which turns a ~35s install into a many-minute one and can fail
+// outright. Anything at or above MIN_PY_MINOR still works — these are just
+// tried first.
+const PREFERRED_PY_MINORS = [13, 12];
+
+// Directories to probe when an interpreter is not on PATH. A GUI-launched
+// host (Claude Desktop) hands us a minimal PATH where "python3" resolves to
+// /usr/bin/python3 — 3.9.6 on macOS, below the floor — and we would abort
+// with "Python >= 3.12 is required" on a machine that has three suitable
+// interpreters installed.
+function extraPythonDirs() {
+  if (process.platform === "win32") return [];
+  const dirs = ["/opt/homebrew/bin", "/usr/local/bin"];
+  for (const minor of [...PREFERRED_PY_MINORS, 14, 15]) {
+    dirs.push(`/opt/homebrew/opt/python@3.${minor}/bin`);
+    dirs.push(`/Library/Frameworks/Python.framework/Versions/3.${minor}/bin`);
+  }
+  return dirs;
+}
+
+/**
+ * Candidate interpreter commands, best first.
+ *
+ * LIVEPILOT_PYTHON overrides everything — an explicit escape hatch for a
+ * machine where our ordering picks the wrong one.
+ */
+function pythonCandidates() {
+  const explicit = (process.env.LIVEPILOT_PYTHON || "").trim();
+  if (explicit) return [explicit];
+
+  const versioned = PREFERRED_PY_MINORS.map((minor) => `python3.${minor}`);
+  const generic = process.platform === "win32"
     ? ["python", "python3", "py"]
     : ["python3", "python"];
+
+  const candidates = [...versioned, ...generic];
+  for (const dir of extraPythonDirs()) {
+    for (const minor of PREFERRED_PY_MINORS) {
+      candidates.push(path.join(dir, `python3.${minor}`));
+    }
+    candidates.push(path.join(dir, "python3"));
+  }
+  return candidates;
+}
+
+function findPython() {
+  // Try explicitly-versioned interpreters before the generic names, and
+  // well-known install directories before giving up, so we do not pick a
+  // technically-adequate-but-poorly-supported interpreter (or abort) just
+  // because of what PATH happened to resolve first.
+  const candidates = pythonCandidates();
 
   let tooOld = null; // highest 3.x below the floor we saw, for a clear error
   for (const cmd of candidates) {
@@ -115,7 +164,13 @@ function pipInstall(venvPy) {
       cwd: ROOT,
       stdio: ["pipe", "pipe", "pipe"],
       encoding: "utf-8",
-      timeout: 120000,
+      // A cold install of numpy/scipy/librosa/grpcio takes minutes, not
+      // seconds — well past the old 120s cap. Hitting the cap killed pip
+      // mid-install, ensureVenv threw before writeVenvStamp(), and the next
+      // launch restarted the whole install from scratch. That is a permanent
+      // retry loop, not a one-off slow start. Override with
+      // LIVEPILOT_PIP_TIMEOUT_MS if a slow link needs even longer.
+      timeout: Number(process.env.LIVEPILOT_PIP_TIMEOUT_MS) || 900000,
     });
   } catch (err) {
     const stderr = (err && err.stderr ? String(err.stderr) : "").trim();
@@ -985,8 +1040,16 @@ async function main() {
     return;
   }
 
-  // Auto-install Remote Script when launched from Desktop Extension
+  // Auto-install Remote Script when launched from Desktop Extension.
+  //
+  // Everything below runs while stdout IS the JSON-RPC transport, so any
+  // plain-text write to it corrupts the MCP stream before the handshake even
+  // starts. installer/install.js legitimately uses console.log for its own
+  // CLI (`--install`), so rather than change it, redirect console.log to
+  // stderr for the duration of this block. Same messages, safe channel.
   if (process.env.LIVEPILOT_AUTO_INSTALL === "true") {
+    const realConsoleLog = console.log;
+    console.log = (...args) => console.error(...args);
     try {
       const { install } = require(path.join(ROOT, "installer", "install.js"));
       const { installAnalyzer } = require(path.join(ROOT, "installer", "analyzer.js"));
@@ -1007,6 +1070,8 @@ async function main() {
       }
     } catch (err) {
       console.error("LivePilot: auto-install skipped (%s)", err.message);
+    } finally {
+      console.log = realConsoleLog;
     }
   }
 
@@ -1141,4 +1206,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { decideVenvAction, requirementsHash, venvStampPath };
+module.exports = { decideVenvAction, requirementsHash, venvStampPath, pythonCandidates, findPython };
