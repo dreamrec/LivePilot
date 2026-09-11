@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+### Fixed — per-clip scale tools failed with an opaque AttributeError
+- `get_clip_scale`, `set_clip_scale` and `set_clip_scale_mode` assumed Live
+  publishes per-clip scale (`Clip.root_note` / `scale_name` / `scale_mode`)
+  alongside the song-level scale API. It does not — verified on Live 12.4.5,
+  where a MIDI clip's `dir()` contains no scale attribute of any kind. Every
+  call died with `'Clip' object has no attribute 'root_note'`, which gave no
+  hint that the capability was absent or that the song-level tools work fine.
+  They now raise a clear error naming the Live version and pointing at
+  `get_song_scale` / `set_song_scale` / `set_song_scale_mode`.
+- The version gate could not have caught this: `has_feature("song_scale_api")`
+  is a comparison against 12.0 that gates the *Song* scale API, a different
+  capability. The handlers now probe the object instead of trusting the
+  version, and stay transparent if a future Live does publish per-clip scale.
+
 ## v1.30.0 — 2026-08-30
 
 ### Changed — smaller context, clearer creative decisions
