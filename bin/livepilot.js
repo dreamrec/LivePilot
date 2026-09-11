@@ -22,12 +22,61 @@ const REQUIREMENTS = path.join(ROOT, "requirements.txt");
 // early with a clear message.
 const MIN_PY_MINOR = 12;
 
-function findPython() {
-  // On Windows, also try the "py -3" launcher which avoids the
-  // Microsoft Store stub that "python3" resolves to.
-  const candidates = process.platform === "win32"
+// Interpreter minor versions we prefer, best first. This is a wheel-coverage
+// order, not a recency order: numpy, scipy, librosa and (transitively)
+// numba/llvmlite ship prebuilt wheels for these well before the newest
+// release. On a bleeding-edge interpreter pip falls back to compiling from
+// source, which turns a ~35s install into a many-minute one and can fail
+// outright. Anything at or above MIN_PY_MINOR still works — these are just
+// tried first.
+const PREFERRED_PY_MINORS = [13, 12];
+
+// Directories to probe when an interpreter is not on PATH. A GUI-launched
+// host (Claude Desktop) hands us a minimal PATH where "python3" resolves to
+// /usr/bin/python3 — 3.9.6 on macOS, below the floor — and we would abort
+// with "Python >= 3.12 is required" on a machine that has three suitable
+// interpreters installed.
+function extraPythonDirs() {
+  if (process.platform === "win32") return [];
+  const dirs = ["/opt/homebrew/bin", "/usr/local/bin"];
+  for (const minor of [...PREFERRED_PY_MINORS, 14, 15]) {
+    dirs.push(`/opt/homebrew/opt/python@3.${minor}/bin`);
+    dirs.push(`/Library/Frameworks/Python.framework/Versions/3.${minor}/bin`);
+  }
+  return dirs;
+}
+
+/**
+ * Candidate interpreter commands, best first.
+ *
+ * LIVEPILOT_PYTHON overrides everything — an explicit escape hatch for a
+ * machine where our ordering picks the wrong one.
+ */
+function pythonCandidates() {
+  const explicit = (process.env.LIVEPILOT_PYTHON || "").trim();
+  if (explicit) return [explicit];
+
+  const versioned = PREFERRED_PY_MINORS.map((minor) => `python3.${minor}`);
+  const generic = process.platform === "win32"
     ? ["python", "python3", "py"]
     : ["python3", "python"];
+
+  const candidates = [...versioned, ...generic];
+  for (const dir of extraPythonDirs()) {
+    for (const minor of PREFERRED_PY_MINORS) {
+      candidates.push(path.join(dir, `python3.${minor}`));
+    }
+    candidates.push(path.join(dir, "python3"));
+  }
+  return candidates;
+}
+
+function findPython() {
+  // Try explicitly-versioned interpreters before the generic names, and
+  // well-known install directories before giving up, so we do not pick a
+  // technically-adequate-but-poorly-supported interpreter (or abort) just
+  // because of what PATH happened to resolve first.
+  const candidates = pythonCandidates();
 
   let tooOld = null; // highest 3.x below the floor we saw, for a clear error
   for (const cmd of candidates) {
@@ -115,7 +164,13 @@ function pipInstall(venvPy) {
       cwd: ROOT,
       stdio: ["pipe", "pipe", "pipe"],
       encoding: "utf-8",
-      timeout: 120000,
+      // A cold install of numpy/scipy/librosa/grpcio takes minutes, not
+      // seconds — well past the old 120s cap. Hitting the cap killed pip
+      // mid-install, ensureVenv threw before writeVenvStamp(), and the next
+      // launch restarted the whole install from scratch. That is a permanent
+      // retry loop, not a one-off slow start. Override with
+      // LIVEPILOT_PIP_TIMEOUT_MS if a slow link needs even longer.
+      timeout: Number(process.env.LIVEPILOT_PIP_TIMEOUT_MS) || 900000,
     });
   } catch (err) {
     const stderr = (err && err.stderr ? String(err.stderr) : "").trim();
@@ -985,8 +1040,16 @@ async function main() {
     return;
   }
 
-  // Auto-install Remote Script when launched from Desktop Extension
+  // Auto-install Remote Script when launched from Desktop Extension.
+  //
+  // Everything below runs while stdout IS the JSON-RPC transport, so any
+  // plain-text write to it corrupts the MCP stream before the handshake even
+  // starts. installer/install.js legitimately uses console.log for its own
+  // CLI (`--install`), so rather than change it, redirect console.log to
+  // stderr for the duration of this block. Same messages, safe channel.
   if (process.env.LIVEPILOT_AUTO_INSTALL === "true") {
+    const realConsoleLog = console.log;
+    console.log = (...args) => console.error(...args);
     try {
       const { install } = require(path.join(ROOT, "installer", "install.js"));
       const { installAnalyzer } = require(path.join(ROOT, "installer", "analyzer.js"));
@@ -1007,6 +1070,8 @@ async function main() {
       }
     } catch (err) {
       console.error("LivePilot: auto-install skipped (%s)", err.message);
+    } finally {
+      console.log = realConsoleLog;
     }
   }
 
@@ -1056,18 +1121,76 @@ async function main() {
     process.exit(1);
   }
 
+  // Explicit pipes, NOT stdio:"inherit".
+  //
+  // Claude Desktop hosts `node`-type MCPB extensions inside an Electron
+  // UtilityProcess using its bundled Node, not as a real child process. In
+  // that model the MCP transport is an IPC MessagePort wired to this
+  // process's own `process.stdin` / `process.stdout` — there are no useful
+  // file descriptors 0/1 to inherit. With stdio:"inherit" the Python child
+  // wrote its `initialize` response to a descriptor the host never reads, so
+  // the handshake timed out on every attempt, forever. Forwarding the streams
+  // explicitly works under BOTH hosting models, where "inherit" works under
+  // only one.
   const child = spawn(pythonBin, ["-m", "mcp_server"], {
     cwd: ROOT,
-    stdio: "inherit",
+    stdio: ["pipe", "pipe", "pipe"],
   });
+
+  process.stdin.pipe(child.stdin);
+  child.stdout.pipe(process.stdout);
+  child.stderr.pipe(process.stderr);
+
+  // A client that closes the transport mid-write leaves us writing to a
+  // half-open pipe. EPIPE here is a normal shutdown, not a crash.
+  const ignoreEpipe = (stream) => {
+    stream.on("error", (err) => {
+      if (err && (err.code === "EPIPE" || err.code === "ERR_STREAM_DESTROYED")) return;
+      console.error("LivePilot: stream error (%s)", err && err.message);
+    });
+  };
+  ignoreEpipe(child.stdin);
+  ignoreEpipe(child.stdout);
+  ignoreEpipe(child.stderr);
+  ignoreEpipe(process.stdout);
+
+  // Reap the child. Without this, killing the host process orphans Python,
+  // which keeps holding UDP 9880 (M4L analyzer bridge) and the single TCP
+  // client slot on 9878. Orphans accumulate across restart attempts and
+  // silently disable the bridge for every later instance.
+  let shuttingDown = false;
+  const shutdown = (signal) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    if (child.exitCode === null && child.signalCode === null) {
+      child.kill(signal || "SIGTERM");
+      // Escalate if Python does not go away — a wedged child must not keep
+      // the ports held after we are gone.
+      const force = setTimeout(() => child.kill("SIGKILL"), 5000);
+      force.unref();
+    }
+  };
+
+  for (const signal of ["SIGTERM", "SIGINT", "SIGHUP"]) {
+    process.on(signal, () => shutdown(signal));
+  }
+  process.on("exit", () => shutdown("SIGTERM"));
 
   child.on("error", (err) => {
     console.error("Failed to start MCP server: %s", err.message);
     process.exit(1);
   });
 
-  child.on("exit", (code) => {
-    process.exit(code || 0);
+  // Preserve signal deaths. The previous `process.exit(code || 0)` dropped
+  // the `signal` argument, so a SIGKILLed Python (code === null) was reported
+  // as a clean exit 0 — a crash that looked like a graceful shutdown.
+  child.on("exit", (code, signal) => {
+    shuttingDown = true;
+    if (signal) {
+      console.error("LivePilot: MCP server terminated by %s", signal);
+      process.exit(1);
+    }
+    process.exit(code === null ? 1 : code);
   });
 }
 
@@ -1083,4 +1206,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { decideVenvAction, requirementsHash, venvStampPath };
+module.exports = { decideVenvAction, requirementsHash, venvStampPath, pythonCandidates, findPython };

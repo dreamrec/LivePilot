@@ -413,7 +413,8 @@ def _get_all_tools():
     to the next path rather than exploding.
 
     WARNING: Accesses FastMCP private internals. Pinned to
-    fastmcp>=3.4.2,<3.5.0 in requirements.txt. The startup self-test
+    fastmcp>=4.0.3,<4.1.0 in requirements.txt (verified 2026-09-11: 4.0.3
+    still keeps ``_local_provider._components``). The startup self-test
     (_assert_tool_registry_accessible) will fail loudly if every probe
     returns empty — better than silently returning [] and disabling
     schema coercion.
@@ -620,14 +621,84 @@ _patch_tool_schemas()
 # ─────────────────────────────────────────────────────────────────────────
 
 
+DEFAULT_HTTP_HOST = "127.0.0.1"
+DEFAULT_HTTP_PORT = 8109
+
+
+def _http_settings() -> tuple[str, int]:
+    """Resolve host/port for the streamable-http transport from the env."""
+    host = os.environ.get("LIVEPILOT_HTTP_HOST", DEFAULT_HTTP_HOST).strip() or DEFAULT_HTTP_HOST
+    raw_port = os.environ.get("LIVEPILOT_HTTP_PORT", "").strip()
+    if not raw_port:
+        return host, DEFAULT_HTTP_PORT
+    try:
+        port = int(raw_port)
+    except ValueError:
+        logger.warning(
+            "LIVEPILOT_HTTP_PORT=%r is not an integer; falling back to %d",
+            raw_port,
+            DEFAULT_HTTP_PORT,
+        )
+        return host, DEFAULT_HTTP_PORT
+    if not (1024 <= port <= 65535):
+        logger.warning(
+            "LIVEPILOT_HTTP_PORT=%d is out of range 1024-65535; falling back to %d",
+            port,
+            DEFAULT_HTTP_PORT,
+        )
+        return host, DEFAULT_HTTP_PORT
+    return host, port
+
+
 def main():
-    """Run the MCP server over stdio."""
+    """Run the MCP server.
+
+    Transport defaults to stdio — the historical behaviour, unchanged, and
+    what ``npx livepilot`` / the MCPB bundle rely on.
+
+    Setting ``LIVEPILOT_TRANSPORT=http`` (alias ``streamable-http``) instead
+    serves the MCP protocol over streamable-http so a single long-lived
+    process can be shared by several clients, rather than each client
+    spawning its own. This matters here because Ableton's Remote Script
+    accepts exactly one TCP client on port 9878 — one shared server keeps
+    that socket single-owner instead of having concurrent stdio processes
+    fight over it. ``AbletonConnection`` already serialises every
+    send/receive cycle behind a lock, so concurrent MCP sessions queue
+    rather than interleave.
+
+    Host/port come from ``LIVEPILOT_HTTP_HOST`` (default 127.0.0.1) and
+    ``LIVEPILOT_HTTP_PORT`` (default 8109). The endpoint is ``/mcp``.
+    Binding is loopback-only and DNS-rebinding protection is on, because
+    the server is unauthenticated.
+    """
     # Verify tool count matches the contract — runs here (not at module load)
     # so all tool-module imports have completed regardless of the import path
     # that brought server.py in. See _assert_tool_registry_accessible() docstring.
     _assert_expected_tool_count()
     profile = _configure_public_tool_surface()
     logger.info("LivePilot public tool profile: %s", profile)
+
+    transport = os.environ.get("LIVEPILOT_TRANSPORT", "stdio").strip().lower()
+    if transport in ("http", "streamable-http"):
+        host, port = _http_settings()
+        logger.info("LivePilot serving streamable-http on http://%s:%d/mcp", host, port)
+        mcp.run(
+            transport="http",
+            host=host,
+            port=port,
+            show_banner=False,
+            host_origin_protection=True,
+            allowed_hosts=[
+                "127.0.0.1",
+                "localhost",
+                f"127.0.0.1:{port}",
+                f"localhost:{port}",
+            ],
+        )
+        return
+
+    if transport != "stdio":
+        logger.warning("Unknown LIVEPILOT_TRANSPORT=%r; falling back to stdio", transport)
     mcp.run(transport="stdio")
 
 if __name__ == "__main__":

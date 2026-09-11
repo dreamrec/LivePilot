@@ -487,6 +487,29 @@ def set_clip_warp_mode(song, params):
     }
 
 
+def _require_clip_scale_api(clip):
+    """Guard the per-clip scale handlers against a LOM that lacks them.
+
+    These three handlers were written assuming Live 12 publishes per-clip
+    scale (``Clip.root_note`` / ``scale_name`` / ``scale_mode``) alongside
+    the Song-level scale API. It does not. Verified on Live 12.4.5: a MIDI
+    clip's ``dir()`` contains no scale attribute of any kind, so every call
+    died with an opaque ``AttributeError: 'Clip' object has no attribute
+    'root_note'`` that gave no hint the capability was simply absent.
+
+    ``has_feature("song_scale_api")`` cannot catch this — it is a version
+    comparison against 12.0 that gates the *Song* scale API, a different
+    capability. Probe the object instead of trusting the version.
+    """
+    if not hasattr(clip, "root_note"):
+        from .version_detect import version_string
+        raise RuntimeError(
+            "Per-clip scale is not exposed by the Live Object Model in Live %s. "
+            "Only the song-level scale is available - use get_song_scale / "
+            "set_song_scale / set_song_scale_mode instead." % version_string()
+        )
+
+
 @register("get_clip_scale")
 def get_clip_scale(song, params):
     """Read a clip's per-clip scale override (Live 12.0+).
@@ -501,6 +524,7 @@ def get_clip_scale(song, params):
     if not clip_slot.has_clip:
         raise ValueError("Clip slot is empty")
     clip = clip_slot.clip
+    _require_clip_scale_api(clip)
     return {
         "root_note": int(clip.root_note),
         "scale_mode": bool(clip.scale_mode),
@@ -518,6 +542,7 @@ def set_clip_scale(song, params):
     if not clip_slot.has_clip:
         raise ValueError("Clip slot is empty")
     clip = clip_slot.clip
+    _require_clip_scale_api(clip)
     root = int(params["root_note"])
     if not 0 <= root <= 11:
         raise ValueError("root_note must be 0-11 (C=0, C#=1, ... B=11)")
@@ -545,5 +570,6 @@ def set_clip_scale_mode(song, params):
     clip_slot = get_clip_slot(song, int(params["track_index"]), int(params["clip_index"]))
     if not clip_slot.has_clip:
         raise ValueError("Clip slot is empty")
+    _require_clip_scale_api(clip_slot.clip)
     clip_slot.clip.scale_mode = bool(params["enabled"])
     return {"scale_mode": bool(clip_slot.clip.scale_mode)}

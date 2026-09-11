@@ -2,6 +2,88 @@
 
 ## Unreleased
 
+### Changed — dependencies
+- `fastmcp` moves to the 4.0 line (`>=4.0.3,<4.1.0`). The private tool
+  registry `_get_all_tools()` reads (`_local_provider._components`) is
+  unchanged in 4.0.3, so all 474 tools still register and pass the startup
+  self-test.
+- Floor bumps: `scipy>=1.18.1`, `grpcio>=1.83.1`, `protobuf>=7.36.1`. The
+  NumPy floor stays at 2.3 by design; the existing `<2.6` cap already admits
+  2.5.3.
+
+### Added — troubleshooting
+- Windows: a Claude Desktop MSIX install can leave the extension unable to
+  start because the extensions folder is virtualized. The manual now lists the
+  one-line workaround.
+
+### Fixed — per-clip scale tools failed with an opaque AttributeError
+- `get_clip_scale`, `set_clip_scale` and `set_clip_scale_mode` assumed Live
+  publishes per-clip scale (`Clip.root_note` / `scale_name` / `scale_mode`)
+  alongside the song-level scale API. It does not — verified on Live 12.4.5,
+  where a MIDI clip's `dir()` contains no scale attribute of any kind. Every
+  call died with `'Clip' object has no attribute 'root_note'`, which gave no
+  hint that the capability was absent or that the song-level tools work fine.
+  They now raise a clear error naming the Live version and pointing at
+  `get_song_scale` / `set_song_scale` / `set_song_scale_mode`.
+- The version gate could not have caught this: `has_feature("song_scale_api")`
+  is a comparison against 12.0 that gates the *Song* scale API, a different
+  capability. The handlers now probe the object instead of trusting the
+  version, and stay transparent if a future Live does publish per-clip scale.
+### Fixed — Claude Desktop extension never completed the handshake
+- The Node entry point spawned the Python server with `stdio: "inherit"`. Claude
+  Desktop hosts `node` extensions inside an Electron UtilityProcess, where the
+  MCP transport is an IPC MessagePort rather than file descriptors 0/1, so the
+  `initialize` response went to a descriptor the host never read and every
+  attempt timed out. Streams are now forwarded explicitly, which works under
+  both hosting models.
+- The Python child is reaped. `SIGTERM`/`SIGINT`/`SIGHUP` are forwarded and
+  escalate to `SIGKILL` after 5s, so a failed or cancelled start no longer
+  leaves an orphan holding UDP 9880 and the single TCP client slot on 9878.
+  Orphans previously accumulated across restarts and silently disabled the
+  analyzer bridge.
+- A signal-killed server reported exit code 0. Signal deaths now exit non-zero
+  and name the signal.
+- Interpreter selection took whatever `python3` resolved to. Under a
+  GUI-launched host that is macOS's 3.9.6 and the CLI aborted despite suitable
+  interpreters being installed; elsewhere it could pick a release with no
+  prebuilt wheels and fall back to compiling from source. Versioned
+  interpreters are tried first, then generic names, then well-known install
+  directories. `LIVEPILOT_PYTHON` overrides the search.
+- Auto-install wrote plain text to stdout while stdout was the JSON-RPC
+  transport, corrupting the stream on exactly the fresh machines that needed
+  the install. That output now goes to stderr.
+- The dependency install timeout was shorter than a real cold install, so pip
+  was killed partway, the venv stamp was never written, and the next launch
+  restarted from scratch — a permanent loop. Raised, and overridable with
+  `LIVEPILOT_PIP_TIMEOUT_MS`.
+- `manifest.json` now declares `compatibility.runtimes.node`.
+### Added — optional streamable-http transport
+- `LIVEPILOT_TRANSPORT=http` (alias `streamable-http`) serves MCP over
+  streamable-http at `/mcp` instead of stdio, so one long-lived process can
+  back several clients rather than each client spawning its own server.
+  Ableton's Remote Script accepts exactly one TCP client on port 9878, so a
+  single shared server keeps that socket single-owner instead of having
+  concurrent stdio processes contend for it. `AbletonConnection` already
+  serialises every send/receive cycle, so concurrent sessions queue rather
+  than interleave.
+- Host and port come from `LIVEPILOT_HTTP_HOST` (default `127.0.0.1`) and
+  `LIVEPILOT_HTTP_PORT` (default `8109`). The endpoint is unauthenticated, so
+  binding is loopback-only with DNS-rebinding protection enabled.
+- stdio remains the default and is unchanged.
+
+### Fixed — Tuning System tools crashed on every set without a custom tuning
+- `Song.tuning_system` is `None` whenever no custom Tuning System is loaded,
+  which is the default state of every Live set. All four handlers dereferenced
+  it unconditionally, so `get_tuning_system` died with `'NoneType' object has
+  no attribute 'name'` — the one tool that answers "is my tuning standard?"
+  failed on every session that was, in fact, standard.
+- `get_tuning_system` now reports `loaded: false` with `tuning: "12-TET"`.
+  The global reference pitch is a Live preference the LOM does not expose, so
+  it is reported as `null` rather than assumed to be 440 Hz.
+- `set_tuning_reference_pitch`, `set_tuning_note` and `reset_tuning_system`
+  raise a clear error saying no Tuning System is loaded and what to do.
+- `has_feature("tuning_system")` could not catch this: it gates on Live >= 12.1
+  and says nothing about whether a tuning system is actually loaded.
 ## v1.30.0 — 2026-08-30
 
 ### Changed — smaller context, clearer creative decisions
