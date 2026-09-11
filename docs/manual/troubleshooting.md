@@ -4,6 +4,30 @@ When something goes wrong, find your symptom below and follow the fix.
 
 ---
 
+## Installation Issues
+
+### Claude Desktop extension: MCP server does not start (Windows)
+
+**Symptom:** After installing the `.mcpb` extension, the server never comes up and the log shows `Request timed out`, or Python reports `can't open file ...\AppData\Roaming\Claude\Claude Extensions\...`.
+
+**Likely cause:** Claude Desktop was installed from its MSIX package. MSIX virtualizes `%APPDATA%\Claude\Claude Extensions` when that folder does not exist yet, so Claude Desktop sees the extension files but the Node and Python processes it starts do not. This is an upstream Claude Desktop issue ([anthropics/claude-code#47977](https://github.com/anthropics/claude-code/issues/47977)), not a LivePilot bug.
+
+**Fix:** Uninstall the extension, create the real folder in PowerShell, then reinstall the `.mcpb`:
+
+```powershell
+New-Item -ItemType Directory -Path "$env:APPDATA\Claude\Claude Extensions" -Force
+```
+
+---
+
+### Wrong Python picked, or the first launch times out
+
+**Likely cause:** The launcher needs Python 3.12 or newer and tries `python3.13`, `python3.12`, `python3`, then common install folders. On a fresh machine the first dependency install can take several minutes.
+
+**Fix:** Set `LIVEPILOT_PYTHON` to the full path of the interpreter you want. On a slow connection, raise the install timeout with `LIVEPILOT_PIP_TIMEOUT_MS` (default `900000`, 15 minutes).
+
+---
+
 ## Connection Issues
 
 ### "Connection refused" when running --status
@@ -19,6 +43,8 @@ When something goes wrong, find your symptom below and follow the fix.
 **Likely cause:** Only one MCP client can connect at a time (single-client TCP by design).
 
 **Fix:** Close the other client, or restart Ableton to reset the connection.
+
+To use several AI clients at once, run one shared server instead: start it with `LIVEPILOT_TRANSPORT=http` (optionally `LIVEPILOT_HTTP_PORT`, default `8109`) and point each client at `http://127.0.0.1:8109/mcp`. The server listens on loopback only.
 
 ---
 

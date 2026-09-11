@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+### Changed — dependencies
+- `fastmcp` moves to the 4.0 line (`>=4.0.3,<4.1.0`). The private tool
+  registry `_get_all_tools()` reads (`_local_provider._components`) is
+  unchanged in 4.0.3, so all 474 tools still register and pass the startup
+  self-test.
+- Floor bumps: `scipy>=1.18.1`, `grpcio>=1.83.1`, `protobuf>=7.36.1`. The
+  NumPy floor stays at 2.3 by design; the existing `<2.6` cap already admits
+  2.5.3.
+
+### Added — troubleshooting
+- Windows: a Claude Desktop MSIX install can leave the extension unable to
+  start because the extensions folder is virtualized. The manual now lists the
+  one-line workaround.
+
 ### Fixed — per-clip scale tools failed with an opaque AttributeError
 - `get_clip_scale`, `set_clip_scale` and `set_clip_scale_mode` assumed Live
   publishes per-clip scale (`Clip.root_note` / `scale_name` / `scale_mode`)
