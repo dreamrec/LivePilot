@@ -96,7 +96,30 @@ def get_tuning_system(song, params):
     if not has_feature("tuning_system"):
         raise RuntimeError("Tuning System requires Live 12.1+.")
     ts = song.tuning_system
+    if ts is None:
+        # Song.tuning_system is None whenever no custom Tuning System is
+        # loaded - the DEFAULT state of every Live set, not a fault.
+        # Dereferencing it raised "'NoneType' object has no attribute 'name'",
+        # so the one tool that answers "is my tuning standard?" failed on
+        # every session that was, in fact, standard.
+        return {
+            "loaded": False,
+            "name": None,
+            "tuning": "12-TET",
+            "note": (
+                "No custom Tuning System is loaded; Live is using standard "
+                "12-tone equal temperament. The global reference pitch is a "
+                "Live preference that the Live Object Model does not expose, "
+                "so it is reported as null rather than assumed to be 440 Hz."
+            ),
+            "pseudo_octave_in_cents": None,
+            "lowest_note": None,
+            "highest_note": None,
+            "reference_pitch": None,
+            "note_tunings": [],
+        }
     return {
+        "loaded": True,
         "name": str(ts.name),
         "pseudo_octave_in_cents": float(ts.pseudo_octave_in_cents),
         "lowest_note": int(ts.lowest_note),
@@ -104,6 +127,24 @@ def get_tuning_system(song, params):
         "reference_pitch": float(ts.reference_pitch),
         "note_tunings": list(ts.note_tunings),
     }
+
+
+def _require_tuning_system(song):
+    """Return the loaded Tuning System, or explain why there isn't one.
+
+    The three mutating handlers dereferenced ``song.tuning_system``
+    unconditionally, so on a set with no custom tuning - the default - they
+    died with an opaque AttributeError on None instead of saying what was
+    wrong or what to do about it.
+    """
+    ts = song.tuning_system
+    if ts is None:
+        raise RuntimeError(
+            "No Tuning System is loaded, so there is nothing to modify. Live "
+            "is using standard 12-TET. Load a Tuning System in Live first, "
+            "then retry."
+        )
+    return ts
 
 
 @register("set_tuning_reference_pitch")
@@ -115,8 +156,9 @@ def set_tuning_reference_pitch(song, params):
     pitch = float(params["reference_pitch"])
     if pitch <= 0:
         raise ValueError("reference_pitch must be > 0 Hz")
-    song.tuning_system.reference_pitch = pitch
-    return {"reference_pitch": float(song.tuning_system.reference_pitch)}
+    ts = _require_tuning_system(song)
+    ts.reference_pitch = pitch
+    return {"reference_pitch": float(ts.reference_pitch)}
 
 
 @register("set_tuning_note")
@@ -129,7 +171,7 @@ def set_tuning_note(song, params):
     from .version_detect import has_feature
     if not has_feature("tuning_system"):
         raise RuntimeError("Tuning System requires Live 12.1+.")
-    ts = song.tuning_system
+    ts = _require_tuning_system(song)
     degree = int(params["degree"])
     cents = float(params["cent_offset"])
     tunings = list(ts.note_tunings)
@@ -148,6 +190,6 @@ def reset_tuning_system(song, params):
     from .version_detect import has_feature
     if not has_feature("tuning_system"):
         raise RuntimeError("Tuning System requires Live 12.1+.")
-    ts = song.tuning_system
+    ts = _require_tuning_system(song)
     ts.note_tunings = [0.0] * len(ts.note_tunings)
     return {"note_tunings": list(ts.note_tunings)}
