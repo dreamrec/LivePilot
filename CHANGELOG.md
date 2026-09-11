@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Fixed — Tuning System tools crashed on every set without a custom tuning
+- `Song.tuning_system` is `None` whenever no custom Tuning System is loaded,
+  which is the default state of every Live set. All four handlers dereferenced
+  it unconditionally, so `get_tuning_system` died with `'NoneType' object has
+  no attribute 'name'` — the one tool that answers "is my tuning standard?"
+  failed on every session that was, in fact, standard.
+- `get_tuning_system` now reports `loaded: false` with `tuning: "12-TET"`.
+  The global reference pitch is a Live preference the LOM does not expose, so
+  it is reported as `null` rather than assumed to be 440 Hz.
+- `set_tuning_reference_pitch`, `set_tuning_note` and `reset_tuning_system`
+  raise a clear error saying no Tuning System is loaded and what to do.
+- `has_feature("tuning_system")` could not catch this: it gates on Live >= 12.1
+  and says nothing about whether a tuning system is actually loaded.
 ## v1.30.0 — 2026-08-30
 
 ### Changed — smaller context, clearer creative decisions
