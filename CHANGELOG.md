@@ -43,6 +43,19 @@
   restarted from scratch — a permanent loop. Raised, and overridable with
   `LIVEPILOT_PIP_TIMEOUT_MS`.
 - `manifest.json` now declares `compatibility.runtimes.node`.
+### Added — optional streamable-http transport
+- `LIVEPILOT_TRANSPORT=http` (alias `streamable-http`) serves MCP over
+  streamable-http at `/mcp` instead of stdio, so one long-lived process can
+  back several clients rather than each client spawning its own server.
+  Ableton's Remote Script accepts exactly one TCP client on port 9878, so a
+  single shared server keeps that socket single-owner instead of having
+  concurrent stdio processes contend for it. `AbletonConnection` already
+  serialises every send/receive cycle, so concurrent sessions queue rather
+  than interleave.
+- Host and port come from `LIVEPILOT_HTTP_HOST` (default `127.0.0.1`) and
+  `LIVEPILOT_HTTP_PORT` (default `8109`). The endpoint is unauthenticated, so
+  binding is loopback-only with DNS-rebinding protection enabled.
+- stdio remains the default and is unchanged.
 
 ## v1.30.0 — 2026-08-30
 
