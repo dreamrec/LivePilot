@@ -23,6 +23,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 
 import pytest
 
@@ -30,6 +31,15 @@ import pytest
 NODE = shutil.which("node")
 
 pytestmark = pytest.mark.skipif(NODE is None, reason="node not available")
+
+# The well-known-directory fallback exists only on macOS/Linux; Windows relies
+# on the "py" launcher. Starting node with a stripped environment on Windows
+# also aborts at startup (ncrypto::CSPRNG needs SystemRoot), so the
+# minimal-PATH scenario cannot be reproduced there.
+POSIX_ONLY = pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="POSIX-only fallback search; Windows uses the py launcher",
+)
 
 
 def _repo_root() -> Path:
@@ -59,6 +69,7 @@ def test_versioned_interpreters_are_tried_before_generic_names():
     assert candidates.index("python3.12") < candidates.index("python3")
 
 
+@POSIX_ONLY
 def test_wellknown_directories_are_searched_after_path():
     candidates = _candidates()
     bare = [c for c in candidates if "/" not in c]
@@ -73,6 +84,7 @@ def test_explicit_override_wins_outright():
     assert _candidates({"LIVEPILOT_PYTHON": "/custom/python3.12"}) == ["/custom/python3.12"]
 
 
+@POSIX_ONLY
 def test_minimal_path_still_finds_a_supported_interpreter():
     """The Claude Desktop GUI-launch case: PATH has only /usr/bin:/bin."""
     shim = _repo_root() / "bin" / "livepilot.js"
