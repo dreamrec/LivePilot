@@ -179,7 +179,7 @@ def corpus_add_source(
     type: str,
     path: str,
     recursive: bool = True,
-    exclude_globs: list = None,
+    exclude_globs: list | None = None,
 ) -> dict:
     """Register a new scan source in the user manifest.
 
@@ -362,7 +362,7 @@ def corpus_status(ctx: Context) -> dict:
 @mcp.tool()
 def corpus_detect_plugins(
     ctx: Context,
-    formats: list = None,
+    formats: list | None = None,
     persist: bool = True,
 ) -> dict:
     """Phase 2.1 + 2.2 — detect installed VST3 / AU / VST2 / AAX / LV2 plugins
@@ -510,8 +510,8 @@ def corpus_discover_manuals(
 @mcp.tool()
 def corpus_canonicalize_plugins(
     ctx: Context,
-    skip_vendors: list = None,
-    skip_name_prefixes: list = None,
+    skip_vendors: list | None = None,
+    skip_name_prefixes: list | None = None,
 ) -> dict:
     """Dedupe the plugin inventory by canonical vendor + name; prefer VST3 as
     primary format; pick the prettiest vendor string across formats. Writes
@@ -863,7 +863,7 @@ def corpus_research_targets(
 @mcp.tool()
 def corpus_emit_synthesis_briefs(
     ctx: Context,
-    plugin_ids: list = None,
+    plugin_ids: list | None = None,
     inline_limit: int = 5,
 ) -> dict:
     """Phase 4 — emit sonnet-subagent briefs for plugin identity synthesis.
