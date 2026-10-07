@@ -16,6 +16,18 @@
   start because the extensions folder is virtualized. The manual now lists the
   one-line workaround.
 
+### Fixed — optional list/dict arguments rejected an explicit null
+- Eight optional arguments were annotated `list = None` / `dict = None`:
+  `atlas_macro_fingerprint.pack_filter`, `atlas_demo_story.focus_tracks`,
+  `atlas_cross_pack_chain.customize_aesthetic`,
+  `corpus_add_source.exclude_globs`, `corpus_detect_plugins.formats`,
+  `corpus_canonicalize_plugins.skip_vendors` / `skip_name_prefixes` and
+  `corpus_emit_synthesis_briefs.plugin_ids`. The schema advertised
+  `"default": null` on an array/object-only type, so a client sending that
+  default explicitly got a validation error before the tool ran. They are now
+  `list | None` / `dict | None`; `tests/test_tool_schemas_nullable.py` checks
+  every tool for this.
+
 ### Fixed — per-clip scale tools failed with an opaque AttributeError
 - `get_clip_scale`, `set_clip_scale` and `set_clip_scale_mode` assumed Live
   publishes per-clip scale (`Clip.root_note` / `scale_name` / `scale_mode`)

@@ -1076,7 +1076,7 @@ def atlas_macro_fingerprint(
     source_live_track: int = -1,
     source_live_device: int = -1,
     rack_class_filter: str = "",
-    pack_filter: list = None,
+    pack_filter: list | None = None,
     top_k: int = 8,
     min_named_macros: int = 3,
     similarity_threshold: float = 0.4,
@@ -1583,7 +1583,7 @@ def atlas_transplant(
 def atlas_demo_story(
     ctx: Context,
     demo_entity_id: str,
-    focus_tracks: list = None,
+    focus_tracks: list | None = None,
     detail_level: str = "standard",
 ) -> dict:
     """Generate a track-by-track narrative + production-sequence for a demo .als (Pack-Atlas Phase E).
@@ -1821,7 +1821,7 @@ def atlas_cross_pack_chain(
     ctx: Context,
     workflow_entity_id: str,
     target_track_index: int = -1,
-    customize_aesthetic: dict = None,
+    customize_aesthetic: dict | None = None,
 ) -> dict:
     """Execute a cross-pack signature recipe step-by-step (Pack-Atlas Phase F).
 
