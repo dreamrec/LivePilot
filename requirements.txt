@@ -3,7 +3,7 @@
 # numba 0.67 ships NumPy 2.5-compatible wheels; keep the 2.3 floor so
 # already-compatible environments are not forced onto a new NumPy minor.
 numpy>=2.3,<2.6
-fastmcp>=4.0.5,<4.1.0  # pinned upper bound — _get_all_tools() accesses private internals
+fastmcp>=4.0.11,<4.1.0  # pinned upper bound — _get_all_tools() accesses private internals
 midiutil>=1.2.1
 pretty_midi>=0.2.11.post0
 # v1.8 Perception Layer (offline analysis)
