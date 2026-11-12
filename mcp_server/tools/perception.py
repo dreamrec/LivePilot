@@ -17,6 +17,7 @@ import os
 from typing import Any, Optional
 
 from ..server import mcp
+from ..runtime.offline_analysis import isolated_analysis
 from ._perception_engine import (
     compute_loudness,
     compute_spectral,
@@ -89,6 +90,7 @@ def _validate_audio(file_path: str, allow_mp3: bool = False) -> Optional[dict]:
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
+@isolated_analysis
 def analyze_loudness(
     file_path: str,
     detail: str = "summary",
@@ -131,6 +133,7 @@ def analyze_loudness(
 
 
 @mcp.tool()
+@isolated_analysis
 def analyze_spectrum_offline(
     file_path: str,
     n_fft: int = 2048,
@@ -170,6 +173,7 @@ def analyze_spectrum_offline(
 
 
 @mcp.tool()
+@isolated_analysis
 def compare_to_reference(
     mix_path: str,
     reference_path: str,
@@ -213,6 +217,7 @@ def compare_to_reference(
 
 
 @mcp.tool()
+@isolated_analysis
 def read_audio_metadata(
     file_path: str,
 ) -> dict[str, Any]:

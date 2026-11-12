@@ -2,14 +2,14 @@
 
 ## Unreleased
 
+### Fixed
+- Doctor waits for incoming analyzer data before reporting bridge availability and identifies existing Windows TCP/UDP clients with netstat (#102).
+- Offline loudness, spectrum, reference, metadata, and listening analysis run in disposable workers with bounded timeouts; cancelling an analysis stops its worker while preserving the MCP session (#103).
+- Stopping an already-stopped transport preserves the cursor. Stopped cue jumps update the continue cursor; force_arrangement sequences seek/start/stop across Live ticks and returns settled transport state (#104).
+
 ### Changed — dependencies
-- `fastmcp` moves to the 4.0 line (`>=4.0.3,<4.1.0`). The private tool
-  registry `_get_all_tools()` reads (`_local_provider._components`) is
-  unchanged in 4.0.3, so all 474 tools still register and pass the startup
-  self-test.
-- Floor bumps: `scipy>=1.18.1`, `grpcio>=1.83.1`, `protobuf>=7.36.1`. The
-  NumPy floor stays at 2.3 by design; the existing `<2.6` cap already admits
-  2.5.3.
+- `fastmcp>=4.1.6,<4.2.0` and `grpcio>=1.85.1` (#109, #111), including fixes for both FastMCP dependency security alerts. The private registry path used by `_get_all_tools()` remains available; CI also checks registry/schema compatibility.
+- Floors: `scipy>=1.18.1`, `protobuf>=7.36.2`. The NumPy range stays `>=2.3,<2.6`.
 
 ### Added — troubleshooting
 - Windows: a Claude Desktop MSIX install can leave the extension unable to

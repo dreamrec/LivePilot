@@ -82,6 +82,14 @@ current tree, so the files copied into Ableton match your checkout exactly.
 After the copy succeeds, restart Ableton and enable the Control Surface as
 described in [getting-started.md](getting-started.md) Step 2.
 
+Handler-only changes can use `reload_handlers` after copying. Changes to
+`remote_script/LivePilot/server.py` require an Ableton restart because the
+TCP server is deliberately excluded from handler reload. The deferred
+transport update for #104 is one such change: a stale running server reports
+an explicit restart requirement before attempting a cue jump or arrangement
+seek. Save your Set and restart at a convenient time.
+
+
 ## 3. Point your MCP client at the local server
 
 The MCP server is just a Python module — `python -m mcp_server`. Your

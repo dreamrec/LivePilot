@@ -20,6 +20,23 @@ from .utils import (
 _handlers = {}
 
 
+class DeferredResult:
+    """Resume a transport operation on the next Ableton main-thread tick."""
+
+    def __init__(self, resume):
+        self.resume = resume
+
+
+def require_deferred_transport():
+    """Handler hot reload cannot upgrade an already-running TCP server."""
+    from .server import LivePilotServer
+    if not getattr(LivePilotServer, "supports_deferred_results", False):
+        raise RuntimeError(
+            "Transport update requires an Ableton restart after installing "
+            "the Remote Script; reload_handlers cannot refresh the TCP server."
+        )
+
+
 def register(command_type):
     """Decorator that registers a handler function for *command_type*."""
     def decorator(fn):
@@ -85,8 +102,15 @@ def dispatch(song, command):
             NOT_FOUND,
         )
 
+    return _respond(request_id, lambda: handler(song, params))
+
+
+def _respond(request_id, callback):
+    """Apply the same response/error contract to immediate and deferred work."""
     try:
-        result = handler(song, params)
+        result = callback()
+        if isinstance(result, DeferredResult):
+            return DeferredResult(lambda: _respond(request_id, result.resume))
         if isinstance(result, dict) and "error" in result:
             return error_response(
                 request_id,

@@ -24,8 +24,8 @@ def test_perception_tools_accept_max_style_macos_paths(tmp_path):
     _make_sine_wav(wav)
     max_style_path = "Macintosh HD:" + wav
 
-    loudness = analyze_loudness(max_style_path)
-    metadata = read_audio_metadata(max_style_path)
+    loudness = analyze_loudness.__wrapped__(max_style_path)
+    metadata = read_audio_metadata.__wrapped__(max_style_path)
 
     assert "integrated_lufs" in loudness
     assert metadata["sample_rate"] == 44100

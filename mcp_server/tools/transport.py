@@ -57,13 +57,13 @@ def set_time_signature(ctx: Context, numerator: int, denominator: int) -> dict:
 
 @mcp.tool()
 def start_playback(ctx: Context) -> dict:
-    """Start playback from the beginning."""
+    """Start playback from Live's insert marker (the Play button)."""
     return _get_ableton(ctx).send_command("start_playback")
 
 
 @mcp.tool()
 def stop_playback(ctx: Context) -> dict:
-    """Stop playback — halts the session transport and the arrangement cursor returns to its last position."""
+    """Stop playback. When already stopped, preserve the current position."""
     return _get_ableton(ctx).send_command("stop_playback")
 
 

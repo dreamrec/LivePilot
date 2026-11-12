@@ -20,6 +20,7 @@ from dataclasses import asdict
 from typing import Any, Optional
 
 from ..server import mcp
+from ..runtime.offline_analysis import isolated_analysis
 from . import engine
 
 CAPTURE_DIR = os.path.expanduser("~/Documents/LivePilot/captures")
@@ -116,6 +117,7 @@ def _embedding_block(audio, sr, include_vector: bool) -> dict:
 
 
 @mcp.tool()
+@isolated_analysis
 def listen_capture(
     file: str,
     bpm: Optional[float] = None,
@@ -160,6 +162,7 @@ def listen_capture(
 
 
 @mcp.tool()
+@isolated_analysis
 def listen_ab(
     before_file: str,
     after_file: str,

@@ -121,8 +121,28 @@ function venvPython() {
   return path.join(VENV_DIR, isWin ? "Scripts" : "bin", isWin ? "python.exe" : "python3");
 }
 
+function parseWindowsLiveClient(output, host, port) {
+  const hosts = host === "localhost" ? ["127.0.0.1", "[::1]"] : [host];
+  for (const line of output.split(/\r?\n/)) {
+    const parts = line.trim().split(/\s+/);
+    if (parts.length < 5 || parts[0] !== "TCP" || parts[3] !== "ESTABLISHED") continue;
+    const pid = Number(parts[4]);
+    if (hosts.some((h) => parts[2] === `${h}:${port}`) &&
+        Number.isInteger(pid) && pid > 0 && pid !== process.pid) {
+      return `PID ${pid}`;
+    }
+  }
+  return null;
+}
+
 function findOtherLiveClient(host, port) {
   try {
+    if (process.platform === "win32") {
+      const out = execFileSync("netstat", ["-ano", "-p", "tcp"], {
+        encoding: "utf-8", timeout: 3000, stdio: ["pipe", "pipe", "ignore"],
+      });
+      return parseWindowsLiveClient(out, host, port);
+    }
     const out = execFileSync("lsof", ["-nP", `-iTCP:${port}`], {
       encoding: "utf-8",
       timeout: 3000,
@@ -368,18 +388,23 @@ from types import SimpleNamespace
 
 sys.path.insert(0, ${JSON.stringify(ROOT)})
 
-from mcp_server.server import lifespan, _master_has_livepilot_analyzer
+from mcp_server.server import lifespan, _master_has_livepilot_analyzer, _warm_analyzer_bridge
 from mcp_server.runtime.capability_probe import probe_capabilities
 
 async def main():
     async with lifespan(None) as ctx:
-        loaded = _master_has_livepilot_analyzer(ctx["ableton"])
-        report = probe_capabilities(
+        loaded = await asyncio.to_thread(_master_has_livepilot_analyzer, ctx["ableton"])
+        listener_active = ctx["_bridge_state"]["transport"] is not None
+        if loaded and listener_active:
+            await _warm_analyzer_bridge(ctx["ableton"], ctx["spectral"], timeout=3.0)
+        report = await asyncio.to_thread(
+            probe_capabilities,
             ableton=ctx["ableton"],
             ctx=SimpleNamespace(lifespan_context=ctx),
         )
         print(json.dumps({
             "loaded_on_master": loaded,
+            "listener_active": listener_active,
             "m4l_bridge": report["m4l_bridge"],
             "tier": report["tier"]["active"],
         }))
@@ -522,6 +547,9 @@ async function doctor() {
               : `loaded on master but bridge unavailable (${analyzer.m4l_bridge.detail})`,
           );
           if (analyzer.m4l_bridge.status !== "ok") {
+            console.log("    Fix: %s", analyzer.listener_active === false
+              ? "UDP 9880 is in use; stop the other LivePilot server, then retry --doctor"
+              : "enable the LivePilot Analyzer on master and check UDP 9880 / OSC 9881");
             ok = false;
           }
         } else {
@@ -1206,4 +1234,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { decideVenvAction, requirementsHash, venvStampPath, pythonCandidates, findPython };
+module.exports = { decideVenvAction, requirementsHash, venvStampPath, pythonCandidates, findPython, parseWindowsLiveClient };

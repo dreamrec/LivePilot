@@ -268,6 +268,8 @@ def test_force_arrangement_surfaces_per_track_stop_error():
     song = _FakeSong([track])
 
     result = arr.force_arrangement(song, {"play": False})
+    while isinstance(result, arr.DeferredResult):
+        result = result.resume()
 
     # The failing stop must be surfaced, not discarded.
     assert result["stop_errors"], "expected stop_errors to be populated"
@@ -295,6 +297,8 @@ def test_force_arrangement_clean_path_reports_success():
     song = _FakeSong([track])
 
     result = arr.force_arrangement(song, {"play": False})
+    while isinstance(result, arr.DeferredResult):
+        result = result.resume()
 
     assert result["stop_errors"] == []
     assert result["arrangement_active"] is True
