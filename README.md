@@ -1,7 +1,11 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/dreamrec/LivePilot/main/docs/assets/banner-dark.svg">
-  <img src="https://raw.githubusercontent.com/dreamrec/LivePilot/main/docs/assets/banner-light.svg" alt="LivePilot — Make the change. Hear what happened. Keep what works." width="960">
-</picture>
+```
+██╗     ██╗██╗   ██╗███████╗██████╗ ██╗██╗      ██████╗ ████████╗
+██║     ██║██║   ██║██╔════╝██╔══██╗██║██║     ██╔═══██╗╚══██╔══╝
+██║     ██║██║   ██║█████╗  ██████╔╝██║██║     ██║   ██║   ██║
+██║     ██║╚██╗ ██╔╝██╔══╝  ██╔═══╝ ██║██║     ██║   ██║   ██║
+███████╗██║ ╚████╔╝ ███████╗██║     ██║███████╗╚██████╔╝   ██║
+╚══════╝╚═╝  ╚═══╝  ╚══════╝╚═╝     ╚═╝╚══════╝ ╚═════╝    ╚═╝
+```
 
 <p align="center">
   <a href="https://github.com/dreamrec/LivePilot/actions"><img src="https://img.shields.io/github/actions/workflow/status/dreamrec/LivePilot/ci.yml?style=flat-square&amp;label=CI" alt="CI"></a>
@@ -9,6 +13,8 @@
   <a href="https://github.com/dreamrec/LivePilot/releases"><img src="https://img.shields.io/github/v/release/dreamrec/LivePilot?style=flat-square" alt="Latest release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-BSL--1.1-blue?style=flat-square" alt="License"></a>
 </p>
+
+**Make the change. Hear what happened. Keep what works.**
 
 LivePilot connects an MCP-compatible AI client to Ableton Live 12. Edit notes,
 arrangements, instruments, effects, and routing; inspect what Live exposes;
@@ -86,6 +92,15 @@ checks, API provenance, and their limits. Full changes are in the
 
 ## Workflows
 
+Start with an idea. Get precise when the detail matters.
+
+> “Turn this pad into a brittle, unstable texture. Keep the chord voicing.”
+>
+> “Make three variations of this rhythm. Protect the kick; let the hats drift.”
+>
+> “Inside this rack, map LFO 2 to Wavetable's oscillator position at 0.23.
+> Read it back before changing anything else.”
+
 | Goal | Workflow |
 | --- | --- |
 | Shape an instrument inside a rack | Discover children with `get_rack_chains`, inspect a child's parameters, then edit through its returned `device_path`. |
@@ -100,13 +115,27 @@ modulation, or a higher heuristic score does not establish better music.
 
 ## How it works
 
-```mermaid
-flowchart LR
-    Client[AI client] --> MCP[LivePilot MCP server]
-    MCP --> Remote[Remote Script in Ableton]
-    Remote --> Live[Live Set]
-    Analyzer[Optional M4L Analyzer] --> MCP
-    MCP --> Knowledge[Atlas and technique memory]
+```text
+                         YOUR IDEA
+                             |
+                      [ AI / MCP CLIENT ]
+                             |
+     +------------------ LIVEPILOT ------------------+
+     |                                               |
+     |   ATLAS          CONTROL          LISTENING   |
+     |   find it        shape it         compare it  |
+     |                                               |
+     |   474 tools / 57 domains / technique memory   |
+     +-----------------------+-----------------------+
+                             |
+                     [ REMOTE SCRIPT ]
+                             |
+                    +-----------------+
+                    | ABLETON LIVE 12 |
+                    +--------+--------+
+                             |
+                 [ OPTIONAL M4L ANALYZER ]
+                     live spectral data
 ```
 
 - **Remote Script:** executes Live Object Model operations on Ableton's main

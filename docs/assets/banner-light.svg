@@ -1,21 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 280" role="img" aria-labelledby="title desc">
-  <title id="title">LivePilot 1.31.0</title>
-  <desc id="desc">Control Ableton Live. Shape the sound. Compare the result. 474 tools across 57 domains.</desc>
-  <rect width="960" height="280" rx="8" fill="#f5f4ed"/>
-  <path d="M32 50H928 M32 226H928" stroke="#cbd4c9"/>
-  <text x="36" y="33" fill="#58685f" font-family="Arial, sans-serif" font-size="11" letter-spacing="2">ABLETON LIVE 12 / MCP</text>
-  <text x="924" y="33" text-anchor="end" fill="#1c704f" font-family="monospace" font-size="11">PUBLIC RELEASE / 1.31.0</text>
-  <rect x="46" y="105.0" width="5" height="38" rx="2.5" fill="#1c704f"/><rect x="58" y="91.0" width="5" height="66" rx="2.5" fill="#1c704f"/><rect x="70" y="77.5" width="5" height="93" rx="2.5" fill="#1c704f"/><rect x="82" y="98.0" width="5" height="52" rx="2.5" fill="#1c704f"/><rect x="94" y="86.0" width="5" height="76" rx="2.5" fill="#1c704f"/><rect x="106" y="102.5" width="5" height="43" rx="2.5" fill="#1c704f"/>
-  <text x="150" y="143" fill="#172321" font-family="Arial, sans-serif" font-size="67" font-weight="700" letter-spacing="-2">LIVEPILOT</text>
-  <text x="153" y="180" fill="#58685f" font-family="Arial, sans-serif" font-size="18">Make the change. Hear what happened. Keep what works.</text>
-  <g stroke="#cbd4c9" fill="none" stroke-width="1.5">
-    <path d="M767 92H831V116H887 M831 116V158H887"/>
-    <rect x="747" y="77" width="40" height="30" rx="4"/>
-    <rect x="867" y="101" width="40" height="30" rx="4"/>
-    <rect x="867" y="143" width="40" height="30" rx="4"/>
-  </g>
-  <circle cx="887" cy="116" r="3" fill="#1c704f"/>
-  <circle cx="887" cy="158" r="3" fill="#1c704f"/>
-  <text x="36" y="254" fill="#172321" font-family="monospace" font-size="12">474 tools / 57 domains</text>
-  <text x="924" y="254" text-anchor="end" fill="#58685f" font-family="monospace" font-size="12">macOS + Windows</text>
+<title id="title">LivePilot 1.31.0</title>
+<desc id="desc">LivePilot block-letter text art. Make the change. Hear what happened. Keep what works. 474 tools across 57 domains.</desc>
+<rect width="960" height="280" fill="#f0f0e5"/>
+<g font-family="Menlo, Consolas, monospace" font-size="12" fill="#596050">
+<text x="32" y="31">// ABLETON LIVE 12 / MCP</text>
+<text x="928" y="31" text-anchor="end" fill="#386322">PUBLIC RELEASE / 1.31.0</text></g>
+<path d="M32 48H928 M32 228H928" stroke="#596050" stroke-opacity=".45"/>
+<g font-family="Menlo, Consolas, monospace" font-size="22" fill="#171b15" xml:space="preserve">
+<text x="32" y="80">██╗     ██╗██╗   ██╗███████╗██████╗ ██╗██╗      ██████╗ ████████╗</text>
+<text x="32" y="100">██║     ██║██║   ██║██╔════╝██╔══██╗██║██║     ██╔═══██╗╚══██╔══╝</text>
+<text x="32" y="120">██║     ██║██║   ██║█████╗  ██████╔╝██║██║     ██║   ██║   ██║</text>
+<text x="32" y="140">██║     ██║╚██╗ ██╔╝██╔══╝  ██╔═══╝ ██║██║     ██║   ██║   ██║</text>
+<text x="32" y="160">███████╗██║ ╚████╔╝ ███████╗██║     ██║███████╗╚██████╔╝   ██║</text>
+<text x="32" y="180">╚══════╝╚═╝  ╚═══╝  ╚══════╝╚═╝     ╚═╝╚══════╝ ╚═════╝    ╚═╝</text>
+</g>
+<text x="32" y="209" fill="#386322" font-family="Menlo, Consolas, monospace" font-size="12">Make the change. Hear what happened. Keep what works.</text>
+<g font-family="Menlo, Consolas, monospace" font-size="12" fill="#596050">
+<text x="32" y="256">474 tools / 57 domains</text>
+<text x="928" y="256" text-anchor="end">macOS + Windows</text></g>
 </svg>
