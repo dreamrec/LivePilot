@@ -14,7 +14,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-BSL--1.1-blue?style=flat-square" alt="License"></a>
 </p>
 
-**Hi.I'm here to help**
+**Hi**
 
 LivePilot connects an MCP-compatible AI client to Ableton Live 12. Edit notes,
 arrangements, instruments, effects, and routing; inspect what Live exposes;
