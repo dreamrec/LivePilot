@@ -153,22 +153,24 @@ def set_time_signature(song, params):
 
 @register("start_playback")
 def start_playback(song, params):
-    """Start playback from the beginning."""
+    """Start playback from Live's insert marker (the Play button)."""
     song.start_playing()
     return {"is_playing": True}
 
 
 @register("stop_playback")
 def stop_playback(song, params):
-    """Stop playback."""
-    song.stop_playing()
+    """Stop once; an already-stopped transport must keep its position."""
+    if song.is_playing:
+        song.stop_playing()
     return {"is_playing": False}
 
 
 @register("continue_playback")
 def continue_playback(song, params):
     """Continue playback from the current position."""
-    song.continue_playing()
+    if not song.is_playing:
+        song.continue_playing()
     return {"is_playing": True}
 
 

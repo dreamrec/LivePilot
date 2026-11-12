@@ -101,7 +101,7 @@ def test_embed_false_adds_no_key(tmp_path):
     """Default path must be byte-for-byte what it was before this feature —
     no key, no import, no cost."""
     p = _tone(tmp_path / "a.wav")
-    out = listening_tools.listen_capture(p)
+    out = listening_tools.listen_capture.__wrapped__(p)
     assert "embedding" not in out
 
 
@@ -109,7 +109,7 @@ def test_embed_true_never_breaks_the_dsp_report(monkeypatch, tmp_path):
     """With the backend absent, embed=True still returns the full DSP report."""
     _force_unavailable(monkeypatch)
     p = _tone(tmp_path / "a.wav")
-    out = listening_tools.listen_capture(p, embed=True)
+    out = listening_tools.listen_capture.__wrapped__(p, embed=True)
     assert out["embedding"]["available"] is False
     # the canonical snapshot evaluate_move consumes must be intact
     for key in ("spectrum", "rms", "peak", "loudness"):
@@ -120,7 +120,7 @@ def test_listen_ab_still_produces_a_verdict_with_embed(monkeypatch, tmp_path):
     _force_unavailable(monkeypatch)
     a = _tone(tmp_path / "a.wav", freq=220.0)
     b = _tone(tmp_path / "b.wav", freq=440.0)
-    out = listening_tools.listen_ab(a, b, embed=True)
+    out = listening_tools.listen_ab.__wrapped__(a, b, embed=True)
     assert out["verdict"]
     assert out["perceptual_distance"]["available"] is False
     assert "dimension_deltas" in out

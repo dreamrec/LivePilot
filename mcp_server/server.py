@@ -5,6 +5,7 @@ import asyncio
 import logging
 import os
 import subprocess
+import sys
 
 from fastmcp import FastMCP, Context  # noqa: F401
 
@@ -28,6 +29,18 @@ def _identify_port_holder(port: int) -> str | None:
     identification fails. Never kills or modifies the holder.
     """
     try:
+        if sys.platform == "win32":
+            out = subprocess.check_output(
+                ["netstat", "-ano", "-p", "udp"], text=True, timeout=3,
+            )
+            for line in out.splitlines():
+                fields = line.split()
+                if (len(fields) >= 4 and fields[0].upper() == "UDP"
+                        and fields[1].rsplit(":", 1)[-1] == str(port)):
+                    pid = int(fields[-1])
+                    if pid != os.getpid():
+                        return str(pid)
+            return None
         out = subprocess.check_output(
             ["lsof", "-t", "-i", f"UDP:{port}"],
             text=True,
@@ -413,8 +426,8 @@ def _get_all_tools():
     to the next path rather than exploding.
 
     WARNING: Accesses FastMCP private internals. Pinned to
-    fastmcp>=4.0.3,<4.1.0 in requirements.txt (verified 2026-09-11: 4.0.3
-    still keeps ``_local_provider._components``). The startup self-test
+    fastmcp>=4.1.6,<4.2.0 in requirements.txt (4.1.6 still keeps
+    ``_local_provider._components``). The startup self-test
     (_assert_tool_registry_accessible) will fail loudly if every probe
     returns empty — better than silently returning [] and disabling
     schema coercion.

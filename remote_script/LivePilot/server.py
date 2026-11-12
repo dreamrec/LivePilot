@@ -174,6 +174,8 @@ class LivePilotServer(object):
     Additional connection attempts are rejected with a clear error message.
     """
 
+    supports_deferred_results = True
+
     def __init__(self, control_surface, host="127.0.0.1", port=9878):
         self._cs = control_surface
         self._host = host
@@ -508,7 +510,33 @@ class LivePilotServer(object):
                 "error": {"code": "INTERNAL", "message": str(exc)},
             }
 
-        if is_write:
+        def resolve_deferred(value):
+            if isinstance(value, router.DeferredResult):
+                def resume():
+                    try:
+                        next_value = value.resume()
+                    except BaseException as exc:
+                        next_value = {
+                            "id": command.get("id", "unknown"),
+                            "ok": False,
+                            "error": {"code": "INTERNAL", "message": str(exc)},
+                        }
+                    resolve_deferred(next_value)
+                try:
+                    self._cs.schedule_message(1, resume)
+                except AssertionError:
+                    response_queue.put({
+                        "id": command.get("id", "unknown"),
+                        "ok": False,
+                        "error": {"code": "STATE_ERROR", "message": "Control surface disconnected"},
+                    })
+                return
+            response_queue.put(value)
+            self._drain_queue()
+
+        if isinstance(result, router.DeferredResult):
+            resolve_deferred(result)
+        elif is_write:
             # Schedule response after 100ms settle delay for write operations
             def send_response():
                 response_queue.put(result)

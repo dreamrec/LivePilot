@@ -9,7 +9,7 @@ arrangement at a target beat, then cleans up.
 """
 
 from .clip_automation import set_clip_automation as _set_clip_automation_handler
-from .router import register
+from .router import register, DeferredResult, require_deferred_transport
 from .utils import get_track
 
 
@@ -832,6 +832,7 @@ def get_cue_points(song, params):
 @register("jump_to_cue")
 def jump_to_cue(song, params):
     """Jump to a cue point by index."""
+    require_deferred_transport()
     cue_index = int(params["cue_index"])
     cue_points = list(song.cue_points)
     if cue_index < 0 or cue_index >= len(cue_points):
@@ -839,8 +840,16 @@ def jump_to_cue(song, params):
             "Cue point index %d out of range (0..%d)"
             % (cue_index, len(cue_points) - 1)
         )
-    cue_points[cue_index].jump()
-    return {"cue_index": cue_index, "jumped": True}
+    cue = cue_points[cue_index]
+    cue.jump()
+    if not song.is_playing:
+        # A stopped cue jump can move only the insert marker. Continue uses
+        # current_song_time, so update that cursor explicitly as well.
+        song.current_song_time = float(cue.time)
+    return DeferredResult(lambda: {
+        "cue_index": cue_index, "jumped": True,
+        "position": song.current_song_time,
+    })
 
 
 @register("toggle_cue_point")
@@ -866,10 +875,13 @@ def force_arrangement(song, params):
 
     This is the atomic "play the arrangement from the top" command.
     """
-    # 1. Stop playback
-    was_playing = song.is_playing
-    if was_playing:
-        song.stop_playing()
+    require_deferred_transport()
+
+    # Do not stop a running transport just to seek: Live applies Stop on
+    # a later tick and would overwrite the requested position (#104).
+    was_playing = bool(song.is_playing)
+    play = bool(params.get("play", True))
+    beat_time = max(0.0, float(params.get("beat_time", 0)))
 
     # 2. Stop playing clip slots individually to release session overrides
     #    (track.stop_all_clips() throws STATE_ERROR when tracks have no clips).
@@ -903,36 +915,43 @@ def force_arrangement(song, params):
     # 3. Global back-to-arranger
     song.back_to_arranger = True
 
-    # 4. Jump to position (default: start)
-    beat_time = float(params.get("beat_time", 0))
-    song.current_song_time = max(0, beat_time)
-
-    # 5. Set loop if requested
+    # Set loop before seeking: changing the loop can itself affect position.
     if "loop_length" in params:
         song.loop_start = float(params.get("loop_start", 0))
         song.loop_length = float(params["loop_length"])
         song.loop = True
 
-    # 6. Start playback if requested (default: yes)
-    play = params.get("play", True)
-    if play:
-        song.start_playing()
+    def report():
+        result = {
+            "arrangement_active": not stop_errors,
+            "position": song.current_song_time,
+            "requested_position": beat_time,
+            "is_playing": bool(song.is_playing),
+            "loop": song.loop,
+            "stop_errors": stop_errors,
+        }
+        if stop_errors:
+            result["warning"] = (
+                "%d session clip(s) failed to stop and may still override the "
+                "arrangement — playback could start mid-song" % len(stop_errors)
+            )
+        return result
 
-    # A clip that failed to stop may still be overriding the arrangement, so
-    # report partial failure rather than claiming unconditional success (P2-53).
-    result = {
-        "arrangement_active": not stop_errors,
-        "position": song.current_song_time,
-        "is_playing": song.is_playing,
-        "loop": song.loop,
-        "stop_errors": stop_errors,
-    }
-    if stop_errors:
-        result["warning"] = (
-            "%d session clip(s) failed to stop and may still override the "
-            "arrangement — playback could start mid-song" % len(stop_errors)
-        )
-    return result
+    def seek():
+        song.current_song_time = beat_time
+        if play and not was_playing:
+            def resume():
+                # Continue respects the newly applied cursor; Start uses the
+                # insert marker, which may be somewhere else entirely.
+                song.continue_playing()
+                return DeferredResult(report)
+            return DeferredResult(resume)
+        return DeferredResult(report)
+
+    if was_playing and not play:
+        song.stop_playing()
+        return DeferredResult(seek)
+    return seek()
 
 
 # ── Session-record arrangement automation (T5 workaround) ────────────
