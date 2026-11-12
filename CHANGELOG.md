@@ -1,6 +1,27 @@
 # Changelog
 
-## Unreleased
+## 1.31.0 — Nested Device Control and Native Modulation (2026-11-12)
+
+### Added
+- Device inspection, parameter reads/writes, batch updates, rack discovery, and Wavetable tools accept explicit nested rack paths (up to eight chain/device hops).
+- Device reads return a session-local device_id; expected_device_id rejects stale targets before single or batch parameter writes. Parameter reads expose availability and automation state when Live provides them.
+- Sound-design analysis and planning accept explicit timbral goal dimensions.
+
+### Fixed — stock instrument control
+- Wavetable modulation uses native source enums, parameter-object insertion, indexed targets, and normalized -1..1 values with readback. Source discovery includes the Amp envelope and MIDI expression/random; unsupported Macro sources fail clearly. Matrix API errors no longer resemble an empty patch.
+- Per-clip scale setters use tolerant scale-name resolution on builds that expose the API, including the properties documented in Live 12.4.15. Older builds keep the explicit fallback to song scale tools.
+
+### Fixed — distributed runtime
+- npm and MCPB packages now include the shared ALS/ADG/ADV parser helper that their scanners load at runtime. Extracted-package tests exercise synthetic files outside the source checkout.
+
+### Changed — public project refresh
+- Refreshed the README, storefront descriptions, release banners, and contribution setup instructions around verified workflows and capabilities.
+- Clarified that atlas totals count browser entries, not distinct installed devices. Privacy copy now distinguishes local control from the configured MCP client's model service.
+- Metadata validation now recognizes uppercase tool/domain claims and includes banner versions, preventing stale artwork from passing release checks.
+
+### Changed — creative feedback
+- Removed unsolicited quality penalties based only on patch simplicity, missing filters/saturation, or absent visible LFOs. Explicit movement requests may produce one low-confidence structural advisory; opaque internals remain unknown. Documentation no longer invents spectral-flux or modulation-depth measurements.
+
 
 ### Fixed
 - Doctor waits for incoming analyzer data before reporting bridge availability and identifies existing Windows TCP/UDP clients with netstat (#102).

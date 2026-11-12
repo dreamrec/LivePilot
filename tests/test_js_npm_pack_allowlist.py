@@ -48,6 +48,7 @@ def _npm_pack_dry_run() -> str:
 # Critical files CI requires present in the published tarball (mirrors the
 # "Verify npm pack includes expected files" ci.yml step).
 _REQUIRED_FILES = [
+    "scripts/als_deep_parse.py",
     "livepilot_bridge.js",
     "LivePilot_Analyzer.amxd",
     "remote_script/LivePilot/__init__.py",

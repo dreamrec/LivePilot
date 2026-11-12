@@ -1,10 +1,10 @@
 {
   "manifest_version": "0.3",
   "name": "livepilot",
-  "display_name": "LivePilot \u2014 AI for Ableton Live",
-  "version": "1.30.0",
-  "description": "Agentic production system for Ableton Live 12. Make beats, mix tracks, design sounds, and arrange songs with 474 AI-powered tools across 57 domains.",
-  "long_description": "LivePilot is an agentic production system for Ableton Live 12. 474 tools across 57 domains \u2014 device atlas (5264 devices, 120 enriched), sample intelligence (Splice gRPC + GraphQL + browser + filesystem), auto-composition, spectral perception, technique memory, 44 semantic moves across 7 families, and 12 creative engines.\n\n**What it does:**\n- Creates MIDI clips with notes, chords, and rhythms\n- Loads instruments and effects via Device Atlas (5264 devices indexed 7 ways)\n- Searches Splice's full catalog (not just downloaded samples) with credit-safe downloads and natural-language describe-a-sound\n- Plans compositions from text prompts with genre-aware layering\n- Slices samples with intent-based MIDI generation\n- Mixes with volume, panning, sends, and automation\n- Analyzes your mix with real-time 9-band spectral data (M4L bridge, auto-loaded)\n- Applies semantic moves like 'tighten the low end' or 'make kick and bass lock' that compile into tool sequences with risk levels\n- Diagnoses stuck sessions and generates creative rescue variants (Wonder Mode)\n- Remembers your production style across sessions via the Taste Graph\n\n**How it works:**\nLivePilot installs a Remote Script in Ableton that communicates with the AI over a local TCP connection. Everything runs on your machine \u2014 no audio leaves your computer.",
+  "display_name": "LivePilot — AI for Ableton Live",
+  "version": "1.31.0",
+  "description": "Ableton Live 12 control with 474 tools across 57 domains: nested racks, native modulation, MIDI, arrangement, and measured audio analysis.",
+  "long_description": "LivePilot connects an MCP-compatible AI client to Ableton Live 12 through 474 tools across 57 domains.\n\nEdit clips, notes, arrangement, device parameters, and routing. Discover devices inside racks with explicit nested paths, use Wavetable native modulation, and compare captured audio. Sound-design suggestions distinguish structural hypotheses from measured audio and user preference.\n\nThe optional Max for Live Analyzer provides live spectral data and bridge operations. Core control works without it. The bundled atlas contains 5264 browser entries and 120 enrichment profiles; candidates must be resolved against the current Live installation.\n\nThe control connection is local. LivePilot does not upload captured audio by default, but the MCP client may send tool inputs and results to its provider. Splice integration and optional model downloads use network services.",
   "author": {
     "name": "Pilot Studio",
     "url": "https://github.com/dreamrec/LivePilot"

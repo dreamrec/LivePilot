@@ -91,19 +91,25 @@ See `references/patch-model.md` for the full PatchModel structure and native dev
 
 ### Step 2 — Analyze
 
-Call `analyze_sound_design(track_index)` to run all sound design critics against the patch. The response contains an `issues` array with `critic`, `severity`, `block`, and `evidence`.
+Call `analyze_sound_design(track_index, goal={"movement": 0.5})` when the
+user explicitly asks for movement. Omit goal for a structural inventory.
+Other timbral dimensions accept -1..1; a negative value requests less of a
+quality. The issues array includes confidence, affected_blocks, evidence,
+evidence_basis, and measured. Current critics are topology heuristics,
+not measured judgments of audio quality.
 
-Five critics run during analysis. See `references/sound-design-critics.md` for thresholds:
-
-- **static_timbre** — sound does not evolve over time, no movement
-- **no_modulation_sources** — no LFOs, envelopes, or automation detected
-- **modulation_flatness** — modulation exists but ranges are too narrow to hear
-- **missing_filter** — raw oscillator output with no spectral shaping
-- **spectral_imbalance** — too much energy in one frequency region, or gaps
+The goal-aware static critic can suggest checking modulation, while masking
+and layer critics flag possible role overlaps. Corpus suggestions are
+optional techniques. No quality penalty is inferred just from a simple
+patch, absent LFO, or absent filter/saturation. Opaque internals remain unknown.
+See references/sound-design-critics.md for the supported evidence contract.
 
 ### Step 3 — Plan
 
-Pick the highest-severity issue. Call `plan_sound_design_move(track_index)` with the issue. The planner returns a single intervention:
+Review the evidence against the musical brief. Call
+`plan_sound_design_move(track_index, goal={"movement": 0.5})` with the same
+explicit intent. The planner returns ranked move suggestions; their estimated
+impact is a hypothesis to audition, not a measured improvement:
 
 - `move_type`: one of the move vocabulary entries
 - `target_device`: device index on the track

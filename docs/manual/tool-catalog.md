@@ -158,14 +158,14 @@
 | `duplicate_clip` | Duplicate a clip from one slot to another. |
 | `fire_clip` | Launch/fire a clip slot. |
 | `get_clip_info` | Get detailed info about a clip: name, length, loop, launch settings. |
-| `get_clip_scale` | Read a clip's per-clip scale override (Live 12.0+). |
+| `get_clip_scale` | Read a clip's per-clip scale override when exposed (documented from Live 12.4.15). |
 | `set_clip_color` | Set clip color (0-69, Ableton's color palette). |
 | `set_clip_launch` | Set clip launch mode (0=Trigger, 1=Gate, 2=Toggle, 3=Repeat) and optional quantization. |
 | `set_clip_loop` | Enable/disable clip looping and optionally set loop start/end (in beats). |
 | `set_clip_name` | Rename a clip in the Session view. The new name appears on the clip slot and in Device Chain displays. |
 | `set_clip_pitch` | Set pitch transposition and/or gain on an audio clip (BUG-A5). |
-| `set_clip_scale` | Set a clip's per-clip scale override (Live 12.0+). |
-| `set_clip_scale_mode` | Enable or disable Scale Mode on a single clip (Live 12.0+). |
+| `set_clip_scale` | Set a clip's per-clip scale override when exposed (documented from Live 12.4.15). |
+| `set_clip_scale_mode` | Enable or disable Scale Mode on a single clip when exposed (documented from Live 12.4.15). |
 | `set_clip_warp_mode` | Set warp mode for an audio clip (0=Beats, 1=Tones, 2=Texture, 3=Re-Pitch, 4=Complex, 6=Complex Pro). |
 | `stop_clip` | Stop a playing clip. |
 
@@ -227,7 +227,7 @@
 | Tool | Description |
 |------|-------------|
 | `add_rack_macro` | Add one macro to a Rack, raising visible_macro_count by 1 (Live 11+). |
-| `add_wavetable_mod_route` | Create a modulation routing on a Wavetable device (Live 11+). |
+| `add_wavetable_mod_route` | Add a modulatable device parameter to Wavetable's matrix (amount unchanged). |
 | `batch_set_parameters` | Set multiple device parameters in one call. |
 | `clear_simpler_slices` | Remove all manual slices from the Simpler (Live 11+). |
 | `copy_device_state` | Copy one A/B state to the other (Live 12.3+). |
@@ -240,11 +240,11 @@
 | `get_device_presets` | List available presets for an Ableton device (e.g. 'Corpus', 'Drum Buss', 'Wavetable'). |
 | `get_plugin_parameters` | Get ALL parameters from a VST/AU plugin including unconfigured ones. |
 | `get_plugin_presets` | List a VST/AU plugin's internal presets and banks. |
-| `get_rack_chains` | Get all chains in a rack device with volume, pan, mute, solo. |
+| `get_rack_chains` | Get rack chains and child devices, with device_path and device_id for nested control. |
 | `get_rack_variations` | Get the Rack's variation count, currently selected variation index, and visible macro count (Live 11+). |
 | `get_wavetable_mod_amount` | Read the current modulation amount for a Wavetable source→target routing (Live 11+). |
 | `get_wavetable_mod_matrix` | Dump all non-zero modulation routings on a Wavetable device (Live 11+). |
-| `get_wavetable_mod_targets` | Enumerate visible modulation target parameter names on a Wavetable (Live 11+). |
+| `get_wavetable_mod_targets` | Read visible matrix rows, native source names/indices, and addable parameter names. |
 | `import_slices_from_onsets` | Force Transient slicing mode, set sensitivity, and re-detect (Live 11+). |
 | `insert_device` | Insert a native Live device by name — 10x faster than browser search (Live 12.3+). |
 | `insert_rack_chain` | Insert a new chain into a Rack device — Instrument Rack, Audio Effect Rack, or Drum Rack (Live 12.3+). |
@@ -414,7 +414,7 @@
 
 | Tool | Description |
 |------|-------------|
-| `analyze_mix` | Build full mix state and run all critics. |
+| `analyze_mix` | Build the available mix state and run all critics. |
 | `evaluate_mix_move` | Score a mix change using the evaluation fabric. |
 | `get_masking_report` | Get detailed frequency collision report. |
 | `get_mix_issues` | Run all mix critics and return detected issues only. |
@@ -733,8 +733,8 @@
 | `set_session_loop` | Set loop on/off and optional loop region (start beat, length in beats). |
 | `set_tempo` | Set the song tempo in BPM (20-999). |
 | `set_time_signature` | Set the time signature (e.g., 4/4, 3/4, 6/8). |
-| `start_playback` | Start playback from the beginning. |
-| `stop_playback` | Stop playback — halts the session transport and the arrangement cursor returns to its last position. |
+| `start_playback` | Start playback from Live's insert marker (the Play button). |
+| `stop_playback` | Stop playback. When already stopped, preserve the current position. |
 | `tap_tempo` | Tap the tempo (one tap). Live averages consecutive taps to set BPM. |
 | `toggle_metronome` | Enable or disable the metronome click. |
 | `undo` | Undo the last action in Ableton. |

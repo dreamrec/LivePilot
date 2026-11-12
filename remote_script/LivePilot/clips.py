@@ -492,16 +492,17 @@ def _require_clip_scale_api(clip):
 
     These three handlers were written assuming Live 12 publishes per-clip
     scale (``Clip.root_note`` / ``scale_name`` / ``scale_mode``) alongside
-    the Song-level scale API. It does not. Verified on Live 12.4.5: a MIDI
+    the Song-level scale API. It was absent on Live 12.4.5: a MIDI
     clip's ``dir()`` contains no scale attribute of any kind, so every call
     died with an opaque ``AttributeError: 'Clip' object has no attribute
     'root_note'`` that gave no hint the capability was simply absent.
 
     ``has_feature("song_scale_api")`` cannot catch this — it is a version
     comparison against 12.0 that gates the *Song* scale API, a different
-    capability. Probe the object instead of trusting the version.
+    capability. Clip scale properties are documented from Live 12.4.15;
+    probe the actual object so older builds degrade clearly.
     """
-    if not hasattr(clip, "root_note"):
+    if not all(hasattr(clip, name) for name in ("root_note", "scale_name", "scale_mode")):
         from .version_detect import version_string
         raise RuntimeError(
             "Per-clip scale is not exposed by the Live Object Model in Live %s. "
@@ -512,7 +513,7 @@ def _require_clip_scale_api(clip):
 
 @register("get_clip_scale")
 def get_clip_scale(song, params):
-    """Read a clip's per-clip scale override (Live 12.0+).
+    """Read a clip's per-clip scale override (when exposed by Live).
 
     Per-clip scale is independent of Song.scale_* and lets each clip
     carry its own key/mode.
@@ -534,7 +535,7 @@ def get_clip_scale(song, params):
 
 @register("set_clip_scale")
 def set_clip_scale(song, params):
-    """Set a clip's per-clip scale override (Live 12.0+)."""
+    """Set a clip's per-clip scale override (when exposed by Live)."""
     from .version_detect import has_feature
     if not has_feature("song_scale_api"):
         raise RuntimeError("Per-clip scale requires Live 12.0+.")
@@ -548,13 +549,15 @@ def set_clip_scale(song, params):
         raise ValueError("root_note must be 0-11 (C=0, C#=1, ... B=11)")
     scale_name = str(params["scale_name"])
     # scale_name validation against Song.scale_names — clip uses the same list
-    available = list(song.scale_names)
-    if scale_name not in available:
+    from ._scale_helpers import _resolve_scale_names
+    available = _resolve_scale_names(song)
+    match = next((name for name in available if name.lower() == scale_name.lower()), None)
+    if match is None:
         raise ValueError(
             "Unknown scale '%s'. Available: %s" % (scale_name, ", ".join(available))
         )
     clip.root_note = root
-    clip.scale_name = scale_name
+    clip.scale_name = match
     return {
         "root_note": int(clip.root_note),
         "scale_name": str(clip.scale_name),
@@ -563,7 +566,7 @@ def set_clip_scale(song, params):
 
 @register("set_clip_scale_mode")
 def set_clip_scale_mode(song, params):
-    """Enable/disable Scale Mode on a single clip (Live 12.0+)."""
+    """Enable/disable Scale Mode on a single clip (when exposed by Live)."""
     from .version_detect import has_feature
     if not has_feature("song_scale_api"):
         raise RuntimeError("Per-clip scale requires Live 12.0+.")

@@ -32,6 +32,8 @@ class SoundDesignIssue:
     affected_blocks: list[str] = field(default_factory=list)
     evidence: str = ""
     recommended_moves: list[str] = field(default_factory=list)
+    evidence_basis: str = "topology_heuristic"
+    measured: bool = False
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -44,7 +46,7 @@ def run_static_timbre_critic(
     patch: PatchModel,
     goal: TimbralGoalVector,
 ) -> list[SoundDesignIssue]:
-    """Detect static timbre: no modulation sources, flat/lifeless sound.
+    """Suggest checking modulation only when movement was explicitly requested.
 
     Fires when the goal asks for movement or instability but the patch
     has no LFOs and no non-default envelopes (only oscillators/filters/effects).
@@ -57,36 +59,24 @@ def run_static_timbre_critic(
 
     # If goal wants movement or instability but patch is static
     wants_movement = goal.movement > 0.1 or goal.instability > 0.1
-    if wants_movement and not has_modulation and len(patch.blocks) > 0:
+    if wants_movement and not has_modulation and patch.blocks and not patch.opaque_blocks:
         severity = min(1.0, (abs(goal.movement) + abs(goal.instability)) / 2.0)
         issues.append(SoundDesignIssue(
             issue_type="static_timbre",
             critic="static_timbre",
             severity=round(severity, 3),
-            confidence=0.8,
+            confidence=0.35,
             affected_blocks=[b.device_name for b in patch.blocks],
             evidence=(
                 f"Goal wants movement={goal.movement:.2f}, "
-                f"instability={goal.instability:.2f} but patch has "
-                f"no LFOs or modulation envelopes"
+                f"instability={goal.instability:.2f}. No dedicated modulation source "
+                "is visible in the inspected blocks. Check existing automation, "
+                "sample movement, and internal routing before adding modulation; "
+                "this does not establish audible stasis."
             ),
             recommended_moves=["modulation_injection"],
         ))
 
-    # Even without explicit goal, a patch with zero modulation is flat
-    if not has_modulation and not wants_movement and len(patch.blocks) > 0:
-        issues.append(SoundDesignIssue(
-            issue_type="no_modulation_sources",
-            critic="static_timbre",
-            severity=0.3,
-            confidence=0.5,
-            affected_blocks=[b.device_name for b in patch.blocks],
-            evidence=(
-                f"Patch has {len(patch.blocks)} blocks but no LFOs "
-                f"or modulation envelopes — timbre will be static"
-            ),
-            recommended_moves=["modulation_injection"],
-        ))
 
     return issues
 
@@ -97,50 +87,13 @@ def run_static_timbre_critic(
 def run_weak_identity_critic(
     patch: PatchModel,
 ) -> list[SoundDesignIssue]:
-    """Detect weak patch identity: too few distinct blocks, generic chain.
+    """Compatibility hook: topology alone cannot establish artistic identity.
 
-    A patch with only one or two blocks (e.g. just an oscillator + effect)
-    lacks timbral character.  Also flags chains with no filter or saturation,
-    which tend to sound generic.
+    A simple instrument or a chain without filtering/saturation can be a
+    complete sound. No identity criteria or matched audio are supplied here,
+    so inventing a quality penalty would force an unsupported aesthetic.
     """
-    issues: list[SoundDesignIssue] = []
-
-    controllable_blocks = [b for b in patch.blocks if b.controllable]
-    block_types = {b.block_type for b in controllable_blocks}
-
-    # Too few blocks for timbral identity
-    if len(controllable_blocks) < 2 and len(patch.device_chain) > 0:
-        issues.append(SoundDesignIssue(
-            issue_type="too_few_blocks",
-            critic="weak_identity",
-            severity=0.5,
-            confidence=0.6,
-            affected_blocks=[b.device_name for b in controllable_blocks],
-            evidence=(
-                f"Only {len(controllable_blocks)} controllable block(s) — "
-                f"patch lacks timbral sculpting potential"
-            ),
-            recommended_moves=["filter_contour", "source_balance"],
-        ))
-
-    # Generic chain: no filter or saturation for character
-    if len(controllable_blocks) >= 2:
-        has_character = "filter" in block_types or "saturation" in block_types
-        if not has_character:
-            issues.append(SoundDesignIssue(
-                issue_type="generic_chain",
-                critic="weak_identity",
-                severity=0.4,
-                confidence=0.5,
-                affected_blocks=[b.device_name for b in controllable_blocks],
-                evidence=(
-                    f"Block types {sorted(block_types)} lack filter or "
-                    f"saturation — chain will sound generic"
-                ),
-                recommended_moves=["filter_contour"],
-            ))
-
-    return issues
+    return []
 
 
 # ── Masking Role Critic ──────────────────────────────────────────────
@@ -202,46 +155,12 @@ def run_masking_role_critic(
 def run_modulation_flatness_critic(
     patch: PatchModel,
 ) -> list[SoundDesignIssue]:
-    """Detect modulation flatness: no LFOs, no envelopes beyond default.
+    """Compatibility hook; no universal penalty for absent LFOs/envelopes.
 
-    Fires when a patch with 3+ blocks has zero dedicated modulation
-    sources — the patch will sound lifeless over time.
+    The goal-aware static critic emits one qualified advisory when movement
+    was explicitly requested. Avoid a duplicate penalty based on block count.
     """
-    issues: list[SoundDesignIssue] = []
-
-    lfo_count = sum(1 for b in patch.blocks if b.block_type == "lfo")
-    envelope_count = sum(1 for b in patch.blocks if b.block_type == "envelope")
-    total_blocks = len(patch.blocks)
-
-    if total_blocks >= 3 and lfo_count == 0 and envelope_count == 0:
-        issues.append(SoundDesignIssue(
-            issue_type="no_modulation",
-            critic="modulation_flatness",
-            severity=0.5,
-            confidence=0.7,
-            affected_blocks=[b.device_name for b in patch.blocks],
-            evidence=(
-                f"Patch has {total_blocks} blocks but zero LFOs and "
-                f"zero modulation envelopes — sound will be static"
-            ),
-            recommended_moves=["modulation_injection", "envelope_shape"],
-        ))
-
-    if total_blocks >= 3 and lfo_count == 0 and envelope_count > 0:
-        issues.append(SoundDesignIssue(
-            issue_type="no_lfo_movement",
-            critic="modulation_flatness",
-            severity=0.3,
-            confidence=0.6,
-            affected_blocks=[b.device_name for b in patch.blocks if b.block_type != "envelope"],
-            evidence=(
-                f"Patch has envelopes but no LFOs — "
-                f"sustained notes will lack timbral movement"
-            ),
-            recommended_moves=["modulation_injection"],
-        ))
-
-    return issues
+    return []
 
 
 # ── Layer Overlap Critic ─────────────────────────────────────────────

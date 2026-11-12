@@ -58,7 +58,7 @@ device's own atlas entry), `sample_technique` (from
 
 ## `atlas_search` — overlay budget split
 
-Searches both the bundled factory atlas (5,264 devices / 33 packs) and
+Searches both the bundled factory atlas (5,264 browser entries / 33 packs) and
 the user-local overlay corpus (`~/.livepilot/atlas-overlays/` — user-
 scanned Max devices, racks, plugin presets, AI-synthesized plugin
 identity YAMLs). When both sources have hits, `limit` splits roughly

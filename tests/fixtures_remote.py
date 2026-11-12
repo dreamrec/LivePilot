@@ -269,6 +269,9 @@ def make_device_parameter(
         "min": min,
         "max": max,
         "is_quantized": is_quantized,
+        "is_enabled": None,
+        "automation_state": None,
+        "state": None,
         "value_string": value_string,
         "display_value": display_value,
     }
@@ -278,6 +281,8 @@ def make_device_parameters(parameters: Optional[list] = None) -> dict:
     """Canonical ``get_device_parameters`` response — mirrors
     devices.py::get_device_parameters."""
     return {
+        "device_id": None,
+        "device_path": [],
         "parameters": parameters if parameters is not None else [
             make_device_parameter(0, "Device On", 1.0, is_quantized=True,
                                    value_string="On", display_value="On"),

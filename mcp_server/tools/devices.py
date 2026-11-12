@@ -216,28 +216,61 @@ def _validate_chain_index(chain_index: int):
         raise ValueError("chain_index must be >= 0")
 
 
+def _device_address(device_path, expected_device_id):
+    if device_path is not None:
+        if not isinstance(device_path, list) or len(device_path) > 8:
+            raise ValueError("device_path must be a list of at most 8 chain/device hops")
+        for hop in device_path:
+            if not isinstance(hop, dict) or set(hop) != {"chain_index", "device_index"}:
+                raise ValueError("Each device_path hop needs only chain_index and device_index")
+            if any(type(hop[key]) is not int or hop[key] < 0 for key in hop):
+                raise ValueError("device_path indices must be non-negative integers")
+    result = {}
+    if device_path is not None:
+        result["device_path"] = device_path
+    if expected_device_id is not None:
+        result["expected_device_id"] = expected_device_id
+    return result
+
+
 @mcp.tool()
-def get_device_info(ctx: Context, track_index: int, device_index: int) -> dict:
+def get_device_info(
+    ctx: Context, track_index: int, device_index: int,
+    device_path: Optional[list[dict]] = None,
+    expected_device_id: Optional[str] = None,
+) -> dict:
     """Get info about a device: name, class, type, active state, parameter count.
+    device_index selects a top-level device. Optional device_path descends
+    racks with [{"chain_index": 0, "device_index": 1}, ...] (at most 8 hops).
+    Pass a previously read device_id as expected_device_id to reject stale targets.
     track_index: 0+ for regular tracks, -1/-2/... for return tracks (A/B/...), -1000 for master."""
     _validate_track_index(track_index)
     _validate_device_index(device_index)
     result = _get_ableton(ctx).send_command("get_device_info", {
         "track_index": track_index,
         "device_index": device_index,
+        **_device_address(device_path, expected_device_id),
     })
     return _annotate_device_info(result)
 
 
 @mcp.tool()
-def get_device_parameters(ctx: Context, track_index: int, device_index: int) -> dict:
+def get_device_parameters(
+    ctx: Context, track_index: int, device_index: int,
+    device_path: Optional[list[dict]] = None,
+    expected_device_id: Optional[str] = None,
+) -> dict:
     """Get all parameters for a device with names, values, and ranges.
+    device_index selects a top-level device. Optional device_path descends
+    racks with [{"chain_index": 0, "device_index": 1}, ...] (at most 8 hops).
+    Pass a previously read device_id as expected_device_id to reject stale targets.
     track_index: 0+ for regular tracks, -1/-2/... for return tracks (A/B/...), -1000 for master."""
     _validate_track_index(track_index)
     _validate_device_index(device_index)
     return _get_ableton(ctx).send_command("get_device_parameters", {
         "track_index": track_index,
         "device_index": device_index,
+        **_device_address(device_path, expected_device_id),
     })
 
 
@@ -249,9 +282,13 @@ def set_device_parameter(
     value: float,
     parameter_name: Optional[str] = None,
     parameter_index: Optional[int] = None,
+    device_path: Optional[list[dict]] = None,
+    expected_device_id: Optional[str] = None,
 ) -> dict:
     """Set a device parameter by name or index.
 
+    device_path optionally descends nested racks via chain_index/device_index
+    hops (max 8). Use expected_device_id from get_device_info to guard reorders.
     track_index: 0+ for regular tracks, -1/-2/... for return tracks (A/B/...), -1000 for master.
 
     ⚠️ PARAMETER RANGES ARE NOT ALWAYS 0-1. Ableton devices use MIXED
@@ -291,6 +328,7 @@ def set_device_parameter(
         "track_index": track_index,
         "device_index": device_index,
         "value": value,
+        **_device_address(device_path, expected_device_id),
     }
     if parameter_name is not None:
         params["parameter_name"] = parameter_name
@@ -328,7 +366,8 @@ def set_device_parameter(
         try:
             param_info = _get_ableton(ctx).send_command(
                 "get_device_parameters",
-                {"track_index": track_index, "device_index": device_index},
+                {"track_index": track_index, "device_index": device_index,
+                 **_device_address(device_path, expected_device_id)},
             )
         except Exception:
             raise exc
@@ -498,6 +537,8 @@ def batch_set_parameters(
     device_index: int,
     parameters: Any = None,
     operations: Any = None,
+    device_path: Optional[list[dict]] = None,
+    expected_device_id: Optional[str] = None,
 ) -> dict:
     """Set multiple device parameters in one call.
 
@@ -508,6 +549,8 @@ def batch_set_parameters(
 
     ``operations`` is accepted as an alias for ``parameters`` (either works).
 
+    device_path optionally descends nested racks via chain_index/device_index
+    hops (max 8). Use expected_device_id from get_device_info to guard reorders.
     track_index: 0+ for regular tracks, -1/-2/... for return tracks (A/B/...), -1000 for master.
 
     Response includes a ``snapped_params`` list when quantized-enum
@@ -529,6 +572,7 @@ def batch_set_parameters(
         "track_index": track_index,
         "device_index": device_index,
         "parameters": normalized,
+        **_device_address(device_path, expected_device_id),
     })
     if isinstance(response, dict):
         response["snapped_params"] = _detect_snapped_params(parameters_list, response)
@@ -803,13 +847,23 @@ def set_simpler_playback_mode(
 
 
 @mcp.tool()
-def get_rack_chains(ctx: Context, track_index: int, device_index: int) -> dict:
-    """Get all chains in a rack device with volume, pan, mute, solo."""
+def get_rack_chains(
+    ctx: Context, track_index: int, device_index: int,
+    device_path: Optional[list[dict]] = None,
+    expected_device_id: Optional[str] = None,
+) -> dict:
+    """Get rack chains and child devices, with device_path and device_id for nested control.
+
+    device_path descends from device_index using chain_index/device_index hops.
+    Read one rack level at a time; pass a child's path to get_device_parameters
+    or set_device_parameter. expected_device_id optionally rejects stale targets.
+    """
     _validate_track_index(track_index)
     _validate_device_index(device_index)
     return _get_ableton(ctx).send_command("get_rack_chains", {
         "track_index": track_index,
         "device_index": device_index,
+        **_device_address(device_path, expected_device_id),
     })
 
 
@@ -1253,19 +1307,21 @@ def get_wavetable_mod_targets(
     ctx: Context,
     track_index: int,
     device_index: int,
+    device_path: Optional[list[dict]] = None,
+    expected_device_id: Optional[str] = None,
 ) -> dict:
-    """Enumerate visible modulation target parameter names on a Wavetable (Live 11+).
+    """Read visible matrix rows, native source names/indices, and addable parameter names.
 
-    Returns {targets: [...]} — the list depends on the current patch
-    configuration (e.g. which oscillators are active). Feed these strings
-    into add_wavetable_mod_route / set_wavetable_mod_amount as the target
-    argument.
+    target_details provides index/name/parameter_name. Use a visible name or
+    index:N with amount tools. addable_parameters lists device parameter names
+    accepted by add_wavetable_mod_route. Optional device_path targets nested racks.
     """
     _validate_track_index(track_index)
     _validate_device_index(device_index)
     return _get_ableton(ctx).send_command("get_wavetable_mod_targets", {
         "track_index": track_index,
         "device_index": device_index,
+        **_device_address(device_path, expected_device_id),
     })
 
 
@@ -1276,21 +1332,23 @@ def add_wavetable_mod_route(
     device_index: int,
     source: str,
     target: str,
+    device_path: Optional[list[dict]] = None,
+    expected_device_id: Optional[str] = None,
 ) -> dict:
-    """Create a modulation routing on a Wavetable device (Live 11+).
+    """Add a modulatable device parameter to Wavetable's matrix (amount unchanged).
 
-    source must be one of: "Env 2", "Env 3", "LFO 1", "LFO 2",
-    "MIDI Key", "MIDI Velocity", "MIDI Aftertouch", "MIDI Pitchbend",
-    "Macro 1".."Macro 8". target must be a name from
-    get_wavetable_mod_targets — valid targets depend on the current patch.
-    Returns {source, target, actual_target} where actual_target is the
-    parameter name Live resolved the routing to.
+    Read get_wavetable_mod_targets first for sources and addable_parameters.
+    Native sources include Amp Env, Env 2/3, LFO 1/2, MIDI Velocity, MIDI Key,
+    MIDI Pitchbend, MIDI Aftertouch, MIDI Mod Wheel, and MIDI Random; Macros
+    are not matrix sources. target is an existing row, index:N, or unique
+    modulatable device-parameter name. Set its amount with set_wavetable_mod_amount.
     """
     _validate_track_index(track_index)
     _validate_device_index(device_index)
     return _get_ableton(ctx).send_command("add_wavetable_mod_route", {
         "track_index": track_index,
         "device_index": device_index,
+        **_device_address(device_path, expected_device_id),
         "source": source,
         "target": target,
     })
@@ -1304,10 +1362,13 @@ def set_wavetable_mod_amount(
     source: str,
     target: str,
     amount: float,
+    device_path: Optional[list[dict]] = None,
+    expected_device_id: Optional[str] = None,
 ) -> dict:
     """Set the modulation amount for a Wavetable source→target routing (Live 11+).
 
-    amount is bipolar: -1.0 to 1.0. 0.0 effectively disables the routing.
+    amount is native bipolar -1.0 to 1.0 (the UI displays -100 to 100).
+    0.0 disables the routing. target is a visible row name or index:N.
     source and target use the same names documented on
     add_wavetable_mod_route. Returns {source, target, amount}.
     """
@@ -1318,6 +1379,7 @@ def set_wavetable_mod_amount(
     return _get_ableton(ctx).send_command("set_wavetable_mod_amount", {
         "track_index": track_index,
         "device_index": device_index,
+        **_device_address(device_path, expected_device_id),
         "source": source,
         "target": target,
         "amount": amount,
@@ -1331,6 +1393,8 @@ def get_wavetable_mod_amount(
     device_index: int,
     source: str,
     target: str,
+    device_path: Optional[list[dict]] = None,
+    expected_device_id: Optional[str] = None,
 ) -> dict:
     """Read the current modulation amount for a Wavetable source→target routing (Live 11+).
 
@@ -1343,6 +1407,7 @@ def get_wavetable_mod_amount(
     return _get_ableton(ctx).send_command("get_wavetable_mod_amount", {
         "track_index": track_index,
         "device_index": device_index,
+        **_device_address(device_path, expected_device_id),
         "source": source,
         "target": target,
     })
@@ -1353,6 +1418,8 @@ def get_wavetable_mod_matrix(
     ctx: Context,
     track_index: int,
     device_index: int,
+    device_path: Optional[list[dict]] = None,
+    expected_device_id: Optional[str] = None,
 ) -> dict:
     """Dump all non-zero modulation routings on a Wavetable device (Live 11+).
 
@@ -1366,6 +1433,7 @@ def get_wavetable_mod_matrix(
     return _get_ableton(ctx).send_command("get_wavetable_mod_matrix", {
         "track_index": track_index,
         "device_index": device_index,
+        **_device_address(device_path, expected_device_id),
     })
 
 

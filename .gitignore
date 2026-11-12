@@ -127,3 +127,8 @@ user_corpus_output/
 spikes/**/vendor/*.tgz
 spikes/**/dist/
 spikes/**/__pycache__/
+
+# Local review journals belong in private working archives, not public releases.
+/DEEP_REVIEW_*.md
+/FIX_PROGRESS_*.md
+/LIVE_TEST_BUGS_*.md

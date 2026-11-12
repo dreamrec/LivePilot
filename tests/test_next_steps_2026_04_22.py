@@ -331,6 +331,8 @@ def test_set_chain_name_handler_registered():
     stub_utils = types.ModuleType("utils_stub")
     stub_utils.get_track = lambda s, i: None
     stub_utils.get_device = lambda t, i: None
+    stub_utils.get_device_by_path = lambda *args, **kwargs: None
+    stub_utils.device_identity = lambda device: None
 
     stub_version = types.ModuleType("version_detect_stub")
     stub_version.has_feature = lambda _: True

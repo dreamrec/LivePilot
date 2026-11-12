@@ -7,9 +7,14 @@ An agentic production system for Ableton Live 12.
 
 ## What LivePilot Is
 
-LivePilot is not a tool collection with an AI wrapper. It is a **production system** — three perception layers feed into 474 tools, which are orchestrated by a dozen creative engines that understand song identity, learn your taste, diagnose session problems, and generate real musical options.
+LivePilot connects an MCP-compatible AI client to Ableton Live 12. It provides
+exact controls for notes, clips, devices, routing, and arrangement, alongside
+planning, discovery, captured-audio analysis, and preference memory.
 
-The difference: a tool collection executes "set volume to -6dB." LivePilot understands that turning down the drums might kill the groove that defines the track, suggests three genuinely different ways to create space instead, lets you preview each one, and remembers which approach you preferred.
+Version 1.31.0 extends existing tools with nested rack parameter paths and
+native Wavetable modulation. Sound-design suggestions accept explicit intent
+and label structural heuristics. A successful control call is not evidence
+that the musical result is better; use matched captures and listening.
 
 ---
 
@@ -19,7 +24,7 @@ The difference: a tool collection executes "set volume to -6dB." LivePilot under
 AI Client  ──MCP──►  FastMCP Server  ──TCP/9878──►  Remote Script (inside Ableton)
                         (validates)                    (executes on main thread)
                             │
-                            ├── Device Atlas (5264 devices, 120 enriched, 7 indexes)
+                            ├── Device Atlas (5264 browser entries, 120 enriched, 7 indexes)
                             ├── User Corpus (~/.livepilot/atlas-overlays/)   [v1.23.4+]
                             │      ├── user/         your detected plugins
                             │      ├── m4l-devices/  your .amxd library
@@ -29,9 +34,9 @@ AI Client  ──MCP──►  FastMCP Server  ──TCP/9878──►  Remote S
                             └── Technique Memory (~/.livepilot/memory/)
 ```
 
-The **atlas** resolves device names and browser URIs — the AI never hallucinates a preset. 641 devices are indexed by pack (Core Library + explicit-pack assignments) so "what's in Drone Lab?" is an instant lookup. Reverse-index `device_techniques_index.json` cross-references 146 techniques across 58 devices (the `atlas_techniques_for_device` tool).
+The **atlas** provides device names, browser URIs, and authored knowledge; resolve each candidate against the current Live installation. 641 devices are indexed by pack (Core Library + explicit-pack assignments) so "what's in Drone Lab?" is an instant lookup. Reverse-index `device_techniques_index.json` cross-references 146 techniques across 58 devices (the `atlas_techniques_for_device` tool).
 The **user corpus** (v1.23.4+) extends the atlas with whatever's installed on YOUR machine — third-party plugins, custom Max devices, your `.adg` racks. Loaded by every reasoning tool with a 50/50 result-budget split alongside the factory atlas, so "sound like Burial" can route to *your* CHOWTapeModel + Splice PHOTEK pack instead of just Ableton's stock saturator. See [User Corpus Guide](../USER_CORPUS_GUIDE.md).
-The **analyzer** feeds back spectral data from the master bus so the AI hears its own changes — **9 frequency bands** (sub_low / sub / low / low_mid / mid / high_mid / high / presence / air); the sub_low band (20-60 Hz) separates kick fundamental from DC rumble. From v1.20.3 the analyzer is auto-loaded via `ensure_analyzer_on_master` when a decision or verification actually needs audio evidence.
+The **analyzer** feeds back spectral data from the master bus so the AI can inspect measured features of the output — **9 frequency bands** (sub_low / sub / low / low_mid / mid / high_mid / high / presence / air); the sub_low band (20-60 Hz) separates kick fundamental from DC rumble. From v1.20.3 the analyzer is auto-loaded via `ensure_analyzer_on_master` when a decision or verification actually needs audio evidence.
 The **memory** persists production decisions across sessions as searchable, replayable data structures.
 
 LivePilot contains 474 tools. Direct Ableton controls execute through the Live Object Model on Ableton's main thread; planning, search, analysis, memory, filesystem, and network tools run in their appropriate layers. Live-session mutations (clips, devices, mixer, arrangement) normally route through Ableton's undo stack. Side effects outside the Live project — Splice downloads, memory/ledger writes, installer actions, atlas scans, and filesystem writes — persist beyond undo.
@@ -48,7 +53,7 @@ or `full` when a client benefits from a wider pinned catalog.
 
 ### Layer 1: Deterministic Tools
 
-The foundation. Direct control over every aspect of Ableton Live through the Live Object Model: transport, tracks, clips, notes, devices, scenes, mixing, arrangement, browser, automation, scales, grooves, take-lanes, follow actions, MIDI tool generators. Also includes music theory (Krumhansl-Schmuckler key detection, neo-Riemannian harmony, species counterpoint), generative algorithms (Euclidean rhythm, tintinnabuli, phase shift, additive process), and MIDI I/O.
+The foundation. Control over the exposed parts of Ableton Live through the Live Object Model: transport, tracks, clips, notes, devices, scenes, mixing, arrangement, browser, automation, scales, grooves, take-lanes, follow actions, MIDI tool generators. Also includes music theory (Krumhansl-Schmuckler key detection, neo-Riemannian harmony, species counterpoint), generative algorithms (Euclidean rhythm, tintinnabuli, phase shift, additive process), and MIDI I/O.
 
 These tools do exactly what you ask. No interpretation, no judgment. They are the building blocks.
 
@@ -80,7 +85,7 @@ Sits on top of the tools and perception, adding musical judgment. This is what m
 
 **Evaluating results:**
 - **Mix Engine** runs critic-driven analysis — masking, headroom, stereo, dynamics — and plans corrective moves
-- **Sound Design Engine** analyzes patches for static timbre, missing modulation, and weak transients
+- **Sound Design Engine** inspects patch topology against explicit timbral goals; structural hypotheses remain distinct from measured sound
 - **Synthesis Brain** extracts timbre fingerprints + proposes synth branches
 - **Transition / Reference / Translation Engines** score transitions, distill principles from reference tracks, translate across domains
 - **Evaluation Loop** enforces measure-before, act, measure-after discipline on every creative move
@@ -183,7 +188,7 @@ All 474 tools across 57 domains, in source-truth per-domain counts:
 | Domain | # | Scope |
 |--------|:-:|-------|
 | Sample Engine | 23 | Multi-source search (Splice gRPC + browser + filesystem), Splice catalog hunt, downloads, previews, pack info, collections, presets, describe-a-sound (LIVE), variations (LIVE), http-diagnose (v1.17+) |
-| Atlas | 22 | Search 5264 devices, suggest by intent, chain building, comparison, library scan, `atlas_pack_info`, `atlas_describe_chain` (free-text), `atlas_techniques_for_device` (reverse-lookup), `atlas_macro_fingerprint` (preset similarity), Pack-Atlas cross-pack tools (`atlas_transplant`, `atlas_extract_chain`, `atlas_cross_pack_chain`, `atlas_pack_aware_compose`, `atlas_demo_story`), hybrid-surface Layer B (`atlas_explore`, `atlas_audition`, `atlas_substitute`) — all v1.17+ unless noted; plus `extension_atlas_search` / `extension_atlas_get` / `extension_atlas_list` for user-local overlays (v1.23.0+) |
+| Atlas | 22 | Search 5264 browser entries, suggest by intent, chain building, comparison, library scan, `atlas_pack_info`, `atlas_describe_chain` (free-text), `atlas_techniques_for_device` (reverse-lookup), `atlas_macro_fingerprint` (preset similarity), Pack-Atlas cross-pack tools (`atlas_transplant`, `atlas_extract_chain`, `atlas_cross_pack_chain`, `atlas_pack_aware_compose`, `atlas_demo_story`), hybrid-surface Layer B (`atlas_explore`, `atlas_audition`, `atlas_substitute`) — all v1.17+ unless noted; plus `extension_atlas_search` / `extension_atlas_get` / `extension_atlas_list` for user-local overlays (v1.23.0+) |
 | Agent OS | 9 | Session kernel, action ledger, capability state, routing, goal vectors, taste, turn budget |
 | Composer | 9 | Prompt → multi-layer composition plan, sample augmentation, plan preview, branches, develop-mode apply, hybrid Ableton-Knowledge consultation |
 | Hook Hunter | 9 | Hook detection, salience scoring, neglect detection, phrase impact |
@@ -230,7 +235,7 @@ All 474 tools across 57 domains, in source-truth per-domain counts:
 | Chapter | What's inside |
 |---------|---------------|
 | [The Intelligence Layer](intelligence.md) | How the engines connect — conductor, kernel, moves, preview, evaluation |
-| [Device Atlas](device-atlas.md) | 5264 devices indexed — search, suggest, chain building, comparison, pack browsing |
+| [Device Atlas](device-atlas.md) | 5264 browser entries indexed — search, suggest, chain building, comparison, pack browsing |
 | [User Corpus Guide](../USER_CORPUS_GUIDE.md) `[v1.23.4+]` | Build a personal atlas from your plugins, racks, Max devices, samples — same MCP tools as factory atlas |
 | [Plugin Knowledge Engine](../PLUGIN_KNOWLEDGE_ENGINE.md) `[v1.23.4+]` | 4-phase detect → canonicalize → research → synthesize pipeline, AUv3 detection via auval, VST3-preferred dedup |
 | [Extension API](../EXTENSION_API.md) | Drop YAML overlays at `~/.livepilot/atlas-overlays/<namespace>/` — survives npm updates |

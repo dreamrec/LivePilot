@@ -67,7 +67,7 @@ UDP/OSC bridge (9880 / 9881) for deep LiveAPI access. Optional — all
 core tools work without it.
 
 **Device Atlas** — `mcp_server/atlas/`. In-memory indexed JSON database
-of 5264 devices (URIs, categories, tags, genres). 7 indexes. Resolves
+of 5264 browser entries (URIs, categories, tags, genres). 7 indexes. Resolves
 from `~/.livepilot/atlas/device_atlas.json` (user scan) if present, else
 the bundled baseline. _Avoid_: catalog (overloaded with the device-corpus
 markdown).

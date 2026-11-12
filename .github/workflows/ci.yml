@@ -172,6 +172,7 @@ jobs:
           node bin/livepilot.js --help
       - name: Verify npm pack includes expected files
         run: |
+          npm pack --dry-run 2>&1 | grep -q "scripts/als_deep_parse.py"
           npm pack --dry-run 2>&1 | tee /dev/stderr | grep -q "livepilot_bridge.js"
           npm pack --dry-run 2>&1 | grep -q "LivePilot_Analyzer.amxd"
           npm pack --dry-run 2>&1 | grep -q "remote_script/LivePilot/__init__.py"

@@ -1,24 +1,19 @@
 # Device Atlas
 
-The Device Atlas is an in-memory indexed database of every device in
-Ableton's library — **5264 devices** with browser URIs (bundled
-baseline), **120 enriched** with sonic-intelligence profiles (YAML files
-on disk), plus a by-pack index built from explicit-pack YAML
-declarations. It replaces guessing device names with querying a
-knowledge base — and as of v1.17 it's the primary bridge between the
-LLM's producer knowledge and LivePilot's tool surface.
+The Device Atlas is an in-memory indexed database for discovery: **5264
+browser entries** in the bundled snapshot, including devices, presets,
+samples, and clips. **120 enrichment profiles** provide authored techniques
+and sonic descriptions. Entries are not a count of unique instruments or
+effects, and the snapshot is not an inventory of the current installation.
 
-> **v1.22.0+ — bundled vs user atlas.** LivePilot ships with a baseline
-> atlas at `mcp_server/atlas/device_atlas.json` (5264 devices — stock
-> Ableton 12 Suite inventory). When you run `scan_full_library` on your
-> machine, results are written to `~/.livepilot/atlas/device_atlas.json`
-> — your **personal** atlas. At load time the resolver prefers the user
-> path if it exists, else falls back to the bundled baseline. Your
-> personal scan reflects YOUR installed packs, User Library, and
-> plugins; typical numbers are much larger (e.g. 40k+ devices once
-> samples and drum kits are uncapped). npm updates can't touch the user
-> atlas. See `BUNDLED_ATLAS_PATH` / `USER_ATLAS_PATH` /
-> `_resolve_atlas_path()` in `mcp_server/atlas/__init__.py`.
+Resolve candidate URIs against Live's browser before loading. Scans have
+item/depth limits; a partial inventory must not be described as exhaustive.
+Authored technique knowledge is a starting point, not measured audio evidence.
+
+The bundled snapshot lives at mcp_server/atlas/device_atlas.json. An optional
+local scan writes to ~/.livepilot/atlas/device_atlas.json and takes precedence
+when present. npm updates preserve that local file. The public baseline and
+local availability are separate sources of evidence.
 
 New in v1.17:
 - **`atlas_pack_info`** — inspect an entire pack's device list + enrichment coverage

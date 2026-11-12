@@ -276,6 +276,8 @@ def get_domains() -> tuple[int, list[str]]:
 
 # Files that must contain the version string
 VERSION_FILES = [
+    "docs/assets/banner-dark.svg",
+    "docs/assets/banner-light.svg",
     "package.json",
     "server.json",
     "manifest.json",
@@ -593,7 +595,7 @@ def check_tool_count(count: int) -> list[str]:
     # and chained compounds escaped sync_metadata silently (surfaced
     # manually in v1.21.2 audit #2).
     pattern = re.compile(
-        r"\b(\d+)[-\s]+(?:[A-Z][A-Za-z\-]*\s+|[A-Za-z][A-Za-z\-]*/)*[Tt]ools?\b"
+        r"\b(\d+)[-\s]+(?:[A-Z][A-Za-z\-]*\s+|[A-Za-z][A-Za-z\-]*/)*(?i:tools?)\b",
     )
     for rel_path in TOOL_COUNT_FILES:
         path = ROOT / rel_path
@@ -706,7 +708,7 @@ def check_domain_count(count: int) -> list[str]:
         if not path.exists():
             continue
         content = path.read_text(encoding="utf-8")
-        matches = re.findall(r"(\d+)\s+domains?\b", content)
+        matches = re.findall(r"(\d+)\s+domains?\b", content, flags=re.IGNORECASE)
         for m in matches:
             # Filter historical CHANGELOG-style subset counts (e.g., "5 domains",
             # "17 domains"). Active claim has always been >= 40.
@@ -811,7 +813,7 @@ def fix_tool_count(count: int) -> list[str]:
     # a slashed prefix like "spectral/" (and chained fillers) survive
     # the rewrite.
     pattern = re.compile(
-        r"\b(\d+)([-\s]+(?:[A-Z][A-Za-z\-]*\s+|[A-Za-z][A-Za-z\-]*/)*)([Tt]ools?)\b"
+        r"\b(\d+)([-\s]+(?:[A-Z][A-Za-z\-]*\s+|[A-Za-z][A-Za-z\-]*/)*)((?i:tools?))\b",
     )
     for rel_path in TOOL_COUNT_FILES:
         path = ROOT / rel_path
