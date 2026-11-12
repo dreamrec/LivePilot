@@ -10,7 +10,8 @@ __pycache__
 
 # Test and CI
 tests/
-scripts/
+scripts/*
+!scripts/als_deep_parse.py
 .github/
 
 # Build artifacts

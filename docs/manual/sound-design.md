@@ -204,7 +204,7 @@ Two EQs is not overkill. The first cleans up, the second shapes tone. They serve
 
 ### Setting multiple parameters at once
 
-Use `batch_set_parameters` when you want to dial in a device quickly. Instead of calling `set_device_parameter` seven times, you send all the parameter changes in one call. This is faster and keeps the changes atomic — everything updates together.
+Use `batch_set_parameters` when you want to dial in a device quickly. Instead of calling `set_device_parameter` seven times, you send all the parameter changes in one call. This reduces round trips and groups applied writes into one undo step. A batch can partially succeed: inspect applied, failed, and each entry result rather than assuming rollback.
 
 For example, after loading a Compressor, you might batch-set the Threshold, Ratio, Attack, Release, Output Gain, and Dry/Wet all at once. Run `get_device_parameters` first to see the exact parameter names and valid ranges.
 
@@ -212,7 +212,7 @@ For example, after loading a Compressor, you might batch-set the Threshold, Rati
 
 ## Working with Parameters
 
-Every device in Ableton exposes its parameters through the Live Object Model. LivePilot gives you direct access.
+LivePilot reads the parameters that a device exposes through the Live Object Model. Some plug-in or device controls remain hidden or unavailable.
 
 ### Reading parameters
 
@@ -220,11 +220,29 @@ Every device in Ableton exposes its parameters through the Live Object Model. Li
 
 ### Setting parameters
 
-`set_device_parameter` sets a single parameter by name or index. Parameter names are **exact and case-sensitive**. "Filter Freq" is not the same as "filter freq" or "Filter Frequency." When in doubt, read the parameters first and copy the name exactly.
+`set_device_parameter` sets a single parameter by name or index. Parameter names prefer an exact match, with a case-insensitive fallback. Abbreviations and different names are not aliases: "Filter Freq" need not mean "Filter Frequency." When in doubt, read the parameters first and copy the name exactly.
 
 ### Setting many at once
 
 `batch_set_parameters` takes a list of parameter name/value pairs and applies them all in one call. Use this when you're dialing in a sound or configuring a newly loaded device. It's faster and produces a single undo step.
+
+### Parameters inside racks
+
+Read get_rack_chains to discover child device_path and device_id values. Pass
+a child's path to get_device_info or get_device_parameters, then reuse it
+with set_device_parameter or batch_set_parameters. Paths contain explicit
+chain_index/device_index hops; at most eight are accepted. An optional
+expected_device_id guards the final target before a write. Read again after
+reordering or changing the Set rather than retrying a stale identity.
+
+### Wavetable matrix
+
+get_wavetable_mod_targets lists native sources, visible target_details, and
+addable_parameters. Add a missing parameter with add_wavetable_mod_route,
+then set its amount with set_wavetable_mod_amount using target="index:N".
+Native amounts range -1..1; the UI displays -100..100. Read back the actual
+amount and target. Display names can differ from device parameter names.
+Rack Macros are not Wavetable matrix sources.
 
 ### Toggling devices
 

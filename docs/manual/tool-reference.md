@@ -746,6 +746,23 @@ Check if a track is frozen. Use after `freeze_track` to poll for completion, or 
 
 Tools for working with instruments and effects on tracks. This covers everything from loading a synth to tweaking reverb parameters.
 
+### Nested device addresses
+
+get_device_info, get_device_parameters, set_device_parameter,
+batch_set_parameters, get_rack_chains, and the Wavetable matrix tools accept:
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| device_path | list of objects | none | Up to eight chain_index/device_index hops from the top-level device_index. |
+| expected_device_id | string | none | Session-local device identity from a recent read; a mismatch rejects the operation before writing. |
+
+get_rack_chains returns child device paths and IDs. get_device_parameters
+also reports parameter availability, automation state, and control state
+when exposed. Do not persist device IDs across sessions. Creation, deletion,
+and routing tools have not gained arbitrary nested addressing in this release.
+For Wavetable matrix source/target details, see the live tool schemas in the
+[generated catalog](tool-catalog.md) and the [device guide](sound-design.md).
+
 ### get_device_info
 
 Returns info about a device: its name, type (instrument, audio_effect, midi_effect), whether it's active, and how many parameters it has.
@@ -792,7 +809,7 @@ Changes a single parameter on a device. You can target by name or by index.
 
 ### batch_set_parameters
 
-Changes multiple parameters on a device in a single call. Faster and more atomic than calling set_device_parameter repeatedly.
+Changes multiple parameters on a device in a single call. It reduces round trips and groups applied writes into one undo step. Partial success is reported per entry; the call does not promise rollback.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -3079,7 +3096,7 @@ Plans a safe transition between two scenes with timing and crossfade suggestions
 
 ## Device Atlas
 
-The atlas is LivePilot's indexed, enriched knowledge of every loadable device in your Live install — 5264 devices total, 120 enriched with sonic intelligence (character tags, sweet-spot parameters, starter recipes, pairings, gotchas). It's what stops the AI from hallucinating a preset that doesn't exist: every load goes through a URI the atlas verified.
+The atlas is an indexed discovery snapshot with 5264 browser entries, including devices, presets, samples, and clips. Its 120 authored enrichment profiles provide techniques and sonic descriptions. A result does not prove current installation or loadability; resolve it against Live's browser before loading. Scan limits and local availability remain separate from the bundled knowledge.
 
 ### atlas_search
 
@@ -3521,7 +3538,7 @@ This chapter covers the most-used tools. The complete list of all 474 tools acro
 See also:
 - **[The Intelligence Layer](intelligence.md)** — how the engines connect
 - **[Samples & Slicing](samples.md)** — 3-source search, Splice integration, fitness critics
-- **[Device Atlas](device-atlas.md)** — 5264 devices, pack browsing, enrichment coverage
+- **[Device Atlas](device-atlas.md)** — 5264 browser entries, pack browsing, enrichment coverage
 
 ---
 

@@ -24,15 +24,20 @@ source .venv/bin/activate          # macOS/Linux
 ### Install the Remote Script
 
 ```bash
-npx livepilot --install
+node bin/livepilot.js --install
 ```
+
+Use the local entry point above: npx resolves the published package and can
+silently replace your edited Remote Script with an older release. Handler-only
+changes can be loaded with the reload_handlers MCP tool; TCP-server changes
+require restarting Live. See the development runbook for the full procedure.
 
 Restart Ableton → Preferences → Link, Tempo & MIDI → Control Surface → **LivePilot**
 
 ### Run Tests
 
 ```bash
-pytest tests/ -v
+python -m pytest tests/ -q
 ```
 
 Tests run without Ableton — they validate tool contracts, schema, and pure Python logic.
@@ -73,7 +78,7 @@ Explain the workflow problem before describing the solution.
 1. **Fork** the repository
 2. **Create a branch** from `main` (`git checkout -b feat/your-feature`)
 3. **Make your changes** — keep commits focused and atomic
-4. **Run tests** — `pytest tests/ -v` must pass
+4. **Run tests** — `python -m pytest tests/ -q` must pass
 5. **Update documentation** if you add or remove tools:
    - Run `python scripts/sync_metadata.py --fix` to propagate the new tool count across `README.md`, `CLAUDE.md`, `package.json`, the plugin manifests, `server.json`, and the docs (see [Tool Count Discipline](#tool-count-discipline) below)
    - Add an entry to `CHANGELOG.md`

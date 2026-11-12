@@ -11,6 +11,14 @@
 - Wavetable modulation uses native source enums, parameter-object insertion, indexed targets, and normalized -1..1 values with readback. Source discovery includes the Amp envelope and MIDI expression/random; unsupported Macro sources fail clearly. Matrix API errors no longer resemble an empty patch.
 - Per-clip scale setters use tolerant scale-name resolution on builds that expose the API, including the properties documented in Live 12.4.15. Older builds keep the explicit fallback to song scale tools.
 
+### Fixed — distributed runtime
+- npm and MCPB packages now include the shared ALS/ADG/ADV parser helper that their scanners load at runtime. Extracted-package tests exercise synthetic files outside the source checkout.
+
+### Changed — public project refresh
+- Refreshed the README, storefront descriptions, release banners, and contribution setup instructions around verified workflows and capabilities.
+- Clarified that atlas totals count browser entries, not distinct installed devices. Privacy copy now distinguishes local control from the configured MCP client's model service.
+- Metadata validation now recognizes uppercase tool/domain claims and includes banner versions, preventing stale artwork from passing release checks.
+
 ### Changed — creative feedback
 - Removed unsolicited quality penalties based only on patch simplicity, missing filters/saturation, or absent visible LFOs. Explicit movement requests may produce one low-confidence structural advisory; opaque internals remain unknown. Documentation no longer invents spectral-flux or modulation-depth measurements.
 
