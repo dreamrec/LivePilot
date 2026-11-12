@@ -211,3 +211,29 @@ Use `get_device_parameters` to read current values, then `set_device_parameter` 
 ## Device Atlas Reference
 
 Consult `references/device-atlas/` in the livepilot-core skill for the full corpus of 280+ instruments, 139 drum kits, and 350+ impulse responses. The atlas contains real browser URIs, preset names, and sonic descriptions. Use it as your lookup table before loading any device — never guess a name that is not in the atlas or in browser search results.
+
+
+## Nested rack parameters
+
+Use get_rack_chains(track_index, device_index) to discover child devices.
+Each child supplies device_path and device_id. A path is a list of explicit
+chain/device hops from the top-level device_index; at most eight hops are
+accepted. Pass it to get_device_info, get_device_parameters,
+set_device_parameter, batch_set_parameters, get_rack_chains, or the
+Wavetable modulation tools. Read one rack level at a time.
+
+For writes, pass expected_device_id from the latest info/parameter read.
+If the topology changed, a mismatch fails before writing. Read again rather
+than retrying against a stale path. Identity is local to the current Live
+Set and must not be persisted as a cross-session identifier.
+
+## Native Wavetable modulation
+
+Read get_wavetable_mod_targets first. It returns visible target_details,
+addable_parameters, and supported native sources. Sources are envelopes,
+LFOs, and MIDI expression/random; rack Macros are not matrix sources.
+To add a missing row, pass a unique name from addable_parameters to
+add_wavetable_mod_route. This adds the parameter without inventing an amount.
+Then call set_wavetable_mod_amount using its target_index as target="index:N".
+Amounts use native -1..1 values; the UI displays -100..100. Read back the
+amount and actual_target. An API failure is an error, not an empty matrix.

@@ -148,3 +148,20 @@ def test_guard_does_not_swallow_an_empty_slot():
     song.tracks[0].clip_slots[0].has_clip = False
     with pytest.raises(ValueError, match="empty"):
         clips.get_clip_scale(song, ARGS)
+
+
+def test_clip_scale_supports_new_api_when_song_scale_names_is_absent():
+    clips = _load_clips_module()
+    clip = _ClipWithScale()
+    song = _song(clip)
+    del song.scale_names
+    result = clips.set_clip_scale(song, {**ARGS, 'root_note': 2, 'scale_name': 'minor'})
+    assert result == {'root_note': 2, 'scale_name': 'Minor'}
+
+
+def test_partial_clip_scale_api_fails_before_writing():
+    clips = _load_clips_module()
+    partial = types.SimpleNamespace(root_note=9, scale_name='Major')
+    with pytest.raises(RuntimeError, match='not exposed'):
+        clips.set_clip_scale(_song(partial), {**ARGS, 'root_note': 2, 'scale_name': 'Minor'})
+    assert partial.root_note == 9

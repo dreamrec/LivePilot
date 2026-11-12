@@ -80,7 +80,7 @@ Sits on top of the tools and perception, adding musical judgment. This is what m
 
 **Evaluating results:**
 - **Mix Engine** runs critic-driven analysis — masking, headroom, stereo, dynamics — and plans corrective moves
-- **Sound Design Engine** analyzes patches for static timbre, missing modulation, and weak transients
+- **Sound Design Engine** inspects patch topology against explicit timbral goals; structural hypotheses remain distinct from measured sound
 - **Synthesis Brain** extracts timbre fingerprints + proposes synth branches
 - **Transition / Reference / Translation Engines** score transitions, distill principles from reference tracks, translate across domains
 - **Evaluation Loop** enforces measure-before, act, measure-after discipline on every creative move

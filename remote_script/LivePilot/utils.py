@@ -105,6 +105,46 @@ def get_device(track, device_index):
     return devices[device_index]
 
 
+def device_identity(device):
+    """Live's object identity survives fresh Python proxies within a Set."""
+    try:
+        pointer = device._live_ptr
+        return str(pointer) if pointer else None
+    except Exception:
+        return None
+
+
+def get_device_by_path(track, device_index, device_path=None, expected_device_id=None):
+    """Resolve a root device plus at most eight rack-chain/device hops.
+
+    Each hop is {chain_index: int, device_index: int}. No negative indices,
+    implicit first-chain choices, or recursive name matching are permitted.
+    An optional identity from get_device_info guards writes after reordering.
+    """
+    path = [] if device_path is None else device_path
+    if not isinstance(path, list) or len(path) > 8:
+        raise ValueError("device_path must be a list of at most 8 chain/device hops")
+    for hop in path:
+        if not isinstance(hop, dict) or set(hop) != {"chain_index", "device_index"}:
+            raise ValueError("Each device_path hop needs only chain_index and device_index")
+        if any(type(hop[key]) is not int or hop[key] < 0 for key in hop):
+            raise ValueError("device_path indices must be non-negative integers")
+    device = get_device(track, device_index)
+    for depth, hop in enumerate(path):
+        if not getattr(device, "can_have_chains", False):
+            raise ValueError("Device at path depth %d is not a rack" % depth)
+        chains = list(device.chains)
+        chain_index = hop["chain_index"]
+        if chain_index >= len(chains):
+            raise IndexError("Chain index %d out of range at path depth %d" % (chain_index, depth))
+        device = get_device(chains[chain_index], hop["device_index"])
+    if expected_device_id is not None:
+        identity = device_identity(device)
+        if identity is None or identity != str(expected_device_id):
+            raise RuntimeError("Device identity changed or is unavailable; read get_device_info again before writing")
+    return device
+
+
 def get_scene(song, scene_index):
     """Return a scene by index."""
     scenes = list(song.scenes)

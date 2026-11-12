@@ -173,7 +173,7 @@ class TestStaticTimbreCritic:
         static = [i for i in issues if i.issue_type == "static_timbre"]
         assert len(static) == 0
 
-    def test_mild_issue_without_goal(self):
+    def test_no_static_penalty_without_goal(self):
         patch = PatchModel(
             blocks=[
                 PatchBlock(block_type="oscillator", device_name="Osc"),
@@ -181,9 +181,7 @@ class TestStaticTimbreCritic:
         )
         goal = TimbralGoalVector()
         issues = run_static_timbre_critic(patch, goal)
-        assert len(issues) >= 1
-        assert issues[0].issue_type == "no_modulation_sources"
-        assert issues[0].severity < 0.5
+        assert issues == []
 
     def test_empty_patch_no_issue(self):
         patch = PatchModel(blocks=[])
@@ -200,7 +198,7 @@ class TestWeakIdentityCritic:
         )
         issues = run_weak_identity_critic(patch)
         types = [i.issue_type for i in issues]
-        assert "too_few_blocks" in types
+        assert "too_few_blocks" not in types
 
     def test_generic_chain(self):
         patch = PatchModel(
@@ -212,7 +210,7 @@ class TestWeakIdentityCritic:
         )
         issues = run_weak_identity_critic(patch)
         types = [i.issue_type for i in issues]
-        assert "generic_chain" in types
+        assert "generic_chain" not in types
 
     def test_no_issue_with_filter(self):
         patch = PatchModel(
@@ -253,7 +251,7 @@ class TestModulationFlatnessCritic:
         )
         issues = run_modulation_flatness_critic(patch)
         types = [i.issue_type for i in issues]
-        assert "no_modulation" in types
+        assert "no_modulation" not in types
 
     def test_no_lfo_but_has_envelope(self):
         patch = PatchModel(
@@ -265,7 +263,7 @@ class TestModulationFlatnessCritic:
         )
         issues = run_modulation_flatness_critic(patch)
         types = [i.issue_type for i in issues]
-        assert "no_lfo_movement" in types
+        assert "no_lfo_movement" not in types
         assert "no_modulation" not in types
 
     def test_no_issue_with_lfo(self):

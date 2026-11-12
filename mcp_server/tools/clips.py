@@ -508,7 +508,7 @@ async def check_clip_key_consistency(
 
 @mcp.tool()
 def get_clip_scale(ctx: Context, track_index: int, clip_index: int) -> dict:
-    """Read a clip's per-clip scale override (Live 12.0+).
+    """Read a clip's per-clip scale override when exposed (documented from Live 12.4.15).
 
     Per-clip scales are independent of Song.scale_*. A clip can have
     Scale Mode enabled with a different root/name than the Song.
@@ -532,7 +532,7 @@ def set_clip_scale(
     root_note: int,
     scale_name: str,
 ) -> dict:
-    """Set a clip's per-clip scale override (Live 12.0+).
+    """Set a clip's per-clip scale override when exposed (documented from Live 12.4.15).
 
     Overrides the Song-level scale for this clip only. Useful for
     key changes within a set, or for clips that live in a different
@@ -563,7 +563,7 @@ def set_clip_scale_mode(
     clip_index: int,
     enabled: bool,
 ) -> dict:
-    """Enable or disable Scale Mode on a single clip (Live 12.0+).
+    """Enable or disable Scale Mode on a single clip when exposed (documented from Live 12.4.15).
 
     When enabled on a clip, its notes are constrained/highlighted
     by the clip's own root_note + scale_name (set via set_clip_scale).

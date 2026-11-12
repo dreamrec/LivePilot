@@ -54,27 +54,23 @@ See [Install](#install) for client-specific setup and manual options.
 
 ---
 
-## What's New in v1.30.0
+## What's New in v1.31.0
 
-LivePilot now spends far less context describing itself and gives clearer answers about
-what it actually knows.
+- **Control devices inside racks.** Discover child paths, inspect parameters,
+  and make single or batch edits through explicit nested chain/device paths.
+  Optional device identity checks reject a stale target after reordering.
+- **Use Wavetable's native modulation matrix.** Discover real sources and
+  addable parameters, add targets, set normalized amounts, and verify readback.
+- **Give sound design a direction.** Pass an explicit timbral goal such as
+  more movement or less brightness. A simple patch or missing LFO no longer
+  receives an unsolicited quality penalty. Structural findings carry an
+  evidence label and are not presented as measured audio defects.
+- **Keep sessions responsive.** Offline analysis has bounded workers and
+  cancellation cleanup; analyzer diagnostics and transport positioning include
+  the recent fixes. See the changelog for restart requirements.
 
-- **A focused first contact.** Normal sessions advertise 28 useful entry points instead of
-  sending all 474 schemas up front. The rest remain searchable and directly callable.
-- **Options that mean something.** Decorative Composer, Atlas, and routing parameters are gone;
-  sample roles and material filters now change the result; unsupported abstract events fail
-  with concrete guidance instead of disappearing silently.
-- **Evidence with a label.** Mix and evaluation reports separate measured audio, setup-derived
-  heuristics, and artistic judgment. “Less bright” and other reduction goals now score in the
-  right direction.
-- **Depth when it earns its keep.** Quick creative requests take a quick path. Three-way
-  exploration, broad memory reads, and full critic passes are reserved for real ambiguity.
-- **More resilient sessions.** Startup no longer waits on optional services, ambiguous network
-  failures do not replay destructive edits, and project memory follows the Live set rather than
-  ordinary edits inside it.
-
-Previous release v1.29.0 introduced learned perceptual taste, honest confidence gates,
-optional CLAP distance, and named Arrangement locators.
+The tool surface remains 474 tools across 57 domains. This release deepens
+existing controls rather than adding more entry points.
 
 Full details in the [CHANGELOG](CHANGELOG.md).
 
@@ -231,7 +227,7 @@ When a session is stuck — repeated undos, overpolished loops, no structural pr
 | Engine | What it does |
 |--------|-------------|
 | **Mix Engine** | Critic-driven analysis: masking, headroom, stereo, dynamics. Plans corrective moves with before/after evaluation |
-| **Sound Design Engine** | Analyzes patches for static timbre, missing modulation, weak transients. Suggests parameter moves |
+| **Sound Design Engine** | Inspects patch topology against explicit timbral goals and suggests optional parameter moves |
 | **Transition Engine** | Classifies transition types (drop, build, breakdown). Scores quality, plans improvements from archetypes |
 | **Composition Engine** | Section analysis, motif detection, emotional arcs. Plans structural moves |
 | **Performance Engine** | Safety-constrained suggestions for live sets. Knows which moves risk audio dropouts |

@@ -6,7 +6,7 @@ import Live
 from collections import deque
 
 from .router import register
-from .utils import get_track, get_device
+from .utils import get_track, get_device, get_device_by_path, device_identity
 
 
 def _get_browser():
@@ -38,17 +38,28 @@ def _safe_display_value(param):
         return None
 
 
+def _safe_parameter_property(param, name):
+    try:
+        value = getattr(param, name)
+        return value if isinstance(value, (bool, int, float, str)) else str(value)
+    except Exception:
+        return None
+
+
 @register("get_device_info")
 def get_device_info(song, params):
     """Return detailed info for a single device."""
     track_index = int(params["track_index"])
     device_index = int(params["device_index"])
     track = get_track(song, track_index)
-    device = get_device(track, device_index)
+    device = get_device_by_path(track, device_index, params.get("device_path"),
+                                params.get("expected_device_id"))
 
     result = {
         "name": device.name,
         "class_name": device.class_name,
+        "device_id": device_identity(device),
+        "device_path": params.get("device_path") or [],
         "is_active": device.is_active,
         "can_have_chains": device.can_have_chains,
         "parameter_count": len(list(device.parameters)),
@@ -66,7 +77,8 @@ def get_device_parameters(song, params):
     track_index = int(params["track_index"])
     device_index = int(params["device_index"])
     track = get_track(song, track_index)
-    device = get_device(track, device_index)
+    device = get_device_by_path(track, device_index, params.get("device_path"),
+                                params.get("expected_device_id"))
 
     parameters = []
     for i, param in enumerate(device.parameters):
@@ -90,10 +102,14 @@ def get_device_parameters(song, params):
             "min": param.min,
             "max": param.max,
             "is_quantized": param.is_quantized,
+            "is_enabled": _safe_parameter_property(param, "is_enabled"),
+            "automation_state": _safe_parameter_property(param, "automation_state"),
+            "state": _safe_parameter_property(param, "state"),
             "value_string": value_string,
             "display_value": display_value,
         })
-    return {"parameters": parameters}
+    return {"parameters": parameters, "device_id": device_identity(device),
+            "device_path": params.get("device_path") or []}
 
 
 @register("set_device_parameter")
@@ -103,7 +119,8 @@ def set_device_parameter(song, params):
     device_index = int(params["device_index"])
     value = float(params["value"])
     track = get_track(song, track_index)
-    device = get_device(track, device_index)
+    device = get_device_by_path(track, device_index, params.get("device_path"),
+                                params.get("expected_device_id"))
 
     parameter_name = params.get("parameter_name", None)
     parameter_index = params.get("parameter_index", None)
@@ -173,7 +190,8 @@ def batch_set_parameters(song, params):
     device_index = int(params["device_index"])
     parameters = params["parameters"]
     track = get_track(song, track_index)
-    device = get_device(track, device_index)
+    device = get_device_by_path(track, device_index, params.get("device_path"),
+                                params.get("expected_device_id"))
 
     dev_params = list(device.parameters)
     results = []
@@ -1044,7 +1062,8 @@ def get_rack_chains(song, params):
     track_index = int(params["track_index"])
     device_index = int(params["device_index"])
     track = get_track(song, track_index)
-    device = get_device(track, device_index)
+    device = get_device_by_path(track, device_index, params.get("device_path"),
+                                params.get("expected_device_id"))
 
     if not device.can_have_chains:
         raise ValueError(
@@ -1060,6 +1079,12 @@ def get_rack_chains(song, params):
             "pan": chain.mixer_device.panning.value,
             "mute": chain.mute,
             "solo": chain.solo,
+            "devices": [{"index": j, "name": child.name, "class_name": child.class_name,
+                         "can_have_chains": bool(child.can_have_chains),
+                         "device_id": device_identity(child),
+                         "device_path": (params.get("device_path") or []) +
+                                        [{"chain_index": i, "device_index": j}]}
+                        for j, child in enumerate(chain.devices)],
         }
         chains.append(chain_info)
     return {"chains": chains}
@@ -1348,114 +1373,157 @@ def import_slices_from_onsets(song, params):
 
 # ── Wavetable modulation matrix (Live 11+) ──────────────────────────────
 
-_WAVETABLE_SOURCES = [
-    "Env 2", "Env 3", "LFO 1", "LFO 2",
-    "MIDI Key", "MIDI Velocity", "MIDI Aftertouch", "MIDI Pitchbend",
-    "Macro 1", "Macro 2", "Macro 3", "Macro 4",
-    "Macro 5", "Macro 6", "Macro 7", "Macro 8",
-]
+# Use Live's native enum, as Ableton's factory Push2 implementation does.
+# The display order is not a promise about the enum's integer values.
+_WAVETABLE_SOURCES = (
+    ("Amp Env", "amp_envelope", ("Env 1",)),
+    ("Env 2", "envelope_2", ()),
+    ("Env 3", "envelope_3", ()),
+    ("LFO 1", "lfo_1", ()),
+    ("LFO 2", "lfo_2", ()),
+    ("MIDI Velocity", "midi_velocity", ()),
+    ("MIDI Key", "midi_note", ("MIDI Note",)),
+    ("MIDI Pitchbend", "midi_pitch_bend", ("MIDI Pitch Bend",)),
+    ("MIDI Aftertouch", "midi_channel_pressure", ("MIDI Channel Pressure",)),
+    ("MIDI Mod Wheel", "midi_mod_wheel", ()),
+    ("MIDI Random", "midi_random", ()),
+)
+
+
+def _wavetable_sources():
+    try:
+        enum = Live.WavetableDevice.ModulationSource
+    except AttributeError:
+        raise RuntimeError("Wavetable ModulationSource enum is not exposed by this Live build")
+    return [(name, getattr(enum, attr), aliases)
+            for name, attr, aliases in _WAVETABLE_SOURCES if hasattr(enum, attr)]
+
+
+def _wavetable_source(source):
+    requested = str(source).strip().casefold()
+    sources = _wavetable_sources()
+    for name, enum, aliases in sources:
+        if requested in [candidate.casefold() for candidate in (name,) + aliases]:
+            return name, enum
+    raise ValueError("Unknown or unavailable Wavetable source '%s'. Available: %s" % (
+        source, ", ".join(name for name, _enum, _aliases in sources)))
 
 
 def _get_wavetable(song, params):
+    from .version_detect import has_feature
+    if not has_feature("wavetable_mod_matrix"):
+        raise RuntimeError("Wavetable modulation matrix is not available in this Live build")
     track = get_track(song, int(params["track_index"]))
-    device = get_device(track, int(params["device_index"]))
+    device = get_device_by_path(track, int(params["device_index"]),
+                                params.get("device_path"), params.get("expected_device_id"))
     class_name = str(getattr(device, "class_name", ""))
-    # Fast path: explicit Wavetable class_name.
     if "Wavetable" in class_name:
         return device
-    # Ableton reports the Wavetable instrument as "InstrumentVector" in some
-    # Live versions.  Accept it only when a Wavetable-specific parameter
-    # ("Osc 1 Pos") is present so that M4L devices that also use the
-    # InstrumentVector class (e.g. Vector FM / Vector Grain) are rejected.
     if class_name == "InstrumentVector":
-        param_names = {str(getattr(p, "name", "")) for p in getattr(device, "parameters", [])}
-        if any("Osc 1 Pos" in n for n in param_names):
+        names = {str(getattr(p, "name", "")) for p in getattr(device, "parameters", [])}
+        if any("Osc 1 Pos" in name for name in names):
             return device
-    raise ValueError("Device at index %d is not Wavetable (class_name=%s)"
-                     % (int(params["device_index"]), class_name))
+    raise ValueError("Selected device is not Wavetable (class_name=%s)" % class_name)
+
+
+def _wavetable_targets(wt):
+    return [{"index": index, "name": str(name),
+             "parameter_name": str(wt.get_modulation_target_parameter_name(index))}
+            for index, name in enumerate(wt.visible_modulation_target_names)]
+
+
+def _wavetable_target(wt, target):
+    targets = _wavetable_targets(wt)
+    name = str(target).strip()
+    if name.startswith("index:"):
+        try:
+            index = int(name[6:])
+        except ValueError:
+            raise ValueError("Wavetable target index must use index:N")
+        if index < 0 or index >= len(targets):
+            raise ValueError("Wavetable target index %d is not visible" % index)
+        return targets[index]
+    matches = [t for t in targets if name.casefold() in (
+        t["name"].casefold(), t["parameter_name"].casefold())]
+    if len(matches) != 1:
+        raise ValueError("Wavetable target '%s' is absent or ambiguous. Read get_wavetable_mod_targets; "
+                         "use index:N for a visible row, or add_wavetable_mod_route first." % name)
+    return matches[0]
 
 
 @register("get_wavetable_mod_targets")
 def get_wavetable_mod_targets(song, params):
-    from .version_detect import has_feature
-    if not has_feature("wavetable_mod_matrix"):
-        raise RuntimeError("Wavetable modulation matrix requires Live 11+.")
     wt = _get_wavetable(song, params)
-    targets = list(getattr(wt, "visible_modulation_target_names", []))
-    return {"targets": [str(t) for t in targets]}
+    targets = _wavetable_targets(wt)
+    addable = [str(p.name) for p in wt.parameters if wt.is_parameter_modulatable(p)]
+    return {"targets": [t["name"] for t in targets], "target_details": targets,
+            "addable_parameters": addable,
+            "sources": [{"name": name, "index": int(enum)}
+                        for name, enum, _aliases in _wavetable_sources()]}
 
 
 @register("add_wavetable_mod_route")
 def add_wavetable_mod_route(song, params):
-    from .version_detect import has_feature
-    if not has_feature("wavetable_mod_matrix"):
-        raise RuntimeError("Wavetable modulation matrix requires Live 11+.")
     wt = _get_wavetable(song, params)
-    source = str(params["source"])
-    target = str(params["target"])
-    if not hasattr(wt, "add_parameter_to_modulation_matrix"):
-        raise RuntimeError("add_parameter_to_modulation_matrix not exposed")
-    wt.add_parameter_to_modulation_matrix(source, target)
-    actual = ""
-    if hasattr(wt, "get_modulation_target_parameter_name"):
-        actual = str(wt.get_modulation_target_parameter_name(source, target))
-    return {"source": source, "target": target, "actual_target": actual}
+    source, source_enum = _wavetable_source(params["source"])
+    target = str(params["target"]).strip()
+    existing = [t for t in _wavetable_targets(wt) if target.casefold() in (
+        t["name"].casefold(), t["parameter_name"].casefold())]
+    if target.startswith("index:") or existing:
+        resolved = _wavetable_target(wt, target)
+        index = resolved["index"]
+    else:
+        matches = [p for p in wt.parameters if str(p.name).casefold() == target.casefold()]
+        if len(matches) != 1:
+            raise ValueError("Parameter '%s' is absent or ambiguous; read get_device_parameters" % target)
+        parameter = matches[0]
+        if not wt.is_parameter_modulatable(parameter):
+            raise ValueError("Parameter '%s' cannot be modulated" % target)
+        index = int(wt.add_parameter_to_modulation_matrix(parameter))
+    # Adding a target does not invent a modulation amount. Call set next.
+    return {"source": source, "source_index": int(source_enum), "target": target,
+            "target_index": index,
+            "actual_target": str(wt.get_modulation_target_parameter_name(index))}
 
 
 @register("set_wavetable_mod_amount")
 def set_wavetable_mod_amount(song, params):
-    from .version_detect import has_feature
-    if not has_feature("wavetable_mod_matrix"):
-        raise RuntimeError("Wavetable modulation matrix requires Live 11+.")
-    wt = _get_wavetable(song, params)
-    source = str(params["source"])
-    target = str(params["target"])
+    import math
     amount = float(params["amount"])
-    if not -1.0 <= amount <= 1.0:
-        raise ValueError("amount must be -1.0 to 1.0")
-    if not hasattr(wt, "set_modulation_value"):
-        raise RuntimeError("set_modulation_value not exposed")
-    wt.set_modulation_value(source, target, amount)
-    return {"source": source, "target": target, "amount": amount}
+    if not math.isfinite(amount) or not -1.0 <= amount <= 1.0:
+        raise ValueError("amount must be finite and between -1.0 and 1.0")
+    wt = _get_wavetable(song, params)
+    source, source_enum = _wavetable_source(params["source"])
+    target = _wavetable_target(wt, params["target"])
+    wt.set_modulation_value(target["index"], source_enum, amount)
+    actual = float(wt.get_modulation_value(target["index"], source_enum))
+    return {"source": source, "source_index": int(source_enum), "target": target["name"],
+            "target_index": target["index"], "actual_target": target["parameter_name"],
+            "amount": actual, "requested_amount": amount}
 
 
 @register("get_wavetable_mod_amount")
 def get_wavetable_mod_amount(song, params):
-    from .version_detect import has_feature
-    if not has_feature("wavetable_mod_matrix"):
-        raise RuntimeError("Wavetable modulation matrix requires Live 11+.")
     wt = _get_wavetable(song, params)
-    source = str(params["source"])
-    target = str(params["target"])
-    amount = 0.0
-    actual = ""
-    if hasattr(wt, "get_modulation_value"):
-        amount = float(wt.get_modulation_value(source, target))
-    if hasattr(wt, "get_modulation_target_parameter_name"):
-        actual = str(wt.get_modulation_target_parameter_name(source, target))
-    return {"source": source, "target": target, "amount": amount,
-            "actual_target": actual}
+    source, source_enum = _wavetable_source(params["source"])
+    target = _wavetable_target(wt, params["target"])
+    return {"source": source, "source_index": int(source_enum), "target": target["name"],
+            "target_index": target["index"], "actual_target": target["parameter_name"],
+            "amount": float(wt.get_modulation_value(target["index"], source_enum))}
 
 
 @register("get_wavetable_mod_matrix")
 def get_wavetable_mod_matrix(song, params):
-    """Dump all non-zero modulation routings on this Wavetable."""
-    from .version_detect import has_feature
-    if not has_feature("wavetable_mod_matrix"):
-        raise RuntimeError("Wavetable modulation matrix requires Live 11+.")
+    """Read all native sources; API failures must never look like an empty patch."""
     wt = _get_wavetable(song, params)
-    targets = list(getattr(wt, "visible_modulation_target_names", []))
     routings = []
-    if hasattr(wt, "get_modulation_value"):
-        for src in _WAVETABLE_SOURCES:
-            for tgt in targets:
-                try:
-                    amt = float(wt.get_modulation_value(src, tgt))
-                except Exception:
-                    continue
-                if abs(amt) > 1e-6:
-                    routings.append({"source": src, "target": str(tgt),
-                                     "amount": amt})
+    for target in _wavetable_targets(wt):
+        for source, source_enum, _aliases in _wavetable_sources():
+            amount = float(wt.get_modulation_value(target["index"], source_enum))
+            if abs(amount) > 1e-6:
+                routings.append({"source": source, "source_index": int(source_enum),
+                                 "target": target["name"], "target_index": target["index"],
+                                 "amount": amount})
     return {"routings": routings}
 
 

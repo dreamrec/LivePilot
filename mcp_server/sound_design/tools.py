@@ -6,6 +6,9 @@ then delegates to pure-computation modules.
 
 from __future__ import annotations
 
+import math
+from typing import Optional
+
 from fastmcp import Context
 
 from ..server import mcp
@@ -264,24 +267,49 @@ def _filter_role_appropriate_issues(
     return [i for i in issues if i.issue_type not in _ROLE_SUPPRESSIBLE_ISSUES]
 
 
+def _timbral_goal(goal: Optional[dict]) -> TimbralGoalVector:
+    """Validate explicit creative intent before reading or changing a session."""
+    values = {} if goal is None else goal
+    allowed = set(TimbralGoalVector.__dataclass_fields__) - {"protect"}
+    if not isinstance(values, dict) or set(values) - allowed:
+        raise ValueError("goal must contain only timbral dimensions: " + ", ".join(sorted(allowed)))
+    normalized = {}
+    for name, value in values.items():
+        try:
+            number = float(value)
+        except (ValueError, TypeError):
+            raise ValueError("goal values must be finite numbers between -1 and 1")
+        if isinstance(value, bool) or not math.isfinite(number) or not -1 <= number <= 1:
+            raise ValueError("goal values must be finite numbers between -1 and 1")
+        normalized[name] = number
+    return TimbralGoalVector(**normalized)
+
+
 # ── MCP Tools ────────────────────────────────────────────────────────
 
 
 @mcp.tool()
-def analyze_sound_design(ctx: Context, track_index: int) -> dict:
+def analyze_sound_design(
+    ctx: Context, track_index: int, goal: Optional[dict[str, float]] = None,
+) -> dict:
     """Build full sound design state and run all critics for a track.
 
     Returns the complete timbral analysis including patch model,
     layer strategy, all detected issues, and suggested moves.
 
+    Optional goal supplies desired changes, e.g. {"movement": 0.5,
+    "brightness": -0.2}. Dimensions range -1..1; omitted means no requested
+    change. Structural findings are heuristics, not measured audio quality.
+
     Args:
         track_index: Index of the track to analyze.
     """
+    timbral_goal = _timbral_goal(goal)
     data = _fetch_sound_design_data(ctx, track_index)
     patch = _build_patch_model(track_index, data["track_info"], data["devices"])
     layers = _build_layer_strategy(track_index, patch)
     state = SoundDesignState(
-        goal=TimbralGoalVector(),
+        goal=timbral_goal,
         patch=patch,
         layers=layers,
     )
@@ -304,19 +332,26 @@ def analyze_sound_design(ctx: Context, track_index: int) -> dict:
 
 
 @mcp.tool()
-def get_sound_design_issues(ctx: Context, track_index: int) -> dict:
+def get_sound_design_issues(
+    ctx: Context, track_index: int, goal: Optional[dict[str, float]] = None,
+) -> dict:
     """Run all sound design critics and return detected issues only.
 
     Lighter than analyze_sound_design — skips move planning.
 
+    Optional goal supplies desired changes, e.g. {"movement": 0.5,
+    "brightness": -0.2}. Dimensions range -1..1; omitted means no requested
+    change. Structural findings are heuristics, not measured audio quality.
+
     Args:
         track_index: Index of the track to analyze.
     """
+    timbral_goal = _timbral_goal(goal)
     data = _fetch_sound_design_data(ctx, track_index)
     patch = _build_patch_model(track_index, data["track_info"], data["devices"])
     layers = _build_layer_strategy(track_index, patch)
     state = SoundDesignState(
-        goal=TimbralGoalVector(),
+        goal=timbral_goal,
         patch=patch,
         layers=layers,
     )
@@ -333,7 +368,9 @@ def get_sound_design_issues(ctx: Context, track_index: int) -> dict:
 
 
 @mcp.tool()
-def plan_sound_design_move(ctx: Context, track_index: int) -> dict:
+def plan_sound_design_move(
+    ctx: Context, track_index: int, goal: Optional[dict[str, float]] = None,
+) -> dict:
     """Get ranked move suggestions based on current sound design issues.
 
     Runs critics and planner, returns sorted moves with
@@ -344,14 +381,19 @@ def plan_sound_design_move(ctx: Context, track_index: int) -> dict:
     `cross_engine_hint` pointing the user to the right tool instead
     of silently reporting empty.
 
+    Optional goal supplies desired changes, e.g. {"movement": 0.5,
+    "brightness": -0.2}. Dimensions range -1..1; omitted means no requested
+    change. Structural findings are heuristics, not measured audio quality.
+
     Args:
         track_index: Index of the track to analyze.
     """
+    timbral_goal = _timbral_goal(goal)
     data = _fetch_sound_design_data(ctx, track_index)
     patch = _build_patch_model(track_index, data["track_info"], data["devices"])
     layers = _build_layer_strategy(track_index, patch)
     state = SoundDesignState(
-        goal=TimbralGoalVector(),
+        goal=timbral_goal,
         patch=patch,
         layers=layers,
     )
