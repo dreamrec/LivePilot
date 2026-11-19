@@ -141,7 +141,10 @@ def fire_scene_clips(
 
 @mcp.tool()
 def stop_all_clips(ctx: Context) -> dict:
-    """Stop all playing clips in the session. Panic button."""
+    """Stop Session clips; this can leave Arrangement playback overridden.
+
+    To resume the Arrangement afterward, use back_to_arranger or force_arrangement.
+    """
     return _get_ableton(ctx).send_command("stop_all_clips")
 
 

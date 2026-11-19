@@ -14,7 +14,7 @@ class QueuedSong:
         self.marker = 49.0
         self.loop = False
         self.tracks = []
-        self.back_to_arranger = False
+        self.back_to_arranger = True
         self.pending = []
         self.stops = 0
         self.starts = 0
@@ -77,6 +77,9 @@ def test_force_arrangement_keeps_requested_position_across_live_ticks(playing, p
     assert song.current_song_time == target
     assert song.stops == int(playing and not play)
     assert song.starts == int(play and not playing)
+    assert song.back_to_arranger is False
+    assert result['back_to_arranger_lit'] is False
+    assert result['arrangement_active'] is True
 
 
 def test_repeated_stop_preserves_user_cursor():

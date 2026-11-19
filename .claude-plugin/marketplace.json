@@ -10,7 +10,7 @@
     {
       "name": "livepilot",
       "description": "Ableton Live 12 control with 474 tools across 57 domains: nested racks, native modulation, MIDI, arrangement, and measured audio analysis.",
-      "version": "1.31.0",
+      "version": "1.31.1",
       "author": {
         "name": "Pilot Studio"
       },
