@@ -69,7 +69,7 @@
 | Tool | Description |
 |------|-------------|
 | `add_arrangement_notes` | Add MIDI notes to an arrangement clip. |
-| `back_to_arranger` | Switch playback from session clips back to the arrangement timeline. |
+| `back_to_arranger` | Resume Arrangement playback by clearing Session override. |
 | `capture_midi` | Capture recently played MIDI notes into a new clip. |
 | `create_arrangement_clip` | Duplicate a session clip into Arrangement View at a specific beat position. |
 | `create_cue_point` | Create a named locator at a beat position in the Arrangement. |
@@ -593,7 +593,7 @@
 | `set_scene_color` | Set scene color (0-69, Ableton's color palette). |
 | `set_scene_name` | Rename a scene. Pass empty string to clear the name. |
 | `set_scene_tempo` | Set scene tempo in BPM (20-999). Fires when the scene launches. |
-| `stop_all_clips` | Stop all playing clips in the session. Panic button. |
+| `stop_all_clips` | Stop Session clips; this can leave Arrangement playback overridden. |
 
 ## Semantic Moves (4)
 

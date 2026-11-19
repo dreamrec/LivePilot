@@ -12,7 +12,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         # 3.12 is the MCP-server floor: scipy>=1.18 dropped 3.11 (numpy is
-        # currently capped <2.5 for numba/librosa — see requirements.txt).
+        # currently capped <2.6 for numba/librosa — see requirements.txt).
         # NOTE: the Remote Script runs inside Ableton's embedded Python (3.11 on
         # Live 12.3); it must stay 3.11-syntax-compatible even though CI now
         # exercises only 3.12. Add a 3.11 remote_script-only job if that drifts.

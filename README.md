@@ -23,7 +23,7 @@ and compare captured audio before deciding what to keep.
 **474 tools across 57 domains. macOS and Windows.** The default catalog presents
 a focused set of entry points; the full tool surface remains searchable.
 
-[Install](#install) · [What's new](#whats-new-in-v1310) · [Manual](docs/manual/index.md) · [Tool catalog](docs/manual/tool-catalog.md) · [Changelog](CHANGELOG.md)
+[Install](#install) · [What's new](#whats-new-in-v1311) · [Manual](docs/manual/index.md) · [Tool catalog](docs/manual/tool-catalog.md) · [Changelog](CHANGELOG.md)
 
 ## Install
 
@@ -66,29 +66,20 @@ See [client setup](docs/manual/getting-started.md) for platform paths and option
 The Remote Script accepts one TCP client at a time. Use a shared HTTP server
 when connecting several MCP clients to the same Live instance.
 
-## What's New in v1.31.0
+## What's New in v1.31.1
 
-This release deepens existing controls while keeping the same tool count.
+- **Return to the Arrangement.** `back_to_arranger` and `force_arrangement`
+  now clear Live's Session override indicator. The Session-record automation
+  setup uses the same corrected state.
+- **Read the result.** Arrangement commands report `back_to_arranger_lit` and
+  `arrangement_active`, so callers can detect a remaining Session override.
+- **Update the runtime.** FastMCP 4.2.2 includes upstream authentication fixes;
+  librosa 1.0.1 is covered by the offline listening tests.
 
-- **Reach inside racks.** Discover child devices, inspect parameters, and make
-  single or batch edits through explicit nested chain/device paths. Optional
-  device identity guards reject stale targets after reordering.
-- **Use Wavetable's native modulation matrix.** Discover real sources and
-  addable parameters, insert target rows, set normalized amounts, and read back
-  the result. Matrix display names and parameter names are reported separately.
-- **Give sound design a direction.** Supply an explicit timbral goal such as
-  more movement or less brightness. A simple patch or missing LFO receives no
-  unsolicited quality penalty. Structural findings are labeled as heuristics.
-- **Keep analysis responsive.** Offline DSP runs in bounded workers; cancellation
-  stops the worker while preserving the MCP session. Doctor and transport fixes
-  are included.
-- **Handle newer clip-scale APIs.** Scale setters resolve available names
-  defensively on builds that expose per-clip scale properties; older builds
-  report the supported song-scale alternative.
-
-The [validation record](docs/validation/v1.31.0.md) documents the live control
-checks, API provenance, and their limits. Full changes are in the
-[changelog](CHANGELOG.md).
+Version 1.31.0 added nested rack parameter control, device identity guards,
+native Wavetable modulation, and sound-design feedback tied to explicit goals.
+Its [validation record](docs/validation/v1.31.0.md) documents the live control
+checks and their limits. Full changes are in the [changelog](CHANGELOG.md).
 
 ## Workflows
 

@@ -165,7 +165,7 @@ class _FakeSong:
         self.tracks = tracks
         self.return_tracks = return_tracks or []
         self.is_playing = False
-        self.back_to_arranger = False
+        self.back_to_arranger = True
         self.current_song_time = 13.0
         self.loop = False
         self.loop_start = 0.0
@@ -282,7 +282,8 @@ def test_force_arrangement_surfaces_per_track_stop_error():
     # The good clip still got stopped.
     assert good_slot.clip.stopped is True
     # back_to_arranger still ran as the primary override release.
-    assert song.back_to_arranger is True
+    assert song.back_to_arranger is False
+    assert result["back_to_arranger_lit"] is False
 
 
 def test_force_arrangement_clean_path_reports_success():
@@ -302,6 +303,7 @@ def test_force_arrangement_clean_path_reports_success():
 
     assert result["stop_errors"] == []
     assert result["arrangement_active"] is True
+    assert result["back_to_arranger_lit"] is False
     assert "warning" not in result
     assert slot.clip.stopped is True
 

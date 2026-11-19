@@ -329,7 +329,11 @@ def set_arrangement_clip_name(
 
 @mcp.tool()
 def back_to_arranger(ctx: Context) -> dict:
-    """Switch playback from session clips back to the arrangement timeline."""
+    """Resume Arrangement playback by clearing Session override.
+
+    back_to_arranger acknowledges the request; back_to_arranger_lit and
+    arrangement_active report the actual resulting state.
+    """
     return _get_ableton(ctx).send_command("back_to_arranger")
 
 
@@ -343,10 +347,9 @@ def force_arrangement(
 ) -> dict:
     """Force ALL tracks to follow the arrangement and start playback.
 
-    Atomically: stops all session clips, releases every track from
-    session override, sets back-to-arranger, jumps to position, and
-    starts playing. This is the "play my arrangement from the top"
-    command.
+    Stops playing Session clips, clears Session override, jumps to position,
+    and optionally starts playback. Transport changes settle across Live ticks.
+    Check arrangement_active, back_to_arranger_lit, and stop_errors in the result.
 
     beat_time: position to start from (default 0 = beginning)
     loop_start: loop region start in beats (default 0)

@@ -157,7 +157,15 @@ Use `get_device_parameters` to inspect parameter values.
 
 **Likely cause:** Session clips override arrangement playback on a per-track basis.
 
-**Fix:** Use `back_to_arranger` to return all tracks to arrangement playback. Alternatively, stop individual session clips with `stop_track_clips`.
+**Fix:** Use `back_to_arranger` to return tracks to Arrangement playback, or
+`force_arrangement` to also set the position and optional playback. Check
+`arrangement_active` and `back_to_arranger_lit` in the response. The latter is
+the button's highlighted state: `false` means the override has cleared.
+
+Stopping Session clips with `stop_track_clips` or `stop_all_clips` does not
+restore Arrangement playback; it can leave the override active while the
+playhead advances silently. Use `back_to_arranger` afterward when the goal
+is to resume the Arrangement.
 
 ---
 

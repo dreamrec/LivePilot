@@ -861,9 +861,15 @@ def toggle_cue_point(song, params):
 
 @register("back_to_arranger")
 def back_to_arranger(song, params):
-    """Switch playback from session clips back to the arrangement timeline."""
-    song.back_to_arranger = True
-    return {"back_to_arranger": True}
+    """Clear the Session override indicator to resume Arrangement playback."""
+    # This property is the button's highlighted state, not a trigger (#115).
+    song.back_to_arranger = False
+    lit = bool(song.back_to_arranger)
+    return {
+        "back_to_arranger": True,  # Preserve the existing action acknowledgment.
+        "back_to_arranger_lit": lit,
+        "arrangement_active": not lit,
+    }
 
 
 @register("force_arrangement")
@@ -871,9 +877,9 @@ def force_arrangement(song, params):
     """Force ALL tracks to follow the arrangement timeline.
 
     Stops all session clips, releases every track from session override,
-    sets back_to_arranger, and optionally jumps to a start position.
+    clears the back-to-arranger indicator, and optionally jumps to a position.
 
-    This is the atomic "play the arrangement from the top" command.
+    Transport changes settle across Live ticks before reporting the result.
     """
     require_deferred_transport()
 
@@ -912,8 +918,8 @@ def force_arrangement(song, params):
                     "error": str(exc),
                 })
 
-    # 3. Global back-to-arranger
-    song.back_to_arranger = True
+    # 3. Clear the global Session override indicator to resume Arrangement.
+    song.back_to_arranger = False
 
     # Set loop before seeking: changing the loop can itself affect position.
     if "loop_length" in params:
@@ -922,8 +928,10 @@ def force_arrangement(song, params):
         song.loop = True
 
     def report():
+        lit = bool(song.back_to_arranger)
         result = {
-            "arrangement_active": not stop_errors,
+            "arrangement_active": not stop_errors and not lit,
+            "back_to_arranger_lit": lit,
             "position": song.current_song_time,
             "requested_position": beat_time,
             "is_playing": bool(song.is_playing),
@@ -934,6 +942,11 @@ def force_arrangement(song, params):
             result["warning"] = (
                 "%d session clip(s) failed to stop and may still override the "
                 "arrangement — playback could start mid-song" % len(stop_errors)
+            )
+        elif lit:
+            result["warning"] = (
+                "Back to Arrangement is still highlighted; Session playback "
+                "may still override the arrangement"
             )
         return result
 
@@ -1047,7 +1060,7 @@ def arrangement_automation_via_session_record_start(song, params):
     # Probe 4: seek the arrangement to target_beat. Must be done
     # BEFORE enabling record, or the record starts at wherever the
     # playhead currently is.
-    song.back_to_arranger = True
+    song.back_to_arranger = False
     song.current_song_time = max(0.0, target_beat)
 
     # Probe 5: arm the track. Some tracks need `current_monitoring_state`

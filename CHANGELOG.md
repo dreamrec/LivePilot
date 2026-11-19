@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.31.1 — Arrangement Playback Fix (2026-11-19)
+
+### Fixed
+- `back_to_arranger`, `force_arrangement`, and the Session-record automation setup clear Live's Back to Arrangement indicator instead of setting it. This restores Arrangement playback after Session clips stop (#115).
+- Arrangement commands return `back_to_arranger_lit` and `arrangement_active` readback. `force_arrangement` reports inactive playback if override remains lit or Session clips fail to stop. The original `back_to_arranger` field remains an action acknowledgment.
+- Troubleshooting and tool descriptions explain that stopping Session clips alone does not restore Arrangement playback.
+- FastMCP startup diagnostics refer to the supported dependency range instead of recommending an obsolete 3.x version.
+
+### Changed
+- Update FastMCP to `>=4.2.2,<4.3.0`, including upstream authentication fixes, and librosa to `>=1.0.1` (#116, #117).
+- Keep the original ASCII banner and the current greeting.
+
 ## 1.31.0 — Nested Device Control and Native Modulation (2026-11-12)
 
 ### Added

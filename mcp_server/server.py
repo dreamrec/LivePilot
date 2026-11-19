@@ -426,7 +426,7 @@ def _get_all_tools():
     to the next path rather than exploding.
 
     WARNING: Accesses FastMCP private internals. Pinned to
-    fastmcp>=4.1.6,<4.2.0 in requirements.txt (4.1.6 still keeps
+    fastmcp>=4.2.2,<4.3.0 in requirements.txt (4.2.2 still keeps
     ``_local_provider._components``). The startup self-test
     (_assert_tool_registry_accessible) will fail loudly if every probe
     returns empty — better than silently returning [] and disabling
@@ -542,8 +542,8 @@ def _assert_tool_registry_accessible() -> None:
         # FastMCP); print a loud diagnostic and let downstream code react.
         print(
             "LivePilot: STARTUP SELF-TEST FAILED — _get_all_tools() returned 0. "
-            "FastMCP internals likely changed. Verify requirements.txt pin "
-            "(fastmcp>=3.0.0,<3.3.0) matches the installed version.",
+            "FastMCP internals likely changed. Install the supported FastMCP "
+            "range from requirements.txt.",
             file=sys.stderr,
         )
 
